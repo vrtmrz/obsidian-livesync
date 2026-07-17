@@ -32,7 +32,7 @@ Converts standard global variable usages to compatibility wrappers to ensure saf
 *   **Targets**: `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`, `requestAnimationFrame`, `cancelAnimationFrame`, `localStorage`, `navigator`, `location`, `window`, `globalThis`, and `document`.
 *   **Actions**:
     *   Replaces global namespace references (like `window` and `globalThis`) with `compatGlobal`.
-*   Replaces `document` with `_activeDocument` from the Commonlib compatibility entry.
+    *   Replaces `document` with `_activeDocument` from the Commonlib compatibility entry.
     *   Injects or updates the necessary imports in modified files.
 *   **Command**:
     ```bash

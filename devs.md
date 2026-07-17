@@ -94,7 +94,7 @@ The codebase uses the `@/` alias for source owned by this repository. Commonlib 
 npm run pretty:importpath
 ```
 
-Under the hood, this runs Deno with the script [utilsdeno/normalise-imports.ts](file:///p:/plant25/obsidian/projects/obsidian-livesync/utilsdeno/normalise-imports.ts). You can pass additional flags to this script if required (by running it via Deno directly from the `utilsdeno` directory):
+Under the hood, this runs Deno with the script [utilsdeno/normalise-imports.ts](utilsdeno/normalise-imports.ts). You can pass additional flags to this script if required (by running it via Deno directly from the `utilsdeno` directory):
 
 - `--run`: Applies the changes (the script runs in dry-run mode by default).
 - `--all-alias`: Normalises sibling/child relative imports starting with `./` to use aliases.

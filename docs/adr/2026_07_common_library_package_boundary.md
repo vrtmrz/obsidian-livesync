@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — the implementation proof is complete locally; publication and the community-scanner preview remain pending.
+Proposed — the implementation proof is complete, and `@vrtmrz/livesync-commonlib@0.1.0-rc.1` has been published and verified as the exact downstream dependency; the community-scanner preview remains pending.
 
 ## Context
 
@@ -43,7 +43,7 @@ The present process model also assumes one main LiveSync instance. Event dispatc
 
 ## Decision
 
-Maintain `livesync-commonlib` as the authoritative independent repository and publish its compiled output as a scoped, pre-1.0 npm package. `@vrtmrz/livesync-commonlib` is the working package name; the final name must be checked before the first publication.
+Maintain `livesync-commonlib` as the authoritative independent repository and publish its compiled output as the scoped, pre-1.0 npm package `@vrtmrz/livesync-commonlib`.
 
 Self-hosted LiveSync, its CLI, Webapp, WebPeer, and external tools will consume the compiled package and declarations through package export maps. They must not compile the common library's source through a path alias. The package lock records the exact resolved artefact used to build a plug-in release.
 
@@ -109,7 +109,7 @@ In particular, event subscriptions, translation selection, offline-scan maps and
 
 Translation lookup is separated from the generated catalogue. Core services receive a narrow translator capability, or a service-context equivalent, instead of importing a process-global `$msg` implementation which statically owns every language.
 
-The first migration keeps language resources in the common-library repository but exposes them through an optional package subpath such as `@vrtmrz/livesync-commonlib/language`. Importing core replication or the headless client does not load the catalogue. Self-hosted LiveSync imports the catalogue and installs the translator at its composition root.
+The first migration keeps language resources in the common-library repository and exposes them temporarily through the focused compatibility subpath `@vrtmrz/livesync-commonlib/compat/common/i18n`. Importing the root or `context` entry does not load the catalogue. Self-hosted LiveSync imports the catalogue and installs the translator at its composition root. A dedicated language subpath remains the preferred stable replacement once its contract has been narrowed.
 
 This is initially one versioned npm package rather than two independently versioned packages. Message identifiers and their generated catalogue change together, so an immediate package split would add version coordination before the dependency direction is proven. A later `@vrtmrz/livesync-language` package is permitted when independent use or release cadence justifies it. Its dependency must point towards message contracts or core, never from core towards the catalogue.
 
@@ -245,13 +245,13 @@ Every retained barrel must correspond to an explicit `exports` entry, list named
 
 ## Implementation Proof
 
-The local package proof builds Commonlib as one compiled ESM package with a small root, `context`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the current downstream migration. It publishes neither raw TypeScript nor Svelte source. The generated tarball can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Release validation records the immutable registry version and checksum separately.
+The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the current downstream migration. It publishes neither raw TypeScript nor Svelte source. The immutable `@vrtmrz/livesync-commonlib@0.1.0-rc.1` registry artefact can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Its registry version and checksum are recorded by release validation.
 
 The proof found and fixed three boundary defects which source-alias consumption had hidden: compiled JSON imports required explicit output extensions, precompiled Svelte output could not safely be treated as source by the downstream Svelte pipeline, and Vite's default client conditions selected Commonlib's browser worker while building the Node CLI. Packed-consumer regressions cover the first two. The CLI now uses Vite's server conditions and treats every Node built-in reported by Commonlib's Node entry as external; the built CLI is exercised through Deno E2E. Importing root or context also no longer patches DOM prototypes, translator injection prevents the context entry from loading the complete language catalogue, and standard input and protocol output are supplied by the package-owned host contract rather than direct stream access in command handlers.
 
-Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact local tarball without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
+Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact registry artefact without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
 
-The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,092 tests across 57 files. Self-hosted LiveSync's three host-composition contract tests and complete 339-test unit suite pass against the tarball. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
+The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,092 tests across 57 files. Self-hosted LiveSync's three host-composition contract tests and complete 340-test unit suite pass against the registry artefact. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
 
 The Community review lint completes with no errors. Advisory warnings remain in pre-existing UI sentence casing, deprecated Obsidian interfaces, unchecked dynamic setting data, and application-specific console output, especially in the Webapp. They are separate follow-up work and do not justify widening the package boundary or exposing additional compatibility paths.
 
@@ -316,8 +316,7 @@ The migration is complete only when:
 
 ## Open Questions Before Acceptance
 
-- Confirm the published package name and whether the first version should be `0.1.0` or an earlier bootstrap version.
-- Confirm whether the language catalogue begins as an optional subpath, as recommended here, or as a separately versioned package.
+- Define the focused stable language entry point which will replace the temporary compatibility subpath.
 - Define the minimum conflict and conditional-write guarantees required by the first public high-level client.
 - Decide which current deep imports can migrate directly to public subpaths and which require temporary compatibility exports.
 - Confirm whether another Fancy Kit consumer needs the framework-neutral Modal host before it is added to the Kit, or whether LiveSync should pilot the contract first.

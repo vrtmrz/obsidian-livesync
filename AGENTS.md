@@ -5,10 +5,10 @@ When working on this repository (writing code, comments, documentation, or commi
 ## Required Reference Files
 
 Before making changes to documentation, user-facing text, or settings:
-1. Read [docs/terms.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/terms.md) for terminology, vocabulary conventions, and technical definitions.
-2. Read [docs/settings.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/settings.md) (and [docs/settings_ja.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/settings_ja.md)) for UI settings and setting key mappings.
-3. Read [docs/troubleshooting.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/troubleshooting.md) for troubleshooting guidelines and common recovery steps (such as flag files and SCRAM state).
-4. Read [devs.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/devs.md) for development workflows, module architecture, and testing infrastructure.
+1. Read [docs/terms.md](docs/terms.md) for terminology, vocabulary conventions, and technical definitions.
+2. Read [docs/settings.md](docs/settings.md) (and [docs/settings_ja.md](docs/settings_ja.md)) for UI settings and setting key mappings.
+3. Read [docs/troubleshooting.md](docs/troubleshooting.md) for troubleshooting guidelines and common recovery steps (such as flag files and SCRAM state).
+4. Read [devs.md](devs.md) for development workflows, module architecture, and testing infrastructure.
 
 ---
 
@@ -47,8 +47,8 @@ Always adhere to the following stylistic and spelling rules:
 3. **Subrepositories**:
    - Treat `@vrtmrz/livesync-commonlib` as an external, authoritative package. Make Commonlib changes in its repository, validate the packed artefact and downstream LiveSync consumer, and update the exact dependency here. Do not recreate a `src/lib` source mirror or generated `_types` fallback.
 4. **Application Directories**:
-   - The directory [src/apps](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/apps) contains independent application modules:
-     - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/apps/cli) using its local `package.json` scripts.
+   - The directory [src/apps](src/apps) contains independent application modules:
+     - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](src/apps/cli) using its local `package.json` scripts.
      - `webapp`: A Web-based application.
      - `webpeer`: A Web-based peer utility.
 
