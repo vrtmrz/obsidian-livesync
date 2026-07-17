@@ -5,6 +5,10 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+### Improved
+
+- Removed the ineffective 'Use the trash bin' toggle from the settings interface. Remote deletions continue to follow Obsidian's deletion preference, while the legacy setting key remains accepted for compatibility.
+
 ### Miscellaneous
 
 - Replaced the embedded Commonlib source and generated fallback declarations with a locked compiled package, reducing duplicated release and repository-scanner inputs without changing synchronisation behaviour.

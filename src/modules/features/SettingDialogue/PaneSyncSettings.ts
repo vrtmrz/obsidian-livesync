@@ -222,8 +222,6 @@ export function paneSyncSettings(
         LEVEL_ADVANCED
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("trashInsteadDelete");
-
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
     });
     void addPanel(

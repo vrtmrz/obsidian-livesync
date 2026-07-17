@@ -14,6 +14,7 @@ const testSteps: Step[] = [
     { name: "discover", args: ["run", "test:e2e:obsidian:discover"] },
     { name: "smoke", args: ["run", "test:e2e:obsidian:smoke"] },
     { name: "Svelte dialogue mounts", args: ["run", "test:e2e:obsidian:dialog-mounts"] },
+    { name: "settings UI", args: ["run", "test:e2e:obsidian:settings-ui"] },
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },
     { name: "CouchDB upload", args: ["run", "test:e2e:obsidian:couchdb-upload"] },
     {

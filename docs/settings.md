@@ -514,10 +514,10 @@ Saving will be performed forcefully after this number of seconds.
 
 ### 4. Deletion Propagation (Advanced)
 
-#### Use the trash bin
+#### Legacy trash setting
 
 Setting key: trashInsteadDelete
-Move remotely deleted files to the trash, instead of deleting. On Obsidian v1.7.2 or newer, file deletion respects the user's deletion preferences (by utilising the `FileManager.trashFile` API), regardless of this setting.
+This key remains accepted for settings imports, Setup URIs, and compatibility with earlier versions, but it is no longer shown in the settings interface. Remote file deletion follows the user's Obsidian deletion preferences through the `FileManager.trashFile` API, regardless of this legacy value.
 
 #### Keep empty folder
 

@@ -56,6 +56,7 @@ npm run test:e2e:obsidian:discover
 npm run test:e2e:obsidian:cli-help -- vaults verbose
 npm run test:e2e:obsidian:smoke
 npm run test:e2e:obsidian:dialog-mounts
+npm run test:e2e:obsidian:settings-ui
 npm run test:e2e:obsidian:vault-reflection
 npm run test:e2e:obsidian:couchdb-upload
 npm run test:e2e:obsidian:cli-to-obsidian-sync
@@ -75,9 +76,11 @@ npm run test:e2e:obsidian:local-suite:services
 
 `test:e2e:obsidian:dialog-mounts` starts a temporary real Obsidian session and exercises two representative Svelte dialogue routes: remote server selection through `SetupManager`, and Setup URI entry through the registered command. The session pre-seeds a configured, inactive plug-in state so that onboarding and migration prompts do not interfere with the dialogues under test. It requires each dialogue title and its principal controls to be visible, captures desktop and mobile screenshots, closes them through their normal user controls, and verifies that the remote-selection promise settles without an error. This covers the host, context, component, and result boundaries moved during the Commonlib package extraction without applying settings or contacting a remote service.
 
+`test:e2e:obsidian:settings-ui` opens Self-hosted LiveSync's settings in a temporary real Obsidian session and selects the Synchronisation Settings pane through its user-facing control. It verifies that the deletion panel still exposes the effective 'Keep empty folder' setting without presenting the legacy `trashInsteadDelete` control, whose value no longer changes Obsidian deletion behaviour.
+
 The mobile pass uses Obsidian's `app.emulateMobile(true)`, a 390 by 844 CSS-pixel viewport, and explicit iPhone-style safe-area insets of 47 pixels at the top and 34 pixels at the bottom. The public `@vrtmrz/obsidian-test-session` layout assertions require each modal to remain within the viewport and safe area without horizontal overflow. They also require the Obsidian Close control to remain within the safe area and provide at least a 44 by 44 CSS-pixel touch target. The runner clicks that control to verify actionability, then completes the explicit cancellation path. These simulated checks cover deterministic layout and interaction boundaries; they do not claim to reproduce a native operating-system overlay.
 
-`test:e2e:obsidian:local-suite` builds the plug-in and, unless `LIVESYNC_CLI_COMMAND` selects an external CLI, the local LiveSync CLI. It then runs discovery, smoke, Svelte dialogue mounting, vault reflection, CouchDB upload, CLI-to-Obsidian synchronisation, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
+`test:e2e:obsidian:local-suite` builds the plug-in and, unless `LIVESYNC_CLI_COMMAND` selects an external CLI, the local LiveSync CLI. It then runs discovery, smoke, Svelte dialogue mounting, settings UI, vault reflection, CouchDB upload, CLI-to-Obsidian synchronisation, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
 
 `test:e2e:obsidian:couchdb-upload` reuses the CouchDB variables from `.test.env` or the process environment. It expects a reachable CouchDB service, creates a unique database, configures Self-hosted LiveSync through `obsidian-cli eval`, creates a note in real Obsidian, commits the note into the local database, runs one-shot synchronisation, and verifies that the remote database contains both the metadata document and its chunk documents.
 
@@ -139,6 +142,7 @@ Useful environment variables:
 - `E2E_OBSIDIAN_SKIP_EXTRACT=true`: download the AppImage without extracting it.
 - `E2E_OBSIDIAN_SMOKE_TIMEOUT_MS`: smoke timeout in milliseconds.
 - `E2E_OBSIDIAN_DIALOG_TIMEOUT_MS`: timeout for a representative Svelte dialogue to mount, expose its principal controls, and close; default is 10 seconds.
+- `E2E_OBSIDIAN_SETTINGS_TIMEOUT_MS`: timeout for the settings pane and its deletion controls to become visible; default is 10 seconds.
 - `E2E_OBSIDIAN_READY_TIMEOUT_MS`: plug-in readiness timeout in milliseconds.
 - `E2E_OBSIDIAN_CLI_READY_TIMEOUT_MS`: timeout for waiting until the vault-side Obsidian CLI exposes the plug-in catalogue.
 - `E2E_OBSIDIAN_CLI_TIMEOUT_MS`: timeout for each `obsidian-cli` invocation.
