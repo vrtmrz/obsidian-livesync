@@ -1,11 +1,11 @@
-import { $msg, $t } from "@lib/common/i18n.ts";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta.ts";
+import { $msg, $t } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@vrtmrz/livesync-commonlib/compat/common/rosetta";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
-import { NetworkWarningStyles } from "@lib/common/models/setting.const.ts";
+import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 export function paneGeneral(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,

@@ -4,7 +4,7 @@ This directory contains the experimental real Obsidian end-to-end runner.
 
 The generic application discovery, isolated-vault, plug-in installation, process lifecycle, CLI, CDP, and readiness implementation comes from `@vrtmrz/obsidian-test-session`. The small modules under `runner/` preserve LiveSync's existing imports and supply its plug-in ID and artefact location. LiveSync-specific fixtures, services, settings, workflows, and assertions remain in this repository.
 
-The current smoke runner verifies only the launch path:
+The current smoke runner verifies the launch path and the loaded plug-in's Service Context composition:
 
 1. create a temporary vault,
 2. install the built Self-hosted LiveSync plug-in artifacts,
@@ -13,8 +13,10 @@ The current smoke runner verifies only the launch path:
 5. enable Obsidian community plug-ins for the temporary app profile,
 6. reload Self-hosted LiveSync through `obsidian-cli`,
 7. verify through `obsidian-cli eval` that the plug-in is loaded,
-8. optionally drive a real vault or CouchDB workflow through Obsidian's own API,
-9. terminate Obsidian and remove the temporary vault.
+8. observe event and translation results from the actual `ObsidianServiceContext`,
+9. verify that the Service Hub and every exposed service retain that exact Context,
+10. optionally drive a real vault or CouchDB workflow through Obsidian's own API, and
+11. terminate Obsidian and remove the temporary vault.
 
 The runner does not require Self-hosted LiveSync to expose an E2E-only bridge. Readiness is checked from outside the plug-in through Obsidian's own CLI.
 
@@ -45,6 +47,10 @@ These tests are intended for local verification, not the default CI gate. Reuse 
 ## Commands
 
 ```bash
+npm run test:contract:contexts
+npm run test:contract:context:webapp
+npm run test:contract:context:cli
+npm run test:contract:context:obsidian
 npm run test:e2e:obsidian:install-appimage
 npm run test:e2e:obsidian:discover
 npm run test:e2e:obsidian:cli-help -- vaults verbose
@@ -61,6 +67,10 @@ npm run test:e2e:obsidian:setting-markdown-export
 npm run test:e2e:obsidian:local-suite
 npm run test:e2e:obsidian:local-suite:services
 ```
+
+`test:contract:contexts` runs the directly observable host contract against the Obsidian, CLI, and Webapp compositions. It verifies event and translation results, host-specific capabilities, and that the CLI and Webapp Service Hubs pass one exact Context to all exposed services. `test:contract:context:webapp` runs only the Webapp part.
+
+`test:contract:context:cli` builds the Node CLI and runs its existing Deno setup, put, read, list, information, remove, conflict-resolution, and revision workflow. `test:contract:context:obsidian` builds the plug-in and runs the real-Obsidian smoke test, including the Context inspection. These runtime scripts are local validation entry points and are not added to the default CI gate by this change.
 
 `test:e2e:obsidian:local-suite` builds the plug-in and, unless `LIVESYNC_CLI_COMMAND` selects an external CLI, the local LiveSync CLI. It then runs discovery, smoke, vault reflection, CouchDB upload, CLI-to-Obsidian synchronisation, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
 

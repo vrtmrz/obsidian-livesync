@@ -1,4 +1,4 @@
-import type { P2PSyncSetting } from "@/lib/src/common/types";
+import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { delay } from "octagonal-wheels/promises";
 import type { BrowserContext, Page } from "playwright";
 import type { Plugin } from "vitest/config";

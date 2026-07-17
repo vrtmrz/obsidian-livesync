@@ -1,6 +1,6 @@
 import { TFile, Modal, App, DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT, diff_match_patch } from "@/deps.ts";
 import { getPathFromTFile, isValidPath } from "@/common/utils.ts";
-import { decodeBinary, readString } from "@lib/string_and_binary/convert.ts";
+import { decodeBinary, readString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import ObsidianLiveSyncPlugin from "@/main.ts";
 import {
     type DocumentID,
@@ -9,14 +9,14 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
-} from "@lib/common/types.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { isErrorOfMissingDoc } from "@lib/pouchdb/utils_couchdb.ts";
-import { fireAndForget, getDocData, readContent } from "@lib/common/utils.ts";
-import { isPlainText, stripPrefix } from "@lib/string_and_binary/path.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { isErrorOfMissingDoc } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
+import { fireAndForget, getDocData, readContent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { isPlainText, stripPrefix } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();

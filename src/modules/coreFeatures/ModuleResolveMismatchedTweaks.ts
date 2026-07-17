@@ -10,13 +10,13 @@ import {
     type RemoteDBSettings,
     IncompatibleChangesInSpecificPattern,
     CompatibleButLossyChanges,
-} from "@lib/common/types.ts";
-import { escapeMarkdownValue } from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { $msg } from "@lib/common/i18n.ts";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 
 function valueToString(value: string | number | boolean | object | undefined): string {
     if (typeof value === "boolean") {

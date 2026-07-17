@@ -1,5 +1,5 @@
-import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
-import { compatGlobal } from "@lib/common/coreEnvFunctions";
+import { fs as nodeFs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 type LocalStorageShape = {
     getItem(key: string): string | null;

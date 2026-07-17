@@ -6,13 +6,9 @@ Thank you for your interest in contributing to Self-hosted LiveSync! We welcome 
 
 To set up the development environment, please follow these steps:
 
-1. Clone the repository recursively to ensure all Git submodules are loaded:
+1. Clone the repository:
    ```bash
-   git clone --recursive https://github.com/vrtmrz/obsidian-livesync
-   ```
-   If you have already cloned the repository without submodules, run the following command:
-   ```bash
-   git submodule update --init --recursive
+   git clone https://github.com/vrtmrz/obsidian-livesync
    ```
 
 2. Install the package dependencies:
@@ -25,7 +21,7 @@ To set up the development environment, please follow these steps:
    npm run build
    ```
 
-For a more comprehensive guide on development workflows, testing configurations, and subrepos, please refer to [devs.md](devs.md).
+For a more comprehensive guide on development workflows, testing configurations, and the Commonlib dependency, please refer to [devs.md](devs.md).
 
 ## Guidelines for Contributions
 
@@ -61,9 +57,9 @@ For a detailed list of vocabulary conventions and terms, please refer to [docs/t
 
 To add or update translations, please refer to [docs/adding_translations.md](docs/adding_translations.md) for detailed instructions.
 
-### 4. Git Submodules
+### 4. Commonlib changes
 
-The `src/lib` directory is a Git submodule pointing to the shared library `livesync-commonlib`. If you wish to propose changes to the shared library, do not modify `src/lib` directly. Instead, please submit a separate pull request to the [livesync-commonlib repository](https://github.com/vrtmrz/livesync-commonlib).
+Shared synchronisation behaviour is provided by the `@vrtmrz/livesync-commonlib` package. If you wish to change that library, submit a separate pull request to the [livesync-commonlib repository](https://github.com/vrtmrz/livesync-commonlib), validate its packed artefact, then update the locked dependency in this repository. Do not add a source mirror or generated fallback declarations to this repository.
 
 ## License
 

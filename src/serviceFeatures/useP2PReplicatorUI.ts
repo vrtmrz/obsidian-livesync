@@ -1,8 +1,8 @@
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { type UseP2PReplicatorResult } from "@lib/replication/trystero/UseP2PReplicatorResult";
-import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
 import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneView";
 import {
     P2PServerStatusPaneView,
@@ -10,7 +10,7 @@ import {
 } from "@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView";
 import type { LiveSyncCore } from "@/main";
 import type { WorkspaceLeaf } from "@/deps";
-import { REMOTE_P2P } from "@lib/common/models/setting.const";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 
 /**
  * ServiceFeature: P2P Replicator lifecycle management.
@@ -54,7 +54,7 @@ export function useP2PReplicatorUI(
 
     // const env: LiveSyncTrysteroReplicatorEnv = { services: host.services as any };
     const getReplicator = () => replicator.replicator;
-    const p2pLogCollector = new P2PLogCollector();
+    const p2pLogCollector = new P2PLogCollector(host.services.context.events);
     const storeP2PStatusLine = reactiveSource("");
     p2pLogCollector.p2pReplicationLine.onChanged((line) => {
         storeP2PStatusLine.value = line.value;

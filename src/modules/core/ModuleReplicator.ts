@@ -3,21 +3,21 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "@/modules/AbstractModule";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
-import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import { type EntryDoc, type RemoteType } from "@lib/common/types";
+import { balanceChunkPurgedDBs } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
+import { purgeUnreferencedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { type EntryDoc, type RemoteType } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 
-import { $msg } from "@lib/common/i18n";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import type { LiveSyncCore } from "@/main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
-import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
-import { clearHandlers } from "@lib/replication/SyncParamsHandler";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
+import { clearHandlers } from "@vrtmrz/livesync-commonlib/compat/replication/SyncParamsHandler";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { MARK_LOG_NETWORK_ERROR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -64,7 +64,8 @@ export class ModuleReplicator extends AbstractModule {
 
     processor: ReplicateResultProcessor = new ReplicateResultProcessor(this);
     private _unresolvedErrorManager: UnresolvedErrorManager = new UnresolvedErrorManager(
-        this.core.services.appLifecycle
+        this.core.services.appLifecycle,
+        this.core.services.context.events
     );
 
     clearErrors() {
@@ -284,12 +285,14 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         // --> These handlers can be separated.
         const isOnlineAndCanReplicateWithHost = isOnlineAndCanReplicate.bind(null, this._unresolvedErrorManager, {
             services: {
+                context: services.context,
                 API: services.API,
             },
             serviceModules: {},
         });
         const canReplicateWithPBKDF2WithHost = canReplicateWithPBKDF2.bind(null, this._unresolvedErrorManager, {
             services: {
+                context: services.context,
                 replicator: services.replicator,
                 setting: services.setting,
             },

@@ -1,4 +1,4 @@
-import { FileAccessBase, type FileAccessBaseDependencies } from "@lib/serviceModules/FileAccessBase";
+import { FileAccessBase, type FileAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import { FSAPIFileSystemAdapter } from "@/apps/webapp/adapters/FSAPIFileSystemAdapter";
 
 /**

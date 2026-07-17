@@ -1,4 +1,4 @@
-import { path, readline } from "@/apps/cli/node-compat";
+import { path, readline } from "@vrtmrz/livesync-commonlib/node";
 
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike

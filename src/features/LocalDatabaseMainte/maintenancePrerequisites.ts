@@ -1,4 +1,4 @@
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 type MaintenancePrerequisiteSettings = Pick<
     ObsidianLiveSyncSettings,

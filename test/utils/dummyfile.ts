@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "@/lib/src/common/types.ts";
+import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { readFile } from "../utils/fileapi.vite.ts";
 let charset = "";
 export async function init() {

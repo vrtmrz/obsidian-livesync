@@ -1,7 +1,7 @@
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { type LogFunction } from "@lib/services/lib/logUtils";
-import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import {
     ExtraOnLocal,
     ExtraOnRemote,
@@ -9,7 +9,7 @@ import {
     normaliseFullScanOptions,
     synchroniseAllFilesBetweenDBandStorage,
     type FullScanOptions,
-} from "@lib/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { adjustSettingToRemoteIfNeeded, processVaultInitialisation } from "./redFlag";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
@@ -215,7 +215,7 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         await host.serviceModules.rebuilder.$fetchLocalDBFast(false);
 
         // 2. Call the extended synchroniseAllFilesBetweenDBandStorage to reflect changes in storage
-        const errorManager = new UnresolvedErrorManager(host.services.appLifecycle);
+        const errorManager = new UnresolvedErrorManager(host.services.appLifecycle, host.services.context.events);
         const syncResult = await synchroniseAllFilesBetweenDBandStorage(
             host,
             log,

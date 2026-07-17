@@ -1,20 +1,20 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { createInstanceLogFunction, type LogFunction } from "@lib/services/lib/logUtils";
-import { FlagFilesHumanReadable, FlagFilesOriginal } from "@lib/common/models/redflag.const";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { createInstanceLogFunction, type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const";
 import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
-import { TweakValuesShouldMatchedTemplate } from "@lib/common/models/tweak.definition";
+import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import { TweakValuesShouldMatchedTemplate } from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
 import type {
     FetchEverythingResult,
     RebuildEverythingResult,
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
 import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
-import { ConnectionStringParser } from "@lib/common/ConnectionString";
-import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 
 /**
  * Flag file handler interface, similar to target filter pattern.

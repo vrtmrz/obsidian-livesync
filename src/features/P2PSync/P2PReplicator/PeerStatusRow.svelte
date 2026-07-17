@@ -1,9 +1,9 @@
 <script lang="ts">
     import { getContext } from "svelte";
-    import { AcceptedStatus, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicatorPaneController } from "./P2PReplicatorPaneController";
     import { eventHub } from "@/common/events";
-    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
 
     interface Props {
         peerStatus: PeerStatus;
@@ -70,7 +70,7 @@
             name: peer.name,
         });
     }
-    const replicator = getContext<() => LiveSyncTrysteroReplicator>("getReplicator")();
+    const replicator = getContext<() => P2PReplicatorPaneController>("getReplicator")();
 
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];

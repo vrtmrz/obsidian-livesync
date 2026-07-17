@@ -1,4 +1,4 @@
-// Normalise import and export paths in the codebase to use @lib/ and @/ aliases correctly.
+// Normalise import and export paths in the codebase to use the @/ alias correctly.
 // Use this script by running `deno run --allow-read --allow-write normalise-imports.ts` from the utilsdeno directory.
 // Set the --run flag to apply changes: `deno run --allow-read --allow-write normalise-imports.ts --run`
 // Set the --all-alias flag to also normalise sibling/child imports (starting with ./): `deno run --allow-read --allow-write normalise-imports.ts --all-alias`
@@ -39,12 +39,9 @@ function toPosixPath(filePath: string): string {
 
 const posixProjectRoot = toPosixPath(projectRoot);
 const posixSrc = `${posixProjectRoot}/src`;
-const posixLibSrc = `${posixProjectRoot}/src/lib/src`;
-const posixSubrepo = `${posixProjectRoot}/src/lib`;
 
 console.log(`Project Root: ${posixProjectRoot}`);
 console.log(`Source Directory: ${posixSrc}`);
-console.log(`Library Source Directory: ${posixLibSrc}`);
 console.log("");
 
 let modifiedFilesCount = 0;
@@ -87,7 +84,7 @@ for (const sourceFile of project.getSourceFiles()) {
 
         // Determine if it is an internal import.
         const isRelative = moduleSpecifier.startsWith(".");
-        const isAlias = moduleSpecifier.startsWith("@/") || moduleSpecifier.startsWith("@lib/");
+        const isAlias = moduleSpecifier.startsWith("@/");
 
         if (!isRelative && !isAlias) {
             // Skip external packages/modules.
@@ -96,9 +93,7 @@ for (const sourceFile of project.getSourceFiles()) {
 
         // Resolve path to an absolute POSIX path.
         let resolvedPath = "";
-        if (moduleSpecifier.startsWith("@lib/")) {
-            resolvedPath = `${posixLibSrc}/${moduleSpecifier.slice(5)}`;
-        } else if (moduleSpecifier.startsWith("@/")) {
+        if (moduleSpecifier.startsWith("@/")) {
             resolvedPath = `${posixSrc}/${moduleSpecifier.slice(2)}`;
         } else {
             // Relative path.
@@ -107,14 +102,9 @@ for (const sourceFile of project.getSourceFiles()) {
 
         resolvedPath = toPosixPath(path.normalize(resolvedPath));
 
-        // Keep relative sibling/child imports unchanged (e.g. ./utils) unless:
-        // 1. --all-alias is set, OR
-        // 2. the import crosses the subrepository boundary (src/lib/)
+        // Keep relative sibling/child imports unchanged (e.g. ./utils) unless --all-alias is set.
         const isSibling = isRelative && !moduleSpecifier.startsWith("..");
-        const importerInsideSubrepo = posixFilePath.startsWith(posixSubrepo + "/");
-        const targetInsideSubrepo = resolvedPath.startsWith(posixSubrepo + "/");
-        const crossesSubrepo = importerInsideSubrepo !== targetInsideSubrepo;
-        if (isSibling && !allAlias && !crossesSubrepo) {
+        if (isSibling && !allAlias) {
             continue;
         }
 
@@ -126,18 +116,7 @@ for (const sourceFile of project.getSourceFiles()) {
             moduleSpecifier.endsWith(".svelte") ||
             moduleSpecifier.endsWith(".d.ts");
 
-        if (resolvedPath.startsWith(posixLibSrc + "/")) {
-            let rel = resolvedPath.slice(posixLibSrc.length + 1);
-            if (!hasExtension && (rel.endsWith(".ts") || rel.endsWith(".js"))) {
-                // Strip extension if the original import did not have one.
-                if (rel.endsWith(".ts") && !rel.endsWith(".d.ts")) {
-                    rel = rel.slice(0, -3);
-                } else if (rel.endsWith(".js")) {
-                    rel = rel.slice(0, -3);
-                }
-            }
-            newSpecifier = `@lib/${rel}`;
-        } else if (resolvedPath.startsWith(posixSrc + "/")) {
+        if (resolvedPath.startsWith(posixSrc + "/")) {
             let rel = resolvedPath.slice(posixSrc.length + 1);
             if (!hasExtension && (rel.endsWith(".ts") || rel.endsWith(".js"))) {
                 // Strip extension if the original import did not have one.

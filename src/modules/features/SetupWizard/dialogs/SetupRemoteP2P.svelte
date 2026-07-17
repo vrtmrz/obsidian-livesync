@@ -1,13 +1,13 @@
 <script lang="ts">
     // import { delay } from "octagonal-wheels/promises";
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
-    import InfoNote from "@lib/UI/components/InfoNote.svelte";
-    import InputRow from "@lib/UI/components/InputRow.svelte";
-    import Password from "@lib/UI/components/Password.svelte";
-    import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
+    import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
+    import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
     import {
         DEFAULT_SETTINGS,
         P2P_DEFAULT_SETTINGS,
@@ -17,15 +17,15 @@
         type ObsidianLiveSyncSettings,
         type P2PConnectionInfo,
         type P2PSyncSetting,
-    } from "@lib/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
-    import { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
-    import type { ReplicatorHostEnv } from "@lib/replication/trystero/types";
-    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "@lib/common/utils";
+    import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import type { ReplicatorHostEnv } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/types";
+    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
-    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
+    import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
     import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
@@ -99,6 +99,8 @@
 
             const dummyPouch = new PouchDB<EntryDoc>("dummy");
             const env: ReplicatorHostEnv = {
+                events: context.context.events,
+                translate: context.context.translate,
                 settings: trialRemoteSetting,
                 processReplicatedDocs: async (_docs: any[]) => {
                     return;

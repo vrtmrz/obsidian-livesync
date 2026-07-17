@@ -1,7 +1,7 @@
-import type { FilePath } from "@lib/common/types";
-import type { IPathAdapter } from "@lib/serviceModules/adapters";
+import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { NodeFile } from "./NodeTypes";
-import { path } from "@/apps/cli/node-compat";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 
 /**
  * Path adapter implementation for Node.js

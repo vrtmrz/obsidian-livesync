@@ -1,5 +1,5 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
@@ -7,14 +7,14 @@ import {
     EVENT_SETTING_SAVED,
     eventHub,
 } from "@/common/events.ts";
-import { $msg, setLang } from "@lib/common/i18n.ts";
-import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { $msg, setLang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { versionNumberString2Number } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
-import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker/bgWorker";
+import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -81,7 +81,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
     }
 
     async _onLiveSyncLoad(): Promise<boolean> {
-        initialiseWorkerModule();
+        initialiseWorkerModule(this.services.context.events);
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED);

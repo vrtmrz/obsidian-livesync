@@ -1,11 +1,11 @@
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { LiveSyncError } from "@lib/common/LSError";
-import { getPeerConnectionStats } from "@lib/rpc/transports/DiagRTCPeerConnections.utils";
-import { appendFile } from "node:fs/promises";
+import { P2P_DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
+import { getPeerConnectionStats } from "@vrtmrz/livesync-commonlib/compat/rpc/transports/DiagRTCPeerConnections.utils";
+import { fsPromises } from "@vrtmrz/livesync-commonlib/node";
 
 type CLIP2PPeer = {
     peerId: string;
@@ -155,7 +155,7 @@ async function writePeerConnectionStatsIfRequested(
         localCandidate,
         remoteCandidate,
     };
-    await appendFile(outputPath, `${JSON.stringify(payload)}\n`, "utf8");
+    await fsPromises.appendFile(outputPath, `${JSON.stringify(payload)}\n`, "utf8");
 }
 
 export async function syncWithPeer(

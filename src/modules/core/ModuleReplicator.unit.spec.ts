@@ -1,16 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 
 const chunkMocks = vi.hoisted(() => ({
     purgeUnreferencedChunks: vi.fn(async (_db: unknown, countOnly: boolean) => (countOnly ? 2 : 0)),
     balanceChunkPurgedDBs: vi.fn(async () => undefined),
 }));
 
-vi.mock("@lib/pouchdb/chunks", () => chunkMocks);
-vi.mock("@lib/replication/couchdb/LiveSyncReplicator", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/chunks", () => chunkMocks);
+vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
     LiveSyncCouchDBReplicator: class {},
 }));
 
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { ModuleReplicator } from "./ModuleReplicator";
 
 describe("ModuleReplicator", () => {
@@ -76,6 +77,7 @@ describe("ModuleReplicator legacy cleanup", () => {
             markRemoteResolved: vi.fn(async () => undefined),
         });
         const services = {
+            context: createServiceContext(),
             API: {
                 addLog: vi.fn(),
                 addCommand: vi.fn(),

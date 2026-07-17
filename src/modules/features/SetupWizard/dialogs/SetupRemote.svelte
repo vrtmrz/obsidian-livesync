@@ -1,11 +1,11 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import Question from "@lib/UI/components/Question.svelte";
-    import Option from "@lib/UI/components/Option.svelte";
-    import Options from "@lib/UI/components/Options.svelte";
-    import Instruction from "@lib/UI/components/Instruction.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
+    import Option from "@/modules/services/LiveSyncUI/components/Option.svelte";
+    import Options from "@/modules/services/LiveSyncUI/components/Options.svelte";
+    import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import {
         TYPE_COUCHDB,
         TYPE_BUCKET,

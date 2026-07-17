@@ -6,9 +6,9 @@ import {
     PREFIXMD_LOGFILE,
     type DatabaseConnectingStatus,
     type LOG_LEVEL,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
-import { fireAndForget, isDirty, throttle } from "@lib/common/utils.ts";
+import { fireAndForget, isDirty, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     collectingChunks,
     pluginScanningCount,
@@ -16,21 +16,21 @@ import {
     hiddenFilesProcessingCount,
     type LogEntry,
     logMessages,
-} from "@lib/mock_and_interop/stores.ts";
-import { eventHub } from "@lib/hub/hub.ts";
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import {
     EVENT_FILE_RENAMED,
     EVENT_LAYOUT_READY,
     EVENT_LEAF_ACTIVE_CHANGED,
     EVENT_ON_UNRESOLVED_ERROR,
+    eventHub,
 } from "@/common/events.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
-import { $msg } from "@lib/common/i18n.ts";
-import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
 import {
     REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS,
     formatRemoteActivityStatusLabel,
@@ -38,16 +38,16 @@ import {
 } from "./RemoteActivityStatus.ts";
 import { createMinimumVisibleActivityCount, createPaddedCounterLabel } from "./StatusBarDisplay.ts";
 import type { LiveSyncCore } from "@/main.ts";
-import { LiveSyncError } from "@lib/common/LSError.ts";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import { isValidPath } from "@/common/utils.ts";
 import {
     isValidFilenameInAndroid,
     isValidFilenameInDarwin,
     isValidFilenameInWidows,
-} from "@lib/string_and_binary/path.ts";
-import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@lib/services/lib/logUtils.ts";
-import { NetworkWarningStyles } from "@lib/common/models/setting.const.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { generateReport } from "@/common/reportTool.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
@@ -120,7 +120,7 @@ export class ModuleLog extends AbstractObsidianModule {
     statusLog = reactiveSource("");
     activeFileStatus = reactiveSource("");
     notifies: { [key: string]: { notice: Notice; count: number } } = {};
-    p2pLogCollector = new P2PLogCollector();
+    p2pLogCollector = new P2PLogCollector(this.services.context.events);
 
     observeForLogs() {
         const registerDisplay = <T extends { dispose(): void }>(display: T): T => {

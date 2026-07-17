@@ -2,9 +2,9 @@ import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
-import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
+import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
 import {
     LOG_LEVEL_DEBUG,
     setGlobalLogFunction,
@@ -16,11 +16,11 @@ import {
 import { runCommand } from "./commands/runCommand";
 import { VALID_COMMANDS } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
-import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
-import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
-import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
-import { fsPromises as fs, path, fs as fsSync } from "./node-compat";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
+import { fsPromises as fs, path, fs as fsSync } from "@vrtmrz/livesync-commonlib/node";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -173,7 +173,8 @@ export function parseArgs(): CLIOptions {
             case "-d":
                 // debugging automatically enables verbose logging, as it is intended for debugging issues.
                 debug = true;
-            // falls through
+                verbose = true;
+                break;
             case "--verbose":
             case "-v":
                 verbose = true;
@@ -354,7 +355,7 @@ export async function main() {
     // Create service context and hub
     const context = new NodeServiceContext(databasePath);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
-    serviceHubInstance.API.addLog.setHandler((message: string, level: LOG_LEVEL) => {
+    serviceHubInstance.API.addLog.setHandler((message: unknown, level: LOG_LEVEL) => {
         let levelStr = "";
         switch (level) {
             case LOG_LEVEL_DEBUG:

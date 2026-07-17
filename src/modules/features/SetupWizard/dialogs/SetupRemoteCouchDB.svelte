@@ -1,12 +1,12 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
-    import InfoNote from "@lib/UI/components/InfoNote.svelte";
-    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
-    import InputRow from "@lib/UI/components/InputRow.svelte";
-    import Password from "@lib/UI/components/Password.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
+    import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
+    import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
     import {
         DEFAULT_SETTINGS,
         PREFERRED_SETTING_CLOUDANT,
@@ -14,12 +14,12 @@
         RemoteTypes,
         type CouchDBConnection,
         type ObsidianLiveSyncSettings,
-    } from "@lib/common/types";
-    import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
 
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
-    import { copyTo, pickCouchDBSyncSettings } from "@lib/common/utils";
+    import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { copyTo, pickCouchDBSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
     import { TYPE_CANCELLED, type SetupRemoteCouchDBResultType } from "./setupDialogTypes";
 

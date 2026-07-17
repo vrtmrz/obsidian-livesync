@@ -5,11 +5,11 @@
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         type P2PServerInfo,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    // import type { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
-    import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
-    import { Logger } from "@lib/common/logger";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    // import type { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
 

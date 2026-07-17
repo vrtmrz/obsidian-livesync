@@ -10,22 +10,19 @@ Self-hosted LiveSync is an Obsidian plugin for synchronising vaults across devic
 
 #### First-time Setup
 
-This repository uses submodules by convention. Therefore, you must use the `--recursive` flag when cloning it.
-
 ```bash
-git clone --recursive https://github.com/vrtmrz/obsidian-livesync
+git clone https://github.com/vrtmrz/obsidian-livesync
+cd obsidian-livesync
 npm ci
 npm run build
 ```
 
-Note: if you already cloned without submodules, run: `git submodule update --init --recursive`
-
 #### Branch switching
 
-When switching branches, please make sure to update submodules as well, since they may be updated in the new branch.
+When switching branches, reinstall dependencies when the lockfile changes.
 
 ```bash
-git checkout --recurse-submodules 0.25.70-patch1 # tag or branch name
+git checkout 0.25.70-patch1 # tag or branch name
 npm ci
 npm run build
 ```
@@ -38,7 +35,6 @@ npm run check        # TypeScript and svelte type checking
 npm run dev          # Development build with auto-rebuild (uses .env for test vault paths)
 npm run build        # Production build
 npm run buildDev     # Development build (one-time)
-npm run bakei18n     # Pre-build step: compile i18n resources (YAML → JSON → TS)
 npm run test:unit    # Run unit tests only (no Docker services required)
 npm test             # Run Harness based vitest tests (requires Docker services), not recommended, unstable.
 ```
@@ -70,7 +66,7 @@ To facilitate development and testing, the build process can automatically copy 
         - If you add a feature that interacts with the remote database (e.g., replication changes, custom changes feed parameters, or custom HTTP queries), you strongly expected to write an integration test to verify the behaviour against a real CouchDB server.
     - **Browser Harness Tests** (`vitest.config.ts`): Transitional browser-based harness tests using Playwright/Chromium. Executed via `npm run test`. This layer is no longer the preferred destination for new broad E2E coverage because `test/harness` can drift from real Obsidian behaviour.
     - **P2P Tests** (`vitest.config.p2p.ts`): Browser-based Peer-to-Peer replication tests. Executed via `npm run test:p2p`.
-    - **RPC Unit Tests** (`vitest.config.rpc-unit.ts`): RPC-specific unit tests with coverage thresholds.
+    - **Commonlib Tests**: Commonlib owns unit and package tests for shared RPC, storage, replication, and platform contracts. LiveSync CI verifies the exact packed dependency as a downstream consumer.
 - **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and MinIO fixtures managed by the wrapper.
 
 - **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
@@ -92,7 +88,7 @@ To facilitate development and testing, the build process can automatically copy 
 
 ### Import Path Normalisation
 
-The codebase uses `@/` and `@lib/` path aliases to keep import structures clean. To normalise imports and exports across files, use the following utility script:
+The codebase uses the `@/` alias for source owned by this repository. Commonlib imports use explicit `@vrtmrz/livesync-commonlib` package subpaths. To normalise LiveSync-owned imports and exports, use the following utility script:
 
 ```bash
 npm run pretty:importpath
@@ -103,18 +99,11 @@ Under the hood, this runs Deno with the script [utilsdeno/normalise-imports.ts](
 - `--run`: Applies the changes (the script runs in dry-run mode by default).
 - `--all-alias`: Normalises sibling/child relative imports starting with `./` to use aliases.
 
-### Type Generation
+### Commonlib dependency
 
-To generate fallback type definitions for the shared library and add appropriate Deno ignore comments (which suppresses Deno compilation warnings and linting warnings inside the `_types` directory), run:
+Shared synchronisation code is compiled and typed by the `@vrtmrz/livesync-commonlib` package. `npm ci` installs the exact artefact recorded by the lockfile; this repository does not compile Commonlib source or commit fallback declarations.
 
-```bash
-npm run build:lib:types
-```
-
-This script executes:
-
-1. TypeScript compilation (`tsconfig.types.json`) to output definitions to the `_types` directory.
-2. The Deno script [utilsdeno/types-add-ignore.ts](file:///p:/plant25/obsidian/projects/obsidian-livesync/utilsdeno/types-add-ignore.ts) to prepend Deno ignore comments to the generated type files.
+Changes spanning both repositories must first produce a packed Commonlib artefact which passes its standalone package checks. Install that exact artefact in LiveSync, then run the LiveSync type checks, unit tests, application builds, CLI E2E, and any focused real-Obsidian E2E required by the changed boundary. Replace the temporary artefact reference with the reviewed immutable package version before release.
 
 ## Architecture
 
@@ -149,10 +138,10 @@ Hence, the new feature should be implemented as follows:
 
 ### Key Architectural Components
 
-- **LiveSyncLocalDB** (`src/lib/src/pouchdb/`): Local PouchDB database wrapper
-- **Replicators** (`src/lib/src/replication/`): CouchDB, Journal, and MinIO sync engines
+- **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper
+- **Replicators** (`@vrtmrz/livesync-commonlib/compat/replication/*`): CouchDB, Journal, and P2P synchronisation engines
 - **Service Hub** (`src/modules/services/`): Central service registry using dependency injection
-- **Common Library** (`src/lib/`): Platform-independent sync logic, shared with other tools
+- **Common Library** (`@vrtmrz/livesync-commonlib`): Platform-independent synchronisation logic, shared with the CLI, Webapp, WebPeer, and external tools
 
 ### Conflict Merge Policy
 
@@ -172,15 +161,15 @@ This policy is intentionally aligned with the conflict checkboxes and compatibil
 
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
 - **Development code**: Use `.dev.ts` suffix (replaced with `.prod.ts` in production)
-- **Path aliases**: `@/*` maps to `src/*`, `@lib/*` maps to `src/lib/src/*`
+- **Path aliases**: `@/*` maps to `src/*`; Commonlib uses package exports rather than a source alias
 
 ## Code Conventions
 
 ### Internationalisation (i18n)
 
 - **Translation Workflow**:
-    1. Edit YAML files in `src/lib/src/common/messagesYAML/` (human-editable)
-    2. Run `npm run bakei18n` to compile: YAML → JSON → TypeScript constants
+    1. Edit the human-readable YAML files in `src/common/messagesYAML/` in the `livesync-commonlib` repository
+    2. Run `npm run i18n:bake` in that repository to compile YAML → JSON → TypeScript constants
     3. Use `$t()`, `$msg()` functions for translations
        You can also use `$f` for formatted messages with Tagged Template Literals.
 - **Usage**:
@@ -195,7 +184,7 @@ This policy is intentionally aligned with the conflict checkboxes and compatibil
 
 - Use tagged types from `types.ts`: `FilePath`, `FilePathWithPrefix`, `DocumentID`
 - Prefix constants: `CHeader` (chunks), `ICHeader`/`ICHeaderEnd` (internal data)
-- Path utilities in `src/lib/src/string_and_binary/path.ts`: `addPrefix()`, `stripAllPrefixes()`, `shouldBeIgnored()`
+- Path utilities are supplied by the focused Commonlib compatibility path `@vrtmrz/livesync-commonlib/compat/string_and_binary/path`
 
 ### Logging & Debugging
 
@@ -224,8 +213,8 @@ export class ModuleExample extends AbstractObsidianModule {
 
 ### Settings Management
 
-- Settings defined in `src/lib/src/common/types.ts` (`ObsidianLiveSyncSettings`)
-- Configuration metadata in `src/lib/src/common/settingConstants.ts`
+- Settings are defined by Commonlib (`ObsidianLiveSyncSettings`)
+- Configuration metadata is supplied by the Commonlib settings exports
 - Use `this.services.setting.saveSettingData()` instead of using plugin methods directly
 
 ### Database Operations
@@ -272,7 +261,7 @@ In short, the situation remains unchanged for me, but it means you all become a 
 This workflow is for maintainers. Contributors should update `## Unreleased` for user-facing feature or fix PRs, but do not need to run the release workflows.
 The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `release` GitHub Environment. Configure Environment protection in the repository settings so tag creation and release publication require maintainer approval.
 
-- Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, regenerates the `_types` fallback definitions used by the community plug-in scan, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
+- Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, confirms that Commonlib is locked to an immutable package version, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
 - Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch, ensures that both the plug-in tag (for example, `0.25.81`) and the CLI tag (for example, `0.25.81-cli`) point to that commit, and explicitly dispatches the plug-in and CLI publishing workflows. The workflow can be retried when existing tags already point to the reviewed commit, but stops if either tag points elsewhere.
 - The plug-in publishing workflow is intentionally dispatch-only. Pushing a plug-in tag directly does not publish a GitHub Release; use `Finalise Release Tags`, or dispatch `Release Obsidian Plugin` explicitly for recovery or a pre-release. The CLI Docker workflow retains its documented branch, tag, and manual triggers.
@@ -294,7 +283,7 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
     - `allow_empty_updates`: leave disabled unless the release intentionally has no user-facing notes.
 3. Review the generated draft PR.
     - Polish `updates.md`.
-    - Confirm `package.json`, `manifest.json`, `versions.json`, workspace package versions, and the generated `_types` definitions.
+    - Confirm `package.json`, `manifest.json`, `versions.json`, workspace package versions, and the locked Commonlib package version.
     - Confirm that `manifest.json` has the intended `minAppVersion`.
     - Wait for the necessary CI checks.
 4. When the PR head is fixed, run `Finalise Release Tags`.

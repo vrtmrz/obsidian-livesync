@@ -4,7 +4,7 @@ import type {
     EncryptionSettings,
     ObsidianLiveSyncSettings,
     P2PConnectionInfo,
-} from "@lib/common/models/setting.type";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 
 export const TYPE_IDENTICAL = "identical";
 export const TYPE_INDEPENDENT = "independent";

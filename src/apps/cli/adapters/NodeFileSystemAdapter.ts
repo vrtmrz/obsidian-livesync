@@ -1,12 +1,12 @@
-import type { FilePath, UXStat } from "@lib/common/types";
-import type { IFileSystemAdapter } from "@lib/serviceModules/adapters";
+import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IFileSystemAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import { NodePathAdapter } from "./NodePathAdapter";
 import { NodeTypeGuardAdapter } from "./NodeTypeGuardAdapter";
 import { NodeConversionAdapter } from "./NodeConversionAdapter";
-import { NodeStorageAdapter } from "./NodeStorageAdapter";
+import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
-import { fsPromises as fs, path } from "@/apps/cli/node-compat";
+import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 
 /**
  * Complete file system adapter implementation for Node.js

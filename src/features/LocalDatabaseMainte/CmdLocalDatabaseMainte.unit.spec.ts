@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS } from "@lib/common/types";
+import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
 
 function createPrerequisites(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {

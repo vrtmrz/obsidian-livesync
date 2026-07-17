@@ -8,7 +8,7 @@ import {
     type ValueComponent,
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
-import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@lib/common/types.ts";
+import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,
@@ -18,7 +18,7 @@ import {
     type AllNumericItemKey,
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {

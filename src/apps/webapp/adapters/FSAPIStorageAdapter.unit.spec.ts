@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
 import { FSAPIFileSystemAdapter } from "./FSAPIFileSystemAdapter";
-import { FSAPIStorageAdapter } from "./FSAPIStorageAdapter";
+import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/browser";
 import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
 
 class MemoryFileHandle {
@@ -100,11 +100,11 @@ class MemoryDirectoryHandle {
     }
 }
 
-describe("FSAPIStorageAdapter", () => {
+describe("FileSystemAccessStorageAdapter", () => {
     for (const contractCase of storageAdapterContractCases) {
         it(contractCase.name, async () => {
             const root = new MemoryDirectoryHandle("root") as unknown as FileSystemDirectoryHandle;
-            await contractCase.run(new FSAPIStorageAdapter(root));
+            await contractCase.run(new FileSystemAccessStorageAdapter(root));
         });
     }
 });

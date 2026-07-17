@@ -1,4 +1,4 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger.ts";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
@@ -8,12 +8,12 @@ import {
     eventHub,
 } from "@/common/events.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { $msg } from "@lib/common/i18n.ts";
-import { performDoctorConsultation, RebuildOptions } from "@lib/common/configForDoc.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { performDoctorConsultation, RebuildOptions } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { isValidPath } from "@/common/utils.ts";
-import { isMetaEntry } from "@lib/common/types.ts";
-import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "@lib/common/utils.ts";
-import { countCompromisedChunks } from "@lib/pouchdb/negotiation.ts";
+import { isMetaEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import type { LiveSyncCore } from "@/main.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
 
@@ -29,7 +29,10 @@ type ErrorInfo = {
 export class ModuleMigration extends AbstractModule {
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
         const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
-            this.core,
+            {
+                confirm: this.core.confirm,
+                translate: this.services.context.translate,
+            },
             this.settings,
             {
                 localRebuild: skipRebuild ? RebuildOptions.SkipEvenIfRequired : RebuildOptions.AutomaticAcceptable,

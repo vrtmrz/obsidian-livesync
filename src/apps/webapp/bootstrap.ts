@@ -1,6 +1,6 @@
 import { LiveSyncWebApp } from "./main";
 import { VaultHistoryStore, type VaultHistoryItem } from "./vaultSelector";
-import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 const historyStore = new VaultHistoryStore();
 let app: LiveSyncWebApp | null = null;

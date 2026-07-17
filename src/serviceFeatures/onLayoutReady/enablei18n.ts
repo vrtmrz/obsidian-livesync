@@ -1,7 +1,7 @@
 import { getLanguage } from "@/deps";
-import { createServiceFeature } from "@lib/interfaces/ServiceModule";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta";
-import { $msg, __onMissingTranslation, setLang } from "@lib/common/i18n";
+import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@vrtmrz/livesync-commonlib/compat/common/rosetta";
+import { $msg, __onMissingTranslation, setLang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 
 function tryGetLanguage() {
     try {

@@ -5,6 +5,15 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 
 ## Unreleased
 
+### Miscellaneous
+
+- Replaced the embedded Commonlib source and generated fallback declarations with a locked compiled package, reducing duplicated release and repository-scanner inputs without changing synchronisation behaviour.
+
+### Testing
+
+- Added packed-package and downstream checks for Commonlib entry points, including isolated Node and browser File System Access API storage implementations.
+- Added reusable Context result contracts for Obsidian, CLI, and Webapp compositions, including a real-Obsidian smoke assertion that every service retains the host-provided Context.
+
 ## 0.25.83
 
 16th July, 2026

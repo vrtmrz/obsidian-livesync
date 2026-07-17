@@ -3,7 +3,7 @@
 // and edge, resolving conflicts, etc. will be covered in separate test suites.
 import { afterAll, beforeAll, describe, expect, it, test } from "vitest";
 import { generateHarness, waitForIdle, waitForReady, type LiveSyncHarness } from "../harness/harness";
-import { RemoteTypes, type FilePath, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
+import { RemoteTypes, type FilePath, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import {
     DummyFileSourceInisialised,
@@ -13,7 +13,7 @@ import {
     generateFile,
 } from "../utils/dummyfile";
 import { checkStoredFileInDB, testFileRead, testFileWrite } from "./db_common";
-import { delay } from "@/lib/src/common/utils";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { commands } from "vitest/browser";
 import { closeReplication, performReplication, prepareRemote } from "./sync_common";
 import type { DataWriteOptions } from "@/deps.ts";

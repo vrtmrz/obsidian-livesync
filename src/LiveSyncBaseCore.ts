@@ -1,22 +1,22 @@
 import { LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import type PouchDB from "pouchdb-core";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@lib/common/types";
-import { __$checkInstanceBinding } from "@lib/dev/checks";
-import type { Confirm } from "@lib/interfaces/Confirm";
-import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
-import type { Rebuilder } from "@lib/interfaces/DatabaseRebuilder";
-import type { IFileHandler } from "@lib/interfaces/FileHandler";
-import type { StorageAccess } from "@lib/interfaces/StorageAccess";
-import type { LiveSyncLocalDBEnv } from "@lib/pouchdb/LiveSyncLocalDB";
-import type { LiveSyncCouchDBReplicatorEnv } from "@lib/replication/couchdb/LiveSyncReplicator";
-import type { CheckPointInfo } from "@lib/replication/journal/JournalSyncTypes";
-import type { LiveSyncJournalReplicatorEnv } from "@lib/replication/journal/LiveSyncJournalReplicatorEnv";
-import type { LiveSyncReplicatorEnv } from "@lib/replication/LiveSyncAbstractReplicator";
-import { useTargetFilters } from "@lib/serviceFeatures/targetFilter";
-import { useRemoteConfigurationMigration } from "@lib/serviceFeatures/remoteConfig";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices";
+import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks";
+import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
+import type { Rebuilder } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseRebuilder";
+import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
+import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
+import type { LiveSyncLocalDBEnv } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
+import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
+import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
+import type { LiveSyncReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
+import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator";
@@ -26,10 +26,10 @@ import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChec
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
-import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
-import { usePrepareDatabaseForUse } from "@lib/serviceFeatures/prepareDatabaseForUse";
-import type { Constructor } from "@lib/common/utils.type";
+import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
+import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,

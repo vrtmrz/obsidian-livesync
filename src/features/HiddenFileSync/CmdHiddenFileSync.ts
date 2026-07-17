@@ -15,7 +15,7 @@ import {
     LOG_LEVEL_DEBUG,
     type MetaEntry,
     type UXDataWriteOptions,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
 import {
     readAsBlob,
@@ -26,7 +26,7 @@ import {
     fireAndForget,
     type CustomRegExp,
     getFileRegExp,
-} from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     compareMTime,
     isInternalMetadata,
@@ -44,13 +44,13 @@ import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
-import { addPrefix, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
+import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "@lib/mock_and_interop/stores.ts";
+import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
-import { tryGetFilePath } from "@lib/common/utils.doc.ts";
+import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
@@ -1990,6 +1990,8 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
         services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
         services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
-        services.vault.isTargetFileInExtra.addHandler(this.isTargetFile.bind(this));
+        services.vault.isTargetFileInExtra.addHandler((file) =>
+            this.isTargetFile((typeof file === "string" ? file : stripAllPrefixes(file.path)) as FilePath)
+        );
     }
 }

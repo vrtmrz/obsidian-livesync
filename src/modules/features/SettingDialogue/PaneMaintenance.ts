@@ -1,8 +1,8 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
-import { LOG_LEVEL_NOTICE, Logger } from "@lib/common/logger.ts";
-import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@lib/common/types.ts";
-import { fireAndForget } from "@lib/common/utils.ts";
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
+import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { visibleOnly, type PageFunctions } from "./SettingPane";

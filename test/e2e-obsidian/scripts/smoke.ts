@@ -1,4 +1,8 @@
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
+import {
+    assertObsidianServiceContextContract,
+    inspectObsidianServiceContextContract,
+} from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
@@ -24,6 +28,11 @@ async function main(): Promise<void> {
         const { readiness } = session;
         console.log(
             `Obsidian plug-in ready: ${readiness.pluginId}@${readiness.pluginVersion} in ${readiness.vaultName}`
+        );
+        const contextContract = await inspectObsidianServiceContextContract(cli.binary, session.cliEnv);
+        assertObsidianServiceContextContract(contextContract);
+        console.log(
+            `Obsidian service Context contract passed: ${contextContract.contextType}, ${contextContract.serviceContextMismatches.length} mismatches.`
         );
         await new Promise((resolve) => setTimeout(resolve, Number(process.env.E2E_OBSIDIAN_SMOKE_TIMEOUT_MS ?? 1000)));
         console.log("Obsidian stayed alive after the plug-in readiness check.");

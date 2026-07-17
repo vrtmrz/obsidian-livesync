@@ -2,9 +2,9 @@
 
 ## Getting ready
 
-1. Clone this repository recursively.
+1. Clone the Commonlib repository, which owns the translation catalogue.
 ```sh
-git clone --recursive https://github.com/vrtmrz/obsidian-livesync
+git clone https://github.com/vrtmrz/livesync-commonlib
 ```
 2. Make `ls-debug` folder under your vault's `.obsidian` folder (as like `.../dev/.obsidian/ls-debug`).
 
@@ -12,15 +12,15 @@ git clone --recursive https://github.com/vrtmrz/obsidian-livesync
 
 1. Install dependencies, and build the plug-in as dev. build.
 ```sh
-cd obsidian-livesync
-npm i -D
-npm run buildDev
+cd livesync-commonlib
+npm ci
+npm run i18n:bake
 ```
 
-2. Copy the `main.js` to `.obsidian/plugins/obsidian-livesync` folder of your vault, and run Obsidian-Self-hosted LiveSync.
+2. Install the resulting packed Commonlib artefact in a Self-hosted LiveSync development checkout, build the plug-in, copy `main.js` to `.obsidian/plugins/obsidian-livesync` in your test Vault, and run Self-hosted LiveSync.
 3. You will get the `missing-translation-yyyy-mm-dd.jsonl`, please fill in new translations.
 4. Build the plug-in again, and confirm that displayed things were expected.
-5. Merge them into `rosetta.ts`, and make the PR to `https://github.com/vrtmrz/livesync-commonlib`.
+5. Add the translations to the Commonlib catalogue, run `npm run i18n:bake`, and make the pull request to `https://github.com/vrtmrz/livesync-commonlib`.
 
 ## Make messages to be translated
 

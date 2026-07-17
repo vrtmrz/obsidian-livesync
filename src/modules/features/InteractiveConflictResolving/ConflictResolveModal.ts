@@ -1,9 +1,9 @@
 import { App, Modal } from "@/deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "@lib/common/types.ts";
-import { delay } from "@lib/common/utils.ts";
+import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { eventHub } from "@/common/events.ts";
-import { globalSlipBoard } from "@lib/bureau/bureau.ts";
+import { globalSlipBoard } from "@vrtmrz/livesync-commonlib/compat/bureau/bureau";
 
 export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
 

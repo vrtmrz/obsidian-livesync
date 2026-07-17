@@ -1,21 +1,21 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
-    import InfoNote from "@lib/UI/components/InfoNote.svelte";
-    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
-    import InputRow from "@lib/UI/components/InputRow.svelte";
-    import Password from "@lib/UI/components/Password.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
+    import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
+    import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
     import {
         DEFAULT_SETTINGS,
         E2EEAlgorithmNames,
         E2EEAlgorithms,
         type EncryptionSettings,
-    } from "@lib/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { onMount } from "svelte";
-    import type { GuestDialogProps } from "@lib/UI/svelteDialog";
-    import { copyTo, pickEncryptionSettings } from "@lib/common/utils";
+    import type { GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { copyTo, pickEncryptionSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteE2EEResultType } from "./setupDialogTypes";
 
     type Props = GuestDialogProps<SetupRemoteE2EEResultType, EncryptionSettings>;

@@ -1,6 +1,6 @@
-import { REMOTE_MINIO, type RemoteDBSettings } from "@lib/common/types";
-import { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
-import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
+import { REMOTE_MINIO, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import type { LiveSyncCore } from "@/main";
 import { AbstractModule } from "@/modules/AbstractModule";
 

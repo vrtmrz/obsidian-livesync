@@ -7,9 +7,9 @@ import {
     isValidFilenameInWidows,
     isValidFilenameInAndroid,
     stripAllPrefixes,
-} from "@lib/string_and_binary/path.ts";
+} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 
-import { Logger } from "@lib/common/logger.ts";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -22,14 +22,14 @@ import {
     type FilePathWithPrefix,
     type UXFileInfo,
     type UXFileInfoStub,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 export { ICHeader, ICXHeader } from "./types.ts";
-import { writeString } from "@lib/string_and_binary/convert.ts";
+import { writeString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import { sameChangePairs } from "./stores.ts";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { AuthorizationHeaderGenerator } from "@lib/replication/httplib.ts";
-import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase.ts";
+import { AuthorizationHeaderGenerator } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
+import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 
 export { scheduleTask, cancelTask, cancelAllTasks } from "octagonal-wheels/concurrency/task";
 
@@ -69,7 +69,7 @@ import {
     getPathFromUXFileInfo,
     getStoragePathFromUXFileInfo,
     getDatabasePathFromUXFileInfo,
-} from "@lib/common/typeUtils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 export { isInternalFile, getPathFromUXFileInfo, getStoragePathFromUXFileInfo, getDatabasePathFromUXFileInfo };
 
 const memos: { [key: string]: unknown } = {};
@@ -121,7 +121,7 @@ export {
     isCustomisationSyncMetadata,
     isPluginMetadata,
     stripInternalMetadataPrefix,
-} from "@lib/common/typeUtils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 
 export const _requestToCouchDBFetch = async (
     baseUri: string,
@@ -210,11 +210,11 @@ export function requestToCouchDBWithCredentials(
     return _requestToCouchDB(baseUri, credentials, origin, uri, body, method, customHeaders);
 }
 
-import { BASE_IS_NEW, EVEN, TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
+import { BASE_IS_NEW, EVEN, TARGET_IS_NEW } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.symbols";
 export { BASE_IS_NEW, EVEN, TARGET_IS_NEW };
 // Why 2000? : ZIP FILE Does not have enough resolution.
-import { compareMTime } from "@lib/common/utils.ts";
-import { _fetch, compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compareMTime } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { _fetch, compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 export { compareMTime };
 function getKey(file: AnyEntry | string | UXFileInfoStub) {
     const key = typeof file == "string" ? file : stripAllPrefixes(file.path);
@@ -236,7 +236,10 @@ export function unmarkChanges(file: AnyEntry | string | UXFileInfoStub) {
     const key = getKey(file);
     sameChangePairs.delete(key);
 }
-export function isMarkedAsSameChanges(file: UXFileInfoStub | AnyEntry | string, mtimes: number[]) {
+export function isMarkedAsSameChanges(
+    file: UXFileInfoStub | AnyEntry | string,
+    mtimes: number[]
+): undefined | typeof EVEN {
     const key = getKey(file);
     const pairs = sameChangePairs.get(key, []) || [];
     if (mtimes.every((e) => pairs.indexOf(e) !== -1)) {
@@ -398,4 +401,4 @@ export function onlyInNTimes(n: number, proc: (progress: number) => unknown) {
     };
 }
 
-export { displayRev } from "@lib/common/utils.ts";
+export { displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";

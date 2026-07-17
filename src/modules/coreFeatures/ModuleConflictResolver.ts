@@ -10,14 +10,14 @@ import {
     NOT_CONFLICTED,
     type diff_check_result,
     type FilePathWithPrefix,
-} from "@lib/common/types";
-import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
-import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
-import { compareMTime, displayRev } from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isCustomisationSyncMetadata, isPluginMetadata } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
+import { TARGET_IS_NEW } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.symbols";
+import { compareMTime, displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import diff_match_patch from "diff-match-patch";
-import { stripAllPrefixes, isPlainText } from "@lib/string_and_binary/path";
+import { stripAllPrefixes, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { eventHub } from "@/common/events.ts";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 
 declare global {

@@ -8,9 +8,6 @@ on:
     paths:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
-      - 'src/lib/src/API/processSetting.ts'
-      - 'src/lib/src/replication/trystero/**'
-      - 'src/lib/src/rpc/**'
       - 'test/bench-network/**'
       - 'package.json'
       - 'package-lock.json'
@@ -18,9 +15,6 @@ on:
     paths:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
-      - 'src/lib/src/API/processSetting.ts'
-      - 'src/lib/src/replication/trystero/**'
-      - 'src/lib/src/rpc/**'
       - 'test/bench-network/**'
       - 'package.json'
       - 'package-lock.json'
@@ -99,8 +93,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -168,8 +160,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Show Docker versions
         run: |

@@ -7,7 +7,7 @@ import {
     PREFERRED_SETTING_SELF_HOSTED,
     RemoteTypes,
     type ObsidianLiveSyncSettings,
-} from "@/lib/src/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { settingBase } from "../suite/variables.ts";
 import { defaultFileOption } from "../suite/db_common";

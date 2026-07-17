@@ -41,7 +41,6 @@ jobs:
               with:
                   ref: ${{ steps.branch.outputs.name }}
                   fetch-depth: 0
-                  submodules: recursive
 
             - name: Use Node.js
               uses: actions/setup-node@v4

@@ -1,6 +1,6 @@
-import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
-import type { ServiceInstances } from "@lib/services/ServiceHub";
+import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
 import type ObsidianLiveSyncPlugin from "@/main";
 import {
     ObsidianConflictService,
@@ -23,6 +23,8 @@ import { ObsidianPathService } from "./ObsidianPathService";
 import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";
 import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
+import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
+import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
 
 // InjectableServiceHub
 
@@ -43,6 +45,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             settingService: setting,
         });
         const remote = new ObsidianRemoteService(context, {
+            pouchDB: PouchDB,
             APIService: API,
             appLifecycle: appLifecycle,
             setting: setting,
@@ -62,12 +65,14 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             return true;
         });
         const database = new ObsidianDatabaseService(context, {
+            pouchDB: PouchDB,
             path: path,
             vault: vault,
             setting: setting,
             API: API,
         });
         const keyValueDB = new ObsidianKeyValueDBService(context, {
+            openKeyValueDatabase: OpenKeyValueDatabase,
             appLifecycle: appLifecycle,
             databaseEvents: databaseEvents,
             vault: vault,

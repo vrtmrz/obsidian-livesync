@@ -6,13 +6,12 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "prebuild": "node scripts/check-submodule.mjs",
         "build": "vite build",
         "preview": "vite preview",
         "cli": "node dist/index.cjs",
         "buildRun": "npm run build && npm run cli --",
         "build:docker": "docker build -f Dockerfile -t livesync-cli ../../..",
-        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+        "check": "tsc -p tsconfig.json",
         "test:unit": "cd ../../.. && npx vitest run --config vitest.config.unit.ts src/apps/cli/main.unit.spec.ts src/apps/cli/commands/utils.unit.spec.ts src/apps/cli/commands/runCommand.unit.spec.ts src/apps/cli/commands/p2p.unit.spec.ts",
         "test:e2e:two-vaults": "bash test/test-e2e-two-vaults-with-docker-linux.sh",
         "test:e2e:two-vaults:common": "bash test/test-e2e-two-vaults-common.sh",
@@ -55,7 +54,6 @@
         "werift": "^0.23.0"
     },
     "devDependencies": {
-        "@sveltejs/vite-plugin-svelte": "^7.1.2",
         "typescript": "5.9.3",
         "vite": "^8.0.16",
         "vitest": "^4.1.8"

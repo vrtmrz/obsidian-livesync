@@ -1,10 +1,10 @@
 import { App } from "@/deps.ts";
 import ObsidianLiveSyncPlugin from "@/main";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
-import { LOG_LEVEL_VERBOSE, setGlobalLogFunction } from "@lib/common/logger";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_VERBOSE, setGlobalLogFunction } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { SettingCache } from "./obsidian-mock";
 import { delay, fireAndForget, promiseWithResolvers } from "octagonal-wheels/promises";
-import { EVENT_PLATFORM_UNLOADED } from "@lib/events/coreEvents";
+import { EVENT_PLATFORM_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
 
 import { env } from "../suite/variables";

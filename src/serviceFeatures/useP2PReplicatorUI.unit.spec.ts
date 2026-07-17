@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 
 vi.mock("@/features/P2PSync/P2PReplicator/P2PReplicatorPaneView", () => ({
     P2PReplicatorPaneView: class {},
@@ -19,6 +20,7 @@ describe("useP2PReplicatorUI commands", () => {
         const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const host = {
             services: {
+                context: createServiceContext(),
                 API: {
                     showWindow: vi.fn(async () => undefined),
                     registerWindow: vi.fn(),

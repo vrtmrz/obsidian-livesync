@@ -1,6 +1,6 @@
 import { MarkdownRenderer } from "@/deps.ts";
-import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { versionNumberString2Number } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { fireAndForget } from "octagonal-wheels/promises";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import { visibleOnly } from "./SettingPane.ts";

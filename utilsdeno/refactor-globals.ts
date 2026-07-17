@@ -32,7 +32,6 @@ function toPosixPath(filePath: string): string {
 
 const posixProjectRoot = toPosixPath(projectRoot);
 const posixSrc = `${posixProjectRoot}/src`;
-const posixLibSrc = `${posixProjectRoot}/src/lib`;
 
 const TARGET_GLOBALS = new Set([
     "setTimeout",
@@ -191,7 +190,7 @@ for (const sourceFile of project.getSourceFiles()) {
             if (requiredImports.length > 0) {
                 const existingImport = sourceFile.getImportDeclarations().find((imp) => {
                     const spec = imp.getModuleSpecifierValue();
-                    return spec === "@lib/common/coreEnvFunctions" || spec === "@lib/common/coreEnvFunctions.ts";
+                    return spec === "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions" || spec === "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
                 });
 
                 if (existingImport) {
@@ -206,7 +205,7 @@ for (const sourceFile of project.getSourceFiles()) {
                 } else {
                     sourceFile.addImportDeclaration({
                         namedImports: requiredImports,
-                        moduleSpecifier: "@lib/common/coreEnvFunctions.ts",
+                        moduleSpecifier: "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions",
                     });
                 }
             }

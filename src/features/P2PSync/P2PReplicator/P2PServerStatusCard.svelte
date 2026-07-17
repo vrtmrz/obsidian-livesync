@@ -2,16 +2,16 @@
     import { onMount } from "svelte";
     import { eventHub } from "@/common/events";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
-    import type { P2PServerInfo } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import {
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
-    import { extractP2PRoomSuffix } from "@lib/common/utils";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {

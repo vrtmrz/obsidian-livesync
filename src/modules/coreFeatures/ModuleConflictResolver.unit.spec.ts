@@ -5,7 +5,7 @@ import {
     LOG_LEVEL_NOTICE,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "@lib/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleConflictResolver } from "./ModuleConflictResolver";
 
 function createModule(files: FilePathWithPrefix[] = []) {

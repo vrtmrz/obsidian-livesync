@@ -108,12 +108,9 @@ livesync-cli ./my-db pull folder/note.md ./note.md
 ### Build from source
 
 ```bash
-# Clone with submodules, because the shared core lives in src/lib
-git clone --recurse-submodules <repository-url>
+# Clone the repository
+git clone <repository-url>
 cd obsidian-livesync
-
-# If you already cloned without submodules, run this once instead
-git submodule update --init --recursive
 
 # Install dependencies from the repository root
 npm install
@@ -126,7 +123,7 @@ cd src/apps/cli
 npm run build
 ```
 
-If `src/lib` is missing, the build process stops early with a targeted message instead of a low-level Vite `ENOENT` error.
+The shared core is installed as the exact `@vrtmrz/livesync-commonlib` package artefact recorded in the root lockfile.
 
 Run the CLI:
 

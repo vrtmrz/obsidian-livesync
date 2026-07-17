@@ -45,7 +45,7 @@ Always adhere to the following stylistic and spelling rules:
    - **Fast Setup (Simple Fetch)** is the preferred flow for initial replication on secondary devices. It utilises stream-based replication for high speed and delays local file reflection to suppress temporary synchronisation warnings.
    - **Flag files** (such as `redflag.md`, `redflag2.md`, and `redflag3.md`) at the root of the vault control the boot-up sequence and trigger automated fetch/rebuild tasks.
 3. **Subrepositories**:
-   - The directory [src/lib](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/lib) is a subrepository (Git submodule) pointing to the shared library `livesync-commonlib`. Do not make modifications inside this directory without careful consideration, as changes affect the shared library.
+   - Treat `@vrtmrz/livesync-commonlib` as an external, authoritative package. Make Commonlib changes in its repository, validate the packed artefact and downstream LiveSync consumer, and update the exact dependency here. Do not recreate a `src/lib` source mirror or generated `_types` fallback.
 4. **Application Directories**:
    - The directory [src/apps](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/apps) contains independent application modules:
      - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/apps/cli) using its local `package.json` scripts.

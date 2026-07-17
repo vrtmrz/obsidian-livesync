@@ -1,9 +1,8 @@
 import { type SetupManager, UserMode } from "@/modules/features/SetupManager";
-import type { SetupFeatureHost } from "@lib/serviceFeatures/setupObsidian/types";
-import { EVENT_REQUEST_OPEN_P2P_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI } from "@lib/events/coreEvents";
-import { eventHub } from "@lib/hub/hub";
-import { fireAndForget } from "@lib/common/utils";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
+import type { SetupFeatureHost } from "@/serviceFeatures/setupObsidian/types";
+import { EVENT_REQUEST_OPEN_P2P_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 
 export async function openSetupURI(setupManager: SetupManager) {
     await setupManager.onUseSetupURI(UserMode.Unknown);
@@ -24,8 +23,10 @@ export function useSetupManagerHandlersFeature(
             callback: () => fireAndForget(openSetupURI(setupManager)),
         });
 
-        eventHub.onEvent(EVENT_REQUEST_OPEN_SETUP_URI, () => fireAndForget(() => openSetupURI(setupManager)));
-        eventHub.onEvent(EVENT_REQUEST_OPEN_P2P_SETTINGS, () =>
+        host.services.context.events.onEvent(EVENT_REQUEST_OPEN_SETUP_URI, () =>
+            fireAndForget(() => openSetupURI(setupManager))
+        );
+        host.services.context.events.onEvent(EVENT_REQUEST_OPEN_P2P_SETTINGS, () =>
             fireAndForget(() => openP2PSettings(host, setupManager))
         );
 

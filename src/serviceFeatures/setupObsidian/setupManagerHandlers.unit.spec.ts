@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { eventHub } from "@lib/hub/hub";
-import { EVENT_REQUEST_OPEN_P2P_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI } from "@lib/events/coreEvents";
+import { EVENT_REQUEST_OPEN_P2P_SETTINGS, EVENT_REQUEST_OPEN_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { openP2PSettings, openSetupURI, useSetupManagerHandlersFeature } from "./setupManagerHandlers";
 
 vi.mock("@/modules/features/SetupManager", () => {
@@ -47,10 +46,11 @@ describe("setupObsidian/setupManagerHandlers", () => {
     it("useSetupManagerHandlersFeature should register onLoaded handler that wires command and events", async () => {
         const addHandler = vi.fn();
         const addCommand = vi.fn();
-        const onEventSpy = vi.spyOn(eventHub, "onEvent");
+        const events = { onEvent: vi.fn() };
 
         const host = {
             services: {
+                context: { events },
                 API: {
                     addCommand,
                 },
@@ -81,7 +81,7 @@ describe("setupObsidian/setupManagerHandlers", () => {
                 name: "Use the copied setup URI (Formerly Open setup URI)",
             })
         );
-        expect(onEventSpy).toHaveBeenCalledWith(EVENT_REQUEST_OPEN_SETUP_URI, expect.any(Function));
-        expect(onEventSpy).toHaveBeenCalledWith(EVENT_REQUEST_OPEN_P2P_SETTINGS, expect.any(Function));
+        expect(events.onEvent).toHaveBeenCalledWith(EVENT_REQUEST_OPEN_SETUP_URI, expect.any(Function));
+        expect(events.onEvent).toHaveBeenCalledWith(EVENT_REQUEST_OPEN_P2P_SETTINGS, expect.any(Function));
     });
 });

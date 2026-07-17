@@ -7,11 +7,11 @@ import {
     type MetaEntry,
     type FilePath,
     type EntryDoc,
-} from "@lib/common/types.ts";
-import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
-import { $msg } from "@lib/common/i18n.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import {
@@ -26,7 +26,7 @@ import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { isNotFoundError } from "@lib/common/utils.doc.ts";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
     // hatchWarn.addClass("op-warn-info");

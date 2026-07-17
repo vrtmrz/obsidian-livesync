@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-REPO_ROOT="$(cd -- "$CLI_DIR/../../.." && pwd)"
 cd "$CLI_DIR"
 source "$SCRIPT_DIR/test-helpers.sh"
 display_test_info
@@ -28,10 +27,10 @@ cli_test_init_settings_file "$SETTINGS_FILE"
 
 echo "[INFO] creating setup URI from settings"
 SETUP_URI="$(
-    REPO_ROOT="$REPO_ROOT" SETTINGS_FILE="$SETTINGS_FILE" SETUP_PASSPHRASE="$SETUP_PASSPHRASE" npx tsx -e '
-import fs from "node:fs";
+    SETTINGS_FILE="$SETTINGS_FILE" SETUP_PASSPHRASE="$SETUP_PASSPHRASE" npx tsx -e '
+import { fs } from "@vrtmrz/livesync-commonlib/node";
+import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 (async () => {
-    const { encodeSettingsToSetupURI } = await import(process.env.REPO_ROOT + "/src/lib/src/API/processSetting.ts");
     const settingsPath = process.env.SETTINGS_FILE;
     const setupPassphrase = process.env.SETUP_PASSPHRASE;
     const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));

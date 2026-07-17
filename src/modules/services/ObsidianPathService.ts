@@ -1,6 +1,6 @@
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { normalizePath } from "@/deps";
-import { PathService } from "@lib/services/base/PathService";
+import { PathService } from "@vrtmrz/livesync-commonlib/compat/services/base/PathService";
 
 import {
     type BASE_IS_NEW,
@@ -11,7 +11,7 @@ import {
     compareFileFreshness,
     isMarkedAsSameChanges,
 } from "@/common/utils";
-import type { UXFileInfo, AnyEntry, UXFileInfoStub, FilePathWithPrefix } from "@lib/common/types";
+import type { UXFileInfo, AnyEntry, UXFileInfoStub, FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 export class ObsidianPathService extends PathService<ObsidianServiceContext> {
     override markChangesAreSame(
         old: UXFileInfo | AnyEntry | FilePathWithPrefix,

@@ -1,5 +1,5 @@
 import { MarkdownRenderer } from "@/deps.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {
@@ -11,10 +11,10 @@ import {
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
+import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { request } from "@/deps.ts";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
-import { LiveSyncError } from "@lib/common/LSError.ts";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,

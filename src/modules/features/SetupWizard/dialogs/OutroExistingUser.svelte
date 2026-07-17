@@ -1,10 +1,10 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import Question from "@lib/UI/components/Question.svelte";
-    import Instruction from "@lib/UI/components/Instruction.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
+    import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
 
     import { TYPE_CANCELLED, TYPE_APPLY, type OutroExistingUserResultType } from "./setupDialogTypes";
     type Props = {

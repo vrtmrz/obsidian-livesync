@@ -1,6 +1,6 @@
-import type { UXDataWriteOptions } from "@lib/common/types";
-import type { IVaultAdapter } from "@lib/serviceModules/adapters";
-import { toArrayBuffer } from "@lib/serviceModules/FileAccessBase";
+import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import type { TFile, App, TFolder } from "obsidian";
 
 /**

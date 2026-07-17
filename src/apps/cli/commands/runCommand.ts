@@ -1,5 +1,5 @@
-import { decodeSettingsFromSetupURI } from "@lib/API/processSetting";
-import { configURIBase } from "@lib/common/models/shared.const";
+import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
 import {
     DEFAULT_SETTINGS,
     MILESTONE_DOCID,
@@ -9,19 +9,19 @@ import {
     REMOTE_MINIO,
     type EntryMilestoneInfo,
     type EntryDoc,
-} from "@lib/common/types";
-import { ConnectionStringParser } from "@lib/common/ConnectionString";
-import { activateRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
-import { stripAllPrefixes } from "@lib/string_and_binary/path";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import { activateRemoteConfiguration, createRemoteConfigurationId } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
-import { performFullScan } from "@lib/serviceFeatures/offlineScanner";
-import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { fsPromises as fs, path } from "@/apps/cli/node-compat";
-import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncJournalReplicator } from "@lib/replication/journal/LiveSyncJournalReplicator";
+import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -100,7 +100,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         log("CouchDB replication complete");
 
         // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
-        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
+        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
         log("Running mirror scan...");
         const scanOk = await performFullScan(core, log, errorManager, false, true);
         if (!scanOk) {
@@ -537,7 +537,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "mirror") {
         console.error("[Command] mirror");
         const log = (msg: unknown) => console.error(`[Mirror] ${msg}`);
-        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle);
+        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
         return await performFullScan(core, log, errorManager, false, true);
     }
 

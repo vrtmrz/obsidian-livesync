@@ -2,7 +2,7 @@
 // eslint-disable -- This is the entry point for the CLI application.
 import * as polyfill from "werift";
 import { main } from "./main";
-import { compatGlobal } from "@lib/common/coreEnvFunctions";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Polyfill
 const rtcPolyfillCtor = (polyfill as any).RTCPeerConnection;

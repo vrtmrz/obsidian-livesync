@@ -1,8 +1,8 @@
 import {
     ServiceDatabaseFileAccessBase,
     type ServiceDatabaseFileAccessDependencies,
-} from "@lib/serviceModules/ServiceDatabaseFileAccessBase";
-import type { DatabaseFileAccess } from "@lib/interfaces/DatabaseFileAccess";
+} from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceDatabaseFileAccessBase";
+import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
 
 /**
  * FileSystem API-specific implementation of ServiceDatabaseFileAccess

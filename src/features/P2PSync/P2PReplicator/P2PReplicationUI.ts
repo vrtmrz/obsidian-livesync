@@ -1,7 +1,7 @@
 import type { App } from "@/deps.ts";
-import { Logger } from "@lib/common/logger";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
-import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
 import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 
 /**

@@ -10,8 +10,8 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     REMOTE_P2P,
-} from "@lib/common/types.ts";
-import { isObjectDifferent } from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -25,9 +25,9 @@ import SetupRemoteCouchDB from "./SetupWizard/dialogs/SetupRemoteCouchDB.svelte"
 import SetupRemoteBucket from "./SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
-import { decodeSettingsFromQRCodeData } from "@lib/API/processSetting.ts";
+import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import type {
     OutroAskUserModeResultType,
     OutroExistingUserResultType,

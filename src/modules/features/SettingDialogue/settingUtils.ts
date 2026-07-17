@@ -1,14 +1,16 @@
 import { escapeStringToHTML } from "octagonal-wheels/string";
-import { E2EEAlgorithmNames, MILESTONE_DOCID, NODEINFO_DOCID, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { E2EEAlgorithmNames, MILESTONE_DOCID, NODEINFO_DOCID, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     pickCouchDBSyncSettings,
     pickBucketSyncSettings,
     pickP2PSyncSettings,
     pickEncryptionSettings,
-} from "@lib/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { getConfig, type AllSettingItemKey } from "./settingConstants";
 import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
-import { isNotFoundError } from "@lib/common/utils.doc";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import type PouchDB from "pouchdb-core";
+import type {} from "pouchdb-replication";
 
 /**
  * Generates a summary of P2P configuration settings

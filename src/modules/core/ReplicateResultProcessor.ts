@@ -6,9 +6,9 @@ import {
     type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
-} from "@lib/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { ModuleReplicator } from "./ModuleReplicator";
-import { isChunk } from "@lib/common/typeUtils";
+import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -16,13 +16,13 @@ import {
     LOG_LEVEL_VERBOSE,
     Logger,
     type LOG_LEVEL,
-} from "@lib/common/logger";
-import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { fireAndForget, isAnyNote, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { isNotFoundError } from "@lib/common/utils.doc";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 type ReplicateResultProcessorState = {

@@ -1,4 +1,4 @@
-import { delay } from "@/lib/src/common/utils";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 
 export async function waitTaskWithFollowups<T>(
     task: Promise<T>,

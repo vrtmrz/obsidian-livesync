@@ -1,13 +1,11 @@
-import { defineConfig } from "vite";
+import { defaultServerConditions, defaultServerMainFields, defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import path from "node:path";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, fs, isBuiltin, path } from "@vrtmrz/livesync-commonlib/node";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
 const repoRoot = path.resolve(__dirname, "../../..");
-const packageJson = JSON.parse(readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
-const manifestJson = JSON.parse(readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
+const manifestJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
 // https://vite.dev/config/
 const defaultExternal = [
     "obsidian",
@@ -65,17 +63,17 @@ function injectBanner(): import("vite").Plugin {
 export default defineConfig({
     plugins: [svelte(), injectBanner()],
     resolve: {
+        // This bundle runs in Node. Vite's client defaults include the `browser`
+        // export condition, which would select Commonlib's inline Web Worker.
+        conditions: [...defaultServerConditions],
+        mainFields: [...defaultServerMainFields],
         alias: {
-            "@lib/worker/bgWorker.ts": "../../lib/src/worker/bgWorker.mock.ts",
-            "@lib/pouchdb/pouchdb-browser.ts": resolve(__dirname, "lib/pouchdb-node.ts"),
             // The CLI runs on Node.js; force AWS XML builder to its CJS Node entry
             // so Vite does not resolve the browser DOMParser-based XML parser.
             "@aws-sdk/xml-builder": resolve(__dirname, "../../../node_modules/@aws-sdk/xml-builder/dist-cjs/index.js"),
             // Force fflate to the Node CJS entry; browser entry expects Web Worker globals.
             fflate: resolve(__dirname, "../../../node_modules/fflate/lib/node.cjs"),
             "@": resolve(__dirname, "../../"),
-            "@lib": resolve(__dirname, "../../lib/src"),
-            "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
         },
     },
 
@@ -89,15 +87,13 @@ export default defineConfig({
                 index: resolve(__dirname, "entrypoint.ts"),
             },
             external: (id) => {
+                if (isBuiltin(id)) return true;
                 if (defaultExternal.includes(id)) return true;
                 if (id.startsWith(".") || id.startsWith("/")) return false;
-                if (id.startsWith("@/") || id.startsWith("@lib/")) return false;
+                if (id.startsWith("@/")) return false;
                 if (id.endsWith(".ts") || id.endsWith(".js")) return false;
-                if (id === "fs" || id === "fs/promises" || id === "path" || id === "crypto" || id === "worker_threads")
-                    return true;
                 if (id.startsWith("pouchdb-")) return true;
                 if (id.startsWith("werift")) return true;
-                if (id.startsWith("node:")) return true;
                 return false;
             },
         },

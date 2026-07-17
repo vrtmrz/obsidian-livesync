@@ -1,12 +1,12 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils";
-import { $msg } from "@lib/common/i18n";
-import { Logger } from "@lib/common/logger";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import { parseHeaderValues } from "@lib/common/utils";
-import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
-import { generateCredentialObject } from "@lib/replication/httplib";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { isUnauthorizedError } from "@lib/common/utils.doc";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
+import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };

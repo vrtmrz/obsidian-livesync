@@ -1,5 +1,5 @@
-import type { FilePath, UXDataWriteOptions } from "@lib/common/types";
-import type { IVaultAdapter } from "@lib/serviceModules/adapters";
+import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
 
 /**

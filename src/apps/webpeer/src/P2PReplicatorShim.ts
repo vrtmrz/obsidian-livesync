@@ -1,4 +1,4 @@
-import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
+import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import {
     type EntryDoc,
     type ObsidianLiveSyncSettings,
@@ -6,33 +6,32 @@ import {
     LOG_LEVEL_VERBOSE,
     P2P_DEFAULT_SETTINGS,
     REMOTE_P2P,
-} from "@lib/common/types";
-import { eventHub } from "@lib/hub/hub";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 
-import type { Confirm } from "@lib/interfaces/Confirm";
-import { LOG_LEVEL_NOTICE, Logger, type LOG_LEVEL } from "@lib/common/logger";
+import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import { LOG_LEVEL_NOTICE, Logger, type LOG_LEVEL } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import {
     EVENT_P2P_PEER_SHOW_EXTRA_MENU,
     type PeerStatus,
     type PluginShim,
-} from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-import { useP2PReplicator } from "@lib/replication/trystero/P2PReplicatorCore";
-import { P2PLogCollector } from "@lib/replication/trystero/P2PLogCollector";
-import type { P2PReplicatorBase } from "@lib/replication/trystero/P2PReplicatorBase.ts";
+} from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+import { useP2PReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorCore";
+import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
+import type { P2PReplicatorBase } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorBase";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
-import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
+import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { unique } from "octagonal-wheels/collection";
-import { BrowserServiceHub } from "@lib/services/BrowserServices";
-import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices";
-import { Menu } from "@lib/services/implements/browser/Menu";
+import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { Menu } from "@/apps/browser/BrowserMenu";
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
-import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
-import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
-import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import type { BrowserAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/BrowserAPIService";
+import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createLiveSyncBrowserServiceHub } from "@/apps/browser/createLiveSyncBrowserServiceHub";
 
 function addToList(item: string, list: string) {
     return unique(
@@ -91,7 +90,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
     }
 
     constructor() {
-        const browserServiceHub = new BrowserServiceHub<ServiceContext>();
+        const browserServiceHub = createLiveSyncBrowserServiceHub<ServiceContext>();
         this.services = browserServiceHub;
 
         (this.services.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
@@ -103,7 +102,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
         this.services.setting.settings = _settings;
         (this.services.setting as InjectableSettingService<ServiceContext>).saveData.setHandler(async (data) => {
             await repStore.set("settings", data);
-            eventHub.emitEvent(EVENT_SETTING_SAVED, data);
+            this.services.context.events.emitEvent(EVENT_SETTING_SAVED, data);
         });
         (this.services.setting as InjectableSettingService<ServiceContext>).loadData.setHandler(async () => {
             const settings = { ..._settings, ...((await repStore.get("settings")) as ObsidianLiveSyncSettings) };
@@ -180,7 +179,7 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
 
     m?: Menu;
     afterConstructor(): void {
-        eventHub.onEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, ({ peer, event }) => {
+        this.services.context.events.onEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, ({ peer, event }) => {
             if (this.m) {
                 this.m.hide();
             }
@@ -229,6 +228,34 @@ export class P2PReplicatorShim implements P2PReplicatorBase {
     }
     disableBroadcastCastings() {
         return this._liveSyncReplicator?.disableBroadcastChanges();
+    }
+
+    enableBroadcastChanges() {
+        return this._liveSyncReplicator?.enableBroadcastChanges();
+    }
+
+    disableBroadcastChanges() {
+        return this._liveSyncReplicator?.disableBroadcastChanges();
+    }
+
+    async makeDecision(decision: Parameters<LiveSyncTrysteroReplicator["makeDecision"]>[0]): Promise<void> {
+        await this._liveSyncReplicator?.makeDecision(decision);
+    }
+
+    async revokeDecision(decision: Parameters<LiveSyncTrysteroReplicator["revokeDecision"]>[0]): Promise<void> {
+        await this._liveSyncReplicator?.revokeDecision(decision);
+    }
+
+    watchPeer(peerId: string): void {
+        this._liveSyncReplicator?.watchPeer(peerId);
+    }
+
+    unwatchPeer(peerId: string): void {
+        this._liveSyncReplicator?.unwatchPeer(peerId);
+    }
+
+    async sync(peerId: string, showNotice?: boolean): Promise<unknown> {
+        return await this._liveSyncReplicator?.sync(peerId, showNotice);
     }
 
     get replicator() {

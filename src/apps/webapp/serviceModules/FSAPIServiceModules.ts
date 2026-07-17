@@ -1,14 +1,14 @@
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
 
-import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
+import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 import { FileAccessFSAPI } from "./FileAccessFSAPI";
 import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
 import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI";
-import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 
 /**
@@ -59,6 +59,7 @@ export function initialiseServiceModulesFSAPI(
 
     // Database file access (platform-independent)
     const databaseFileAccess = new ServiceDatabaseFileAccessFSAPI({
+        events: services.context.events,
         API: services.API,
         database: services.database,
         path: services.path,
@@ -68,6 +69,7 @@ export function initialiseServiceModulesFSAPI(
 
     // File handler (platform-independent)
     const fileHandler = new ServiceFileHandler({
+        events: services.context.events,
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,
@@ -81,6 +83,7 @@ export function initialiseServiceModulesFSAPI(
 
     // Rebuilder (platform-independent)
     const rebuilder = new ServiceRebuilder({
+        events: services.context.events,
         API: services.API,
         database: services.database,
         appLifecycle: services.appLifecycle,

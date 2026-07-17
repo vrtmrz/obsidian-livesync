@@ -18,9 +18,7 @@
 
 import { test, expect, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import type { LiveSyncTestAPI } from "@/apps/webapp/test-entry";
-import { mkdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,16 +136,16 @@ async function dumpCoverage(page: Page | undefined, label: string, testInfo: Tes
             (window as any).__coverage__ = {};
             return data;
         })
-        .catch(() => null!);
+        .catch((): null => null);
     if (!cov) return;
     if (typeof cov === "object" && Object.keys(cov as Record<string, unknown>).length === 0) {
         return;
     }
 
     const outDir = path.resolve(__dirname, "../.nyc_output");
-    mkdirSync(outDir, { recursive: true });
+    fs.mkdirSync(outDir, { recursive: true });
     const name = `${testInfo.testId.replace(/[^a-zA-Z0-9_-]/g, "_")}-${label}.json`;
-    writeFileSync(path.join(outDir, name), JSON.stringify(cov), "utf-8");
+    fs.writeFileSync(path.join(outDir, name), JSON.stringify(cov), "utf-8");
 }
 
 // ---------------------------------------------------------------------------

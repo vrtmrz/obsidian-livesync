@@ -1,5 +1,5 @@
-import type { FilePath } from "@lib/common/types";
-import type { IPathAdapter } from "@lib/serviceModules/adapters";
+import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { FSAPIFile } from "./FSAPITypes";
 
 /**

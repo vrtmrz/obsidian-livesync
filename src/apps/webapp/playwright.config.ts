@@ -1,7 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
-import * as fs from "fs";
-import { fileURLToPath } from "url";
+import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

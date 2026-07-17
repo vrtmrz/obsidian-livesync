@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Proposed — the implementation proof is complete locally; publication and the community-scanner preview remain pending.
 
 ## Context
 
@@ -144,6 +144,28 @@ The common-library package publishes compiled ESM and generated declaration file
 
 Svelte source, worker query imports, AWS SDK adapters, PouchDB adapters, and Node-only crypto must not leak through the root entry point. Optional feature subpaths may carry their own heavier dependency surface.
 
+### Platform host entries
+
+Platform-specific host access is explicit rather than inferred. `@vrtmrz/livesync-commonlib/node` supplies Node-only capabilities and `createNodeStorage({ rootPath })`. `@vrtmrz/livesync-commonlib/browser` supplies `createFileSystemAccessStorage({ rootHandle })` for the browser File System Access API. Browser bundles cannot resolve the Node implementation through the browser entry.
+
+Both storage factories receive an existing root from their host. Commonlib does not choose a process directory, present a browser directory picker, request browser permission, or persist a `FileSystemDirectoryHandle`. The CLI owns path selection and configuration. The Webapp owns user activation, permission, handle persistence, and re-authorisation. The adapters own only path containment and storage operations below the injected root.
+
+Here, the browser capability means the browser File System Access API, not Node's `fs` API. The package proof deliberately moves the rooted `IStorageAdapter` implementation first. The Webapp retains its LiveSync-specific `IFileSystemAdapter` composition, file-object cache, Vault semantics, picker flow, and storage-event policy. Those responsibilities can move later only with their own documented contracts; they are not implied by the low-level browser entry point.
+
+A later composition may place the constructed storage contract on a host-specific `ServiceContext` subtype, so services depend only on the injected capability while each platform owns context initialisation. This proof does not add storage or raw platform objects to the base `ServiceContext`: doing so would make an optional application capability mandatory for Obsidian, CLI, Webapp, WebPeer, and test contexts at the same time. A future change should inject the narrow `IStorageAdapter` contract rather than expose `FileSystemDirectoryHandle`, Node `fs`, or environment detection through the shared context.
+
+The paired adapters run against the same contract suite for metadata, text and binary access, append, listing, removal, missing paths, parent creation, empty-root handling, and traversal rejection. Timestamp fidelity remains platform-specific because the File System Access API does not provide the same creation-time and timestamp-setting facilities as Node.
+
+The Node entry also centralises direct Node built-in access needed by trusted headless application code. This is a package and scanner boundary, not an assertion that Node and browser APIs are interchangeable. Cross-platform behaviour belongs in a shared contract with separate implementations, as demonstrated by rooted storage.
+
+### Context and result compatibility
+
+`ServiceContextContract` is the minimum host-neutral composition contract. It supplies an event channel and message translator selected by the host. Obsidian and CLI contexts extend the default implementation with their own capabilities; the Webapp currently uses the default implementation. Every Service Hub and every service in one composition must retain the exact Context object supplied by that host.
+
+Compatibility is established through observable results, not only structural TypeScript compatibility. A shared probe verifies event delivery, translation results, and Context identity across the public Service Hub surface. Commonlib separately verifies that default contexts isolate their event channels and translators. Real Obsidian runs the same invariants against the loaded plug-in through `obsidian-cli eval`; the CLI runs its composition contract in unit tests and then exercises the built Node artefact through Deno E2E; and the Webapp composition runs the shared contract directly without depending on its currently stale Playwright workflow.
+
+The same rule applies as more APIs move: define the shared result set first, run the same cases against each implementation, and document platform-specific behaviour outside that result set. Matching method names or return types alone does not establish behavioural compatibility. The contract runner remains test support during this proof rather than becoming a new public package API.
+
 ### Barrels and export surfaces
 
 The migration does not prohibit every barrel. A small root entry point or task-oriented subpath entry point is an intentional package contract when it has one documented responsibility, uses explicit named exports, and does not load unrelated implementations or optional dependencies. The root client entry point, a focused RPC entry point, and type-only storage-adapter entry points are examples which may remain after review.
@@ -211,9 +233,23 @@ Every retained barrel must correspond to an explicit `exports` entry, list named
 - Adapt `DirectFileManipulator` behind that façade or deprecate it; do not treat its current constructor and deep dependencies as the final API.
 - Narrow or remove compatibility-only export paths as Self-hosted LiveSync imports migrate to documented package modules.
 
+## Implementation Proof
+
+The local proof builds Commonlib `0.1.0-package-proof.8` as one compiled ESM package with a small root, `context`, `browser`, `node`, and `rpc` entries, plus 118 explicit compatibility exports required by the current downstream migration. It publishes neither raw TypeScript nor Svelte source. The reviewed tarball has integrity `sha512-XiS2BJGYQtBgTdLf9G577q+65wXKjdjFIzsLA1yWhSKgg+nyh/zREEjdAE0y07QyA0Sq8PiIruZB7cYTpqKjvQ==`. It can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers.
+
+The proof found and fixed three boundary defects which source-alias consumption had hidden: compiled JSON imports required explicit output extensions, precompiled Svelte output could not safely be treated as source by the downstream Svelte pipeline, and Vite's default client conditions selected Commonlib's browser worker while building the Node CLI. Packed-consumer regressions cover the first two. The CLI now uses Vite's server conditions and treats every Node built-in reported by Commonlib's Node entry as external; the built CLI is exercised through Deno E2E. Importing root or context also no longer patches DOM prototypes, and translator injection prevents the context entry from loading the complete language catalogue.
+
+Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact local tarball without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
+
+The Commonlib contract suite passes 16 tests covering Context results and both platform storage implementations; its complete suite passes 1,087 tests across 56 files. Self-hosted LiveSync's three host-composition contract tests and complete 333-test unit suite pass against the tarball. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
+
+The local real-Obsidian suite verifies the actual loaded `ObsidianServiceContext`, all 18 services, Vault reflection, CouchDB and Object Storage transfer, remote-activity accounting, CLI-to-Obsidian encrypted synchronisation, startup scanning, two-Vault create, update, delete, ordinary rename, case-only rename, target mismatch, Hidden File Sync, Customisation Sync, and setting Markdown export. These checks establish observable results and host composition rather than relying on declaration compatibility alone.
+
+The current browser Harness has a pre-existing settings-migration initialisation timeout which reproduces on the untouched baseline. The Webapp Playwright workflow also currently reuses an unrelated process on its configured port and reaches a `Not Found` page. Neither failure is evidence for or against the package boundary. The Webapp production build and direct composition contract pass, while Webapp browser E2E remains supplementary until its runner is repaired. Current acceptance therefore relies primarily on Commonlib owner and packed-consumer tests, LiveSync unit and integration tests, Deno CLI E2E, application production builds, and the focused local real-Obsidian suite. The unrelated Harness and Playwright defects should be tracked independently.
+
 ## Scanner and Repository Consequences
 
-Consuming the npm package is expected to remove the common-library source and generated `_types` from the plug-in repository's community scan, because package dependencies are treated as dependencies rather than maintained plug-in source. This expectation must be verified with the scanner preview before removing the old integration.
+Consuming the npm package is expected to remove the common-library source and generated `_types` from the plug-in repository's community scan, because package dependencies are treated as dependencies rather than maintained plug-in source. The proof removes the old integration, but this scanner expectation must still be verified before the decision is accepted and released.
 
 The change does not hide or resolve warnings in Self-hosted LiveSync-owned source. The scanner will continue to inspect the plug-in, CLI, Webapp, and WebPeer while those applications remain in the repository. Moving those applications to a LiveSync-family application repository may be considered after the package boundary is stable, but it is not part of this decision because the CLI and Webapp still import shared plug-in composition code.
 
@@ -248,8 +284,8 @@ The migration is complete only when:
 - a headless client does not bundle Svelte or the full language catalogue;
 - retained entry-point barrels do not load unrelated optional implementations, and no removed barrel is replaced by unrestricted deep exports;
 - two clients with different database, encryption, language, and lifecycle settings can coexist without sharing mutable client state;
-- the Fancy Kit Modal host proves one-shot settlement, cancellation, disposer execution, focus, viewport containment, safe-area containment, and touch-target layout in its own unit and real-Obsidian Harness tests;
-- Self-hosted LiveSync verifies its Svelte adapter and workflow policy through injected tests, with a focused composition smoke test when the adapter is first adopted rather than duplicating every Kit-owned device test;
+- Self-hosted LiveSync verifies its local Svelte adapter and workflow policy through injected tests and a focused composition smoke test;
+- if the framework-neutral Modal host is later promoted to Fancy Kit, Kit-owned lifecycle, viewport, safe-area, and touch-target guarantees replace duplicated device tests in LiveSync;
 - Self-hosted LiveSync no longer has `src/lib`, `_types`, or `@lib/*` source aliases;
 - the CLI, Webapp, WebPeer, plug-in build, unit tests, integration tests, and focused real-Obsidian E2E pass against the reviewed package artefact;
 - common-library downstream CI records and tests the exact Self-hosted LiveSync ref;

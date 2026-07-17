@@ -1,5 +1,5 @@
 import { Minimatch } from "minimatch";
-import { fsPromises as fs, path } from "@/apps/cli/node-compat";
+import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 
 /**
  * Loads and evaluates ignore rules from `.livesync/ignore` inside the vault.

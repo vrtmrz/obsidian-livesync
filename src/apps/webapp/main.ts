@@ -3,23 +3,24 @@
  * Browser-based version of Self-hosted LiveSync plugin using FileSystem API
  */
 
-import { BrowserServiceHub } from "@lib/services/BrowserServices";
+import type { BrowserServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/BrowserServices";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 import { initialiseServiceModulesFSAPI } from "./serviceModules/FSAPIServiceModules";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
-import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
-import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { BrowserAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/BrowserAPIService";
+import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
+import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
-import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
-import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
-import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
+import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize";
+import { useSetupURIFeature } from "@/serviceFeatures/setupObsidian/setupUri";
+import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
-import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
-import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
-import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
+import { useP2PReplicatorCommands } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorCommands";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
+import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createLiveSyncBrowserServiceHub } from "@/apps/browser/createLiveSyncBrowserServiceHub";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
@@ -64,7 +65,7 @@ class LiveSyncWebApp {
         console.log(`Vault directory: ${this.rootHandle.name}`);
 
         // Create service context and hub
-        this.serviceHub = new BrowserServiceHub<ServiceContext>();
+        this.serviceHub = createLiveSyncBrowserServiceHub<ServiceContext>();
 
         // Setup API service
         (this.serviceHub.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(

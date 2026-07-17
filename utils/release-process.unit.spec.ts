@@ -130,20 +130,13 @@ describe("release notes", () => {
 });
 
 describe("release workflow", () => {
-    it("regenerates and stages fallback type definitions", () => {
+    it("uses the locked Commonlib package instead of generated fallback declarations", () => {
         const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
 
-        expect(workflow).toContain("npm run build:lib:types");
-        expect(workflow).toMatch(/git add[^\n]*_types/);
-    });
-
-    it("installs Deno before post-processing fallback type definitions", () => {
-        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
-        const setupDeno = workflow.indexOf("denoland/setup-deno@v2");
-        const buildTypes = workflow.indexOf("npm run build:lib:types");
-
-        expect(setupDeno).toBeGreaterThan(-1);
-        expect(setupDeno).toBeLessThan(buildTypes);
+        expect(workflow).not.toContain("npm run build:lib:types");
+        expect(workflow).not.toMatch(/git add[^\n]*_types/);
+        expect(workflow).toMatch(/git add[^\n]*package-lock\.json/);
+        expect(workflow).toContain("locked Commonlib package version");
     });
 
     it("keeps the release PR in draft until BRAT validation", () => {

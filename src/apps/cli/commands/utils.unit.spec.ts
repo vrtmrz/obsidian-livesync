@@ -1,4 +1,4 @@
-import * as path from "path";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 import { describe, expect, it } from "vitest";
 import { toDatabaseRelativePath } from "./utils";
 

@@ -1,9 +1,9 @@
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types";
+import type { AnyEntry, FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { stripAllPrefixes } from "@lib/string_and_binary/path";
-import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 
 export abstract class AbstractModule<
     T extends LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands> = LiveSyncBaseCore<
@@ -48,7 +48,9 @@ export abstract class AbstractModule<
     constructor(public core: T) {
         Logger(`[${this.constructor.name}] Loaded`, LOG_LEVEL_VERBOSE);
     }
-    saveSettings = this.core.services.setting.saveSettingData.bind(this.core.services.setting);
+    saveSettings(): Promise<void> {
+        return this.core.services.setting.saveSettingData();
+    }
 
     addTestResult(key: string, value: boolean, summary?: string, message?: string) {
         this.services.test.addTestResult(`${this.constructor.name}`, key, value, summary, message);

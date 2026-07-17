@@ -1,6 +1,6 @@
-import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@lib/common/types";
-import type { FileEventItem } from "@lib/common/types";
-import type { IStorageEventManagerAdapter } from "@lib/managers/adapters";
+import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type {
     IStorageEventTypeGuardAdapter,
     IStorageEventPersistenceAdapter,
@@ -8,10 +8,10 @@ import type {
     IStorageEventStatusAdapter,
     IStorageEventConverterAdapter,
     IStorageEventWatchHandlers,
-} from "@lib/managers/adapters";
-import type { FileEventItemSentinel } from "@lib/managers/StorageEventManager";
+} from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
 import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 /**
  * FileSystem API-specific type guard adapter

@@ -2,15 +2,19 @@ import { glob } from "glob";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promises as fs } from "node:fs";
-import { isPlainText, shouldSplitAsPlainText } from "../../src/lib/src/string_and_binary/path";
-import { splitPiecesRabinKarp } from "../../src/lib/src/string_and_binary/chunks";
+import { isPlainText, shouldSplitAsPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { splitPiecesRabinKarp } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/chunks";
 import {
     PREFERRED_BASE,
     PREFERRED_JOURNAL_SYNC,
     PREFERRED_SETTING_CLOUDANT,
     PREFERRED_SETTING_SELF_HOSTED,
-} from "../../src/lib/src/common/models/setting.const.preferred";
-import { type ObsidianLiveSyncSettings, DEFAULT_SETTINGS, MAX_DOC_SIZE_BIN } from "../../src/lib/src/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.preferred";
+import {
+    type ObsidianLiveSyncSettings,
+    DEFAULT_SETTINGS,
+    MAX_DOC_SIZE_BIN,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 async function blobFromString(content: string): Promise<Blob> {
     return new Blob([content], { type: "text/plain" });

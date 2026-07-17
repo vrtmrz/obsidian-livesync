@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import type { LogFunction } from "@lib/services/lib/logUtils";
-import { FlagFilesHumanReadable, FlagFilesOriginal } from "@lib/common/models/redflag.const";
-import { REMOTE_MINIO } from "@lib/common/models/setting.const";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const";
+import { REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import {
     createFetchAllFlagHandler,
     createRebuildFlagHandler,
@@ -18,12 +19,12 @@ import {
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
-} from "@lib/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     ExtraOnLocal,
     FullScanModes,
     synchroniseAllFilesBetweenDBandStorage,
-} from "@lib/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import {
     SIMPLE_FETCH_STAGE1_LEGACY,
     SIMPLE_FETCH_STAGE1_NEWER_WINS,
@@ -36,9 +37,9 @@ import {
     askAndPerformFastSetupOnScheduledFetchAll,
     askSimpleFetchMode,
 } from "./redFlag.simpleFetch";
-import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 //Mock synchroniseAllFilesBetweenDBandStorage
-vi.mock("@/lib/src/serviceFeatures/offlineScanner", async (importOriginal) => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", async (importOriginal) => {
     const originalModule = (await importOriginal()) as any;
     return {
         ...originalModule,
@@ -46,7 +47,7 @@ vi.mock("@/lib/src/serviceFeatures/offlineScanner", async (importOriginal) => {
     };
 });
 
-vi.mock("@lib/serviceFeatures/remoteConfig", () => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig", () => {
     return {
         activateRemoteConfiguration: vi.fn((settings: any, configurationId: string) => {
             if (!settings?.remoteConfigurations?.[configurationId]) return false;
@@ -159,6 +160,7 @@ const createHostMock = () => {
 
     return {
         services: {
+            context: createServiceContext(),
             setting: settingMock,
             appLifecycle: appLifecycleMock,
             UI: uiMock,

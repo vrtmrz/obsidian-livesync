@@ -1,1 +1,1 @@
-export * from "@lib/common/settingConstants.ts";
+export * from "@vrtmrz/livesync-commonlib/compat/common/settingConstants";

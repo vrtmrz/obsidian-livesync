@@ -1,6 +1,4 @@
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
+import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const minimatchStats = vi.hoisted(() => ({ constructions: 0 }));

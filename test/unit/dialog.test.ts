@@ -3,12 +3,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { commands } from "vitest/browser";
 
 import { generateHarness, waitForIdle, waitForReady, type LiveSyncHarness } from "../harness/harness";
-import { ChunkAlgorithms, DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
+import { ChunkAlgorithms, DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { DummyFileSourceInisialised } from "../utils/dummyfile";
 
 import { page } from "vitest/browser";
-import { DoctorRegulation } from "@/lib/src/common/configForDoc";
+import { DoctorRegulation } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { waitForDialogHidden, waitForDialogShown } from "../lib/ui";
 const env = (import.meta as any).env;
 const dialog_setting_base = {

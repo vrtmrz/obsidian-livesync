@@ -1,14 +1,14 @@
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
-import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
+import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 import { FileAccessCLI } from "./FileAccessCLI";
 import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
 import { StorageEventManagerCLI } from "@/apps/cli/managers/StorageEventManagerCLI";
-import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import type { IgnoreRules } from "./IgnoreRules";
 
 /**
@@ -73,6 +73,7 @@ export function initialiseServiceModulesCLI(
 
     // Database file access (platform-independent)
     const databaseFileAccess = new ServiceDatabaseFileAccessCLI({
+        events: services.context.events,
         API: services.API,
         database: services.database,
         path: services.path,
@@ -82,6 +83,7 @@ export function initialiseServiceModulesCLI(
 
     // File handler (platform-independent)
     const fileHandler = new ServiceFileHandler({
+        events: services.context.events,
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,
@@ -95,6 +97,7 @@ export function initialiseServiceModulesCLI(
 
     // Rebuilder (platform-independent)
     const rebuilder = new ServiceRebuilder({
+        events: services.context.events,
         API: services.API,
         database: services.database,
         appLifecycle: services.appLifecycle,

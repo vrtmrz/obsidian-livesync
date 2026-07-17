@@ -26,17 +26,6 @@ export default defineConfig([
         "src/apps",
         "utils",
 
-        // Specific exclusions from common library (src/lib)
-        "src/lib/coverage",
-        "src/lib/browsertest",
-        "src/lib/test",
-        "src/lib/_tools",
-        "src/lib/src/patches/pouchdb-utils",
-        "src/lib/src/cli",
-        "src/lib/src/services/implements/browser/**",
-        "src/lib/src/services/implements/headless/**",
-        "src/lib/src/API",
-
         // Config files and build scripts
         "**/jest.config.js",
         "**/rollup.config.js",
@@ -59,7 +48,6 @@ export default defineConfig([
     importAlias.configs.recommended,
     {
         files: ["**/*.ts"],
-        // ignores:["src/lib/**/*.ts"], // Exclude library files from root linting (they have different environments and rules).
         languageOptions: {
             globals: { ...globals.browser, PouchDB: "readonly" },
             parser: tsParser,

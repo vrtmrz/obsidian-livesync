@@ -1,9 +1,9 @@
-import type { FilePath, UXStat } from "@lib/common/types";
-import type { IFileSystemAdapter } from "@lib/serviceModules/adapters";
+import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IFileSystemAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import { FSAPIPathAdapter } from "./FSAPIPathAdapter";
 import { FSAPITypeGuardAdapter } from "./FSAPITypeGuardAdapter";
 import { FSAPIConversionAdapter } from "./FSAPIConversionAdapter";
-import { FSAPIStorageAdapter } from "./FSAPIStorageAdapter";
+import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/browser";
 import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
 import type { FSAPIFile, FSAPIFolder, FSAPIStat } from "./FSAPITypes";
 import { shareRunningResult } from "octagonal-wheels/concurrency/lock_v2";
@@ -15,7 +15,7 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     readonly path: FSAPIPathAdapter;
     readonly typeGuard: FSAPITypeGuardAdapter;
     readonly conversion: FSAPIConversionAdapter;
-    readonly storage: FSAPIStorageAdapter;
+    readonly storage: FileSystemAccessStorageAdapter;
     readonly vault: FSAPIVaultAdapter;
 
     private fileCache = new Map<string, FSAPIFile>();
@@ -25,7 +25,7 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
         this.path = new FSAPIPathAdapter();
         this.typeGuard = new FSAPITypeGuardAdapter();
         this.conversion = new FSAPIConversionAdapter();
-        this.storage = new FSAPIStorageAdapter(rootHandle);
+        this.storage = new FileSystemAccessStorageAdapter(rootHandle);
         this.vault = new FSAPIVaultAdapter(rootHandle);
     }
 

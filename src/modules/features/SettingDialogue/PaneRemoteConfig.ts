@@ -6,9 +6,9 @@ import {
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Menu, type ButtonComponent } from "@/deps.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -22,13 +22,13 @@ import {
     getCouchDBConfigSummary,
     getE2EEConfigSummary,
 } from "./settingUtils.ts";
-import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types.ts";
+import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
-import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
-import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
-import type { RemoteConfigurationResult } from "@lib/common/ConnectionString.ts";
-import type { RemoteConfiguration } from "@lib/common/models/setting.type.ts";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import type { RemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";

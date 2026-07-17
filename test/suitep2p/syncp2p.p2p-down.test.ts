@@ -15,10 +15,10 @@ import {
     type FilePath,
     type ObsidianLiveSyncSettings,
     AutoAccepting,
-} from "@/lib/src/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { DummyFileSourceInisialised, generateBinaryFile, generateFile } from "../utils/dummyfile";
 import { defaultFileOption, testFileRead } from "../suite/db_common";
-import { delay } from "@/lib/src/common/utils";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { closeReplication, performReplication } from "./sync_common_p2p";
 import { settingBase } from "../suite/variables";
 

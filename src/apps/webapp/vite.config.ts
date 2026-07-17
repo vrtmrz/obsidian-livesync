@@ -1,13 +1,11 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import istanbul from "vite-plugin-istanbul";
-import path from "node:path";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
-const packageJson = JSON.parse(readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
-const manifestJson = JSON.parse(readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
+const manifestJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
 const enableCoverage = process.env.PW_COVERAGE === "1";
 // https://vite.dev/config/
 export default defineConfig({
@@ -40,7 +38,6 @@ export default defineConfig({
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "../../"),
-            "@lib": path.resolve(__dirname, "../../lib/src"),
             obsidian: path.resolve(__dirname, "../../../test/harness/obsidian-mock.ts"),
         },
     },

@@ -1,39 +1,36 @@
-import type { AppLifecycleService, AppLifecycleServiceDependencies } from "@lib/services/base/AppLifecycleService";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
-import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
-import { SvelteDialogManagerBase, type ComponentHasResult } from "@lib/services/implements/base/SvelteDialog";
-import { UIService } from "@lib/services/implements/base/UIService";
-import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
-import { InjectableConflictService } from "@lib/services/implements/injectable/InjectableConflictService";
-import { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
-import { InjectableFileProcessingService } from "@lib/services/implements/injectable/InjectableFileProcessingService";
-import { PathServiceCompat } from "@lib/services/implements/injectable/InjectablePathService";
-import { InjectableRemoteService } from "@lib/services/implements/injectable/InjectableRemoteService";
-import { InjectableReplicationService } from "@lib/services/implements/injectable/InjectableReplicationService";
-import { InjectableReplicatorService } from "@lib/services/implements/injectable/InjectableReplicatorService";
-import { InjectableTestService } from "@lib/services/implements/injectable/InjectableTestService";
-import { InjectableTweakValueService } from "@lib/services/implements/injectable/InjectableTweakValueService";
-import { InjectableVaultServiceCompat } from "@lib/services/implements/injectable/InjectableVaultService";
-import { ControlService } from "@lib/services/base/ControlService";
-import type { IControlService } from "@lib/services/base/IService";
-import { HeadlessAPIService } from "@lib/services/implements/headless/HeadlessAPIService";
-// import { HeadlessDatabaseService } from "@lib/services/implements/headless/HeadlessDatabaseService";
-import type { ServiceInstances } from "@lib/services/ServiceHub";
+import type { AppLifecycleServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import { ConfigServiceBrowserCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/ConfigServiceBrowserCompat";
+import type {
+    ComponentHasResult,
+    SvelteDialogManager,
+} from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
+import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
+import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { InjectableAppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAppLifecycleService";
+import { InjectableConflictService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableConflictService";
+import { InjectableDatabaseEventService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService";
+import { InjectableFileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableFileProcessingService";
+import { PathServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectablePathService";
+import { InjectableRemoteService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableRemoteService";
+import { InjectableReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicationService";
+import { InjectableReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicatorService";
+import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTestService";
+import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTweakValueService";
+import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableVaultService";
+import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
+import { HeadlessAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/headless/HeadlessAPIService";
+import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
-import { DatabaseService } from "@lib/services/base/DatabaseService";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import { path as nodePath } from "@/apps/cli/node-compat";
-import type { KeyValueDBService } from "@lib/services/base/KeyValueDBService";
+import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { path as nodePath } from "@vrtmrz/livesync-commonlib/node";
+import type { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
+import { PouchDB } from "@/apps/cli/lib/pouchdb-node";
+import { NodeServiceContext } from "./NodeServiceContext";
 
-export class NodeServiceContext extends ServiceContext {
-    databasePath: string;
-    constructor(databasePath: string) {
-        super();
-        this.databasePath = databasePath;
-    }
-}
+export { NodeServiceContext } from "./NodeServiceContext";
 
 class NodeAppLifecycleService<T extends ServiceContext> extends InjectableAppLifecycleService<T> {
     constructor(context: T, dependencies: AppLifecycleServiceDependencies) {
@@ -41,21 +38,24 @@ class NodeAppLifecycleService<T extends ServiceContext> extends InjectableAppLif
     }
 }
 
-class NodeSvelteDialogManager<T extends ServiceContext> extends SvelteDialogManagerBase<T> {
-    openSvelteDialog<TValue, UInitial>(
-        component: ComponentHasResult<TValue, UInitial>,
-        initialData?: UInitial
+class NodeDialogManager<T extends ServiceContext> implements SvelteDialogManager<T> {
+    open<TValue, UInitial>(
+        _component: ComponentHasResult<TValue, UInitial>,
+        _initialData?: UInitial
     ): Promise<TValue | undefined> {
-        throw new Error("Method not implemented.");
+        return Promise.reject(new Error("Interactive dialogues are not available in the CLI."));
+    }
+
+    openWithExplicitCancel<TValue, UInitial>(
+        _component: ComponentHasResult<TValue, UInitial>,
+        _initialData?: UInitial
+    ): Promise<TValue> {
+        return Promise.reject(new Error("Interactive dialogues are not available in the CLI."));
     }
 }
 
 type NodeUIServiceDependencies<T extends ServiceContext = ServiceContext> = {
-    appLifecycle: AppLifecycleService<T>;
-    config: ConfigServiceBrowserCompat<T>;
-    replicator: InjectableReplicatorService<T>;
     APIService: HeadlessAPIService<T>;
-    control: IControlService;
 };
 class NodeDatabaseService<T extends NodeServiceContext> extends DatabaseService<T> {
     protected override modifyDatabaseOptions(
@@ -77,17 +77,9 @@ class NodeUIService<T extends ServiceContext> extends UIService<T> {
     }
 
     constructor(context: T, dependencies: NodeUIServiceDependencies<T>) {
-        const headlessConfirm = dependencies.APIService.confirm;
-        const dialogManager = new NodeSvelteDialogManager<T>(context, {
-            confirm: headlessConfirm,
-            appLifecycle: dependencies.appLifecycle,
-            config: dependencies.config,
-            replicator: dependencies.replicator,
-            control: dependencies.control,
-        });
+        const dialogManager = new NodeDialogManager<T>();
 
         super(context, {
-            appLifecycle: dependencies.appLifecycle,
             dialogManager,
             APIService: dependencies.APIService,
         });
@@ -111,6 +103,7 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
         });
 
         const remote = new InjectableRemoteService(context, {
+            pouchDB: PouchDB,
             APIService: API,
             appLifecycle,
             setting,
@@ -128,6 +121,7 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
         });
 
         const database = new NodeDatabaseService<T>(context, {
+            pouchDB: PouchDB,
             API: API,
             path,
             vault,
@@ -174,11 +168,7 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
         });
 
         const ui = new NodeUIService<T>(context, {
-            appLifecycle,
-            config,
-            replicator,
             APIService: API,
-            control,
         });
 
         const serviceInstancesToInit: Required<ServiceInstances<T>> = {

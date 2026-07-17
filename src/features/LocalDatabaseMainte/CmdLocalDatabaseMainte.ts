@@ -9,15 +9,15 @@ import {
     type EntryLeaf,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "@lib/common/types";
-import { getNoFromRev } from "@lib/pouchdb/LiveSyncLocalDB";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { getNoFromRev } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
-import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import { delay } from "@lib/common/utils";
-import { isNotFoundError } from "@lib/common/utils.doc";
+import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
@@ -315,7 +315,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                 // If we have more revisions than we want to keep, we need to delete the extras
             }
             const keepRevID = sortedRevId.slice(0, KEEP_MAX_REVS);
-            keepRevID.forEach((e) => e[1].forEach((ee) => unusedSet.delete(ee)));
+            keepRevID.forEach((e) => e[1].forEach((ee: DocumentID) => unusedSet.delete(ee)));
         }
         return {
             chunkSet,

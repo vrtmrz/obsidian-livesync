@@ -7,17 +7,17 @@
         EVENT_P2P_REPLICATOR_STATUS,
         EVENT_P2P_REPLICATOR_PROGRESS,
         type P2PServerInfo,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus, P2PReplicationReport } from "@lib/replication/trystero/TrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PReplicatorStatus, P2PReplicationReport } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
-    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
+    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-    import { ConnectionStringParser } from "@lib/common/ConnectionString";
-    import type { P2PSyncSetting, RemoteConfiguration } from "@lib/common/models/setting.type";
-    import { activateP2PRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
-    import { extractP2PRoomSuffix } from "@lib/common/utils";
+    import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+    import type { P2PSyncSetting, RemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+    import { activateP2PRemoteConfiguration, createRemoteConfigurationId } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { SetupManager } from "@/modules/features/SetupManager";
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
 

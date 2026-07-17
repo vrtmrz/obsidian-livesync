@@ -1,4 +1,5 @@
 import { evalObsidianJson } from "./cli.ts";
+import { SERVICE_CONTEXT_MEMBERS } from "../../contracts/serviceContext.ts";
 import type { CouchDbConfig } from "./couchdb.ts";
 import type { ObjectStorageConfig } from "./objectStorage.ts";
 
@@ -18,6 +19,17 @@ export type ConfiguredSettings = {
 export type CoreReadiness = {
     databaseReady: boolean;
     appReady: boolean;
+};
+
+export type ObsidianServiceContextContractResult = {
+    contextType: string;
+    eventResult: string[];
+    translationResult: string;
+    hubUsesContext: boolean;
+    serviceContextMismatches: string[];
+    appCapabilityMatches: boolean;
+    pluginCapabilityMatches: boolean;
+    liveSyncPluginCapabilityMatches: boolean;
 };
 
 export type LocalDatabaseEntry = {
@@ -170,6 +182,68 @@ export async function waitForLiveSyncCoreReady(
         await new Promise((resolve) => setTimeout(resolve, 500));
     }
     throw new Error(`Timed out waiting for Self-hosted LiveSync core readiness: ${JSON.stringify(lastReadiness)}`);
+}
+
+/**
+ * Inspect the actual Obsidian composition through Obsidian's CLI.
+ *
+ * This observes public Context results and verifies that the Hub and every
+ * exposed service retain the exact Context created by the plug-in host.
+ */
+export async function inspectObsidianServiceContextContract(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv
+): Promise<ObsidianServiceContextContractResult> {
+    return await evalObsidianJson<ObsidianServiceContextContractResult>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const plugin=app.plugins.plugins['obsidian-livesync'];",
+            "const services=plugin.core.services;",
+            "const context=services.context;",
+            `const serviceNames=${JSON.stringify(SERVICE_CONTEXT_MEMBERS)};`,
+            "const eventResult=[];",
+            "const unsubscribe=context.events.onEvent('hello',(value)=>eventResult.push(value));",
+            "try{context.events.emitEvent('hello','context-contract-event');}finally{unsubscribe();}",
+            "return JSON.stringify({",
+            "contextType:context.constructor.name,",
+            "eventResult,",
+            "translationResult:context.translate('Replicator.Message.InitialiseFatalError'),",
+            "hubUsesContext:services.context===context,",
+            "serviceContextMismatches:serviceNames.filter((name)=>services[name].context!==context),",
+            "appCapabilityMatches:context.app===app,",
+            "pluginCapabilityMatches:context.plugin===plugin,",
+            "liveSyncPluginCapabilityMatches:context.liveSyncPlugin===plugin,",
+            "});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+export function assertObsidianServiceContextContract(result: ObsidianServiceContextContractResult): void {
+    assertEqual(result.contextType, "ObsidianServiceContext", "Unexpected Obsidian service Context type.");
+    assertEqual(result.hubUsesContext, true, "The Obsidian Service Hub substituted its host Context.");
+    assertEqual(
+        result.serviceContextMismatches.length,
+        0,
+        `Services used a different Context: ${result.serviceContextMismatches.join(", ")}`
+    );
+    assertEqual(
+        JSON.stringify(result.eventResult),
+        JSON.stringify(["context-contract-event"]),
+        "The Obsidian Context event API returned an unexpected result."
+    );
+    if (result.translationResult.length === 0) {
+        throw new Error("The Obsidian Context translator returned an empty result.");
+    }
+    assertEqual(result.appCapabilityMatches, true, "The Obsidian Context lost its App capability.");
+    assertEqual(result.pluginCapabilityMatches, true, "The Obsidian Context lost its Plugin capability.");
+    assertEqual(
+        result.liveSyncPluginCapabilityMatches,
+        true,
+        "The Obsidian Context lost its Self-hosted LiveSync plug-in capability."
+    );
 }
 
 export async function prepareRemote(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {

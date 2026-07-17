@@ -1,6 +1,6 @@
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 export type CLICommand =
     | "daemon"

@@ -1,13 +1,13 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
-import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase";
-import type { IKeyValueDBService } from "@lib/services/base/IService";
-import { ServiceBase, type ServiceContext } from "@lib/services/base/ServiceBase";
-import type { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
-import type { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
-import type { IVaultService } from "@lib/services/base/IService";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
+import type { IKeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import { ServiceBase, type ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { InjectableAppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAppLifecycleService";
+import type { InjectableDatabaseEventService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService";
+import type { IVaultService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { fs as nodeFs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
 
 const NODE_KV_TYPED_KEY = "__nodeKvType";
 const NODE_KV_VALUES_KEY = "values";

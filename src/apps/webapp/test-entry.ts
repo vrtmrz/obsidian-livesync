@@ -10,9 +10,9 @@
  */
 
 import { LiveSyncWebApp } from "./main";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { FilePathWithPrefix } from "@lib/common/types";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 // --------------------------------------------------------------------------
 // Internal state – one app instance per page / browser context
@@ -29,10 +29,17 @@ function stripPrefix(raw: string): string {
 }
 
 interface TestCore {
+    serviceModules: {
+        databaseFileAccess: {
+            storeContent(path: FilePathWithPrefix, content: string): Promise<unknown>;
+            delete(path: FilePathWithPrefix): Promise<unknown>;
+        };
+    };
     services?: {
         replication?: {
             databaseQueueCount?: { value: number };
             storageApplyingCount?: { value: number };
+            replicate(showMessage: boolean): Promise<unknown>;
         };
         fileProcessing?: {
             totalQueued?: { value: number };

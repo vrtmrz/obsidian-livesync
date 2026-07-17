@@ -1,10 +1,10 @@
 import { expect } from "vitest";
 import { waitForIdle, type LiveSyncHarness } from "../harness/harness";
-import { RemoteTypes, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
+import { RemoteTypes, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
-import { delay, fireAndForget } from "@/lib/src/common/utils";
+import { delay, fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { commands } from "vitest/browser";
-import { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
 import { waitTaskWithFollowups } from "../lib/util";
 async function waitForP2PPeers(harness: LiveSyncHarness) {
     if (harness.plugin.core.settings.remoteType === RemoteTypes.REMOTE_P2P) {

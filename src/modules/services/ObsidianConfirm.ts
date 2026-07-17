@@ -1,8 +1,8 @@
 import { type App, type Plugin, Notice } from "@/deps";
 import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
-import { $msg } from "@lib/common/i18n";
-import type { Confirm } from "@lib/interfaces/Confirm";
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import {
     askYesNo,
     askString,

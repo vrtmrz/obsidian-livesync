@@ -12,15 +12,15 @@ import {
     LEVEL_ADVANCED,
     LEVEL_EDGE_CASE,
     REMOTE_P2P,
-} from "@lib/common/types.ts";
-import { delay, isObjectDifferent, sizeToHumanReadable } from "@lib/common/utils.ts";
-import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { checkSyncInfo } from "@lib/pouchdb/negotiation.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { delay, isObjectDifferent, sizeToHumanReadable } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { versionNumberString2Number } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { checkSyncInfo } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
 import ObsidianLiveSyncPlugin from "@/main.ts";
 import { scheduleTask } from "@/common/utils.ts";
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import {
     type AllSettingItemKey,
     type AllStringItemKey,
@@ -31,7 +31,7 @@ import {
     type OnDialogSettings,
     getConfName,
 } from "./settingConstants.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { confirmWithMessage } from "@/modules/coreObsidian/UILib/dialogs.ts";
@@ -62,9 +62,9 @@ import { paneAdvanced } from "./PaneAdvanced.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { JournalSyncCore } from "@lib/replication/journal/JournalSyncCore.js";
-import { MinioStorageAdapter } from "@lib/replication/journal/objectstore/MinioStorageAdapter.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
+import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replication/journal/objectstore/MinioStorageAdapter";
 
 // For creating a document
 // const toc = new Set<string>();

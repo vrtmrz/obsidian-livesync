@@ -2,9 +2,9 @@
 
 import { TFile, type TAbstractFile, type TFolder } from "@/deps.ts";
 import { ICHeader } from "@/common/types.ts";
-import { addPrefix, isPlainText } from "@lib/string_and_binary/path.ts";
+import { addPrefix, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import { createBlob } from "@lib/common/utils.ts";
+import { createBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type {
     FilePath,
     FilePathWithPrefix,
@@ -12,7 +12,7 @@ import type {
     UXFileInfoStub,
     UXFolderInfo,
     UXInternalFileInfoStub,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncCore } from "@/main.ts";
 import type { FileAccessObsidian } from "@/serviceModules/FileAccessObsidian.ts";
 

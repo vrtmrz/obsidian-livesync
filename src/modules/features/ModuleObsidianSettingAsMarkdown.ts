@@ -2,12 +2,12 @@
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
+import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { parseYaml, stringifyYaml } from "@/deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import type { ServiceContext } from "@lib/services/base/ServiceBase.ts";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";

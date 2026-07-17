@@ -7,9 +7,9 @@
  */
 import { expect } from "vitest";
 import { waitForIdle, type LiveSyncHarness } from "../harness/harness";
-import { RemoteTypes, type ObsidianLiveSyncSettings } from "@/lib/src/common/types";
-import { delay } from "@/lib/src/common/utils";
-import { LiveSyncTrysteroReplicator } from "@/lib/src/replication/trystero/LiveSyncTrysteroReplicator";
+import { RemoteTypes, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
 import { waitTaskWithFollowups } from "../lib/util";
 
 const P2P_REPLICATION_TIMEOUT_MS = 180000;

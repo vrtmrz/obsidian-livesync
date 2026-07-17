@@ -37,18 +37,12 @@ jobs:
               with:
                   ref: ${{ inputs.base_branch }}
                   fetch-depth: 0
-                  submodules: recursive
 
             - name: Use Node.js
               uses: actions/setup-node@v4
               with:
                   node-version: "24.x"
                   cache: npm
-
-            - name: Use Deno
-              uses: denoland/setup-deno@v2
-              with:
-                  deno-version: v2.x
 
             - name: Install dependencies
               run: npm ci
@@ -78,9 +72,8 @@ jobs:
                   git switch -c "${BRANCH}"
                   npm version "${VERSION}" --no-git-tag-version
                   node utils/release-notes.mjs prepare "${VERSION}"
-                  npm run build:lib:types
 
-                  git add package.json package-lock.json manifest.json versions.json updates.md src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json _types
+                  git add package.json package-lock.json manifest.json versions.json updates.md src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json
                   git diff --cached --check
                   git commit -m "Releasing ${VERSION}"
                   git push --set-upstream origin "${BRANCH}"
@@ -104,7 +97,7 @@ jobs:
 
                   - [ ] Review and polish \`updates.md\`
                   - [ ] Confirm the release date
-                  - [ ] Confirm \`manifest.json\`, \`versions.json\`, workspace package versions, and generated \`_types\`
+                  - [ ] Confirm \`manifest.json\`, \`versions.json\`, workspace package versions, and the locked Commonlib package version
                   - [ ] Confirm CI has passed
                   - [ ] Run the finalise release workflow with this PR's fixed head SHA
                   - [ ] Confirm the draft GitHub Release assets and the published CLI image

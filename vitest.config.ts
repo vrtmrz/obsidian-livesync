@@ -38,8 +38,8 @@ export default mergeConfig(
             // environment: "browser",
             include: ["test/**/*.test.ts"],
             coverage: {
-                include: ["src/**/*.ts", "src/lib/src/**/*.ts", "src/**/*.svelte"],
-                exclude: ["**/*.test.ts", "src/lib/**"],
+                include: ["src/**/*.ts", "src/**/*.svelte"],
+                exclude: ["**/*.test.ts"],
                 provider: "v8",
                 reporter: ["text", "json", "html"],
                 // ignoreEmptyLines: true,

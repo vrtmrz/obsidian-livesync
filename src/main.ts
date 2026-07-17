@@ -1,5 +1,5 @@
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
-import { setGetLanguage } from "@lib/common/coreEnvFunctions.ts";
+import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
 import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
@@ -13,34 +13,34 @@ import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidian
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
-import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder.ts";
+import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
 import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
 import { ServiceFileAccessObsidian } from "@/serviceModules/ServiceFileAccessImpl.ts";
-import { StorageAccessManager } from "@lib/managers/StorageProcessingManager.ts";
+import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
 import { ServiceFileHandler } from "./serviceModules/FileHandler.ts";
 import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
 import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
 import type { ServiceModules } from "./types.ts";
-import { setNoticeClass } from "@lib/mock_and_interop/wrapper.ts";
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
+import { setNoticeClass } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/wrapper";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
 import { SetupManager } from "./modules/features/SetupManager.ts";
 import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
-import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner.ts";
-import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
-import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize.ts";
+import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
-import { useSetupQRCodeFeature } from "@lib/serviceFeatures/setupObsidian/qrCode";
-import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
+import { useSetupQRCodeFeature } from "@/serviceFeatures/setupObsidian/qrCode";
+import { useSetupURIFeature } from "@/serviceFeatures/setupObsidian/setupUri";
 import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
-import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature.ts";
-import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands.ts";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
+import { useP2PReplicatorCommands } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorCommands";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
 import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
@@ -82,6 +82,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
 
         const databaseFileAccess = new ServiceDatabaseFileAccess({
+            events: services.context.events,
             API: services.API,
             database: services.database,
             path: services.path,
@@ -90,6 +91,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         });
 
         const fileHandler = new ServiceFileHandler({
+            events: services.context.events,
             API: services.API,
             databaseFileAccess: databaseFileAccess,
             conflict: services.conflict,
@@ -101,6 +103,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             storageAccess: storageAccess,
         });
         const rebuilder = new ServiceRebuilder({
+            events: services.context.events,
             API: services.API,
             database: services.database,
             appLifecycle: services.appLifecycle,
@@ -205,7 +208,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     override onload() {
         void this._startUp();
     }
-    override onunload() {
+    override onunload(): void {
         return void this.core.services.control.onUnload();
     }
 }

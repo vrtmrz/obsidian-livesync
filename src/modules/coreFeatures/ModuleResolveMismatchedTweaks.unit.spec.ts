@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type RemoteDBSettings, type TweakValues } from "@lib/common/types";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type RemoteDBSettings, type TweakValues } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {

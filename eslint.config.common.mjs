@@ -112,7 +112,6 @@ export const ImportAliasRules = (base) => ({
             aliasForSubpaths: true,
             alias: {
                 "@": `${base}/src`,
-                "@lib": `${base}/src/lib/src`,
             },
         },
     ],
