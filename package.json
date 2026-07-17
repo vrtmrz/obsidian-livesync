@@ -20,6 +20,7 @@
         "pretty": "npm run prettyNoWrite -- --write --log-level error",
         "prettyCheck": "npm run prettyNoWrite -- --check",
         "prettyNoWrite": "prettier --config ./.prettierrc.mjs \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
+        "precheck:compatibility": "npm run build",
         "check:compatibility": "node utils/check-compatibility.js --file main.js --ios 15",
         "check": "npm run tsc-check && npm run tsc-check:apps && npm run lint && npm run lint:community -- --quiet && npm run svelte-check && npm run check:compatibility",
         "unittest": "deno test -A --no-check --coverage=cov_profile  --v8-flags=--expose-gc  --trace-leaks  ./src/",
@@ -168,6 +169,14 @@
         "octagonal-wheels": "^0.1.51",
         "qrcode-generator": "^1.4.4",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
+    },
+    "overrides": {
+        "pouchdb-core": {
+            "uuid": "11.1.1"
+        },
+        "pouchdb-utils": {
+            "uuid": "11.1.1"
+        }
     },
     "workspaces": [
         "src/apps/cli",

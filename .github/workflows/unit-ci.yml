@@ -91,16 +91,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect LiveSync-owned integration tests
+        id: integration_tests
+        shell: bash
+        run: |
+          git ls-files -- ':(glob)**/*.integration.spec.ts' ':(glob)**/*.integration.test.ts' > "$RUNNER_TEMP/livesync-integration-tests.txt"
+          if [[ -s "$RUNNER_TEMP/livesync-integration-tests.txt" ]]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Record delegated integration coverage
+        if: ${{ steps.integration_tests.outputs.present != 'true' }}
+        run: echo 'No LiveSync-owned integration tests are present. Commonlib integration tests run in the Commonlib package CI.' >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup Node.js
+        if: ${{ steps.integration_tests.outputs.present == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: '24.x'
           cache: 'npm'
 
       - name: Install dependencies
+        if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: npm ci
 
       - name: Create environment configuration files
+        if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: |
           cat <<EOF > .env
           BUILD_MODE=dev
@@ -118,16 +136,19 @@ jobs:
           EOF
 
       - name: Start CouchDB container
+        if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: npm run test:docker-couchdb:start
 
       - name: Start MinIO container
+        if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: npm run test:docker-s3:start
 
       - name: Run integration tests
+        if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: npm run test:integration
 
       - name: Stop containers
-        if: always()
+        if: ${{ always() && steps.integration_tests.outputs.present == 'true' }}
         run: |
           npm run test:docker-couchdb:stop || true
           npm run test:docker-s3:stop || true
