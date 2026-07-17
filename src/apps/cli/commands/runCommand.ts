@@ -11,7 +11,10 @@ import {
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { activateRemoteConfiguration, createRemoteConfigurationId } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import {
+    activateRemoteConfiguration,
+    createRemoteConfigurationId,
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
@@ -22,7 +25,7 @@ import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFu
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
-import { writeStderrLine, writeStdoutLine } from "../cliOutput";
+import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");

@@ -1,6 +1,8 @@
 {
     "tasks": {
-        "test": "deno test --env-file=.test.env -A --no-check test-*.ts",
+        "test": "deno task test:ci",
+        "test:ci": "deno run -A --no-check run-ci-suite.ts",
+        "test:p2p:compose": "deno run -A --no-check run-compose-p2p.ts",
         "test:local": "deno test --env-file=.test.env -A --no-check test-setup-put-cat.ts test-mirror.ts test-daemon.ts",
         "test:daemon": "deno test --env-file=.test.env -A --no-check test-daemon.ts",
         "test:decoupled-vault": "deno test --env-file=.test.env -A --no-check test-decoupled-vault.ts",

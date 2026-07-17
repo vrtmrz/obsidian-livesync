@@ -980,6 +980,10 @@ export function parseYaml(s: string) {
 export function getLanguage() {
     return "en";
 }
+/** The mock does not implement APIs gated by an Obsidian application version. */
+export function requireApiVersion(_version: string): boolean {
+    return false;
+}
 export function setIcon(el: HTMLElement, icon: string) {}
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)));

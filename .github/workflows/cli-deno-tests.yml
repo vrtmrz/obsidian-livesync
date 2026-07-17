@@ -25,8 +25,6 @@ on:
         type: choice
         options:
           - test:ci
-          - test:p2p
-          - test:all
           - test:local
           - test:e2e-matrix
         default: test:ci
@@ -59,12 +57,6 @@ jobs:
           case "$SELECTED_TASK" in
             test:ci)
               TASK_MATRIX='["test:setup-put-cat","test:mirror","test:daemon","test:push-pull","test:decoupled-vault","test:sync-two-local","test:sync-locked-remote","test:remote-commands","test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
-              ;;
-            test:p2p)
-              TASK_MATRIX='["test:p2p-host","test:p2p-peers","test:p2p-sync","test:p2p-three-nodes","test:p2p-upload-download"]'
-              ;;
-            test:all)
-              TASK_MATRIX='["test:setup-put-cat","test:mirror","test:daemon","test:push-pull","test:decoupled-vault","test:sync-two-local","test:sync-locked-remote","test:remote-commands","test:p2p-host","test:p2p-peers","test:p2p-sync","test:p2p-three-nodes","test:p2p-upload-download","test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
               ;;
             test:local)
               TASK_MATRIX='["test:setup-put-cat","test:mirror","test:daemon"]'
