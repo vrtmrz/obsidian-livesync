@@ -10,9 +10,7 @@ export type BenchmarkVerificationResult = {
 };
 
 function toHex(bytes: ArrayBuffer): string {
-    return [...new Uint8Array(bytes)]
-        .map((value) => value.toString(16).padStart(2, "0"))
-        .join("");
+    return [...new Uint8Array(bytes)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
@@ -23,7 +21,7 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 
 export function parseBenchmarkVerificationMode(
     raw: string | undefined,
-    fallback: BenchmarkVerificationMode = "sample",
+    fallback: BenchmarkVerificationMode = "sample"
 ): BenchmarkVerificationMode {
     const value = raw?.trim().toLowerCase();
     if (!value) return fallback;
@@ -31,10 +29,7 @@ export function parseBenchmarkVerificationMode(
     throw new Error(`BENCH_VERIFY_MODE must be 'all' or 'sample', got '${raw}'`);
 }
 
-export function selectVerificationEntries(
-    entries: DatasetEntry[],
-    mode: BenchmarkVerificationMode,
-): DatasetEntry[] {
+export function selectVerificationEntries(entries: DatasetEntry[], mode: BenchmarkVerificationMode): DatasetEntry[] {
     if (mode === "all" || entries.length === 0) return [...entries];
 
     const md = entries.find((entry) => entry.kind === "md");
@@ -48,15 +43,11 @@ export function selectVerificationEntries(
     return [...selected.values()];
 }
 
-export async function computeDatasetDigestSha256(
-    entries: DatasetEntry[],
-): Promise<string> {
+export async function computeDatasetDigestSha256(entries: DatasetEntry[]): Promise<string> {
     const manifest: string[] = [];
     for (const entry of entries) {
         const contentDigest = await sha256(await Deno.readFile(entry.absolutePath));
-        manifest.push(
-            `${entry.kind}\t${entry.relativePath}\t${entry.size}\t${contentDigest}`,
-        );
+        manifest.push(`${entry.kind}\t${entry.relativePath}\t${entry.size}\t${contentDigest}`);
     }
     return await sha256(new TextEncoder().encode(manifest.join("\n")));
 }
@@ -64,7 +55,7 @@ export async function computeDatasetDigestSha256(
 export async function verifyBenchmarkDataset(
     entries: DatasetEntry[],
     mode: BenchmarkVerificationMode,
-    verifyEntry: (entry: DatasetEntry) => Promise<void>,
+    verifyEntry: (entry: DatasetEntry) => Promise<void>
 ): Promise<BenchmarkVerificationResult> {
     const selected = selectVerificationEntries(entries, mode);
     for (const entry of selected) {

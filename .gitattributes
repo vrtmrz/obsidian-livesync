@@ -13,6 +13,11 @@
 *.mjs text eol=lf
 *.css text eol=lf
 
+# Extensionless text files
+.gitignore text eol=lf
+.dockerignore text eol=lf
+Dockerfile text eol=lf
+
 # Binary files — no line ending conversion
 *.png binary
 *.jpg binary
@@ -21,4 +26,3 @@
 *.ico binary
 *.woff2 binary
 *.woff binary
-*.sh text eol=lf

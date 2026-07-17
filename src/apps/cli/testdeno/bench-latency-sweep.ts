@@ -65,9 +65,7 @@ async function runBenchmark(options: {
     repeatIndex: number;
     repeatCount: number;
 }): Promise<Record<string, unknown>> {
-    const suffix = options.repeatCount > 1
-        ? `-r${String(options.repeatIndex).padStart(2, "0")}`
-        : "";
+    const suffix = options.repeatCount > 1 ? `-r${String(options.repeatIndex).padStart(2, "0")}` : "";
     const resultPath = `${options.outputDir}/${options.name}${suffix}.json`;
     const env = {
         ...Deno.env.toObject(),
@@ -156,8 +154,7 @@ async function main(): Promise<void> {
     const summary = {
         generatedAt: new Date().toISOString(),
         outputDir,
-        note:
-            "This sweep applies half of each requested CouchDB RTT before forwarding requests and half before returning responses. It is not a full netem model of jitter, loss, MTU, bandwidth, or VPN encapsulation.",
+        note: "This sweep applies half of each requested CouchDB RTT before forwarding requests and half before returning responses. It is not a full netem model of jitter, loss, MTU, bandwidth, or VPN encapsulation.",
         rtts,
         repeatCount,
         results,
