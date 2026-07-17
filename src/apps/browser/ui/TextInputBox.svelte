@@ -9,8 +9,12 @@
     };
     const { title, message, commit, initialText, placeholder, isPassword }: Props = $props();
 
-    let text = $state(initialText || "");
-    let type = $state(isPassword ? "password" : "text");
+    function initialTextSeed(): string {
+        return initialText ?? "";
+    }
+
+    let text = $state(initialTextSeed());
+    const type = $derived(isPassword ? "password" : "text");
     function cancel() {
         commit(false);
     }
