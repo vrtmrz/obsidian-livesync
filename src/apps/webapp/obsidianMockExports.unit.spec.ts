@@ -13,6 +13,7 @@ function parseSourceFile(filePath: string): ts.SourceFile {
 }
 
 function hasExportModifier(statement: ts.Statement): boolean {
+    if (!ts.canHaveModifiers(statement)) return false;
     return ts.getModifiers(statement)?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 }
 
