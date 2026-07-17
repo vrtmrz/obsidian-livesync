@@ -58,6 +58,10 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 > However, most importantly, we can use a server that we trust. Therefore, please set up your own server.
 > CouchDB can also be run on a Raspberry Pi (please be mindful of your server's security).
 
+### Managed CouchDB sync server on Zenith
+
+You can also use a managed CouchDB sync server for Obsidian LiveSync from [Zenith](https://zenith.hosting/host/obsidian-livesync?ref=gh). It provides the CouchDB backend that Self-hosted LiveSync connects to, without you having to set up or maintain a server.
+
 
 ## Information in the Status Bar
 
