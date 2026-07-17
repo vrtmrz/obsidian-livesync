@@ -27,6 +27,7 @@ export {
     Menu,
     request,
     getLanguage,
+    requireApiVersion,
     ButtonComponent,
     TextComponent,
     ToggleComponent,

@@ -24,46 +24,48 @@ type PurgeMultiResult = {
     documentWasRemovedCompletely: boolean;
 };
 type PurgeMultiParam = [docId: string, rev$$1: string];
+type PurgeLogDocument = {
+    purgeSeq: number;
+    purges: Array<{ docId: string; rev: string; purgeSeq: number }>;
+};
+
 function appendPurgeSeqs(db: PouchDB.Database, docs: PurgeMultiParam[]) {
-    return (
-        db
-            .get("_local/purges")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Internal method patching.
-            .then(function (doc: any) {
-                for (const [docId, rev$$1] of docs) {
-                    const purgeSeq = doc.purgeSeq + 1;
-                    doc.purges.push({
-                        docId,
-                        rev: rev$$1,
-                        purgeSeq,
-                    });
+    return db
+        .get<PurgeLogDocument>("_local/purges")
+        .then(function (doc) {
+            for (const [docId, rev$$1] of docs) {
+                const purgeSeq = doc.purgeSeq + 1;
+                doc.purges.push({
+                    docId,
+                    rev: rev$$1,
+                    purgeSeq,
+                });
+                //@ts-ignore : missing type def
+                if (doc.purges.length > db.purged_infos_limit) {
                     //@ts-ignore : missing type def
-                    if (doc.purges.length > db.purged_infos_limit) {
-                        //@ts-ignore : missing type def
-                        doc.purges.splice(0, doc.purges.length - db.purged_infos_limit);
-                    }
-                    doc.purgeSeq = purgeSeq;
+                    doc.purges.splice(0, doc.purges.length - db.purged_infos_limit);
                 }
-                return doc;
-            })
-            .catch(function (err) {
-                if (err.status !== 404) {
-                    throw err;
-                }
-                return {
-                    _id: "_local/purges",
-                    purges: docs.map(([docId, rev$$1], idx) => ({
-                        docId,
-                        rev: rev$$1,
-                        purgeSeq: idx,
-                    })),
-                    purgeSeq: docs.length,
-                };
-            })
-            .then(function (doc) {
-                return db.put(doc);
-            })
-    );
+                doc.purgeSeq = purgeSeq;
+            }
+            return doc;
+        })
+        .catch(function (err) {
+            if (err.status !== 404) {
+                throw err;
+            }
+            return {
+                _id: "_local/purges",
+                purges: docs.map(([docId, rev$$1], idx) => ({
+                    docId,
+                    rev: rev$$1,
+                    purgeSeq: idx,
+                })),
+                purgeSeq: docs.length,
+            };
+        })
+        .then(function (doc) {
+            return db.put(doc);
+        });
 }
 
 /**
@@ -88,7 +90,7 @@ PouchDB.prototype.purgeMulti = adapterFun(
             );
         }
         //@ts-ignore
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        // eslint-disable-next-line @typescript-eslint/no-this-alias -- The adapter task callbacks must retain this PouchDB instance.
         const self = this;
         const tasks = docs.map(
             (param) => () =>

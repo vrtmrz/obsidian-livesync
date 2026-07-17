@@ -1,7 +1,6 @@
 import { path, readline } from "@vrtmrz/livesync-commonlib/node";
 
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
 }
 

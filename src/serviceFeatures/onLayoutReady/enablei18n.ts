@@ -1,17 +1,17 @@
-import { getLanguage } from "@/deps";
+import { getLanguage, requireApiVersion } from "@/deps";
 import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@vrtmrz/livesync-commonlib/compat/common/rosetta";
 import { $msg, __onMissingTranslation, setLang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 
 function tryGetLanguage() {
-    try {
-        // Note: 1.8.7+ is required. but it is 18, Feb., 2025. we want to fallback on earlier versions, so we catch the error here.
-        // eslint-disable-next-line obsidianmd/no-unsupported-api
-        return getLanguage();
-    } catch (e) {
-        console.error("Failed to get Obsidian language, defaulting to 'def'", e);
-        return "en";
+    if (requireApiVersion("1.8.7")) {
+        try {
+            return getLanguage();
+        } catch (e) {
+            console.error("Failed to get Obsidian language, defaulting to 'en'", e);
+        }
     }
+    return "en";
 }
 
 export const enableI18nFeature = createServiceFeature(async ({ services: { setting, API } }) => {

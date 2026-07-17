@@ -110,7 +110,7 @@ export class ConflictResolveModal extends Modal {
         contentEl.empty();
         const diffOptionsRow = contentEl.createDiv("");
         diffOptionsRow.addClass("diff-options-row");
-        diffOptionsRow.createEl("span", { text: this.filename });
+        diffOptionsRow.createSpan({ text: this.filename });
 
         const diffNavContainer = diffOptionsRow.createDiv("");
         diffNavContainer.addClass("diff-nav");
@@ -122,7 +122,7 @@ export class ConflictResolveModal extends Modal {
             e.addClass("diff-nav-btn");
             e.addEventListener("click", () => this.navigateDiff("next"));
         });
-        this.diffNavIndicator = diffNavContainer.createEl("span", { text: "\u2014" });
+        this.diffNavIndicator = diffNavContainer.createSpan({ text: "\u2014" });
         this.diffNavIndicator.addClass("diff-nav-indicator");
 
         this.diffView = contentEl.createDiv("");

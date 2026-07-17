@@ -13,6 +13,25 @@ import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/ma
 import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
+type FileSystemObserverRecord = {
+    changedHandle?: FileSystemFileHandle | FileSystemDirectoryHandle;
+    relativePathComponents?: readonly string[];
+    type: "appeared" | "disappeared" | "modified" | "moved" | "unknown" | "errored";
+};
+
+type FileSystemObserverInstance = {
+    observe(handle: FileSystemDirectoryHandle, options: { recursive: boolean }): Promise<void>;
+    disconnect(): void;
+};
+
+type FileSystemObserverConstructor = new (
+    callback: (records: readonly FileSystemObserverRecord[]) => void | Promise<void>
+) => FileSystemObserverInstance;
+
+type GlobalWithFileSystemObserver = typeof compatGlobal & {
+    FileSystemObserver?: FileSystemObserverConstructor;
+};
+
 /**
  * FileSystem API-specific type guard adapter
  */
@@ -89,7 +108,8 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
 
             const result = await new Promise<(FileEventItem | FileEventItemSentinel)[] | null>((resolve, reject) => {
                 const request = store.get(this.snapshotKey);
-                request.onsuccess = () => resolve(request.result || null);
+                request.onsuccess = () =>
+                    resolve((request.result as (FileEventItem | FileEventItemSentinel)[] | undefined) ?? null);
                 request.onerror = () => reject(request.error);
             });
 
@@ -155,26 +175,21 @@ class FSAPIConverterAdapter implements IStorageEventConverterAdapter<FSAPIFile> 
  * FileSystem API-specific watch adapter using FileSystemObserver (Chrome only)
  */
 class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-    private observer: any = null; // FileSystemObserver type
+    private observer: FileSystemObserverInstance | null = null;
 
     constructor(private rootHandle: FileSystemDirectoryHandle) {}
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         // Use FileSystemObserver if available (Chrome 124+)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing global FileSystemObserver
-        if (typeof (compatGlobal as any).FileSystemObserver === "undefined") {
+        const FileSystemObserver = (compatGlobal as GlobalWithFileSystemObserver).FileSystemObserver;
+        if (!FileSystemObserver) {
             console.log("[FSAPIWatchAdapter] FileSystemObserver not available, file watching disabled");
             console.log("[FSAPIWatchAdapter] Consider using Chrome 124+ for real-time file watching");
             return Promise.resolve();
         }
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const FileSystemObserver = (compatGlobal as any).FileSystemObserver;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            this.observer = new FileSystemObserver(async (records: any[]) => {
+            this.observer = new FileSystemObserver(async (records) => {
                 for (const record of records) {
                     const changedHandle = record.changedHandle;
                     const relativePathComponents = record.relativePathComponents;

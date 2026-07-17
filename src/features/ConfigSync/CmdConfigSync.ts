@@ -1178,7 +1178,7 @@ export class ConfigSync extends LiveSyncCommands {
         if (this.isThisModuleEnabled() && this.core.settings.notifyPluginOrSettingUpdated) {
             if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
                 const fragment = createFragment((doc) => {
-                    doc.createEl("span", undefined, (a) => {
+                    doc.createSpan(undefined, (a) => {
                         a.appendText(`Some configuration has been arrived, Press `);
                         a.appendChild(
                             a.createEl("a", undefined, (anchor) => {

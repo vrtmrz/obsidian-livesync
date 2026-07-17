@@ -2,7 +2,12 @@ import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
-import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    DEFAULT_SETTINGS,
+    LOG_LEVEL_VERBOSE,
+    type LOG_LEVEL,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
 import {
@@ -14,7 +19,7 @@ import {
     LOG_LEVEL_NOTICE,
 } from "octagonal-wheels/common/logger";
 import { runCommand } from "./commands/runCommand";
-import { VALID_COMMANDS } from "./commands/types";
+import { isCLICommand } from "./commands/types";
 import type { CLICommand, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
@@ -185,9 +190,8 @@ export function parseArgs(): CLIOptions {
                 break;
             default: {
                 if (!databasePath) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
-                    if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
-                        command = token as CLICommand;
+                    if (command === "daemon" && isCLICommand(token)) {
+                        command = token;
                         break;
                     }
                     if (command === "init-settings") {
@@ -197,9 +201,8 @@ export function parseArgs(): CLIOptions {
                     databasePath = token;
                     break;
                 }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
-                if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
-                    command = token as CLICommand;
+                if (command === "daemon" && isCLICommand(token)) {
+                    command = token;
                     break;
                 }
                 commandArgs.push(token);

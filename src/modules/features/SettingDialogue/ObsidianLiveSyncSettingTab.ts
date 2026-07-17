@@ -736,7 +736,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             value: `${order}`,
                             cls: "sls-setting-tab",
                         } as DomElementInfo);
-                        el.createEl("div", {
+                        el.createDiv({
                             cls: "sls-setting-menu-btn",
                             text: icon,
                             title: title,

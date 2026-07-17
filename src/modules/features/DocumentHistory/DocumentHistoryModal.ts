@@ -17,6 +17,11 @@ import { isPlainText, stripPrefix } from "@vrtmrz/livesync-commonlib/compat/stri
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import {
+    DOCUMENT_HISTORY_PREFERENCE_KEYS,
+    loadDocumentHistoryPreference,
+    saveDocumentHistoryPreference,
+} from "./documentHistoryPreferences.ts";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();
@@ -99,12 +104,10 @@ export class DocumentHistoryModal extends Modal {
         if (!file && id) {
             this.file = this.services.path.id2path(id);
         }
-        // eslint-disable-next-line obsidianmd/no-unsupported-api -- loadLocalStorage is supported in Obsidian 1.7.2+
-        if (this.app.loadLocalStorage("ols-history-highlightdiff") == "1") {
+        if (loadDocumentHistoryPreference(this.app, DOCUMENT_HISTORY_PREFERENCE_KEYS.highlightDiff)) {
             this.showDiff = true;
         }
-        // eslint-disable-next-line obsidianmd/no-unsupported-api -- loadLocalStorage is supported in Obsidian 1.7.2+
-        if (this.app.loadLocalStorage("ols-history-diffonly") == "1") {
+        if (loadDocumentHistoryPreference(this.app, DOCUMENT_HISTORY_PREFERENCE_KEYS.diffOnly)) {
             this.diffOnly = true;
         }
     }
@@ -520,10 +523,10 @@ export class DocumentHistoryModal extends Modal {
             e.addEventListener("click", () => this.navigateSearch("next"));
         });
 
-        this.searchResultIndicator = searchRow.createEl("span", { text: "" });
+        this.searchResultIndicator = searchRow.createSpan({ text: "" });
         this.searchResultIndicator.addClass("history-search-result-indicator");
 
-        this.searchProgressIndicator = searchRow.createEl("span", { text: "" });
+        this.searchProgressIndicator = searchRow.createSpan({ text: "" });
         this.searchProgressIndicator.addClass("history-search-progress-indicator");
 
         const divView = contentEl.createDiv("");
@@ -554,8 +557,11 @@ export class DocumentHistoryModal extends Modal {
                 }
                 checkbox.addEventListener("input", (evt: Event) => {
                     this.showDiff = checkbox.checked;
-                    // eslint-disable-next-line obsidianmd/no-unsupported-api -- saveLocalStorage is supported in Obsidian 1.7.2+
-                    this.app.saveLocalStorage("ols-history-highlightdiff", this.showDiff == true ? "1" : null);
+                    saveDocumentHistoryPreference(
+                        this.app,
+                        DOCUMENT_HISTORY_PREFERENCE_KEYS.highlightDiff,
+                        this.showDiff
+                    );
                     this.updateDiffNavVisibility();
                     void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
                 });
@@ -570,8 +576,7 @@ export class DocumentHistoryModal extends Modal {
             }
             checkbox.addEventListener("input", (evt: Event) => {
                 this.diffOnly = checkbox.checked;
-                // eslint-disable-next-line obsidianmd/no-unsupported-api -- saveLocalStorage is supported in Obsidian 1.7.2+
-                this.app.saveLocalStorage("ols-history-diffonly", this.diffOnly == true ? "1" : null);
+                saveDocumentHistoryPreference(this.app, DOCUMENT_HISTORY_PREFERENCE_KEYS.diffOnly, this.diffOnly);
                 void scheduleOnceIfDuplicated("loadRevs", () => this.loadRevs());
             });
         });
@@ -597,7 +602,7 @@ export class DocumentHistoryModal extends Modal {
                 this.navigateDiff("next");
             });
         });
-        this.diffNavIndicator = this.diffNavContainer.createEl("span", { text: "\u2014" });
+        this.diffNavIndicator = this.diffNavContainer.createSpan({ text: "\u2014" });
         this.diffNavIndicator.addClass("diff-nav-indicator");
 
         this.info = contentEl.createDiv("");

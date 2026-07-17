@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { MenuSeparator } from "../BrowserMenu";
+    import type { MenuSeparator } from "@/apps/browser/BrowserMenu";
 
     type Props = {
         item: MenuSeparator;

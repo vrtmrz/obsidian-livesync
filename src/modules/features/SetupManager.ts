@@ -60,7 +60,7 @@ export const enum UserMode {
     /**
      * Update User Mode - for users who are updating configuration. May be `existing-user` as well, but possibly they want to treat it differently.
      */
-    // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+    // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values -- Update is a semantic alias for the unknown setup mode.
     Update = "unknown", // Alias for Unknown for better readability
 }
 

@@ -11,6 +11,11 @@ import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventMan
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 
+export interface FSAPIServiceModules extends ServiceModules {
+    vaultAccess: FileAccessFSAPI;
+    storageEventManager: StorageEventManagerFSAPI;
+}
+
 /**
  * Initialize service modules for FileSystem API webapp version
  * This is the webapp equivalent of ObsidianLiveSyncPlugin.initialiseServiceModules
@@ -24,7 +29,7 @@ export function initialiseServiceModulesFSAPI(
     rootHandle: FileSystemDirectoryHandle,
     core: LiveSyncBaseCore<ServiceContext, never>,
     services: InjectableServiceHub<ServiceContext>
-): ServiceModules {
+): FSAPIServiceModules {
     const storageAccessManager = new StorageAccessManager();
 
     // FileSystem API-specific file access
@@ -104,5 +109,7 @@ export function initialiseServiceModulesFSAPI(
         fileHandler,
         databaseFileAccess,
         storageAccess,
+        vaultAccess,
+        storageEventManager,
     };
 }

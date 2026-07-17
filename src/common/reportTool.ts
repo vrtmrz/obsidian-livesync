@@ -17,7 +17,6 @@ function redactObject(obj: Record<string, unknown>, dotted: string, redactedValu
         if (!(key in current)) {
             current[key] = {};
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         current = current[key] as Record<string, unknown>;
     }
     const lastKey = keys[keys.length - 1];

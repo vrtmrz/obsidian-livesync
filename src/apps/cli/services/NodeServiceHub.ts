@@ -20,7 +20,6 @@ import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/s
 import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableVaultService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import { HeadlessAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/headless/HeadlessAPIService";
-import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { NodeSettingService } from "./NodeSettingService";
 import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
@@ -171,7 +170,7 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             APIService: API,
         });
 
-        const serviceInstancesToInit: Required<ServiceInstances<T>> = {
+        const serviceInstancesToInit = {
             appLifecycle,
             conflict,
             database,
@@ -191,7 +190,6 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             keyValueDB: keyValueDB as unknown as KeyValueDBService<T>,
             control,
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- (Forcibly )
-        super(context, serviceInstancesToInit as any);
+        super(context, serviceInstancesToInit);
     }
 }

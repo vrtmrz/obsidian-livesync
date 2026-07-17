@@ -91,3 +91,7 @@ export const VALID_COMMANDS = new Set([
     "remote-status",
     "init-settings",
 ] as const);
+
+export function isCLICommand(value: string): value is CLICommand {
+    return (VALID_COMMANDS as ReadonlySet<string>).has(value);
+}

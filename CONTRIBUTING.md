@@ -33,6 +33,7 @@ Before submitting a pull request, you must run verification scripts locally to e
   ```bash
   npm run check
   ```
+  This also type-checks the maintained CLI and browser applications, and applies the Community directory blocker rules. Run `npm run lint:community` separately to inspect its non-blocking recommendations.
 - Run unit tests:
   ```bash
   npm run test:unit

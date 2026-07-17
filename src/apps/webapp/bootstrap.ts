@@ -5,6 +5,15 @@ import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat
 const historyStore = new VaultHistoryStore();
 let app: LiveSyncWebApp | null = null;
 
+type LiveSyncWebAppDebugApi = {
+    getApp: () => LiveSyncWebApp | null;
+    historyStore: VaultHistoryStore;
+};
+
+type LiveSyncWebAppGlobal = typeof compatGlobal & {
+    livesyncApp?: LiveSyncWebAppDebugApi;
+};
+
 function getRequiredElement<T extends HTMLElement>(id: string): T {
     const element = _activeDocument.getElementById(id);
     if (!element) {
@@ -131,8 +140,7 @@ compatGlobal.addEventListener("load", () => {
 compatGlobal.addEventListener("beforeunload", () => {
     void app?.shutdown();
 });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- patching
-(compatGlobal as any).livesyncApp = {
+(compatGlobal as LiveSyncWebAppGlobal).livesyncApp = {
     getApp: () => app,
     historyStore,
 };

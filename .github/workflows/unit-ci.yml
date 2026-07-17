@@ -17,6 +17,8 @@ on:
       - 'vitest.config*.ts'
       - 'esbuild.config.mjs'
       - 'eslint.config.mjs'
+      - 'eslint.config.common.mjs'
+      - 'eslint.community.config.mjs'
       - 'update-workspaces.mjs'
       - 'version-bump.mjs'
       - 'utils/release-*.mjs'
@@ -36,6 +38,8 @@ on:
       - 'vitest.config*.ts'
       - 'esbuild.config.mjs'
       - 'eslint.config.mjs'
+      - 'eslint.config.common.mjs'
+      - 'eslint.community.config.mjs'
       - 'update-workspaces.mjs'
       - 'version-bump.mjs'
       - 'utils/release-*.mjs'
@@ -65,6 +69,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run source checks
+        run: npm run check
 
       - name: Run unit tests suite with coverage
         run: npm run test:unit:coverage

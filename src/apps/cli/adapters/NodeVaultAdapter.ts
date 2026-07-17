@@ -31,7 +31,6 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
         const buffer = await fs.readFile(this.resolvePath(file.path));
         // Same correction as read() — ensure stat.size matches actual byte length.
         file.stat.size = buffer.length;
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike
         return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
     }
 

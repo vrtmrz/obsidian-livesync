@@ -4,20 +4,16 @@ import { EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
 import { compatGlobal, type CompatIntervalHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 class AutoClosableModal extends Modal {
-    _closeByUnload() {
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+    _closeByUnload = () => {
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
         this.close();
-    }
+    };
 
     constructor(app: App) {
         super(app);
-        this._closeByUnload = this._closeByUnload.bind(this);
-        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.once(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
     override onClose() {
-        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
 }

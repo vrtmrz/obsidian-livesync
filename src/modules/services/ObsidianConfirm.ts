@@ -71,7 +71,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
     askInPopup(key: string, dialogText: string, anchorCallback: (anchor: HTMLAnchorElement) => void) {
         const fragment = createFragment((doc) => {
             const [beforeText, afterText] = dialogText.split("{HERE}", 2);
-            doc.createEl("span", undefined, (a) => {
+            doc.createSpan(undefined, (a) => {
                 a.appendText(beforeText);
                 a.appendChild(
                     a.createEl("a", undefined, (anchor) => {

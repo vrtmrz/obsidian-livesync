@@ -6,7 +6,7 @@
 import type { BrowserServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/BrowserServices";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
-import { initialiseServiceModulesFSAPI } from "./serviceModules/FSAPIServiceModules";
+import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { BrowserAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/BrowserAPIService";
 import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
@@ -53,6 +53,7 @@ class LiveSyncWebApp {
     private rootHandle: FileSystemDirectoryHandle;
     private core: LiveSyncBaseCore<ServiceContext, never> | null = null;
     private serviceHub: BrowserServiceHub<ServiceContext> | null = null;
+    private platformServiceModules: FSAPIServiceModules | null = null;
 
     constructor(rootHandle: FileSystemDirectoryHandle) {
         this.rootHandle = rootHandle;
@@ -113,7 +114,9 @@ class LiveSyncWebApp {
         this.core = new LiveSyncBaseCore<ServiceContext, never>(
             this.serviceHub,
             (core, serviceHub) => {
-                return initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
+                const serviceModules = initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
+                this.platformServiceModules = serviceModules;
+                return serviceModules;
             },
             (core) => [
                 // new ModuleObsidianEvents(this, core),
@@ -208,9 +211,8 @@ class LiveSyncWebApp {
             }
 
             // Scan the directory to populate file cache
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const fileAccess = (this.core as any)._serviceModules?.storageAccess?.vaultAccess;
-            if (fileAccess?.fsapiAdapter) {
+            const fileAccess = this.platformServiceModules?.vaultAccess;
+            if (fileAccess) {
                 console.log("[Scanning] Scanning vault directory...");
                 await fileAccess.fsapiAdapter.scanDirectory();
                 const files = await fileAccess.fsapiAdapter.getFiles();
@@ -227,13 +229,13 @@ class LiveSyncWebApp {
             console.log("[Shutdown] Shutting down...");
 
             // Stop file watching
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const storageEventManager = (this.core as any)._serviceModules?.storageAccess?.storageEventManager;
-            if (storageEventManager?.cleanup) {
+            const storageEventManager = this.platformServiceModules?.storageEventManager;
+            if (storageEventManager) {
                 await storageEventManager.cleanup();
             }
 
             await this.core.services.control.onUnload();
+            this.platformServiceModules = null;
             console.log("[Shutdown] Complete");
         }
     }
