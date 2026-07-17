@@ -87,7 +87,10 @@ export const storageAdapterContractCases: readonly StorageAdapterContractCase[] 
         name: "keeps operations inside the configured root",
         async run(adapter) {
             await assertRejects(() => adapter.exists("../outside"), "parent traversal should be rejected");
-            await assertRejects(() => adapter.write("nested/../outside", "content"), "nested traversal should be rejected");
+            await assertRejects(
+                () => adapter.write("nested/../outside", "content"),
+                "nested traversal should be rejected"
+            );
             await assertRejects(() => adapter.read("/absolute"), "absolute paths should be rejected");
             await assertRejects(() => adapter.read("C:\\absolute"), "drive-qualified paths should be rejected");
             await assertRejects(() => adapter.read("nested\\outside"), "backslash-separated paths should be rejected");
@@ -101,8 +104,14 @@ export const storageAdapterContractCases: readonly StorageAdapterContractCase[] 
             assertEqual(await adapter.exists(""), true, "the configured root should exist");
             assertEqual((await adapter.stat(""))?.type, "folder", "the configured root should be a folder");
             assertEqual(await adapter.list(""), { files: [], folders: [] }, "the configured root should be listable");
-            await assertRejects(() => adapter.write("", "content"), "writing over the configured root should be rejected");
-            await assertRejects(() => adapter.append("", "content"), "appending to the configured root should be rejected");
+            await assertRejects(
+                () => adapter.write("", "content"),
+                "writing over the configured root should be rejected"
+            );
+            await assertRejects(
+                () => adapter.append("", "content"),
+                "appending to the configured root should be rejected"
+            );
         },
     },
 ];

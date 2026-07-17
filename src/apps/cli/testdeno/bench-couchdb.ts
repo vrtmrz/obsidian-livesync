@@ -1,17 +1,8 @@
 import { TempDir } from "./helpers/temp.ts";
-import {
-    applyRemoteSyncSettings,
-    initSettingsFile,
-} from "./helpers/settings.ts";
+import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts";
 import { assertFilesEqual, runCliOrFail } from "./helpers/cli.ts";
-import {
-    createCouchdbDatabase,
-    startCouchdb,
-    stopCouchdb,
-} from "./helpers/docker.ts";
-import {
-    createDeterministicDataset,
-} from "./helpers/dataset.ts";
+import { createCouchdbDatabase, startCouchdb, stopCouchdb } from "./helpers/docker.ts";
+import { createDeterministicDataset } from "./helpers/dataset.ts";
 import {
     type BenchmarkVerificationMode,
     parseBenchmarkVerificationMode,
@@ -81,10 +72,7 @@ function readEnvStringArray(name: string, fallback: string[]): string[] {
 
     try {
         const parsed = JSON.parse(raw);
-        if (
-            Array.isArray(parsed) &&
-            parsed.every((item) => typeof item === "string")
-        ) {
+        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
             return parsed;
         }
     } catch {
@@ -119,60 +107,34 @@ function formatBytes(value: number): string {
 function buildConfig(): BenchmarkConfig {
     return {
         caseName: readEnvString("BENCH_CASE", "couchdb-baseline"),
-        couchdbBackendUri: readEnvString(
-            "BENCH_COUCHDB_BACKEND_URI",
-            "http://127.0.0.1:5989",
-        ),
-        couchdbProxyUri: readEnvString(
-            "BENCH_COUCHDB_URI",
-            "http://127.0.0.1:15989",
-        ),
-        couchdbUser: readEnvString(
-            "BENCH_COUCHDB_USER",
-            readEnvString("username", "admin"),
-        ),
-        couchdbPassword: readEnvString(
-            "BENCH_COUCHDB_PASSWORD",
-            readEnvString("password", "password"),
-        ),
-        couchdbDbname: readEnvString(
-            "BENCH_COUCHDB_DBNAME",
-            `bench-couchdb-${Date.now()}`,
-        ),
+        couchdbBackendUri: readEnvString("BENCH_COUCHDB_BACKEND_URI", "http://127.0.0.1:5989"),
+        couchdbProxyUri: readEnvString("BENCH_COUCHDB_URI", "http://127.0.0.1:15989"),
+        couchdbUser: readEnvString("BENCH_COUCHDB_USER", readEnvString("username", "admin")),
+        couchdbPassword: readEnvString("BENCH_COUCHDB_PASSWORD", readEnvString("password", "password")),
+        couchdbDbname: readEnvString("BENCH_COUCHDB_DBNAME", `bench-couchdb-${Date.now()}`),
         datasetDirName: readEnvString("BENCH_DATASET_DIR", "bench-dataset"),
         datasetSeed: readEnvString("BENCH_SEED", "livesync-benchmark-seed"),
         mdFileCount: Math.floor(readEnvNumber("BENCH_MD_FILE_COUNT", 1500)),
-        mdMinSizeBytes: Math.floor(
-            readEnvNumber("BENCH_MD_MIN_SIZE_BYTES", 1024),
-        ),
-        mdMaxSizeBytes: Math.floor(
-            readEnvNumber("BENCH_MD_MAX_SIZE_BYTES", 20 * 1024),
-        ),
+        mdMinSizeBytes: Math.floor(readEnvNumber("BENCH_MD_MIN_SIZE_BYTES", 1024)),
+        mdMaxSizeBytes: Math.floor(readEnvNumber("BENCH_MD_MAX_SIZE_BYTES", 20 * 1024)),
         binFileCount: Math.floor(readEnvNumber("BENCH_BIN_FILE_COUNT", 500)),
-        binSizeBytes: Math.floor(
-            readEnvNumber("BENCH_BIN_SIZE_BYTES", 100 * 1024),
-        ),
+        binSizeBytes: Math.floor(readEnvNumber("BENCH_BIN_SIZE_BYTES", 100 * 1024)),
         syncTimeoutSeconds: readEnvNumber("BENCH_SYNC_TIMEOUT", 240),
         requestedRttMs: Math.floor(readEnvNumber("BENCH_COUCHDB_RTT_MS", 50)),
         passphrase: readEnvString("BENCH_PASSPHRASE", `bench-${Date.now()}`),
         encrypt: readEnvBool("BENCH_ENCRYPT", true),
         managedCouchdb: readEnvBool("BENCH_COUCHDB_MANAGED", true),
         simulationTier: readEnvString("BENCH_SIMULATION_TIER", "1"),
-        networkProfile: readEnvString(
-            "BENCH_NETWORK_PROFILE",
-            "http-latency-proxy",
-        ),
+        networkProfile: readEnvString("BENCH_NETWORK_PROFILE", "http-latency-proxy"),
         networkModel: readEnvString("BENCH_NETWORK_MODEL", "local-http-proxy"),
         measurementScope: readEnvString(
             "BENCH_MEASUREMENT_SCOPE",
-            "Two one-shot synchronisation phases through a CouchDB-compatible remote-store path.",
+            "Two one-shot synchronisation phases through a CouchDB-compatible remote-store path."
         ),
         limitations: readEnvStringArray("BENCH_LIMITATIONS_JSON", [
             "This benchmark result is scoped to the configured dataset, remote store, and network model.",
         ]),
-        verificationMode: parseBenchmarkVerificationMode(
-            Deno.env.get("BENCH_VERIFY_MODE"),
-        ),
+        verificationMode: parseBenchmarkVerificationMode(Deno.env.get("BENCH_VERIFY_MODE")),
         repeatIndex: Math.floor(readEnvNumber("BENCH_REPEAT_INDEX", 1)),
         repeatCount: Math.floor(readEnvNumber("BENCH_REPEAT_COUNT", 1)),
     };
@@ -193,20 +155,17 @@ export type CouchdbProxyHandle = {
     directionalDelayMs: number;
 };
 
-export function startCouchdbProxy(
-    options: {
-        backendUri: string;
-        proxyUri: string;
-        requestedRttMs: number;
-        delay?: (milliseconds: number) => Promise<void>;
-    },
-): CouchdbProxyHandle {
+export function startCouchdbProxy(options: {
+    backendUri: string;
+    proxyUri: string;
+    requestedRttMs: number;
+    delay?: (milliseconds: number) => Promise<void>;
+}): CouchdbProxyHandle {
     const backend = new URL(options.backendUri);
     const proxy = new URL(options.proxyUri);
     const halfDelayMs = options.requestedRttMs / 2;
-    const delay = options.delay ??
-        ((milliseconds: number) =>
-            new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+    const delay =
+        options.delay ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
     const controller = new AbortController();
 
     const listener = Deno.serve(
@@ -256,14 +215,13 @@ export function startCouchdbProxy(
                 statusText: upstream.statusText,
                 headers: responseHeaders,
             });
-        },
+        }
     );
 
     return {
         applied: true,
         directionalDelayMs: halfDelayMs,
-        note:
-            `local reverse proxy on ${proxy.origin} with ${halfDelayMs}ms request-path and ${halfDelayMs}ms response-path delay`,
+        note: `local reverse proxy on ${proxy.origin} with ${halfDelayMs}ms request-path and ${halfDelayMs}ms response-path delay`,
         stop: async () => {
             controller.abort();
             await listener.finished.catch(() => {});
@@ -287,21 +245,14 @@ async function main(): Promise<void> {
     await initSettingsFile(settingsB);
 
     if (config.managedCouchdb) {
-        await startCouchdb(
-            config.couchdbBackendUri,
-            config.couchdbUser,
-            config.couchdbPassword,
-            config.couchdbDbname,
-        );
+        await startCouchdb(config.couchdbBackendUri, config.couchdbUser, config.couchdbPassword, config.couchdbDbname);
     } else {
-        console.log(
-            `[INFO] using externally managed CouchDB: ${config.couchdbBackendUri}`,
-        );
+        console.log(`[INFO] using externally managed CouchDB: ${config.couchdbBackendUri}`);
         await createCouchdbDatabase(
             config.couchdbBackendUri,
             config.couchdbUser,
             config.couchdbPassword,
-            config.couchdbDbname,
+            config.couchdbDbname
         );
     }
 
@@ -356,28 +307,15 @@ async function main(): Promise<void> {
         await runCliOrFail(vaultB, "--settings", settingsB, "sync");
         const syncBElapsed = nowMs() - syncBStart;
 
-        const verification = await verifyBenchmarkDataset(
-            seedFiles.entries,
-            config.verificationMode,
-            async (entry) => {
-                const pulledPath = workDir.join(
-                    `pulled-${entry.relativePath.split("/").join("_")}`,
-                );
-                await runCliOrFail(
-                    vaultB,
-                    "--settings",
-                    settingsB,
-                    "pull",
-                    entry.relativePath,
-                    pulledPath,
-                );
-                await assertFilesEqual(
-                    entry.absolutePath,
-                    pulledPath,
-                    `file mismatch after CouchDB sync: ${entry.relativePath}`,
-                );
-            },
-        );
+        const verification = await verifyBenchmarkDataset(seedFiles.entries, config.verificationMode, async (entry) => {
+            const pulledPath = workDir.join(`pulled-${entry.relativePath.split("/").join("_")}`);
+            await runCliOrFail(vaultB, "--settings", settingsB, "pull", entry.relativePath, pulledPath);
+            await assertFilesEqual(
+                entry.absolutePath,
+                pulledPath,
+                `file mismatch after CouchDB sync: ${entry.relativePath}`
+            );
+        });
 
         const result = {
             caseName: config.caseName,
@@ -409,40 +347,24 @@ async function main(): Promise<void> {
             mirrorElapsedMs: Number(mirrorElapsed.toFixed(1)),
             syncAElapsedMs: Number(syncAElapsed.toFixed(1)),
             syncBElapsedMs: Number(syncBElapsed.toFixed(1)),
-            totalSyncElapsedMs: Number(
-                (syncAElapsed + syncBElapsed).toFixed(1),
-            ),
-            throughputBytesPerSec: Number(
-                (seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000))
-                    .toFixed(
-                        2,
-                    ),
-            ),
+            totalSyncElapsedMs: Number((syncAElapsed + syncBElapsed).toFixed(1)),
+            throughputBytesPerSec: Number((seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000)).toFixed(2)),
             throughputMiBPerSec: Number(
-                (seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000) /
-                    1024 /
-                    1024).toFixed(4),
+                (seedFiles.totalBytes / ((syncAElapsed + syncBElapsed) / 1000) / 1024 / 1024).toFixed(4)
             ),
         };
 
         if (resultPath) {
-            await Deno.writeTextFile(
-                resultPath,
-                JSON.stringify(result, null, 2),
-            );
+            await Deno.writeTextFile(resultPath, JSON.stringify(result, null, 2));
         }
 
         console.log(JSON.stringify(result, null, 2));
         console.error(
-            `[Benchmark] couchdb mirrored ${seedFiles.totalFiles} files (${
-                formatBytes(seedFiles.totalBytes)
-            }) in ${
-                formatMs(
-                    mirrorElapsed,
-                )
-            }, synced in ${
-                formatMs(syncAElapsed + syncBElapsed)
-            } (${result.throughputBytesPerSec} B/s, ${result.throughputMiBPerSec} MiB/s)`,
+            `[Benchmark] couchdb mirrored ${seedFiles.totalFiles} files (${formatBytes(
+                seedFiles.totalBytes
+            )}) in ${formatMs(mirrorElapsed)}, synced in ${formatMs(
+                syncAElapsed + syncBElapsed
+            )} (${result.throughputBytesPerSec} B/s, ${result.throughputMiBPerSec} MiB/s)`
         );
     } finally {
         await proxy.stop();
