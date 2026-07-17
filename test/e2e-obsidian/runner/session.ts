@@ -8,6 +8,7 @@ export type StartObsidianLiveSyncSessionOptions = {
     cliBinary: string;
     vault: TemporaryVault;
     startupGraceMs?: number;
+    pluginData?: Record<string, unknown>;
 };
 
 export async function startObsidianLiveSyncSession(
@@ -20,5 +21,6 @@ export async function startObsidianLiveSyncSession(
         pluginId: "obsidian-livesync",
         artifactRoot: process.cwd(),
         startupGraceMs: options.startupGraceMs,
+        pluginData: options.pluginData,
     });
 }

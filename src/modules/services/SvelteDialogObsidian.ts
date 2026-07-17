@@ -23,6 +23,11 @@ export class SvelteDialogObsidian<
         super(context.app);
         this.initDialog(context, dependents, component, initialData);
     }
+
+    override onOpen(): void {
+        super.onOpen();
+        this.contentEl.closest(".modal-container")?.classList.add("livesync-svelte-dialog-container");
+    }
 }
 
 export class ObsidianSvelteDialogManager<T extends ObsidianServiceContext> extends SvelteDialogManagerBase<T> {

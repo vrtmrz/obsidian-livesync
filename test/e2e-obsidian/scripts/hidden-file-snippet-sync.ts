@@ -21,7 +21,7 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { clickJsonResolveOption, obsidianRemoteDebuggingPort } from "../runner/ui.ts";
+import { captureJsonResolveDialogue, clickJsonResolveOption, obsidianRemoteDebuggingPort } from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
@@ -431,6 +431,7 @@ async function runJsonManualConflictResolution(context: RunnerContext, vault: Te
     const session = await startConfiguredSession(context, vault);
     await createHiddenJsonConflict(context, session, vault, manualMergeJsonPath, base, left, right);
     await openHiddenJsonResolveModal(context.cliBinary, session.cliEnv, manualMergeJsonPath);
+    const screenshotPath = await captureJsonResolveDialogue(obsidianRemoteDebuggingPort());
     await clickJsonResolveOption(obsidianRemoteDebuggingPort(), "AB");
 
     const merged = await waitForPathContent(vault.path, manualMergeJsonPath, (content) =>
@@ -442,7 +443,7 @@ async function runJsonManualConflictResolution(context: RunnerContext, vault: Te
     assertEqual(parsed.shared, "right", "Manual JSON conflict resolution did not apply the selected merged result.");
     assertEqual(parsed.fromA, true, "Manual JSON conflict resolution lost the first-side value.");
     assertEqual(parsed.fromB, true, "Manual JSON conflict resolution lost the second-side value.");
-    console.log("Hidden JSON conflict modal applied the selected merged result.");
+    console.log(`Hidden JSON conflict modal applied the selected merged result. Screenshot: ${screenshotPath}`);
 }
 
 async function runTargetMismatch(
