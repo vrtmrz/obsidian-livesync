@@ -14,6 +14,7 @@ import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { fsPromises as fs, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 
 /**
  * CLI-specific type guard adapter
@@ -45,7 +46,10 @@ class CLITypeGuardAdapter implements IStorageEventTypeGuardAdapter<NodeFile, Nod
 class CLIPersistenceAdapter implements IStorageEventPersistenceAdapter {
     private snapshotPath: string;
 
-    constructor(basePath: string) {
+    constructor(
+        basePath: string,
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+    ) {
         this.snapshotPath = path.join(basePath, ".livesync-snapshot.json");
     }
 
@@ -53,14 +57,14 @@ class CLIPersistenceAdapter implements IStorageEventPersistenceAdapter {
         try {
             await fs.writeFile(this.snapshotPath, JSON.stringify(snapshot, null, 2), "utf-8");
         } catch (error) {
-            console.error("Failed to save snapshot:", error);
+            this.reportDiagnostic("Failed to save snapshot:", error);
         }
     }
 
     async loadSnapshot(): Promise<(FileEventItem | FileEventItemSentinel)[] | null> {
         try {
             const content = await fs.readFile(this.snapshotPath, "utf-8");
-            return JSON.parse(content);
+            return JSON.parse(content) as (FileEventItem | FileEventItemSentinel)[];
         } catch {
             return null;
         }
@@ -109,7 +113,8 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
     constructor(
         private basePath: string,
         private ignoreRules?: IgnoreRules,
-        private watchEnabled: boolean = false
+        private watchEnabled: boolean = false,
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined
     ) {}
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
@@ -180,8 +185,8 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         });
 
         watcher.on("error", (err) => {
-            console.error("[CLIWatchAdapter] Fatal watcher error — file watching stopped:", err);
-            console.error("[CLIWatchAdapter] Exiting for systemd restart.");
+            this.reportDiagnostic("[CLIWatchAdapter] Fatal watcher error — file watching stopped:", err);
+            this.reportDiagnostic("[CLIWatchAdapter] Exiting for systemd restart.");
             void watcher.close();
             this._watcher = undefined;
             // Use exit(1) rather than SIGTERM so systemd Restart=on-failure engages.
@@ -210,10 +215,15 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
     readonly status: CLIStatusAdapter;
     readonly converter: CLIConverterAdapter;
 
-    constructor(basePath: string, ignoreRules?: IgnoreRules, watchEnabled: boolean = false) {
+    constructor(
+        basePath: string,
+        ignoreRules?: IgnoreRules,
+        watchEnabled: boolean = false,
+        reportDiagnostic: CliDiagnosticReporter = () => undefined
+    ) {
         this.typeGuard = new CLITypeGuardAdapter();
-        this.persistence = new CLIPersistenceAdapter(basePath);
-        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled);
+        this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic);
+        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic);
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();
     }

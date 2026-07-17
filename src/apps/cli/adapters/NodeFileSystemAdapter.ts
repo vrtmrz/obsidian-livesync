@@ -7,6 +7,7 @@ import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 
 /**
  * Complete file system adapter implementation for Node.js
@@ -20,7 +21,10 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
 
     private fileCache = new Map<string, NodeFile>();
 
-    constructor(private basePath: string) {
+    constructor(
+        private basePath: string,
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+    ) {
         this.path = new NodePathAdapter();
         this.typeGuard = new NodeTypeGuardAdapter();
         this.conversion = new NodeConversionAdapter();
@@ -33,7 +37,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     private normalisePath(p: FilePath | string): string {
-        return this.path.normalisePath(p as string);
+        return this.path.normalisePath(p);
     }
 
     private async hasExactPathCase(pathStr: string): Promise<boolean> {
@@ -169,7 +173,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             }
         } catch (error) {
             // Directory doesn't exist or is not readable
-            console.error(`Error scanning directory ${fullPath}:`, error);
+            this.reportDiagnostic(`Error scanning directory ${fullPath}:`, error);
         }
     }
 }

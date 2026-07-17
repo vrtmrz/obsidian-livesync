@@ -3,6 +3,7 @@ import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
+import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 // import type { IMinimumLiveSyncCommands } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 
 export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEventManagerAdapter> {
@@ -15,7 +16,12 @@ export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEv
         ignoreRules?: IgnoreRules,
         watchEnabled?: boolean
     ) {
-        const adapter = new CLIStorageEventManagerAdapter(basePath, ignoreRules, watchEnabled);
+        const adapter = new CLIStorageEventManagerAdapter(basePath, ignoreRules, watchEnabled, (message, detail) => {
+            dependencies.APIService.addLog(message, LOG_LEVEL_NOTICE);
+            if (detail !== undefined) {
+                dependencies.APIService.addLog(detail, LOG_LEVEL_NOTICE);
+            }
+        });
         super(adapter, dependencies);
         this.core = core;
     }

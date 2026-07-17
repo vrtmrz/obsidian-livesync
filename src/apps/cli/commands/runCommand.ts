@@ -14,7 +14,7 @@ import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common
 import { activateRemoteConfiguration, createRemoteConfigurationId } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
-import { promptForPassphrase, readStdinAsUtf8, toArrayBuffer, toDatabaseRelativePath } from "./utils";
+import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
@@ -22,6 +22,7 @@ import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFu
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import { writeStderrLine, writeStdoutLine } from "../cliOutput";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -31,9 +32,10 @@ async function verifyRemoteState(
     core: CLICommandContext["core"],
     settings: ObsidianLiveSyncSettings
 ): Promise<boolean> {
+    const { standardIo } = core.services.context;
     const replicator = core.services.replicator.getActiveReplicator();
     if (!replicator) {
-        process.stderr.write("[Verification] No active replicator found\n");
+        standardIo.writeStderr("[Verification] No active replicator found\n");
         return false;
     }
 
@@ -50,7 +52,7 @@ async function verifyRemoteState(
                 true
             );
             if (typeof dbRet === "string") {
-                process.stderr.write(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
+                standardIo.writeStderr(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
                 return false;
             }
             milestone = await dbRet.db.get(MILESTONE_DOCID);
@@ -61,29 +63,30 @@ async function verifyRemoteState(
         if (milestone) {
             const isLocked = !!milestone.locked;
             const isAccepted = !!milestone.accepted_nodes?.includes(replicator.nodeid);
-            process.stderr.write(`[Verification] Remote Database: ${isLocked ? "LOCKED" : "UNLOCKED"}\n`);
-            process.stderr.write(
+            standardIo.writeStderr(`[Verification] Remote Database: ${isLocked ? "LOCKED" : "UNLOCKED"}\n`);
+            standardIo.writeStderr(
                 `[Verification] Current Device Node ID (${replicator.nodeid}): ${isAccepted ? "ACCEPTED" : "NOT ACCEPTED"}\n`
             );
             return true;
         } else {
-            process.stderr.write("[Verification] Milestone document not found on remote.\n");
+            standardIo.writeStderr("[Verification] Milestone document not found on remote.\n");
             return false;
         }
     } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        process.stderr.write(`[Verification] Failed to fetch milestone document: ${message}\n`);
+        standardIo.writeStderr(`[Verification] Failed to fetch milestone document: ${message}\n`);
         return false;
     }
 }
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
     const { databasePath, core, settingsPath } = context;
+    const { standardIo } = core.services.context;
     const vaultPath = context.vaultPath || databasePath;
 
     await core.services.control.activated;
     if (options.command === "daemon") {
-        const log = (msg: unknown) => console.error(`[Daemon] ${msg}`);
+        const log = (msg: unknown) => writeStderrLine(standardIo, `[Daemon] ${String(msg)}`);
 
         // Skip the config mismatch dialog — the daemon cannot resolve it interactively
         // and the default "Dismiss" action would block replication. The daemon should
@@ -94,7 +97,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         log("Replicating from CouchDB...");
         const replResult = await core.services.replication.replicate(true);
         if (!replResult) {
-            console.error("[Daemon] Initial CouchDB replication failed, cannot continue");
+            writeStderrLine(standardIo, "[Daemon] Initial CouchDB replication failed, cannot continue");
             return false;
         }
         log("CouchDB replication complete");
@@ -104,7 +107,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         log("Running mirror scan...");
         const scanOk = await performFullScan(core, log, errorManager, false, true);
         if (!scanOk) {
-            console.error("[Daemon] Mirror scan failed, cannot continue");
+            writeStderrLine(standardIo, "[Daemon] Mirror scan failed, cannot continue");
             return false;
         }
         log("Mirror scan complete");
@@ -152,9 +155,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 } catch (err) {
                     consecutiveFailures++;
                     currentIntervalMs = Math.min(baseIntervalMs * Math.pow(2, consecutiveFailures), maxIntervalMs);
-                    console.error(`[Daemon] Poll error (${consecutiveFailures} consecutive):`, err);
+                    writeStderrLine(standardIo, `[Daemon] Poll error (${consecutiveFailures} consecutive):`, err);
                     if (consecutiveFailures >= 5) {
-                        console.error(
+                        writeStderrLine(
+                            standardIo,
                             `[Daemon] Warning: ${consecutiveFailures} consecutive failures, backing off to ${Math.round(currentIntervalMs / 1000)}s`
                         );
                     }
@@ -179,7 +183,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             log("LiveSync active");
             const currentSettings = core.services.setting.currentSettings();
             if (!currentSettings.liveSync && !currentSettings.syncOnStart) {
-                console.error(
+                writeStderrLine(
+                    standardIo,
                     "[Daemon] Warning: liveSync and syncOnStart are both disabled in settings. " +
                         "No sync will occur. Set liveSync=true in your settings file for continuous sync, " +
                         "or use --interval for polling mode."
@@ -191,7 +196,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     }
 
     if (options.command === "sync") {
-        console.log("[Command] sync");
+        writeStdoutLine(standardIo, "[Command] sync");
         const result = await core.services.replication.replicate(true);
         if (!result) {
             // TODO: Standardise the logic for identifying the cause of replication
@@ -199,7 +204,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             // error, etc.) is surfaced with a CLI-specific actionable message.
             const replicator = core.services.replicator.getActiveReplicator();
             if (replicator?.remoteLockedAndDeviceNotAccepted) {
-                console.error(
+                writeStderrLine(
+                    standardIo,
                     `[Error] The remote database is locked and this device is not yet accepted.\n` +
                         `[Error] Please unlock the database from the Obsidian plugin and retry.`
                 );
@@ -213,10 +219,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("p2p-peers requires one argument: <timeout>");
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[0], "p2p-peers");
-        console.error(`[Command] p2p-peers timeout=${timeoutSec}s`);
+        writeStderrLine(standardIo, `[Command] p2p-peers timeout=${timeoutSec}s`);
         const peers = await collectPeers(core, timeoutSec);
         if (peers.length > 0) {
-            process.stdout.write(peers.map((peer) => `[peer]\t${peer.peerId}\t${peer.name}`).join("\n") + "\n");
+            standardIo.writeStdout(peers.map((peer) => `[peer]\t${peer.peerId}\t${peer.name}`).join("\n") + "\n");
         }
         return true;
     }
@@ -230,16 +236,16 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("p2p-sync requires a non-empty <peer>");
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[1], "p2p-sync");
-        console.error(`[Command] p2p-sync peer=${peerToken} timeout=${timeoutSec}s`);
+        writeStderrLine(standardIo, `[Command] p2p-sync peer=${peerToken} timeout=${timeoutSec}s`);
         const peer = await syncWithPeer(core, peerToken, timeoutSec);
-        console.error(`[Done] P2P sync completed with ${peer.name} (${peer.peerId})`);
+        writeStderrLine(standardIo, `[Done] P2P sync completed with ${peer.name} (${peer.peerId})`);
         return true;
     }
 
     if (options.command === "p2p-host") {
-        console.error("[Command] p2p-host");
+        writeStderrLine(standardIo, "[Command] p2p-host");
         await openP2PHost(core);
-        console.error("[Ready] P2P host is running. Press Ctrl+C to stop.");
+        writeStderrLine(standardIo, "[Ready] P2P host is running. Press Ctrl+C to stop.");
         await new Promise(() => {});
         return true;
     }
@@ -252,7 +258,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[1], vaultPath);
         const sourceData = await fs.readFile(sourcePath);
         const sourceStat = await fs.stat(sourcePath);
-        console.log(`[Command] push ${sourcePath} -> ${destinationDatabasePath}`);
+        writeStdoutLine(standardIo, `[Command] push ${sourcePath} -> ${destinationDatabasePath}`);
 
         await core.serviceModules.storageAccess.writeFileAuto(destinationDatabasePath, toArrayBuffer(sourceData), {
             mtime: Math.floor(sourceStat.mtimeMs),
@@ -269,7 +275,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
         const destinationPath = path.resolve(options.commandArgs[1]);
-        console.log(`[Command] pull ${sourceDatabasePath} -> ${destinationPath}`);
+        writeStdoutLine(standardIo, `[Command] pull ${sourceDatabasePath} -> ${destinationPath}`);
 
         const sourcePathWithPrefix = sourceDatabasePath as FilePathWithPrefix;
         const restored = await core.serviceModules.fileHandler.dbToStorage(sourcePathWithPrefix, null, true);
@@ -296,7 +302,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (!rev) {
             throw new Error("pull-rev requires a non-empty revision");
         }
-        console.log(`[Command] pull-rev ${sourceDatabasePath}@${rev} -> ${destinationPath}`);
+        writeStdoutLine(standardIo, `[Command] pull-rev ${sourceDatabasePath}@${rev} -> ${destinationPath}`);
 
         const source = await core.serviceModules.databaseFileAccess.fetch(
             sourceDatabasePath as FilePathWithPrefix,
@@ -325,7 +331,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (!setupURI.startsWith(configURIBase)) {
             throw new Error(`setup URI must start with ${configURIBase}`);
         }
-        const passphrase = await promptForPassphrase();
+        const passphrase = await standardIo.prompt("Enter setup URI passphrase: ");
+        if (!passphrase) {
+            throw new Error("Passphrase is required");
+        }
         const decoded = await decodeSettingsFromSetupURI(setupURI, passphrase);
         if (!decoded) {
             throw new Error("Failed to decode settings from setup URI");
@@ -337,7 +346,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             isConfigured: true,
         } as ObsidianLiveSyncSettings;
 
-        console.log(`[Command] setup -> ${settingsPath}`);
+        writeStdoutLine(standardIo, `[Command] setup -> ${settingsPath}`);
         await core.services.setting.applyExternalSettings(nextSettings, true);
         await core.services.control.applySettings();
         return true;
@@ -348,8 +357,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("put requires one argument: <dst>");
         }
         const destinationDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
-        const content = await readStdinAsUtf8();
-        console.log(`[Command] put stdin -> ${destinationDatabasePath}`);
+        const content = await standardIo.readStdin();
+        writeStdoutLine(standardIo, `[Command] put stdin -> ${destinationDatabasePath}`);
         return await core.serviceModules.databaseFileAccess.storeContent(
             destinationDatabasePath as FilePathWithPrefix,
             content
@@ -361,7 +370,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("cat requires one argument: <src>");
         }
         const sourceDatabasePath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
-        console.error(`[Command] cat ${sourceDatabasePath}`);
+        writeStderrLine(standardIo, `[Command] cat ${sourceDatabasePath}`);
         const source = await core.serviceModules.databaseFileAccess.fetch(
             sourceDatabasePath as FilePathWithPrefix,
             undefined,
@@ -372,10 +381,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const body = source.body;
         if (body.type === "text/plain") {
-            process.stdout.write(await body.text());
+            standardIo.writeStdout(await body.text());
         } else {
             const buffer = Buffer.from(await body.arrayBuffer());
-            process.stdout.write(new Uint8Array(buffer));
+            standardIo.writeStdout(new Uint8Array(buffer));
         }
         return true;
     }
@@ -389,7 +398,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         if (!rev) {
             throw new Error("cat-rev requires a non-empty revision");
         }
-        console.error(`[Command] cat-rev ${sourceDatabasePath} @ ${rev}`);
+        writeStderrLine(standardIo, `[Command] cat-rev ${sourceDatabasePath} @ ${rev}`);
         const source = await core.serviceModules.databaseFileAccess.fetch(
             sourceDatabasePath as FilePathWithPrefix,
             rev,
@@ -400,10 +409,10 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const body = source.body;
         if (body.type === "text/plain") {
-            process.stdout.write(await body.text());
+            standardIo.writeStdout(await body.text());
         } else {
             const buffer = Buffer.from(await body.arrayBuffer());
-            process.stdout.write(new Uint8Array(buffer));
+            standardIo.writeStdout(new Uint8Array(buffer));
         }
         return true;
     }
@@ -432,9 +441,9 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         rows.sort((a, b) => a.path.localeCompare(b.path));
         if (rows.length > 0) {
-            process.stdout.write(rows.map((e) => e.line).join("\n") + "\n");
+            standardIo.writeStdout(rows.map((e) => e.line).join("\n") + "\n");
         } else {
-            process.stderr.write("[Info] No documents found in the local database.\n");
+            standardIo.writeStderr("[Info] No documents found in the local database.\n");
         }
         return true;
     }
@@ -475,11 +484,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 chunks: children.length,
                 children: children,
             };
-            process.stdout.write(JSON.stringify(out, null, 2) + "\n");
+            standardIo.writeStdout(JSON.stringify(out, null, 2) + "\n");
             return true;
         }
 
-        process.stderr.write(`[Info] File not found: ${targetPath}\n`);
+        standardIo.writeStderr(`[Info] File not found: ${targetPath}\n`);
         return false;
     }
 
@@ -488,7 +497,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("rm requires one argument: <path>");
         }
         const targetPath = toDatabaseRelativePath(options.commandArgs[0], vaultPath);
-        console.error(`[Command] rm ${targetPath}`);
+        writeStderrLine(standardIo, `[Command] rm ${targetPath}`);
         return await core.serviceModules.databaseFileAccess.delete(targetPath as FilePathWithPrefix);
     }
 
@@ -504,30 +513,30 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         const currentMeta = await core.serviceModules.databaseFileAccess.fetchEntryMeta(targetPath, undefined, true);
         if (currentMeta === false || currentMeta._deleted || currentMeta.deleted) {
-            process.stderr.write(`[Info] File not found: ${targetPath}\n`);
+            standardIo.writeStderr(`[Info] File not found: ${targetPath}\n`);
             return false;
         }
 
         const conflicts = await core.serviceModules.databaseFileAccess.getConflictedRevs(targetPath);
         const candidateRevisions = [currentMeta._rev, ...conflicts];
         if (!candidateRevisions.includes(revisionToKeep)) {
-            process.stderr.write(`[Info] Revision not found for ${targetPath}: ${revisionToKeep}\n`);
+            standardIo.writeStderr(`[Info] Revision not found for ${targetPath}: ${revisionToKeep}\n`);
             return false;
         }
 
         if (conflicts.length === 0 && currentMeta._rev === revisionToKeep) {
-            console.error(`[Command] resolve ${targetPath} keep ${revisionToKeep} (already resolved)`);
+            writeStderrLine(standardIo, `[Command] resolve ${targetPath} keep ${revisionToKeep} (already resolved)`);
             return true;
         }
 
-        console.error(`[Command] resolve ${targetPath} keep ${revisionToKeep}`);
+        writeStderrLine(standardIo, `[Command] resolve ${targetPath} keep ${revisionToKeep}`);
         for (const revision of candidateRevisions) {
             if (revision === revisionToKeep) {
                 continue;
             }
             const resolved = await core.services.conflict.resolveByDeletingRevision(targetPath, revision ?? "", "CLI");
             if (!resolved) {
-                process.stderr.write(`[Info] Failed to delete revision ${revision} for ${targetPath}\n`);
+                standardIo.writeStderr(`[Info] Failed to delete revision ${revision} for ${targetPath}\n`);
                 return false;
             }
         }
@@ -535,8 +544,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     }
 
     if (options.command === "mirror") {
-        console.error("[Command] mirror");
-        const log = (msg: unknown) => console.error(`[Mirror] ${msg}`);
+        writeStderrLine(standardIo, "[Command] mirror");
+        const log = (msg: unknown) => writeStderrLine(standardIo, `[Mirror] ${String(msg)}`);
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
         return await performFullScan(core, log, errorManager, false, true);
     }
@@ -579,7 +588,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             await core.services.control.applySettings();
         }
 
-        process.stdout.write(`${id}\t${name}\t${redactConnectionString(canonicalUri)}\n`);
+        standardIo.writeStdout(`${id}\t${name}\t${redactConnectionString(canonicalUri)}\n`);
         return true;
     }
 
@@ -594,7 +603,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         const current = core.services.setting.currentSettings();
         if (!current.remoteConfigurations?.[id]) {
-            process.stderr.write(`[Info] Remote configuration not found: ${id}\n`);
+            standardIo.writeStderr(`[Info] Remote configuration not found: ${id}\n`);
             return false;
         }
 
@@ -624,7 +633,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             await core.services.control.applySettings();
         }
 
-        console.error(`[Command] remote-rm ${id}`);
+        writeStderrLine(standardIo, `[Command] remote-rm ${id}`);
         return true;
     }
 
@@ -634,7 +643,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         configs.sort((a, b) => a.name.localeCompare(b.name));
 
         if (configs.length === 0) {
-            process.stderr.write("[Info] No remote configurations found.\n");
+            standardIo.writeStderr("[Info] No remote configurations found.\n");
             return true;
         }
 
@@ -642,7 +651,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             const status = config.id === settings.activeConfigurationId ? "active" : "inactive";
             return `${config.id}\t${config.name}\t${status}\t${redactConnectionString(config.uri)}`;
         });
-        process.stdout.write(lines.join("\n") + "\n");
+        standardIo.writeStdout(lines.join("\n") + "\n");
         return true;
     }
 
@@ -657,11 +666,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         const config = core.services.setting.currentSettings().remoteConfigurations?.[id];
         if (!config) {
-            process.stderr.write(`[Info] Remote configuration not found: ${id}\n`);
+            standardIo.writeStderr(`[Info] Remote configuration not found: ${id}\n`);
             return false;
         }
 
-        process.stdout.write(`${config.uri}\n`);
+        standardIo.writeStdout(`${config.uri}\n`);
         return true;
     }
 
@@ -701,7 +710,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         const updated = core.services.setting.currentSettings().remoteConfigurations?.[id];
         if (!updated) {
-            process.stderr.write(`[Info] Remote configuration not found: ${id}\n`);
+            standardIo.writeStderr(`[Info] Remote configuration not found: ${id}\n`);
             return false;
         }
 
@@ -709,7 +718,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             await core.services.control.applySettings();
         }
 
-        console.error(`[Command] remote-set ${id}`);
+        writeStderrLine(standardIo, `[Command] remote-set ${id}`);
         return true;
     }
     if (options.command === "remote-activate") {
@@ -732,12 +741,12 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }, true);
 
         if (!switched) {
-            process.stderr.write(`[Info] Failed to activate remote configuration: ${id}\n`);
+            standardIo.writeStderr(`[Info] Failed to activate remote configuration: ${id}\n`);
             return false;
         }
 
         await core.services.control.applySettings();
-        console.error(`[Command] remote-activate ${id}`);
+        writeStderrLine(standardIo, `[Command] remote-activate ${id}`);
         return true;
     }
 
@@ -755,14 +764,14 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             }, false);
 
             if (!switched) {
-                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
                 return false;
             }
 
             await core.services.control.applySettings();
         }
 
-        console.error(`[Command] mark-resolved${id ? ` ${id}` : ""}`);
+        writeStderrLine(standardIo, `[Command] mark-resolved${id ? ` ${id}` : ""}`);
         await core.services.replication.markResolved();
         const settings = core.services.setting.currentSettings();
         await verifyRemoteState(core, settings);
@@ -783,14 +792,14 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             }, false);
 
             if (!switched) {
-                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
                 return false;
             }
 
             await core.services.control.applySettings();
         }
 
-        console.error(`[Command] unlock-remote${id ? ` ${id}` : ""}`);
+        writeStderrLine(standardIo, `[Command] unlock-remote${id ? ` ${id}` : ""}`);
         await core.services.replication.markUnlocked();
         const settings = core.services.setting.currentSettings();
         await verifyRemoteState(core, settings);
@@ -811,14 +820,14 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             }, false);
 
             if (!switched) {
-                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
                 return false;
             }
 
             await core.services.control.applySettings();
         }
 
-        console.error(`[Command] lock-remote${id ? ` ${id}` : ""}`);
+        writeStderrLine(standardIo, `[Command] lock-remote${id ? ` ${id}` : ""}`);
         await core.services.replication.markLocked();
         const settings = core.services.setting.currentSettings();
         await verifyRemoteState(core, settings);
@@ -839,26 +848,26 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             }, false);
 
             if (!switched) {
-                process.stderr.write(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
+                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
                 return false;
             }
 
             await core.services.control.applySettings();
         }
 
-        console.error(`[Command] remote-status${id ? ` ${id}` : ""}`);
+        writeStderrLine(standardIo, `[Command] remote-status${id ? ` ${id}` : ""}`);
         const replicator = core.services.replicator.getActiveReplicator();
         if (!replicator) {
-            process.stderr.write("[Error] No active replicator found\n");
+            standardIo.writeStderr("[Error] No active replicator found\n");
             return false;
         }
         const settings = core.services.setting.currentSettings();
         const status = await replicator.getRemoteStatus(settings);
         if (status === false) {
-            process.stderr.write("[Error] Failed to fetch remote status\n");
+            standardIo.writeStderr("[Error] Failed to fetch remote status\n");
             return false;
         }
-        process.stdout.write(JSON.stringify(status, null, 2) + "\n");
+        standardIo.writeStdout(JSON.stringify(status, null, 2) + "\n");
         return true;
     }
 

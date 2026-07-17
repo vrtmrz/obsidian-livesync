@@ -20,9 +20,15 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager"
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 
 function createCoreMock() {
+    const standardIo = {
+        readStdin: vi.fn(async () => ""),
+        prompt: vi.fn(async () => ""),
+        writeStdout: vi.fn((_chunk: string | Uint8Array) => undefined),
+        writeStderr: vi.fn((_chunk: string | Uint8Array) => undefined),
+    };
     return {
         services: {
-            context: createServiceContext(),
+            context: Object.assign(createServiceContext(), { standardIo }),
             control: {
                 activated: Promise.resolve(),
                 applySettings: vi.fn(async () => {}),
@@ -157,13 +163,13 @@ describe("daemon command", () => {
             syncOnStart: false,
         }));
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         const result = await runCommand(makeDaemonOptions(), { ...baseContext, core });
 
         expect(result).toBe(true);
-        const warningCalls = consoleSpy.mock.calls.filter(
-            (args) => typeof args[0] === "string" && args[0].includes("liveSync and syncOnStart are both disabled")
+        const warningCalls = core.services.context.standardIo.writeStderr.mock.calls.filter(
+            ([chunk]: [string | Uint8Array]) =>
+                typeof chunk === "string" && chunk.includes("liveSync and syncOnStart are both disabled")
         );
         expect(warningCalls.length).toBeGreaterThan(0);
     });
@@ -175,12 +181,12 @@ describe("daemon command", () => {
             syncOnStart: false,
         }));
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         await runCommand(makeDaemonOptions(), { ...baseContext, core });
 
-        const warningCalls = consoleSpy.mock.calls.filter(
-            (args) => typeof args[0] === "string" && args[0].includes("liveSync and syncOnStart are both disabled")
+        const warningCalls = core.services.context.standardIo.writeStderr.mock.calls.filter(
+            ([chunk]: [string | Uint8Array]) =>
+                typeof chunk === "string" && chunk.includes("liveSync and syncOnStart are both disabled")
         );
         expect(warningCalls.length).toBe(0);
     });
@@ -233,7 +239,6 @@ describe("daemon command", () => {
     it("polling backoff: interval escalates on failure, caps at 300000ms, then halves on recovery", async () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
-        vi.spyOn(console, "error").mockImplementation(() => {});
 
         // startup replicate (call 1) succeeds; poll calls 2–7 fail; call 8 succeeds.
         let callCount = 0;
@@ -286,10 +291,9 @@ describe("daemon command", () => {
         expect(setTimeoutSpy.mock.calls[afterSuccessCallCount - 1][1]).toBe(150_000);
     });
 
-    it("polling error handling: replicate rejection is caught and console.error is called", async () => {
+    it("polling error handling: replicate rejection is caught and written to standard error", async () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
-        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
         // Make replicate succeed on the initial call (startup), then fail on the poll.
         let callCount = 0;
@@ -306,8 +310,8 @@ describe("daemon command", () => {
         await vi.advanceTimersByTimeAsync(intervalMs);
 
         // No unhandled rejection — the error was caught internally.
-        const errorCalls = consoleSpy.mock.calls.filter(
-            (args) => typeof args[0] === "string" && args[0].includes("Poll error")
+        const errorCalls = core.services.context.standardIo.writeStderr.mock.calls.filter(
+            ([chunk]: [string | Uint8Array]) => typeof chunk === "string" && chunk.includes("Poll error")
         );
         expect(errorCalls.length).toBeGreaterThan(0);
     });

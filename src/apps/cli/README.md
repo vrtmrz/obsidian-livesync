@@ -15,9 +15,10 @@ This CLI version is built using the same core as the Obsidian plug-in:
 
 ```
 CLI Main
-  └─ LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>
-     ├─ NodeServiceHub (All services without Obsidian dependencies)
-     └─ ServiceModules (wired by initialiseServiceModulesCLI)
+  └─ NodeServiceContext (events, translation, database root, and injected standard I/O)
+     └─ LiveSyncBaseCore<NodeServiceContext, IMinimumLiveSyncCommands>
+        ├─ NodeServiceHub (All services without Obsidian dependencies)
+        └─ ServiceModules (wired by initialiseServiceModulesCLI)
         ├─ FileAccessCLI (Node.js FileSystemAdapter)
         ├─ StorageEventManagerCLI
         ├─ ServiceFileAccessCLI
@@ -37,7 +38,9 @@ CLI Main
     - All core sync functionality preserved
 
 3. **Service Hub and Settings Services** (`services/`)
-    - `NodeServiceHub` provides the CLI service context
+    - `NodeServiceContext` owns the host-selected database root and standard input/output implementation
+    - `NodeServiceHub` receives that exact Context instead of constructing platform capabilities implicitly
+    - Internal adapter diagnostics use injected callbacks wired to the service logging API
     - Node-specific settings and key-value services are provided without Obsidian dependencies
 
 4. **Main Entry Point** (`main.ts`)

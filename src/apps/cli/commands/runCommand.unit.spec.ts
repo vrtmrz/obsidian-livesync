@@ -6,7 +6,15 @@ import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@vrt
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
-import * as commandUtils from "./utils";
+
+function createStandardIoMock() {
+    return {
+        readStdin: vi.fn(async () => ""),
+        prompt: vi.fn(async () => ""),
+        writeStdout: vi.fn((_chunk: string | Uint8Array) => undefined),
+        writeStderr: vi.fn((_chunk: string | Uint8Array) => undefined),
+    };
+}
 
 function createCoreMock() {
     const liveSettings = {
@@ -17,6 +25,9 @@ function createCoreMock() {
     } as any;
     return {
         services: {
+            context: {
+                standardIo: createStandardIoMock(),
+            },
             control: {
                 activated: Promise.resolve(),
                 applySettings: vi.fn(async () => {}),
@@ -69,6 +80,7 @@ function createCoreMock() {
             },
             databaseFileAccess: {
                 fetch: vi.fn(async () => undefined),
+                storeContent: vi.fn(async () => true),
             },
         },
     } as any;
@@ -96,20 +108,20 @@ async function createSetupURI(passphrase: string): Promise<string> {
     return await processSetting.encodeSettingsToSetupURI(settings, passphrase);
 }
 
-function captureStdout() {
-    const writes: string[] = [];
-    const spy = vi.spyOn(process.stdout, "write").mockImplementation((chunk: any) => {
-        writes.push(typeof chunk === "string" ? chunk : String(chunk));
-        return true;
-    });
+function captureStdout(core: ReturnType<typeof createCoreMock>) {
+    const spy = core.services.context.standardIo.writeStdout;
+    spy.mockClear();
     return {
         spy,
         lines: () =>
-            writes
+            spy.mock.calls
+                .map(([chunk]: [string | Uint8Array]) =>
+                    typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
+                )
                 .join("")
                 .split("\n")
-                .map((e) => e.trim())
-                .filter((e) => e.length > 0),
+                .map((entry: string) => entry.trim())
+                .filter((entry: string) => entry.length > 0),
     };
 }
 
@@ -304,7 +316,7 @@ describe("runCommand abnormal cases", () => {
 
     it("setup rejects empty passphrase", async () => {
         const core = createCoreMock();
-        vi.spyOn(commandUtils, "promptForPassphrase").mockRejectedValue(new Error("Passphrase is required"));
+        core.services.context.standardIo.prompt.mockResolvedValue("");
 
         await expect(
             runCommand(makeOptions("setup", [`${configURIBase}dummy`]), {
@@ -318,7 +330,7 @@ describe("runCommand abnormal cases", () => {
         const core = createCoreMock();
         const passphrase = "correct-passphrase";
         const setupURI = await createSetupURI(passphrase);
-        vi.spyOn(commandUtils, "promptForPassphrase").mockResolvedValue(passphrase);
+        core.services.context.standardIo.prompt.mockResolvedValue(passphrase);
 
         const result = await runCommand(makeOptions("setup", [setupURI]), {
             ...context,
@@ -339,7 +351,7 @@ describe("runCommand abnormal cases", () => {
     it("setup rejects encoded URI when passphrase is wrong", async () => {
         const core = createCoreMock();
         const setupURI = await createSetupURI("correct-passphrase");
-        vi.spyOn(commandUtils, "promptForPassphrase").mockResolvedValue("wrong-passphrase");
+        core.services.context.standardIo.prompt.mockResolvedValue("wrong-passphrase");
 
         await expect(
             runCommand(makeOptions("setup", [setupURI]), {
@@ -352,9 +364,61 @@ describe("runCommand abnormal cases", () => {
         expect(core.services.control.applySettings).not.toHaveBeenCalled();
     });
 
+    it("put reads content from the injected standard input", async () => {
+        const core = createCoreMock();
+        core.services.context.standardIo.readStdin.mockResolvedValue("content from stdin");
+
+        const result = await runCommand(makeOptions("put", ["notes/input.md"]), {
+            ...context,
+            core,
+        });
+
+        expect(result).toBe(true);
+        expect(core.services.context.standardIo.readStdin).toHaveBeenCalledOnce();
+        expect(core.serviceModules.databaseFileAccess.storeContent).toHaveBeenCalledWith(
+            "notes/input.md",
+            "content from stdin"
+        );
+    });
+
+    it("cat writes text to the injected standard output without adding a delimiter", async () => {
+        const core = createCoreMock();
+        core.serviceModules.databaseFileAccess.fetch.mockResolvedValue({
+            deleted: false,
+            body: new Blob(["exact text"], { type: "text/plain" }),
+        });
+
+        const result = await runCommand(makeOptions("cat", ["notes/output.md"]), {
+            ...context,
+            core,
+        });
+
+        expect(result).toBe(true);
+        expect(core.services.context.standardIo.writeStdout).toHaveBeenCalledWith("exact text");
+    });
+
+    it("cat preserves binary bytes through the injected standard output", async () => {
+        const core = createCoreMock();
+        const expected = Uint8Array.from([0x00, 0x7f, 0x80, 0xff]);
+        core.serviceModules.databaseFileAccess.fetch.mockResolvedValue({
+            deleted: false,
+            body: new Blob([expected], { type: "application/octet-stream" }),
+        });
+
+        const result = await runCommand(makeOptions("cat", ["binary/output.bin"]), {
+            ...context,
+            core,
+        });
+
+        expect(result).toBe(true);
+        const chunk = core.services.context.standardIo.writeStdout.mock.calls.at(-1)?.[0];
+        expect(chunk).toBeInstanceOf(Uint8Array);
+        expect([...(chunk as Uint8Array)]).toEqual([...expected]);
+    });
+
     it("remote-add stores canonical URI and prints the created id", async () => {
         const core = createCoreMock();
-        const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+        const stdout = core.services.context.standardIo.writeStdout;
 
         const result = await runCommand(makeOptions("remote-add", ["my-remote", "sls+https://example.com/db"]), {
             ...context,
@@ -435,7 +499,7 @@ describe("runCommand abnormal cases", () => {
             uri: "sls+https://example.com/db?db=vault",
             isEncrypted: false,
         };
-        const stdout = captureStdout();
+        const stdout = captureStdout(core);
 
         const result = await runCommand(makeOptions("remote-export", ["r1"]), {
             ...context,
@@ -565,7 +629,7 @@ describe("runCommand abnormal cases", () => {
     ])("remote command round-trip works for %s", async (_protocol, initialConnStr) => {
         const core = createCoreMock();
 
-        const addOut = captureStdout();
+        const addOut = captureStdout(core);
         const addResult = await runCommand(makeOptions("remote-add", ["rt", initialConnStr]), {
             ...context,
             core,
@@ -574,7 +638,7 @@ describe("runCommand abnormal cases", () => {
         const remoteId = parseAddedRemoteIdFromLines(addOut.lines());
         expect(remoteId).not.toBe("");
 
-        const export1Out = captureStdout();
+        const export1Out = captureStdout(core);
         const export1Result = await runCommand(makeOptions("remote-export", [remoteId]), {
             ...context,
             core,
@@ -591,7 +655,7 @@ describe("runCommand abnormal cases", () => {
         });
         expect(setResult).toBe(true);
 
-        const export2Out = captureStdout();
+        const export2Out = captureStdout(core);
         const export2Result = await runCommand(makeOptions("remote-export", [remoteId]), {
             ...context,
             core,
@@ -740,13 +804,13 @@ describe("runCommand abnormal cases", () => {
 
         it("remote-status without args outputs status of active remote configuration", async () => {
             const core = createCoreMock();
-            const stdout = captureStdout();
+            const stdout = captureStdout(core);
             const result = await runCommand(makeOptions("remote-status", []), {
                 ...context,
                 core,
             });
             expect(result).toBe(true);
-            const fullOutput = stdout.spy.mock.calls.map((c) => c[0]).join("");
+            const fullOutput = stdout.spy.mock.calls.map((call: [string | Uint8Array]) => call[0]).join("");
             const parsedStatus = JSON.parse(fullOutput);
             expect(parsedStatus.db_name).toBe("test-db");
             expect(parsedStatus.doc_count).toBe(42);
@@ -761,13 +825,13 @@ describe("runCommand abnormal cases", () => {
                 uri: "sls+https://example.com/db1",
                 isEncrypted: false,
             };
-            const stdout = captureStdout();
+            const stdout = captureStdout(core);
             const result = await runCommand(makeOptions("remote-status", ["r1"]), {
                 ...context,
                 core,
             });
             expect(result).toBe(true);
-            const fullOutput = stdout.spy.mock.calls.map((c) => c[0]).join("");
+            const fullOutput = stdout.spy.mock.calls.map((call: [string | Uint8Array]) => call[0]).join("");
             const parsedStatus = JSON.parse(fullOutput);
             expect(parsedStatus.db_name).toBe("test-db");
             expect(parsedStatus.doc_count).toBe(42);

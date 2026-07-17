@@ -1,5 +1,6 @@
 import { Minimatch } from "minimatch";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 
 /**
  * Loads and evaluates ignore rules from `.livesync/ignore` inside the vault.
@@ -19,7 +20,10 @@ import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 export class IgnoreRules {
     private patterns: Minimatch[] = [];
 
-    constructor(private vaultPath: string) {}
+    constructor(
+        private vaultPath: string,
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+    ) {}
 
     /**
      * Reads `.livesync/ignore` (and optionally `.gitignore`) and populates the
@@ -53,7 +57,7 @@ export class IgnoreRules {
                 continue;
             }
             if (trimmed.startsWith("import:")) {
-                console.error(
+                this.reportDiagnostic(
                     `[IgnoreRules] Warning: unrecognised directive '${trimmed}' — only 'import: .gitignore' is supported`
                 );
                 continue;
@@ -61,7 +65,7 @@ export class IgnoreRules {
             this._addPattern(trimmed);
         }
         if (this.patterns.length > 0) {
-            console.error(`[IgnoreRules] Loaded ${this.patterns.length} ignore patterns`);
+            this.reportDiagnostic(`[IgnoreRules] Loaded ${this.patterns.length} ignore patterns`);
         }
     }
 

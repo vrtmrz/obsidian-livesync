@@ -9,12 +9,19 @@ import {
 } from "../../../../test/contracts/serviceContext";
 import { NodeServiceContext } from "./NodeServiceContext";
 import { NodeServiceHub } from "./NodeServiceHub";
+import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 
 const TRANSLATION_KEY = "Replicator.Message.InitialiseFatalError";
 
 describe("NodeServiceContext contract", () => {
     it("preserves the CLI capabilities and host-neutral API results", () => {
-        const context = new NodeServiceContext("/tmp/livesync-context-contract");
+        const standardIo: StandardIo = {
+            readStdin: async () => "input",
+            prompt: async () => "answer",
+            writeStdout: () => undefined,
+            writeStderr: () => undefined,
+        };
+        const context = new NodeServiceContext("/tmp/livesync-context-contract", standardIo);
 
         expect(observeServiceContext(context, TRANSLATION_KEY)).toEqual({
             translation: translateLiveSyncMessage(TRANSLATION_KEY),
@@ -22,6 +29,7 @@ describe("NodeServiceContext contract", () => {
         });
         expect(context.events).toBe(eventHub);
         expect(context.databasePath).toBe("/tmp/livesync-context-contract");
+        expect(context.standardIo).toBe(standardIo);
 
         const hub = new NodeServiceHub(context.databasePath, context);
         const composition = observeServiceComposition(hub, context);

@@ -86,7 +86,7 @@ class NodeUIService<T extends ServiceContext> extends UIService<T> {
 }
 
 export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServiceHub<T> {
-    constructor(basePath: string, context: T = new NodeServiceContext(basePath) as T) {
+    constructor(basePath: string, context: T) {
         const runtimeDir = nodePath.join(basePath, ".livesync", "runtime");
         const localStoragePath = nodePath.join(runtimeDir, "local-storage.json");
         const keyValueDBPath = nodePath.join(runtimeDir, "keyvalue-db.json");

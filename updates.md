@@ -12,11 +12,13 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 ### Miscellaneous
 
 - Replaced the embedded Commonlib source and generated fallback declarations with a locked compiled package, reducing duplicated release and repository-scanner inputs without changing synchronisation behaviour.
+- Moved CLI standard input, prompting, and protocol output behind a host-injected Commonlib contract, and routed adapter diagnostics through the service logging API, without changing command output formats.
 
 ### Testing
 
 - Added packed-package and downstream checks for Commonlib entry points, including isolated Node and browser File System Access API storage implementations.
 - Added reusable Context result contracts for Obsidian, CLI, and Webapp compositions, including a real-Obsidian smoke assertion that every service retains the host-provided Context.
+- Added Commonlib stream-contract tests and downstream CLI unit and Deno E2E coverage for injected text, binary, prompt, and error channels.
 
 ## 0.25.83
 

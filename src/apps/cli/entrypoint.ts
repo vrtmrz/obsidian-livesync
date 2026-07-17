@@ -2,6 +2,8 @@
 import { RTCPeerConnection } from "werift";
 import { main } from "./main";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node";
+import { writeStderrLine } from "./cliOutput";
 
 if (
     typeof (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection === "undefined" &&
@@ -11,7 +13,9 @@ if (
     (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection = RTCPeerConnection;
 }
 
-main().catch((error) => {
-    console.error(`[Fatal Error]`, error);
+const standardIo = createNodeStandardIo();
+
+main(standardIo).catch((error) => {
+    writeStderrLine(standardIo, `[Fatal Error]`, error);
     process.exit(1);
 });

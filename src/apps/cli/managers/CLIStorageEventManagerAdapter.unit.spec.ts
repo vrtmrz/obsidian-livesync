@@ -103,7 +103,8 @@ describe("CLIStorageEventManagerAdapter", () => {
     });
 
     it("error event triggers process.exit(1)", async () => {
-        const adapter = new CLIStorageEventManagerAdapter("/base", undefined, true);
+        const reportDiagnostic = vi.fn();
+        const adapter = new CLIStorageEventManagerAdapter("/base", undefined, true, reportDiagnostic);
         const handlers = makeHandlers();
 
         await adapter.watch.beginWatch(handlers);
@@ -117,6 +118,11 @@ describe("CLIStorageEventManagerAdapter", () => {
         errorCallback(new Error("disk failure"));
 
         expect(processExitSpy).toHaveBeenCalledWith(1);
+        expect(reportDiagnostic).toHaveBeenCalledWith(
+            "[CLIWatchAdapter] Fatal watcher error — file watching stopped:",
+            expect.any(Error)
+        );
+        expect(reportDiagnostic).toHaveBeenCalledWith("[CLIWatchAdapter] Exiting for systemd restart.");
 
         processExitSpy.mockRestore();
     });

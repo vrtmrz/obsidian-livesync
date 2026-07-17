@@ -1,5 +1,5 @@
 import { fsPromises, os, path } from "@vrtmrz/livesync-commonlib/node";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { NodeFileSystemAdapter } from "./NodeFileSystemAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
@@ -42,6 +42,24 @@ describe("NodeFileSystemAdapter path case", () => {
             expect(renamedFile.path).toBe("calculus.md");
             expect((await adapter.getFiles()).map((file) => file.path)).toEqual(["calculus.md"]);
             expect(await fsPromises.readdir(directory)).toEqual(["calculus.md"]);
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+        }
+    });
+
+    it("reports directory scan failures through the injected diagnostic callback", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-scan-diagnostic-"));
+        const missingDirectory = path.join(directory, "missing");
+        const reportDiagnostic = vi.fn();
+        try {
+            const adapter = new NodeFileSystemAdapter(missingDirectory, reportDiagnostic);
+
+            await adapter.scanDirectory();
+
+            expect(reportDiagnostic).toHaveBeenCalledWith(
+                `Error scanning directory ${missingDirectory}:`,
+                expect.any(Error)
+            );
         } finally {
             await fsPromises.rm(directory, { recursive: true, force: true });
         }
