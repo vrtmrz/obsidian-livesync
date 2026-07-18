@@ -27,6 +27,7 @@
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
     import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
+    import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
@@ -137,7 +138,7 @@
                     replicator.close();
                     dummyPouch.destroy();
                 } catch (e) {
-                    console.error(e);
+                    Logger(e, LOG_LEVEL_VERBOSE, "setup-p2p-cleanup");
                 }
             }
         } finally {

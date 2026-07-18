@@ -7,7 +7,13 @@ import type { BrowserServiceHub } from "@vrtmrz/livesync-commonlib/compat/servic
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    type LOG_LEVEL,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { BrowserAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/BrowserAPIService";
 import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
 import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
@@ -59,14 +65,16 @@ class LiveSyncWebApp {
         this.rootHandle = rootHandle;
     }
 
+    private addLog(message: unknown, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string): void {
+        this.serviceHub?.API.addLog(message, level, key);
+    }
+
     async initialize() {
-        console.log("Self-hosted LiveSync WebApp");
-        console.log("Initializing...");
-
-        console.log(`Vault directory: ${this.rootHandle.name}`);
-
         // Create service context and hub
         this.serviceHub = createLiveSyncBrowserServiceHub<ServiceContext>();
+        this.addLog("Self-hosted LiveSync WebApp", LOG_LEVEL_INFO, "initialise");
+        this.addLog("Initialising...", LOG_LEVEL_VERBOSE, "initialise");
+        this.addLog(`Vault directory: ${this.rootHandle.name}`, LOG_LEVEL_VERBOSE, "initialise");
 
         // Setup API service
         (this.serviceHub.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
@@ -79,9 +87,9 @@ class LiveSyncWebApp {
         settingService.saveData.setHandler(async (data: ObsidianLiveSyncSettings) => {
             try {
                 await this.saveSettingsToFile(data);
-                console.log("[Settings] Saved to .livesync/settings.json");
+                this.addLog("Saved to .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
             } catch (error) {
-                console.error("[Settings] Failed to save:", error);
+                this.addLog(`Failed to save settings: ${String(error)}`, LOG_LEVEL_NOTICE, "settings");
             }
         });
 
@@ -89,11 +97,11 @@ class LiveSyncWebApp {
             try {
                 const data = await this.loadSettingsFromFile();
                 if (data) {
-                    console.log("[Settings] Loaded from .livesync/settings.json");
+                    this.addLog("Loaded from .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
                     return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
                 }
             } catch {
-                console.log("[Settings] Failed to load, using defaults");
+                this.addLog("Failed to load settings; using defaults", LOG_LEVEL_NOTICE, "settings");
             }
             return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
         });
@@ -101,7 +109,7 @@ class LiveSyncWebApp {
         // App lifecycle handlers
         this.serviceHub.appLifecycle.scheduleRestart.setHandler(() => {
             void (async () => {
-                console.log("[AppLifecycle] Restart requested");
+                this.addLog("Restart requested", LOG_LEVEL_INFO, "app-lifecycle");
                 await this.shutdown();
                 await this.initialize();
                 compatGlobal.setTimeout(() => {
@@ -152,19 +160,14 @@ class LiveSyncWebApp {
     }
 
     private async saveSettingsToFile(data: ObsidianLiveSyncSettings): Promise<void> {
-        try {
-            // Create .livesync directory if it doesn't exist
-            const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR, { create: true });
+        // Create .livesync directory if it does not exist
+        const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR, { create: true });
 
-            // Create/overwrite settings.json
-            const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(JSON.stringify(data, null, 2));
-            await writable.close();
-        } catch (error) {
-            console.error("[Settings] Error saving to file:", error);
-            throw error;
-        }
+        // Create/overwrite settings.json
+        const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
     }
 
     private async loadSettingsFromFile(): Promise<Partial<ObsidianLiveSyncSettings> | null> {
@@ -186,47 +189,47 @@ class LiveSyncWebApp {
         }
 
         try {
-            console.log("[Starting] Initializing LiveSync...");
+            this.addLog("Initialising LiveSync...", LOG_LEVEL_INFO, "start");
 
             const loadResult = await this.core.services.control.onLoad();
             if (!loadResult) {
-                console.error("[Error] Failed to initialize LiveSync");
+                this.addLog("Failed to initialise LiveSync", LOG_LEVEL_NOTICE, "start");
                 this.showError("Failed to initialize LiveSync");
                 return;
             }
 
             await this.core.services.control.onReady();
 
-            console.log("[Ready] LiveSync is running");
+            this.addLog("LiveSync is running", LOG_LEVEL_INFO, "ready");
 
             // Check if configured
             const settings = this.core.services.setting.currentSettings();
             if (!settings.isConfigured) {
-                console.warn("[Warning] LiveSync is not configured yet");
+                this.addLog("LiveSync is not configured yet", LOG_LEVEL_NOTICE, "configuration");
                 this.showWarning("Please configure CouchDB connection in settings");
             } else {
-                console.log("[Info] LiveSync is configured and ready");
-                console.log(`[Info] Database: ${settings.couchDB_URI}/${settings.couchDB_DBNAME}`);
+                this.addLog("LiveSync is configured and ready", LOG_LEVEL_INFO, "configuration");
+                this.addLog(`Database: ${settings.couchDB_DBNAME}`, LOG_LEVEL_VERBOSE, "configuration");
                 this.showSuccess("LiveSync is ready!");
             }
 
             // Scan the directory to populate file cache
             const fileAccess = this.platformServiceModules?.vaultAccess;
             if (fileAccess) {
-                console.log("[Scanning] Scanning vault directory...");
+                this.addLog("Scanning vault directory...", LOG_LEVEL_VERBOSE, "scan");
                 await fileAccess.fsapiAdapter.scanDirectory();
                 const files = await fileAccess.fsapiAdapter.getFiles();
-                console.log(`[Scanning] Found ${files.length} files`);
+                this.addLog(`Found ${files.length} files`, LOG_LEVEL_VERBOSE, "scan");
             }
         } catch (error) {
-            console.error("[Error] Failed to start:", error);
+            this.addLog(`Failed to start: ${String(error)}`, LOG_LEVEL_NOTICE, "start");
             this.showError(`Failed to start: ${error}`);
         }
     }
 
     async shutdown() {
         if (this.core) {
-            console.log("[Shutdown] Shutting down...");
+            this.addLog("Shutting down...", LOG_LEVEL_INFO, "shutdown");
 
             // Stop file watching
             const storageEventManager = this.platformServiceModules?.storageEventManager;
@@ -236,7 +239,7 @@ class LiveSyncWebApp {
 
             await this.core.services.control.onUnload();
             this.platformServiceModules = null;
-            console.log("[Shutdown] Complete");
+            this.addLog("Shutdown complete", LOG_LEVEL_INFO, "shutdown");
         }
     }
 

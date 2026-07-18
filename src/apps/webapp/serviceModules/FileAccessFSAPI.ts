@@ -7,7 +7,9 @@ import { FSAPIFileSystemAdapter } from "@/apps/webapp/adapters/FSAPIFileSystemAd
  */
 export class FileAccessFSAPI extends FileAccessBase<FSAPIFileSystemAdapter> {
     constructor(rootHandle: FileSystemDirectoryHandle, dependencies: FileAccessBaseDependencies) {
-        const adapter = new FSAPIFileSystemAdapter(rootHandle);
+        const adapter = new FSAPIFileSystemAdapter(rootHandle, (message, level, key) =>
+            dependencies.APIService.addLog(message, level, key)
+        );
         super(adapter, dependencies);
     }
 

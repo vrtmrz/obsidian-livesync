@@ -6,6 +6,7 @@
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "./utilCheckCouchDB";
+    import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
     type Props = {
         trialRemoteSetting: ObsidianLiveSyncSettings;
     };
@@ -15,10 +16,9 @@
         detectedIssues = [];
         try {
             const fixResults = await checkConfig(trialRemoteSetting);
-            console.dir(fixResults);
             detectedIssues = fixResults;
         } catch (e) {
-            console.error("Error during testAndFixSettings:", e);
+            Logger(e, LOG_LEVEL_VERBOSE, "setup-couchdb-check");
             detectedIssues.push({ message: `Error during testAndFixSettings: ${e}`, result: "error", classes: [] });
         }
     }
@@ -37,7 +37,7 @@
             processing = true;
             await issue.fix();
         } catch (e) {
-            console.error("Error during fixIssue:", e);
+            Logger(e, LOG_LEVEL_VERBOSE, "setup-couchdb-fix");
         }
         await testAndFixSettings();
         processing = false;

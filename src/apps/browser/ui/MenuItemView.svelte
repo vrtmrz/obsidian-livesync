@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { MenuItem } from "@/apps/browser/BrowserMenu";
+    import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 
     type Props = {
         item: MenuItem;
@@ -13,7 +14,7 @@
                 item.handler?.();
             }
         } catch (ex) {
-            console.error(ex);
+            Logger(ex, LOG_LEVEL_VERBOSE, "browser-menu");
         }
         closeMenu();
     }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — the implementation proof is complete, and `@vrtmrz/livesync-commonlib@0.1.0-rc.2` has been published and verified as the exact downstream dependency; the community-scanner preview remains pending.
+Proposed — the implementation proof is complete, `@vrtmrz/livesync-commonlib@0.1.0-rc.2` has been published and verified as the exact downstream dependency, and the Community directory scanner preview confirms the intended package boundary.
 
 ## Context
 
@@ -255,7 +255,11 @@ The Commonlib contract suite passes 21 tests covering Context results, both plat
 
 The package-owned Trystero transport also completes the canonical Compose P2P synchronisation workflow with a local relay and two isolated CLI peers. In real Obsidian, the plug-in starts with one consistent `ObsidianServiceContext`, the representative server-selection and Setup URI Svelte dialogues mount and close through their normal controls, their mobile variants satisfy viewport, safe-area, and touch-target assertions, and the settings pane exposes only the effective deletion controls. These runtime checks complement the package tests without making Webapp maintenance the primary release gate.
 
-The Community review lint completes with no errors. Advisory warnings remain in pre-existing UI sentence casing, deprecated Obsidian interfaces, unchecked dynamic setting data, and application-specific console output, especially in the Webapp. They are separate follow-up work and do not justify widening the package boundary or exposing additional compatibility paths.
+The Community directory scanner preview completes with no source-code errors. The former findings attributed to generated `_types`, raw `src/lib` source, Node built-ins, forbidden rule suppressions, unsupported Obsidian APIs, and undescribed directive comments are absent. This confirms that the registry dependency is recognised as a package boundary. The preview identified behaviour-neutral redundant CLI candidate types and Webapp File System Access API assertions; these are corrected in the host source rather than carried as known warnings.
+
+The remaining findings belong to application code. Browser-app DOM creation and inline styling require a framework-neutral browser presentation boundary rather than Obsidian-only helpers. Direct diagnostic output was nevertheless resolved at its existing ownership boundaries: Webapp components use an injected log function backed by `BrowserAPIService`, WebPeer retains output in its Svelte log store, Obsidian modules use the established Logger path, and duplicate console emission was removed from `ModuleLog`. The later Webapp and WebPeer recomposition around maintained Context and serviceFeature APIs should preserve these explicit output paths. Declarative settings adoption and deprecated Obsidian interfaces still require separate, focused changes.
+
+The dependency preview also reports `uuid`, but the installed and locked graph resolves PouchDB's UUID dependency to the patched `uuid@11.1.1` through the repository override, and `npm audit` does not report the UUID advisory. The scanner appears to infer the older declared PouchDB range rather than the resolved override, so this warning is treated as a scanner false positive unless a packed-artefact inspection shows otherwise. A separate dependency review remains necessary for the pre-existing CLI `werift`/`ip` advisory, for which npm currently offers no automatic fix, and the development-only Istanbul `js-yaml` advisory.
 
 The local real-Obsidian suite verifies the actual loaded `ObsidianServiceContext`, all 18 services, Vault reflection, CouchDB and Object Storage transfer, remote-activity accounting, CLI-to-Obsidian encrypted synchronisation, startup scanning, two-Vault create, update, delete, ordinary rename, case-only rename, target mismatch, Hidden File Sync, Customisation Sync, and setting Markdown export. These checks establish observable results and host composition rather than relying on declaration compatibility alone.
 
@@ -263,7 +267,7 @@ The current browser Harness has a pre-existing settings-migration initialisation
 
 ## Scanner and Repository Consequences
 
-Consuming the npm package is expected to remove the common-library source and generated `_types` from the plug-in repository's community scan, because package dependencies are treated as dependencies rather than maintained plug-in source. The proof removes the old integration, but this scanner expectation must still be verified before the decision is accepted and released.
+Consuming the npm package removes the common-library source and generated `_types` from the plug-in repository's Community directory scan, because package dependencies are treated as dependencies rather than maintained plug-in source. The branch preview confirms this expected boundary.
 
 The change does not hide or resolve warnings in Self-hosted LiveSync-owned source. The scanner will continue to inspect the plug-in, CLI, Webapp, and WebPeer while those applications remain in the repository. Moving those applications to a LiveSync-family application repository may be considered after the package boundary is stable, but it is not part of this decision because the CLI and Webapp still import shared plug-in composition code.
 
@@ -303,14 +307,14 @@ The migration is complete only when:
 - Self-hosted LiveSync no longer has `src/lib`, `_types`, or `@lib/*` source aliases;
 - the CLI, Webapp, WebPeer, plug-in build, unit tests, integration tests, and focused real-Obsidian E2E pass against the reviewed package artefact;
 - common-library downstream CI records and tests the exact Self-hosted LiveSync ref;
-- a community scanner preview confirms the expected change in source findings; and
+- a Community directory scanner preview confirms the expected change in source findings; and
 - an external consumer can replace its submodule or custom loader with the documented package API.
 
 ## Consequences
 
 - The common library gains an independently consumable and testable artefact while retaining its domain ownership and history.
 - Self-hosted LiveSync release archives no longer need generated fallback declarations for an absent submodule.
-- Community scanning can distinguish plug-in source from a reviewed dependency, subject to preview verification.
+- Community directory scanning distinguishes plug-in source from the reviewed dependency.
 - Changes which span the package and plug-in require coordinated package and downstream validation rather than one atomic source commit.
 - Temporary compatibility exports increase the first package surface, but their pre-1.0 status and explicit classification prevent them from becoming silent permanent contracts.
 - Translation, Svelte, and platform dependencies become optional composition concerns rather than root-package side effects.

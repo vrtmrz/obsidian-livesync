@@ -657,7 +657,6 @@ export class DocumentHistoryModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.BlobURLs.forEach((value) => {
-            console.log(value);
             if (value) URL.revokeObjectURL(value);
         });
     }

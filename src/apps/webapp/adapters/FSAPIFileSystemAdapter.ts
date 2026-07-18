@@ -1,4 +1,4 @@
-import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_NOTICE, type FilePath, type UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IFileSystemAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import { FSAPIPathAdapter } from "./FSAPIPathAdapter";
 import { FSAPITypeGuardAdapter } from "./FSAPITypeGuardAdapter";
@@ -7,6 +7,7 @@ import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/brows
 import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
 import type { FSAPIFile, FSAPIFolder, FSAPIStat } from "./FSAPITypes";
 import { shareRunningResult } from "octagonal-wheels/concurrency/lock_v2";
+import type { WebAppLog } from "../WebAppLog";
 
 /**
  * Complete file system adapter implementation for FileSystem API
@@ -21,7 +22,10 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     private fileCache = new Map<string, FSAPIFile>();
     private handleCache = new Map<string, FileSystemFileHandle>();
 
-    constructor(private rootHandle: FileSystemDirectoryHandle) {
+    constructor(
+        private rootHandle: FileSystemDirectoryHandle,
+        private readonly addLog: WebAppLog
+    ) {
         this.path = new FSAPIPathAdapter();
         this.typeGuard = new FSAPITypeGuardAdapter();
         this.conversion = new FSAPIConversionAdapter();
@@ -30,14 +34,14 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     }
 
     private normalisePath(path: FilePath | string): string {
-        return this.path.normalisePath(path as string);
+        return this.path.normalisePath(path);
     }
 
     /**
      * Get file handle for a given path
      */
     private async getFileHandleByPath(p: FilePath | string): Promise<FileSystemFileHandle | null> {
-        const pathStr = p as string;
+        const pathStr = p;
 
         // Check cache first
         const cached = this.handleCache.get(pathStr);
@@ -213,7 +217,11 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
                     }
                 }
             } catch (error) {
-                console.error(`Error scanning directory ${relativePath}:`, error);
+                this.addLog(
+                    `Error scanning directory '${relativePath || "."}': ${String(error)}`,
+                    LOG_LEVEL_NOTICE,
+                    "fsapi-scan"
+                );
             }
         });
     }

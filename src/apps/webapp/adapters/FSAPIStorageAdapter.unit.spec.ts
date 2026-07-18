@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
 import { FSAPIFileSystemAdapter } from "./FSAPIFileSystemAdapter";
 import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/browser";
 import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
+import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 class MemoryFileHandle {
     readonly kind = "file";
@@ -146,11 +147,30 @@ describe("FSAPIFileSystemAdapter path case", () => {
         const root = memoryRoot as unknown as FileSystemDirectoryHandle;
         const vault = new FSAPIVaultAdapter(root);
         await vault.create("Calculus.md", "content");
-        const adapter = new FSAPIFileSystemAdapter(root);
+        const adapter = new FSAPIFileSystemAdapter(root, vi.fn());
 
         await expect(adapter.getAbstractFileByPath("calculus.md")).resolves.toBeNull();
         await expect(adapter.getAbstractFileByPathInsensitive("calculus.md")).resolves.toEqual(
             expect.objectContaining({ path: "Calculus.md" })
+        );
+    });
+
+    it("reports scan failures through the injected Webapp log", async () => {
+        const root = {
+            name: "root",
+            async *entries(): AsyncIterableIterator<[string, FileSystemHandle]> {
+                throw new Error("scan failed");
+            },
+        } as unknown as FileSystemDirectoryHandle;
+        const addLog = vi.fn();
+        const adapter = new FSAPIFileSystemAdapter(root, addLog);
+
+        await adapter.scanDirectory();
+
+        expect(addLog).toHaveBeenCalledWith(
+            "Error scanning directory '.': Error: scan failed",
+            LOG_LEVEL_NOTICE,
+            "fsapi-scan"
         );
     });
 });

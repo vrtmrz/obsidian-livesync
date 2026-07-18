@@ -121,8 +121,7 @@ export async function migrateDatabases(operationName: string, from: PouchDB.Data
     Logger(`Destroyed existing destination database for migration: ${operationName}.`, LOG_LEVEL_NOTICE, "migration");
 
     const dbTo2 = await openTo();
-    const info2 = await dbTo2.info(); // ensure created
-    console.log(info2);
+    await dbTo2.info(); // ensure created
     Logger(`Re-created destination database for migration: ${operationName}.`, LOG_LEVEL_NOTICE, "migration");
 
     const info = await from.info();

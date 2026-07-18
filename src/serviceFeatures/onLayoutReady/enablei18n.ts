@@ -2,13 +2,14 @@ import { getLanguage, requireApiVersion } from "@/deps";
 import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@vrtmrz/livesync-commonlib/compat/common/rosetta";
 import { $msg, __onMissingTranslation, setLang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 
-function tryGetLanguage() {
+function tryGetLanguage(onError: (error: unknown) => void) {
     if (requireApiVersion("1.8.7")) {
         try {
             return getLanguage();
         } catch (e) {
-            console.error("Failed to get Obsidian language, defaulting to 'en'", e);
+            onError(e);
         }
     }
     return "en";
@@ -20,7 +21,13 @@ export const enableI18nFeature = createServiceFeature(async ({ services: { setti
     let isChanged = false;
     const settings = setting.currentSettings();
     if (settings.displayLanguage == "") {
-        const obsidianLanguage = tryGetLanguage();
+        const obsidianLanguage = tryGetLanguage((error) => {
+            API.addLog(
+                `Failed to get Obsidian language; defaulting to 'en': ${String(error)}`,
+                LOG_LEVEL_VERBOSE,
+                "i18n-language"
+            );
+        });
         if (
             SUPPORTED_I18N_LANGS.indexOf(obsidianLanguage) !== -1 && // Check if the language is supported
             obsidianLanguage != settings.displayLanguage // Check if the language is different from the current setting

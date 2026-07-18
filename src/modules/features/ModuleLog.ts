@@ -551,13 +551,6 @@ ${stringifyYaml(info)}
             return;
         }
         addDisplayLog(newMessage);
-        if (message instanceof Error) {
-            console.error(vaultName + ":" + newMessage);
-        } else if (level >= LOG_LEVEL_INFO) {
-            console.log(vaultName + ":" + newMessage);
-        } else {
-            console.debug(vaultName + ":" + newMessage);
-        }
         if (!this.settings?.showOnlyIconsOnEditor) {
             this.statusLog.value = messageContent;
         }

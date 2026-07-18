@@ -91,7 +91,7 @@ export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueData
             // await closeDB();
             await deleteDB(dbKey, {
                 blocked() {
-                    console.warn(`Database delete blocked for ${dbKey}`);
+                    Logger(`Database delete blocked for ${dbKey}`);
                 },
             });
         },

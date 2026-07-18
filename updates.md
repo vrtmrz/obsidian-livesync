@@ -25,6 +25,7 @@ This will call for your help once again. I would be very grateful for your co-op
 
 - Replaced the embedded Commonlib source and generated fallback declarations with a locked compiled package, reducing duplicated release and repository-scanner inputs without changing synchronisation behaviour.
 - Moved CLI standard input, prompting, and protocol output behind a host-injected Commonlib contract, and routed adapter diagnostics through the service logging API, without changing command output formats.
+- Routed Webapp, WebPeer, and plug-in diagnostics through their application-owned log paths instead of writing directly to the browser console.
 
 ### Testing
 

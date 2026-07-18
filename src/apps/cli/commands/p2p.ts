@@ -13,10 +13,10 @@ type CLIP2PPeer = {
 };
 
 type CandidateSummary = {
-    id: string | "unknown";
-    candidateType: string | "unknown";
-    protocol: string | "unknown";
-    relayProtocol: string | "unknown";
+    id: string;
+    candidateType: string;
+    protocol: string;
+    relayProtocol: string;
 };
 
 function delay(ms: number): Promise<void> {
@@ -98,7 +98,7 @@ function getReportValue<T extends string | number>(
     return typeof value === "string" || typeof value === "number" ? (value as T) : "unknown";
 }
 
-function summariseCandidate(reports: unknown[], candidateId: string | "unknown"): CandidateSummary | undefined {
+function summariseCandidate(reports: unknown[], candidateId: string): CandidateSummary | undefined {
     if (candidateId === "unknown") {
         return undefined;
     }

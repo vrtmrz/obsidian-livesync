@@ -12,6 +12,8 @@ import type {
 import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
 import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { WebAppLog } from "../WebAppLog";
 
 type FileSystemObserverRecord = {
     changedHandle?: FileSystemFileHandle | FileSystemDirectoryHandle;
@@ -66,6 +68,8 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
     private storeName = "snapshots";
     private snapshotKey = "file-events";
 
+    constructor(private readonly addLog: WebAppLog) {}
+
     private async openDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, 1);
@@ -96,7 +100,7 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
 
             db.close();
         } catch (error) {
-            console.error("Failed to save snapshot:", error);
+            this.addLog(`Failed to save snapshot: ${String(error)}`, LOG_LEVEL_NOTICE, "fsapi-snapshot");
         }
     }
 
@@ -128,12 +132,16 @@ class FSAPIStatusAdapter implements IStorageEventStatusAdapter {
     private lastUpdate = 0;
     private updateInterval = 5000; // Update every 5 seconds
 
+    constructor(private readonly addLog: WebAppLog) {}
+
     updateStatus(status: { batched: number; processing: number; totalQueued: number }): void {
         const now = Date.now();
         if (now - this.lastUpdate > this.updateInterval) {
             if (status.totalQueued > 0 || status.processing > 0) {
-                console.log(
-                    `[StorageEventManager] Batched: ${status.batched}, Processing: ${status.processing}, Total Queued: ${status.totalQueued}`
+                this.addLog(
+                    `Batched: ${status.batched}, Processing: ${status.processing}, Total queued: ${status.totalQueued}`,
+                    LOG_LEVEL_VERBOSE,
+                    "storage-events"
                 );
             }
             this.lastUpdate = now;
@@ -177,14 +185,17 @@ class FSAPIConverterAdapter implements IStorageEventConverterAdapter<FSAPIFile> 
 class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
     private observer: FileSystemObserverInstance | null = null;
 
-    constructor(private rootHandle: FileSystemDirectoryHandle) {}
+    constructor(
+        private rootHandle: FileSystemDirectoryHandle,
+        private readonly addLog: WebAppLog
+    ) {}
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         // Use FileSystemObserver if available (Chrome 124+)
         const FileSystemObserver = (compatGlobal as GlobalWithFileSystemObserver).FileSystemObserver;
         if (!FileSystemObserver) {
-            console.log("[FSAPIWatchAdapter] FileSystemObserver not available, file watching disabled");
-            console.log("[FSAPIWatchAdapter] Consider using Chrome 124+ for real-time file watching");
+            this.addLog("FileSystemObserver is not available; file watching is disabled", LOG_LEVEL_INFO, "fsapi-watch");
+            this.addLog("Chrome 124 or later supports real-time file watching", LOG_LEVEL_INFO, "fsapi-watch");
             return Promise.resolve();
         }
 
@@ -203,7 +214,7 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                         continue;
                     }
 
-                    console.log(`[FileSystemObserver] ${type}: ${relativePath}`);
+                    this.addLog(`${type}: ${relativePath}`, LOG_LEVEL_VERBOSE, "filesystem-observer");
 
                     // Convert to our event handlers
                     try {
@@ -259,9 +270,10 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
                             }
                         }
                     } catch (error) {
-                        console.error(
-                            `[FileSystemObserver] Error processing ${type} event for ${relativePath}:`,
-                            error
+                        this.addLog(
+                            `Error processing ${type} event for ${relativePath}: ${String(error)}`,
+                            LOG_LEVEL_NOTICE,
+                            "filesystem-observer"
                         );
                     }
                 }
@@ -269,10 +281,10 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
 
             // Start observing
             await this.observer.observe(this.rootHandle, { recursive: true });
-            console.log("[FSAPIWatchAdapter] FileSystemObserver started successfully");
+            this.addLog("FileSystemObserver started successfully", LOG_LEVEL_INFO, "fsapi-watch");
         } catch (error) {
-            console.error("[FSAPIWatchAdapter] Failed to start FileSystemObserver:", error);
-            console.log("[FSAPIWatchAdapter] Falling back to manual sync mode");
+            this.addLog(`Failed to start FileSystemObserver: ${String(error)}`, LOG_LEVEL_NOTICE, "fsapi-watch");
+            this.addLog("Falling back to manual sync mode", LOG_LEVEL_INFO, "fsapi-watch");
         }
 
         return Promise.resolve();
@@ -283,9 +295,9 @@ class FSAPIWatchAdapter implements IStorageEventWatchAdapter {
             try {
                 this.observer.disconnect();
                 this.observer = null;
-                console.log("[FSAPIWatchAdapter] FileSystemObserver stopped");
+                this.addLog("FileSystemObserver stopped", LOG_LEVEL_INFO, "fsapi-watch");
             } catch (error) {
-                console.error("[FSAPIWatchAdapter] Error stopping observer:", error);
+                this.addLog(`Error stopping observer: ${String(error)}`, LOG_LEVEL_NOTICE, "fsapi-watch");
             }
         }
     }
@@ -301,11 +313,11 @@ export class FSAPIStorageEventManagerAdapter implements IStorageEventManagerAdap
     readonly status: FSAPIStatusAdapter;
     readonly converter: FSAPIConverterAdapter;
 
-    constructor(rootHandle: FileSystemDirectoryHandle) {
+    constructor(rootHandle: FileSystemDirectoryHandle, addLog: WebAppLog) {
         this.typeGuard = new FSAPITypeGuardAdapter();
-        this.persistence = new FSAPIPersistenceAdapter();
-        this.watch = new FSAPIWatchAdapter(rootHandle);
-        this.status = new FSAPIStatusAdapter();
+        this.persistence = new FSAPIPersistenceAdapter(addLog);
+        this.watch = new FSAPIWatchAdapter(rootHandle, addLog);
+        this.status = new FSAPIStatusAdapter(addLog);
         this.converter = new FSAPIConverterAdapter();
     }
 }

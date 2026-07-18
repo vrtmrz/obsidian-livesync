@@ -101,7 +101,6 @@ async function startWithHistory(item: VaultHistoryItem): Promise<void> {
         const handle = await historyStore.activateHistoryItem(item);
         await startWithHandle(handle);
     } catch (error) {
-        console.error("[Directory] Failed to open history vault:", error);
         setStatus("error", `Failed to open saved vault: ${String(error)}`);
         setBusyState(false);
     }
@@ -113,7 +112,6 @@ async function startWithNewPicker(): Promise<void> {
         const handle = await historyStore.pickNewVault();
         await startWithHandle(handle);
     } catch (error) {
-        console.error("[Directory] Failed to pick vault:", error);
         setStatus("warning", `Vault selection was cancelled or failed: ${String(error)}`);
         setBusyState(false);
     }
@@ -132,7 +130,6 @@ async function initializeVaultSelector(): Promise<void> {
 
 compatGlobal.addEventListener("load", () => {
     initializeVaultSelector().catch((error) => {
-        console.error("Failed to initialize vault selector:", error);
         setStatus("error", `Initialization failed: ${String(error)}`);
     });
 });

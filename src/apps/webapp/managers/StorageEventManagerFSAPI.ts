@@ -12,7 +12,9 @@ export class StorageEventManagerFSAPI extends StorageEventManagerBase<FSAPIStora
         core: LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>,
         dependencies: StorageEventManagerBaseDependencies
     ) {
-        const adapter = new FSAPIStorageEventManagerAdapter(rootHandle);
+        const adapter = new FSAPIStorageEventManagerAdapter(rootHandle, (message, level, key) =>
+            dependencies.APIService.addLog(message, level, key)
+        );
         super(adapter, dependencies);
         this.fsapiAdapter = adapter;
         this.core = core;
