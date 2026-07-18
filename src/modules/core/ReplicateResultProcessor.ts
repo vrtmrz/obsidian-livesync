@@ -236,12 +236,16 @@ export class ReplicateResultProcessor {
     private _processingActivityDone?: PromiseWithResolvers<void>;
 
     private updateProcessingActivity() {
+        if (this.isSuspended) {
+            this._processingActivityDone?.resolve();
+            return;
+        }
         const hasPendingDocuments = this._queuedChanges.length > 0 || this._processingChanges.length > 0;
         if (!hasPendingDocuments) {
             this._processingActivityDone?.resolve();
             return;
         }
-        if (this._processingActivity || this.isSuspended) return;
+        if (this._processingActivity) return;
 
         const activityDone = promiseWithResolvers<void>();
         this._processingActivityDone = activityDone;
@@ -394,7 +398,11 @@ export class ReplicateResultProcessor {
             this._processingChanges = this._processingChanges.filter((e) => e !== change);
             try {
                 if (this._queuedChanges.length === 0 && this._processingChanges.length === 0) {
-                    await this._takeSnapshot();
+                    try {
+                        await this._takeSnapshot();
+                    } catch (error) {
+                        this.logError(error);
+                    }
                 } else {
                     this.triggerTakeSnapshot();
                 }
