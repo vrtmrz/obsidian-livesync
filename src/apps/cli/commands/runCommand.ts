@@ -14,7 +14,7 @@ import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common
 import {
     activateRemoteConfiguration,
     createRemoteConfigurationId,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+} from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
 import { toArrayBuffer, toDatabaseRelativePath } from "./utils";

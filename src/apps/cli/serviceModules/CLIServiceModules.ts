@@ -3,7 +3,7 @@ import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModul
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { FileAccessCLI } from "./FileAccessCLI";
 import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";

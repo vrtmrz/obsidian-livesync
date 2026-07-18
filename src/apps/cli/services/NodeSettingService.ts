@@ -2,7 +2,7 @@ import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/co
 import { EVENT_REQUEST_RELOAD_SETTING_TAB } from "@/common/events";
 import { handlers } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { SettingService, type SettingServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import {
     configureNodeLocalStorage,

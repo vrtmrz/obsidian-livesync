@@ -15,8 +15,12 @@
     import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
     import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-    import type { P2PSyncSetting, RemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
-    import { activateP2PRemoteConfiguration, createRemoteConfigurationId } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+    import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+    import {
+        activateP2PRemoteConfiguration,
+        createRemoteConfigurationId,
+        type RemoteConfiguration,
+    } from "@vrtmrz/livesync-commonlib/remote-configurations";
     import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { SetupManager } from "@/modules/features/SetupManager";
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";

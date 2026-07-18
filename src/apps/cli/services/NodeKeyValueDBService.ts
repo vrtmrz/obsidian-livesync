@@ -1,7 +1,8 @@
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import type { IKeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
-import { ServiceBase, type ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { ServiceBase } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
 import type { InjectableAppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAppLifecycleService";
 import type { InjectableDatabaseEventService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService";
 import type { IVaultService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";

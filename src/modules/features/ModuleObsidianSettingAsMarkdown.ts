@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSetting
 import { parseYaml, stringifyYaml } from "@/deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 const SETTING_HEADER = "````yaml:livesync-setting\n";

@@ -1,6 +1,6 @@
 import { BrowserServiceHub, type BrowserServiceHost } from "@vrtmrz/livesync-commonlib/compat/services/BrowserServices";
 import type { KeyValueDatabaseFactory } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { BrowserAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/BrowserAPIService";
 import { BrowserConfirm } from "./BrowserConfirm";
 import { LiveSyncBrowserUIService } from "./LiveSyncBrowserUIService";

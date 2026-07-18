@@ -1,5 +1,5 @@
 import type { BrowserServiceHostDependencies } from "@vrtmrz/livesync-commonlib/compat/services/BrowserServices";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
 import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy.svelte";
 import { BrowserSvelteDialogManager } from "./BrowserSvelteDialogManager";

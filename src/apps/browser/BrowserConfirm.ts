@@ -5,7 +5,7 @@ import TextInputBox from "./ui/TextInputBox.svelte";
 
 import { mount } from "svelte";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 function displayMessageBox<T, U extends string[]>(

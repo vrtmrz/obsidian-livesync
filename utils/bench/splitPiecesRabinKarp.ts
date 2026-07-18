@@ -9,7 +9,7 @@ import {
     PREFERRED_JOURNAL_SYNC,
     PREFERRED_SETTING_CLOUDANT,
     PREFERRED_SETTING_SELF_HOSTED,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.preferred";
+} from "@vrtmrz/livesync-commonlib/settings";
 import {
     type ObsidianLiveSyncSettings,
     DEFAULT_SETTINGS,

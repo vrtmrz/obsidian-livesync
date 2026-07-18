@@ -5,7 +5,7 @@
 
 import type { BrowserServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/BrowserServices";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules";
 import {
     LOG_LEVEL_INFO,

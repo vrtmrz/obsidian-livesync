@@ -1,4 +1,4 @@
-import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/compat/hub/hub";
+import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 // import type ObsidianLiveSyncPlugin from "../main";
 
 export const EVENT_PLUGIN_LOADED = "plugin-loaded";

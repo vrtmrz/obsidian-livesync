@@ -37,7 +37,7 @@ import {
     askAndPerformFastSetupOnScheduledFetchAll,
     askSimpleFetchMode,
 } from "./redFlag.simpleFetch";
-import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
 //Mock synchroniseAllFilesBetweenDBandStorage
 vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", async (importOriginal) => {
     const originalModule = (await importOriginal()) as any;

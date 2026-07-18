@@ -245,19 +245,23 @@ Every retained barrel must correspond to an explicit `exports` entry, list named
 
 ## Implementation Proof
 
-The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the current downstream migration. It publishes neither raw TypeScript nor Svelte source. The immutable `@vrtmrz/livesync-commonlib@0.1.0-rc.2` registry artefact can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Its registry version and checksum are recorded by release validation.
+The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `settings`, `remote-configurations`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the reviewed downstream revision from which it was built. It publishes neither raw TypeScript nor Svelte source. The immutable `@vrtmrz/livesync-commonlib@0.1.0-rc.2` registry artefact can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Its registry version and checksum are recorded by release validation.
+
+The published export map contains 126 explicitly named entries, including 118 `compat/*` entries and no unrestricted wildcard. Every compatibility entry was referenced by the reviewed Self-hosted LiveSync source used to prepare the artefact. A final consumer audit then moved imports already covered by the focused `context`, `settings`, and `remote-configurations` entries. The current branch consequently uses 115 compatibility paths; `compat/common/models/setting.const.defaults`, `compat/common/models/setting.const.preferred`, and `compat/hub/hub` remain only as an immutable surplus in `rc.2`. They are candidates for removal from the next reviewed compatibility inventory rather than grounds for changing the published artefact. Remaining compatibility imports still expose migration-only service composition, broader model types, replication implementations, or another contract which the focused entries do not yet replace.
 
 The proof found and fixed three boundary defects which source-alias consumption had hidden: compiled JSON imports required explicit output extensions, precompiled Svelte output could not safely be treated as source by the downstream Svelte pipeline, and Vite's default client conditions selected Commonlib's browser worker while building the Node CLI. Packed-consumer regressions cover the first two. The CLI now uses Vite's server conditions and treats every Node built-in reported by Commonlib's Node entry as external; the built CLI is exercised through Deno E2E. Importing root or context also no longer patches DOM prototypes, translator injection prevents the context entry from loading the complete language catalogue, and standard input and protocol output are supplied by the package-owned host contract rather than direct stream access in command handlers.
 
 Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact registry artefact without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. Commonlib also owns the Trystero implementation and version; the host retains no direct Trystero dependency, preventing two transport generations from entering one application graph. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
 
-The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,123 tests across 62 files. Self-hosted LiveSync's three host-composition contract tests and complete 341-test unit suite across 38 files pass against the registry artefact. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
+The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,123 tests across 62 files. Self-hosted LiveSync's three host-composition contract tests and complete 342-test unit suite across 38 files pass against the registry artefact. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
 
 The package-owned Trystero transport also completes the canonical Compose P2P synchronisation workflow with a local relay and two isolated CLI peers. In real Obsidian, the plug-in starts with one consistent `ObsidianServiceContext`, the representative server-selection and Setup URI Svelte dialogues mount and close through their normal controls, their mobile variants satisfy viewport, safe-area, and touch-target assertions, and the settings pane exposes only the effective deletion controls. These runtime checks complement the package tests without making Webapp maintenance the primary release gate.
 
 The Community directory scanner preview completes with no source-code errors. The former findings attributed to generated `_types`, raw `src/lib` source, Node built-ins, forbidden rule suppressions, unsupported Obsidian APIs, and undescribed directive comments are absent. This confirms that the registry dependency is recognised as a package boundary. The preview identified behaviour-neutral redundant CLI candidate types and Webapp File System Access API assertions; these are corrected in the host source rather than carried as known warnings.
 
-The remaining findings belong to application code. Browser-app DOM creation and inline styling require a framework-neutral browser presentation boundary rather than Obsidian-only helpers. Direct diagnostic output was nevertheless resolved at its existing ownership boundaries: Webapp components use an injected log function backed by `BrowserAPIService`, WebPeer retains output in its Svelte log store, Obsidian modules use the established Logger path, and duplicate console emission was removed from `ModuleLog`. The later Webapp and WebPeer recomposition around maintained Context and serviceFeature APIs should preserve these explicit output paths. Declarative settings adoption and deprecated Obsidian interfaces still require separate, focused changes.
+The remaining source warnings belong to application code. Browser-app DOM creation requires a framework-neutral browser presentation boundary rather than Obsidian-only helpers, and the Obsidian setting tab does not yet expose declarative setting definitions. Browser dialogue visibility now uses DOM state instead of inline static styling, so the earlier styling warning is absent. Direct diagnostic output was resolved at its existing ownership boundaries: Webapp components use an injected log function backed by `BrowserAPIService`, WebPeer retains output in its Svelte log store, Obsidian modules use the established Logger path, and duplicate console emission was removed from `ModuleLog`. The later Webapp and WebPeer recomposition around maintained Context and serviceFeature APIs should preserve these explicit output paths. Declarative settings adoption and deprecated Obsidian interfaces still require separate, focused changes.
+
+WebPeer's production build still reports that Vite externalises the guarded Node `crypto` fallback reached through a compatibility path. Browser execution selects `globalThis.crypto`, and the focused root, `context`, and `browser` bundle checks do not include the Node fallback, so this is not a leak in the reviewed public browser entries. Removing the compatibility-build warning requires a focused crypto-capability contract or a platform-specific implementation split and remains part of compatibility-surface narrowing.
 
 The dependency preview also reports `uuid`, but the installed and locked graph resolves PouchDB's UUID dependency to the patched `uuid@11.1.1` through the repository override, and `npm audit` does not report the UUID advisory. The scanner appears to infer the older declared PouchDB range rather than the resolved override, so this warning is treated as a scanner false positive unless a packed-artefact inspection shows otherwise. A separate dependency review remains necessary for the pre-existing CLI `werift`/`ip` advisory, for which npm currently offers no automatic fix, and the development-only Istanbul `js-yaml` advisory.
 
@@ -293,7 +297,7 @@ Core, language, UI, browser, Node, P2P, Object Storage, and SDK packages could m
 
 ## Verification
 
-The migration is complete only when:
+The package-boundary conversion is ready for acceptance only when:
 
 - common-library production source has no parent-repository or Obsidian dependency;
 - the package builds and tests from a standalone clean checkout;
@@ -301,14 +305,18 @@ The migration is complete only when:
 - packed Node and browser consumers resolve only exported paths;
 - a headless client does not bundle Svelte or the full language catalogue;
 - retained entry-point barrels do not load unrelated optional implementations, and no removed barrel is replaced by unrestricted deep exports;
-- two clients with different database, encryption, language, and lifecycle settings can coexist without sharing mutable client state;
 - Self-hosted LiveSync verifies its local Svelte adapter and workflow policy through injected tests and a focused composition smoke test;
-- if the framework-neutral Modal host is later promoted to Fancy Kit, Kit-owned lifecycle, viewport, safe-area, and touch-target guarantees replace duplicated device tests in LiveSync;
 - Self-hosted LiveSync no longer has `src/lib`, `_types`, or `@lib/*` source aliases;
-- the CLI, Webapp, WebPeer, plug-in build, unit tests, integration tests, and focused real-Obsidian E2E pass against the reviewed package artefact;
+- the Commonlib owner and packed-consumer suites, Self-hosted LiveSync unit and integration tests, Deno CLI E2E, plug-in and application production builds, and focused real-Obsidian E2E pass against the reviewed package artefact;
 - common-library downstream CI records and tests the exact Self-hosted LiveSync ref;
 - a Community directory scanner preview confirms the expected change in source findings; and
-- an external consumer can replace its submodule or custom loader with the documented package API.
+- compatibility exports are explicitly enumerated from a reviewed downstream inventory rather than exposed through a wildcard.
+
+The following are later SDK-stabilisation gates, not blockers for accepting the package boundary:
+
+- two clients with different database, encryption, language, and lifecycle settings can coexist without sharing mutable client state;
+- an external consumer can replace its submodule or custom loader with the documented high-level package API; and
+- if the framework-neutral Modal host is promoted to Fancy Kit, Kit-owned lifecycle, viewport, safe-area, and touch-target guarantees replace duplicated device tests in LiveSync.
 
 ## Consequences
 
@@ -324,5 +332,5 @@ The migration is complete only when:
 
 - Define the focused stable language entry point which will replace the temporary compatibility subpath.
 - Define the minimum conflict and conditional-write guarantees required by the first public high-level client.
-- Decide which current deep imports can migrate directly to public subpaths and which require temporary compatibility exports.
+- Continue narrowing the broad model, service-composition, and replication compatibility paths as focused result contracts become available.
 - Confirm whether another Fancy Kit consumer needs the framework-neutral Modal host before it is added to the Kit, or whether LiveSync should pilot the contract first.

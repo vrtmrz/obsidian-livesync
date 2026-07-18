@@ -3,7 +3,7 @@ import {
     SvelteDialogManagerBase,
     SvelteDialogMixIn,
 } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { SvelteDialogManagerDependencies } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import DialogHost from "@/modules/services/LiveSyncUI/DialogHost.svelte";

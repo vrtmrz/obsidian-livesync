@@ -1,10 +1,9 @@
 import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { requestToCouchDBWithCredentials } from "./utils";
 import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.defaults";
 import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";

@@ -6,7 +6,7 @@ import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEveryth
 import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
 import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { TweakValuesShouldMatchedTemplate } from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
 import type {
     FetchEverythingResult,
@@ -14,7 +14,7 @@ import type {
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
 import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
 
 /**
  * Flag file handler interface, similar to target filter pattern.

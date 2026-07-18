@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { encodeSetupSettingsAsQR, useSetupQRCodeFeature } from "./qrCode";
 import { encodeQR, encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 
