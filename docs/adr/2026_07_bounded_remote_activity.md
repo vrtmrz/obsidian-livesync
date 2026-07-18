@@ -9,6 +9,7 @@ Accepted
 Self-hosted LiveSync performs remote work through more than one path:
 
 - finite, or bounded, replication starts for manual, event-driven, periodic, and start-up synchronisation;
+- application of downloaded document changes to local storage after replication has delivered them;
 - long-running rebuild uploads, standard fetches, and fast fetches;
 - continuous replication keeps a channel open until the application lifecycle stops it; and
 - remote chunk fetching can occur independently of replication, for example while reading history.
@@ -29,13 +30,15 @@ The boundary has the following contract:
 - run the task through an optional host-provided activity runner;
 - decrement the count in `finally`, including when the task rejects;
 - allow overlapping tasks, so transitions may be `0 → 1 → 2 → 1 → 0`; and
-- count logical operations, not physical connections, sockets, HTTP requests, queued work, or retry delays outside the bounded task.
+- count logical operations, not physical connections, sockets, HTTP requests, individual queued items, or retry delays outside the bounded task.
 
 `ReplicatorService` also owns a narrower `finiteReplicationActivityCount`. Callers enter it through the typed `runFiniteReplicationActivity` method; diagnostic labels do not determine behaviour. The narrower count describes operations which may still place replicated documents in the local database; it excludes rebuilds, chunk-fetch claims, and other bounded work which cannot satisfy an arbitrary missing-chunk read. It is a delivery-lifecycle capability, not a second Wake Lock policy or a connection counter.
 
 The Obsidian host injects the screen wake-lock manager from the `octagonal-wheels` package in the Fancy Kit monorepo as the activity runner on both mobile and desktop. Unsupported or rejected wake-lock requests remain best effort and do not prevent the remote task from running. The manager is disposed when the plug-in unloads.
 
 Finite replication enters both counts only after readiness checks have succeeded and leaves them after `openReplication(..., continuous: false, ...)` settles. A successful completion has reached the latest sequence in that operation's scope and is therefore an authoritative quiescence boundary for chunk retrieval. A failed operation does not prove latest state, but can no longer deliver documents from that attempt. Failure handling runs afterwards so a mismatch or recovery dialogue does not retain the activity. This includes the direct start-up synchronisation path as well as manual, event-driven, and periodic calls through `ReplicationService`. The unbounded continuous channel does not enter either boundary, but its finite initial pull-only catch-up does; the one-shot parameter fallback chain remains inside that boundary.
+
+Applying downloaded document changes enters the broad boundary from the first queued document until the replication-result queue and its in-progress set are both empty. The final empty snapshot is attempted before the boundary settles so application suspension does not normally leave a stale recovery queue after the files have already been written; snapshot failure is logged and still releases the boundary. Additional replication batches join the existing boundary rather than acquiring one Wake Lock per batch or document. Suspending replication-result processing or the application lifecycle releases the boundary; resuming it reacquires protection while queued work remains. This tail is broad activity only: it does not extend `finiteReplicationActivityCount`, because local application cannot deliver a missing chunk which has not already arrived. Offline scans and other local-only storage reflection remain outside the boundary.
 
 Manual P2P commands which bypass `ReplicationService` enter the broad boundary. Direct P2P pull and push entry points are therefore both protected as finite remote work, covering the Obsidian panes, CLI, and Webapp. A pull or bidirectional synchronisation also enters the narrower finite-replication boundary because it can place documents in the local database. A push-only request remains broad-only: it cannot satisfy a local missing-chunk read and must not present itself as a delivery source. Automatic synchronisation on peer discovery, a pull requested by a remote peer, and a watched pull following a peer progress notification enter both boundaries because each can deliver local documents. A normal P2P peer-selection dialogue represents one broad finite session: it remains inside the boundary while waiting for a peer and while the person may perform repeated synchronisations, then settles when the dialogue closes and any in-flight synchronisation has finished. Closing without synchronising returns a failed result and releases the boundary. The 'Start Sync & Close' action completes its synchronisation before closing. This deliberately protects peer discovery and selection, because display sleep can interrupt discovery or connection establishment and require the person to start detection again. It may therefore retain a Wake Lock longer than the network transfer alone. A transfer performed inside that session temporarily adds a nested activity; the count remains a logical-operation count rather than a connection total.
 
@@ -81,7 +84,7 @@ The platform activity runner remains injected. Common library and headless consu
 - Do not guarantee protection against operating-system suspension, closing a laptop lid, forced termination, network loss, or a user-initiated sleep action.
 - Do not add a lifecycle timeout which would abort an unusually slow rebuild. A genuinely stalled operation may postpone LiveSync's visibility suspension until it settles, but the platform may still suspend or terminate background work.
 - Do not broaden `keepReplicationActiveInBackground`; it remains an opt-in desktop policy for continuous and periodic operation after finite work has ended.
-- Do not include local storage reflection in this boundary. It is re-entrant and offline-capable, and needs a separate decision if activity reporting or power policy is added later.
+- Do not include offline scans or unrelated local storage reflection in this boundary.
 
 ## Verification
 
@@ -98,6 +101,7 @@ Unit tests cover:
 - automatic synchronisation on peer discovery, remote pull requests, and watched peer progress entering the boundary;
 - P2P peer-selection sessions settling on close, including cancellation, repeated synchronisation, and a close during in-flight work;
 - remote chunk fetching remaining inside the shared boundary from synchronous queue acceptance through local persistence and terminal notification;
+- downloaded document application sharing one boundary until its queue, in-progress set, and final recovery snapshot have settled;
 - missing-chunk waiters rechecking local storage when observed per-identifier claims and finite replication have settled;
 - the finite-replication count excluding other bounded work;
 - standard, fast, remote, and combined rebuild activity boundaries;
@@ -119,4 +123,5 @@ The exact Fancy Kit screen wake-lock behaviour is covered by its package and Har
 - One finite activity definition drives Wake Lock, lifecycle protection, and status UI without coupling common library code to Obsidian or browser globals.
 - Callers can observe accurate logical activity even in CLI and Webapp hosts which do not inject a Wake Lock implementation.
 - Rebuild operations now retain Wake Lock and lifecycle protection across their longest interruption-sensitive phases without retaining them for Rebuilder-owned pre-operation or completion dialogues. Post-reset P2P discovery and selection remain protected as an intentional part of completing the rebuild.
+- Large downloaded batches retain best-effort Wake Lock and lifecycle protection while their documents are being applied to local storage, without changing the existing ten-document processing limit.
 - Users can now distinguish the lifetime of a finite remote operation from approximate request activity within it.
