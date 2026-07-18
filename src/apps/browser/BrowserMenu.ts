@@ -1,4 +1,4 @@
-import { promiseWithResolver, type PromiseWithResolvers } from "octagonal-wheels/promises";
+import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
 import { mount } from "svelte";
 import MenuView from "./ui/MenuView.svelte";
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
@@ -45,7 +45,7 @@ export class Menu {
         if (this.waitingForClose) {
             this.waitingForClose.resolve();
         }
-        this.waitingForClose = promiseWithResolver<void>();
+        this.waitingForClose = promiseWithResolvers<void>();
         mount(MenuView, {
             target: el,
             props: {

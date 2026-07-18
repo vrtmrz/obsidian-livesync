@@ -13,7 +13,7 @@ import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/ma
 import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { WebAppLog } from "../WebAppLog";
+import type { WebAppLog } from "@/apps/webapp/WebAppLog";
 
 type FileSystemObserverRecord = {
     changedHandle?: FileSystemFileHandle | FileSystemDirectoryHandle;

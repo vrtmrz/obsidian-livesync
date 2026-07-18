@@ -10,7 +10,7 @@
         "buildVite": "npx dotenv-cli -e .env  -- vite build --mode production",
         "buildViteOriginal": "npx dotenv-cli -e .env  -- vite build --mode original",
         "buildDev": "node esbuild.config.mjs dev",
-        "lint": "eslint --cache --concurrency auto src",
+        "lint": "eslint --cache --cache-strategy content --concurrency auto src",
         "lint:community": "eslint --config eslint.community.config.mjs --concurrency auto src",
         "svelte-check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
         "tsc-check": "tsc --noEmit",

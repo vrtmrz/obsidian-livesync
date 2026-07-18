@@ -7,7 +7,7 @@ import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/brows
 import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
 import type { FSAPIFile, FSAPIFolder, FSAPIStat } from "./FSAPITypes";
 import { shareRunningResult } from "octagonal-wheels/concurrency/lock_v2";
-import type { WebAppLog } from "../WebAppLog";
+import type { WebAppLog } from "@/apps/webapp/WebAppLog";
 
 /**
  * Complete file system adapter implementation for FileSystem API
