@@ -1,13 +1,25 @@
-# 0.25
-Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
+# 1.0
 
-The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
+Well then, everyone: it has been roughly a year since I declared the 0.25 beta. During that time, we have concentrated mainly on fixing defects and completing the features that the project needed.
+
+Version 1.0 has been in mind for some time. We have now brought together the work intended to make it possible: stronger CI, more detailed tests, an E2E runner suited to synchronisation, and real-device testing tools. These now form a coherent [Kit](https://github.com/vrtmrz/fancy-kit) rather than a collection of isolated pieces.
+
+With those foundations in place, it seems that the time has finally come to reshape the structure of this repository.
+
+None of this would have been possible without your issue reports, pull requests, sponsorship, and the support provided through [OpenAI's Codex for Open Source](https://openai.com/form/codex-for-oss/). I would like to express my gratitude once again.
+
+As with every pull request contributed to the project, code produced with Codex and similar tools is reviewed and audited by me, vrtmrz. Anyone interested in how I manage that process can refer to [my dotfiles](https://github.com/vrtmrz/dotfiles).
+
+Of course, this reorganisation is also being driven by necessity. The time has come to engage seriously with the Community directory review and to address reusability properly. After the rather dreadful score for v0.25.83, I even received an email about it.
+
+This will call for your help once again. I would be very grateful for your co-operation as we build a sounder foundation for the project and its future development.
 
 ## Unreleased
 
 ### Improved
 
 - Removed the ineffective 'Use the trash bin' toggle from the settings interface. Remote deletions continue to follow Obsidian's deletion preference, while the legacy setting key remains accepted for compatibility.
+- Improved P2P restart and settings-reapplication handling by serialising transport start and stop, keeping event handlers bound to the active replicator, and using one package-owned Trystero transport generation.
 
 ### Miscellaneous
 
@@ -19,6 +31,7 @@ The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsid
 - Added packed-package and downstream checks for Commonlib entry points, including isolated Node and browser File System Access API storage implementations.
 - Added reusable Context result contracts for Obsidian, CLI, and Webapp compositions, including a real-Obsidian smoke assertion that every service retains the host-provided Context.
 - Added Commonlib stream-contract tests and downstream CLI unit and Deno E2E coverage for injected text, binary, prompt, and error channels.
+- Added a dependency-ownership regression and verified the package-owned P2P transport through Compose CLI synchronisation, real-Obsidian startup and Context checks, representative desktop and mobile dialogues, and the settings pane.
 
 ## 0.25.83
 

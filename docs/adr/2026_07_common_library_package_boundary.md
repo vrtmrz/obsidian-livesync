@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — the implementation proof is complete, and `@vrtmrz/livesync-commonlib@0.1.0-rc.1` has been published and verified as the exact downstream dependency; the community-scanner preview remains pending.
+Proposed — the implementation proof is complete, and `@vrtmrz/livesync-commonlib@0.1.0-rc.2` has been published and verified as the exact downstream dependency; the community-scanner preview remains pending.
 
 ## Context
 
@@ -245,13 +245,15 @@ Every retained barrel must correspond to an explicit `exports` entry, list named
 
 ## Implementation Proof
 
-The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the current downstream migration. It publishes neither raw TypeScript nor Svelte source. The immutable `@vrtmrz/livesync-commonlib@0.1.0-rc.1` registry artefact can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Its registry version and checksum are recorded by release validation.
+The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the current downstream migration. It publishes neither raw TypeScript nor Svelte source. The immutable `@vrtmrz/livesync-commonlib@0.1.0-rc.2` registry artefact can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Its registry version and checksum are recorded by release validation.
 
 The proof found and fixed three boundary defects which source-alias consumption had hidden: compiled JSON imports required explicit output extensions, precompiled Svelte output could not safely be treated as source by the downstream Svelte pipeline, and Vite's default client conditions selected Commonlib's browser worker while building the Node CLI. Packed-consumer regressions cover the first two. The CLI now uses Vite's server conditions and treats every Node built-in reported by Commonlib's Node entry as external; the built CLI is exercised through Deno E2E. Importing root or context also no longer patches DOM prototypes, translator injection prevents the context entry from loading the complete language catalogue, and standard input and protocol output are supplied by the package-owned host contract rather than direct stream access in command handlers.
 
-Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact registry artefact without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
+Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact registry artefact without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. Commonlib also owns the Trystero implementation and version; the host retains no direct Trystero dependency, preventing two transport generations from entering one application graph. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
 
-The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,092 tests across 57 files. Self-hosted LiveSync's three host-composition contract tests and complete 340-test unit suite pass against the registry artefact. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
+The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,123 tests across 62 files. Self-hosted LiveSync's three host-composition contract tests and complete 341-test unit suite across 38 files pass against the registry artefact. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
+
+The package-owned Trystero transport also completes the canonical Compose P2P synchronisation workflow with a local relay and two isolated CLI peers. In real Obsidian, the plug-in starts with one consistent `ObsidianServiceContext`, the representative server-selection and Setup URI Svelte dialogues mount and close through their normal controls, their mobile variants satisfy viewport, safe-area, and touch-target assertions, and the settings pane exposes only the effective deletion controls. These runtime checks complement the package tests without making Webapp maintenance the primary release gate.
 
 The Community review lint completes with no errors. Advisory warnings remain in pre-existing UI sentence casing, deprecated Obsidian interfaces, unchecked dynamic setting data, and application-specific console output, especially in the Webapp. They are separate follow-up work and do not justify widening the package boundary or exposing additional compatibility paths.
 
