@@ -57,6 +57,9 @@ import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.d
 import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
+const HIDDEN_FILE_NOTICE_GROUP = "hidden-file-changes";
+const HIDDEN_FILE_NOTICE_DURATION_MS = 20_000;
+
 declare global {
     interface OPTIONAL_SYNC_FEATURES {
         FETCH: "FETCH";
@@ -1227,6 +1230,8 @@ Offline Changed files: ${files.length}`;
     notifyConfigChange() {
         const updatedFolders = [...this.queuedNotificationFiles];
         this.queuedNotificationFiles.clear();
+        const noticeGroups = this.services.context.noticeGroups;
+        let hasNoticeItems = false;
         try {
             //@ts-ignore
             const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
@@ -1238,31 +1243,33 @@ Offline Changed files: ${files.length}`;
                 // If notified about plug-ins, reloading Obsidian may not be necessary.
                 const updatePluginId = manifest.id;
                 const updatePluginName = manifest.name;
-                this.core.confirm.askInPopup(
-                    `updated-${updatePluginId}`,
-                    `Files in ${updatePluginName} has been updated!\nPress {HERE} to reload ${updatePluginName}, or press elsewhere to dismiss this message.`,
-                    (anchor) => {
-                        anchor.text = "HERE";
-                        anchor.addEventListener("click", () => {
+                const itemKey = `plugin:${updatePluginId}`;
+                noticeGroups.setItem(HIDDEN_FILE_NOTICE_GROUP, itemKey, {
+                    message: `Files in ${updatePluginName} were updated.`,
+                    action: {
+                        label: `Reload ${updatePluginName}`,
+                        onSelect: () => {
                             fireAndForget(async () => {
                                 this._log(
                                     `Unloading plugin: ${updatePluginName}`,
                                     LOG_LEVEL_NOTICE,
                                     "plugin-reload-" + updatePluginId
                                 );
-                                // @ts-ignore
+                                // @ts-ignore -- Obsidian does not expose the plug-in lifecycle methods in its public API.
                                 await this.app.plugins.unloadPlugin(updatePluginId);
-                                // @ts-ignore
+                                // @ts-ignore -- Obsidian does not expose the plug-in lifecycle methods in its public API.
                                 await this.app.plugins.loadPlugin(updatePluginId);
                                 this._log(
                                     `Plugin reloaded: ${updatePluginName}`,
                                     LOG_LEVEL_NOTICE,
                                     "plugin-reload-" + updatePluginId
                                 );
+                                noticeGroups.removeItem(HIDDEN_FILE_NOTICE_GROUP, itemKey);
                             });
-                        });
-                    }
-                );
+                        },
+                    },
+                });
+                hasNoticeItems = true;
             }
         } catch (ex) {
             this._log("Error on checking plugin status.");
@@ -1272,17 +1279,23 @@ Offline Changed files: ${files.length}`;
         // If something changes left, notify for reloading Obsidian.
         if (updatedFolders.indexOf(this.services.API.getSystemConfigDir()) >= 0) {
             if (!this.services.appLifecycle.isReloadingScheduled()) {
-                this.core.confirm.askInPopup(
-                    `updated-any-hidden`,
-                    `Some setting files have been modified\nPress {HERE} to schedule a reload of Obsidian, or press elsewhere to dismiss this message.`,
-                    (anchor) => {
-                        anchor.text = "HERE";
-                        anchor.addEventListener("click", () => {
+                noticeGroups.setItem(HIDDEN_FILE_NOTICE_GROUP, "restart", {
+                    message: "Other Obsidian settings files were updated.",
+                    action: {
+                        label: "Schedule an Obsidian restart",
+                        onSelect: () => {
                             this.services.appLifecycle.scheduleRestart();
-                        });
-                    }
-                );
+                            noticeGroups.removeItem(HIDDEN_FILE_NOTICE_GROUP, "restart");
+                        },
+                    },
+                });
+                hasNoticeItems = true;
+            } else {
+                noticeGroups.removeItem(HIDDEN_FILE_NOTICE_GROUP, "restart");
             }
+        }
+        if (hasNoticeItems) {
+            noticeGroups.finish(HIDDEN_FILE_NOTICE_GROUP, { durationMs: HIDDEN_FILE_NOTICE_DURATION_MS });
         }
     }
 

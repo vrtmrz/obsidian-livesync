@@ -13,7 +13,8 @@ describe("ObsidianServiceContext contract", () => {
         const app = {} as Parameters[0];
         const plugin = {} as Parameters[1];
         const liveSyncPlugin = {} as Parameters[2];
-        const context = new ObsidianServiceContext(app, plugin, liveSyncPlugin);
+        const noticeGroups = {} as Parameters[3];
+        const context = new ObsidianServiceContext(app, plugin, liveSyncPlugin, noticeGroups);
 
         expect(observeServiceContext(context, TRANSLATION_KEY)).toEqual({
             translation: translateLiveSyncMessage(TRANSLATION_KEY),
@@ -23,5 +24,6 @@ describe("ObsidianServiceContext contract", () => {
         expect(context.app).toBe(app);
         expect(context.plugin).toBe(plugin);
         expect(context.liveSyncPlugin).toBe(liveSyncPlugin);
+        expect(context.noticeGroups).toBe(noticeGroups);
     });
 });

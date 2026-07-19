@@ -1,5 +1,11 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import {
+    assertLocatorHasMinimumTouchTarget,
+    assertLocatorWithinSafeArea,
+    assertLocatorWithinViewport,
+    assertNoHorizontalOverflow,
+} from "@vrtmrz/obsidian-test-session";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
     assertCouchDbReachable,
@@ -13,7 +19,10 @@ import {
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
+    assertE2eCompatibilityMarker,
     configureCouchDb,
+    createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
@@ -21,7 +30,13 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { captureJsonResolveDialogue, clickJsonResolveOption, obsidianRemoteDebuggingPort } from "../runner/ui.ts";
+import {
+    captureJsonResolveDialogue,
+    clickJsonResolveOption,
+    obsidianRemoteDebuggingPort,
+    withObsidianPage,
+} from "../runner/ui.ts";
+import { iPhoneSafeArea, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
@@ -300,31 +315,33 @@ async function startConfiguredSession(
     vault: TemporaryVault,
     overrides: Record<string, unknown> = {}
 ): Promise<ObsidianLiveSyncSession> {
+    const couchDbSettings = {
+        uri: context.couchDb.uri,
+        username: context.couchDb.username,
+        password: context.couchDb.password,
+        dbName: context.dbName,
+    };
+    const hiddenFileSettings = {
+        syncInternalFiles: true,
+        syncInternalFilesBeforeReplication: true,
+        watchInternalFileChanges: false,
+        syncInternalFilesTargetPatterns: "",
+        ...overrides,
+    };
     const session = await startObsidianLiveSyncSession({
         binary: context.binary,
         cliBinary: context.cliBinary,
         vault,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+        // A fresh Vault waits for onboarding before opening its local database.
+        // Seed the same isolated settings used by configureCouchDb so that the
+        // application lifecycle can become ready without a user interaction.
+        pluginData: createE2eCouchDbPluginData(couchDbSettings, hiddenFileSettings),
+        localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
     });
     await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
-    await configureCouchDb(
-        context.cliBinary,
-        session.cliEnv,
-        {
-            uri: context.couchDb.uri,
-            username: context.couchDb.username,
-            password: context.couchDb.password,
-            dbName: context.dbName,
-        },
-        {
-            syncInternalFiles: true,
-            syncInternalFilesBeforeReplication: true,
-            watchInternalFileChanges: false,
-            syncInternalFilesTargetPatterns: "",
-            ...overrides,
-        }
-    );
-    await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
+    await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
+    await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, hiddenFileSettings);
     await prepareRemote(context.cliBinary, session.cliEnv);
     return session;
 }
@@ -490,6 +507,118 @@ async function runTargetMismatch(
     console.log("Hidden target mismatch respected per-device target patterns, then applied after enabling the target.");
 }
 
+async function setHiddenFileNoticeFixtures(port: number, itemIds: string[], includeRestart: boolean): Promise<void> {
+    await withObsidianPage(port, async (page) => {
+        await page.evaluate(
+            ({ nextItemIds, nextIncludeRestart }) => {
+                const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;
+                const plugin = obsidianApp.plugins.plugins["obsidian-livesync"];
+                const core = plugin.core;
+                const addOn = core.getAddOn("HiddenFileSync");
+                for (const id of ["alpha", "beta", "gamma"]) {
+                    const pluginId = `livesync-e2e-${id}`;
+                    obsidianApp.plugins.manifests[pluginId] = {
+                        id: pluginId,
+                        name: `E2E ${id[0]?.toUpperCase()}${id.slice(1)}`,
+                        version: "1.0.0",
+                        minAppVersion: "1.0.0",
+                        description: "E2E fixture",
+                        author: "Self-hosted LiveSync",
+                        isDesktopOnly: false,
+                        dir: `.obsidian/plugins/${pluginId}`,
+                    };
+                    obsidianApp.plugins.enabledPlugins.add(pluginId);
+                }
+                addOn.queuedNotificationFiles.clear();
+                for (const id of nextItemIds) {
+                    addOn.queuedNotificationFiles.add(`.obsidian/plugins/livesync-e2e-${id}`);
+                }
+                if (nextIncludeRestart) {
+                    addOn.queuedNotificationFiles.add(core.services.API.getSystemConfigDir());
+                }
+                addOn.notifyConfigChange();
+            },
+            { nextItemIds: itemIds, nextIncludeRestart: includeRestart }
+        );
+    });
+}
+
+async function clearHiddenFileNoticeFixtures(port: number): Promise<void> {
+    await withObsidianPage(port, async (page) => {
+        await page.evaluate(() => {
+            const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;
+            const plugin = obsidianApp.plugins.plugins["obsidian-livesync"];
+            plugin.core.services.context.noticeGroups.hide("hidden-file-changes");
+            for (const id of ["alpha", "beta", "gamma"]) {
+                const pluginId = `livesync-e2e-${id}`;
+                obsidianApp.plugins.enabledPlugins.delete(pluginId);
+                delete obsidianApp.plugins.manifests[pluginId];
+            }
+        });
+    });
+}
+
+async function runConfigurationNoticeGrouping(context: RunnerContext, vault: TemporaryVault): Promise<void> {
+    const session = await startConfiguredSession(context, vault);
+    const port = session.remoteDebuggingPort;
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_NOTICE_TIMEOUT_MS ?? 10_000);
+    try {
+        await setObsidianMobileTestMode(port, true, timeoutMs);
+        await setHiddenFileNoticeFixtures(port, ["alpha", "beta"], true);
+
+        await withObsidianPage(port, async (page) => {
+            const visibleGroups = page.locator(".notice:has(.vpk-keyed-notice-group):visible");
+            await visibleGroups.first().waitFor({ state: "visible", timeout: timeoutMs });
+            assertEqual(await visibleGroups.count(), 1, "Hidden File Sync created more than one visible Notice group.");
+
+            const notice = visibleGroups.first();
+            const rows = notice.locator(".vpk-keyed-notice-group__item");
+            assertEqual(await rows.count(), 3, "Hidden File Sync did not group every configuration-change action.");
+            await notice.getByText("Files in E2E Alpha were updated.", { exact: true }).waitFor();
+            await notice.getByText("Files in E2E Beta were updated.", { exact: true }).waitFor();
+            await notice.getByText("Other Obsidian settings files were updated.", { exact: true }).waitFor();
+
+            await assertLocatorWithinViewport(page, notice, { label: "Hidden File Sync notification group" });
+            await assertNoHorizontalOverflow(page, notice, { label: "Hidden File Sync notification group" });
+            await assertLocatorWithinSafeArea(page, notice, {
+                label: "Hidden File Sync notification group",
+                safeAreaInsets: iPhoneSafeArea,
+            });
+            const buttons = notice.getByRole("button");
+            for (let index = 0; index < (await buttons.count()); index += 1) {
+                await assertLocatorHasMinimumTouchTarget(page, buttons.nth(index), {
+                    label: `Hidden File Sync notification action ${index + 1}`,
+                });
+            }
+
+            const outputDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+            const screenshotPath = join(outputDirectory, "hidden-file-notice-group-mobile.png");
+            await mkdir(dirname(screenshotPath), { recursive: true });
+            await page.screenshot({ path: screenshotPath, fullPage: true, animations: "disabled" });
+
+            await rows.first().getByText("Files in E2E Alpha were updated.", { exact: true }).click();
+            await notice.waitFor({ state: "hidden", timeout: timeoutMs });
+        });
+
+        await setHiddenFileNoticeFixtures(port, ["gamma"], false);
+        await withObsidianPage(port, async (page) => {
+            const notice = page.locator(".notice:has(.vpk-keyed-notice-group):visible").first();
+            await notice.waitFor({ state: "visible", timeout: timeoutMs });
+            const rows = notice.locator(".vpk-keyed-notice-group__item");
+            assertEqual(await rows.count(), 1, "A dismissed Hidden File Sync Notice repeated acknowledged rows.");
+            await rows.getByText("Files in E2E Gamma were updated.", { exact: true }).waitFor();
+        });
+
+        console.log(
+            "Hidden File Sync grouped configuration notifications passed the mobile regression for issue #555."
+        );
+    } finally {
+        await clearHiddenFileNoticeFixtures(port).catch(() => undefined);
+        await setObsidianMobileTestMode(port, false, timeoutMs).catch(() => undefined);
+        await session.app.stop();
+    }
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -517,6 +646,7 @@ async function main(): Promise<void> {
         await runJsonConflictRoundTrip(context, vaultA, vaultB);
         await runJsonManualConflictResolution(context, vaultB);
         await runTargetMismatch(context, vaultA, vaultB);
+        await runConfigurationNoticeGrouping(context, vaultB);
     } finally {
         await vaultA.dispose();
         await vaultB.dispose();
