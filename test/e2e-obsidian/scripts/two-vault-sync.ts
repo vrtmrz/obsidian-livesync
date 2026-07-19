@@ -497,6 +497,23 @@ async function runTargetMismatch(
     );
     await session.app.stop();
 
+    session = await startConfiguredSession(context, vaultB, {
+        syncOnlyRegEx: "",
+    });
+    await syncAndApply(context, session);
+    const reflectedAfterEnabling = await waitForPathContent(
+        vaultB.path,
+        targetMismatchPath,
+        (content) => content === ignoredContent
+    );
+    await session.app.stop();
+
+    assertEqual(
+        reflectedAfterEnabling,
+        ignoredContent,
+        "Target file was not reflected after the device accepted the path."
+    );
+
     session = await startConfiguredSession(context, vaultA);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, targetMismatchPath, acceptedContent);
     await uploadNote(context, session, targetMismatchPath);
@@ -513,8 +530,10 @@ async function runTargetMismatch(
     );
     await session.app.stop();
 
-    assertEqual(received, acceptedContent, "Target file was not reflected after the device accepted the path.");
-    console.log("Two-vault target mismatch skipped a non-target note, then reflected it after enabling the target.");
+    assertEqual(received, acceptedContent, "Target file update was not reflected after the device accepted the path.");
+    console.log(
+        "Two-vault target mismatch skipped a non-target note, reflected it after enabling the target, and accepted a later update."
+    );
 }
 
 async function main(): Promise<void> {
