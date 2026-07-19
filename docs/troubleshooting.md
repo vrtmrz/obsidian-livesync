@@ -391,6 +391,8 @@ A flag file is a simple Markdown file located at the root of your vault. Its ver
 
 When resetting synchronisation on this device or overwriting server data, restarting Obsidian is performed once for safety reasons. At that time, Self-hosted LiveSync uses these files to determine whether the process should be carried out. (This mechanism is especially useful on mobile devices to force cancellation if the database rebuilding fails). These files are not subject to synchronisation.
 
+Flag-file recovery is handled before the compatibility-review dialogue. `redflag.md` keeps start-up stopped, while a cancelled recovery or one which schedules a restart also prevents a second dialogue from competing with it in that process. When fetch-all or rebuild-all completes and start-up continues, Self-hosted LiveSync can still ask for compatibility review before ordinary synchronisation resumes. Completing a recovery does not automatically acknowledge a database or settings version; use the explicit resume action after reviewing the explanation.
+
 #### How to Resolve the Scram Loop
 
 If you cannot disable Scram, please follow these steps:

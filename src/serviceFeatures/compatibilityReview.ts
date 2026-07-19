@@ -12,6 +12,11 @@ import {
 export type CompatibilityReviewSummaryAction = "details" | "resume" | "keep-paused" | false;
 export type CompatibilityReviewDetailsAction = "back" | false;
 
+// Explicit flag-file recovery runs at priorities 5, 10, and 20. Present the
+// compatibility review only after those operations have completed; a recovery
+// handler which stops start-up also prevents this dialogue from competing with it.
+export const COMPATIBILITY_REVIEW_LAYOUT_PRIORITY = 30;
+
 export interface CompatibilityReviewUi {
     showSummary(pause: CompatibilityPause): Promise<CompatibilityReviewSummaryAction>;
     showDetails(pause: CompatibilityPause): Promise<CompatibilityReviewDetailsAction>;
@@ -139,7 +144,7 @@ export function useCompatibilityReview(core: LiveSyncCore, ui: CompatibilityRevi
     core.services.appLifecycle.onLayoutReady.addHandler(() => {
         fireAndForget(() => controller.openReview());
         return Promise.resolve(true);
-    });
+    }, COMPATIBILITY_REVIEW_LAYOUT_PRIORITY);
     core.services.appLifecycle.onUnload.addHandler(() => {
         controller.dispose();
         return Promise.resolve(true);

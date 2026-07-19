@@ -20,7 +20,8 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 ### Improved
 
-- Stacked compatibility-review actions vertically and kept persistent review reminders clear of mobile close controls. Long setup dialogues now keep their action area inside the mobile safe area while their content remains scrollable.
+- Stacked compatibility-review actions vertically and kept persistent review reminders clear of mobile close controls. Long setup dialogues now keep their action area inside the mobile safe area while their content remains scrollable. A configured Vault with no device-local acknowledgement now explains that it may have been copied, restored, or opened in a new profile instead of trying to infer safety from an empty local database.
+- Combined Hidden File Sync plug-in reload and Obsidian restart notifications into one mobile-safe message with clearly labelled actions, avoiding the stacked notifications reported in [issue #555](https://github.com/vrtmrz/obsidian-livesync/issues/555). A group dismissed by the user no longer reappears with its previously acknowledged rows when a later change arrives.
 - Replaced remote-size decision prompts shown during startup with long-lived, clickable notices. The detailed choices now open only when requested and no longer select an answer automatically after a timeout.
 - Removed the obsolete prompt and automatic bulk chunk pre-send from initial and rebuild uploads. These operations retain the standard two-pass replication used to converge follow-up writes and conflict resolution.
 

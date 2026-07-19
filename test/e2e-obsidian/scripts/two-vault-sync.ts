@@ -13,9 +13,14 @@ import {
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
+    assertE2eCompatibilityMarker,
+    assertE2eCompatibilityReviewPending,
     configureCouchDb,
+    createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
+    resumeCompatibilityReview,
     waitForLiveSyncCoreReady,
     waitForLocalDatabaseEntry,
     type LocalDatabaseEntry,
@@ -42,6 +47,7 @@ type RunnerContext = {
     cliBinary: string;
     couchDb: CouchDbConfig;
     dbName: string;
+    reviewedVaults: Set<string>;
 };
 
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
@@ -163,24 +169,32 @@ async function startConfiguredSession(
     vault: TemporaryVault,
     overrides: Record<string, unknown> = {}
 ): Promise<ObsidianLiveSyncSession> {
+    const couchDbSettings = {
+        uri: context.couchDb.uri,
+        username: context.couchDb.username,
+        password: context.couchDb.password,
+        dbName: context.dbName,
+    };
+    const reviewAlreadyCompleted = context.reviewedVaults.has(vault.path);
     const session = await startObsidianLiveSyncSession({
         binary: context.binary,
         cliBinary: context.cliBinary,
         vault,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+        pluginData: createE2eCouchDbPluginData(couchDbSettings, overrides),
+        // The real profile retains this device-local acknowledgement. Seed it
+        // on later process launches because the isolated Electron runner does
+        // not currently preserve localStorage across those launches.
+        localStorageEntries: reviewAlreadyCompleted ? createE2eObsidianDeviceLocalState(vault.name) : undefined,
     });
     await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
-    await configureCouchDb(
-        context.cliBinary,
-        session.cliEnv,
-        {
-            uri: context.couchDb.uri,
-            username: context.couchDb.username,
-            password: context.couchDb.password,
-            dbName: context.dbName,
-        },
-        overrides
-    );
+    if (!reviewAlreadyCompleted) {
+        await assertE2eCompatibilityReviewPending(context.cliBinary, session.cliEnv);
+        await resumeCompatibilityReview(session.remoteDebuggingPort);
+    }
+    await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
+    if (!reviewAlreadyCompleted) context.reviewedVaults.add(vault.path);
+    await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, overrides);
     await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
     await prepareRemote(context.cliBinary, session.cliEnv);
     return session;
@@ -517,8 +531,14 @@ async function main(): Promise<void> {
     const vaultB = await createTemporaryVault();
     const encryptedVaultA = await createTemporaryVault();
     const encryptedVaultB = await createTemporaryVault();
-    const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName };
-    const encryptedContext: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName: encryptedDbName };
+    const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName, reviewedVaults: new Set() };
+    const encryptedContext: RunnerContext = {
+        binary,
+        cliBinary: cli.binary,
+        couchDb,
+        dbName: encryptedDbName,
+        reviewedVaults: new Set(),
+    };
 
     try {
         await assertCouchDbReachable(couchDb);

@@ -1,69 +1,20 @@
 import { Notice } from "@/deps.ts";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
-import type { CompatibilityPause, CompatibilityPauseReason } from "@/common/databaseCompatibility.ts";
+import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
 import type {
     CompatibilityReviewDetailsAction,
     CompatibilityReviewSummaryAction,
     CompatibilityReviewUi,
 } from "./compatibilityReview.ts";
+import {
+    compatibilityReviewDetailsMarkdown,
+    compatibilityReviewSummaryMarkdown,
+} from "./compatibilityReviewMarkdown.ts";
 
 const REVIEW_DETAILS = "Review compatibility details";
 const KEEP_PAUSED = "Keep synchronisation paused";
 const RESUME = "Resume synchronisation";
 const BACK = "Back to compatibility review";
-
-function summaryMarkdown(pause: CompatibilityPause): string {
-    const action = pause.resumable
-        ? "Before resuming, review the compatibility details and update Self-hosted LiveSync on every device which uses this remote database."
-        : "This installation cannot safely acknowledge the detected state. Update Self-hosted LiveSync before attempting to synchronise again.";
-    return `Remote synchronisation is paused on this device because its compatibility state requires attention.
-
-${action}
-
-Your automatic synchronisation preferences have not been changed. Closing this dialogue keeps synchronisation paused.`;
-}
-
-function reasonMarkdown(reason: CompatibilityPauseReason): string {
-    if (reason.source === "database-version") {
-        if (reason.state === "upgrade") {
-            return `- The last acknowledged internal database version was **${reason.acknowledgedVersion}** and this installation uses **${reason.currentVersion}**.`;
-        }
-        if (reason.state === "downgrade") {
-            return `- This installation uses internal database version **${reason.currentVersion}**, but this device previously acknowledged newer version **${reason.acknowledgedVersion}**. An older installation must not resume synchronisation.`;
-        }
-        if (reason.state === "missing") {
-            return `- No previously acknowledged internal database version was found for this existing Vault. This installation uses version **${reason.currentVersion}**.`;
-        }
-        return `- The saved internal database version marker is invalid. This installation uses version **${reason.currentVersion}**.`;
-    }
-    if (reason.source === "settings-schema") {
-        if (reason.isFromFutureSchema) {
-            return `- The saved settings use schema **${reason.sourceVersion}**, which is newer than schema **${reason.currentVersion}** supported by this installation.`;
-        }
-        return `- The settings were migrated from schema **${reason.sourceVersion}** to **${reason.currentVersion}** and require review before synchronisation resumes.`;
-    }
-    const escapedMessage = reason.message.replace(/[\\`*_{}[\]()<>#+.!|-]/gu, "\\$&");
-    return `- An earlier compatibility review remains pending: ${escapedMessage}`;
-}
-
-function detailsMarkdown(pause: CompatibilityPause): string {
-    const resolution = pause.resumable
-        ? "After all devices have been updated, return to the compatibility review summary and explicitly resume synchronisation. The current internal version will only then be recorded as acknowledged."
-        : "Install a compatible current version of Self-hosted LiveSync. This pause cannot be dismissed by the current installation.";
-    return `## Why synchronisation is paused
-
-${pause.reasons.map(reasonMarkdown).join("\n")}
-
-## What the pause changes
-
-- Remote replication is blocked before work begins.
-- Your saved automatic synchronisation preferences remain unchanged.
-- Closing either dialogue leaves the safety gate active.
-
-## What to do next
-
-${resolution}`;
-}
 
 export class ObsidianCompatibilityReviewUi implements CompatibilityReviewUi {
     private reminder: Notice | undefined;
@@ -76,7 +27,7 @@ export class ObsidianCompatibilityReviewUi implements CompatibilityReviewUi {
             : ([REVIEW_DETAILS, KEEP_PAUSED] as const);
         const result = await this.confirm.confirmWithMessage(
             "Synchronisation paused for compatibility review",
-            summaryMarkdown(pause),
+            compatibilityReviewSummaryMarkdown(pause),
             [...buttons],
             KEEP_PAUSED,
             undefined,
@@ -91,7 +42,7 @@ export class ObsidianCompatibilityReviewUi implements CompatibilityReviewUi {
     async showDetails(pause: CompatibilityPause): Promise<CompatibilityReviewDetailsAction> {
         const result = await this.confirm.confirmWithMessage(
             "Compatibility review details",
-            detailsMarkdown(pause),
+            compatibilityReviewDetailsMarkdown(pause),
             [BACK],
             BACK,
             undefined,

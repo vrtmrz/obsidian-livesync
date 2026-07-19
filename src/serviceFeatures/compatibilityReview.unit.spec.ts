@@ -4,7 +4,11 @@ import {
     DATABASE_COMPATIBILITY_VERSION_KEY,
     legacyDatabaseCompatibilityVersionKey,
 } from "@/common/databaseCompatibility.ts";
-import { CompatibilityReviewController, type CompatibilityReviewUi } from "./compatibilityReview.ts";
+import {
+    CompatibilityReviewController,
+    type CompatibilityReviewUi,
+    useCompatibilityReview,
+} from "./compatibilityReview.ts";
 
 function migrationState(overrides: Record<string, unknown> = {}) {
     return {
@@ -160,5 +164,27 @@ describe("compatibility review controller", () => {
         expect(fixture.controller.pendingPause).toBeUndefined();
         expect(fixture.ui.showSummary).not.toHaveBeenCalled();
         expect(fixture.ui.clearReminder).toHaveBeenCalledOnce();
+    });
+
+    it("runs the review after the ordered red flag recovery handlers", () => {
+        const onSettingLoaded = { addHandler: vi.fn() };
+        const onLayoutReady = { addHandler: vi.fn() };
+        const onUnload = { addHandler: vi.fn() };
+        const core = {
+            services: {
+                appLifecycle: { onSettingLoaded, onLayoutReady, onUnload },
+                API: { addCommand: vi.fn() },
+            },
+        } as never;
+        const ui: CompatibilityReviewUi = {
+            showSummary: vi.fn(),
+            showDetails: vi.fn(),
+            showReminder: vi.fn(),
+            clearReminder: vi.fn(),
+        };
+
+        useCompatibilityReview(core, ui);
+
+        expect(onLayoutReady.addHandler).toHaveBeenCalledWith(expect.any(Function), 30);
     });
 });

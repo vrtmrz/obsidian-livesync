@@ -9,6 +9,7 @@ export type StartObsidianLiveSyncSessionOptions = {
     vault: TemporaryVault;
     startupGraceMs?: number;
     pluginData?: Record<string, unknown>;
+    localStorageEntries?: Readonly<Record<string, string>>;
 };
 
 export async function startObsidianLiveSyncSession(
@@ -22,5 +23,6 @@ export async function startObsidianLiveSyncSession(
         artifactRoot: process.cwd(),
         startupGraceMs: options.startupGraceMs,
         pluginData: options.pluginData,
+        localStorageEntries: options.localStorageEntries,
     });
 }
