@@ -188,6 +188,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     override onOpen() {
         this.component.load();
         const { contentEl } = this;
+        contentEl.closest(".modal-container")?.classList.add("livesync-message-box-container");
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
         div.setCssStyles({

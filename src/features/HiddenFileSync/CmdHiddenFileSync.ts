@@ -46,7 +46,10 @@ import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.t
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
+import {
+    hiddenFilesEventCount,
+    hiddenFilesProcessingCount,
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
@@ -1765,56 +1768,6 @@ Offline Changed files: ${files.length}`;
 
     // <-- Database To Storage Functions
 
-    private async _allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        await this.__askHiddenFileConfiguration(opt);
-        return true;
-    }
-    private async __askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        const messageFetch = `${opt.enableFetch ? `> - Fetch: Use the files stored from other devices. Choose this option if you have already configured hidden file synchronization on those devices and wish to accept their files.\n` : ""}`;
-        const messageOverwrite = `${opt.enableOverwrite ? `> - Overwrite: Use the files from this device. Select this option if you want to overwrite the files stored on other devices.\n` : ""}`;
-        const messageMerge = `> - Merge: Merge the files from this device with those on other devices. Choose this option if you wish to combine files from multiple sources.
->  However, please be reminded that merging may cause conflicts if the files are not identical. Additionally, this process may occur within the same folder, potentially breaking your plug-in or theme settings that comprise multiple files.\n`;
-        const message = `Would you like to enable **Hidden File Synchronization**?
-
-> [!DETAILS]-
-> This feature allows you to synchronize all hidden files without any user interaction.
-> To enable this feature, you should choose one of the following options:
-${messageFetch}${messageOverwrite}${messageMerge}
-
-> [!IMPORTANT]
-> Please keep in mind that enabling this feature alongside customisation sync may override certain behaviors.`;
-        const CHOICE_FETCH = "Fetch";
-        const CHOICE_OVERWRITE = "Overwrite";
-        const CHOICE_MERGE = "Merge";
-        const CHOICE_DISABLE = "Disable";
-        const choices = [];
-        if (opt?.enableFetch) {
-            choices.push(CHOICE_FETCH);
-        }
-        if (opt?.enableOverwrite) {
-            choices.push(CHOICE_OVERWRITE);
-        }
-        choices.push(CHOICE_MERGE);
-        choices.push(CHOICE_DISABLE);
-
-        const ret = await this.core.confirm.confirmWithMessage(
-            "Hidden file sync",
-            message,
-            choices,
-            CHOICE_DISABLE,
-            40
-        );
-        if (ret == CHOICE_FETCH) {
-            await this.configureHiddenFileSync("FETCH");
-        } else if (ret == CHOICE_OVERWRITE) {
-            await this.configureHiddenFileSync("OVERWRITE");
-        } else if (ret == CHOICE_MERGE) {
-            await this.configureHiddenFileSync("MERGE");
-        } else if (ret == CHOICE_DISABLE) {
-            await this.configureHiddenFileSync("DISABLE_HIDDEN");
-        }
-    }
-
     private _allSuspendExtraSync(): Promise<boolean> {
         if (this.core.settings.syncInternalFiles) {
             this._log(
@@ -1988,7 +1941,6 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
         services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
         services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
-        services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
         services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
         services.vault.isTargetFileInExtra.addHandler((file) =>
             this.isTargetFile((typeof file === "string" ? file : stripAllPrefixes(file.path)) as FilePath)

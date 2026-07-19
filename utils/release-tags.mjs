@@ -36,10 +36,10 @@ function resolveTag(tag, runGit) {
     return runGit(["rev-parse", "--verify", "--quiet", `refs/tags/${tag}^{commit}`], true);
 }
 
-export function ensureTags(version, expectedRevision, runGit = git, log = console.log) {
+export function ensureTags(version, expectedRevision, runGit = git, log = console.log, options = {}) {
     assertVersion(version);
     const expectedCommit = resolveCommit(expectedRevision, runGit);
-    const tags = [version, `${version}-cli`];
+    const tags = options.pluginOnly ? [version] : [version, `${version}-cli`];
     const existing = tags.map((tag) => ({ tag, commit: resolveTag(tag, runGit) }));
 
     for (const { tag, commit } of existing) {
@@ -60,13 +60,13 @@ export function ensureTags(version, expectedRevision, runGit = git, log = consol
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 if (isMain) {
-    const [command, version, expectedRevision] = process.argv.slice(2);
-    if (command !== "ensure" || !version || !expectedRevision) {
-        fail("Usage: node utils/release-tags.mjs ensure <version> <expected-commit>");
+    const [command, version, expectedRevision, mode] = process.argv.slice(2);
+    if (command !== "ensure" || !version || !expectedRevision || (mode && mode !== "--plugin-only")) {
+        fail("Usage: node utils/release-tags.mjs ensure <version> <expected-commit> [--plugin-only]");
     }
 
     try {
-        ensureTags(version, expectedRevision);
+        ensureTags(version, expectedRevision, git, console.log, { pluginOnly: mode === "--plugin-only" });
     } catch (error) {
         fail(error instanceof Error ? error.message : String(error));
     }

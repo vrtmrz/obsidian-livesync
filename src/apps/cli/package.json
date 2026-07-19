@@ -1,7 +1,7 @@
 {
     "name": "self-hosted-livesync-cli",
     "private": true,
-    "version": "0.25.83-cli",
+    "version": "1.0.0-rc.0-cli",
     "main": "dist/index.cjs",
     "type": "module",
     "scripts": {

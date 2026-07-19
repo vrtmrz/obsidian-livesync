@@ -13,6 +13,7 @@ const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", 
 const prepareReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/prepare-release.yml", import.meta.url));
 const finaliseReleaseWorkflow = fileURLToPath(new URL("../.github/workflows/finalise-release.yml", import.meta.url));
 const releaseWorkflow = fileURLToPath(new URL("../.github/workflows/release.yml", import.meta.url));
+const cliDockerWorkflow = fileURLToPath(new URL("../.github/workflows/cli-docker.yml", import.meta.url));
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -150,7 +151,7 @@ describe("release workflow", () => {
         expect(workflow).toContain("Mark this pull request ready and merge it with a merge commit");
     });
 
-    it("explicitly dispatches publishing workflows after creating tags", () => {
+    it("dispatches the plug-in workflow and lets the CLI tag trigger its own workflow", () => {
         const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
 
         expect(workflow).toContain("actions: write");
@@ -158,8 +159,8 @@ describe("release workflow", () => {
         expect(workflow).toContain('git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"');
         expect(workflow).not.toContain("Tag already exists");
         expect(workflow).toContain("gh workflow run release.yml");
-        expect(workflow).toContain("gh workflow run cli-docker.yml");
-        expect(workflow).toContain("dry_run=false");
+        expect(workflow).not.toContain("gh workflow run cli-docker.yml");
+        expect(workflow).toContain("its tag event starts the container workflow");
     });
 
     it("publishes only by explicit dispatch and validates the selected release", () => {
@@ -170,6 +171,29 @@ describe("release workflow", () => {
         expect(workflow).toContain('node utils/release-notes.mjs validate "${TAG}"');
         expect(workflow).toContain('TAG_SHA="$(git rev-parse "refs/tags/${TAG}^{commit}")"');
         expect(workflow).not.toContain("Get Version");
+    });
+
+    it("supports a pre-release plug-in without creating or publishing a CLI release", () => {
+        const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain("prerelease:");
+        expect(workflow).toContain("publish_cli:");
+        expect(workflow).toContain('--field prerelease="${PRERELEASE}"');
+        expect(workflow).toContain("--plugin-only");
+    });
+
+    it("does not attach an unsupported release archive", () => {
+        const workflow = readFileSync(releaseWorkflow, "utf8");
+
+        expect(workflow).not.toContain("zip -r");
+        expect(workflow).not.toContain("${{ github.event.repository.name }}.zip");
+    });
+
+    it("does not promote a pre-release CLI image to stable moving tags", () => {
+        const workflow = readFileSync(cliDockerWorkflow, "utf8");
+
+        expect(workflow).toContain('if [[ "${VERSION}" == *-* ]]; then');
+        expect(workflow).toContain('TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"');
     });
 });
 
@@ -197,6 +221,16 @@ describe("release tags", () => {
             `Tag 0.25.84-cli points to ${previousHead}; expected ${expectedHead}.`
         );
         expect(tags.has("0.25.84")).toBe(false);
+    });
+
+    it("can create only the plug-in tag for a review release", () => {
+        const head = "a".repeat(40);
+        const { git, tags } = createTagGit(head);
+
+        ensureTags("1.0.0-rc.0", head, git, () => undefined, { pluginOnly: true });
+
+        expect(tags.get("1.0.0-rc.0")).toBe(head);
+        expect(tags.has("1.0.0-rc.0-cli")).toBe(false);
     });
 });
 

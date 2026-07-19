@@ -5,9 +5,11 @@
         title: string;
         message: string;
         buttons: string[];
+        actionLayout?: ConfirmActionLayout;
         commit: (button: string) => void;
     };
-    let { title, message, buttons, commit }: Props = $props();
+    type ConfirmActionLayout = "auto" | "vertical";
+    let { title, message, buttons, actionLayout, commit }: Props = $props();
     const renderedMessage = $derived(renderMessageMarkdown(message));
 
     function handleEsc(event: KeyboardEvent) {
@@ -20,7 +22,7 @@
 <popup>
     <header>{title}</header>
     <article><div class="msg">{@html renderedMessage}</div></article>
-    <div class="buttons">
+    <div class:vertical={actionLayout === "vertical"} class="buttons">
         {#each buttons as button}
             <button onclick={() => commit(button)}>{button}</button>
         {/each}
@@ -115,6 +117,14 @@
     popup .buttons button {
         margin: 0 0.5em;
         background-color: var(--background-primary-alt);
+    }
+    popup .buttons.vertical {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    popup .buttons.vertical button {
+        margin: 0.25em 0;
+        width: 100%;
     }
     popup ~ .background {
         position: fixed;

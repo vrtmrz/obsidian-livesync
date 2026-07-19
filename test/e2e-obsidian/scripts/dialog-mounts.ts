@@ -1,20 +1,12 @@
-import {
-    assertLocatorHasMinimumTouchTarget,
-    assertLocatorWithinSafeArea,
-    assertLocatorWithinViewport,
-    assertNoHorizontalOverflow,
-} from "@vrtmrz/obsidian-test-session";
-import type { Locator, Page } from "playwright";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
+import { assertMobileDialogueLayout, assertMobileNoticeLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { captureObsidianDialogue, obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const dialogRunStateKey = "__livesyncE2EDialogMount";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_DIALOG_TIMEOUT_MS ?? 10000);
-const mobileViewport = { width: 390, height: 844 } as const;
-const iPhoneSafeArea = { top: 47, right: 0, bottom: 34, left: 0 } as const;
 
 type DialogueMode = "desktop" | "mobile";
 
@@ -39,65 +31,10 @@ type LiveSyncTestPlugin = {
 
 type ObsidianTestApp = {
     commands?: { executeCommandById(commandId: string): boolean };
-    emulateMobile?: (mobile: boolean) => void;
     plugins?: { plugins: Record<string, LiveSyncTestPlugin | undefined> };
 };
 
 type ObsidianTestGlobal = typeof globalThis & { app?: ObsidianTestApp };
-
-async function setMobileDialogueTestMode(enabled: boolean): Promise<void> {
-    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        if (enabled) {
-            await page.setViewportSize(mobileViewport);
-        }
-        await page.evaluate((nextEnabled) => {
-            const obsidianApp = (globalThis as ObsidianTestGlobal).app;
-            if (typeof obsidianApp?.emulateMobile !== "function") {
-                throw new Error("app.emulateMobile is unavailable");
-            }
-            obsidianApp.emulateMobile(nextEnabled);
-        }, enabled);
-        await page.waitForFunction(
-            (nextEnabled) => {
-                const obsidianApp = (globalThis as ObsidianTestGlobal).app;
-                return (
-                    document.body.classList.contains("is-mobile") === nextEnabled &&
-                    obsidianApp?.plugins?.plugins["obsidian-livesync"] !== undefined
-                );
-            },
-            enabled,
-            { timeout: uiTimeoutMs }
-        );
-        await page.evaluate(
-            (safeArea) => {
-                for (const edge of ["top", "right", "bottom", "left"] as const) {
-                    const property = `--safe-area-inset-${edge}`;
-                    if (safeArea === null) document.body.style.removeProperty(property);
-                    else document.body.style.setProperty(property, `${safeArea[edge]}px`);
-                }
-            },
-            enabled ? iPhoneSafeArea : null
-        );
-    });
-}
-
-async function assertMobileDialogueLayout(page: Page, container: Locator, label: string): Promise<void> {
-    const dialogue = container.locator(".modal").last();
-    const closeButton = dialogue.locator(".modal-close-button");
-    await assertLocatorWithinViewport(page, dialogue, { label });
-    await assertNoHorizontalOverflow(page, dialogue, { label });
-    await assertLocatorWithinSafeArea(page, dialogue, {
-        label,
-        safeAreaInsets: iPhoneSafeArea,
-    });
-    await assertLocatorWithinSafeArea(page, closeButton, {
-        label: `${label} close button`,
-        safeAreaInsets: iPhoneSafeArea,
-    });
-    await assertLocatorHasMinimumTouchTarget(page, closeButton, {
-        label: `${label} close button`,
-    });
-}
 
 async function openRemoteSelectionDialogue(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
@@ -153,6 +90,96 @@ async function assertDialogueRunCompleted(): Promise<void> {
     if (state.error) {
         throw new Error(`The remote selection dialogue failed: ${state.error}`);
     }
+}
+
+async function verifyRemoteSizeNoticeAndDialogue(): Promise<{
+    compatibilityReview: string;
+    notice: string;
+    dialogue: string;
+}> {
+    const compatibilityReviewScreenshot = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "compatibility-review-dialogue.png",
+        async (page) => {
+            const compatibilityReview = page.locator(".modal-container").filter({
+                has: page
+                    .locator(".modal-title")
+                    .filter({ hasText: "Synchronisation paused for compatibility review" }),
+            });
+            await compatibilityReview.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const actions = compatibilityReview.locator(".vpk-action-dialog__actions--vertical");
+            await actions.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const flexDirection = await actions.evaluate((element) => getComputedStyle(element).flexDirection);
+            if (flexDirection !== "column") {
+                throw new Error(`Expected vertically stacked compatibility actions, received ${flexDirection}.`);
+            }
+        }
+    );
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const compatibilityReview = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Synchronisation paused for compatibility review" }),
+        });
+        await compatibilityReview
+            .getByRole("button", { name: "Keep synchronisation paused" })
+            .click({ timeout: uiTimeoutMs });
+        await compatibilityReview.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+
+    const noticeScreenshot = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "remote-size-startup-notice.png",
+        async (page) => {
+            const notice = page.locator(".notice").filter({
+                hasText: "Remote storage size notifications are not configured.",
+            });
+            await notice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await notice.getByRole("link", { name: "Review options" }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+        }
+    );
+
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const notice = page.locator(".notice").filter({
+            hasText: "Remote storage size notifications are not configured.",
+        });
+        await notice.getByRole("link", { name: "Review options" }).click({ timeout: uiTimeoutMs });
+        await notice.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+
+    const dialogueScreenshot = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "remote-size-review-dialogue.png",
+        async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "Setting up database size notification" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            for (const action of [
+                "No, never warn please",
+                "800MB (Cloudant, fly.io)",
+                "2GB (Standard)",
+                "Ask me later",
+            ]) {
+                await modal.getByRole("button", { name: action }).waitFor({ state: "visible", timeout: uiTimeoutMs });
+            }
+        }
+    );
+
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modal = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Setting up database size notification" }),
+        });
+        await modal.getByRole("button", { name: "Ask me later" }).click({ timeout: uiTimeoutMs });
+        await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+
+    return {
+        compatibilityReview: compatibilityReviewScreenshot,
+        notice: noticeScreenshot,
+        dialogue: dialogueScreenshot,
+    };
 }
 
 async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string> {
@@ -235,6 +262,67 @@ async function verifySetupUriDialogue(mode: DialogueMode): Promise<string> {
     return screenshotPath;
 }
 
+async function verifyMobileStartupReviews(): Promise<{ compatibilityReview: string; remoteSizeReview: string }> {
+    const compatibilityReviewScreenshot = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "compatibility-review-dialogue-mobile.png",
+        async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page
+                    .locator(".modal-title")
+                    .filter({ hasText: "Synchronisation paused for compatibility review" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await modal.locator(".vpk-action-dialog__actions--vertical").waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+            await assertMobileDialogueLayout(page, modal, "compatibility review dialogue");
+        }
+    );
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modal = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Synchronisation paused for compatibility review" }),
+        });
+        await modal.getByRole("button", { name: "Keep synchronisation paused" }).click({ timeout: uiTimeoutMs });
+        await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+
+        const compatibilityReminder = page.locator(".livesync-compatibility-review-notice");
+        await compatibilityReminder.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await assertMobileNoticeLayout(page, compatibilityReminder, "compatibility review reminder");
+
+        const notice = page.locator(".notice").filter({
+            hasText: "Remote storage size notifications are not configured.",
+        });
+        await notice.getByRole("link", { name: "Review options" }).click({ timeout: uiTimeoutMs });
+        await notice.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+
+    const remoteSizeReviewScreenshot = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "remote-size-review-dialogue-mobile.png",
+        async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "Setting up database size notification" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await assertMobileDialogueLayout(page, modal, "remote size review dialogue");
+        }
+    );
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modal = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Setting up database size notification" }),
+        });
+        await modal.getByRole("button", { name: "Ask me later" }).click({ timeout: uiTimeoutMs });
+        await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+
+    return {
+        compatibilityReview: compatibilityReviewScreenshot,
+        remoteSizeReview: remoteSizeReviewScreenshot,
+    };
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -252,9 +340,8 @@ async function main(): Promise<void> {
             pluginData: {
                 doctorProcessedVersion: "0.25.27",
                 isConfigured: true,
-                lastReadUpdates: Number.MAX_SAFE_INTEGER,
                 liveSync: false,
-                notifyThresholdOfRemoteStorageSize: 0,
+                notifyThresholdOfRemoteStorageSize: -1,
                 syncOnStart: false,
                 syncOnSave: false,
                 syncOnEditorSave: false,
@@ -265,13 +352,22 @@ async function main(): Promise<void> {
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
 
+        const remoteSizeScreenshots = await verifyRemoteSizeNoticeAndDialogue();
+        console.log(
+            `Compatibility review actions were stacked vertically, and the remote-size startup notice opened an untimed review dialogue successfully. Screenshots: ${remoteSizeScreenshots.compatibilityReview}, ${remoteSizeScreenshots.notice}, ${remoteSizeScreenshots.dialogue}`
+        );
+
         const remoteScreenshot = await verifyRemoteSelectionDialogue("desktop");
         console.log(`Remote selection dialogue mounted and closed successfully. Screenshot: ${remoteScreenshot}`);
         const setupUriScreenshot = await verifySetupUriDialogue("desktop");
         console.log(`Setup URI dialogue mounted and closed successfully. Screenshot: ${setupUriScreenshot}`);
 
-        await setMobileDialogueTestMode(true);
+        await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), true, uiTimeoutMs);
         try {
+            const mobileStartupScreenshots = await verifyMobileStartupReviews();
+            console.log(
+                `Mobile compatibility and remote-size reviews passed viewport, safe-area, touch-target, and vertical-action checks. Screenshots: ${mobileStartupScreenshots.compatibilityReview}, ${mobileStartupScreenshots.remoteSizeReview}`
+            );
             const mobileRemoteScreenshot = await verifyRemoteSelectionDialogue("mobile");
             console.log(
                 `Mobile remote selection dialogue passed viewport, safe-area, touch-target, and close-control checks. Screenshot: ${mobileRemoteScreenshot}`
@@ -281,7 +377,7 @@ async function main(): Promise<void> {
                 `Mobile Setup URI dialogue passed viewport, safe-area, and touch-target checks. Screenshot: ${mobileSetupUriScreenshot}`
             );
         } finally {
-            await setMobileDialogueTestMode(false);
+            await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), false, uiTimeoutMs);
         }
     } finally {
         if (session) {

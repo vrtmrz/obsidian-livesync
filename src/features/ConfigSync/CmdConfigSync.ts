@@ -44,7 +44,11 @@ import {
     isObjectDifferent,
 } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { digestHash } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/hash";
-import { arrayBufferToBase64, decodeBinary, readString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
+import {
+    arrayBufferToBase64,
+    decodeBinary,
+    readString,
+} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
@@ -1683,43 +1687,6 @@ export class ConfigSync extends LiveSyncCommands {
         return filenames as FilePath[];
     }
 
-    private async _allAskUsingOptionalSyncFeature(opt: {
-        enableFetch?: boolean;
-        enableOverwrite?: boolean;
-    }): Promise<boolean> {
-        await this.__askHiddenFileConfiguration(opt);
-        return true;
-    }
-    private async __askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        const message = `Would you like to enable **Customization sync**?
-
-> [!DETAILS]-
-> This feature allows you to sync your customisations -- such as configurations, themes, snippets, and plugins -- across your devices in a fully controlled manner, unlike the fully automatic behaviour of hidden file synchronisation.
-> 
-> You may use this feature alongside hidden file synchronisation. When both features are enabled, items configured as \`Automatic\` in this feature will be managed by **hidden file synchronisation**.
-> Do not worry, you will be prompted to enable or keep disabled **hidden file synchronisation** after this dialogue.
-`;
-        const CHOICE_CUSTOMIZE = "Yes, Enable it";
-        const CHOICE_DISABLE = "No, Disable it";
-        const CHOICE_DISMISS = "Later";
-        const choices = [];
-
-        choices.push(CHOICE_CUSTOMIZE);
-        choices.push(CHOICE_DISABLE);
-        choices.push(CHOICE_DISMISS);
-
-        const ret = await this.core.confirm.askSelectStringDialogue(message, choices, {
-            defaultAction: CHOICE_DISMISS,
-            timeout: 40,
-            title: "Customisation sync",
-        });
-        if (ret == CHOICE_CUSTOMIZE) {
-            await this.configureHiddenFileSync("CUSTOMIZE");
-        } else if (ret == CHOICE_DISABLE) {
-            await this.configureHiddenFileSync("DISABLE_CUSTOM");
-        }
-    }
-
     _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
         if (isPluginMetadata(path)) {
             return Promise.resolve("newer");
@@ -1826,7 +1793,6 @@ export class ConfigSync extends LiveSyncCommands {
         services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
         services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
         services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
-        services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
         services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
     }
 }

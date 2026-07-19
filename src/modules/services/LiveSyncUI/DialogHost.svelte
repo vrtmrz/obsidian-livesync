@@ -54,6 +54,14 @@
         max-height: 100%;
     }
 
+    :global(body.is-mobile .livesync-svelte-dialog-container .dialog-host > .button-group) {
+        background: var(--modal-background, var(--background-primary));
+        bottom: 0;
+        padding-bottom: 1px;
+        position: sticky;
+        z-index: 1;
+    }
+
     .dialog-host {
         padding: 20px;
         gap: 0.5em;

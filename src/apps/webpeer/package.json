@@ -1,7 +1,7 @@
 {
     "name": "webpeer",
     "private": true,
-    "version": "0.25.83-webpeer",
+    "version": "1.0.0-rc.0-webpeer",
     "type": "module",
     "scripts": {
         "dev": "vite",

@@ -21,7 +21,9 @@ There are many settings in Self-hosted LiveSync. This document describes each se
 
 ## 0. Change Log
 
-This pane shows version up information. You can check what has been changed in recent versions.
+This pane always shows the current release history. It does not track whether a particular plug-in version has been read and does not open automatically after an ordinary update.
+
+Internal database or settings compatibility reviews use a separate safety dialogue, not this pane. The dialogue explains why remote synchronisation has been paused and preserves the automatic synchronisation choices which were configured before the update. Closing it keeps synchronisation paused. When the detected state can be handled by the running version, the explicit resume action records the current internal database version and restores the configured behaviour. A persistent Notice and the `Review why synchronisation is paused` command reopen the review. An older installation cannot dismiss a pause caused by a newer database or settings version.
 
 ## 1. Setup
 
@@ -170,7 +172,7 @@ The active remote server type. This is automatically projected to the legacy con
 
 Setting key: notifyThresholdOfRemoteStorageSize
 
-MB (0 to disable). We can get a notification when the estimated remote storage size exceeds this value.
+MB (0 to disable). At startup, Self-hosted LiveSync shows a long-lived, clickable notice when this value has not been configured or the estimated remote storage size exceeds it. Select **Review options** to open the detailed, untimed dialogue. Running the remote-size check explicitly opens that dialogue directly.
 
 ### 3. Privacy & Encryption
 
@@ -197,6 +199,7 @@ In default, the path of the file is not obfuscated to improve the performance. I
 Setting key: E2EEAlgorithm
 
 The encryption algorithm version used for end-to-end encryption.
+
 - `v2` (V2: AES-256-GCM With HKDF): Recommended and default version.
 - `forceV1` or `""` (V1: Legacy): Older legacy encryption. Only use this if you have an existing vault encrypted in the legacy format.
 
@@ -447,6 +450,7 @@ Apply preset configuration
 Setting key: syncMode
 
 The trigger mechanism for synchronisation.
+
 - **LiveSync** (`LIVESYNC`): Real-time, continuous, bidirectional synchronisation.
   Note: This requires a CouchDB or WebRTC P2P remote server. It is not supported for S3-compatible Object Storage.
 - **Periodic Sync** (`PERIODIC`): Synchronisation is performed at regular intervals specified by the **Periodic Sync interval** setting.
@@ -748,11 +752,11 @@ Setting key: concurrencyOfReadChunksOnline
 
 Setting key: minimumIntervalOfReadChunksOnline
 
-#### Maximum size of chunks to send in one request
+#### Maximum request size for manually resending chunks
 
 Setting key: sendChunksBulkMaxSize
 
-Limit the maximum size of chunks to send in a single bulk request (MB).
+Limit the maximum size of chunks sent in one request by the explicit **Resend all chunks** maintenance operation (MB). Ordinary and initial replication do not use this setting.
 
 ## 9. Power users (Power User)
 
@@ -938,7 +942,7 @@ Disables all synchronisation and restart.
 
 #### Resend
 
-Resend all chunks to the remote.
+Explicitly resend all locally available chunks to the remote. This is a recovery and maintenance operation; ordinary replication does not pre-send every chunk.
 
 #### Reset journal received history
 

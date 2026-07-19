@@ -1,4 +1,4 @@
-import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import type { Confirm, ConfirmActionLayout } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 
 import MessageBox from "./ui/MessageBox.svelte";
 import TextInputBox from "./ui/TextInputBox.svelte";
@@ -6,13 +6,14 @@ import TextInputBox from "./ui/TextInputBox.svelte";
 import { mount } from "svelte";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { _activeDocument, compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 function displayMessageBox<T, U extends string[]>(
     message: string,
     buttons: U,
     title: string,
-    commit: (ret: U[number]) => T
+    commit: (ret: U[number]) => T,
+    actionLayout?: ConfirmActionLayout
 ): Promise<T> {
     const el = _activeDocument.createElement("div");
     const p = promiseWithResolvers<T>();
@@ -22,6 +23,7 @@ function displayMessageBox<T, U extends string[]>(
             message,
             buttons: buttons as string[],
             title: title,
+            actionLayout,
             commit: (action: U[number]) => {
                 const ret = commit(action);
                 p.resolve(ret);
@@ -92,16 +94,42 @@ export class BrowserConfirm<T extends ServiceContext> implements Confirm {
     ): Promise<T[number] | false> {
         return displayMessageBox(message, [...buttons] as const, opt.title ?? "Confirm", (action) => action);
     }
-    askInPopup(key: string, dialogText: string, anchorCallback: (anchor: HTMLAnchorElement) => void): void {
-        throw new Error("Method not implemented.");
+    askInPopup(
+        key: string,
+        dialogText: string,
+        anchorCallback: (anchor: HTMLAnchorElement) => void,
+        durationMs: number = 20000
+    ): void {
+        const existing = _activeDocument.querySelector(`[data-livesync-popup="${CSS.escape(key)}"]`);
+        existing?.remove();
+
+        const notice = _activeDocument.createElement("div");
+        notice.className = "livesync-browser-notice";
+        notice.dataset.livesyncPopup = key;
+        const [beforeText, afterText] = dialogText.split("{HERE}", 2);
+        notice.append(beforeText);
+        const anchor = _activeDocument.createElement("a");
+        anchor.href = "#";
+        anchorCallback(anchor);
+        anchor.addEventListener("click", () => notice.remove());
+        notice.append(anchor, afterText ?? "");
+        _activeDocument.body.appendChild(notice);
+        compatGlobal.setTimeout(() => notice.remove(), durationMs);
     }
     confirmWithMessage(
         title: string,
         contentMd: string,
         buttons: string[],
         defaultAction: (typeof buttons)[number],
-        timeout?: number
+        timeout?: number,
+        actionLayout?: ConfirmActionLayout
     ): Promise<(typeof buttons)[number] | false> {
-        return displayMessageBox(contentMd, [...buttons] as const, title ?? "Confirm", (action) => action);
+        return displayMessageBox(
+            contentMd,
+            [...buttons] as const,
+            title ?? "Confirm",
+            (action) => action,
+            actionLayout
+        );
     }
 }

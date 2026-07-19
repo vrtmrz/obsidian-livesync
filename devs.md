@@ -228,24 +228,12 @@ export class ModuleExample extends AbstractObsidianModule {
 - [esbuild.config.mjs](esbuild.config.mjs) - Build configuration with platform/dev file replacement
 - [package.json](package.json) - Scripts reference and dependencies
 
-## Beta Policy
+## Pre-release Policy
 
-- Beta versions are denoted by appending `-patchedN` to the base version number.
-    - `The base version` mostly corresponds to the stable release version.
-        - e.g., v0.25.41-patched1 is equivalent to v0.25.42-beta1.
-    - This notation is due to SemVer incompatibility of Obsidian's plugin system.
-    - Hence, this release is `0.25.41-patched1`.
-- Each beta version may include larger changes, but bug fixes will often not be included.
-    - I think that in most cases, bug fixes will cause the stable releases.
-    - They will not be released per branch or backported; they will simply be released.
-    - Bug fixes for previous versions will be applied to the latest beta version.
-      This means, if xx.yy.02-patched1 exists and there is a defect in xx.yy.01, a fix is applied to xx.yy.02-patched1 and yields xx.yy.02-patched2.
-      If the fix is required immediately, it is released as xx.yy.02 (with xx.yy.01-patched1).
-    - This procedure remains unchanged from the current one.
-- At the very least, I am using the latest beta.
-    - However, I will not be using a beta continuously for a week after it has been released. It is probably closer to an RC in nature.
-
-In short, the situation remains unchanged for me, but it means you all become a little safer. Thank you for your understanding!
+- New pre-releases use SemVer identifiers such as `1.0.0-rc.0`. Historical `-patchedN` releases remain unchanged in the release history.
+- Publish a pre-release from an immutable reviewed tag, mark its GitHub Release as a pre-release, and do not replace the latest stable release.
+- A plug-in review release may omit the CLI image when the CLI artefact is not part of the required validation. When a pre-release CLI image is published, it receives immutable version and SHA-qualified tags only; it must not advance `latest` or a stable major-minor tag.
+- Keep the release pull request in draft until the exact published plug-in has passed BRAT validation. If validation fails, prepare the next pre-release version rather than moving the existing tag.
 
 ## Release Notes
 
@@ -263,14 +251,14 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 
 - Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, confirms that Commonlib is locked to an immutable package version, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
-- Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch, ensures that both the plug-in tag (for example, `0.25.81`) and the CLI tag (for example, `0.25.81-cli`) point to that commit, and explicitly dispatches the plug-in and CLI publishing workflows. The workflow can be retried when existing tags already point to the reviewed commit, but stops if either tag points elsewhere.
+- Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch, ensures that the plug-in tag points to that commit, optionally creates the corresponding CLI tag, and dispatches the plug-in release workflow. A CLI tag starts its own container workflow. The finalisation workflow can be retried when existing tags already point to the reviewed commit, but stops if a selected tag points elsewhere.
 - The plug-in publishing workflow is intentionally dispatch-only. Pushing a plug-in tag directly does not publish a GitHub Release; use `Finalise Release Tags`, or dispatch `Release Obsidian Plugin` explicitly for recovery or a pre-release. The CLI Docker workflow retains its documented branch, tag, and manual triggers.
-- Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. Confirm that the CLI workflow has published the fixed version tag, the major-minor moving tag (for example, `0.25-cli`), `latest`, and the SHA-qualified tag.
-- Publish the draft GitHub Release as the latest stable release while keeping the release PR in draft and leaving `main` unchanged. Record the state in the PR with: 'Release `<version>` has been published as the latest stable release. This pull request intentionally remains in draft, and `main` has not yet been updated. Merge is on hold until BRAT validation is complete.'
+- Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. For a selected CLI publication, confirm the image tags appropriate to a stable or pre-release version.
+- Publish a stable draft as the latest release, or publish a pre-release draft without replacing the latest stable release. In either case, keep the release PR in draft and leave its base branch unchanged until BRAT validation succeeds. Record that state in the PR.
 - Validate the published release through BRAT. Confirm start-up, ordinary bidirectional synchronisation, and any regression scenario relevant to the release.
 - After BRAT validation succeeds, mark the release PR ready and merge it with a merge commit. This keeps the tagged release commit in the `main` history.
 - If BRAT validation fails, keep the release PR in draft. Do not move published tags; prepare and publish a new patch release instead.
-- If a pre-release is needed, run the `Release Obsidian Plugin` workflow manually with the target tag, `draft=false`, and `prerelease=true`.
+- For a pre-release, set `prerelease=true` in `Finalise Release Tags`. A hyphenated version is rejected unless that input is enabled.
 
 ### Release Cheat Sheet
 
@@ -290,14 +278,15 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
     - `version`: the same target version.
     - `release_branch`: leave blank unless the release branch used a custom name.
     - `expected_head_sha`: the full head commit SHA reviewed in the release PR.
+    - `prerelease`: enable for a version such as `1.0.0-rc.0`.
+    - `publish_cli`: disable when the reviewed release is plug-in-only.
 5. Approve the `Release Obsidian Plugin` workflow for the `release` environment, then check the generated draft GitHub Release.
-6. Confirm that the explicitly dispatched CLI Docker workflow has published the expected image tags.
-7. Publish the draft GitHub Release as the latest stable release, but keep the release PR in draft and leave `main` unchanged.
-8. Update the PR state message to say that the release is now the latest stable release and that merging is intentionally on hold until BRAT validation is complete.
+6. If CLI publication was selected, confirm that the CLI tag event published the expected image tags.
+7. Publish the draft as a stable release or pre-release as selected, but keep the release PR in draft and leave its base branch unchanged.
+8. Update the PR state message to describe the published release and state that merging remains on hold until BRAT validation is complete.
 9. Validate the published release through BRAT, including start-up, ordinary bidirectional synchronisation, and any release-specific regression scenario.
 10. After BRAT validation succeeds, mark the release PR ready and merge it into `main` with a merge commit.
 11. If validation fails, leave the PR in draft and prepare a new patch release without moving the published tags.
-12. If the release should be a pre-release instead of a draft release, run `Release Obsidian Plugin` manually with the target `tag`, `draft=false`, and `prerelease=true`.
 
 ## Contribution Guidelines
 

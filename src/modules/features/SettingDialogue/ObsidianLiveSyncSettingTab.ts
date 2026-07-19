@@ -14,7 +14,6 @@ import {
     REMOTE_P2P,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { delay, isObjectDifferent, sizeToHumanReadable } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { versionNumberString2Number } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { checkSyncInfo } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
@@ -34,7 +33,6 @@ import {
 import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
-import { confirmWithMessage } from "@/modules/coreObsidian/UILib/dialogs.ts";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
@@ -417,11 +415,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
-    //@ts-ignore
-    manifestVersion: string = MANIFEST_VERSION || "-";
-
-    lastVersion = ~~(versionNumberString2Number(this.manifestVersion) / 1000);
-
     screenElements: { [key: string]: HTMLElement[] } = {};
     changeDisplay(screen: string) {
         for (const k in this.screenElements) {
@@ -623,7 +616,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             OPTION_ONLY_SETTING,
             OPTION_CANCEL,
         ];
-        const result = await confirmWithMessage(this.plugin, title, note, buttons, OPTION_CANCEL, 0);
+        const result = await this.core.confirm.confirmWithMessage(title, note, buttons, OPTION_CANCEL);
         if (result == OPTION_CANCEL) return;
         if (result == OPTION_FETCH) {
             if (!(await this.checkWorkingPassphrase())) {
@@ -829,18 +822,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         void yieldNextAnimationFrame().then(() => {
             if (this.selectedScreen == "") {
-                if (this.lastVersion != this.editingSettings.lastReadUpdates) {
-                    if (this.editingSettings.isConfigured) {
-                        changeDisplay("100");
-                    } else {
-                        changeDisplay("110");
-                    }
+                if (this.isAnySyncEnabled()) {
+                    changeDisplay("20");
                 } else {
-                    if (this.isAnySyncEnabled()) {
-                        changeDisplay("20");
-                    } else {
-                        changeDisplay("110");
-                    }
+                    changeDisplay("110");
                 }
             } else {
                 changeDisplay(this.selectedScreen);
