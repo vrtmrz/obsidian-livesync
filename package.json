@@ -43,6 +43,7 @@
         "test:e2e:obsidian:cli-help": "tsx test/e2e-obsidian/scripts/cli-help.ts",
         "test:e2e:obsidian:debug-ui": "tsx test/e2e-obsidian/scripts/debug-ui.ts",
         "test:e2e:obsidian:smoke": "tsx test/e2e-obsidian/scripts/smoke.ts",
+        "test:e2e:obsidian:onboarding-invitation": "tsx test/e2e-obsidian/scripts/onboarding-invitation.ts",
         "test:e2e:obsidian:dialog-mounts": "tsx test/e2e-obsidian/scripts/dialog-mounts.ts",
         "test:e2e:obsidian:settings-ui": "tsx test/e2e-obsidian/scripts/settings-ui.ts",
         "test:e2e:obsidian:review-harness": "tsx test/e2e-obsidian/scripts/review-harness.ts",

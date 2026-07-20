@@ -13,6 +13,7 @@ const testSteps: Step[] = [
         : []),
     { name: "discover", args: ["run", "test:e2e:obsidian:discover"] },
     { name: "smoke", args: ["run", "test:e2e:obsidian:smoke"] },
+    { name: "onboarding invitation", args: ["run", "test:e2e:obsidian:onboarding-invitation"] },
     { name: "Svelte dialogue mounts", args: ["run", "test:e2e:obsidian:dialog-mounts"] },
     { name: "settings UI", args: ["run", "test:e2e:obsidian:settings-ui"] },
     { name: "Review Harness", args: ["run", "test:e2e:obsidian:review-harness"] },

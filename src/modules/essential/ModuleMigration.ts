@@ -26,6 +26,11 @@ import {
 import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import type { LiveSyncCore } from "@/main.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
+import { showOnboardingInvitation } from "@/serviceFeatures/setupObsidian/setupManagerHandlers.ts";
+import {
+    runConfiguredStartupLifecycle,
+    runStartupEntryLifecycle,
+} from "@/serviceFeatures/configuredStartupLifecycle.ts";
 
 type ErrorInfo = {
     path: string;
@@ -80,9 +85,9 @@ export class ModuleMigration extends AbstractModule<LiveSyncCore> {
         }
     }
 
-    async initialMessage() {
+    initialMessage() {
         const manager = this.core.getModule(SetupManager);
-        return await manager.startOnBoarding();
+        showOnboardingInvitation(this.core, manager);
         /*
         const message = $msg("moduleMigration.msgInitialSetup", {
             URI_DOC: $msg("moduleMigration.docUri"),
@@ -344,39 +349,21 @@ export class ModuleMigration extends AbstractModule<LiveSyncCore> {
     }
 
     async _everyOnFirstInitialize(): Promise<boolean> {
-        if (!this.localDatabase.isReady) {
-            this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        if (this.settings.isConfigured) {
-            if (!(await this.hasCompromisedChunks())) {
-                return false;
-            }
-            if (!(await this.hasIncompleteDocs())) {
-                return false;
-            }
-            if (!(await this.migrateUsingDoctor(false))) {
-                return false;
-            }
-            // await this.migrationCheck();
-            await this.migrateDisableBulkSend();
-        }
-        if (!this.settings.isConfigured) {
-            // if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
-            //     this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
-            //     return false;
-            // }
-            if (!(await this.initialMessage())) {
-                this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
-                return false;
-            }
-            if (!(await this.migrateUsingDoctor(true))) {
-                return false;
-            }
-        }
-        return true;
+        return await runConfiguredStartupLifecycle({
+            databaseReady: this.localDatabase.isReady,
+            reportDatabaseNotReady: () => this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE),
+            hasCompromisedChunks: () => this.hasCompromisedChunks(),
+            hasIncompleteDocuments: () => this.hasIncompleteDocs(),
+            runDoctor: () => this.migrateUsingDoctor(false),
+            migrateBulkSend: () => this.migrateDisableBulkSend(),
+        });
     }
     _everyOnLayoutReady(): Promise<boolean> {
+        const shouldInitialiseDatabase = runStartupEntryLifecycle({
+            configured: this.settings.isConfigured === true,
+            inviteToOnboarding: () => this.initialMessage(),
+        });
+        if (!shouldInitialiseDatabase) return Promise.resolve(false);
         eventHub.onEvent(EVENT_REQUEST_RUN_DOCTOR, async (reason) => {
             await this.migrateUsingDoctor(false, reason, true);
         });

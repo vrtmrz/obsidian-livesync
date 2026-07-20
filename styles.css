@@ -339,6 +339,14 @@ body {
     -webkit-text-security: disc;
 }
 
+.sls-onboarding-invitation-action {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+}
+
 .sls-review-harness {
     box-sizing: border-box;
     max-width: 100%;

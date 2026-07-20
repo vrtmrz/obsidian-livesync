@@ -1,8 +1,20 @@
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { SettingService, type SettingServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
+import {
+    EVENT_REQUEST_RELOAD_SETTING_TAB,
+    EVENT_SETTING_SAVED,
+} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+import {
+    SettingService,
+    type SettingServiceDependencies,
+} from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+
+export function normaliseObsidianSettingsData(
+    data: ObsidianLiveSyncSettings | null | undefined
+): ObsidianLiveSyncSettings | undefined {
+    return data ?? undefined;
+}
 
 export class ObsidianSettingService<T extends ObsidianServiceContext> extends SettingService<T> {
     constructor(context: T, dependencies: SettingServiceDependencies) {
@@ -33,6 +45,6 @@ export class ObsidianSettingService<T extends ObsidianServiceContext> extends Se
         return await this.context.liveSyncPlugin.saveData(data);
     }
     protected override async loadData(): Promise<ObsidianLiveSyncSettings | undefined> {
-        return await this.context.liveSyncPlugin.loadData();
+        return normaliseObsidianSettingsData(await this.context.liveSyncPlugin.loadData());
     }
 }
