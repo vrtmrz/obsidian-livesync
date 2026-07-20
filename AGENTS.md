@@ -62,7 +62,8 @@ Before submitting code, you should run verification scripts locally to ensure co
    - Run `npm run check` to perform code verification. This runs type-checking (`tsc-check`), ESLint (`lint`), and Svelte checks (`svelte-check`).
 2. **Unit Tests**:
    - Run `npm run test:unit` to execute fast local unit tests.
-   - Run `npm run test` or `npm run test:full` for full testing suites (including dockerised services).
+   - Run `npm run test:unit:coverage` when unit-test coverage is required.
+   - Run focused integration, CLI E2E, or real Obsidian E2E commands for the boundary being changed. Start only the Docker services required by that command.
 3. **Build**:
    - Run `npm run build` to compile the production bundle (`main.js`).
    - Run `npm run dev` for the development watch/build task.

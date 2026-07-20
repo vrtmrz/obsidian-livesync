@@ -4,7 +4,7 @@ import * as ts from "typescript";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const dependencyFacadePath = path.resolve(repositoryRoot, "src/deps.ts");
-const obsidianMockPath = path.resolve(repositoryRoot, "test/harness/obsidian-mock.ts");
+const obsidianMockPath = path.resolve(repositoryRoot, "src/apps/webapp/obsidianMock.ts");
 
 function parseSourceFile(filePath: string): ts.SourceFile {
     const source = ts.sys.readFile(filePath);

@@ -35,13 +35,14 @@ npm run check        # TypeScript and svelte type checking
 npm run dev          # Development build with auto-rebuild (uses .env for test vault paths)
 npm run build        # Production build
 npm run buildDev     # Development build (one-time)
-npm run test:unit    # Run unit tests only (no Docker services required)
-npm test             # Run Harness based vitest tests (requires Docker services), not recommended, unstable.
+npm run test:integration                 # Run CouchDB-backed integration tests
+npm run test:e2e:cli:p2p                 # Run canonical P2P validation in Compose
+npm run test:e2e:obsidian:local-suite    # Run the real Obsidian local suite
 ```
 
 ### Tips
 
-Use CLI E2E tests or real Obsidian E2E scripts instead of `npm test` when the behaviour can be verified outside the browser harness.
+Select the narrowest unit, integration, CLI E2E, or real Obsidian E2E command that owns the behaviour being changed. The obsolete mocked browser Harness has been retired.
 
 ### Unreleased change notes
 
@@ -64,16 +65,15 @@ To facilitate development and testing, the build process can automatically copy 
     - **Unit Tests** (`vitest.config.unit.ts`): Unit tests run in Node.js (excluding harnesses and integration tests). Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`). Executed via `npm run test:unit`.
     - **Integration Tests** (`vitest.config.integration.ts`): Tests run in Node.js against a real CouchDB instance. Integration tests should be `*.integration.spec.ts` or `*.integration.test.ts` and placed alongside the implementation file (e.g., `StreamingFetch.integration.spec.ts`). Executed via `npm run test:integration`.
         - If you add a feature that interacts with the remote database (e.g., replication changes, custom changes feed parameters, or custom HTTP queries), you strongly expected to write an integration test to verify the behaviour against a real CouchDB server.
-    - **Browser Harness Tests** (`vitest.config.ts`): Transitional browser-based harness tests using Playwright/Chromium. Executed via `npm run test`. This layer is no longer the preferred destination for new broad E2E coverage because `test/harness` can drift from real Obsidian behaviour.
-    - **P2P Tests** (`vitest.config.p2p.ts`): Browser-based Peer-to-Peer replication tests. Executed via `npm run test:p2p`.
     - **Commonlib Tests**: Commonlib owns unit and package tests for shared RPC, storage, replication, and platform contracts. LiveSync CI verifies the exact packed dependency as a downstream consumer.
+- **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows, including the canonical Compose-based P2P scenarios. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and MinIO fixtures managed by the wrapper.
 
-- **Docker Services**: Tests require CouchDB, MinIO (S3), and P2P services:
+- **Docker Services**: Service-backed tests use CouchDB and MinIO (S3). Canonical P2P validation owns its relay through the CLI Compose runner:
 
     ```bash
     npm run test:docker-all:start  # Start all test services
-    npm run test:full              # Run tests with coverage
+    npm run test:integration       # Run the relevant service-backed suite
     npm run test:docker-all:stop   # Stop services
     ```
 
@@ -82,9 +82,9 @@ To facilitate development and testing, the build process can automatically copy 
 
 - **Test Structure**:
     - `test/e2e-obsidian/` - Real Obsidian E2E scripts for local verification
-    - `test/suite/` - Transitional browser harness tests for sync operations
-    - `test/unit/` - Unit tests (via vitest, as harness is browser-based)
-    - `test/harness/` - Transitional mock implementations (e.g., `obsidian-mock.ts`). Avoid adding broad new E2E coverage here unless it is explicitly a compatibility bridge.
+    - co-located `*.unit.spec.ts` files - Node-based unit tests
+    - co-located `*.integration.spec.ts` files - service-backed integration tests
+    - `src/apps/webapp/obsidianMock.ts` - Webapp-only Obsidian compatibility adapter; it is not an E2E Harness
 
 ### Import Path Normalisation
 

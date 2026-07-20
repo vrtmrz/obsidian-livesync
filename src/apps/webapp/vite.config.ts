@@ -38,7 +38,7 @@ export default defineConfig({
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "../../"),
-            obsidian: path.resolve(__dirname, "../../../test/harness/obsidian-mock.ts"),
+            obsidian: path.resolve(__dirname, "./obsidianMock.ts"),
         },
     },
     base: "./",

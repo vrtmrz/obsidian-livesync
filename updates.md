@@ -19,6 +19,8 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 ### Improved
 
 - Removed the ineffective 'Use the trash bin' toggle from the settings interface. Remote deletions continue to follow Obsidian's deletion preference, while the legacy setting key remains accepted for compatibility.
+- Kept content-derived chunk revisions permanently enabled, as they have been since 0.25.6, and removed the obsolete stored key from recommendations, database-maintenance prerequisites, and review tooling.
+- Aligned new-Vault, full-reset, and CLI-generated settings with the 1.0 recommendations. New Vaults use cross-platform case-insensitive file-name handling, while an existing Vault with no saved case policy remains paused until case-sensitive legacy behaviour is explicitly retained or a case-insensitive database rebuild is planned.
 - Improved P2P restart and settings-reapplication handling by serialising transport start and stop, keeping event handlers bound to the active replicator, and using one package-owned Trystero transport generation.
 - Kept the release history available in the settings while removing automatic unread-version tracking and redirection. Release versions are no longer treated as a data-compatibility signal.
 - Internal database and settings compatibility reviews now use a dedicated explanation and an explicit, case-specific resume action. They block replication without rewriting the user's automatic synchronisation choices, and older installations cannot dismiss state created by a newer version.
@@ -37,6 +39,7 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 ### Testing
 
+- Retired the obsolete mocked browser Harness, its root-level P2P relay helpers, and its manually dispatched `harness-ci` workflow. Unit and integration suites, the CLI two-Vault and Compose P2P scenarios, and real Obsidian E2E now own the maintained verification paths.
 - Added packed-package and downstream checks for Commonlib entry points, including isolated Node and browser File System Access API storage implementations.
 - Added reusable Context result contracts for Obsidian, CLI, and Webapp compositions, including a real-Obsidian smoke assertion that every service retains the host-provided Context.
 - Added Commonlib stream-contract tests and downstream CLI unit and Deno E2E coverage for injected text, binary, prompt, and error channels.

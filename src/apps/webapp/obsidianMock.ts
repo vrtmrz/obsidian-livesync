@@ -1,12 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unsafe-function-type */
+/**
+ * Legacy Obsidian API compatibility implementation used only by the Webapp build.
+ *
+ * This file moved from the retired browser test Harness to make its current ownership explicit. It is not a faithful
+ * Obsidian mock, and must not become a general test environment for the plug-in. When the Webapp compatibility boundary
+ * is redesigned, replace this implementation here rather than extending it as a shared Obsidian simulation.
+ */
 export const SettingCache = new Map<any, any>();
 //@ts-ignore obsidian global
 globalThis.activeDocument = document;
 
 declare const hostPlatform: string | undefined;
 
-// import { interceptFetchForLogging } from "../harness/utils/intercept";
-// interceptFetchForLogging();
 globalThis.process = {
     platform: (hostPlatform || "win32") as any,
 } as any;
@@ -110,7 +114,7 @@ export class Vault {
     private files: Map<string, TAbstractFile> = new Map();
     private contents: Map<string, string | ArrayBuffer> = new Map();
     private root: TFolder;
-    private listeners: Map<string, Set<Function>> = new Map();
+    private listeners: Map<string, Set<(...args: any[]) => any>> = new Map();
 
     constructor(vaultName?: string) {
         if (vaultName) {
@@ -392,10 +396,10 @@ class Events {
 }
 
 class Workspace extends Events {
-    getActiveFile() {
+    getActiveFile(): null {
         return null;
     }
-    getMostRecentLeaf() {
+    getMostRecentLeaf(): null {
         return null;
     }
 
@@ -409,7 +413,7 @@ class Workspace extends Events {
         }, 200);
         // });
     }
-    getLeavesOfType() {
+    getLeavesOfType(): never[] {
         return [];
     }
     getLeaf() {
@@ -432,7 +436,7 @@ export class App {
     workspace: Workspace = new Workspace();
     metadataCache: any = {
         on: (name: string, cb: any, ctx?: any) => {},
-        getFileCache: () => null,
+        getFileCache: (): null => null,
     };
 }
 
@@ -894,6 +898,7 @@ export class FuzzySuggestModal<T> {
 }
 export class MarkdownRenderer {
     static render(app: App, md: string, el: HTMLElement, path: string, component: Component) {
+        // eslint-disable-next-line no-unsanitized/property -- This compatibility method mirrors Obsidian's trusted Markdown renderer boundary.
         el.innerHTML = md;
         return Promise.resolve();
     }
@@ -905,6 +910,7 @@ export class WorkspaceLeaf {}
 
 export function sanitizeHTMLToDom(html: string) {
     const div = document.createElement("div");
+    // eslint-disable-next-line no-unsanitized/property -- This compatibility method mirrors Obsidian's sanitised-HTML API contract.
     div.innerHTML = html;
     return div;
 }
