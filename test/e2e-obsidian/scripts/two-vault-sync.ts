@@ -49,6 +49,7 @@ type RunnerContext = {
     couchDb: CouchDbConfig;
     dbName: string;
     reviewedVaults: Set<string>;
+    activeSessions: Set<ObsidianLiveSyncSession>;
 };
 
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
@@ -74,6 +75,18 @@ async function pathExists(vaultPath: string, path: string): Promise<boolean> {
             return false;
         }
         throw error;
+    }
+}
+
+async function stopTrackedSession(context: RunnerContext, session: ObsidianLiveSyncSession): Promise<void> {
+    if (!context.activeSessions.has(session)) return;
+    await session.app.stop();
+    context.activeSessions.delete(session);
+}
+
+async function stopTrackedSessions(context: RunnerContext): Promise<void> {
+    for (const session of [...context.activeSessions]) {
+        await stopTrackedSession(context, session);
     }
 }
 
@@ -188,17 +201,30 @@ async function startConfiguredSession(
         // not currently preserve localStorage across those launches.
         localStorageEntries: reviewAlreadyCompleted ? createE2eObsidianDeviceLocalState(vault.name) : undefined,
     });
-    await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
-    if (!reviewAlreadyCompleted) {
-        await assertE2eCompatibilityReviewPending(context.cliBinary, session.cliEnv);
-        await resumeCompatibilityReview(session.remoteDebuggingPort);
+    context.activeSessions.add(session);
+    try {
+        await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
+        if (!reviewAlreadyCompleted) {
+            await assertE2eCompatibilityReviewPending(context.cliBinary, session.cliEnv);
+            await resumeCompatibilityReview(session.remoteDebuggingPort);
+        }
+        await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
+        if (!reviewAlreadyCompleted) context.reviewedVaults.add(vault.path);
+        await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, overrides);
+        await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
+        await prepareRemote(context.cliBinary, session.cliEnv);
+        return session;
+    } catch (error) {
+        try {
+            await stopTrackedSession(context, session);
+        } catch (stopError) {
+            throw Object.assign(new Error("Could not stop Obsidian after session setup failed."), {
+                cause: error,
+                stopError,
+            });
+        }
+        throw error;
     }
-    await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
-    if (!reviewAlreadyCompleted) context.reviewedVaults.add(vault.path);
-    await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, overrides);
-    await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
-    await prepareRemote(context.cliBinary, session.cliEnv);
-    return session;
 }
 
 async function uploadNote(
@@ -311,12 +337,12 @@ async function runCreateUpdateDelete(
     let session = await startConfiguredSession(context, vaultA);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, createPath, createdContent);
     await uploadNote(context, session, createPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     const createdOnB = await waitForPathContent(vaultB.path, createPath, (content) => content === createdContent);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
     assertEqual(createdOnB, createdContent, "Created note did not round-trip to the second vault.");
 
     const initialUpdateContent = "# Update target\n\nInitial content.\n";
@@ -326,34 +352,34 @@ async function runCreateUpdateDelete(
     await uploadNote(context, session, updatePath);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, updatePath, updatedContent);
     await uploadNote(context, session, updatePath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     const updatedOnB = await waitForPathContent(vaultB.path, updatePath, (content) => content === updatedContent);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
     assertEqual(updatedOnB, updatedContent, "Updated note content did not round-trip to the second vault.");
 
     const deleteContent = "# Delete target\n\nThis note should be removed from B.\n";
     session = await startConfiguredSession(context, vaultA);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, deletePath, deleteContent);
     await uploadNote(context, session, deletePath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     await waitForPathContent(vaultB.path, deletePath, (content) => content === deleteContent);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultA);
     await deleteNoteViaObsidian(context.cliBinary, session.cliEnv, deletePath);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     await waitForPathDeleted(vaultB.path, deletePath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     console.log("Two-vault note creation, update, and deletion round-tripped.");
 }
@@ -367,13 +393,13 @@ async function runRename(context: RunnerContext, vaultA: TemporaryVault, vaultB:
     await renameNoteViaObsidian(context.cliBinary, session.cliEnv, renameFromPath, renameToPath);
     await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, renameToPath);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     const renamedOnB = await waitForPathContent(vaultB.path, renameToPath, (content) => content === renamedContent);
     await waitForPathDeleted(vaultB.path, renameFromPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     assertEqual(renamedOnB, renamedContent, "Renamed note content did not round-trip to the second vault.");
     console.log("Two-vault note rename round-tripped.");
@@ -389,24 +415,24 @@ async function runCaseOnlyRename(
     let session = await startConfiguredSession(context, vaultA);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, caseRenameFromPath, fileContent);
     await uploadNote(context, session, caseRenameFromPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     await waitForPathContent(vaultB.path, caseRenameFromPath, (content) => content === fileContent);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultA);
     await renameNoteViaObsidian(context.cliBinary, session.cliEnv, caseRenameFromPath, caseRenameToPath);
     await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, caseRenameToPath);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     const renamedOnB = await waitForPathContent(vaultB.path, caseRenameToPath, (content) => content === fileContent);
     await waitForExactCaseOnlyRename(vaultB.path, caseRenameFromPath, caseRenameToPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     assertEqual(renamedOnB, fileContent, "Case-only note rename did not round-trip to the second vault.");
     console.log("Two-vault case-only note rename round-tripped without a tombstone.");
@@ -428,12 +454,12 @@ async function runEncryptedRoundTrip(
     let session = await startConfiguredSession(context, vaultA, encryptedOverrides);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, encryptedPath, encryptedContent);
     await uploadNote(context, session, encryptedPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB, encryptedOverrides);
     await syncAndApply(context, session);
     const received = await waitForPathContent(vaultB.path, encryptedPath, (content) => content === encryptedContent);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     assertEqual(received, encryptedContent, "Encrypted note did not round-trip to the second vault.");
     console.log("Two-vault encrypted note synchronisation round-tripped.");
@@ -458,7 +484,7 @@ async function runMarkdownAutoMerge(
         (content) => content.includes("Left line") && content.includes("Right tail"),
         Number(process.env.E2E_OBSIDIAN_MERGE_FILE_TIMEOUT_MS ?? 30000)
     );
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultA);
     await syncAndApply(context, session);
@@ -468,7 +494,7 @@ async function runMarkdownAutoMerge(
         (content) => content.includes("Left line") && content.includes("Right tail"),
         Number(process.env.E2E_OBSIDIAN_MERGE_FILE_TIMEOUT_MS ?? 30000)
     );
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     assertEqual(mergedOnA, mergedOnB, "Merged Markdown content was not consistent across both vaults.");
     console.log("Markdown conflict was automatically merged and propagated by the next synchronisation.");
@@ -485,7 +511,7 @@ async function runTargetMismatch(
     let session = await startConfiguredSession(context, vaultA);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, targetMismatchPath, ignoredContent);
     await uploadNote(context, session, targetMismatchPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB, {
         syncOnlyRegEx: "^E2E/two-vault/allowed/.*",
@@ -496,7 +522,7 @@ async function runTargetMismatch(
         false,
         "A note was reflected on a device where it was not a target file."
     );
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB, {
         syncOnlyRegEx: "",
@@ -507,7 +533,7 @@ async function runTargetMismatch(
         targetMismatchPath,
         (content) => content === ignoredContent
     );
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     assertEqual(
         reflectedAfterEnabling,
@@ -518,7 +544,7 @@ async function runTargetMismatch(
     session = await startConfiguredSession(context, vaultA);
     await writeNoteViaObsidian(context.cliBinary, session.cliEnv, targetMismatchPath, acceptedContent);
     await uploadNote(context, session, targetMismatchPath);
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB, {
         syncOnlyRegEx: "",
@@ -529,7 +555,7 @@ async function runTargetMismatch(
         targetMismatchPath,
         (content) => content === acceptedContent
     );
-    await session.app.stop();
+    await stopTrackedSession(context, session);
 
     assertEqual(received, acceptedContent, "Target file update was not reflected after the device accepted the path.");
     console.log(
@@ -551,13 +577,21 @@ async function main(): Promise<void> {
     const vaultB = await createTemporaryVault();
     const encryptedVaultA = await createTemporaryVault();
     const encryptedVaultB = await createTemporaryVault();
-    const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName, reviewedVaults: new Set() };
+    const context: RunnerContext = {
+        binary,
+        cliBinary: cli.binary,
+        couchDb,
+        dbName,
+        reviewedVaults: new Set(),
+        activeSessions: new Set(),
+    };
     const encryptedContext: RunnerContext = {
         binary,
         cliBinary: cli.binary,
         couchDb,
         dbName: encryptedDbName,
         reviewedVaults: new Set(),
+        activeSessions: new Set(),
     };
 
     try {
@@ -580,6 +614,8 @@ async function main(): Promise<void> {
         await runTargetMismatch(context, vaultA, vaultB);
         await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
     } finally {
+        await stopTrackedSessions(context);
+        await stopTrackedSessions(encryptedContext);
         await vaultA.dispose();
         await vaultB.dispose();
         await encryptedVaultA.dispose();

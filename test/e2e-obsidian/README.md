@@ -28,6 +28,8 @@ Each test vault uses an isolated Obsidian profile. The runner creates temporary 
 
 On macOS, `@vrtmrz/obsidian-test-session` keeps the generated Vault and profile below `/tmp` so Obsidian's Unix-domain CLI socket remains below the platform path limit. It also gives only the isolated Obsidian process Chromium's mock-keychain flag, preventing the empty test HOME from opening a blocking login-keychain dialogue. LiveSync's deterministic fixture selects the built-in default language so a host-language translation prompt cannot pause plug-in readiness. The case-only rename check enumerates the parent directory and compares exact spellings because an old-path lookup still resolves the renamed file on the default case-insensitive macOS filesystem.
 
+Multi-session workflows must keep each started Obsidian session tracked until its stop operation completes. If a scenario throws, teardown stops every active session before disposing its temporary Vault and profile, so a failed CLI or synchronisation operation cannot leave Obsidian using directories which have already been removed.
+
 ## Local Setup
 
 Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location.
