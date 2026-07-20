@@ -111,7 +111,7 @@ export function createOpenRebuildUI(
                     try {
                         replicator.setOnSetup();
                         Logger(`Rebuilding from peer ${peerId}`, logLevel);
-                        const result = await replicator.replicateFrom(peerId, showResult);
+                        const result = await replicator.replicateFrom(peerId, showResult, true);
                         sessionResult = result?.ok ?? false;
                     } catch (e) {
                         Logger(

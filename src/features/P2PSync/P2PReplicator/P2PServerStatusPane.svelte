@@ -26,11 +26,11 @@
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
 
     interface Props {
-        liveSyncReplicator: LiveSyncTrysteroReplicator;
+        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
         core: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator, core }: Props = $props();
+    let { getLiveSyncReplicator, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     let decidingPeerId = $state<string | null>(null);
@@ -129,7 +129,7 @@
     }
 
     async function requestServerStatus() {
-        await liveSyncReplicator.requestStatus();
+        await getLiveSyncReplicator().requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
@@ -309,7 +309,7 @@
     ) {
         decidingPeerId = peer.peerId;
         try {
-            await liveSyncReplicator.makeDecision({
+            await getLiveSyncReplicator().makeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
                 decision,
@@ -324,7 +324,7 @@
     async function revokeDecision(peer: P2PServerInfo["knownAdvertisements"][number]) {
         decidingPeerId = peer.peerId;
         try {
-            await liveSyncReplicator.revokeDecision({
+            await getLiveSyncReplicator().revokeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
             });
@@ -337,9 +337,9 @@
     async function startReplication(peer: P2PServerInfo["knownAdvertisements"][number]) {
         replicatingPeerId = peer.peerId;
         try {
-            const pullResult = await liveSyncReplicator.replicateFrom(peer.peerId, true);
+            const pullResult = await getLiveSyncReplicator().replicateFrom(peer.peerId, true);
             if (pullResult?.ok) {
-                await liveSyncReplicator.requestSynchroniseToPeer(peer.peerId);
+                await getLiveSyncReplicator().requestSynchroniseToPeer(peer.peerId);
             }
             await requestServerStatus();
         } finally {
@@ -360,9 +360,9 @@
             return;
         }
         if (isWatching(peerId)) {
-            liveSyncReplicator.unwatchPeer(peerId);
+            getLiveSyncReplicator().unwatchPeer(peerId);
         } else {
-            liveSyncReplicator.watchPeer(peerId);
+            getLiveSyncReplicator().watchPeer(peerId);
         }
     }
 
@@ -440,7 +440,7 @@
         <p class="warning-line">Please select an active P2P remote configuration to change P2P sync targets.</p>
     {/if}
 
-    <P2PServerStatusCard {liveSyncReplicator} {core} />
+    <P2PServerStatusCard {getLiveSyncReplicator} {core} />
 
     <div class="peers-section">
         <div class="peers-header">

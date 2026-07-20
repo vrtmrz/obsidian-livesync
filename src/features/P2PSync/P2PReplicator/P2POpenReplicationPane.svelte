@@ -23,6 +23,7 @@
     }
 
     let { onSync, onSyncAndClose, onClose, showResult, liveSyncReplicator, rebuildMode = false }: Props = $props();
+    const getLiveSyncReplicator = () => liveSyncReplicator;
 
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let syncingPeerId = $state<string | null>(null);
@@ -98,7 +99,7 @@
 </script>
 
 <div class="p2p-container">
-    <P2PServerStatusCard {liveSyncReplicator} showBroadcastToggle={false} />
+    <P2PServerStatusCard {getLiveSyncReplicator} showBroadcastToggle={false} />
 
     <div class="peers-section">
         <h3>Available Peers</h3>

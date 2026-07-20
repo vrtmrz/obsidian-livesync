@@ -16,6 +16,7 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 - Wizard-driven new-device and existing-device setup now reserves Rebuild or Fetch before enabling imported settings, preventing ordinary start-up work from running ahead of the selected initialisation.
 - Manual onboarding now creates and selects CouchDB, Object Storage, and P2P remote profiles directly while preserving existing profiles. Current Setup URIs retain profile names and selections, while older flat settings remain supported through compatibility migration.
+- P2P panes and explicit rebuild actions now use the current transport after settings or database replacement. Disconnecting leaves the LiveSync room and closes signalling relay sockets without destroying Trystero-owned shared peers.
 
 ## 1.0.0-rc.0
 

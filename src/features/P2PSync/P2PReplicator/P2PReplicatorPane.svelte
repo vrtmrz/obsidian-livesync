@@ -23,13 +23,12 @@
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        cmdSync: P2PReplicatorPaneController;
+        getCmdSync: () => P2PReplicatorPaneController;
         core: Pick<LiveSyncBaseCore, "services">;
     }
 
-    let { cmdSync, core }: Props = $props();
-    // const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
-    setContext("getReplicator", () => cmdSync);
+    let { getCmdSync, core }: Props = $props();
+    setContext("getReplicator", () => getCmdSync());
     const currentSettings = () => core.services.setting.currentSettings() as P2PSyncSetting;
     const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
@@ -223,16 +222,16 @@
     }
 
     async function openServer() {
-        await cmdSync.open();
+        await getCmdSync().open();
     }
     async function closeServer() {
-        await cmdSync.close();
+        await getCmdSync().close();
     }
     function startBroadcasting() {
-        void cmdSync.enableBroadcastChanges();
+        void getCmdSync().enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        void cmdSync.disableBroadcastChanges();
+        void getCmdSync().disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;

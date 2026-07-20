@@ -160,6 +160,7 @@ describe("createOpenRebuildUI", () => {
         await rebuild;
         await expect(session).resolves.toBe(true);
         expect(replicator.setOnSetup).toHaveBeenCalledOnce();
+        expect(replicator.replicateFrom).toHaveBeenCalledWith("peer-a", true, true);
         expect(replicator.clearOnSetup).toHaveBeenCalledOnce();
     });
 });

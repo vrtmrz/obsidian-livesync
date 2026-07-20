@@ -15,12 +15,12 @@
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        liveSyncReplicator: LiveSyncTrysteroReplicator;
+        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
         showBroadcastToggle?: boolean;
         core?: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
+    let { getLiveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
     // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
@@ -30,25 +30,25 @@
     let useDiagRTC = $state<boolean>(initialSettings?.P2P_useDiagRTC ?? false);
 
     async function requestServerStatus() {
-        await Promise.resolve(liveSyncReplicator.requestStatus());
+        await Promise.resolve(getLiveSyncReplicator().requestStatus());
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
     async function onOpenConnection() {
-        await liveSyncReplicator.makeSureOpened();
+        await getLiveSyncReplicator().makeSureOpened();
         await requestServerStatus();
     }
 
     async function onDisconnect() {
-        await liveSyncReplicator.close();
+        await getLiveSyncReplicator().close();
         await requestServerStatus();
     }
 
     function toggleBroadcast() {
         if (replicatorStatus?.isBroadcasting) {
-            liveSyncReplicator.disableBroadcastChanges();
+            getLiveSyncReplicator().disableBroadcastChanges();
         } else {
-            liveSyncReplicator.enableBroadcastChanges();
+            getLiveSyncReplicator().enableBroadcastChanges();
         }
     }
 

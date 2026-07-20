@@ -160,7 +160,7 @@ jobs:
 
       - name: Run Compose CLI P2P E2E
         env:
-          CLI_E2E_TASK: test:p2p-sync
+          CLI_E2E_TASK: test:p2p:ci
           RELAY: ws://nostr-relay:7777/
           PEERS_TIMEOUT: '20'
           SYNC_TIMEOUT: '60'

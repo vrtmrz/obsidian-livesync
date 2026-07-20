@@ -35,7 +35,7 @@ export class P2PServerStatusPaneView extends SvelteItemView {
         return mount(P2PServerStatusPane, {
             target,
             props: {
-                liveSyncReplicator: this._p2pResult.replicator,
+                getLiveSyncReplicator: () => this._p2pResult.replicator,
                 core: this.core,
             },
         });

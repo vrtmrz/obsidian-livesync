@@ -13,12 +13,9 @@ import type { WorkspaceLeaf } from "@/deps";
 import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 
 /**
- * ServiceFeature: P2P Replicator lifecycle management.
- * Binds a LiveSyncTrysteroReplicator to the host's lifecycle events,
- * following the same middleware style as useOfflineScanner.
- *
- * @param viewTypeAndFactory  Optional [viewType, factory] pair for registering the P2P pane view.
- *                            When provided, also registers commands and ribbon icon via services.API.
+ * Obsidian-specific P2P views, commands, status collection, and ribbon wiring.
+ * Replicator ownership and lifecycle remain in Commonlib's
+ * `useP2PReplicatorFeature`; this feature only consumes its current result.
  */
 
 export function useP2PReplicatorUI(
@@ -59,22 +56,21 @@ export function useP2PReplicatorUI(
     p2pLogCollector.p2pReplicationLine.onChanged((line) => {
         storeP2PStatusLine.value = line.value;
     });
+    const p2pParams = {
+        get replicator() {
+            return getReplicator();
+        },
+        p2pLogCollector,
+        storeP2PStatusLine,
+    };
 
     // Register view, commands and ribbon if a view factory is provided
     const viewType = VIEW_TYPE_P2P;
     const factory = (leaf: WorkspaceLeaf) => {
-        return new P2PReplicatorPaneView(leaf, core, {
-            replicator: getReplicator(),
-            p2pLogCollector,
-            storeP2PStatusLine,
-        });
+        return new P2PReplicatorPaneView(leaf, core, p2pParams);
     };
     const statusFactory = (leaf: WorkspaceLeaf) => {
-        return new P2PServerStatusPaneView(leaf, core, {
-            replicator: getReplicator(),
-            p2pLogCollector,
-            storeP2PStatusLine,
-        });
+        return new P2PServerStatusPaneView(leaf, core, p2pParams);
     };
     const openPane = () => api.showWindow(viewType);
     const openStatusPane = () => {
@@ -173,5 +169,5 @@ export function useP2PReplicatorUI(
         }
         return Promise.resolve(true);
     });
-    return { replicator: getReplicator(), p2pLogCollector, storeP2PStatusLine };
+    return p2pParams;
 }

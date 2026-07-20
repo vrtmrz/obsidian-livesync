@@ -57,4 +57,38 @@ describe("useP2PReplicatorUI commands", () => {
             label: "replication",
         });
     });
+
+    it("keeps the current replicator in the pane parameters after replacement", () => {
+        const first = { id: "first" };
+        const second = { id: "second" };
+        let current = first;
+        const p2p = {
+            get replicator() {
+                return current;
+            },
+        } as any;
+        const host = {
+            services: {
+                context: createServiceContext(),
+                API: {
+                    showWindow: vi.fn(async () => undefined),
+                    registerWindow: vi.fn(),
+                    addCommand: vi.fn(),
+                    addRibbonIcon: vi.fn(),
+                    getPlatform: vi.fn(() => "obsidian"),
+                },
+                appLifecycle: {
+                    onInitialise: { addHandler: vi.fn() },
+                    onLayoutReady: { addHandler: vi.fn() },
+                },
+                setting: { currentSettings: vi.fn(() => ({ remoteType: "COUCHDB" })) },
+                replicator: { runFiniteReplicationActivity: vi.fn() },
+            },
+        } as any;
+
+        const paneParams = useP2PReplicatorUI(host, {} as any, p2p);
+        current = second;
+
+        expect(paneParams.replicator).toBe(second);
+    });
 });

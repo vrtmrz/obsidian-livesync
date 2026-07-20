@@ -10,7 +10,7 @@ export {
     withObsidianPage,
 } from "@vrtmrz/obsidian-test-session";
 
-export async function captureObsidianDialogue(
+export async function captureObsidianPage(
     port: number,
     filename: string,
     assertReady: (page: Page) => Promise<void>
@@ -25,13 +25,21 @@ export async function captureObsidianDialogue(
         } catch (error) {
             const failurePath = screenshotPath.replace(/\.png$/u, ".failure.png");
             await page.screenshot({ path: failurePath, fullPage: true });
-            console.error(`Dialogue failure screenshot: ${failurePath}`);
+            console.error(`UI failure screenshot: ${failurePath}`);
             throw error;
         }
         await page.screenshot({ path: screenshotPath, fullPage: true });
     });
 
     return screenshotPath;
+}
+
+export async function captureObsidianDialogue(
+    port: number,
+    filename: string,
+    assertReady: (page: Page) => Promise<void>
+): Promise<string> {
+    return await captureObsidianPage(port, filename, assertReady);
 }
 
 export async function captureJsonResolveDialogue(port: number): Promise<string> {

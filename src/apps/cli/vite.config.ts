@@ -45,7 +45,7 @@ function injectBanner(): import("vite").Plugin {
         name: "inject-banner",
         generateBundle(_options, bundle) {
             for (const chunk of Object.values(bundle)) {
-                if (chunk.type === "chunk" && chunk.fileName.startsWith("entrypoint")) {
+                if (chunk.type === "chunk" && chunk.isEntry) {
                     // Insert after the shebang line if present, otherwise at the top.
                     if (chunk.code.startsWith("#!")) {
                         const newline = chunk.code.indexOf("\n");
@@ -58,6 +58,13 @@ function injectBanner(): import("vite").Plugin {
             }
         },
     };
+}
+
+const buildInputs: Record<string, string> = {
+    index: resolve(__dirname, "entrypoint.ts"),
+};
+if (process.env.LIVESYNC_CLI_TEST_SUPPORT === "1") {
+    buildInputs["p2p-lifecycle-test"] = resolve(__dirname, "test-support/p2p-lifecycle-entrypoint.ts");
 }
 
 export default defineConfig({
@@ -83,9 +90,7 @@ export default defineConfig({
         emptyOutDir: true,
         minify: false,
         rollupOptions: {
-            input: {
-                index: resolve(__dirname, "entrypoint.ts"),
-            },
+            input: buildInputs,
             external: (id) => {
                 if (isBuiltin(id)) return true;
                 if (defaultExternal.includes(id)) return true;
@@ -100,7 +105,7 @@ export default defineConfig({
         lib: {
             entry: resolve(__dirname, "entrypoint.ts"),
             formats: ["cjs"],
-            fileName: "index",
+            fileName: (_format, entryName) => `${entryName}.cjs`,
         },
     },
     define: {

@@ -19,11 +19,12 @@ import {
 } from "octagonal-wheels/common/logger";
 import { runCommand } from "./commands/runCommand";
 import { isCLICommand } from "./commands/types";
-import type { CLICommand, CLIOptions } from "./commands/types";
+import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types";
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 import { createNodeStandardIo, fsPromises as fs, path, fs as fsSync } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
@@ -32,6 +33,9 @@ import { createDefaultCliSettings } from "./cliSettingsDefaults";
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
+
+/** Injectable command boundary used by CLI integration probes. */
+export type CliCommandRunner = (options: CLIOptions, context: CLICommandContext) => Promise<boolean>;
 
 function printHelp(standardIo: StandardIo): void {
     writeStdoutLine(
@@ -264,7 +268,10 @@ async function createDefaultSettingsFile(options: CLIOptions, standardIo: Standa
     writeStdoutLine(standardIo, `[Done] Created settings file: ${targetPath}`);
 }
 
-export async function main(standardIo: StandardIo = createNodeStandardIo()) {
+export async function main(
+    standardIo: StandardIo = createNodeStandardIo(),
+    commandRunner: CliCommandRunner = runCommand
+) {
     const options = parseArgs(standardIo);
     if (options.interval && options.command !== "daemon") {
         writeStderrLine(standardIo, `Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
@@ -438,6 +445,7 @@ export async function main(standardIo: StandardIo = createNodeStandardIo()) {
     );
 
     // Create LiveSync core
+    let p2pReplicator: UseP2PReplicatorResult | undefined;
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
@@ -447,7 +455,7 @@ export async function main(standardIo: StandardIo = createNodeStandardIo()) {
         () => [], // No add-ons
         (core) => {
             // Register P2P replicator feature.
-            useP2PReplicatorFeature(core);
+            p2pReplicator = useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
@@ -560,7 +568,14 @@ export async function main(standardIo: StandardIo = createNodeStandardIo()) {
             infoLog("");
         }
 
-        const result = await runCommand(options, { databasePath, vaultPath, core, settingsPath, originalSyncSettings });
+        const result = await commandRunner(options, {
+            databasePath,
+            vaultPath,
+            core,
+            p2pReplicator,
+            settingsPath,
+            originalSyncSettings,
+        });
         if (!result) {
             writeStderrLine(standardIo, `[Error] Command '${options.command}' failed`);
             process.exitCode = 1;

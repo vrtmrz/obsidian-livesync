@@ -420,6 +420,10 @@ Setting key: P2P_AutoStart
 
 This option is labeled **Auto Start P2P Connection** in the setup dialogue. If enabled, the P2P connection will start automatically when the plug-in launches.
 
+#### Connect and disconnect
+
+Closing a P2P connection leaves the LiveSync P2P room, stops its replication service, closes the signalling relay sockets, and pauses their automatic reconnection. An idle WebRTC connection may remain temporarily under the transport's ownership so that it can be reused, but it cannot carry traffic for the room which has been left. Connecting again resumes relay reconnection and joins a new LiveSync room.
+
 #### Automatically broadcast changes to connected peers
 
 Setting key: P2P_AutoBroadcast

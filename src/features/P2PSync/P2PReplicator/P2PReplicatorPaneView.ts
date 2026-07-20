@@ -187,7 +187,7 @@ And you can also drop the local database to rebuild from the remote device.`,
         return mount(ReplicatorPaneComponent, {
             target: target,
             props: {
-                cmdSync: this._p2pResult.replicator,
+                getCmdSync: () => this._p2pResult.replicator,
                 core: this.core,
             },
         });
