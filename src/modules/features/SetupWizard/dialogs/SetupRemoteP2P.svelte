@@ -21,7 +21,12 @@
 
     import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import type { ReplicatorHostEnv } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/types";
-    import { copyTo, pickP2PSyncSettings, type SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import {
+        copyTo,
+        generateP2PRoomId,
+        pickP2PSyncSettings,
+        type SimpleStore,
+    } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { onMount } from "svelte";
     import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -151,17 +156,7 @@
 
     let processing = $state(false);
     function generateDefaultGroupId() {
-        const randomValues = new Uint16Array(4);
-        crypto.getRandomValues(randomValues);
-        const MAX_UINT16 = 65536;
-        const a = Math.floor((randomValues[0] / MAX_UINT16) * 1000);
-        const b = Math.floor((randomValues[1] / MAX_UINT16) * 1000);
-        const c = Math.floor((randomValues[2] / MAX_UINT16) * 1000);
-        const d_range = 36 * 36 * 36;
-        const d = Math.floor((randomValues[3] / MAX_UINT16) * d_range);
-        syncSetting.P2P_roomID = `${a.toString().padStart(3, "0")}-${b
-            .toString()
-            .padStart(3, "0")}-${c.toString().padStart(3, "0")}-${d.toString(36).padStart(3, "0")}`;
+        syncSetting.P2P_roomID = generateP2PRoomId();
     }
 
     async function checkAndCommit() {
