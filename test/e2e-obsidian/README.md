@@ -26,6 +26,8 @@ Future workflows should use `startObsidianLiveSyncSession()` from `runner/sessio
 
 Each test vault uses an isolated Obsidian profile. The runner creates temporary directories for `HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME`, and Electron `--user-data-dir`, writes the vault registry into those directories, pre-seeds the temporary Chromium local storage so community plug-ins are trusted for that generated vault ID, and passes the same environment to `obsidian-cli`. This is intended to keep real Obsidian E2E runs separate from a developer's daily Obsidian profile and vault registry.
 
+On macOS, `@vrtmrz/obsidian-test-session` keeps the generated Vault and profile below `/tmp` so Obsidian's Unix-domain CLI socket remains below the platform path limit. It also gives only the isolated Obsidian process Chromium's mock-keychain flag, preventing the empty test HOME from opening a blocking login-keychain dialogue. LiveSync's deterministic fixture selects the built-in default language so a host-language translation prompt cannot pause plug-in readiness. The case-only rename check enumerates the parent directory and compares exact spellings because an old-path lookup still resolves the renamed file on the default case-insensitive macOS filesystem.
+
 ## Local Setup
 
 Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location.
@@ -51,6 +53,7 @@ npm run test:contract:contexts
 npm run test:contract:context:webapp
 npm run test:contract:context:cli
 npm run test:contract:context:obsidian
+npm run test:e2e:obsidian:runner
 npm run test:e2e:obsidian:install-appimage
 npm run test:e2e:obsidian:discover
 npm run test:e2e:obsidian:cli-help -- vaults verbose

@@ -42,6 +42,11 @@ export type CompatibilityMarkerState = {
     versionUpFlash: string;
 };
 
+export type CompatibilityMarkerWaitOptions = {
+    timeoutMs?: number;
+    intervalMs?: number;
+};
+
 export type ResumeCompatibilityReviewOptions = {
     verifyMissingDeviceMarkerExplanation?: boolean;
     screenshotPrefix?: string;
@@ -67,6 +72,7 @@ export type LocalDatabaseEntry = {
 };
 
 const E2E_PREFERRED_SETTINGS = {
+    displayLanguage: "def",
     liveSync: false,
     syncOnStart: false,
     syncOnSave: false,
@@ -127,14 +133,19 @@ export async function readE2eCompatibilityMarker(
 
 export async function assertE2eCompatibilityMarker(
     cliBinary: string,
-    env: NodeJS.ProcessEnv
+    env: NodeJS.ProcessEnv,
+    options: CompatibilityMarkerWaitOptions = {}
 ): Promise<CompatibilityMarkerState> {
-    const state = await readE2eCompatibilityMarker(cliBinary, env);
-    if (state.serviceValue !== `${VER}`) {
-        throw new Error(
-            `The E2E compatibility marker was not available on first plug-in load: ${JSON.stringify(state)}`
-        );
+    const timeoutMs = options.timeoutMs ?? Number(process.env.E2E_OBSIDIAN_UI_TIMEOUT_MS ?? 10000);
+    const intervalMs = options.intervalMs ?? 100;
+    const deadline = Date.now() + timeoutMs;
+    let state = await readE2eCompatibilityMarker(cliBinary, env);
+    while (state.serviceValue !== `${VER}` && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        state = await readE2eCompatibilityMarker(cliBinary, env);
     }
+    if (state.serviceValue !== `${VER}`)
+        throw new Error(`The E2E compatibility marker was not persisted before timeout: ${JSON.stringify(state)}`);
     return state;
 }
 

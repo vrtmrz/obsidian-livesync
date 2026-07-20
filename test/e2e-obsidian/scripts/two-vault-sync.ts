@@ -11,6 +11,7 @@ import {
     type CouchDbConfig,
 } from "../runner/couchdb.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
+import { waitForExactCaseOnlyRename } from "../runner/pathAssertions.ts";
 import {
     assertEqual,
     assertE2eCompatibilityMarker,
@@ -404,7 +405,7 @@ async function runCaseOnlyRename(
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
     const renamedOnB = await waitForPathContent(vaultB.path, caseRenameToPath, (content) => content === fileContent);
-    await waitForPathDeleted(vaultB.path, caseRenameFromPath);
+    await waitForExactCaseOnlyRename(vaultB.path, caseRenameFromPath, caseRenameToPath);
     await session.app.stop();
 
     assertEqual(renamedOnB, fileContent, "Case-only note rename did not round-trip to the second vault.");

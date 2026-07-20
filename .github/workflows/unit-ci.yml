@@ -76,6 +76,9 @@ jobs:
       - name: Run unit tests suite with coverage
         run: npm run test:unit:coverage
 
+      - name: Run real-Obsidian runner contract tests
+        run: npm run test:e2e:obsidian:runner
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
