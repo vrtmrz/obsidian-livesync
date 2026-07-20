@@ -577,6 +577,8 @@ Setting key: notifyAllSettingSyncFile
 
 ### 7. Hidden Files (Advanced)
 
+See the [Hidden File Sync guide](./tips/hidden-file-sync.md) before enabling this feature. Rebuild and Fetch setup operations deliberately leave optional features disabled; establish ordinary note synchronisation first, then initialise Hidden File Sync independently on each device.
+
 #### Enable Hidden files sync
 
 Setting key: syncInternalFiles

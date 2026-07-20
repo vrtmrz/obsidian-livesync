@@ -26,6 +26,7 @@ const testSteps: Step[] = [
     },
     { name: "Object Storage upload", args: ["run", "test:e2e:obsidian:minio-upload"] },
     { name: "startup scan", args: ["run", "test:e2e:obsidian:startup-scan"] },
+    { name: "provisioned Setup URI workflow", args: ["run", "test:e2e:obsidian:setup-uri-workflow"] },
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
     { name: "hidden file snippet synchronisation", args: ["run", "test:e2e:obsidian:hidden-file-snippet-sync"] },
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },

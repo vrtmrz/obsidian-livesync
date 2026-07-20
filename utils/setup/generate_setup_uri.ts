@@ -55,6 +55,7 @@ function applyEncryptedVaultSettings(
   environment: SetupGeneratorEnvironment,
 ): void {
   Object.assign(settings, {
+    isConfigured: true,
     encrypt: true,
     passphrase: requireValue(environment, "passphrase"),
     usePathObfuscation: true,

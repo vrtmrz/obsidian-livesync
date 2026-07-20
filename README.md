@@ -18,7 +18,7 @@ Additionally, it supports peer-to-peer synchronisation using WebRTC, enabling yo
 - Use open-source solutions for the server.
   - Compatible solutions are supported.
 - Support end-to-end encryption.
-- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](docs/settings.md#6-customization-sync-advanced) or [Hidden File Sync](docs/settings.md#7-hidden-files-advanced).
+- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](docs/settings.md#6-customisation-sync-advanced) or [Hidden File Sync](docs/tips/hidden-file-sync.md).
 - Enable WebRTC peer-to-peer synchronisation without requiring a `host` (Experimental).
   - This feature is still in the experimental stage. Please exercise caution when using it.
   - WebRTC is a peer-to-peer synchronisation method, so **at least one device must be online to synchronise**.
@@ -89,6 +89,7 @@ To prevent file and database corruption, please avoid closing Obsidian until all
 
 ## Tips and Troubleshooting
 - If you want a faster and simpler initial replication when setting up subsequent devices, see the [Fast Setup Guide](docs/tips/fast-setup.md).
+- Configure [Hidden File Sync](docs/tips/hidden-file-sync.md) only after ordinary note synchronisation works.
 - If you are having problems getting the plug-in working, see [Tips and Troubleshooting](docs/troubleshooting.md).
 
 ## Acknowledgements

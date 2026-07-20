@@ -34,6 +34,10 @@ Deno.test("generates a current self-hosted Setup URI through the published Commo
   assert(decoded, "Commonlib could not decode the generated Setup URI");
   const effectiveSettings = { ...DEFAULT_SETTINGS, ...decoded };
   assert(
+    effectiveSettings.isConfigured,
+    "the CouchDB Setup URI left the imported device unconfigured",
+  );
+  assert(
     effectiveSettings.customChunkSize === 60,
     "the Setup URI did not use the current self-hosted chunk-size recommendation",
   );

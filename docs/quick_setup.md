@@ -2,132 +2,65 @@
 
 [Japanese docs](./quick_setup_ja.md) - [Chinese docs](./quick_setup_cn.md).
 
-The plug-in has so many configuration options to deal with different circumstances. However, only a few settings are required in the normal cases. Therefore, `The Setup wizard` has been implemented to simplify the setup.
+This guide establishes ordinary note synchronisation on the first device and then adds another device. Optional features are configured only after this basic path works.
 
-![](../images/quick_setup_1.png)
+Before starting:
 
-There are three methods to set up Self-hosted LiveSync.
+- back up every Vault involved;
+- disable Obsidian Sync, iCloud synchronisation, and any other service which writes to the same Vault;
+- prepare the remote service and a Setup URI; and
+- keep the Setup URI and its passphrase separate from each other.
 
-1. [Using setup URIs](#1-using-setup-uris) *(Recommended)*
-2. [Minimal setup](#2-minimal-setup)
-3. [Fully manual setup and enabling on this dialogue](#3-manually-setup)
+This walkthrough covers the recommended provisioned CouchDB path. Follow [Set up a CouchDB server](./setup_own_server.md) to prepare the server and Setup URI.
 
-## At the first device
+## What a Setup URI contains
 
-### 1. Using setup URIs
+A Setup URI starts with `obsidian://setuplivesync?settings=`. It contains encrypted connection settings, including credentials, and must be protected even though it is encrypted.
 
-> [!TIP]
-> What is the setup URI? Why is it required?  
-> The setup URI is the encrypted representation of Self-hosted LiveSync configuration as a URI. This starts `obsidian://setuplivesync?settings=`. This is encrypted with a passphrase, so that it can be shared relatively securely between devices. It is a bit long, but it is one line. This allows a series of settings to be set at once without any inconsistencies. 
-> 
-> If you have configured the remote database by [Automated setup on Fly.io](./setup_flyio.md#a-very-automated-setup) or [set up your server with the tool](./setup_own_server.md#1-generate-the-setup-uri-on-a-desktop-device-or-server), **you should have one of them** 
+The Setup URI passphrase decrypts the URI. It is different from the Vault encryption passphrase which protects synchronised data. Store both securely, and do not send the Setup URI and its passphrase through the same channel.
 
-In this procedure, [this video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
+## Set up the first device
 
-1. Click the `Use` button (or launch the `Use the copied setup URI (Formerly Open setup URI)` command from the command palette).
-2. Paste the Setup URI into the dialogue
-3. Type the passphrase of the Setup URI
-4. Answer `yes` for `Importing LiveSync's conf, OK?`.
-5. Answer `Set it up as secondary or subsequent device` for `How would you like to set it up?`.
-6. Initialisation will begin, please hold a while.
-7. You will asked about the hidden file synchronisation, answer as you like.
-   1. If you are new to Self-hosted LiveSync, we can configure it later so leave it once.
-8. Synchronisation has been started! `Reload app without saving` is recommended after the indicators of Self-hosted LiveSync disappear.
+Use this path only when the remote database is new, or when this device is intentionally the source of truth for a full server rebuild.
 
-OK, we can proceed the [next step](#).
+1. Install and enable Self-hosted LiveSync in the intended Vault.
+2. Select the `Welcome to Self-hosted LiveSync` Notice to open onboarding.
+3. Select `I am setting this up for the first time`, then confirm that you want to set up a new synchronisation.
+4. On `Connection Method`, select `Use a Setup URI (Recommended)`.
+5. Paste the Setup URI, enter its Setup URI passphrase, and select `Test Settings and Continue`.
+6. Review `Setup Complete: Preparing to Initialise Server`, then select `Restart and Initialise Server`.
+7. Read the final overwrite warning carefully. Select `I Understand, Overwrite Server` only after checking that backups exist and that replacing the remote data is intended.
+8. A newly provisioned database may show `Fetch Remote Configuration Failed` because it does not contain a saved preferred configuration yet. If this is a genuinely new setup, select `Skip and proceed`. Otherwise, stop and investigate before continuing.
+9. Acknowledge `All optional features are disabled`. Optional features remain off until the ordinary synchronisation path has been verified.
+10. Allow initialisation and any requested restart to finish. Keep Obsidian open until the LiveSync progress indicators have cleared.
 
-### 2. Minimal setup
+Create an ordinary test note and allow it to upload before adding another device.
 
-If you do not have any setup URI, Press the `start` button. The setting dialogue turns into the wizard mode and will display only minimal items.
+## Add another device
 
->[!TIP]
-> We can generate the setup URI with the tool in any time. Please use [this tool](./setup_own_server.md#1-generate-the-setup-uri-on-a-desktop-device-or-server).
+Start with a new or separately backed-up Vault. Do not use a production Vault containing unsynchronised notes unless you have reviewed the [Fast Setup choices](./tips/fast-setup.md).
 
-![](../images/quick_setup_2.png)
+1. Install and enable Self-hosted LiveSync.
+2. Open onboarding from the `Welcome to Self-hosted LiveSync` Notice.
+3. Select `I am adding a device to an existing synchronisation setup`, then confirm that you want to add the device.
+4. On `Device Setup Method`, select `Use a Setup URI (Recommended)`.
+5. Paste the same Setup URI, enter its Setup URI passphrase, and select `Test Settings and Continue`.
+6. Review `Setup Complete: Preparing to Fetch Synchronisation Data`, then select `Restart and Fetch Data`.
+7. For a new or empty Vault, select `Overwrite all with remote files`. For a Vault with local work, stop and choose the appropriate strategy from the [Fast Setup guide](./tips/fast-setup.md).
+8. When asked how to handle extra local files, the conservative choice is `Keep local files even if not on remote`. Select the delete option only when the local Vault is disposable and an exact remote copy is intended.
+9. Allow retrieval, file reflection, and any requested restart to finish. Keep Obsidian open until the LiveSync progress indicators have cleared.
 
+Confirm that the ordinary test note from the first device appears unchanged. Then edit or create a second ordinary note on the new device, and confirm that it reaches the first device.
 
-#### Select the remote type
+## After ordinary synchronisation works
 
-1. Select the Remote Type from dropdown list.
-We now have a choice between CouchDB (and its compatibles) and object storage (MinIO, S3, R2). CouchDB is the first choice and is also recommended. And supporting Object Storage is an experimental feature.
+Add optional features separately so that their ownership and initialisation direction are explicit:
 
-#### Remote configuration 
+- [Hidden File Sync](./tips/hidden-file-sync.md) for selected hidden files and folders; or
+- [Customisation Sync](./settings.md#6-customisation-sync-advanced) for managed Obsidian customisations.
 
-##### CouchDB
+Do not enable both features for the same files.
 
-Enter the information for the database we have set up.
+## Manual configuration
 
-![](../images/quick_setup_3.png)  
-
-##### Object Storage
-
-1. Enter the information for the S3 API and bucket.
-
-![](../images/quick_setup_3b.png)  
-
-Note 1: if you use S3, you can leave the Endpoint URL empty.
-Note 2: if your Object Storage cannot configure the CORS setting fully, you may able to connect to the server by enabling the `Use Custom HTTP Handler` toggle.
-
-2. Press `Test` of `Test Connection` once and ensure you can connect to the Object Storage.
-
-#### Only CouchDB: Test database connection and Check database configuration
-
-We can check the connectivity to the database, and the database settings.
-
-![](../images/quick_setup_5.png)  
-
-#### Only CouchDB: Check and Fix database configuration
-
-Check the database settings and fix any problems on the spot.
-
-![](../images/quick_setup_6.png)
-
-This item may vary depending on the connection. In the above case, press all three Fix buttons.  
-If the Fix buttons disappear and all become check marks, we are done.
-
-#### Confidentiality configuration (Optional but very preferred)
-
-![](../images/quick_setup_4.png)
-
-Enable End-to-end encryption and the contents of your notes will be encrypted at the moment it leaves the device. We strongly recommend enabling it. And `Path Obfuscation` also obfuscates filenames. Now stable and recommended.
-
-These setting can be disabled if you are inside a closed network and it is clear that you will not be accessed by third parties.
-
-> [!TIP]
-> Encryption is based on 256-bit AES-GCM.  
-
-We should proceed to the Next step.
-
-#### Sync Settings
-Finally, finish the wizard by selecting a preset for synchronisation.
-
-Note: If you are going to use Object Storage, you cannot select `LiveSync`.
-
-![](../images/quick_setup_9_1.png)
-
-Select any synchronisation methods we want to use and `Apply`. If database initialisation is required, it will be performed at this time. When `All done!` is displayed, we are ready to synchronise.
-
-The dialogue of `Copy current settings as a new setup URI` will open automatically. Please input a passphrase to encrypt the new `Setup URI`. (This passphrase is to encrypt the setup URI, not the vault).
-
-![](../images/quick_setup_10.png)
-
-The Setup URI will be copied to the clipboard, please make a note(Not in Obsidian) of this.
-
->[!TIP]
-We can copy this at any time by running the "Copy settings as a new setup URI" command from the command palette (or clicking the "Copy the current settings to a Setup URI" button in the settings UI).
-
-### 3. Manually setup
-
-It is strongly recommended to perform a "minimal set-up" first and set up the other contents after making sure has been synchronised.
-
-However, if you have some specific reasons to configure it manually, please click the `Enable` button of `Enable LiveSync on this device as the set-up was completed manually`.
-And, please copy the setup URI by running the "Copy settings as a new setup URI" command (or using the "Copy the current settings to a Setup URI" button) and make a note(Not in Obsidian) of this.
-
-## At the subsequent device
-After installing Self-hosted LiveSync on the first device, we should have a setup URI. **The first choice is to use it**. Please share it with the device you want to setup.
-
-It is completely same as [Using setup URIs on the first device](#1-using-setup-uris). Please refer it.
-
-> [!TIP]
-> **Fast Setup (Simple Fetch)**
-> In recent versions, when you import a Setup URI or trigger a Fetch All, the plug-in boots in scheduled fetch mode and runs a simplified **Fast Setup** process. This allows you to choose your sync strategy with a single dialogue and performs initial synchronisation in one step. Refer to the [Fast Setup Guide](./tips/fast-setup.md) for more details.
+If a Setup URI is unavailable, choose `Enter the server information manually` during onboarding. Manual configuration is an advanced path: verify the connection, encryption, remote profile, and synchronisation preset before initialising either side. After the first device works, use `Copy settings as a new Setup URI` from the command palette to add later devices through the recommended path.

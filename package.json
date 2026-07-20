@@ -51,6 +51,7 @@
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
         "test:e2e:obsidian:startup-scan": "tsx test/e2e-obsidian/scripts/startup-scan.ts",
+        "test:e2e:obsidian:setup-uri-workflow": "tsx test/e2e-obsidian/scripts/setup-uri-workflow.ts",
         "test:e2e:obsidian:two-vault-sync": "tsx test/e2e-obsidian/scripts/two-vault-sync.ts",
         "test:e2e:obsidian:hidden-file-snippet-sync": "tsx test/e2e-obsidian/scripts/hidden-file-snippet-sync.ts",
         "test:e2e:obsidian:customisation-sync": "tsx test/e2e-obsidian/scripts/customisation-sync.ts",

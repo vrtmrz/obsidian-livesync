@@ -25,6 +25,10 @@ Deno.test("generates an Object Storage Setup URI with a selected S3 profile", as
   assert(decoded, "Commonlib could not decode the Object Storage Setup URI");
   const effective = { ...DEFAULT_SETTINGS, ...decoded };
   assert(
+    effective.isConfigured,
+    "the Setup URI left the imported device unconfigured",
+  );
+  assert(
     effective.customChunkSize === 10,
     "the journal chunk-size preset was not applied",
   );

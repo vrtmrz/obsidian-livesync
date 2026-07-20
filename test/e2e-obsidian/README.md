@@ -70,6 +70,7 @@ npm run test:e2e:obsidian:couchdb-upload
 npm run test:e2e:obsidian:cli-to-obsidian-sync
 npm run test:e2e:obsidian:minio-upload
 npm run test:e2e:obsidian:startup-scan
+npm run test:e2e:obsidian:setup-uri-workflow
 npm run test:e2e:obsidian:two-vault-sync
 npm run test:e2e:obsidian:hidden-file-snippet-sync
 npm run test:e2e:obsidian:customisation-sync
@@ -124,6 +125,8 @@ LIVESYNC_CLI_COMMAND="docker run --rm --network host --user $(id -u):$(id -g) --
 `test:e2e:obsidian:minio-upload` reuses the Object Storage variables from `.test.env` or the process environment. It expects a reachable S3-compatible service, configures Self-hosted LiveSync for Object Storage through `obsidian-cli eval`, creates a note in real Obsidian, runs one-shot Journal Sync, and verifies through the AWS SDK that objects were written under a unique bucket prefix. Adapter tests separately observe an in-progress SDK command, while this real-runtime workflow verifies the resulting request counters advance and rebalance.
 
 `test:e2e:obsidian:startup-scan` configures a temporary CouchDB database, stops Obsidian, writes a note directly into the vault, restarts Obsidian, and verifies from CouchDB that the boot-time scan picked up the offline file.
+
+`test:e2e:obsidian:setup-uri-workflow` runs the repository's public Commonlib-backed CouchDB provisioning and Setup URI tools against the local CouchDB fixture. It configures two data-less real Obsidian Vaults through the visible onboarding wizard, uses Rebuild for the first device and Fetch for the second, and verifies an ordinary note. After ordinary setup has completed, it independently enables Hidden File Sync on each device and verifies a snippet. Credential-bearing input is not captured; the retained screenshots cover the user decisions, initialisation confirmations, and the synchronised note.
 
 `test:e2e:obsidian:two-vault-sync` runs a two-vault note synchronisation workflow. It verifies note creation, update, ordinary rename, a case-only file name change within the same directory, deletion, per-device target filters where one vault ignores a note that the other vault synchronises, and a separate encrypted round-trip with Path Obfuscation enabled. Directory case changes deliberately remain outside this scenario because they require directory-aware rename handling. The optional Markdown conflict automatic merge check can be enabled with `E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT=true`, but it is not part of the default local suite.
 
