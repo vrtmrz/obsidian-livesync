@@ -22,7 +22,12 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { captureObsidianDialogue, captureObsidianPage, withObsidianPage } from "../runner/ui.ts";
+import {
+    captureObsidianDialogue,
+    captureObsidianElement,
+    captureObsidianPage,
+    withObsidianPage,
+} from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
@@ -75,6 +80,18 @@ function modalByTitle(page: Page, title: string): Locator {
     return page.locator(".modal-container").filter({
         has: page.locator(".modal-title").filter({ hasText: title }),
     });
+}
+
+function settingPanelByTitle(page: Page, title: string): Locator {
+    return page
+        .locator(".sls-setting")
+        .locator("h4.sls-setting-panel-title:visible")
+        .filter({ hasText: title })
+        .locator("..");
+}
+
+async function captureGuideDialogue(port: number, filename: string, title: string): Promise<string> {
+    return await captureObsidianElement(port, filename, (page) => modalByTitle(page, title).locator(".modal").first());
 }
 
 async function selectRadioOption(modal: Locator, title: string): Promise<void> {
@@ -215,7 +232,16 @@ async function enterSetupURI(port: number, mode: "new" | "existing", artifact: S
         await setup.waitFor({ state: "visible", timeout: uiTimeoutMs });
         await setup.locator('input[placeholder^="obsidian://setuplivesync"]').fill(artifact.setupURI);
         await setup.locator('input[name="password"]').fill(artifact.setupPassphrase);
-        await setup.getByRole("button", { name: "Test Settings and Continue" }).click({ timeout: uiTimeoutMs });
+    });
+    await captureGuideDialogue(
+        port,
+        `guide-quick-setup-${mode === "new" ? "first" : "second"}-setup-uri.png`,
+        "Enter Setup URI"
+    );
+    await withObsidianPage(port, async (page) => {
+        await modalByTitle(page, "Enter Setup URI")
+            .getByRole("button", { name: "Test Settings and Continue" })
+            .click({ timeout: uiTimeoutMs });
     });
 }
 
@@ -232,6 +258,11 @@ async function captureAndStartInitialisation(port: number, mode: "new" | "existi
             await modalByTitle(page, title).waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
     );
+    await captureGuideDialogue(
+        port,
+        `guide-quick-setup-${mode === "new" ? "first-initialise" : "second-fetch"}.png`,
+        title
+    );
     await withObsidianPage(port, async (page) => {
         await modalByTitle(page, title).getByRole("button", { name: button }).click({ timeout: uiTimeoutMs });
     });
@@ -243,6 +274,7 @@ async function confirmRebuild(port: number): Promise<string> {
     const screenshot = await captureObsidianDialogue(port, "setup-uri-first-rebuild-confirmation.png", async (page) => {
         await modalByTitle(page, title).waitFor({ state: "visible", timeout: uiTimeoutMs });
     });
+    await captureGuideDialogue(port, "guide-quick-setup-first-rebuild-confirmation.png", title);
     await withObsidianPage(port, async (page) => {
         const modal = modalByTitle(page, title);
         await selectCheckbox(
@@ -275,6 +307,7 @@ async function skipMissingRemoteConfiguration(port: number): Promise<string> {
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
     );
+    await captureGuideDialogue(port, "guide-quick-setup-missing-remote-configuration.png", title);
     await withObsidianPage(port, async (page) => {
         await modalByTitle(page, title)
             .getByRole("button", { name: "Skip and proceed" })
@@ -298,6 +331,7 @@ async function acknowledgeDisabledOptionalFeatures(port: number): Promise<string
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
     );
+    await captureGuideDialogue(port, "guide-quick-setup-optional-features-disabled.png", title);
     await withObsidianPage(port, async (page) => {
         await modalByTitle(page, title).getByRole("button", { name: "OK" }).click({ timeout: uiTimeoutMs });
     });
@@ -313,6 +347,7 @@ async function confirmFastFetch(port: number): Promise<string[]> {
             await modalByTitle(page, firstTitle).waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
     );
+    await captureGuideDialogue(port, "guide-quick-setup-retrieval-method.png", firstTitle);
     await withObsidianPage(port, async (page) => {
         await modalByTitle(page, firstTitle)
             .getByRole("button", { name: "Overwrite all with remote files" })
@@ -327,6 +362,7 @@ async function confirmFastFetch(port: number): Promise<string[]> {
             await modalByTitle(page, secondTitle).waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
     );
+    await captureGuideDialogue(port, "guide-quick-setup-local-file-policy.png", secondTitle);
     await withObsidianPage(port, async (page) => {
         await modalByTitle(page, secondTitle)
             .getByRole("button", { name: "Keep local files even if not on remote" })
@@ -457,11 +493,88 @@ async function enableHiddenFileSync(cliBinary: string, environment: NodeJS.Proce
         ].join(""),
         environment
     );
-    const state = await readSetupState(cliBinary, environment);
+    const state = await waitForConfiguredSetup(cliBinary, environment);
     if (!state.syncInternalFiles || !state.syncInternalFilesBeforeReplication) {
         throw new Error(`Hidden File Sync was not enabled after setup: ${JSON.stringify(state)}`);
     }
     return state;
+}
+
+async function captureHiddenFileGuideSettings(
+    port: number,
+    cliBinary: string,
+    environment: NodeJS.ProcessEnv
+): Promise<string[]> {
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "await core.services.setting.applyPartial({",
+            "useAdvancedMode:true,",
+            "syncInternalFilesTargetPatterns:'^\\\\.obsidian(?:$|/snippets(?:/|$))',",
+            "},true);",
+            "await core.services.control.applySettings();",
+            "return JSON.stringify({ok:true});",
+            "})()",
+        ].join(""),
+        environment
+    );
+
+    await withObsidianPage(port, async (page) => {
+        await page.evaluate(() => {
+            const obsidian = globalThis as typeof globalThis & {
+                app?: {
+                    setting?: {
+                        open(): void;
+                        openTabById(tabId: string): void;
+                    };
+                };
+            };
+            const setting = obsidian.app?.setting;
+            if (!setting) throw new Error("Obsidian settings are unavailable");
+            setting.open();
+            setting.openTabById("obsidian-livesync");
+        });
+        const settings = page.locator(".sls-setting");
+        await settings.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await settings.locator('.sls-setting-menu-btn[title="Setup"]').click({ timeout: uiTimeoutMs });
+    });
+
+    const screenshots = [
+        await captureObsidianElement(port, "guide-hidden-file-advanced-features.png", (page) =>
+            settingPanelByTitle(page, "Enable extra and advanced features")
+        ),
+    ];
+
+    await withObsidianPage(port, async (page) => {
+        await page
+            .locator(".sls-setting")
+            .locator('.sls-setting-menu-btn[title="Selector"]')
+            .click({ timeout: uiTimeoutMs });
+    });
+    screenshots.push(
+        await captureObsidianElement(port, "guide-hidden-file-selector.png", (page) =>
+            settingPanelByTitle(page, "Hidden Files")
+        )
+    );
+
+    await withObsidianPage(port, async (page) => {
+        await page
+            .locator(".sls-setting")
+            .locator('.sls-setting-menu-btn[title="Sync Settings"]')
+            .click({ timeout: uiTimeoutMs });
+    });
+    screenshots.push(
+        await captureObsidianElement(port, "guide-hidden-file-enable.png", (page) =>
+            settingPanelByTitle(page, "Hidden Files")
+        )
+    );
+
+    await withObsidianPage(port, async (page) => {
+        await page.keyboard.press("Escape");
+    });
+    return screenshots;
 }
 
 async function writeNoteViaObsidian(
@@ -555,12 +668,15 @@ async function captureSynchronisedNote(port: number): Promise<string> {
             return obsidian.app?.workspace?.openLinkText(path, "", false);
         }, notePath);
     });
-    return await captureObsidianPage(port, "setup-uri-synchronised-note.png", async (page) => {
+    await captureObsidianPage(port, "setup-uri-synchronised-note.png", async (page) => {
         await page.getByText("Provisioned Setup URI", { exact: false }).first().waitFor({
             state: "visible",
             timeout: uiTimeoutMs,
         });
     });
+    return await captureObsidianElement(port, "guide-quick-setup-synchronised-note.png", (page) =>
+        page.locator(".workspace-leaf.mod-active").first()
+    );
 }
 
 async function captureFailure(session: ObsidianLiveSyncSession): Promise<void> {
@@ -624,6 +740,13 @@ async function main(): Promise<void> {
                 firstState.syncInternalFiles,
                 false,
                 "Rebuild did not retain the documented optional-feature safety boundary."
+            );
+            screenshots.push(
+                ...(await captureHiddenFileGuideSettings(
+                    session.remoteDebuggingPort,
+                    context.cliBinary,
+                    session.cliEnv
+                ))
             );
             await enableHiddenFileSync(context.cliBinary, session.cliEnv);
             await uploadWorkflowFiles(context, session, vaultA);

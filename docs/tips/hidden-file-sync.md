@@ -20,16 +20,32 @@ Enabling Hidden File Sync requires an initialisation direction:
 ## Review the file selection
 
 1. Open Self-hosted LiveSync settings.
-2. Open `Setup`, find `Extra features`, and enable `Advanced features`.
+2. Open `Setup`, find `Enable extra and advanced features`, and enable `Advanced features`.
+
+   ![Advanced features enabled](../../images/hidden-file-sync/guide-hidden-file-advanced-features.png)
+
 3. Open `Selector`, then review the `Hidden Files` section.
 4. Use `Target patterns` to limit the feature to the hidden files you intend to synchronise. An empty target list includes every otherwise eligible hidden file.
 5. Review `Ignore patterns`. The default excludes `node_modules`, `.git`, and Self-hosted LiveSync's own plug-in data. `Add default patterns` offers a `Cross-platform` set which also excludes Obsidian workspace files.
 
+   ![Hidden File target and ignore selectors](../../images/hidden-file-sync/guide-hidden-file-selector.png)
+
 Prefer a narrow target list. Device-specific workspace state and another plug-in's credentials are usually poor candidates for cross-device synchronisation.
+
+Target patterns also control directory traversal. A pattern must therefore match each parent directory as well as the intended files. For example, the following pattern admits the `.obsidian` parent and only its `snippets` subtree:
+
+```text
+^\.obsidian(?:$|/snippets(?:/|$))
+```
+
+A pattern containing only `snippets` does not admit the `.obsidian` parent, so the scan cannot reach that directory.
 
 ## Enable the first device
 
 1. Open `Sync Settings`, then find the advanced `Hidden Files` section.
+
+   ![Hidden File Sync initialisation choices](../../images/hidden-file-sync/guide-hidden-file-enable.png)
+
 2. Under `Enable Hidden File Sync`, select the initialisation direction chosen above.
 3. Keep Obsidian open while the initial scan and synchronisation finish.
 4. Restart Obsidian when the completion Notice recommends it.

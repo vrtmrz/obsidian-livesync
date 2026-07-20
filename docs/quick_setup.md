@@ -28,9 +28,21 @@ Use this path only when the remote database is new, or when this device is inten
 3. Select `I am setting this up for the first time`, then confirm that you want to set up a new synchronisation.
 4. On `Connection Method`, select `Use a Setup URI (Recommended)`.
 5. Paste the Setup URI, enter its Setup URI passphrase, and select `Test Settings and Continue`.
+
+   ![Encrypted Setup URI and masked passphrase](../images/quick-setup/guide-quick-setup-first-setup-uri.png)
+
 6. Review `Setup Complete: Preparing to Initialise Server`, then select `Restart and Initialise Server`.
+
+   ![First-device server initialisation confirmation](../images/quick-setup/guide-quick-setup-first-initialise.png)
+
 7. Read the final overwrite warning carefully. Select `I Understand, Overwrite Server` only after checking that backups exist and that replacing the remote data is intended.
+
+   ![Final server overwrite warning](../images/quick-setup/guide-quick-setup-first-rebuild-confirmation.png)
+
 8. A newly provisioned database may show `Fetch Remote Configuration Failed` because it does not contain a saved preferred configuration yet. If this is a genuinely new setup, select `Skip and proceed`. Otherwise, stop and investigate before continuing.
+
+   ![Expected missing remote configuration choice for a new database](../images/quick-setup/guide-quick-setup-missing-remote-configuration.png)
+
 9. Acknowledge `All optional features are disabled`. Optional features remain off until the ordinary synchronisation path has been verified.
 10. Allow initialisation and any requested restart to finish. Keep Obsidian open until the LiveSync progress indicators have cleared.
 
@@ -46,11 +58,22 @@ Start with a new or separately backed-up Vault. Do not use a production Vault co
 4. On `Device Setup Method`, select `Use a Setup URI (Recommended)`.
 5. Paste the same Setup URI, enter its Setup URI passphrase, and select `Test Settings and Continue`.
 6. Review `Setup Complete: Preparing to Fetch Synchronisation Data`, then select `Restart and Fetch Data`.
+
+   ![Additional-device Fetch confirmation](../images/quick-setup/guide-quick-setup-second-fetch.png)
+
 7. For a new or empty Vault, select `Overwrite all with remote files`. For a Vault with local work, stop and choose the appropriate strategy from the [Fast Setup guide](./tips/fast-setup.md).
+
+   ![Fast Setup data retrieval choices](../images/quick-setup/guide-quick-setup-retrieval-method.png)
+
 8. When asked how to handle extra local files, the conservative choice is `Keep local files even if not on remote`. Select the delete option only when the local Vault is disposable and an exact remote copy is intended.
+
+   ![Additional-device local file policy](../images/quick-setup/guide-quick-setup-local-file-policy.png)
+
 9. Allow retrieval, file reflection, and any requested restart to finish. Keep Obsidian open until the LiveSync progress indicators have cleared.
 
 Confirm that the ordinary test note from the first device appears unchanged. Then edit or create a second ordinary note on the new device, and confirm that it reaches the first device.
+
+![Ordinary note received through the provisioned Setup URI](../images/quick-setup/guide-quick-setup-synchronised-note.png)
 
 ## After ordinary synchronisation works
 
