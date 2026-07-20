@@ -45,6 +45,7 @@
         "test:e2e:obsidian:smoke": "tsx test/e2e-obsidian/scripts/smoke.ts",
         "test:e2e:obsidian:dialog-mounts": "tsx test/e2e-obsidian/scripts/dialog-mounts.ts",
         "test:e2e:obsidian:settings-ui": "tsx test/e2e-obsidian/scripts/settings-ui.ts",
+        "test:e2e:obsidian:review-harness": "tsx test/e2e-obsidian/scripts/review-harness.ts",
         "test:e2e:obsidian:vault-reflection": "tsx test/e2e-obsidian/scripts/vault-reflection.ts",
         "test:e2e:obsidian:couchdb-upload": "tsx test/e2e-obsidian/scripts/couchdb-upload.ts",
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",

@@ -42,6 +42,7 @@ import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
 import { useP2PReplicatorCommands } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorCommands";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
+import { useReviewHarness } from "./serviceFeatures/useReviewHarness.ts";
 import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
 import { useCompatibilityReview } from "./serviceFeatures/compatibilityReview.ts";
 import { createObsidianCompatibilityReviewUi } from "./serviceFeatures/compatibilityReviewObsidian.ts";
@@ -194,7 +195,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
-                useCompatibilityReview(core, createObsidianCompatibilityReviewUi(core.confirm));
+                const compatibilityReview = useCompatibilityReview(
+                    core,
+                    createObsidianCompatibilityReviewUi(core.confirm)
+                );
+                useReviewHarness(core, this, replicator, compatibilityReview);
                 // p2pReplicatorResult = useP2PReplicator(core, [
                 //     VIEW_TYPE_P2P,
                 //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),

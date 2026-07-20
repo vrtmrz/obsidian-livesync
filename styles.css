@@ -339,6 +339,55 @@ body {
     -webkit-text-security: disc;
 }
 
+.sls-review-harness {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: clip;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.sls-review-harness .setting-item,
+.sls-review-harness .setting-item-control {
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+
+.sls-review-harness .setting-item-info {
+    min-width: min(16rem, 100%);
+}
+
+.sls-review-harness .setting-item-control {
+    gap: 0.5rem;
+}
+
+.sls-review-harness button {
+    min-height: 44px;
+    max-width: 100%;
+    white-space: normal;
+}
+
+.sls-review-harness__result,
+.sls-review-harness__warning,
+.sls-review-harness__privacy,
+.sls-review-harness__error,
+.sls-review-harness__resumed {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.sls-review-harness__result {
+    margin: 0 0 1rem;
+}
+
+.sls-review-harness__warning,
+.sls-review-harness__error {
+    color: var(--text-error);
+}
+
+.sls-review-harness__resumed {
+    color: var(--text-success);
+}
+
 span.ls-mark-cr::after {
     user-select: none;
     content: "↲";

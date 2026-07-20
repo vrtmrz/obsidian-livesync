@@ -227,13 +227,16 @@ export class ReviewHarnessController {
         this.current = "compatibility-review";
         this.notify();
         try {
+            const pauseWasPending = this.runtime.getCompatibilityPause() !== undefined;
             await this.runtime.openCompatibilityReview();
             const inspection = this.inspectCompatibilityReview();
             this.results["compatibility-review"] =
                 inspection.status === "passed" && !this.runtime.getCompatibilityPause()
                     ? {
                           status: "passed",
-                          detail: "The device-local compatibility pause was reviewed and cleared.",
+                          detail: pauseWasPending
+                              ? "The device-local compatibility pause was reviewed and cleared."
+                              : inspection.detail,
                           observations: inspection.observations,
                       }
                     : inspection.status === "failed"

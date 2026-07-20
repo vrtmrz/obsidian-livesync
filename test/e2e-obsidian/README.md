@@ -62,6 +62,7 @@ npm run test:e2e:obsidian:cli-help -- vaults verbose
 npm run test:e2e:obsidian:smoke
 npm run test:e2e:obsidian:dialog-mounts
 npm run test:e2e:obsidian:settings-ui
+npm run test:e2e:obsidian:review-harness
 npm run test:e2e:obsidian:vault-reflection
 npm run test:e2e:obsidian:couchdb-upload
 npm run test:e2e:obsidian:cli-to-obsidian-sync
@@ -85,7 +86,9 @@ npm run test:e2e:obsidian:local-suite:services
 
 The mobile pass uses Obsidian's `app.emulateMobile(true)`, a 390 by 844 CSS-pixel viewport, and explicit iPhone-style safe-area insets of 47 pixels at the top and 34 pixels at the bottom. The public `@vrtmrz/obsidian-test-session` layout assertions require each modal to remain within the viewport and safe area without horizontal overflow. They also require the Obsidian Close control to remain within the safe area and provide at least a 44 by 44 CSS-pixel touch target. The runner clicks that control to verify actionability, then completes the explicit cancellation path. These simulated checks cover deterministic layout and interaction boundaries; they do not claim to reproduce a native operating-system overlay.
 
-`test:e2e:obsidian:local-suite` builds the plug-in and, unless `LIVESYNC_CLI_COMMAND` selects an external CLI, the local LiveSync CLI. It then runs discovery, smoke, Svelte dialogue mounting, settings UI, vault reflection, CouchDB upload, CLI-to-Obsidian synchronisation, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
+`test:e2e:obsidian:review-harness` exercises only the boundaries owned by the opt-in maintainer Harness. It retains a real compatibility pause, uses the fixed Harness restart action to persist a device-local continuation and reload Obsidian, and requires the Harness to delete that state before reopening. It also runs the bounded local observations, confirms the dedicated Vault fixture root is removed, captures the copied privacy-bounded Markdown report, and checks the Harness layout and touch targets in mobile test mode. Compatibility explanation and persistence details remain owned by `settings-ui`, real P2P transfer remains owned by the Compose suite, and general Vault reflection remains owned by `vault-reflection`; the Harness test does not duplicate those workflows.
+
+`test:e2e:obsidian:local-suite` builds the plug-in and, unless `LIVESYNC_CLI_COMMAND` selects an external CLI, the local LiveSync CLI. It then runs discovery, smoke, Svelte dialogue mounting, settings UI, the Review Harness, Vault reflection, CouchDB upload, CLI-to-Obsidian synchronisation, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export in sequence. Start the local CouchDB and MinIO fixtures before running it, or use `test:e2e:obsidian:local-suite:services` to let the wrapper stop leftover fixtures, start fresh fixtures, and stop them again after the run.
 
 `test:e2e:obsidian:couchdb-upload` reuses the CouchDB variables from `.test.env` or the process environment. It expects a reachable CouchDB service, creates a unique database, starts from configured plug-in data without the device-local compatibility marker, and verifies the copied-or-restored Vault explanation in the actual compatibility dialogue. It captures the summary and details, resumes explicitly, confirms that the marker was recorded, creates a note in real Obsidian, commits the note into the local database, runs one-shot synchronisation, and verifies that the remote database contains both the metadata document and its chunk documents.
 
@@ -150,6 +153,7 @@ Useful environment variables:
 - `E2E_OBSIDIAN_SMOKE_TIMEOUT_MS`: smoke timeout in milliseconds.
 - `E2E_OBSIDIAN_DIALOG_TIMEOUT_MS`: timeout for a representative Svelte dialogue to mount, expose its principal controls, and close; default is 10 seconds.
 - `E2E_OBSIDIAN_SETTINGS_TIMEOUT_MS`: timeout for the settings pane and its deletion controls to become visible; default is 10 seconds.
+- `E2E_OBSIDIAN_REVIEW_HARNESS_TIMEOUT_MS`: timeout for Review Harness view and action boundaries; default is 15 seconds.
 - `E2E_OBSIDIAN_READY_TIMEOUT_MS`: plug-in readiness timeout in milliseconds.
 - `E2E_OBSIDIAN_CLI_READY_TIMEOUT_MS`: timeout for waiting until the vault-side Obsidian CLI exposes the plug-in catalogue.
 - `E2E_OBSIDIAN_CLI_TIMEOUT_MS`: timeout for each `obsidian-cli` invocation.

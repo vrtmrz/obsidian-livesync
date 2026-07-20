@@ -12,7 +12,7 @@ export const REVIEW_HARNESS_SCENARIOS = [
         id: "settings-lifecycle",
         title: "Settings lifecycle",
         description:
-            "Checks whether loaded settings retain the seven synchronisation choices and apply new-Vault recommendations only to a genuinely new Vault.",
+            "Checks whether loaded settings expose the seven synchronisation choices and apply new-Vault recommendations only to a genuinely new Vault.",
         mode: "automatic",
         access: "read-only",
     },

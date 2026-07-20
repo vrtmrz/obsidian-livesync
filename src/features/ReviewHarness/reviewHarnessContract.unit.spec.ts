@@ -78,7 +78,7 @@ describe("Review Harness contract", () => {
         ]);
     });
 
-    it("checks that an existing Vault keeps the seven synchronisation choices typed and intact", () => {
+    it("checks that an existing Vault exposes the seven synchronisation choices as booleans", () => {
         const result = inspectSettingsLifecycle({
             migration: migration(),
             settings: preservedSyncSettings,

@@ -253,6 +253,19 @@ describe("ReviewHarnessController", () => {
         expect(controller.snapshot().results["compatibility-review"].status).toBe("waiting-for-user");
     });
 
+    it("does not claim that a compatibility pause was cleared when none was pending", async () => {
+        const runtime = createRuntime();
+        runtime.compatibilityPause = undefined;
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.openCompatibilityReview();
+
+        expect(controller.snapshot().results["compatibility-review"]).toMatchObject({
+            status: "passed",
+            detail: "No compatibility review is pending on this device.",
+        });
+    });
+
     it("copies a Markdown report after compatibility evidence is recorded", async () => {
         const runtime = createRuntime();
         const controller = new ReviewHarnessController(runtime);
