@@ -82,6 +82,17 @@ function deserializeFromNodeKV(value: unknown): unknown {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deserializeFromNodeKV(v)]));
 }
 
+function asKeyString(key: unknown): string {
+    if (typeof key === "string") {
+        return key;
+    }
+    const serialised = JSON.stringify(key);
+    if (typeof serialised !== "string") {
+        throw new TypeError("The IndexedDB key could not be serialised");
+    }
+    return serialised;
+}
+
 class NodeFileKeyValueDatabase implements KeyValueDatabase {
     private filePath: string;
     private data = new Map<string, unknown>();
@@ -89,13 +100,6 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     constructor(filePath: string) {
         this.filePath = filePath;
         this.load();
-    }
-
-    private asKeyString(key: IDBValidKey): string {
-        if (typeof key === "string") {
-            return key;
-        }
-        return JSON.stringify(key);
     }
 
     private load() {
@@ -116,17 +120,17 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     }
 
     async get<T>(key: IDBValidKey): Promise<T> {
-        return this.data.get(this.asKeyString(key)) as T;
+        return this.data.get(asKeyString(key)) as T;
     }
 
     async set<T>(key: IDBValidKey, value: T): Promise<IDBValidKey> {
-        this.data.set(this.asKeyString(key), value);
+        this.data.set(asKeyString(key), value);
         this.flush();
         return key;
     }
 
     async del(key: IDBValidKey): Promise<void> {
-        this.data.delete(this.asKeyString(key));
+        this.data.delete(asKeyString(key));
         this.flush();
     }
 
@@ -144,11 +148,12 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         let filtered = allKeys;
         if (typeof query !== "undefined") {
             if (this.isIDBKeyRangeLike(query)) {
-                const lower = query.lower?.toString() ?? "";
-                const upper = query.upper?.toString() ?? "\uffff";
+                const lower = query.lower === undefined ? "" : String(query.lower);
+                const upper = query.upper === undefined ? "\uffff" : String(query.upper);
                 filtered = filtered.filter((key) => key >= lower && key <= upper);
             } else {
-                const exact = query.toString();
+                const exactValue: unknown = query;
+                const exact = String(exactValue);
                 filtered = filtered.filter((key) => key === exact);
             }
         }
@@ -272,7 +277,15 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
                 await getDB().del(`${prefix}${key}`);
             },
             keys: async (from: string | undefined, to: string | undefined, count?: number): Promise<string[]> => {
-                const allKeys = (await getDB().keys(undefined, count)).map((e) => e.toString());
+                const rawKeys: unknown = await getDB().keys(undefined, count);
+                if (!Array.isArray(rawKeys)) {
+                    throw new TypeError("The key-value database returned an invalid key list");
+                }
+                const keyList: unknown[] = rawKeys;
+                const allKeys: string[] = [];
+                for (const key of keyList) {
+                    allKeys.push(String(key));
+                }
                 const lower = `${prefix}${from ?? ""}`;
                 const upper = `${prefix}${to ?? "\uffff"}`;
                 return allKeys

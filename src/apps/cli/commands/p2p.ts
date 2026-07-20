@@ -189,7 +189,7 @@ export async function syncWithPeer(
         }
         const pushResult = await replicator.requestSynchroniseToPeer(targetPeer.peerId);
         if (!pushResult || pushResult.ok !== true) {
-            const err = pushResult?.error;
+            const err: unknown = pushResult && "error" in pushResult ? pushResult.error : undefined;
             throw err instanceof Error
                 ? err
                 : LiveSyncError.fromError(err ?? "P2P sync failed while requesting remote sync");

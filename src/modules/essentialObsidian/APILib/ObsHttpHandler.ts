@@ -25,6 +25,15 @@ function requestTimeout(timeoutInMs: number = 0): Promise<never> {
     });
 }
 
+function normaliseRequestBody(body: unknown): string | ArrayBuffer | undefined {
+    if (typeof body === "string" || body instanceof ArrayBuffer) return body;
+    if (ArrayBuffer.isView(body)) {
+        if (body.buffer instanceof ArrayBuffer) return body.buffer;
+        return new Uint8Array(body.buffer).slice().buffer;
+    }
+    return undefined;
+}
+
 /**
  * This is close to origin implementation of FetchHttpHandler
  * https://github.com/aws/aws-sdk-js-v3/blob/main/packages/fetch-http-handler/src/fetch-http-handler.ts
@@ -64,7 +73,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             urlObj.host = this.reverseProxyNoSignUrl;
             url = urlObj.href;
         }
-        const body = method === "GET" || method === "HEAD" ? undefined : request.body;
+        const body: unknown = method === "GET" || method === "HEAD" ? undefined : request.body;
 
         const transformedHeaders: Record<string, string> = {};
         for (const key of Object.keys(request.headers)) {
@@ -80,10 +89,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             contentType = transformedHeaders["content-type"];
         }
 
-        let transformedBody = body;
-        if (ArrayBuffer.isView(body)) {
-            transformedBody = new Uint8Array(body.buffer).buffer;
-        }
+        const transformedBody = normaliseRequestBody(body);
 
         const param: RequestUrlParam = {
             body: transformedBody,

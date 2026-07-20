@@ -8,7 +8,7 @@ import { globalSlipBoard } from "@vrtmrz/livesync-commonlib/compat/bureau/bureau
 export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
 
 declare global {
-    interface Slips extends LSSlips {
+    interface Slips {
         "conflict-resolved": typeof CANCELLED | MergeDialogResult;
     }
 }

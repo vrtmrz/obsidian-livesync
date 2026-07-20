@@ -4,8 +4,17 @@ import { fileURLToPath, fs, isBuiltin, path } from "@vrtmrz/livesync-commonlib/n
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
 const repoRoot = path.resolve(__dirname, "../../..");
-const packageJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
-const manifestJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
+
+function readVersion(filePath: string): string | undefined {
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    if (typeof parsed !== "object" || parsed === null || !("version" in parsed)) {
+        return undefined;
+    }
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+}
+
+const packageVersion = readVersion(path.resolve(repoRoot, "package.json"));
+const manifestVersion = readVersion(path.resolve(repoRoot, "manifest.json"));
 // https://vite.dev/config/
 const defaultExternal = [
     "obsidian",
@@ -113,7 +122,7 @@ export default defineConfig({
         global: "globalThis",
         nonInteractive: "true",
         // localStorage: "undefined", // Prevent usage of localStorage in the CLI environment
-        MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestJson.version || "0.0.0"),
-        PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageJson.version || "0.0.0"),
+        MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestVersion || "0.0.0"),
+        PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageVersion || "0.0.0"),
     },
 });

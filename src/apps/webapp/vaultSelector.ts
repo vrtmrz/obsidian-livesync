@@ -15,6 +15,18 @@ export type VaultHistoryItem = {
 
 type VaultHistoryValue = VaultHistoryItem;
 
+function isVaultHistoryValue(value: unknown): value is VaultHistoryValue {
+    if (typeof value !== "object" || value === null) return false;
+    const candidate = value as Partial<VaultHistoryValue>;
+    return (
+        typeof candidate.id === "string" &&
+        typeof candidate.name === "string" &&
+        typeof candidate.handle === "object" &&
+        candidate.handle !== null &&
+        typeof candidate.lastUsedAt === "number"
+    );
+}
+
 function makeVaultKey(id: string): string {
     return `${VAULT_KEY_PREFIX}${id}`;
 }
@@ -87,7 +99,7 @@ export class VaultHistoryStore {
 
     async getLastUsedVaultId(): Promise<string | null> {
         return this.withStore("readonly", async (store) => {
-            const value = await this.requestAsPromise(store.get(LAST_USED_KEY));
+            const value: unknown = await this.requestAsPromise(store.get(LAST_USED_KEY));
             return typeof value === "string" ? value : null;
         });
     }
@@ -95,20 +107,21 @@ export class VaultHistoryStore {
     async getVaultHistory(): Promise<VaultHistoryItem[]> {
         return this.withStore("readonly", async (store) => {
             const keys = await this.requestAsPromise(store.getAllKeys());
-            const values = (await this.requestAsPromise(store.getAll())) as unknown[];
+            const values = await this.requestAsPromise<unknown[]>(store.getAll() as IDBRequest<unknown[]>);
             const items: VaultHistoryItem[] = [];
             for (let i = 0; i < keys.length; i++) {
-                const key = String(keys[i]);
+                const key = keys[i];
+                if (typeof key !== "string") continue;
                 const id = parseVaultId(key);
-                const value = values[i] as Partial<VaultHistoryValue> | undefined;
-                if (!id || !value || !value.handle || !value.name) {
+                const value = values[i];
+                if (!id || !isVaultHistoryValue(value)) {
                     continue;
                 }
                 items.push({
                     id,
-                    name: String(value.name),
+                    name: value.name,
                     handle: value.handle,
-                    lastUsedAt: Number(value.lastUsedAt || 0),
+                    lastUsedAt: value.lastUsedAt,
                 });
             }
             items.sort((a, b) => b.lastUsedAt - a.lastUsedAt);

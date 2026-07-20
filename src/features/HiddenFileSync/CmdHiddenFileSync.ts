@@ -1,4 +1,4 @@
-import { type PluginManifest, type ListedFiles } from "@/deps.ts";
+import { type ListedFiles } from "@/deps.ts";
 import {
     type LoadedEntry,
     type FilePathWithPrefix,
@@ -55,20 +55,13 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
 import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
+import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
+import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 const HIDDEN_FILE_NOTICE_GROUP = "hidden-file-changes";
 const HIDDEN_FILE_NOTICE_DURATION_MS = 20_000;
 
-declare global {
-    interface OPTIONAL_SYNC_FEATURES {
-        FETCH: "FETCH";
-        OVERWRITE: "OVERWRITE";
-        MERGE: "MERGE";
-        DISABLE: "DISABLE";
-        DISABLE_HIDDEN: "DISABLE_HIDDEN";
-    }
-}
 function getComparingMTime(
     doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
     includeDeleted = false
@@ -1233,11 +1226,10 @@ Offline Changed files: ${files.length}`;
         const noticeGroups = this.services.context.noticeGroups;
         let hasNoticeItems = false;
         try {
-            //@ts-ignore
-            const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
-            //@ts-ignore
-            const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
-            const enabledPluginManifests = manifests.filter((e) => enabledPlugins.has(e.id));
+            const pluginManager = getObsidianCommunityPluginManager(this.app);
+            const enabledPluginManifests = pluginManager.manifests.filter((manifest) =>
+                pluginManager.enabledPlugins.has(manifest.id)
+            );
             const modifiedManifests = enabledPluginManifests.filter((e) => updatedFolders.indexOf(e?.dir ?? "") >= 0);
             for (const manifest of modifiedManifests) {
                 // If notified about plug-ins, reloading Obsidian may not be necessary.
@@ -1255,10 +1247,8 @@ Offline Changed files: ${files.length}`;
                                     LOG_LEVEL_NOTICE,
                                     "plugin-reload-" + updatePluginId
                                 );
-                                // @ts-ignore -- Obsidian does not expose the plug-in lifecycle methods in its public API.
-                                await this.app.plugins.unloadPlugin(updatePluginId);
-                                // @ts-ignore -- Obsidian does not expose the plug-in lifecycle methods in its public API.
-                                await this.app.plugins.loadPlugin(updatePluginId);
+                                await pluginManager.unloadPlugin(updatePluginId);
+                                await pluginManager.loadPlugin(updatePluginId);
                                 this._log(
                                     `Plugin reloaded: ${updatePluginName}`,
                                     LOG_LEVEL_NOTICE,
@@ -1793,12 +1783,12 @@ Offline Changed files: ${files.length}`;
     }
 
     // --> Configuration handling
-    private async _allConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    private async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
 
-    async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         const result = await configureHiddenFileSyncMode(mode, {
             disable: async () => {
                 // await this.core.$allSuspendExtraSync();

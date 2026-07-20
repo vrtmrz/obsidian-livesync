@@ -1,4 +1,5 @@
 import { writable } from "svelte/store";
+import type PouchDB from "pouchdb-core";
 import {
     Notice,
     type PluginManifest,
@@ -76,17 +77,11 @@ import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
+import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
+import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 
 const d = "\u200b";
 const d2 = "\n";
-
-declare global {
-    interface OPTIONAL_SYNC_FEATURES {
-        DISABLE: "DISABLE";
-        CUSTOMIZE: "CUSTOMIZE";
-        DISABLE_CUSTOM: "DISABLE_CUSTOM";
-    }
-}
 
 function serialize(data: PluginDataEx): string {
     // For higher performance, create custom plug-in data strings.
@@ -254,7 +249,8 @@ function deserialize<T>(str: string[], def: T) {
         return JSON.parse(str.join("")) as T;
     } catch {
         try {
-            return parseYaml(str.join(""));
+            const parsed: unknown = parseYaml(str.join(""));
+            return parsed as T;
         } catch {
             return def;
         }
@@ -1104,12 +1100,11 @@ export class ConfigSync extends LiveSyncCommands {
             await delay(100);
             this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
-                //@ts-ignore
-                const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
-                //@ts-ignore
-                const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
-                const pluginManifest = manifests.find(
-                    (manifest) => enabledPlugins.has(manifest.id) && manifest.dir == `${baseDir}/plugins/${data.name}`
+                const pluginManager = getObsidianCommunityPluginManager(this.app);
+                const pluginManifest = pluginManager.manifests.find(
+                    (manifest) =>
+                        pluginManager.enabledPlugins.has(manifest.id) &&
+                        manifest.dir == `${baseDir}/plugins/${data.name}`
                 );
                 if (pluginManifest) {
                     this._log(
@@ -1117,10 +1112,8 @@ export class ConfigSync extends LiveSyncCommands {
                         LOG_LEVEL_NOTICE,
                         "plugin-reload-" + pluginManifest.id
                     );
-                    // @ts-ignore
-                    await this.app.plugins.unloadPlugin(pluginManifest.id);
-                    // @ts-ignore
-                    await this.app.plugins.loadPlugin(pluginManifest.id);
+                    await pluginManager.unloadPlugin(pluginManifest.id);
+                    await pluginManager.loadPlugin(pluginManifest.id);
                     this._log(
                         `Plugin reloaded: ${pluginManifest.name}`,
                         LOG_LEVEL_NOTICE,
@@ -1200,7 +1193,7 @@ export class ConfigSync extends LiveSyncCommands {
                 const updatedPluginKey = "popupUpdated-plugins";
                 scheduleTask(updatedPluginKey, 1000, async () => {
                     const popup = await memoIfNotExist(updatedPluginKey, () => new Notice(fragment, 0));
-                    //@ts-ignore
+                    //@ts-ignore -- retained for compatibility with Obsidian versions before Notice.messageEl.
                     const isShown = popup?.noticeEl?.isShown();
                     if (!isShown) {
                         memoObject(updatedPluginKey, new Notice(fragment, 0));
@@ -1208,7 +1201,7 @@ export class ConfigSync extends LiveSyncCommands {
                     scheduleTask(updatedPluginKey + "-close", 20000, () => {
                         const popup = retrieveMemoObject<Notice>(updatedPluginKey);
                         if (!popup) return;
-                        //@ts-ignore
+                        //@ts-ignore -- retained for compatibility with Obsidian versions before Notice.messageEl.
                         if (popup?.noticeEl?.isShown()) {
                             popup.hide();
                         }
@@ -1250,12 +1243,14 @@ export class ConfigSync extends LiveSyncCommands {
             if (path.toLowerCase().endsWith("/manifest.json")) {
                 const v = readString(new Uint8Array(contentBin));
                 try {
-                    const json = JSON.parse(v);
-                    if ("version" in json) {
-                        version = `${json.version}`;
-                    }
-                    if ("name" in json) {
-                        displayName = `${json.name}`;
+                    const json: unknown = JSON.parse(v);
+                    if (typeof json === "object" && json !== null) {
+                        if ("version" in json) {
+                            version = String(json.version);
+                        }
+                        if ("name" in json) {
+                            displayName = String(json.name);
+                        }
                     }
                 } catch (ex) {
                     this._log(
@@ -1456,7 +1451,7 @@ export class ConfigSync extends LiveSyncCommands {
                     }
                     const oldC = await this.localDatabase.getDBEntryFromMeta(old, false, false);
                     if (oldC) {
-                        const d = (await deserialize(getDocDataAsArray(oldC.data), {})) as PluginDataEx;
+                        const d = deserialize(getDocDataAsArray(oldC.data), {}) as PluginDataEx;
                         if (d.files.length == dt.files.length) {
                             const diffs = d.files
                                 .map((previous) => ({
@@ -1709,11 +1704,11 @@ export class ConfigSync extends LiveSyncCommands {
         return Promise.resolve(true);
     }
 
-    private async _allConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    private async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
-    async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         if (mode == "DISABLE") {
             // this.plugin.settings.usePluginSync = false;
             // await this.plugin.saveSettings();

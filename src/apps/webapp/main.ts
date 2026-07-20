@@ -176,7 +176,11 @@ class LiveSyncWebApp {
             const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE);
             const file = await fileHandle.getFile();
             const text = await file.text();
-            return JSON.parse(text);
+            const parsed: unknown = JSON.parse(text);
+            if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+                throw new Error("The WebApp settings file does not contain an object");
+            }
+            return parsed;
         } catch {
             // File doesn't exist yet
             return null;

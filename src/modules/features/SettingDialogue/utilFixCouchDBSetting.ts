@@ -1,12 +1,18 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils";
 import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
-import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    Logger,
+} from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fireAndForget, parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
 
 export const checkConfig = async (
     checkResultDiv: HTMLDivElement | undefined,
@@ -43,7 +49,7 @@ export const checkConfig = async (
             undefined,
             customHeaders
         );
-        const responseConfig = r.json;
+        const responseConfig = normaliseCouchDBConfiguration(r.json as unknown);
 
         const addConfigFixButton = (title: string, key: string, value: string) => {
             if (!checkResultDiv) return;

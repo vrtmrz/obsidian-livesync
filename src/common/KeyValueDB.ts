@@ -52,7 +52,8 @@ export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueData
                 db = await _openDB();
                 databaseCache[dbKey] = db;
             }
-            return await db.get(storeKey, key);
+            const value: unknown = await db.get(storeKey, key);
+            return value as T;
         },
         async set<T>(key: IDBValidKey, value: T) {
             if (!db) {

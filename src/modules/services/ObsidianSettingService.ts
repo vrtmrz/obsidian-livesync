@@ -10,10 +10,9 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 
-export function normaliseObsidianSettingsData(
-    data: ObsidianLiveSyncSettings | null | undefined
-): ObsidianLiveSyncSettings | undefined {
-    return data ?? undefined;
+export function normaliseObsidianSettingsData(data: unknown): ObsidianLiveSyncSettings | undefined {
+    if (typeof data !== "object" || data === null || Array.isArray(data)) return undefined;
+    return data as ObsidianLiveSyncSettings;
 }
 
 export class ObsidianSettingService<T extends ObsidianServiceContext> extends SettingService<T> {

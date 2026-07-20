@@ -12,9 +12,21 @@ import type {
     UXFileInfoStub,
     UXFolderInfo,
     UXInternalFileInfoStub,
+    UXStat,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncCore } from "@/main.ts";
 import type { FileAccessObsidian } from "@/serviceModules/FileAccessObsidian.ts";
+
+function isUXStat(value: unknown): value is UXStat {
+    if (typeof value !== "object" || value === null) return false;
+    const stat = value as Partial<UXStat>;
+    return (
+        typeof stat.size === "number" &&
+        typeof stat.ctime === "number" &&
+        typeof stat.mtime === "number" &&
+        (stat.type === "file" || stat.type === "folder")
+    );
+}
 
 export async function TFileToUXFileInfo(
     core: LiveSyncCore,
@@ -55,8 +67,8 @@ export async function InternalFileToUXFileInfo(
     prefix: string = ICHeader
 ): Promise<UXFileInfo> {
     const name = fullPath.split("/").pop() as string;
-    const stat = await vaultAccess.tryAdapterStat(fullPath);
-    if (stat == null) throw new Error(`File not found: ${fullPath}`);
+    const stat: unknown = await vaultAccess.tryAdapterStat(fullPath);
+    if (!isUXStat(stat)) throw new Error(`File not found: ${fullPath}`);
     if (stat.type == "folder") throw new Error(`File not found: ${fullPath}`);
     const file = await vaultAccess.adapterReadAuto(fullPath);
 

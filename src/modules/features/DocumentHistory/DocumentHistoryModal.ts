@@ -22,6 +22,7 @@ import {
     loadDocumentHistoryPreference,
     saveDocumentHistoryPreference,
 } from "./documentHistoryPreferences.ts";
+import type PouchDB from "pouchdb-core";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();

@@ -4,8 +4,17 @@ import istanbul from "vite-plugin-istanbul";
 import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
-const packageJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
-const manifestJson = JSON.parse(fs.readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
+
+function readVersion(filePath: string): string | undefined {
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    if (typeof parsed !== "object" || parsed === null || !("version" in parsed)) {
+        return undefined;
+    }
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+}
+
+const packageVersion = readVersion(path.resolve(repoRoot, "package.json"));
+const manifestVersion = readVersion(path.resolve(repoRoot, "manifest.json"));
 const enableCoverage = process.env.PW_COVERAGE === "1";
 // https://vite.dev/config/
 export default defineConfig({
@@ -57,8 +66,8 @@ export default defineConfig({
         },
     },
     define: {
-        MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestJson.version || "0.0.0"),
-        PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageJson.version || "0.0.0"),
+        MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestVersion || "0.0.0"),
+        PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageVersion || "0.0.0"),
         global: "globalThis",
         hostPlatform: JSON.stringify(process.platform || "linux"),
     },

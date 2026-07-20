@@ -63,6 +63,7 @@ import { paneMaintenance } from "./PaneMaintenance.ts";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
 import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replication/journal/objectstore/MinioStorageAdapter";
+import { closeObsidianSettings } from "@/common/obsidianSettings.ts";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -99,6 +100,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     // Buffered Settings for comparing.
     initialSettings?: typeof this.editingSettings;
 
+    private copySettingValue(target: object | undefined, source: object, key: AllSettingItemKey): void {
+        if (!target) {
+            throw new Error("Initial settings have not been loaded");
+        }
+        const value: unknown = Reflect.get(source, key);
+        Reflect.set(target, key, value);
+    }
+
     /**
      * Apply editing setting to the plug-in.
      * @param keys setting keys for applying
@@ -111,10 +120,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 // this.initialSettings[k] = this.editingSettings[k];
                 continue;
             }
-            //@ts-ignore
-            this.core.settings[k] = this.editingSettings[k];
-            //@ts-ignore
-            this.initialSettings[k] = this.core.settings[k];
+            this.copySettingValue(this.core.settings, this.editingSettings, k);
+            this.copySettingValue(this.initialSettings, this.core.settings, k);
         }
         keys.forEach((e) => this.refreshSetting(e));
     }
@@ -149,14 +156,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             appliedKeys.push(k);
             if (k in OnDialogSettingsDefault) {
                 await this.saveLocalSetting(k as keyof OnDialogSettings);
-                //@ts-ignore
-                this.initialSettings[k] = this.editingSettings[k];
+                this.copySettingValue(this.initialSettings, this.editingSettings, k);
                 continue;
             }
-            //@ts-ignore
-            this.core.settings[k] = this.editingSettings[k];
-            //@ts-ignore
-            this.initialSettings[k] = this.core.settings[k];
+            this.copySettingValue(this.core.settings, this.editingSettings, k);
+            this.copySettingValue(this.initialSettings, this.core.settings, k);
             hasChanged = true;
         }
 
@@ -234,15 +238,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const localSetting = this.reloadAllLocalSettings();
         if (key in this.core.settings) {
             if (key in localSetting) {
-                //@ts-ignore
-                this.initialSettings[key] = localSetting[key];
-                //@ts-ignore
-                this.editingSettings[key] = localSetting[key];
+                this.copySettingValue(this.initialSettings, localSetting, key);
+                this.copySettingValue(this.editingSettings, localSetting, key);
             } else {
-                //@ts-ignore
-                this.initialSettings[key] = this.core.settings[key];
-                //@ts-ignore
-                this.editingSettings[key] = this.initialSettings[key];
+                this.copySettingValue(this.initialSettings, this.core.settings, key);
+                this.copySettingValue(this.editingSettings, this.initialSettings ?? {}, key);
             }
         }
         this.editingSettings = { ...this.editingSettings, ...this.computeAllLocalSettings() };
@@ -308,8 +308,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     closeSetting() {
-        //@ts-ignore :
-        this.plugin.app.setting.close();
+        closeObsidianSettings(this.plugin.app);
     }
 
     handleElement(element: HTMLElement, func: OnUpdateFunc) {

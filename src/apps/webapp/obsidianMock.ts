@@ -5,16 +5,43 @@
  * Obsidian mock, and must not become a general test environment for the plug-in. When the Webapp compatibility boundary
  * is redesigned, replace this implementation here rather than extending it as a shared Obsidian simulation.
  */
-export const SettingCache = new Map<any, any>();
-//@ts-ignore obsidian global
-globalThis.activeDocument = document;
+import type {
+    Command,
+    DataWriteOptions,
+    ListedFiles,
+    MarkdownFileInfo,
+    PluginManifest,
+    RequestUrlParam,
+    RequestUrlResponse,
+    ValueComponent,
+} from "obsidian";
+
+export type {
+    DataWriteOptions,
+    ListedFiles,
+    MarkdownFileInfo,
+    PluginManifest,
+    RequestUrlParam,
+    RequestUrlResponse,
+    ValueComponent,
+};
+
+type EventCallback = (...args: unknown[]) => unknown;
+
+declare global {
+    interface Window {
+        activeDocument: Document;
+    }
+}
+
+export const SettingCache = new Map<object, unknown>();
+window.activeDocument = document;
 
 declare const hostPlatform: string | undefined;
 
-globalThis.process = {
-    platform: (hostPlatform || "win32") as any,
-} as any;
-console.warn(`[Obsidian Mock] process.platform is set to ${globalThis.process.platform}`);
+Reflect.set(window, "process", {
+    platform: hostPlatform || "win32",
+});
 export class TAbstractFile {
     vault: Vault;
     path: string;
@@ -55,7 +82,12 @@ export class TFolder extends TAbstractFile {
     }
 }
 
-export class EventRef {}
+export class EventRef {
+    constructor(
+        readonly name: string,
+        readonly callback: EventCallback
+    ) {}
+}
 
 // class StorageMap<T, U> extends Map<T, U> {
 //     constructor(saveName?: string) {
@@ -114,7 +146,7 @@ export class Vault {
     private files: Map<string, TAbstractFile> = new Map();
     private contents: Map<string, string | ArrayBuffer> = new Map();
     private root: TFolder;
-    private listeners: Map<string, Set<(...args: any[]) => any>> = new Map();
+    private listeners: Map<string, Set<EventCallback>> = new Map();
 
     constructor(vaultName?: string) {
         if (vaultName) {
@@ -194,19 +226,16 @@ export class Vault {
         if (this.files.has(path)) throw new Error("File already exists");
         const name = path.split("/").pop() || "";
         const parentPath = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
-        let parent = this.getAbstractFileByPath(parentPath);
-        if (!parent || !(parent instanceof TFolder)) {
-            parent = await this.createFolder(parentPath);
-        }
+        const existingParent = this.getAbstractFileByPath(parentPath);
+        const parent = existingParent instanceof TFolder ? existingParent : await this.createFolder(parentPath);
 
-        const file = new TFile(this, path, name, parent as TFolder);
+        const file = new TFile(this, path, name, parent);
         file.stat.size = typeof data === "string" ? new TextEncoder().encode(data).length : data.byteLength;
         file.stat.ctime = options?.ctime ?? Date.now();
         file.stat.mtime = options?.mtime ?? Date.now();
         this.files.set(path, file);
         this.contents.set(path, data);
-        (parent as TFolder).children.push(file);
-        // console.dir(this.files);
+        parent.children.push(file);
 
         this.trigger("create", file);
         return file;
@@ -224,7 +253,6 @@ export class Vault {
         file.stat.mtime = options?.mtime ?? Date.now();
         file.stat.ctime = options?.ctime ?? file.stat.ctime ?? Date.now();
         file.stat.size = typeof data === "string" ? data.length : data.byteLength;
-        console.warn(`[Obsidian Mock ${this.vaultName}] Modified file at path: '${file.path}'`);
         this.files.set(file.path, file);
         this.trigger("modify", file);
     }
@@ -252,6 +280,14 @@ export class Vault {
     }
 
     async delete(file: TAbstractFile, force?: boolean): Promise<void> {
+        return this.removeFile(file);
+    }
+
+    async trash(file: TAbstractFile, system: boolean): Promise<void> {
+        return this.removeFile(file);
+    }
+
+    private async removeFile(file: TAbstractFile): Promise<void> {
         await Promise.resolve();
         this.files.delete(file.path);
         this.contents.delete(file.path);
@@ -261,30 +297,27 @@ export class Vault {
         this.trigger("delete", file);
     }
 
-    async trash(file: TAbstractFile, system: boolean): Promise<void> {
-        await Promise.resolve();
-        return this.delete(file);
+    async removeFromAdapter(file: TAbstractFile): Promise<void> {
+        return this.removeFile(file);
     }
 
-    on(name: string, callback: (...args: any[]) => any, ctx?: any): EventRef {
-        if (!this.listeners.has(name)) {
-            this.listeners.set(name, new Set());
-        }
-        const boundCallback = ctx ? callback.bind(ctx) : callback;
-        this.listeners.get(name)!.add(boundCallback);
-        return { name, callback: boundCallback } as any;
+    on(name: string, callback: EventCallback, ctx?: object): EventRef {
+        const listeners = this.listeners.get(name) ?? new Set<EventCallback>();
+        this.listeners.set(name, listeners);
+        const boundCallback = ctx ? (...args: unknown[]) => callback.apply(ctx, args) : callback;
+        listeners.add(boundCallback);
+        return new EventRef(name, boundCallback);
     }
 
-    off(name: string, callback: any) {
+    off(name: string, callback: EventCallback) {
         this.listeners.get(name)?.delete(callback);
     }
 
     offref(ref: EventRef) {
-        const { name, callback } = ref as any;
-        this.off(name, callback);
+        this.off(ref.name, ref.callback);
     }
 
-    trigger(name: string, ...args: any[]) {
+    trigger(name: string, ...args: unknown[]) {
         this.listeners.get(name)?.forEach((cb) => cb(...args));
     }
 
@@ -366,28 +399,29 @@ export class DataAdapter {
     }
     async remove(path: string): Promise<void> {
         const file = this.vault.getAbstractFileByPath(path);
-        if (file) await this.vault.delete(file);
+        if (file) await this.vault.removeFromAdapter(file);
     }
 }
 
 class Events {
     _eventEmitter = new EventTarget();
-    _events = new Map<any, any>();
-    _eventTarget(cb: any) {
-        const x = this._events.get(cb);
-        if (x) {
-            return x;
+    _events = new Map<EventCallback, EventListener>();
+    _eventTarget(callback: EventCallback): EventListener {
+        const registered = this._events.get(callback);
+        if (registered) {
+            return registered;
         }
-        const callback = (evt: any) => {
-            x(evt?.detail ?? undefined);
+        const eventListener = (event: Event) => {
+            callback(event instanceof CustomEvent ? event.detail : undefined);
         };
-        this._events.set(cb, callback);
-        return callback;
+        this._events.set(callback, eventListener);
+        return eventListener;
     }
-    on(name: string, cb: any, ctx?: any) {
-        this._eventEmitter.addEventListener(name, this._eventTarget(cb));
+    on(name: string, callback: EventCallback, ctx?: object) {
+        const registered = ctx ? (...args: unknown[]) => callback.apply(ctx, args) : callback;
+        this._eventEmitter.addEventListener(name, this._eventTarget(registered));
     }
-    trigger(name: string, args: any) {
+    trigger(name: string, args: unknown) {
         const evt = new CustomEvent(name, {
             detail: args,
         });
@@ -403,13 +437,13 @@ class Workspace extends Events {
         return null;
     }
 
-    onLayoutReady(cb: any) {
+    onLayoutReady(callback: () => void) {
         // cb();
         // console.log("[Obsidian Mock] Workspace onLayoutReady registered");
         // this._eventEmitter.addEventListener("layout-ready", () => {
         // console.log("[Obsidian Mock] Workspace layout-ready event triggered");
-        setTimeout(() => {
-            cb();
+        window.setTimeout(() => {
+            callback();
         }, 200);
         // });
     }
@@ -434,33 +468,36 @@ export class App {
     }
     vault: Vault;
     workspace: Workspace = new Workspace();
-    metadataCache: any = {
-        on: (name: string, cb: any, ctx?: any) => {},
+    metadataCache = {
+        on: (name: string, callback: EventCallback, ctx?: object): EventRef => {
+            const registered = ctx ? (...args: unknown[]) => callback.apply(ctx, args) : callback;
+            return new EventRef(name, registered);
+        },
         getFileCache: (): null => null,
     };
 }
 
 export class Plugin {
     app: App;
-    manifest: any;
-    settings: any;
-    commands: Map<string, any> = new Map();
-    constructor(app: App, manifest: any) {
+    manifest: PluginManifest;
+    settings: unknown;
+    commands: Map<string, Command> = new Map();
+    constructor(app: App, manifest: PluginManifest) {
         this.app = app;
         this.manifest = manifest;
     }
-    async loadData(): Promise<any> {
+    async loadData(): Promise<unknown> {
         await Promise.resolve();
         return SettingCache.get(this.app) ?? {};
     }
-    async saveData(data: any): Promise<void> {
+    async saveData(data: unknown): Promise<void> {
         await Promise.resolve();
         SettingCache.set(this.app, data);
     }
     onload() {}
     onunload() {}
-    addSettingTab(tab: any) {}
-    addCommand(command: any) {
+    addSettingTab(tab: PluginSettingTab) {}
+    addCommand(command: Command) {
         this.commands.set(command.id, command);
     }
     addStatusBarItem() {
@@ -478,10 +515,14 @@ export class Plugin {
         };
         return icon;
     }
-    registerView(type: string, creator: any) {}
-    registerObsidianProtocolHandler(handler: any) {}
-    registerEvent(handler: any) {}
-    registerDomEvent(target: any, eventName: string, handler: any) {}
+    registerView(type: string, creator: () => ItemView) {}
+    registerObsidianProtocolHandler(handler: (params: Record<string, string>) => unknown) {}
+    registerEvent(handler: EventRef) {}
+    registerDomEvent<K extends keyof HTMLElementEventMap>(
+        target: HTMLElement,
+        eventName: K,
+        handler: (event: HTMLElementEventMap[K]) => unknown
+    ) {}
 }
 
 export class Notice {
@@ -489,11 +530,8 @@ export class Notice {
     private static _counter = 0;
     constructor(message: string) {
         this._key = Notice._counter++;
-        console.log(`Notice [${this._key}]:`, message);
     }
-    setMessage(message: string) {
-        console.log(`Notice [${this._key}]:`, message);
-    }
+    setMessage(message: string) {}
 }
 
 export class Modal {
@@ -558,7 +596,7 @@ export const Platform = {
 };
 
 export class Menu {
-    addItem(cb: (item: MenuItem) => any) {
+    addItem(cb: (item: MenuItem) => unknown) {
         cb(new MenuItem());
         return this;
     }
@@ -571,7 +609,7 @@ export class MenuItem {
     setIcon(icon: string) {
         return this;
     }
-    onClick(cb: (evt: MouseEvent) => any) {
+    onClick(cb: (evt: MouseEvent) => unknown) {
         return this;
     }
 }
@@ -584,7 +622,7 @@ export class Component {
 
 export class ButtonComponent extends Component {
     buttonEl: HTMLButtonElement = document.createElement("button");
-    private clickHandler: ((evt: MouseEvent) => any) | null = null;
+    private clickHandler: ((evt: MouseEvent) => unknown) | null = null;
 
     constructor() {
         super();
@@ -602,7 +640,7 @@ export class ButtonComponent extends Component {
         return this;
     }
 
-    onClick(cb: (evt: MouseEvent) => any) {
+    onClick(cb: (evt: MouseEvent) => unknown) {
         this.clickHandler = cb;
         this.buttonEl.removeEventListener("click", this.clickHandler);
         this.buttonEl.addEventListener("click", (evt) => cb(evt as MouseEvent));
@@ -627,7 +665,7 @@ export class ButtonComponent extends Component {
 
 export class TextComponent extends Component {
     inputEl: HTMLInputElement = document.createElement("input");
-    private changeHandler: ((value: string) => any) | null = null;
+    private changeHandler: ((value: string) => unknown) | null = null;
 
     constructor() {
         super();
@@ -635,7 +673,7 @@ export class TextComponent extends Component {
         this.inputEl.type = "text";
     }
 
-    onChange(cb: (value: string) => any) {
+    onChange(cb: (value: string) => unknown) {
         this.changeHandler = cb;
         this.inputEl.removeEventListener("change", this.handleChange);
         this.inputEl.addEventListener("change", this.handleChange);
@@ -671,7 +709,7 @@ export class TextComponent extends Component {
 
 export class ToggleComponent extends Component {
     inputEl: HTMLInputElement = document.createElement("input");
-    private changeHandler: ((value: boolean) => any) | null = null;
+    private changeHandler: ((value: boolean) => unknown) | null = null;
 
     constructor() {
         super();
@@ -679,7 +717,7 @@ export class ToggleComponent extends Component {
         this.inputEl.type = "checkbox";
     }
 
-    onChange(cb: (value: boolean) => any) {
+    onChange(cb: (value: boolean) => unknown) {
         this.changeHandler = cb;
         this.inputEl.addEventListener("change", (evt) => {
             const target = evt.target as HTMLInputElement;
@@ -701,7 +739,7 @@ export class ToggleComponent extends Component {
 
 export class DropdownComponent extends Component {
     selectEl: HTMLSelectElement = document.createElement("select");
-    private changeHandler: ((value: string) => any) | null = null;
+    private changeHandler: ((value: string) => unknown) | null = null;
 
     constructor() {
         super();
@@ -723,7 +761,7 @@ export class DropdownComponent extends Component {
         return this;
     }
 
-    onChange(cb: (value: string) => any) {
+    onChange(cb: (value: string) => unknown) {
         this.changeHandler = cb;
         this.selectEl.addEventListener("change", (evt) => {
             const target = evt.target as HTMLSelectElement;
@@ -745,7 +783,7 @@ export class DropdownComponent extends Component {
 
 export class SliderComponent extends Component {
     inputEl: HTMLInputElement = document.createElement("input");
-    private changeHandler: ((value: number) => any) | null = null;
+    private changeHandler: ((value: number) => unknown) | null = null;
 
     constructor() {
         super();
@@ -753,7 +791,7 @@ export class SliderComponent extends Component {
         this.inputEl.type = "range";
     }
 
-    onChange(cb: (value: number) => any) {
+    onChange(cb: (value: number) => unknown) {
         this.changeHandler = cb;
         this.inputEl.addEventListener("change", (evt) => {
             const target = evt.target as HTMLInputElement;
@@ -816,72 +854,115 @@ export class Setting {
         this.controlEl.addClass(c);
         return this;
     }
-    addText(cb: (text: TextComponent) => any) {
+    addText(cb: (text: TextComponent) => unknown) {
         const component = new TextComponent();
         this.controlEl.appendChild(component.inputEl);
         cb(component);
         return this;
     }
-    addToggle(cb: (toggle: ToggleComponent) => any) {
+    addToggle(cb: (toggle: ToggleComponent) => unknown) {
         const component = new ToggleComponent();
         cb(component);
         return this;
     }
-    addButton(cb: (btn: ButtonComponent) => any) {
+    addButton(cb: (btn: ButtonComponent) => unknown) {
         const btn = new ButtonComponent();
         this.controlEl.appendChild(btn.buttonEl);
         cb(btn);
         return this;
     }
-    addDropdown(cb: (dropdown: DropdownComponent) => any) {
+    addDropdown(cb: (dropdown: DropdownComponent) => unknown) {
         const component = new DropdownComponent();
         cb(component);
         return this;
     }
-    addSlider(cb: (slider: SliderComponent) => any) {
+    addSlider(cb: (slider: SliderComponent) => unknown) {
         const component = new SliderComponent();
         cb(component);
         return this;
     }
 }
 
-// HTMLElement extensions
+function applyDomElementInfo(element: HTMLElement, info?: DomElementInfo | string): void {
+    if (typeof info === "string") {
+        element.textContent = info;
+        return;
+    }
+    if (!info) return;
+    if (info.cls) {
+        const classes = Array.isArray(info.cls) ? info.cls : info.cls.split(" ");
+        element.classList.add(...classes.filter((className) => className !== ""));
+    }
+    if (info.text !== undefined) {
+        element.replaceChildren(info.text);
+    }
+    if (info.attr) {
+        for (const [name, value] of Object.entries(info.attr)) {
+            if (value === null) element.removeAttribute(name);
+            else element.setAttribute(name, String(value));
+        }
+    }
+    if (info.title !== undefined) element.title = info.title;
+    if (info.value !== undefined && "value" in element) element.value = info.value;
+    if (info.type !== undefined && "type" in element) element.type = info.type;
+    if (info.placeholder !== undefined && "placeholder" in element) element.placeholder = info.placeholder;
+    if (info.href !== undefined) element.setAttribute("href", info.href);
+}
+
+// HTMLElement extensions used by the Webapp compatibility implementation.
 if (typeof HTMLElement !== "undefined") {
-    const proto = HTMLElement.prototype as any;
-    proto.createDiv = function (o?: any) {
-        const div = document.createElement("div");
-        if (o?.cls) div.addClass(o.cls);
-        if (o?.text) div.setText(o.text);
-        this.appendChild(div);
-        return div;
+    const proto = HTMLElement.prototype;
+    proto.createDiv = function (
+        this: HTMLElement,
+        info?: DomElementInfo | string,
+        callback?: (element: HTMLDivElement) => void
+    ): HTMLDivElement {
+        const element = document.createElement("div");
+        applyDomElementInfo(element, info);
+        this.appendChild(element);
+        callback?.(element);
+        return element;
     };
-    proto.createEl = function (tag: string, o?: any) {
-        const el = document.createElement(tag);
-        if (o?.cls) el.addClass(o.cls);
-        if (o?.text) el.setText(o.text);
-        this.appendChild(el);
-        return el;
+    proto.createEl = function <K extends keyof HTMLElementTagNameMap>(
+        this: HTMLElement,
+        tag: K,
+        info?: DomElementInfo | string,
+        callback?: (element: HTMLElementTagNameMap[K]) => void
+    ): HTMLElementTagNameMap[K] {
+        const element = document.createElement(tag);
+        applyDomElementInfo(element, info);
+        this.appendChild(element);
+        callback?.(element);
+        return element;
     };
-    proto.createSpan = function (o?: any) {
-        return this.createEl("span", o);
+    proto.createSpan = function (
+        this: HTMLElement,
+        info?: DomElementInfo | string,
+        callback?: (element: HTMLSpanElement) => void
+    ): HTMLSpanElement {
+        const element = document.createElement("span");
+        applyDomElementInfo(element, info);
+        this.appendChild(element);
+        callback?.(element);
+        return element;
     };
-    proto.empty = function () {
-        this.innerHTML = "";
+    proto.empty = function (this: HTMLElement): void {
+        this.replaceChildren();
     };
-    proto.setText = function (t: string) {
-        this.textContent = t;
+    proto.setText = function (this: HTMLElement, text: string): void {
+        this.textContent = text;
     };
-    proto.addClass = function (c: string) {
-        this.classList.add(c);
+    proto.addClass = function (this: HTMLElement, className: string): void {
+        this.classList.add(className);
     };
-    proto.removeClass = function (c: string) {
-        this.classList.remove(c);
+    proto.removeClass = function (this: HTMLElement, className: string): void {
+        this.classList.remove(className);
     };
-    proto.toggleClass = function (c: string, b: boolean) {
-        this.classList.toggle(c, b);
+    proto.toggleClass = function (this: HTMLElement, className: string, value: boolean): void {
+        this.classList.toggle(className, value);
     };
-    proto.hasClass = function (c: string) {
-        return this.classList.contains(c);
+    proto.hasClass = function (this: HTMLElement, className: string): boolean {
+        return this.classList.contains(className);
     };
 }
 
@@ -896,10 +977,19 @@ export class FuzzySuggestModal<T> {
         throw new Error("Not implemented.");
     }
 }
+
+function parseHtmlFragment(html: string): DocumentFragment {
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    const fragment = document.createDocumentFragment();
+    for (const child of [...parsed.body.childNodes]) {
+        fragment.appendChild(document.importNode(child, true));
+    }
+    return fragment;
+}
+
 export class MarkdownRenderer {
     static render(app: App, md: string, el: HTMLElement, path: string, component: Component) {
-        // eslint-disable-next-line no-unsanitized/property -- This compatibility method mirrors Obsidian's trusted Markdown renderer boundary.
-        el.innerHTML = md;
+        el.replaceChildren(parseHtmlFragment(md));
         return Promise.resolve();
     }
 }
@@ -910,26 +1000,23 @@ export class WorkspaceLeaf {}
 
 export function sanitizeHTMLToDom(html: string) {
     const div = document.createElement("div");
-    // eslint-disable-next-line no-unsanitized/property -- This compatibility method mirrors Obsidian's sanitised-HTML API contract.
-    div.innerHTML = html;
+    div.appendChild(parseHtmlFragment(html));
     return div;
 }
 
 export function addIcon() {}
-export const debounce = (fn: any) => fn;
-export async function request(options: any) {
+export function debounce<Arguments extends unknown[], Result>(
+    fn: (...args: Arguments) => Result
+): (...args: Arguments) => Result {
+    return fn;
+}
+export async function request(options: RequestUrlParam | string): Promise<string> {
     const result = await requestUrl(options);
     return result.text;
 }
 
-export async function requestUrl({
-    body,
-    headers,
-    method,
-    url,
-    contentType,
-}: RequestUrlParam): Promise<RequestUrlResponse> {
-    // console.log("[requestUrl] Mock called:", { method, url, contentType });
+export async function requestUrl(options: RequestUrlParam | string): Promise<RequestUrlResponse> {
+    const { body, headers, method, url, contentType } = typeof options === "string" ? { url: options } : options;
     const reqHeadersObj: Record<string, string> = {};
     for (const key of Object.keys(headers || {})) {
         reqHeadersObj[key.toLowerCase()] = headers[key];
@@ -940,21 +1027,21 @@ export async function requestUrl({
     reqHeadersObj["Cache-Control"] = "no-cache, no-store, must-revalidate";
     reqHeadersObj["Pragma"] = "no-cache";
     reqHeadersObj["Expires"] = "0";
-    const result = await fetch(url, {
-        method: method,
+    const result = await window.fetch(url, {
+        method,
         headers: {
             ...reqHeadersObj,
         },
 
-        body: body,
+        body,
     });
     const headersObj: Record<string, string> = {};
     result.headers.forEach((value, key) => {
         headersObj[key] = value;
     });
-    let json = undefined;
-    let text = undefined;
-    let arrayBuffer = undefined;
+    let json: unknown;
+    let text = "";
+    let arrayBuffer = new ArrayBuffer(0);
     try {
         const isJson = result.headers.get("content-type")?.includes("application/json");
         arrayBuffer = await result.arrayBuffer();
@@ -965,9 +1052,8 @@ export async function requestUrl({
         if (isJson) {
             json = await JSON.parse(text || "{}");
         }
-    } catch (e) {
-        console.warn("Failed to parse response:", e);
-        // ignore
+    } catch {
+        json = undefined;
     }
     return {
         status: result.status,
@@ -977,11 +1063,12 @@ export async function requestUrl({
         arrayBuffer: arrayBuffer,
     };
 }
-export function stringifyYaml(obj: any) {
+export function stringifyYaml(obj: unknown): string {
     return JSON.stringify(obj);
 }
-export function parseYaml(s: string) {
-    return JSON.parse(s);
+export function parseYaml(s: string): unknown {
+    const parsed: unknown = JSON.parse(s);
+    return parsed;
 }
 export function getLanguage() {
     return "en";
@@ -997,15 +1084,3 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
     return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)).buffer;
 }
-
-export type DataWriteOptions = any;
-export type PluginManifest = any;
-export type RequestUrlParam = any;
-export type RequestUrlResponse = any;
-export type MarkdownFileInfo = any;
-export type ListedFiles = {
-    files: string[];
-    folders: string[];
-};
-
-export type ValueComponent = any;

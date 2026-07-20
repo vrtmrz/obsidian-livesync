@@ -7,6 +7,7 @@ import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_c
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
 
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };
@@ -115,7 +116,7 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
             undefined,
             customHeaders
         );
-        const responseConfig = r.json;
+        const responseConfig = normaliseCouchDBConfiguration(r.json as unknown);
         addMessage($msg("obsidianLiveSyncSettingTab.msgNotice"), ["ob-btn-config-head"]);
         addMessage($msg("obsidianLiveSyncSettingTab.msgIfConfigNotPersistent"), ["ob-btn-config-info"]);
         addMessage($msg("obsidianLiveSyncSettingTab.msgConfigCheck"), ["ob-btn-config-head"]);

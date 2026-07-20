@@ -23,6 +23,7 @@ import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import type PouchDB from "pouchdb-core";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 type ReplicateResultProcessorState = {
