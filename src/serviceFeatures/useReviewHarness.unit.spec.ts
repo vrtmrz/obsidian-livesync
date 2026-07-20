@@ -20,6 +20,7 @@ function compatibilityPause(): CompatibilityPause {
                 currentVersion: 10,
                 isFromFutureSchema: false,
                 resumable: true,
+                reviewReasons: [],
             },
         ],
     };

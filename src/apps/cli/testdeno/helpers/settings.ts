@@ -195,9 +195,8 @@ export async function applyP2pTestTweaks(settingsFile: string, deviceName: strin
     data.passphrase = passphrase;
     data.usePathObfuscation = true;
     data.handleFilenameCaseSensitive = false;
-    data.customChunkSize = 50;
+    data.customChunkSize = 60;
     data.usePluginSyncV2 = true;
-    data.doNotUseFixedRevisionForChunks = false;
     data.P2P_DevicePeerName = deviceName;
     data.isConfigured = true;
     await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));

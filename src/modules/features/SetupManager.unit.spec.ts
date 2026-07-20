@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    DEFAULT_SETTINGS,
+    REMOTE_COUCHDB,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
@@ -123,6 +128,16 @@ describe("SetupManager", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.restoreAllMocks();
+    });
+
+    it("starts manual new-user setup from the recommended new-Vault settings", async () => {
+        const { manager, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("configure-manually");
+        const configureManually = vi.spyOn(manager, "onConfigureManually").mockResolvedValue(true);
+
+        await manager.onOnboard(UserMode.NewUser);
+
+        expect(configureManually).toHaveBeenCalledWith(createNewVaultSettings(), UserMode.NewUser);
     });
 
     it("onUseSetupURI should normalise imported legacy remote settings before applying", async () => {

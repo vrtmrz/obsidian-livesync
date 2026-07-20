@@ -1,9 +1,15 @@
-import type { CompatibilityPause, CompatibilityPauseReason } from "@/common/databaseCompatibility.ts";
+import {
+    requiresFilenameCaseSensitivityDecision,
+    type CompatibilityPause,
+    type CompatibilityPauseReason,
+} from "@/common/databaseCompatibility.ts";
 
 export function compatibilityReviewSummaryMarkdown(pause: CompatibilityPause): string {
-    const action = pause.resumable
-        ? "Before resuming, review the compatibility details and update Self-hosted LiveSync on every device which uses this remote database."
-        : "This installation cannot safely acknowledge the detected state. Update Self-hosted LiveSync before attempting to synchronise again.";
+    const action = !pause.resumable
+        ? "This installation cannot safely acknowledge the detected state. Update Self-hosted LiveSync before attempting to synchronise again."
+        : requiresFilenameCaseSensitivityDecision(pause)
+          ? "Before resuming, review the missing file-name case policy and explicitly keep the legacy-compatible behaviour, or leave synchronisation paused while you plan a database rebuild."
+          : "Before resuming, review the compatibility details and update Self-hosted LiveSync on every device which uses this remote database.";
     return `Remote synchronisation is paused on this device because its compatibility state requires attention.
 
 ${action}
@@ -28,6 +34,9 @@ function reasonMarkdown(reason: CompatibilityPauseReason): string {
         if (reason.isFromFutureSchema) {
             return `- The saved settings use schema **${reason.sourceVersion}**, which is newer than schema **${reason.currentVersion}** supported by this installation.`;
         }
+        if (reason.reviewReasons.some(({ code }) => code === "filename-case-sensitivity-unresolved")) {
+            return "- This existing Vault has no saved file-name case policy. Self-hosted LiveSync will not infer a cross-platform policy while synchronisation is paused.";
+        }
         return `- The settings were migrated from schema **${reason.sourceVersion}** to **${reason.currentVersion}** and require review before synchronisation resumes.`;
     }
     const escapedMessage = reason.message.replace(/[\\`*_{}[\]()<>#+.!|-]/gu, "\\$&");
@@ -35,9 +44,11 @@ function reasonMarkdown(reason: CompatibilityPauseReason): string {
 }
 
 export function compatibilityReviewDetailsMarkdown(pause: CompatibilityPause): string {
-    const resolution = pause.resumable
-        ? "After all devices have been updated, return to the compatibility review summary and explicitly resume synchronisation. The current internal version will only then be recorded as acknowledged."
-        : "Install a compatible current version of Self-hosted LiveSync. This pause cannot be dismissed by the current installation.";
+    const resolution = !pause.resumable
+        ? "Install a compatible current version of Self-hosted LiveSync. This pause cannot be dismissed by the current installation."
+        : requiresFilenameCaseSensitivityDecision(pause)
+          ? "Choosing 'Keep case-sensitive handling and resume' records an explicit decision; case-sensitive handling preserves the earlier behaviour. To adopt cross-platform case-insensitive handling, keep synchronisation paused and use the compatibility setting workflow after checking for paths which differ only by letter case; case-insensitive handling requires a database rebuild."
+          : "After all devices have been updated, return to the compatibility review summary and explicitly resume synchronisation. The current internal version will only then be recorded as acknowledged.";
     return `## Why synchronisation is paused
 
 ${pause.reasons.map(reasonMarkdown).join("\n")}

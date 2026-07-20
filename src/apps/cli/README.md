@@ -337,7 +337,7 @@ Options:
 
 Commands:
   daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
-  init-settings [path]    Create settings JSON from DEFAULT_SETTINGS
+  init-settings [path]    Create unconfigured settings JSON with the new-Vault recommendations
   sync                    Run one replication cycle and exit
   p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
   p2p-sync <peer> <timeout>   Synchronise with specified peer-id or peer-name

@@ -1,6 +1,9 @@
 import { Notice } from "@/deps.ts";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
-import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
+import {
+    requiresFilenameCaseSensitivityDecision,
+    type CompatibilityPause,
+} from "@/common/databaseCompatibility.ts";
 import type {
     CompatibilityReviewDetailsAction,
     CompatibilityReviewSummaryAction,
@@ -13,6 +16,7 @@ import {
 
 const REVIEW_DETAILS = "Review compatibility details";
 const KEEP_PAUSED = "Keep synchronisation paused";
+const USE_CASE_SENSITIVE = "Keep case-sensitive handling and resume";
 const RESUME = "Resume synchronisation";
 const BACK = "Back to compatibility review";
 
@@ -22,9 +26,11 @@ export class ObsidianCompatibilityReviewUi implements CompatibilityReviewUi {
     constructor(private readonly confirm: Confirm) {}
 
     async showSummary(pause: CompatibilityPause): Promise<CompatibilityReviewSummaryAction> {
-        const buttons = pause.resumable
-            ? ([REVIEW_DETAILS, RESUME, KEEP_PAUSED] as const)
-            : ([REVIEW_DETAILS, KEEP_PAUSED] as const);
+        const buttons = !pause.resumable
+            ? ([REVIEW_DETAILS, KEEP_PAUSED] as const)
+            : requiresFilenameCaseSensitivityDecision(pause)
+              ? ([REVIEW_DETAILS, USE_CASE_SENSITIVE, KEEP_PAUSED] as const)
+              : ([REVIEW_DETAILS, RESUME, KEEP_PAUSED] as const);
         const result = await this.confirm.confirmWithMessage(
             "Synchronisation paused for compatibility review",
             compatibilityReviewSummaryMarkdown(pause),
@@ -34,6 +40,7 @@ export class ObsidianCompatibilityReviewUi implements CompatibilityReviewUi {
             "vertical"
         );
         if (result === REVIEW_DETAILS) return "details";
+        if (result === USE_CASE_SENSITIVE) return "use-case-sensitive";
         if (result === RESUME) return "resume";
         if (result === KEEP_PAUSED) return "keep-paused";
         return false;

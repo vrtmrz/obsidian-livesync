@@ -103,8 +103,39 @@ describe("database compatibility evaluation", () => {
                     currentVersion: 2,
                     isFromFutureSchema: true,
                     resumable: false,
+                    reviewReasons: [],
                 },
             ],
+        });
+    });
+
+    it("retains an unresolved filename-case decision in the host compatibility reason", () => {
+        const reviewReasons = [
+            {
+                code: "filename-case-sensitivity-unresolved",
+                fromVersion: 10,
+                toVersion: 10,
+            },
+        ];
+        const result = evaluateCompatibilityPause({
+            acknowledgedVersion: "12",
+            currentVersion: 12,
+            migrationState: migrationState({
+                sourceVersion: 10,
+                targetVersion: 10,
+                requiresSyncReview: true,
+                reviewReasons,
+            }),
+            legacyReviewMessage: "",
+        });
+
+        expect(result.pause?.reasons).toContainEqual({
+            source: "settings-schema",
+            sourceVersion: 10,
+            currentVersion: 10,
+            isFromFutureSchema: false,
+            resumable: true,
+            reviewReasons,
         });
     });
 

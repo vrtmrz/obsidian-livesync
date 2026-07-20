@@ -853,10 +853,10 @@ Enable this option to automatically apply the most recent change to documents ev
 Setting key: useIndexedDBAdapter
 Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.
 
-#### Compute revisions for chunks (Previous behaviour)
+#### Content-derived chunk revisions (obsolete setting)
 
 Setting key: doNotUseFixedRevisionForChunks
-If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour)
+Chunk revisions are always derived from their content. This key remains accepted in stored settings and Setup URIs for compatibility, but its value no longer changes behaviour and it is not a maintenance prerequisite.
 
 #### Handle files as Case-Sensitive
 
@@ -864,6 +864,8 @@ Setting key: handleFilenameCaseSensitive
 If this enabled, All files are handled as case-Sensitive (Previous behaviour).
 
 When this setting is disabled, changing only the letter case of a file name within the same directory is synchronised as a rename. Changing the letter case of a directory name is not supported by this handling.
+
+New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. If an existing Vault has no saved value, remote synchronisation remains paused until case-sensitive handling is explicitly retained. Changing such a Vault to case-insensitive handling requires checking for paths which differ only by letter case and rebuilding the database through the normal compatibility setting workflow.
 
 ### 4. Compatibility (Internal API Usage)
 

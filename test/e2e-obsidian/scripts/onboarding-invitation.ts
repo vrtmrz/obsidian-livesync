@@ -19,6 +19,10 @@ type UnconfiguredStartupEvidence = {
     configured: boolean;
     markerInDatabase: boolean;
     offlineScanInitialised: boolean;
+    recommendedDefaults: {
+        usePluginSyncV2: boolean;
+        handleFilenameCaseSensitive: boolean;
+    };
 };
 
 type ObsidianTestApp = {
@@ -47,10 +51,15 @@ async function inspectUnconfiguredStartup(
             "try{entry=await core.localDatabase.getDBEntry(markerPath,undefined,false,false);}catch{}",
             "let initialised=false;",
             "try{initialised=(await core.kvDB.get('initialized'))===true;}catch{}",
+            "const settings=core.services.setting.currentSettings();",
             "return JSON.stringify({",
-            "configured:core.services.setting.currentSettings()?.isConfigured===true,",
+            "configured:settings?.isConfigured===true,",
             "markerInDatabase:Boolean(entry&&entry._id),",
             "offlineScanInitialised:initialised,",
+            "recommendedDefaults:{",
+            "usePluginSyncV2:settings?.usePluginSyncV2,",
+            "handleFilenameCaseSensitive:settings?.handleFilenameCaseSensitive,",
+            "},",
             "});",
             "})()",
         ].join(""),
@@ -167,12 +176,18 @@ async function main(): Promise<void> {
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         });
 
-        const evidence = await inspectUnconfiguredStartup(cli.binary, session.cliEnv);
-        console.log(`Fresh Vault startup evidence: ${JSON.stringify(evidence)}`);
         await requireInvitationWithoutDialogue();
-        if (evidence.configured || evidence.markerInDatabase || evidence.offlineScanInitialised) {
-            throw new Error(`Unconfigured startup performed ordinary processing: ${JSON.stringify(evidence)}`);
+        const evidence = await inspectUnconfiguredStartup(cli.binary, session.cliEnv);
+        if (
+            evidence.configured ||
+            evidence.markerInDatabase ||
+            evidence.offlineScanInitialised ||
+            evidence.recommendedDefaults.usePluginSyncV2 !== true ||
+            evidence.recommendedDefaults.handleFilenameCaseSensitive !== false
+        ) {
+            throw new Error(`Fresh Vault startup state did not match its contract: ${JSON.stringify(evidence)}`);
         }
+        console.log(`Fresh Vault startup evidence: ${JSON.stringify(evidence)}`);
 
         const desktopInvitation = await captureDesktopInvitation();
         await openPermanentCommand();

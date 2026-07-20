@@ -48,6 +48,7 @@ function compatibilityPause(): CompatibilityPause {
                 currentVersion: 10,
                 isFromFutureSchema: false,
                 resumable: true,
+                reviewReasons: migration().reviewReasons,
             },
         ],
     };
@@ -105,7 +106,6 @@ describe("Review Harness contract", () => {
                 ...preservedSyncSettings,
                 syncMaxSizeInMB: NEW_VAULT_SETTINGS.syncMaxSizeInMB,
                 chunkSplitterVersion: NEW_VAULT_SETTINGS.chunkSplitterVersion,
-                doNotUseFixedRevisionForChunks: NEW_VAULT_SETTINGS.doNotUseFixedRevisionForChunks,
                 usePluginSyncV2: NEW_VAULT_SETTINGS.usePluginSyncV2,
                 handleFilenameCaseSensitive: NEW_VAULT_SETTINGS.handleFilenameCaseSensitive,
                 E2EEAlgorithm: NEW_VAULT_SETTINGS.E2EEAlgorithm,

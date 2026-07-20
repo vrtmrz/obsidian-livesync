@@ -4,13 +4,13 @@ import {
     type EncryptionSettings,
     type ObsidianLiveSyncSettings,
     type P2PSyncSetting,
-    DEFAULT_SETTINGS,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     REMOTE_P2P,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
@@ -99,7 +99,7 @@ export class SetupManager extends AbstractModule {
      * @returns Promise that resolves to true if onboarding completed successfully, false otherwise
      */
     async onOnboard(userMode: UserMode): Promise<boolean> {
-        const originalSetting = userMode === UserMode.NewUser ? DEFAULT_SETTINGS : this.core.settings;
+        const originalSetting = userMode === UserMode.NewUser ? createNewVaultSettings() : this.core.settings;
         if (userMode === UserMode.NewUser) {
             //Ask how to apply initial setup
             const method = await this.dialogManager.openWithExplicitCancel(SelectMethodNewUser);

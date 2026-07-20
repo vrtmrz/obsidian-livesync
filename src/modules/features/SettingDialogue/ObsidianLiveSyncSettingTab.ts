@@ -473,7 +473,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     isNeedRebuildLocal() {
         return this.isSomeDirty([
             "useIndexedDBAdapter",
-            "doNotUseFixedRevisionForChunks",
             "handleFilenameCaseSensitive",
             "passphrase",
             "useDynamicIterationCount",
@@ -484,7 +483,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
     isNeedRebuildRemote() {
         return this.isSomeDirty([
-            "doNotUseFixedRevisionForChunks",
             "handleFilenameCaseSensitive",
             "passphrase",
             "useDynamicIterationCount",

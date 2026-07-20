@@ -1,4 +1,7 @@
-import type { SettingsMigrationState } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type {
+    SettingsMigrationReviewReason,
+    SettingsMigrationState,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 export const DATABASE_COMPATIBILITY_VERSION_KEY = "database-compatibility-version";
 export const DATABASE_COMPATIBILITY_LEGACY_VERSION_KEY_PREFIX = "obsidian-live-sync-ver";
@@ -21,6 +24,7 @@ export interface SettingsCompatibilityReason {
     currentVersion: number;
     isFromFutureSchema: boolean;
     resumable: boolean;
+    reviewReasons: readonly SettingsMigrationReviewReason[];
 }
 
 export interface LegacyCompatibilityReason {
@@ -49,6 +53,16 @@ export interface CompatibilityEvaluationInput {
     currentVersion: number;
     migrationState?: SettingsMigrationState;
     legacyReviewMessage: string;
+}
+
+const FILENAME_CASE_SENSITIVITY_UNRESOLVED = "filename-case-sensitivity-unresolved";
+
+export function requiresFilenameCaseSensitivityDecision(pause: CompatibilityPause): boolean {
+    return pause.reasons.some(
+        (reason) =>
+            reason.source === "settings-schema" &&
+            reason.reviewReasons.some(({ code }) => code === FILENAME_CASE_SENSITIVITY_UNRESOLVED)
+    );
 }
 
 function databaseVersionReason(
@@ -112,6 +126,7 @@ export function evaluateCompatibilityPause(input: CompatibilityEvaluationInput):
             currentVersion: input.migrationState.targetVersion,
             isFromFutureSchema: input.migrationState.isFromFutureSchema,
             resumable: !input.migrationState.isFromFutureSchema,
+            reviewReasons: input.migrationState.reviewReasons,
         });
     }
 

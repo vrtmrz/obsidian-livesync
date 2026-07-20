@@ -6,10 +6,16 @@ import {
     DATABASE_COMPATIBILITY_VERSION_KEY,
     evaluateCompatibilityPause,
     legacyDatabaseCompatibilityVersionKey,
+    requiresFilenameCaseSensitivityDecision,
     type CompatibilityPause,
 } from "@/common/databaseCompatibility.ts";
 
-export type CompatibilityReviewSummaryAction = "details" | "resume" | "keep-paused" | false;
+export type CompatibilityReviewSummaryAction =
+    | "details"
+    | "resume"
+    | "use-case-sensitive"
+    | "keep-paused"
+    | false;
 export type CompatibilityReviewDetailsAction = "back" | false;
 
 // Explicit flag-file recovery runs at priorities 5, 10, and 20. Present the
@@ -89,16 +95,26 @@ export class CompatibilityReviewController {
         return true;
     }
 
-    private async acknowledge(): Promise<void> {
+    private async acknowledge(options: { useCaseSensitiveFilenames?: boolean } = {}): Promise<void> {
         if (!this.pause?.resumable) return;
         const setting = this.core.services.setting;
         const settings = setting.currentSettings();
         const previousMessage = settings.versionUpFlash;
+        const hadFilenameCaseDecision = typeof settings.handleFilenameCaseSensitive === "boolean";
+        const previousFilenameCaseDecision = settings.handleFilenameCaseSensitive;
+        if (options.useCaseSensitiveFilenames) {
+            settings.handleFilenameCaseSensitive = true;
+        }
         settings.versionUpFlash = "";
         try {
             await setting.saveSettingData();
         } catch (error) {
             settings.versionUpFlash = previousMessage || COMPATIBILITY_PAUSE_SETTING_MESSAGE;
+            if (hadFilenameCaseDecision) {
+                settings.handleFilenameCaseSensitive = previousFilenameCaseDecision;
+            } else {
+                delete (settings as Partial<typeof settings>).handleFilenameCaseSensitive;
+            }
             throw error;
         }
 
@@ -119,7 +135,13 @@ export class CompatibilityReviewController {
                 break;
             }
             if (action === "resume" && this.pause.resumable) {
+                if (requiresFilenameCaseSensitivityDecision(this.pause)) break;
                 await this.acknowledge();
+                return;
+            }
+            if (action === "use-case-sensitive" && this.pause.resumable) {
+                if (!requiresFilenameCaseSensitivityDecision(this.pause)) break;
+                await this.acknowledge({ useCaseSensitiveFilenames: true });
                 return;
             }
             break;

@@ -3,7 +3,6 @@ import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./servi
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import {
-    DEFAULT_SETTINGS,
     LOG_LEVEL_VERBOSE,
     type LOG_LEVEL,
     type ObsidianLiveSyncSettings,
@@ -28,6 +27,7 @@ import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/repli
 import { createNodeStandardIo, fsPromises as fs, path, fs as fsSync } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
+import { createDefaultCliSettings } from "./cliSettingsDefaults";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -257,10 +257,7 @@ async function createDefaultSettingsFile(options: CLIOptions, standardIo: Standa
         }
     }
 
-    const settings = {
-        ...DEFAULT_SETTINGS,
-        useIndexedDBAdapter: false,
-    } as ObsidianLiveSyncSettings;
+    const settings = createDefaultCliSettings();
 
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, JSON.stringify(settings, null, 2), "utf-8");

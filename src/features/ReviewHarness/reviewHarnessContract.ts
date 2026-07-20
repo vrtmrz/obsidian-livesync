@@ -117,7 +117,6 @@ const PRESERVED_SYNC_SETTING_KEYS = [
 const NEW_VAULT_RECOMMENDATION_KEYS = [
     "syncMaxSizeInMB",
     "chunkSplitterVersion",
-    "doNotUseFixedRevisionForChunks",
     "usePluginSyncV2",
     "handleFilenameCaseSensitive",
     "E2EEAlgorithm",
