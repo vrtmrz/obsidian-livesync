@@ -107,7 +107,7 @@
         {#if !isConnected}
             <button onclick={onOpenConnection}>Open connection</button>
         {:else}
-            <button onclick={onDisconnect}>Close connection</button>
+            <button onclick={onDisconnect}>Disconnect</button>
         {/if}
     </div>
 
