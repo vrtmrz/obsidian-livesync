@@ -15,6 +15,7 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 ### Improved
 
 - Wizard-driven new-device and existing-device setup now reserves Rebuild or Fetch before enabling imported settings, preventing ordinary start-up work from running ahead of the selected initialisation.
+- Manual onboarding now creates and selects CouchDB, Object Storage, and P2P remote profiles directly while preserving existing profiles. Current Setup URIs retain profile names and selections, while older flat settings remain supported through compatibility migration.
 
 ## 1.0.0-rc.0
 

@@ -41,9 +41,13 @@ Most preferred method to setup Self-hosted LiveSync. You can setup Self-hosted L
 
 Setup the Self-hosted LiveSync with the `setup URI` which is [copied from another device](#copy-current-settings-as-a-new-setup-uri) or the setup script.
 
+A current Setup URI retains its remote profiles, display names, and separate main and P2P selections. Older Setup URIs containing only flat connection settings remain supported and are migrated to a remote profile when applied.
+
 #### Manual setup
 
 Step-by-step setup for Self-hosted LiveSync. You can setup Self-hosted LiveSync manually with Minimal setting items.
+
+Completing manual CouchDB, Object Storage, or P2P setup creates the corresponding remote profile without replacing profiles which are already saved. CouchDB and Object Storage setup select the new profile as the main remote. P2P setup selects it for P2P use and, when the wizard is enabling LiveSync, also selects it as the main remote. A descriptive display name is generated and can be changed later.
 
 #### Enable LiveSync
 
@@ -157,6 +161,8 @@ Show verbose log. Please enable when you report the logs
 ### 1. Remote Server
 
 Self-hosted LiveSync supports multiple remote connection profiles under **Remote Server** -> **Remote Databases**. This allows you to save and switch between multiple databases or bucket configurations in a single vault.
+
+Each profile has an opaque identifier and a presentation name. The name does not need to be unique and is not used to select the profile. The main remote and the P2P remote are selected independently, so code and settings imports must preserve both selections rather than relying on a special identifier such as `default`.
 
 - **➕ Add new connection**: Create a new connection profile by launching the setup dialogue.
 - **📥 Import connection**: Paste a connection string (e.g., `sls+https://...`, `sls+s3://...`, `sls+p2p://...`) to import a remote configuration profile.

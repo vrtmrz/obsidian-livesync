@@ -240,4 +240,268 @@ describe("SetupManager", () => {
         expect(applyExternalSettings).not.toHaveBeenCalled();
         expect(setting.currentSettings().isConfigured).toBe(false);
     });
+
+    it("preserves modern profiles, display names, and the active selection from a Setup URI", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const imported = {
+            ...DEFAULT_SETTINGS,
+            remoteConfigurations: {
+                couch: {
+                    id: "couch",
+                    name: "Office CouchDB",
+                    uri: "sls+https://alice:secret@couch.example/?db=notes",
+                    isEncrypted: false,
+                },
+                archive: {
+                    id: "archive",
+                    name: "Archive bucket",
+                    uri: "sls+s3://key:secret@storage.example/?endpoint=https%3A%2F%2Fstorage.example&bucket=archive&region=auto",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "archive",
+        } as ObsidianLiveSyncSettings;
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce(imported)
+            .mockResolvedValueOnce("compatible-existing-user");
+
+        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://modern-settings");
+
+        const current = setting.currentSettings();
+        expect(current.remoteConfigurations).toEqual(imported.remoteConfigurations);
+        expect(current.activeConfigurationId).toBe("archive");
+        expect(Object.keys(current.remoteConfigurations).some((id) => id.startsWith("legacy-"))).toBe(false);
+    });
+
+    it("adds and activates a manually configured CouchDB without replacing existing profiles", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                existing: {
+                    id: "existing",
+                    name: "Existing remote",
+                    uri: "sls+http://old:secret@old.example/?db=old",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "existing",
+        };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                couchDB_URI: "https://couch.example",
+                couchDB_USER: "alice",
+                couchDB_PASSWORD: "secret",
+                couchDB_DBNAME: "notes",
+                couchDB_CustomHeaders: "",
+                useJWT: false,
+                jwtAlgorithm: "",
+                jwtKey: "",
+                jwtKid: "",
+                jwtSub: "",
+                jwtExpDuration: 5,
+                useRequestAPI: false,
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onCouchDBManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.remoteConfigurations.existing).toBeDefined();
+        expect(Object.keys(current.remoteConfigurations)).toHaveLength(2);
+        expect(current.activeConfigurationId).not.toBe("existing");
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.name).toBe("CouchDB couch.example");
+        expect(activeProfile?.uri).toContain("sls+https://alice:secret@couch.example");
+    });
+
+    it("adds and activates a manually configured Object Storage profile without replacing existing profiles", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                existing: {
+                    id: "existing",
+                    name: "Existing remote",
+                    uri: "sls+http://old:secret@old.example/?db=old",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "existing",
+        };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                endpoint: "https://storage.example",
+                accessKey: "key",
+                secretKey: "secret",
+                bucket: "notes",
+                region: "auto",
+                bucketPrefix: "",
+                useCustomRequestHandler: false,
+                bucketCustomHeaders: "",
+                forcePathStyle: true,
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onBucketManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.remoteConfigurations.existing).toBeDefined();
+        expect(Object.keys(current.remoteConfigurations)).toHaveLength(2);
+        expect(current.activeConfigurationId).not.toBe("existing");
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.name).toBe("S3 notes");
+        expect(activeProfile?.uri).toContain("sls+s3://key:secret@storage.example");
+    });
+
+    it("creates and selects a P2P profile during fresh manual onboarding", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: false,
+            remoteConfigurations: {},
+            activeConfigurationId: "",
+            P2P_ActiveRemoteConfigurationId: "",
+        };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                P2P_Enabled: true,
+                P2P_roomID: "team-room",
+                P2P_passphrase: "secret",
+                P2P_relays: "wss://relay.example",
+                P2P_AppID: "self-hosted-livesync",
+                P2P_AutoStart: true,
+                P2P_AutoBroadcast: false,
+                P2P_turnServers: "",
+                P2P_turnUsername: "",
+                P2P_turnCredential: "",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onP2PManualSetup(UserMode.NewUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(Object.keys(current.remoteConfigurations)).toHaveLength(1);
+        expect(current.activeConfigurationId).not.toBe("");
+        expect(current.P2P_ActiveRemoteConfigurationId).toBe(current.activeConfigurationId);
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.name).toBe("P2P team-room");
+        expect(activeProfile?.uri).toContain("sls+p2p://");
+    });
+
+    it("selects a configured P2P profile without replacing the active main remote", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                main: {
+                    id: "main",
+                    name: "Main CouchDB",
+                    uri: "sls+http://old:secret@old.example/?db=old",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "main",
+            P2P_ActiveRemoteConfigurationId: "",
+        };
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
+            P2P_Enabled: true,
+            P2P_roomID: "team-room",
+            P2P_passphrase: "secret",
+            P2P_relays: "wss://relay.example",
+            P2P_AppID: "self-hosted-livesync",
+            P2P_AutoStart: true,
+            P2P_AutoBroadcast: false,
+            P2P_turnServers: "",
+            P2P_turnUsername: "",
+            P2P_turnCredential: "",
+        });
+
+        await manager.onP2PManualSetup(UserMode.Unknown, setting.currentSettings(), false);
+
+        const current = setting.currentSettings();
+        expect(Object.keys(current.remoteConfigurations)).toHaveLength(2);
+        expect(current.activeConfigurationId).toBe("main");
+        expect(current.P2P_ActiveRemoteConfigurationId).not.toBe("");
+        expect(current.P2P_ActiveRemoteConfigurationId).not.toBe("main");
+        expect(current.remoteConfigurations[current.P2P_ActiveRemoteConfigurationId]?.name).toBe("P2P team-room");
+    });
+
+    it("does not register Object Storage when final confirmation is cancelled", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                existing: {
+                    id: "existing",
+                    name: "Existing remote",
+                    uri: "sls+http://old:secret@old.example/?db=old",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "existing",
+        };
+        const before = structuredClone(setting.currentSettings().remoteConfigurations);
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                endpoint: "https://storage.example",
+                accessKey: "key",
+                secretKey: "secret",
+                bucket: "notes",
+                region: "auto",
+                bucketPrefix: "",
+                useCustomRequestHandler: false,
+                bucketCustomHeaders: "",
+                forcePathStyle: true,
+            })
+            .mockResolvedValueOnce("cancelled");
+
+        await manager.onBucketManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        expect(setting.currentSettings().remoteConfigurations).toEqual(before);
+        expect(setting.currentSettings().activeConfigurationId).toBe("existing");
+    });
+
+    it("does not mutate an existing P2P profile when final confirmation is cancelled", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                existing: {
+                    id: "existing",
+                    name: "Existing P2P remote",
+                    uri: "sls+p2p://old-room?passphrase=old-secret",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "existing",
+            P2P_ActiveRemoteConfigurationId: "existing",
+        };
+        const before = structuredClone(setting.currentSettings().remoteConfigurations);
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                P2P_Enabled: true,
+                P2P_roomID: "new-room",
+                P2P_passphrase: "new-secret",
+                P2P_relays: "wss://relay.example",
+                P2P_AppID: "self-hosted-livesync",
+                P2P_AutoStart: true,
+                P2P_AutoBroadcast: false,
+                P2P_turnServers: "",
+                P2P_turnUsername: "",
+                P2P_turnCredential: "",
+            })
+            .mockResolvedValueOnce("cancelled");
+
+        await manager.onP2PManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        expect(setting.currentSettings().remoteConfigurations).toEqual(before);
+        expect(setting.currentSettings().activeConfigurationId).toBe("existing");
+        expect(setting.currentSettings().P2P_ActiveRemoteConfigurationId).toBe("existing");
+    });
 });

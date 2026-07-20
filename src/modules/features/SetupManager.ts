@@ -8,9 +8,9 @@ import {
     LOG_LEVEL_VERBOSE,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
-    REMOTE_P2P,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
@@ -27,7 +27,6 @@ import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import type {
     OutroAskUserModeResultType,
     OutroExistingUserResultType,
@@ -44,6 +43,13 @@ import {
     applySettingsAndFetchOnActivation,
     applySettingsWithScheduledInitialisation,
 } from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
+
+function copySettingsForRemoteProfileUpdate(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
+    return {
+        ...settings,
+        remoteConfigurations: { ...(settings.remoteConfigurations ?? {}) },
+    };
+}
 
 /**
  * User modes for onboarding and setup
@@ -162,20 +168,22 @@ export class SetupManager extends AbstractModule {
         currentSetting: ObsidianLiveSyncSettings,
         activate = true
     ): Promise<boolean> {
-        const originalSetting = JSON.parse(JSON.stringify(currentSetting)) as ObsidianLiveSyncSettings;
-        const baseSetting = JSON.parse(JSON.stringify(originalSetting)) as ObsidianLiveSyncSettings;
         const couchConf = await this.dialogManager.openWithExplicitCancel<
             SetupRemoteCouchDBResultType,
             CouchDBConnection
-        >(SetupRemoteCouchDB, originalSetting);
+        >(SetupRemoteCouchDB, currentSetting);
         if (couchConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
-        const newSetting = { ...baseSetting, ...couchConf } as ObsidianLiveSyncSettings;
+        const newSetting = {
+            ...copySettingsForRemoteProfileUpdate(currentSetting),
+            ...couchConf,
+        } as ObsidianLiveSyncSettings;
         if (activate) {
             newSetting.remoteType = REMOTE_COUCHDB;
         }
+        upsertRemoteConfigurationInPlace(newSetting, "couchdb", { activate });
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
     }
 
@@ -199,10 +207,14 @@ export class SetupManager extends AbstractModule {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
-        const newSetting = { ...currentSetting, ...bucketConf } as ObsidianLiveSyncSettings;
+        const newSetting = {
+            ...copySettingsForRemoteProfileUpdate(currentSetting),
+            ...bucketConf,
+        } as ObsidianLiveSyncSettings;
         if (activate) {
             newSetting.remoteType = REMOTE_MINIO;
         }
+        upsertRemoteConfigurationInPlace(newSetting, "s3", { activate });
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
     }
 
@@ -226,26 +238,15 @@ export class SetupManager extends AbstractModule {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
         }
-        const newSetting = { ...currentSetting, ...p2pConf } as ObsidianLiveSyncSettings;
-        // Apply remoteConfigurations
-        if (newSetting.P2P_ActiveRemoteConfigurationId) {
-            const id = newSetting.P2P_ActiveRemoteConfigurationId;
-            const merged = {
-                ...newSetting,
-                ...p2pConf,
-            } as ObsidianLiveSyncSettings;
-            const uri = ConnectionStringParser.serialize({ type: "p2p", settings: merged });
-            newSetting.remoteConfigurations[id] = {
-                ...newSetting.remoteConfigurations[id],
-                uri,
-                isEncrypted: false,
-            };
-            newSetting.P2P_ActiveRemoteConfigurationId = id;
-        }
-        if (activate) {
-            newSetting.remoteType = REMOTE_P2P;
-            newSetting.activeConfigurationId = newSetting.P2P_ActiveRemoteConfigurationId;
-        }
+        const newSetting = {
+            ...copySettingsForRemoteProfileUpdate(currentSetting),
+            ...p2pConf,
+        } as ObsidianLiveSyncSettings;
+        upsertRemoteConfigurationInPlace(newSetting, "p2p", {
+            id: newSetting.P2P_ActiveRemoteConfigurationId || undefined,
+            activate,
+            activateForP2P: true,
+        });
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
     }
 
