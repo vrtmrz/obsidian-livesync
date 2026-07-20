@@ -26,12 +26,16 @@ function requestTimeout(timeoutInMs: number = 0): Promise<never> {
 }
 
 function normaliseRequestBody(body: unknown): string | ArrayBuffer | undefined {
+    if (body === undefined) return undefined;
     if (typeof body === "string" || body instanceof ArrayBuffer) return body;
     if (ArrayBuffer.isView(body)) {
-        if (body.buffer instanceof ArrayBuffer) return body.buffer;
-        return new Uint8Array(body.buffer).slice().buffer;
+        if (body.buffer instanceof ArrayBuffer && body.byteOffset === 0 && body.byteLength === body.buffer.byteLength) {
+            return body.buffer;
+        }
+        return new Uint8Array(body.buffer, body.byteOffset, body.byteLength).slice().buffer;
     }
-    return undefined;
+    const bodyType = Object.prototype.toString.call(body).slice(8, -1);
+    throw new TypeError(`Obsidian requestUrl does not support the request body type ${bodyType}`);
 }
 
 /**
