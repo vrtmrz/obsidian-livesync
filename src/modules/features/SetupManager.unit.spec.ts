@@ -98,8 +98,14 @@ function createSetupManager() {
     const core: any = {
         _services: services,
         rebuilder: {
-            scheduleRebuild: vi.fn(() => Promise.resolve()),
-            scheduleFetch: vi.fn(() => Promise.resolve()),
+            scheduleRebuild: vi.fn(async (prepareBeforeRestart?: () => Promise<void>) => {
+                await prepareBeforeRestart?.();
+                return true;
+            }),
+            scheduleFetch: vi.fn(async (prepareBeforeRestart?: () => Promise<void>) => {
+                await prepareBeforeRestart?.();
+                return true;
+            }),
         },
     };
     Object.defineProperty(core, "services", {
@@ -168,5 +174,70 @@ describe("SetupManager", () => {
             "sls+http://user:password@localhost:5984"
         );
         expect(setting.currentSettings().activeConfigurationId).toBe("legacy-couchdb");
+    });
+
+    it("reserves Rebuild before saving a new-user configuration", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        setting.settings = { ...setting.currentSettings(), isConfigured: false };
+        const applyExternalSettings = vi.spyOn(setting, "applyExternalSettings");
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(true);
+
+        await manager.onConfirmApplySettingsFromWizard(
+            { ...createLegacyRemoteSetting(), isConfigured: true },
+            UserMode.NewUser
+        );
+
+        expect(core.rebuilder.scheduleRebuild).toHaveBeenCalledWith(expect.any(Function));
+        expect(core.rebuilder.scheduleRebuild.mock.invocationCallOrder[0]).toBeLessThan(
+            applyExternalSettings.mock.invocationCallOrder[0]
+        );
+        expect(setting.currentSettings().isConfigured).toBe(true);
+    });
+
+    it("reserves Fetch when compatible imported settings activate an unconfigured device", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        setting.settings = { ...setting.currentSettings(), isConfigured: false };
+        const applyExternalSettings = vi.spyOn(setting, "applyExternalSettings");
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({ ...createLegacyRemoteSetting(), isConfigured: true })
+            .mockResolvedValueOnce("compatible-existing-user");
+
+        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://settings");
+
+        expect(core.rebuilder.scheduleFetch).toHaveBeenCalledWith(expect.any(Function));
+        expect(core.rebuilder.scheduleFetch.mock.invocationCallOrder[0]).toBeLessThan(
+            applyExternalSettings.mock.invocationCallOrder[0]
+        );
+        expect(setting.currentSettings().isConfigured).toBe(true);
+    });
+
+    it("applies compatible settings to an already configured device without scheduling Fetch", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        setting.settings = { ...setting.currentSettings(), isConfigured: true };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({ ...createLegacyRemoteSetting(), isConfigured: true })
+            .mockResolvedValueOnce("compatible-existing-user");
+
+        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://settings");
+
+        expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
+        expect(setting.currentSettings().isConfigured).toBe(true);
+    });
+
+    it("does not enable imported settings when the initialisation flag cannot be reserved", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        setting.settings = { ...setting.currentSettings(), isConfigured: false };
+        const applyExternalSettings = vi.spyOn(setting, "applyExternalSettings");
+        core.rebuilder.scheduleRebuild.mockResolvedValueOnce(false);
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(true);
+
+        await manager.onConfirmApplySettingsFromWizard(
+            { ...createLegacyRemoteSetting(), isConfigured: true },
+            UserMode.NewUser
+        );
+
+        expect(core.rebuilder.scheduleRebuild).toHaveBeenCalledWith(expect.any(Function));
+        expect(applyExternalSettings).not.toHaveBeenCalled();
+        expect(setting.currentSettings().isConfigured).toBe(false);
     });
 });

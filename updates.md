@@ -12,6 +12,10 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 ## Unreleased
 
+### Improved
+
+- Wizard-driven new-device and existing-device setup now reserves Rebuild or Fetch before enabling imported settings, preventing ordinary start-up work from running ahead of the selected initialisation.
+
 ## 1.0.0-rc.0
 
 19th July, 2026

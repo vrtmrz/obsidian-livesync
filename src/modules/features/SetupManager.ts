@@ -40,6 +40,10 @@ import type {
     SetupRemoteResultType,
     UseSetupURIResultType,
 } from "./SetupWizard/dialogs/setupDialogTypes.ts";
+import {
+    applySettingsAndFetchOnActivation,
+    applySettingsWithScheduledInitialisation,
+} from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
 
 /**
  * User modes for onboarding and setup
@@ -341,9 +345,9 @@ export class SetupManager extends AbstractModule {
             // console.dir(patch);
             if (!activate) {
                 extra();
-                await this.applySetting(newConf, UserMode.ExistingUser);
-                this._log("Setting Applied", LOG_LEVEL_NOTICE);
-                return true;
+                const applied = await this.applySettingAndScheduleFetchOnActivation(newConf, UserMode.ExistingUser);
+                if (applied) this._log("Setting Applied", LOG_LEVEL_NOTICE);
+                return applied;
             }
             // Check virtual changes
             const original = { ...this.settings, P2P_DevicePeerName: "" } as ObsidianLiveSyncSettings;
@@ -351,9 +355,9 @@ export class SetupManager extends AbstractModule {
             const isOnlyVirtualChange = isObjectDifferent(original, modified, true) === false;
             if (isOnlyVirtualChange) {
                 extra();
-                await this.applySetting(newConf, UserMode.ExistingUser);
-                this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
-                return true;
+                const applied = await this.applySettingAndScheduleFetchOnActivation(newConf, UserMode.ExistingUser);
+                if (applied) this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
+                return applied;
             } else {
                 const userModeResult =
                     await this.dialogManager.openWithExplicitCancel<OutroAskUserModeResultType>(OutroAskUserMode);
@@ -363,9 +367,12 @@ export class SetupManager extends AbstractModule {
                     userMode = UserMode.ExistingUser;
                 } else if (userModeResult === "compatible-existing-user") {
                     extra();
-                    await this.applySetting(newConf, UserMode.ExistingUser);
-                    this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
-                    return true;
+                    const applied = await this.applySettingAndScheduleFetchOnActivation(
+                        newConf,
+                        UserMode.ExistingUser
+                    );
+                    if (applied) this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
+                    return applied;
                 } else if (userModeResult === "cancelled") {
                     this._log("User cancelled applying settings from wizard.", LOG_LEVEL_NOTICE);
                     return false;
@@ -382,13 +389,17 @@ export class SetupManager extends AbstractModule {
         }
         if (confirm) {
             extra();
-            await this.applySetting(newConf, userMode);
             if (userMode === UserMode.NewUser) {
-                // For new users, schedule a rebuild everything.
-                await this.core.rebuilder.scheduleRebuild();
+                // Reserve Rebuild before enabling the imported settings, so
+                // the current runtime cannot begin ordinary processing first.
+                await applySettingsWithScheduledInitialisation(this.core.rebuilder, "rebuild", async () => {
+                    await this.applySetting(newConf, userMode);
+                });
             } else {
-                // For existing users, schedule a fetch.
-                await this.core.rebuilder.scheduleFetch();
+                // Existing data must be fetched before the ordinary startup scan.
+                await applySettingsWithScheduledInitialisation(this.core.rebuilder, "fetch", async () => {
+                    await this.applySetting(newConf, userMode);
+                });
             }
         }
         // Settings applied, but may require rebuild to take effect.
@@ -429,5 +440,20 @@ export class SetupManager extends AbstractModule {
         this.services.setting.clearUsedPassphrase();
         await this.services.setting.applyExternalSettings(newConf, true);
         return true;
+    }
+
+    private async applySettingAndScheduleFetchOnActivation(
+        newConf: ObsidianLiveSyncSettings,
+        userMode: UserMode
+    ): Promise<boolean> {
+        const wasConfigured = this.settings.isConfigured;
+        return await applySettingsAndFetchOnActivation(
+            this.core.rebuilder,
+            wasConfigured,
+            newConf.isConfigured,
+            async () => {
+                await this.applySetting(newConf, userMode);
+            }
+        );
     }
 }
