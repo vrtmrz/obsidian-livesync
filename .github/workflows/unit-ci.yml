@@ -23,6 +23,8 @@ on:
       - 'version-bump.mjs'
       - 'utils/release-*.mjs'
       - 'utils/release-*.unit.spec.ts'
+      - 'utils/couchdb/**'
+      - 'utils/flyio/**'
       - '.github/workflows/prepare-release.yml'
       - '.github/workflows/finalise-release.yml'
       - '.github/workflows/release.yml'
@@ -44,6 +46,8 @@ on:
       - 'version-bump.mjs'
       - 'utils/release-*.mjs'
       - 'utils/release-*.unit.spec.ts'
+      - 'utils/couchdb/**'
+      - 'utils/flyio/**'
       - '.github/workflows/prepare-release.yml'
       - '.github/workflows/finalise-release.yml'
       - '.github/workflows/release.yml'
@@ -53,6 +57,54 @@ permissions:
   contents: read
 
 jobs:
+  setup-tools:
+    name: Self-hosted setup tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run setup-tool contract tests
+        run: npm run test:setup-tools
+
+      - name: Create CouchDB test configuration
+        run: |
+          cat <<EOF > .test.env
+          hostname=http://127.0.0.1:5989/
+          dbname=livesync-test-db
+          username=admin
+          password=testpassword
+          EOF
+
+      - name: Start CouchDB
+        run: npm run test:docker-couchdb:start
+
+      - name: Provision a versioned LiveSync database
+        run: npx dotenv-cli -e .test.env -- env database=setup-tools-ci retry_count=1 retry_delay_ms=0 ./utils/couchdb/couchdb-init.sh
+
+      - name: Verify the Commonlib database version
+        run: |
+          npx dotenv-cli -e .test.env -- bash -lc 'curl --fail --silent --show-error --user "${username}:${password}" "${hostname}/setup-tools-ci/obsydian_livesync_version" | node --input-type=module -e "import { VER } from \"@vrtmrz/livesync-commonlib/compat/common/types\";let input=\"\";process.stdin.on(\"data\",chunk=>input+=chunk).on(\"end\",()=>{const document=JSON.parse(input);if(document.type!==\"versioninfo\"||document.version!==VER)throw new Error(\"Unexpected LiveSync database version\");})"'
+
+      - name: Stop CouchDB
+        if: always()
+        run: npm run test:docker-couchdb:stop || true
+
   unit-test:
     name: Unit Tests
     runs-on: ubuntu-latest

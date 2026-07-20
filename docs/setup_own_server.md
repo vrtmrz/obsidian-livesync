@@ -33,7 +33,7 @@
 ```bash
 
 # Adding environment variables.
-export hostname=localhost:5984
+export hostname=http://localhost:5984
 export username=goojdasjdas     #Please change as you like.
 export password=kpkdasdosakpdsa #Please change as you like
 
@@ -115,31 +115,27 @@ Congrats, move on to [step 2](#2-run-couchdb-initsh-for-initialise)
 Please refer to the [official document](https://docs.couchdb.org/en/stable/install/index.html). However, we do not have to configure it fully. Just the administrator needs to be configured.
 
 ## 2. Run couchdb-init.sh for initialise
+
+Deno 2 is required. Export the CouchDB connection and database details, then run the provisioning wrapper:
+
 ```
+export hostname=http://localhost:5984
+export username=<INSERT USERNAME HERE>
+export password=<INSERT PASSWORD HERE>
+export database=obsidiannotes
 curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
 
 If it results like the following:
 ```
--- Configuring CouchDB by REST APIs... -->
-{"ok":true}
-""
-""
-""
-""
-""
-""
-""
-""
-""
-<-- Configuring CouchDB by REST APIs Done!
+CouchDB provisioning completed.
 ```
 
-Your CouchDB has been initialised successfully. If you want this manually, please read the script.
+The wrapper runs the exact registry-pinned Commonlib consumer. When `database` is supplied, it creates the database and initialises its LiveSync database-version document through Commonlib. Without `database`, it configures only the CouchDB server.
 
 If you are using Docker Compose and the above command does not work or displays `ERROR: Hostname missing`, you can try running the following command, replacing the placeholders with your own values:
 ```
-curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname=http://<YOUR SERVER IP>:5984 username=<INSERT USERNAME HERE> password=<INSERT PASSWORD HERE> bash
+curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname=http://<YOUR SERVER IP>:5984 username=<INSERT USERNAME HERE> password=<INSERT PASSWORD HERE> database=obsidiannotes bash
 ```
 
 ## 3. Expose CouchDB to the Internet
@@ -177,10 +173,10 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 ```bash
 export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com #Point to your vault
 export database=obsidiannotes #Please change as you like
-export passphrase=dfsapkdjaskdjasdas #Please change as you like
+export passphrase=<INSERT A STRONG VAULT ENCRYPTION PASSPHRASE>
 export username=johndoe
-export password=abc123
-deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
+export password=<INSERT THE COUCHDB PASSWORD>
+deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/flyio/generate_setupuri.ts
 ```
 
 > [!TIP]
@@ -188,14 +184,14 @@ deno run -A https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/util
 > Yes, the `passphrase` we have exported now is for an End-to-End Encryption passphrase.
 > And, `uri_passphrase` that used in the `generate_setupuri.ts` is a different one; for decrypting Set-up URI at using that.
 > Why: I (vorotamoroz) think that the passphrase of the Setup-URI should be different from the E2EE passphrase to prevent exposure caused by operational errors or the possibility of evil in our environment. On top of that, I believe that it is desirable for the Setup-URI to be random. Setup-URI is inevitably long, so it goes through the clipboard. I think that its passphrase should not go through the same path, so it should essentially be typed manually.
-> Hence, if we keep empty for uri_passphrase, generate_setupuri.ts generates an adjective-noun-randomnumber passphrase so that we can remember it without going through the clipboard.
+> If `uri_passphrase` is empty, `generate_setupuri.ts` generates a cryptographically random passphrase and prints it once.
 
 You will then get the following output:
 
 ```bash
 obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
 
-Your passphrase of Setup-URI is:  patient-haze
+Your passphrase for the Setup URI is: H7vX...a-random-32-character-value
 This passphrase is never shown again, so please note it in a safe place.
 ```
 
@@ -205,7 +201,7 @@ Please keep your passphrase of Setup-URI.
 [This video](https://youtu.be/7sa_I1832Xc?t=146) may help us.
 1. Install Self-hosted LiveSync
 2. Choose `Use the copied setup URI` from the command palette and paste the setup URI. (obsidian://setuplivesync?settings=.....).
-3. Type the previously displayed passphrase (`patient-haze`) for setup-uri passphrase.
+3. Type the Setup URI passphrase printed by the generator.
 4. Answer `yes` and `Set it up...`, and finish the first dialogue with `Keep them disabled`.
 5. `Reload app without save` once.
 

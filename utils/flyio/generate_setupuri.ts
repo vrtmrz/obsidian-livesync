@@ -1,175 +1,52 @@
-import { encrypt } from "npm:octagonal-wheels@0.1.30/encryption/encryption";
+import { encodeSettingsToSetupURI } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/API/processSetting";
+import { upsertRemoteConfigurationInPlace } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/remote-configurations";
+import {
+  createNewVaultSettings,
+  PREFERRED_SETTING_SELF_HOSTED,
+} from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/settings";
 
-const noun = [
-    "waterfall",
-    "river",
-    "breeze",
-    "moon",
-    "rain",
-    "wind",
-    "sea",
-    "morning",
-    "snow",
-    "lake",
-    "sunset",
-    "pine",
-    "shadow",
-    "leaf",
-    "dawn",
-    "glitter",
-    "forest",
-    "hill",
-    "cloud",
-    "meadow",
-    "sun",
-    "glade",
-    "bird",
-    "brook",
-    "butterfly",
-    "bush",
-    "dew",
-    "dust",
-    "field",
-    "fire",
-    "flower",
-    "firefly",
-    "feather",
-    "grass",
-    "haze",
-    "mountain",
-    "night",
-    "pond",
-    "darkness",
-    "snowflake",
-    "silence",
-    "sound",
-    "sky",
-    "shape",
-    "surf",
-    "thunder",
-    "violet",
-    "water",
-    "wildflower",
-    "wave",
-    "water",
-    "resonance",
-    "sun",
-    "log",
-    "dream",
-    "cherry",
-    "tree",
-    "fog",
-    "frost",
-    "voice",
-    "paper",
-    "frog",
-    "smoke",
-    "star",
-];
-const adjectives = [
-    "autumn",
-    "hidden",
-    "bitter",
-    "misty",
-    "silent",
-    "empty",
-    "dry",
-    "dark",
-    "summer",
-    "icy",
-    "delicate",
-    "quiet",
-    "white",
-    "cool",
-    "spring",
-    "winter",
-    "patient",
-    "twilight",
-    "dawn",
-    "crimson",
-    "wispy",
-    "weathered",
-    "blue",
-    "billowing",
-    "broken",
-    "cold",
-    "damp",
-    "falling",
-    "frosty",
-    "green",
-    "long",
-    "late",
-    "lingering",
-    "bold",
-    "little",
-    "morning",
-    "muddy",
-    "old",
-    "red",
-    "rough",
-    "still",
-    "small",
-    "sparkling",
-    "thrumming",
-    "shy",
-    "wandering",
-    "withered",
-    "wild",
-    "black",
-    "young",
-    "holy",
-    "solitary",
-    "fragrant",
-    "aged",
-    "snowy",
-    "proud",
-    "floral",
-    "restless",
-    "divine",
-    "polished",
-    "ancient",
-    "purple",
-    "lively",
-    "nameless",
-];
-function friendlyString() {
-    return `${adjectives[Math.floor(Math.random() * adjectives.length)]}-${noun[Math.floor(Math.random() * noun.length)]}`;
+function requireEnvironment(name: string): string {
+  const value = Deno.env.get(name)?.trim();
+  if (!value) throw new Error(`${name} is required`);
+  return value;
 }
 
-const uri_passphrase = `${Deno.env.get("uri_passphrase") ?? friendlyString()}`;
+function generateSetupPassphrase(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll(
+    "/",
+    "_",
+  ).replace(/=+$/, "");
+}
 
-const URIBASE = "obsidian://setuplivesync?settings=";
 async function main() {
-    const conf = {
-        couchDB_URI: `${Deno.env.get("hostname")}`,
-        couchDB_USER: `${Deno.env.get("username")}`,
-        couchDB_PASSWORD: `${Deno.env.get("password")}`,
-        couchDB_DBNAME: `${Deno.env.get("database")}`,
-        syncOnStart: true,
-        gcDelay: 0,
-        periodicReplication: true,
-        syncOnFileOpen: true,
-        encrypt: true,
-        passphrase: `${Deno.env.get("passphrase")}`,
-        usePathObfuscation: true,
-        batchSave: true,
-        batch_size: 50,
-        batches_limit: 50,
-        useHistory: true,
-        disableRequestURI: true,
-        customChunkSize: 50,
-        syncAfterMerge: false,
-        concurrencyOfReadChunksOnline: 100,
-        minimumIntervalOfReadChunksOnline: 100,
-        handleFilenameCaseSensitive: false,
-        doNotUseFixedRevisionForChunks: false,
-        settingVersion: 10,
-        notifyThresholdOfRemoteStorageSize: 800,
-    };
-    const encryptedConf = encodeURIComponent(await encrypt(JSON.stringify(conf), uri_passphrase, false));
-    const theURI = `${URIBASE}${encryptedConf}`;
-    console.log("\nYour passphrase of Setup-URI is: ", uri_passphrase);
-    console.log("This passphrase is never shown again, so please note it in a safe place.");
-    console.log(theURI);
+  const setupPassphrase = Deno.env.get("uri_passphrase")?.trim() ||
+    generateSetupPassphrase();
+  const settings = createNewVaultSettings();
+  Object.assign(settings, PREFERRED_SETTING_SELF_HOSTED, {
+    couchDB_URI: requireEnvironment("hostname"),
+    couchDB_USER: requireEnvironment("username"),
+    couchDB_PASSWORD: requireEnvironment("password"),
+    couchDB_DBNAME: requireEnvironment("database"),
+    batchSave: true,
+    periodicReplication: true,
+    syncOnStart: true,
+    syncOnFileOpen: true,
+    syncAfterMerge: true,
+    encrypt: true,
+    passphrase: requireEnvironment("passphrase"),
+    usePathObfuscation: true,
+  });
+  upsertRemoteConfigurationInPlace(settings, "couchdb", { activate: true });
+
+  const setupURI = await encodeSettingsToSetupURI(settings, setupPassphrase, [
+    "pluginSyncExtendedSetting",
+    "doNotUseFixedRevisionForChunks",
+  ], true);
+
+  console.log("\nYour passphrase for the Setup URI is:", setupPassphrase);
+  console.log("This passphrase is never shown again, so store it safely.");
+  console.log(setupURI.trim());
 }
+
 await main();

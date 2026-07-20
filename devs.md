@@ -36,6 +36,7 @@ npm run dev          # Development build with auto-rebuild (uses .env for test v
 npm run build        # Production build
 npm run buildDev     # Development build (one-time)
 npm run test:integration                 # Run CouchDB-backed integration tests
+npm run test:setup-tools                 # Check provisioning and Setup URI package contracts
 npm run test:e2e:cli:p2p                 # Run canonical P2P validation in Compose
 npm run test:e2e:obsidian:local-suite    # Run the real Obsidian local suite
 ```
@@ -67,6 +68,7 @@ To facilitate development and testing, the build process can automatically copy 
         - If you add a feature that interacts with the remote database (e.g., replication changes, custom changes feed parameters, or custom HTTP queries), you strongly expected to write an integration test to verify the behaviour against a real CouchDB server.
     - **Commonlib Tests**: Commonlib owns unit and package tests for shared RPC, storage, replication, and platform contracts. LiveSync CI verifies the exact packed dependency as a downstream consumer.
 - **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
+- **Self-hosted setup tools** (`utils/couchdb/` and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current self-hosted Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
 - **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and MinIO fixtures managed by the wrapper.
 
 - **Docker Services**: Service-backed tests use CouchDB and MinIO (S3). Canonical P2P validation owns its relay through the CLI Compose runner:

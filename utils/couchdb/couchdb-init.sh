@@ -1,33 +1,26 @@
 #!/bin/bash
-if [[ -z "$hostname" ]]; then
-    echo "ERROR: Hostname missing"
+set -euo pipefail
+
+if ! command -v deno >/dev/null 2>&1; then
+    echo "ERROR: Deno is required to run the Commonlib-backed CouchDB provisioning tool." >&2
     exit 1
 fi
-if [[ -z "$username" ]]; then
-    echo "ERROR: Username missing"
-    exit 1
+
+script_url="${provision_script_url:-https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/provision.ts}"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
+deno_dependency_options=()
+if [[ -n "$script_dir" && -f "$script_dir/provision.ts" ]]; then
+    script_url="$script_dir/provision.ts"
+    lockfile="$script_dir/../flyio/deno.lock"
+    deno_config="$script_dir/../flyio/deno.jsonc"
+    if [[ -f "$lockfile" && -f "$deno_config" ]]; then
+        deno_dependency_options+=("--config=$deno_config" --frozen "--lock=$lockfile")
+    fi
 fi
 
-if [[ -z "$password" ]]; then
-    echo "ERROR: Password missing"
-    exit 1
-fi
-if [[ -z "$node" ]]; then
-    echo "INFO: defaulting to _local"
-    node=_local
-fi
-
-echo "-- Configuring CouchDB by REST APIs... -->"
-
-until (curl -X POST "${hostname}/_cluster_setup" -H "Content-Type: application/json" -d "{\"action\":\"enable_single_node\",\"username\":\"${username}\",\"password\":\"${password}\",\"bind_address\":\"0.0.0.0\",\"port\":5984,\"singlenode\":true}" --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/chttpd/require_valid_user" -H "Content-Type: application/json" -d '"true"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/chttpd_auth/require_valid_user" -H "Content-Type: application/json" -d '"true"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/httpd/WWW-Authenticate" -H "Content-Type: application/json" -d '"Basic realm=\"couchdb\""' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/httpd/enable_cors" -H "Content-Type: application/json" -d '"true"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/chttpd/enable_cors" -H "Content-Type: application/json" -d '"true"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/chttpd/max_http_request_size" -H "Content-Type: application/json" -d '"4294967296"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/couchdb/max_document_size" -H "Content-Type: application/json" -d '"50000000"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/cors/credentials" -H "Content-Type: application/json" -d '"true"' --user "${username}:${password}"); do sleep 5; done
-until (curl -X PUT "${hostname}/_node/${node}/_config/cors/origins" -H "Content-Type: application/json" -d '"app://obsidian.md,capacitor://localhost,http://localhost"' --user "${username}:${password}"); do sleep 5; done
-
-echo "<-- Configuring CouchDB by REST APIs Done!"
+exec deno run \
+    --minimum-dependency-age=0 \
+    "${deno_dependency_options[@]}" \
+    --allow-env \
+    --allow-net \
+    "$script_url"
