@@ -76,8 +76,11 @@ describe("compatibility review controller", () => {
     it("initialises the acknowledged version for a new Vault without showing a pause", async () => {
         const fixture = createFixture({ marker: null, migration: { isNewVault: true } });
 
+        expect(fixture.controller.initialised).toBe(false);
+
         await expect(fixture.controller.initialise()).resolves.toBe(true);
 
+        expect(fixture.controller.initialised).toBe(true);
         expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
         expect(fixture.controller.pendingPause).toBeUndefined();
         expect(fixture.saveSettingData).not.toHaveBeenCalled();

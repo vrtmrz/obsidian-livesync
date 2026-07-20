@@ -27,6 +27,7 @@ export interface CompatibilityReviewUi {
 export class CompatibilityReviewController {
     private pause: CompatibilityPause | undefined;
     private activeReview: Promise<void> | undefined;
+    private _initialised = false;
     private disposed = false;
 
     constructor(
@@ -37,6 +38,10 @@ export class CompatibilityReviewController {
 
     get pendingPause(): CompatibilityPause | undefined {
         return this.pause;
+    }
+
+    get initialised(): boolean {
+        return this._initialised;
     }
 
     private readAcknowledgedVersion(): string | null {
@@ -68,14 +73,19 @@ export class CompatibilityReviewController {
         this.pause = evaluation.pause;
         if (evaluation.initialiseAcknowledgedVersion) {
             setting.setSmallConfig(DATABASE_COMPATIBILITY_VERSION_KEY, `${this.currentVersion}`);
+            this._initialised = true;
             return true;
         }
-        if (!this.pause) return true;
+        if (!this.pause) {
+            this._initialised = true;
+            return true;
+        }
 
         if (settings.versionUpFlash === "") {
             settings.versionUpFlash = COMPATIBILITY_PAUSE_SETTING_MESSAGE;
             await setting.saveSettingData();
         }
+        this._initialised = true;
         return true;
     }
 
