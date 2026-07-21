@@ -26,6 +26,7 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 ### Security
 
 - Fly.io setup now generates CouchDB and Vault encryption secrets from cryptographically secure randomness instead of short word combinations.
+- Updated the glob expansion used by Commonlib path matching and CLI ignore rules to prevent pathological brace patterns from consuming excessive CPU.
 
 ## 1.0.0-rc.0
 
