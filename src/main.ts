@@ -143,6 +143,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         setNoticeClass(Notice);
 
         const serviceHub = new ObsidianServiceHub(this);
+        let waitForCompatibilityReview = (): Promise<void> => Promise.resolve();
 
         this.core = new LiveSyncBaseCore(
             serviceHub,
@@ -161,7 +162,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ModuleObsidianGlobalHistory(this, core),
                     // new ModuleDev(this, core),
                     new SetupManager(core), // this should be moved to core?
-                    new ModuleMigration(core),
+                    new ModuleMigration(core, () => waitForCompatibilityReview()),
                 ];
                 return extraModules;
             },
@@ -199,6 +200,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     core,
                     createObsidianCompatibilityReviewUi(core.confirm)
                 );
+                waitForCompatibilityReview = () => compatibilityReview.openReview();
                 useReviewHarness(core, this, replicator, compatibilityReview);
                 // p2pReplicatorResult = useP2PReplicator(core, [
                 //     VIEW_TYPE_P2P,

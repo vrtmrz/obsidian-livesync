@@ -82,6 +82,12 @@ async function verifyCompatibilityReview(): Promise<void> {
             });
             await summary.waitFor({ state: "visible", timeout: uiTimeoutMs });
             await assertMobileDialogueLayout(page, summary, "compatibility review summary");
+            const doctor = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "Self-hosted LiveSync Config Doctor" }),
+            });
+            if (await doctor.isVisible()) {
+                throw new Error("Config Doctor must wait until the initial compatibility review has closed.");
+            }
         }
     );
 
@@ -166,6 +172,28 @@ async function verifyCompatibilityReview(): Promise<void> {
     );
 }
 
+async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const doctor = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Self-hosted LiveSync Config Doctor" }),
+        });
+        await doctor.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await doctor.getByText("Per-file-saved customization sync", { exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        await doctor.getByText("Enhance chunk size", { exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        if ((await doctor.getByText("Data Compression", { exact: true }).count()) !== 0) {
+            throw new Error("Config Doctor still treats supported Data Compression as a problem.");
+        }
+        await doctor.getByRole("button", { name: /No, and do not ask again/u }).click();
+        await doctor.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+}
+
 async function verifyEffectiveSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         await page.evaluate(() => {
@@ -237,6 +265,7 @@ async function main(): Promise<void> {
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
         await verifyCompatibilityReview();
+        await verifyConfigDoctorFollowsCompatibilityReview();
         await verifyEffectiveSettings();
         console.log("Compatibility review and settings expose only effective user controls.");
     } finally {

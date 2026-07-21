@@ -19,6 +19,7 @@ function createRuntime(): ConfiguredStartupLifecycleRuntime & { events: string[]
             events.push("incomplete-documents");
             return true;
         }),
+        waitForCompatibilityReview: vi.fn(async () => {}),
         runDoctor: vi.fn(async () => {
             events.push("doctor");
             return true;
@@ -36,6 +37,25 @@ describe("runConfiguredStartupLifecycle", () => {
         await expect(runConfiguredStartupLifecycle(runtime)).resolves.toBe(true);
 
         expect(runtime.events).toEqual(["compromised-chunks", "incomplete-documents", "doctor", "bulk-send"]);
+    });
+
+    it("keeps Config Doctor behind the initial compatibility review", async () => {
+        const runtime = createRuntime();
+        Object.assign(runtime, {
+            waitForCompatibilityReview: vi.fn(async () => {
+                runtime.events.push("compatibility-review");
+            }),
+        });
+
+        await expect(runConfiguredStartupLifecycle(runtime)).resolves.toBe(true);
+
+        expect(runtime.events).toEqual([
+            "compromised-chunks",
+            "incomplete-documents",
+            "compatibility-review",
+            "doctor",
+            "bulk-send",
+        ]);
     });
 
     it("stops before onboarding or checks when the database is unavailable", async () => {

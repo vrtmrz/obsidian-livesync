@@ -44,6 +44,13 @@ type ErrorInfo = {
 const INCOMPLETE_DOCUMENT_NOTICE_GROUP = "startup-integrity-check";
 
 export class ModuleMigration extends AbstractModule<LiveSyncCore> {
+    constructor(
+        core: LiveSyncCore,
+        private readonly waitForCompatibilityReview: () => Promise<void> = () => Promise.resolve()
+    ) {
+        super(core);
+    }
+
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
         const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
             {
@@ -354,6 +361,7 @@ export class ModuleMigration extends AbstractModule<LiveSyncCore> {
             reportDatabaseNotReady: () => this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE),
             hasCompromisedChunks: () => this.hasCompromisedChunks(),
             hasIncompleteDocuments: () => this.hasIncompleteDocs(),
+            waitForCompatibilityReview: () => this.waitForCompatibilityReview(),
             runDoctor: () => this.migrateUsingDoctor(false),
             migrateBulkSend: () => this.migrateDisableBulkSend(),
         });

@@ -69,6 +69,7 @@ An existing settings document without an explicit `handleFilenameCaseSensitive` 
 - Evaluate and persist the compatibility gate after settings load, before Obsidian layout-ready recovery begins. This blocks ordinary and one-shot replication even while the review dialogue has not yet opened.
 - Preserve the existing ordered flag-file recovery handlers: SCRAM at priority 5, fetch-all at priority 10, and rebuild-all at priority 20. These files express an explicit recovery instruction and may invoke their focused storage or rebuild service while ordinary replication remains gated.
 - Present the compatibility review at priority 30, after any selected recovery operation. A recovery handler which cancels start-up, keeps SCRAM active, or schedules a restart returns `false`, so the current process does not open a competing compatibility dialogue. If recovery completes and start-up continues, the dialogue opens before normal synchronisation is allowed to resume.
+- Keep database preparation independent of an unanswered compatibility dialogue, because the compatibility gate already blocks replication. Before Config Doctor begins its interactive checks, await the active initial review so that the two update dialogues cannot overlap.
 - Never mark compatibility as acknowledged merely because fetch, rebuild, or local database reset completed. The person must still use the explicit resume action. This keeps destructive recovery intent separate from protocol and settings compatibility acknowledgement.
 
 ## Consequences
