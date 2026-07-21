@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { ensureTags } from "./release-tags.mjs";
 
 const releaseNotesScript = fileURLToPath(new URL("./release-notes.mjs", import.meta.url));
+const releasePrBodyScript = fileURLToPath(new URL("./release-pr-body.mjs", import.meta.url));
 const versionBumpScript =
     process.env.VERSION_BUMP_SCRIPT || fileURLToPath(new URL("../version-bump.mjs", import.meta.url));
 const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", import.meta.url));
@@ -39,6 +40,14 @@ function runNode(script: string, args: string[], cwd: string, env: Record<string
         cwd,
         encoding: "utf8",
         env: { ...process.env, ...env },
+    });
+}
+
+function runNpm(args: string[], cwd: string) {
+    return spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", args, {
+        cwd,
+        encoding: "utf8",
+        env: process.env,
     });
 }
 
@@ -133,22 +142,59 @@ describe("release notes", () => {
 describe("release workflow", () => {
     it("uses the locked Commonlib package instead of generated fallback declarations", () => {
         const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+        const body = runNode(releasePrBodyScript, ["1.0.0-beta.0", "integration"], makeTemporaryDirectory());
 
         expect(workflow).not.toContain("npm run build:lib:types");
         expect(workflow).not.toMatch(/git add[^\n]*_types/);
         expect(workflow).toMatch(/git add[^\n]*package-lock\.json/);
-        expect(workflow).toContain("locked Commonlib package version");
+        expect(body.status, body.stderr).toBe(0);
+        expect(body.stdout).toContain("locked Commonlib package version");
+    });
+
+    it("reruns the version lifecycle when the integration branch already selects the release version", () => {
+        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain('npm version "${VERSION}" --no-git-tag-version --allow-same-version');
+    });
+
+    it("generates the release PR body from the selected version and base branch", () => {
+        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain('node utils/release-pr-body.mjs "${VERSION}" "${BASE_BRANCH}"');
+        expect(workflow).not.toContain("leave \\`main\\`");
+        expect(workflow).not.toContain("latest stable release");
     });
 
     it("keeps the release PR in draft until BRAT validation", () => {
-        const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
+        const prerelease = runNode(
+            releasePrBodyScript,
+            ["1.0.0-beta.0", "common-library-package-boundary"],
+            makeTemporaryDirectory()
+        );
 
-        expect(workflow).toContain("Merge intentionally on hold");
-        expect(workflow).toContain(
+        expect(prerelease.status, prerelease.stderr).toBe(0);
+        expect(prerelease.stdout).toContain("Merge intentionally on hold");
+        expect(prerelease.stdout).toContain("Self-hosted LiveSync `1.0.0-beta.0`");
+        expect(prerelease.stdout).toContain("leave `common-library-package-boundary` unchanged");
+        expect(prerelease.stdout).toContain("prerelease=true");
+        expect(prerelease.stdout).toContain(
+            "Publish the GitHub Release as a pre-release without replacing the latest stable release"
+        );
+        expect(prerelease.stdout).toContain("Validate the exact published release with BRAT");
+        expect(prerelease.stdout).toContain(
+            "Mark this pull request ready and merge it into `common-library-package-boundary` with a merge commit"
+        );
+    });
+
+    it("keeps stable release instructions distinct from pre-release instructions", () => {
+        const stable = runNode(releasePrBodyScript, ["1.0.0", "main"], makeTemporaryDirectory());
+
+        expect(stable.status, stable.stderr).toBe(0);
+        expect(stable.stdout).toContain("prerelease=false");
+        expect(stable.stdout).toContain(
             "Publish the GitHub Release as the latest stable release while keeping this pull request in draft"
         );
-        expect(workflow).toContain("Validate the published release with BRAT");
-        expect(workflow).toContain("Mark this pull request ready and merge it with a merge commit");
+        expect(stable.stdout).not.toContain("as a pre-release without replacing");
     });
 
     it("dispatches the plug-in workflow and lets the CLI tag trigger its own workflow", () => {
@@ -251,6 +297,59 @@ describe("version bump", () => {
             "0.25.61": "1.7.2",
             "0.25.81": "1.7.2",
         });
+    });
+
+    it("runs release metadata scripts when the selected version is already the package version", () => {
+        const directory = makeTemporaryDirectory();
+        const workspaces = ["src/apps/cli", "src/apps/webpeer", "src/apps/webapp"];
+        writeJson(directory, "package.json", {
+            name: "release-lifecycle-fixture",
+            version: "1.0.0-beta.0",
+            private: true,
+            workspaces,
+            scripts: {
+                version: `node ${JSON.stringify(versionBumpScript)} && node ${JSON.stringify(workspaceUpdateScript)}`,
+            },
+        });
+        writeJson(directory, "manifest.json", { version: "1.0.0-alpha.9", minAppVersion: "1.7.2" });
+        writeJson(directory, "versions.json", { "0.25.83": "1.7.2" });
+        const lockPackages: Record<string, { version: string; workspaces?: string[] }> = {
+            "": { version: "1.0.0-beta.0", workspaces },
+        };
+        for (const workspace of ["cli", "webpeer", "webapp"]) {
+            writeJson(directory, `src/apps/${workspace}/package.json`, {
+                name: `release-lifecycle-${workspace}`,
+                version: `1.0.0-alpha.9-${workspace}`,
+            });
+            lockPackages[`src/apps/${workspace}`] = { version: `1.0.0-alpha.9-${workspace}` };
+        }
+        writeJson(directory, "package-lock.json", {
+            name: "release-lifecycle-fixture",
+            version: "1.0.0-beta.0",
+            lockfileVersion: 3,
+            requires: true,
+            packages: lockPackages,
+        });
+
+        const result = runNpm(["version", "1.0.0-beta.0", "--no-git-tag-version", "--allow-same-version"], directory);
+
+        expect(result.status, result.stderr).toBe(0);
+        expect(JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8"))).toMatchObject({
+            version: "1.0.0-beta.0",
+            minAppVersion: "1.7.2",
+        });
+        expect(JSON.parse(readFileSync(join(directory, "versions.json"), "utf8"))).toEqual({
+            "0.25.83": "1.7.2",
+            "1.0.0-beta.0": "1.7.2",
+        });
+        const packageLock = JSON.parse(readFileSync(join(directory, "package-lock.json"), "utf8"));
+        expect(packageLock.version).toBe("1.0.0-beta.0");
+        expect(packageLock.packages[""].version).toBe("1.0.0-beta.0");
+        for (const workspace of ["cli", "webpeer", "webapp"]) {
+            const packageJson = JSON.parse(readFileSync(join(directory, `src/apps/${workspace}/package.json`), "utf8"));
+            expect(packageJson.version).toBe(`1.0.0-beta.0-${workspace}`);
+            expect(packageLock.packages[`src/apps/${workspace}`].version).toBe(`1.0.0-beta.0-${workspace}`);
+        }
     });
 });
 

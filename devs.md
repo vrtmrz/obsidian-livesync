@@ -234,7 +234,7 @@ export class ModuleExample extends AbstractObsidianModule {
 
 ## Pre-release Policy
 
-- New pre-releases use SemVer identifiers such as `1.0.0-rc.0`. Historical `-patchedN` releases remain unchanged in the release history.
+- Use SemVer beta identifiers such as `1.0.0-beta.0` for immutable integration previews. Increment the beta number when a published preview needs a correction. Reserve `1.0.0-rc.0` for the first feature- and contract-frozen release candidate. Historical `-patchedN` releases remain unchanged in the release history.
 - Publish a pre-release from an immutable reviewed tag, mark its GitHub Release as a pre-release, and do not replace the latest stable release.
 - A plug-in review release may omit the CLI image when the CLI artefact is not part of the required validation. When a pre-release CLI image is published, it receives immutable version and SHA-qualified tags only; it must not advance `latest` or a stable major-minor tag.
 - Keep the release pull request in draft until the exact published plug-in has passed BRAT validation. If validation fails, prepare the next pre-release version rather than moving the existing tag.
@@ -253,14 +253,14 @@ export class ModuleExample extends AbstractObsidianModule {
 This workflow is for maintainers. Contributors should update `## Unreleased` for user-facing feature or fix PRs, but do not need to run the release workflows.
 The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `release` GitHub Environment. Configure Environment protection in the repository settings so tag creation and release publication require maintainer approval.
 
-- Run the `Prepare Release PR` workflow with the target version. It creates the release branch, updates versions, confirms that Commonlib is locked to an immutable package version, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR.
+- Run the `Prepare Release PR` workflow with the target version and selected base branch. It creates the release branch, updates versions, confirms that Commonlib is locked to an immutable package version, moves the `## Unreleased` notes to the target version, commits the release preparation, pushes the branch, and opens a draft release PR. The base branch may already select the target development version; the workflow still runs the version lifecycle so that release-only metadata such as `versions.json` is recorded in the release commit.
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
 - Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch, ensures that the plug-in tag points to that commit, optionally creates the corresponding CLI tag, and dispatches the plug-in release workflow. A CLI tag starts its own container workflow. The finalisation workflow can be retried when existing tags already point to the reviewed commit, but stops if a selected tag points elsewhere.
 - The plug-in publishing workflow is intentionally dispatch-only. Pushing a plug-in tag directly does not publish a GitHub Release; use `Finalise Release Tags`, or dispatch `Release Obsidian Plugin` explicitly for recovery or a pre-release. The CLI Docker workflow retains its documented branch, tag, and manual triggers.
 - Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. For a selected CLI publication, confirm the image tags appropriate to a stable or pre-release version.
 - Publish a stable draft as the latest release, or publish a pre-release draft without replacing the latest stable release. In either case, keep the release PR in draft and leave its base branch unchanged until BRAT validation succeeds. Record that state in the PR.
 - Validate the published release through BRAT. Confirm start-up, ordinary bidirectional synchronisation, and any regression scenario relevant to the release.
-- After BRAT validation succeeds, mark the release PR ready and merge it with a merge commit. This keeps the tagged release commit in the `main` history.
+- After BRAT validation succeeds, mark the release PR ready and merge it into the selected base branch with a merge commit. This keeps the tagged release commit in that branch's history.
 - If BRAT validation fails, keep the release PR in draft. Do not move published tags; prepare and publish a new patch release instead.
 - For a pre-release, set `prerelease=true` in `Finalise Release Tags`. A hyphenated version is rejected unless that input is enabled.
 
@@ -269,7 +269,7 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 1. Before starting, add user-facing notes under `## Unreleased` in `updates.md`.
 2. Run `Prepare Release PR` from GitHub Actions.
     - `version`: the target version, for example `0.25.81`.
-    - `base_branch`: normally `main`.
+    - `base_branch`: normally `main`, or the reviewed integration branch for an integration preview.
     - `release_branch`: leave blank to use the default branch name, for example `0_25_81`.
     - `release_date`: use an ordinal date such as `14th July, 2026`, or leave blank to use the current UTC date.
     - `allow_empty_updates`: leave disabled unless the release intentionally has no user-facing notes.
@@ -289,7 +289,7 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 7. Publish the draft as a stable release or pre-release as selected, but keep the release PR in draft and leave its base branch unchanged.
 8. Update the PR state message to describe the published release and state that merging remains on hold until BRAT validation is complete.
 9. Validate the published release through BRAT, including start-up, ordinary bidirectional synchronisation, and any release-specific regression scenario.
-10. After BRAT validation succeeds, mark the release PR ready and merge it into `main` with a merge commit.
+10. After BRAT validation succeeds, mark the release PR ready and merge it into the selected base branch with a merge commit.
 11. If validation fails, leave the PR in draft and prepare a new patch release without moving the published tags.
 
 ## Contribution Guidelines

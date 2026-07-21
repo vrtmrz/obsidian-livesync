@@ -22,18 +22,6 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Manual onboarding now creates and selects CouchDB, Object Storage, and P2P remote profiles directly while preserving existing profiles. Current Setup URIs retain profile names and selections, while older flat settings remain supported through compatibility migration.
 - P2P panes and explicit rebuild actions now use the current transport after settings or database replacement. Disconnecting leaves the LiveSync room and closes signalling relay sockets without destroying Trystero-owned shared peers.
 - Self-hosted CouchDB provisioning and Setup URI generation now consume the immutable Commonlib registry package. New database provisioning records the package-owned database version, and generated CouchDB, Object Storage, and random-room P2P URIs use current new-Vault defaults and selected remote profiles instead of legacy embedded settings.
-
-### Security
-
-- Fly.io setup now generates CouchDB and Vault encryption secrets from cryptographically secure randomness instead of short word combinations.
-- Updated the glob expansion used by Commonlib path matching and CLI ignore rules to prevent pathological brace patterns from consuming excessive CPU.
-
-## 1.0.0-rc.0
-
-19th July, 2026
-
-### Improved
-
 - Removed the ineffective 'Use the trash bin' toggle from the settings interface. Remote deletions continue to follow Obsidian's deletion preference, while the legacy setting key remains accepted for compatibility.
 - Kept content-derived chunk revisions permanently enabled, as they have been since 0.25.6, and removed the obsolete stored key from recommendations, database-maintenance prerequisites, and review tooling.
 - Aligned new-Vault, full-reset, and CLI-generated settings with the 1.0 recommendations. New Vaults use cross-platform case-insensitive file-name handling, while an existing Vault with no saved case policy remains paused until case-sensitive legacy behaviour is explicitly retained or a case-insensitive database rebuild is planned.
@@ -44,6 +32,11 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Combined Hidden File Sync plug-in reload and Obsidian restart notifications into one mobile-safe message with clearly labelled actions, avoiding the stacked notifications reported in [issue #555](https://github.com/vrtmrz/obsidian-livesync/issues/555). A group dismissed by the user no longer reappears with its previously acknowledged rows when a later change arrives.
 - Replaced remote-size decision prompts shown during startup with long-lived, clickable notices. The detailed choices now open only when requested and no longer select an answer automatically after a timeout.
 - Removed the obsolete prompt and automatic bulk chunk pre-send from initial and rebuild uploads. These operations retain the standard two-pass replication used to converge follow-up writes and conflict resolution.
+
+### Security
+
+- Fly.io setup now generates CouchDB and Vault encryption secrets from cryptographically secure randomness instead of short word combinations.
+- Updated the glob expansion used by Commonlib path matching and CLI ignore rules to prevent pathological brace patterns from consuming excessive CPU.
 
 ### Miscellaneous
 

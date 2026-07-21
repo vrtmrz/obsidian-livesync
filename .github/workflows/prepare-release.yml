@@ -70,7 +70,7 @@ jobs:
                   fi
 
                   git switch -c "${BRANCH}"
-                  npm version "${VERSION}" --no-git-tag-version
+                  npm version "${VERSION}" --no-git-tag-version --allow-same-version
                   node utils/release-notes.mjs prepare "${VERSION}"
 
                   git add package.json package-lock.json manifest.json versions.json updates.md src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json
@@ -87,24 +87,7 @@ jobs:
                   BASE_BRANCH: ${{ inputs.base_branch }}
                   RELEASE_BRANCH: ${{ steps.prepare.outputs.branch }}
               run: |
-                  cat > /tmp/release-pr-body.md <<EOF
-                  > [!IMPORTANT]
-                  > **Merge intentionally on hold**
-                  >
-                  > Publishing the GitHub Release does not unblock this pull request. Keep this pull request in draft, and leave \`main\` on the previous release, until the published build has passed BRAT validation.
-
-                  ## Release checklist
-
-                  - [ ] Review and polish \`updates.md\`
-                  - [ ] Confirm the release date
-                  - [ ] Confirm \`manifest.json\`, \`versions.json\`, workspace package versions, and the locked Commonlib package version
-                  - [ ] Confirm CI has passed
-                  - [ ] Run the finalise release workflow with this PR's fixed head SHA
-                  - [ ] Confirm the draft GitHub Release assets and the published CLI image
-                  - [ ] Publish the GitHub Release as the latest stable release while keeping this pull request in draft
-                  - [ ] Validate the published release with BRAT
-                  - [ ] Mark this pull request ready and merge it with a merge commit
-                  EOF
+                  node utils/release-pr-body.mjs "${VERSION}" "${BASE_BRANCH}" > /tmp/release-pr-body.md
 
                   gh pr create \
                     --base "${BASE_BRANCH}" \
