@@ -1,5 +1,7 @@
-import { decodeSettingsFromSetupURI } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/API/processSetting";
-import { DEFAULT_SETTINGS } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/settings";
+import {
+  decodeSettingsFromSetupURI,
+  DEFAULT_SETTINGS,
+} from "./livesync-commonlib.ts";
 import { generateSetupURI } from "./generate_setup_uri.ts";
 
 function assert(condition: unknown, message: string): asserts condition {

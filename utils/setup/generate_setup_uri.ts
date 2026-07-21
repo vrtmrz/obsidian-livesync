@@ -1,14 +1,14 @@
-import { encodeSettingsToSetupURI } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/API/processSetting";
-import { generateP2PRoomId } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/common/utils";
-import { upsertRemoteConfigurationInPlace } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/remote-configurations";
 import {
   createNewVaultSettings,
+  encodeSettingsToSetupURI,
+  generateP2PRoomId,
   type ObsidianLiveSyncSettings,
   P2P_DEFAULT_SETTINGS,
   PREFERRED_BASE,
   PREFERRED_JOURNAL_SYNC,
   PREFERRED_SETTING_SELF_HOSTED,
-} from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/settings";
+  upsertRemoteConfigurationInPlace,
+} from "./livesync-commonlib.ts";
 
 export type SetupRemoteType = "couchdb" | "s3" | "p2p";
 export type SetupGeneratorEnvironment = Readonly<

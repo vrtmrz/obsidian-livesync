@@ -25,7 +25,7 @@
         "check": "npm run tsc-check && npm run tsc-check:apps && npm run lint && npm run lint:community -- --quiet && npm run svelte-check && npm run check:compatibility",
         "unittest": "deno test -A --no-check --coverage=cov_profile  --v8-flags=--expose-gc  --trace-leaks  ./src/",
         "test:unit": "vitest run --config vitest.config.unit.ts",
-        "test:setup-tools": "bash utils/flyio/setenv.test.sh && deno test -A --config=utils/flyio/deno.jsonc --frozen --lock=utils/flyio/deno.lock utils/couchdb/provision.test.ts utils/setup/generate_setup_uri.test.ts utils/flyio/generate_setupuri.test.ts",
+        "test:setup-tools": "bash utils/flyio/setenv.test.sh && deno test -A --config=utils/flyio/deno.jsonc --frozen --lock=utils/flyio/deno.lock utils/livesync-commonlib-version.test.ts utils/couchdb/provision.test.ts utils/setup/generate_setup_uri.test.ts utils/flyio/generate_setupuri.test.ts",
         "test:contract:contexts": "vitest run --config vitest.config.unit.ts src/modules/services/ObsidianServiceContext.unit.spec.ts src/apps/cli/services/NodeServiceContext.unit.spec.ts src/apps/browser/createLiveSyncBrowserServiceHub.unit.spec.ts",
         "test:contract:context:webapp": "vitest run --config vitest.config.unit.ts src/apps/browser/createLiveSyncBrowserServiceHub.unit.spec.ts",
         "test:contract:context:cli": "npm run build --workspace self-hosted-livesync-cli && deno task --cwd src/apps/cli/testdeno test:setup-put-cat",

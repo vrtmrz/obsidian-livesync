@@ -1,5 +1,4 @@
-import { PouchDB } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/pouchdb/pouchdb-browser";
-import { checkRemoteVersion } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/pouchdb/negotiation";
+import { checkRemoteVersion, PouchDB } from "./livesync-commonlib.ts";
 
 export interface CouchDBProvisioningOptions {
   hostname: string;
