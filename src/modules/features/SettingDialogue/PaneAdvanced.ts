@@ -45,4 +45,7 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         //         clampMax: 100, clampMin: 1, onUpdate: onlyOnCouchDB
         //     })
     });
+    void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
+        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("enableCompression");
+    });
 }

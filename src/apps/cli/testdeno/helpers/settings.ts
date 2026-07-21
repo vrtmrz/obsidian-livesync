@@ -123,6 +123,8 @@ export async function applyRemoteSyncSettings(
         minioSecretKey?: string;
         encrypt?: boolean;
         passphrase?: string;
+        enableCompression?: boolean;
+        usePathObfuscation?: boolean;
     }
 ): Promise<void> {
     const data = JSON.parse(await Deno.readTextFile(settingsFile));
@@ -149,6 +151,12 @@ export async function applyRemoteSyncSettings(
     data.usePluginSync = false;
     data.encrypt = options.encrypt === true;
     data.passphrase = options.encrypt ? (options.passphrase ?? "") : "";
+    if (options.enableCompression !== undefined) {
+        data.enableCompression = options.enableCompression;
+    }
+    if (options.usePathObfuscation !== undefined) {
+        data.usePathObfuscation = options.usePathObfuscation;
+    }
     data.isConfigured = true;
     await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));
 }

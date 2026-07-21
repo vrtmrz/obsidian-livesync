@@ -11,7 +11,7 @@ authors:
 # Peer-to-Peer Synchronisation Tips
 
 > [!IMPORTANT]
-> Peer-to-peer synchronisation is still an experimental feature. Although we have made every effort to ensure its reliability, it may not function correctly in all environments.
+> Peer-to-peer synchronisation is a supported opt-in feature. WebRTC connectivity still depends on the networks, relays, and optional TURN servers available to every device, so a working connection cannot be guaranteed in every environment.
 
 ## Difficulties with Peer-to-Peer Synchronisation
 

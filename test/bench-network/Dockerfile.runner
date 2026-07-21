@@ -3,7 +3,7 @@
 FROM node:24-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ iproute2 \
+    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ iproute2 libjpeg-turbo-progs time \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DENO_INSTALL=/usr/local
@@ -28,6 +28,7 @@ RUN deno cache --lock=deno.lock \
     bench-p2p-split-node.ts \
     bench-p2p.ts \
     bench-couchdb.ts \
+    bench-compression.ts \
     test-p2p-sync.ts \
     test-p2p-replicator-replacement.ts \
     test-p2p-relay-disconnect.ts

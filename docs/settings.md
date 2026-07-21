@@ -4,6 +4,17 @@ NOTE: This document not completed. I'll improve this doc in a while. but your co
 
 There are many settings in Self-hosted LiveSync. This document describes each setting in detail (not how-to). Configuration and settings are divided into several categories and indicated by icons. The icon is as follows:
 
+## Feature maturity for 1.0
+
+The following status applies to optional and compatibility features in the 1.0 line:
+
+| Status                 | Features                                                                                                                                              | 1.0 policy                                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supported, opt-in      | Peer-to-Peer Synchronisation, Hidden File Sync, and Customisation Sync                                                                                | Maintained and covered by focused real-runtime tests. Enable them only where their separate setup and operational constraints are acceptable.                                   |
+| Maintained, advanced   | Data Compression                                                                                                                                      | Available as an explicit storage and bandwidth trade-off. It remains disabled by default because the measured processing and memory costs outweigh the mixed-dataset saving.    |
+| Beta or experimental   | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3                                                 | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
+| Compatibility only     | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
+
 | Icon | Description                                                        |
 | :--: | ------------------------------------------------------------------ |
 |  💬  | [0. Change Log](#0-change-log)                                     |
@@ -213,11 +224,11 @@ The encryption algorithm version used for end-to-end encryption.
 - `v2` (V2: AES-256-GCM With HKDF): Recommended and default version.
 - `forceV1` or `""` (V1: Legacy): Older legacy encryption. Only use this if you have an existing vault encrypted in the legacy format.
 
-#### Use dynamic iteration count (Experimental)
+#### Use dynamic iteration count (legacy V1 compatibility)
 
 Setting key: useDynamicIterationCount
 
-This is an experimental feature and not recommended. If you enable this, the iteration count of the encryption will be dynamically determined. This is useful when you want to improve the performance.
+This setting applies only to legacy V1 encryption data. Keep the saved value when opening an existing V1 database. New Vaults use E2EE V2 and do not use this setting.
 
 ---
 
@@ -634,6 +645,8 @@ Comma separated `.gitignore, .dockerignore`
 
 ## 6. Customisation sync (Advanced)
 
+Customisation Sync is a supported, advanced opt-in feature. Its current per-file implementation is covered by a two-Vault real-Obsidian workflow for snippets, configuration files, and plug-in files. Hidden File Sync is a separate feature with different setup, selection, and conflict behaviour; do not use both features to manage the same files.
+
 ### 1. Customisation Sync
 
 #### Device name
@@ -778,10 +791,10 @@ Limit the maximum size of chunks sent in one request by the explicit **Resend al
 
 ### 1. Remote Database Tweak
 
-#### Incubate Chunks in Document (Beta)
+#### Incubate Chunks in Document (sunset compatibility)
 
 Setting key: useEden
-If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.
+This setting is no longer offered for new configuration. Existing saved values remain accepted so that established databases can be opened and migrated without silently changing their structure.
 
 #### Maximum Incubating Chunks
 
@@ -798,9 +811,13 @@ The maximum total size of chunks that can be incubated within the document. Chun
 Setting key: maxAgeInEden
 The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.
 
-#### Data Compression (Experimental)
+#### Data Compression (advanced opt-in)
 
 Setting key: enableCompression
+
+Data Compression applies fflate level 8 to each chunk before E2EE. A chunk is left uncompressed when compression would not make it smaller, and readers continue to accept both representations. Changing the setting does not require a rebuild for compatibility; existing and new representations can coexist.
+
+The setting remains disabled by default because the measured storage and transfer benefit comes with workload-dependent processing and memory costs. See the [Data Compression specification](specs_data_compression.md) for the contract, evidence, execution model, and reproduction command.
 
 ### 2. CouchDB Connection Tweak
 
@@ -897,9 +914,11 @@ Do not use internal API
 Setting key: additionalSuffixOfDatabaseName
 LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.
 
-#### The Hash algorithm for chunk IDs (Experimental)
+#### The Hash algorithm for chunk IDs (compatibility)
 
 Setting key: hashAlg
+
+`xxhash64` is the supported current value. Older algorithms remain selectable only as an edge-case compatibility path for existing databases. Changing the algorithm can reduce chunk reuse between devices and requires the normal tweak review.
 
 ### 6. Edge case addressing (Behaviour)
 
@@ -1003,12 +1022,6 @@ Purge all download/upload cache.
 #### Fresh Start Wipe
 
 Delete all data on the remote server.
-
-### 6. Deprecated
-
-#### Run database cleanup
-
-Attempt to shrink the database by deleting unused chunks. This may not work consistently. Use the 'Overwrite Server Data with This Device's Files' under Reset Synchronisation information.
 
 ### 7. Reset
 

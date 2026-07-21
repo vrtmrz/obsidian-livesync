@@ -166,7 +166,7 @@ async function verifyCompatibilityReview(): Promise<void> {
     );
 }
 
-async function verifyDeletionSettings(): Promise<void> {
+async function verifyEffectiveSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         await page.evaluate(() => {
             const setting = (globalThis as ObsidianTestGlobal).app?.setting;
@@ -230,13 +230,15 @@ async function main(): Promise<void> {
                 syncOnFileOpen: false,
                 syncAfterMerge: false,
                 periodicReplication: false,
+                handleFilenameCaseSensitive: false,
                 useAdvancedMode: true,
+                useEdgeCaseMode: true,
             },
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
         await verifyCompatibilityReview();
-        await verifyDeletionSettings();
-        console.log("Compatibility review and deletion settings expose only effective user controls.");
+        await verifyEffectiveSettings();
+        console.log("Compatibility review and settings expose only effective user controls.");
     } finally {
         if (session) {
             await session.app.stop();

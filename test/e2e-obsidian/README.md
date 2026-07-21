@@ -1,6 +1,6 @@
 # Real Obsidian E2E Runner
 
-This directory contains the experimental real Obsidian end-to-end runner.
+This directory contains the maintained real Obsidian end-to-end runner.
 
 The generic application discovery, isolated-vault, plug-in installation, process lifecycle, CLI, CDP, and readiness implementation comes from `@vrtmrz/obsidian-test-session`. The small modules under `runner/` preserve LiveSync's existing imports and supply its plug-in ID and artefact location. LiveSync-specific fixtures, services, settings, workflows, and assertions remain in this repository.
 

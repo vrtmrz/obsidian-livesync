@@ -231,15 +231,4 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             }
         });
     });
-    void addPanel(paneEl, "Remote Database Tweak (In sunset)").then((paneEl) => {
-        // new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
-        // const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
-        // new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-        // new Setting(paneEl)
-        //     .autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden })
-        //     .setClass("wizardHidden");
-        // new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-
-        new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
-    });
 }

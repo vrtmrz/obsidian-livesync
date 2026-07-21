@@ -9,8 +9,10 @@ export type DeterministicDatasetConfig = {
     binSizeBytes: number;
 };
 
+export type DatasetKind = "md" | "jpg" | "png" | "json" | "ts" | "gz" | "bin";
+
 export type DatasetEntry = {
-    kind: "md" | "bin";
+    kind: DatasetKind;
     relativePath: string;
     absolutePath: string;
     size: number;

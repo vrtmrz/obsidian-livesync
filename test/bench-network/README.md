@@ -127,6 +127,49 @@ This sweep is useful for finding where the remote CouchDB path falls behind the
 local direct P2P path in the current HTTP-proxy latency model. It should not be
 presented as a full smartphone/VPN model.
 
+## Data Compression benchmark
+
+The [Data Compression specification](../../docs/specs_data_compression.md) records the current storage contract, 1.0 decision, measured result, and follow-up optimisation candidates. This section is the benchmark runbook.
+
+The compression benchmark compares the exact CLI and Commonlib CouchDB path in
+four configurations: E2EE off or on, each with Data Compression off or on. It
+uses the normal CLI `mirror` and `sync` commands, so the recorded CouchDB
+documents have passed through the current Rabin–Karp chunk splitter, optional
+fflate compression, and E2EE V2 rather than a synthetic document transform.
+
+```bash
+BENCH_COMMAND=compression \
+BENCH_COMPRESSION_REPEAT_COUNT=3 \
+BENCH_COUCHDB_RTT_MS=1 \
+docker compose -f test/bench-network/compose.yml run --build --rm bench-runner
+```
+
+The fixture contains current repository Markdown, PNG, JSON, and TypeScript
+files; two deterministic JPEGs generated with `cjpeg`; a gzip-compressed
+Markdown file; and deterministic high-entropy binary data. Every run verifies
+all files after the second client has synchronised them. The JSON result under
+`test/bench-network/bench-results/` records:
+
+- source bytes and stored chunk bytes by file kind;
+- raw CouchDB external, active, and file sizes;
+- request and response body bytes observed by the local HTTP proxy, including
+  the combined initial sync and full materialisation download;
+- upload and download wall time, user and system CPU time, and maximum resident
+  memory for each CLI process; and
+- percentage changes caused by enabling compression with E2EE both off and on.
+
+Use at least three repeats when making a default-setting decision. A `1 ms`
+requested RTT keeps the local run focused on transform and storage costs. Run a
+separate representative RTT when evaluating whether reduced request bodies
+outweigh compression CPU on the intended network. HTTP byte counters cover
+decoded bodies and exclude headers, while process timings include CLI start-up.
+Full materialisation starts one CLI process per file and can repeat lazy chunk
+fetches, so treat that phase as a CLI workflow measurement rather than a raw
+download lower bound. Stored chunk size and upload request size are the more
+direct transform comparisons.
+The generated JPEGs are deterministic image-like fixtures, not a photographic
+corpus, so broader media conclusions require a separately reviewed corpus.
+
 ## Network emulation smoke
 
 The optional `netem` profile checks whether a Linux runner can apply traffic
