@@ -15,6 +15,8 @@ const focusedScenarios = new Set([
     "couchdb-upload",
     "cli-to-obsidian-sync",
     "minio-upload",
+    "object-storage-setup-uri-workflow",
+    "p2p-setup-uri-workflow",
     "startup-scan",
     "setup-uri-workflow",
     "two-vault-sync",
@@ -31,8 +33,9 @@ real-Obsidian scenario. Supported scenarios:
 
 ${[...focusedScenarios].map((scenario) => `  ${scenario}`).join("\n")}
 
-This wrapper does not start CouchDB or Object Storage. Use the documented
-service commands or the complete local-suite:services wrapper when required.`;
+This wrapper does not start CouchDB, Object Storage, or the P2P signalling
+relay. Use the documented service commands or the complete
+local-suite:services wrapper when required.`;
 }
 
 // npm receives each argument directly. In particular, environment values and

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
+    REMOTE_P2P,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
@@ -192,6 +193,37 @@ describe("SetupManager", () => {
             applyExternalSettings.mock.invocationCallOrder[0]
         );
         expect(setting.currentSettings().isConfigured).toBe(true);
+    });
+
+    it("identifies P2P when opening the new-user initialisation confirmation", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = { ...setting.currentSettings(), isConfigured: false };
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(true);
+        const p2pProfileId = "p2p-profile";
+
+        await manager.onConfirmApplySettingsFromWizard(
+            {
+                ...setting.currentSettings(),
+                isConfigured: true,
+                // Imported profile settings can still carry the previous compatibility field
+                // until the selected profile is projected by the setting lifecycle.
+                remoteType: REMOTE_COUCHDB,
+                activeConfigurationId: p2pProfileId,
+                remoteConfigurations: {
+                    [p2pProfileId]: {
+                        id: p2pProfileId,
+                        name: "P2P room",
+                        uri: "sls+p2p://:secret@team-room?relays=wss%3A%2F%2Frelay.example",
+                        isEncrypted: false,
+                    },
+                },
+            },
+            UserMode.NewUser
+        );
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenCalledWith(expect.anything(), {
+            isP2P: true,
+        });
     });
 
     it("reserves Fetch when compatible imported settings activate an unconfigured device", async () => {

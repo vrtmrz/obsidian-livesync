@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — implemented and verified against the locked Commonlib package.
+Accepted — implemented and verified through Commonlib owner tests, the Compose transport suite, and the real-Obsidian setup workflow.
 
 ## Context
 
@@ -31,12 +31,12 @@ LiveSync does not call `close()` on the `RTCPeerConnection` values returned by `
 
 The explicit disconnect operation therefore has the following contract:
 
-| Resource | State after the operation |
-| --- | --- |
-| LiveSync P2P service and RPC room | Closed immediately. |
-| Trystero room membership | Left; room actions and advertisements are no longer available. |
-| Nostr relay WebSockets | Closed, with automatic reconnection paused. |
-| Underlying WebRTC peer | May remain idle under Trystero ownership for reuse, but cannot carry the departed room's traffic. |
+| Resource                          | State after the operation                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| LiveSync P2P service and RPC room | Closed immediately.                                                                               |
+| Trystero room membership          | Left; room actions and advertisements are no longer available.                                    |
+| Nostr relay WebSockets            | Closed, with automatic reconnection paused.                                                       |
+| Underlying WebRTC peer            | May remain idle under Trystero ownership for reuse, but cannot carry the departed room's traffic. |
 
 This operation is a logical LiveSync disconnection and a physical signalling-server disconnection. It does not promise that every browser-owned WebRTC object has been destroyed synchronously.
 
@@ -45,6 +45,8 @@ An explicit connect resumes relay reconnection before opening a new room. Settin
 Lifecycle operations on one `LiveSyncTrysteroReplicator` are serialised. A close requested while an open is in progress must leave no orphan room serving, and repeated opens must not create parallel rooms. No fixed delay is inserted between close and open: readiness is determined by the actual lifecycle operation and peer discovery.
 
 Relay sockets retain their Trystero-provided close handlers. LiveSync pauses relay reconnection, closes the sockets, and later resumes reconnection through Trystero's public functions. It does not replace `socket.onclose`, because Trystero uses that handler to retire and recreate shared relay clients correctly.
+
+P2P setup follows the transport's actual ownership model. First-device initialisation resets and scans the local database, but does not attempt to lock, reset, or upload to a non-existent central remote database. Its confirmation dialogues therefore describe preparing this device and do not present the central-server overwrite warnings or remote-configuration option. An additional device performs one explicit peer-selection and finite Fetch pass, then resumes database and Vault reflection. The generic second convergence pass remains reserved for central remote types because repeating it for P2P would ask the user to select the same peer twice.
 
 ## Ownership
 
@@ -72,13 +74,13 @@ This interferes with Trystero's shared relay clients. The public pause and resum
 
 ## Verification
 
-Commonlib unit tests prove that normal P2P host closure calls `room.leave()` without directly closing Trystero-owned peer connections. Additional package tests cover the action API, replaceable peer-event subscriptions, multiple RPC transport disposers, and serialised open and close operations.
+Commonlib unit tests prove that normal P2P host closure calls `room.leave()` without directly closing Trystero-owned peer connections. Additional package tests cover the action API, replaceable peer-event subscriptions, multiple RPC transport disposers, serialised open and close operations, local-only first-device initialisation, and one-pass additional-device Fetch.
 
 Self-hosted LiveSync unit tests prove that settings and database replacement leave panes on the current replicator, and that an explicit P2P rebuild bypasses the policy intended for ordinary replication.
 
 The canonical Compose P2P suite uses a real local Nostr relay and WebRTC implementation. It covers ordinary two-peer synchronisation, replacement of the active LiveSync replicator followed by discovery and transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. The lifecycle scenario is exposed only through a Docker test build and an injected CLI command runner; it is not part of the public CLI command surface.
 
-A focused real-Obsidian test mounts the P2P status pane without a relay or remote peer, verifies its principal connection control and horizontal layout, and confirms normal process and fixture teardown. Transport replacement and relay lifecycle remain owned by the package and Compose tests rather than being duplicated in Obsidian.
+The real-Obsidian P2P Setup URI workflow creates the first device, generates the second-device URI from it, accepts each peer visibly, and verifies a two-way note round-trip through a local relay. A separate focused pane test covers the principal connection control and teardown without requiring a remote peer. Transport replacement and relay-socket lifecycle remain owned by the package and Compose tests rather than being duplicated in Obsidian.
 
 ## Consequences
 

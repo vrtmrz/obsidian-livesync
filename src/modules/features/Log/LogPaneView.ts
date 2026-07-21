@@ -2,7 +2,7 @@ import { WorkspaceLeaf } from "@/deps.ts";
 import LogPaneComponent from "./LogPane.svelte";
 import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { SvelteItemView } from "@/common/SvelteItemView.ts";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { mount } from "svelte";
 export const VIEW_TYPE_LOG = "log-log";
 //Log view

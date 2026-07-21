@@ -10,6 +10,7 @@ export type StartObsidianLiveSyncSessionOptions = {
     startupGraceMs?: number;
     pluginData?: Record<string, unknown>;
     localStorageEntries?: Readonly<Record<string, string>>;
+    env?: NodeJS.ProcessEnv;
 };
 
 export async function startObsidianLiveSyncSession(
@@ -24,5 +25,6 @@ export async function startObsidianLiveSyncSession(
         startupGraceMs: options.startupGraceMs,
         pluginData: options.pluginData,
         localStorageEntries: options.localStorageEntries,
+        env: options.env,
     });
 }

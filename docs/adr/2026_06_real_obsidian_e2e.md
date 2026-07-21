@@ -6,7 +6,7 @@ Accepted / Implemented
 
 ## Release
 
-Not yet. Included in the 1.0.0 release preparation.
+Accepted — implemented as the maintained local E2E layer for the 1.0 release preparation.
 
 ## Context
 
@@ -148,9 +148,9 @@ Current verification:
 - `npm run test:e2e:obsidian:customisation-sync` verifies a two-vault Customisation Sync workflow: scan a real snippet CSS file, config JSON file, and sample plug-in fixture into per-file Customisation Sync data, synchronise them through CouchDB, apply them on the second vault, assert the resulting `.obsidian` files, propagate a snippet update, and verify deletion of the source-vault snippet sync data without confusing it with the target vault's own applied copy.
 - `npm run test:e2e:obsidian:setting-markdown-export` verifies that setting Markdown export creates a vault file and omits credentials when credential export is disabled.
 - `npm run test:e2e:obsidian:install-appimage` reuses the existing AppImage and extracted binary when they are already present.
-- `npm run test:e2e:obsidian:local-suite` runs the local verification sequence for the real Obsidian runner after CouchDB and MinIO have been started.
-- `npm run test:e2e:obsidian:local-suite:services` stops leftover CouchDB and MinIO fixtures, starts fresh fixtures, runs the local suite, and stops the fixtures again.
-- `npm run test:e2e:obsidian:local-suite:services` has been verified locally with real Obsidian, CouchDB, and MinIO. The run completed discovery, smoke, vault reflection, CouchDB upload, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export. The build step still emits existing Svelte warnings.
+- `npm run test:e2e:obsidian:local-suite` runs the local verification sequence for the real Obsidian runner after CouchDB, MinIO, and the P2P relay have been started.
+- `npm run test:e2e:obsidian:local-suite:services` stops leftover CouchDB, MinIO, and P2P relay fixtures, starts fresh fixtures, runs the local suite, and stops the fixtures again.
+- `npm run test:e2e:obsidian:local-suite:services` has been verified locally with real Obsidian and all three fixtures. In addition to the core launch and synchronisation scenarios, the maintained suite covers CouchDB, Object Storage, and P2P Setup URI workflows in which the working first device generates the URI imported by the second device.
 
 Known limits:
 
@@ -200,7 +200,7 @@ Current implementation status:
 Current implementation status:
 
 - The mocked Vitest browser suites, their P2P runner, their root-level relay helpers, and the manual `harness-ci` workflow have been removed after maintained suites covered the critical flows.
-- CouchDB and Object Storage combinations, with and without encryption, are owned by the CLI two-Vault matrix. P2P validation is owned by the CLI Compose E2E suite. Plug-in lifecycle and vault integration are owned by real Obsidian E2E.
+- Headless CouchDB and Object Storage combinations, with and without encryption, remain owned by the CLI two-Vault matrix. P2P transport replacement and relay lifecycle remain owned by the CLI Compose E2E suite. Real Obsidian owns the visible CouchDB, Object Storage, and P2P Setup URI workflows, including first-device URI generation, second-device import, and two-way Vault synchronisation.
 - The Obsidian compatibility implementation still needed by the Webapp has moved to `src/apps/webapp/obsidianMock.ts`; it is not a retained browser E2E Harness.
 - Remaining high-value scenarios, including RedFlag and Fast Setup (Simple Fetch) variants, should be added according to their owning integration boundary rather than copied line by line from the retired suite.
 
@@ -209,8 +209,8 @@ Current implementation status:
 Real Obsidian E2E is a local verification layer. It should not be wired into the default CI gate.
 
 - Keep the scripts individually runnable for focused local debugging.
-- Provide `test:e2e:obsidian:local-suite` for a broader local pass after the CouchDB and MinIO fixtures have been started.
-- Provide `test:e2e:obsidian:local-suite:services` for a broader local pass that manages the CouchDB and MinIO fixtures itself.
+- Provide `test:e2e:obsidian:local-suite` for a broader local pass after the CouchDB, MinIO, and P2P relay fixtures have been started.
+- Provide `test:e2e:obsidian:local-suite:services` for a broader local pass that manages all three fixtures itself.
 - Use `OBSIDIAN_BINARY` when testing against an installed desktop application.
 - Use `test:e2e:obsidian:install-appimage` on Linux when a local AppImage copy is needed, and reuse the extracted `_testdata/obsidian/squashfs-root` directory between local runs.
 - Capture Obsidian logs, plug-in logs, vault snapshots, and service logs manually when investigating failures.

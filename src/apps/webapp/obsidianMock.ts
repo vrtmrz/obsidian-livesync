@@ -5,6 +5,7 @@
  * Obsidian mock, and must not become a general test environment for the plug-in. When the Webapp compatibility boundary
  * is redesigned, replace this implementation here rather than extending it as a shared Obsidian simulation.
  */
+import { createNativeElement, createNativeFragment } from "@/apps/browserDom";
 import type {
     Command,
     DataWriteOptions,
@@ -456,7 +457,7 @@ class Workspace extends Events {
     revealLeaf() {
         return Promise.resolve();
     }
-    containerEl: HTMLElement = document.createElement("div");
+    containerEl: HTMLElement = createNativeElement(document, "div");
 }
 export class App {
     vaultName: string = "MockVault";
@@ -543,19 +544,19 @@ export class Modal {
 
     constructor(app: App) {
         this.app = app;
-        this.contentEl = document.createElement("div");
+        this.contentEl = createNativeElement(document, "div");
         this.contentEl.className = "modal-content";
-        this.titleEl = document.createElement("div");
+        this.titleEl = createNativeElement(document, "div");
         this.titleEl.className = "modal-title";
-        this.modalEl = document.createElement("div");
+        this.modalEl = createNativeElement(document, "div");
         this.modalEl.className = "modal";
-        this.modalEl.style.display = "none";
+        this.modalEl.hidden = true;
         this.modalEl.appendChild(this.titleEl);
         this.modalEl.appendChild(this.contentEl);
     }
     open() {
         this.isOpen = true;
-        this.modalEl.style.display = "block";
+        this.modalEl.hidden = false;
         if (!this.modalEl.parentElement) {
             document.body.appendChild(this.modalEl);
         }
@@ -563,7 +564,7 @@ export class Modal {
     }
     close() {
         this.isOpen = false;
-        this.modalEl.style.display = "none";
+        this.modalEl.hidden = true;
         this.onClose();
     }
     onOpen() {}
@@ -581,7 +582,7 @@ export class PluginSettingTab {
     constructor(app: App, plugin: Plugin) {
         this.app = app;
         this.plugin = plugin;
-        this.containerEl = document.createElement("div");
+        this.containerEl = createNativeElement(document, "div");
     }
     display() {}
 }
@@ -621,12 +622,12 @@ export class Component {
 }
 
 export class ButtonComponent extends Component {
-    buttonEl: HTMLButtonElement = document.createElement("button");
+    buttonEl: HTMLButtonElement = createNativeElement(document, "button");
     private clickHandler: ((evt: MouseEvent) => unknown) | null = null;
 
     constructor() {
         super();
-        this.buttonEl = document.createElement("button");
+        this.buttonEl = createNativeElement(document, "button");
         this.buttonEl.type = "button";
     }
 
@@ -664,12 +665,12 @@ export class ButtonComponent extends Component {
 }
 
 export class TextComponent extends Component {
-    inputEl: HTMLInputElement = document.createElement("input");
+    inputEl: HTMLInputElement = createNativeElement(document, "input");
     private changeHandler: ((value: string) => unknown) | null = null;
 
     constructor() {
         super();
-        this.inputEl = document.createElement("input");
+        this.inputEl = createNativeElement(document, "input");
         this.inputEl.type = "text";
     }
 
@@ -708,12 +709,12 @@ export class TextComponent extends Component {
 }
 
 export class ToggleComponent extends Component {
-    inputEl: HTMLInputElement = document.createElement("input");
+    inputEl: HTMLInputElement = createNativeElement(document, "input");
     private changeHandler: ((value: boolean) => unknown) | null = null;
 
     constructor() {
         super();
-        this.inputEl = document.createElement("input");
+        this.inputEl = createNativeElement(document, "input");
         this.inputEl.type = "checkbox";
     }
 
@@ -738,16 +739,16 @@ export class ToggleComponent extends Component {
 }
 
 export class DropdownComponent extends Component {
-    selectEl: HTMLSelectElement = document.createElement("select");
+    selectEl: HTMLSelectElement = createNativeElement(document, "select");
     private changeHandler: ((value: string) => unknown) | null = null;
 
     constructor() {
         super();
-        this.selectEl = document.createElement("select");
+        this.selectEl = createNativeElement(document, "select");
     }
 
     addOption(v: string, d: string) {
-        const option = document.createElement("option");
+        const option = createNativeElement(document, "option");
         option.value = v;
         option.textContent = d;
         this.selectEl.appendChild(option);
@@ -782,12 +783,12 @@ export class DropdownComponent extends Component {
 }
 
 export class SliderComponent extends Component {
-    inputEl: HTMLInputElement = document.createElement("input");
+    inputEl: HTMLInputElement = createNativeElement(document, "input");
     private changeHandler: ((value: number) => unknown) | null = null;
 
     constructor() {
         super();
-        this.inputEl = document.createElement("input");
+        this.inputEl = createNativeElement(document, "input");
         this.inputEl.type = "range";
     }
 
@@ -917,7 +918,7 @@ if (typeof HTMLElement !== "undefined") {
         info?: DomElementInfo | string,
         callback?: (element: HTMLDivElement) => void
     ): HTMLDivElement {
-        const element = document.createElement("div");
+        const element = createNativeElement(document, "div");
         applyDomElementInfo(element, info);
         this.appendChild(element);
         callback?.(element);
@@ -929,7 +930,7 @@ if (typeof HTMLElement !== "undefined") {
         info?: DomElementInfo | string,
         callback?: (element: HTMLElementTagNameMap[K]) => void
     ): HTMLElementTagNameMap[K] {
-        const element = document.createElement(tag);
+        const element = createNativeElement(document, tag);
         applyDomElementInfo(element, info);
         this.appendChild(element);
         callback?.(element);
@@ -940,7 +941,7 @@ if (typeof HTMLElement !== "undefined") {
         info?: DomElementInfo | string,
         callback?: (element: HTMLSpanElement) => void
     ): HTMLSpanElement {
-        const element = document.createElement("span");
+        const element = createNativeElement(document, "span");
         applyDomElementInfo(element, info);
         this.appendChild(element);
         callback?.(element);
@@ -980,7 +981,7 @@ export class FuzzySuggestModal<T> {
 
 function parseHtmlFragment(html: string): DocumentFragment {
     const parsed = new DOMParser().parseFromString(html, "text/html");
-    const fragment = document.createDocumentFragment();
+    const fragment = createNativeFragment(document);
     for (const child of [...parsed.body.childNodes]) {
         fragment.appendChild(document.importNode(child, true));
     }
@@ -999,7 +1000,7 @@ export class ItemView {}
 export class WorkspaceLeaf {}
 
 export function sanitizeHTMLToDom(html: string) {
-    const div = document.createElement("div");
+    const div = createNativeElement(document, "div");
     div.appendChild(parseHtmlFragment(html));
     return div;
 }

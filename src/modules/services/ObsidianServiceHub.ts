@@ -26,6 +26,7 @@ import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
 import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups";
+import { setLang } from "@/common/translation";
 
 // InjectableServiceHub
 
@@ -42,6 +43,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
 
         const setting = new ObsidianSettingService(context, {
             APIService: API,
+            onDisplayLanguageChanged: setLang,
         });
         const appLifecycle = new ObsidianAppLifecycleService(context, {
             settingService: setting,

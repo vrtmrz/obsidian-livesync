@@ -1,6 +1,6 @@
 # Utilities
 
-These utilities support self-hosted CouchDB provisioning and Setup URI generation. They consume an exact immutable `@vrtmrz/livesync-commonlib` registry version declared in `livesync-commonlib-version.ts`; the utility lockfile records its resolved package integrity. The setup-tool test keeps the domain-specific static npm specifiers aligned with that declaration. Update the declaration, the two facades, and the lockfile together when selecting a newer release.
+These utilities support self-hosted CouchDB provisioning and Setup URI generation. They consume an exact immutable `@vrtmrz/livesync-commonlib` registry version declared in `livesync-commonlib-version.ts`; the utility lockfile records its resolved package integrity. This selection is independent of the plug-in's runtime dependency and advances only when the utility behaviour is revalidated against a newer package. The setup-tool test keeps the domain-specific static npm specifiers aligned with that declaration. Update the declaration, the two facades, and the lockfile together when selecting a newer release.
 
 ## CouchDB provisioning
 

@@ -1,5 +1,5 @@
 import { MarkdownRenderer } from "@/deps.ts";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {

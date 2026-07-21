@@ -202,7 +202,7 @@ Store the Setup URI and its passphrase separately.
 
 Follow [Quick setup](./quick_setup.md#set-up-the-first-device) for the first device. It covers the current onboarding Notice, Setup URI import, server initialisation, and the safety prompts shown for a newly provisioned database.
 
-After ordinary note synchronisation works, follow [Add another device](./quick_setup.md#add-another-device). Configure optional features only after the normal path is verified; [Hidden File Sync has its own guide](./tips/hidden-file-sync.md).
+After ordinary note synchronisation works, [generate a new Setup URI on that first device](./quick_setup.md#create-a-setup-uri-for-another-device), then follow [Add another device](./quick_setup.md#add-another-device). Do not make the second device depend on retaining the provisioning-time bootstrap URI. Configure optional features only after the normal path is verified; [Hidden File Sync has its own guide](./tips/hidden-file-sync.md).
 
 ---
 

@@ -1,7 +1,7 @@
 import { type Editor, type MarkdownFileInfo, type MarkdownView } from "@/deps.ts";
 import { addIcon } from "@/deps.ts";
 import { type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 // Obsidian specific menu commands.

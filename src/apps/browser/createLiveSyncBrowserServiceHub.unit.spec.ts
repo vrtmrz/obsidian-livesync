@@ -15,8 +15,8 @@ describe("LiveSync browser service context contract", () => {
         });
         const hub = createLiveSyncBrowserServiceHub({ context });
 
-        expect(observeServiceContext(context, "message")).toEqual({
-            translation: "webapp:message",
+        expect(observeServiceContext(context, "moduleLocalDatabase.logWaitingForReady")).toEqual({
+            translation: "webapp:moduleLocalDatabase.logWaitingForReady",
             receivedEvents: ["context-contract-event"],
         });
         const composition = observeServiceComposition(hub, context);

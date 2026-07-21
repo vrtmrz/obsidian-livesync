@@ -13,7 +13,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";

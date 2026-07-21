@@ -13,7 +13,7 @@ import {
     eventHub,
 } from "@/common/events.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { performDoctorConsultation, RebuildOptions } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { isValidPath } from "@/common/utils.ts";
 import { isMetaEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";

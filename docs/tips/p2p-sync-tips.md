@@ -10,6 +10,8 @@ authors:
 
 # Peer-to-Peer Synchronisation Tips
 
+For the complete first-device, Setup URI, second-device, and two-way verification procedure, see [Set up peer-to-peer synchronisation](../setup_p2p.md).
+
 > [!IMPORTANT]
 > Peer-to-peer synchronisation is a supported opt-in feature. WebRTC connectivity still depends on the networks, relays, and optional TURN servers available to every device, so a working connection cannot be guaranteed in every environment.
 

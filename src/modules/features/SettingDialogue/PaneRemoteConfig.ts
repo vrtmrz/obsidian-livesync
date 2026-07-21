@@ -8,7 +8,7 @@ import {
     LOG_LEVEL_VERBOSE,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Menu, type ButtonComponent } from "@/deps.ts";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";

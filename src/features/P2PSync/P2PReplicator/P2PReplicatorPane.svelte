@@ -17,7 +17,7 @@
         EVENT_P2P_REPLICATOR_STATUS,
     } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
-    import { $msg as _msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+    import { $msg as _msg } from "@/common/translation";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";

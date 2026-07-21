@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { translateIfAvailable as translate } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+    import { translateIfAvailable as translate } from "@/common/translation";
     import { fireAndForget } from "octagonal-wheels/promises";
 
     type Props = {

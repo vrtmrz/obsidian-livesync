@@ -73,8 +73,6 @@ export default defineConfig(
     {
         files: ["src/apps/browser/**/*.ts", "src/apps/webapp/**/*.ts"],
         rules: {
-            "obsidianmd/no-static-styles-assignment": "off",
-            "obsidianmd/prefer-create-el": "off",
             "obsidianmd/prefer-active-doc": "off",
         },
     }

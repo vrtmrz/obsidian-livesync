@@ -1,14 +1,11 @@
 import { type App, type Plugin, Notice } from "@/deps";
 import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
 import { EVENT_PLUGIN_UNLOADED } from "@/common/events";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import type { Confirm, ConfirmActionLayout } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import { confirmAction, pickOne, promptPassword, promptText } from "@vrtmrz/obsidian-plugin-kit";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
-import {
-    confirmWithMessageWithWideButton,
-    confirmWithMessage as confirmWithLegacyMessage,
-} from "@/modules/coreObsidian/UILib/dialogs";
+import { confirmWithMessageWithWideButton } from "@/modules/coreObsidian/UILib/dialogs";
 
 export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceContext> implements Confirm {
     private _context: T;
@@ -49,6 +46,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
                     yes: $msg("moduleInputUIObsidian.optionYes"),
                     no: $msg("moduleInputUIObsidian.optionNo"),
                 },
+                actionLayout: "vertical",
                 defaultAction: "no",
                 sourcePath: "/",
             },
@@ -92,6 +90,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
                     message,
                     actions: ["Yes", "No"] as const,
                     labels: { Yes: yesLabel, No: noLabel },
+                    actionLayout: "vertical",
                     defaultAction: opt.defaultOption === "Yes" ? "Yes" : "No",
                     sourcePath: "/",
                 },
@@ -136,6 +135,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
                     title: opt.title || defaultTitle,
                     message,
                     actions: buttons,
+                    actionLayout: "vertical",
                     defaultAction: opt.defaultAction,
                     sourcePath: "/",
                 },
@@ -210,7 +210,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
         actionLayout?: ConfirmActionLayout
     ): Promise<(typeof buttons)[number] | false> {
         if (this.hasCountdown(timeout)) {
-            return confirmWithLegacyMessage(this._plugin, title, contentMd, buttons, defaultAction, timeout);
+            return confirmWithMessageWithWideButton(this._plugin, title, contentMd, buttons, defaultAction, timeout);
         }
         const result = await confirmAction(
             this._app,
@@ -220,7 +220,7 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
                 actions: buttons,
                 defaultAction,
                 sourcePath: "/",
-                ...(actionLayout === undefined ? {} : { actionLayout }),
+                actionLayout: actionLayout ?? "vertical",
             },
             this.dialogueLifecycle
         );

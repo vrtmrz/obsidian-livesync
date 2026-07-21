@@ -91,6 +91,14 @@ Deno.test("generates a random-room P2P Setup URI without copying a device identi
     "P2P auto-broadcast was enabled without an explicit request",
   );
   assert(
+    effective.customChunkSize === 0,
+    "the P2P profile inherited the self-hosted CouchDB chunk-size recommendation",
+  );
+  assert(
+    effective.sendChunksBulkMaxSize === 1,
+    "the P2P profile did not retain the conservative manual resend size",
+  );
+  assert(
     !Object.hasOwn(decoded, "P2P_DevicePeerName"),
     "the Setup URI copied a device-specific P2P peer name",
   );

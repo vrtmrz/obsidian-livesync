@@ -3,7 +3,7 @@
     import { logMessages } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
     import { reactive, type ReactiveInstance } from "octagonal-wheels/dataobject/reactive";
     import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-    import { $msg as msg, currentLang as lang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+    import { $msg as msg, currentLang as lang } from "@/common/translation";
     import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
     let unsubscribe: () => void;

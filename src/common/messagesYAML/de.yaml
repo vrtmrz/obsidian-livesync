@@ -1,0 +1,412 @@
+(Active): (Aktiv)
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.:
+  (RegExp) Leer lassen, um alle Dateien zu synchronisieren. Legen Sie einen
+  Filter als regulären Ausdruck fest, um die zu synchronisierenden Dateien
+  einzuschränken.
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.:
+  (RegExp) Wenn dies gesetzt ist, werden alle Änderungen an lokalen und
+  Remote-Dateien übersprungen, die diesem Muster entsprechen.
+Activate: Aktivieren
+Add default patterns: Standardmuster hinzufügen
+Add new connection: Neue Verbindung hinzufügen
+Back: Zurück
+Back to non-configured: Zurück auf nicht konfiguriert
+Cancel: Abbrechen
+Check and convert non-path-obfuscated files: Nicht pfadverschleierte Dateien prüfen und konvertieren
+Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.:
+  Prüft Dokumente, die noch nicht in pfadverschleierte IDs umgewandelt wurden,
+  und konvertiert sie bei Bedarf.
+cmdConfigSync:
+  showCustomizationSync: Anpassungssynchronisation anzeigen
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.:
+  Vergleicht den Inhalt der Dateien zwischen lokaler Datenbank und Speicher. Bei
+  Abweichungen werden Sie gefragt, welche Version behalten werden soll.
+Compatibility (Conflict Behaviour): Kompatibilität (Konfliktverhalten)
+Compatibility (Database structure): Kompatibilität (Datenbankstruktur)
+Compatibility (Internal API Usage): Kompatibilität (interne API-Nutzung)
+Compatibility (Metadata): Kompatibilität (Metadaten)
+Compatibility (Remote Database): Kompatibilität (Remote-Datenbank)
+Compatibility (Trouble addressed): Kompatibilität (Problembehebung)
+Configure: Konfigurieren
+Configure And Change Remote: Remote konfigurieren und wechseln
+Configure E2EE: E2EE konfigurieren
+Configure Remote: Remote konfigurieren
+Copy: Kopieren
+Cross-platform: Plattformübergreifend
+"Current adapter: {adapter}": "Aktueller Adapter: {adapter}"
+Customization Sync (Beta3): Anpassungssynchronisation (Beta3)
+Database Adapter: Datenbankadapter
+Default: Standard
+Delete: Löschen
+Delete all customization sync data: Alle Anpassungssynchronisationsdaten löschen
+Delete all data on the remote server.: Alle Daten auf dem Remote-Server löschen.
+Delete local database to reset or uninstall Self-hosted LiveSync:
+  Lokale Datenbank löschen, um Self-hosted LiveSync zurückzusetzen oder zu
+  deinstallieren
+Delete Remote Configuration: Remote-Konfiguration löschen
+Delete remote configuration '{name}'?: Remote-Konfiguration „{name}“ löschen?
+desktop: Desktop
+Device name: Gerätename
+Disables all synchronization and restart.: Deaktiviert die gesamte Synchronisation und startet neu.
+Display name: Anzeigename
+Duplicate: Duplizieren
+Duplicate remote: Remote duplizieren
+E2EE Configuration: E2EE-Konfiguration
+Edge case addressing (Behaviour): Behandlung von Randfällen (Verhalten)
+Edge case addressing (Database): Behandlung von Randfällen (Datenbank)
+Edge case addressing (Processing): Behandlung von Randfällen (Verarbeitung)
+Emergency restart: Notfallneustart
+Encrypting sensitive configuration items: Sensible Konfigurationseinträge verschlüsseln
+Export: Exportieren
+Fetch remote settings: Remote-Einstellungen abrufen
+File to resolve conflict: Datei zur Konfliktlösung
+Flag and restart: Markieren und neu starten
+Fresh Start Wipe: Für Neustart vollständig bereinigen
+Garbage Collection V3 (Beta): Datenbereinigung V3 (Beta)
+Hidden Files: Versteckte Dateien
+Hide completely: Vollständig ausblenden
+How to display network errors when the sync server is unreachable.:
+  Legt fest, wie Netzwerkfehler angezeigt werden, wenn der
+  Synchronisationsserver nicht erreichbar ist.
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.:
+  Wenn aktiviert, wird das Symbol ⛔ im Status statt im Dateiwarnungsbanner
+  angezeigt. Es werden keine Details angezeigt.
+Ignore patterns: Ausschlussmuster
+Import connection: Verbindung importieren
+Initialise all journal history, On the next sync, every item will be received and sent.:
+  Gesamte Journal-Historie initialisieren. Beim nächsten Sync werden alle
+  Elemente empfangen und gesendet.
+Later: Später
+"Limit: {datetime} ({timestamp})": "Grenze: {datetime} ({timestamp})"
+Lock: Sperren
+Lock Server: Server sperren
+Lock the remote server to prevent synchronization with other devices.:
+  Sperrt den Remote-Server, um die Synchronisation mit anderen Geräten zu
+  verhindern.
+More actions: Weitere Aktionen
+Network warning style: Stil der Netzwerkwarnung
+New Remote: Neues Remote
+No limit configured: Kein Limit konfiguriert
+Non-Synchronising files: Nicht zu synchronisierende Dateien
+Normal Files: Normale Dateien
+obsidianLiveSyncSettingTab:
+  btnApply: Anwenden
+  btnDisable: Deaktivieren
+  btnNext: Weiter
+  buttonNext: Weiter
+  defaultLanguage: Standardsprache
+  labelDisabled: "⏹️ : Deaktiviert"
+  labelEnabled: "🔁 : Aktiviert"
+  logConfiguredDisabled: "Konfigurierter Synchronisationsmodus: DEAKTIVIERT"
+  logConfiguredLiveSync: "Konfigurierter Synchronisationsmodus: LiveSync"
+  logConfiguredPeriodic: "Konfigurierter Synchronisationsmodus: Periodisch"
+  logSelectAnyPreset: Wählen Sie eine beliebige Voreinstellung aus.
+  msgConfigCheckFailed: Die Konfigurationsprüfung ist fehlgeschlagen. Trotzdem fortfahren?
+  msgEnableEncryptionRecommendation: Wir empfehlen, Ende-zu-Ende-Verschlüsselung
+    und Pfadverschleierung zu aktivieren. Möchten Sie wirklich ohne
+    Verschlüsselung fortfahren?
+  msgFetchConfigFromRemote: Möchten Sie die Konfiguration vom Remote-Server abrufen?
+  msgGenerateSetupURI: Alles fertig! Möchten Sie eine Setup-URI erzeugen, um
+    andere Geräte einzurichten?
+  msgInvalidPassphrase: Ihre Verschlüsselungs-Passphrase könnte ungültig sein.
+    Möchten Sie wirklich fortfahren?
+  msgSelectAndApplyPreset: Bitte wählen und übernehmen Sie eine beliebige
+    Voreinstellung, um den Assistenten abzuschließen.
+  nameDisableHiddenFileSync: Synchronisation versteckter Dateien deaktivieren
+  nameEnableHiddenFileSync: Synchronisation versteckter Dateien aktivieren
+  nameHiddenFileSynchronization: Synchronisation versteckter Dateien
+  optionDisableAllAutomatic: Alle automatischen Vorgänge deaktivieren
+  optionLiveSync: LiveSync-Modus
+  optionOnEvents: Bei Ereignissen
+  optionPeriodicAndEvents: Periodisch und bei Ereignissen
+  optionPeriodicWithBatch: Periodisch mit Stapelverarbeitung
+  titleAppearance: Darstellung
+  titleConflictResolution: Konfliktbehandlung
+  titleCongratulations: Glückwunsch!
+  titleCouchDB: CouchDB-Server
+  titleDeletionPropagation: Weitergabe von Löschungen
+  titleEncryptionNotEnabled: Verschlüsselung ist nicht aktiviert
+  titleEncryptionPassphraseInvalid: Ungültige Verschlüsselungs-Passphrase
+  titleFetchConfig: Konfiguration abrufen
+  titleHiddenFiles: Versteckte Dateien
+  titleLogging: Protokollierung
+  titleMinioS3R2: MinIO / S3 / R2
+  titleNotification: Benachrichtigungen
+  titleRemoteConfigCheckFailed: Prüfung der Remote-Konfiguration fehlgeschlagen
+  titleRemoteServer: Remote-Server
+  titleSynchronizationMethod: Synchronisationsmethode
+  titleSynchronizationPreset: Synchronisationsvorgabe
+  titleSyncSettingsViaMarkdown: Synchronisationseinstellungen per Markdown
+  titleUpdateThinning: Update-Ausdünnung
+Ok: OK
+Old Algorithm: Alter Algorithmus
+Older fallback (Slow, W/O WebAssembly): Älterer Fallback (langsam, ohne WebAssembly)
+Overwrite patterns: Überschreibungsmuster
+Overwrite remote: Remote überschreiben
+Overwrite remote with local DB and passphrase.: Remote mit lokaler Datenbank und Passphrase überschreiben.
+Overwrite Server Data with This Device's Files: Serverdaten mit den Dateien dieses Geräts überschreiben
+paneMaintenance:
+  markDeviceResolvedAfterBackup: Markieren Sie das Gerät nach der Sicherung als gelöst.
+  remoteLockedAndDeviceNotAccepted: Die Remote-Datenbank ist gesperrt und dieses
+    Gerät wurde noch nicht akzeptiert.
+  remoteLockedResolvedDevice: Die Remote-Datenbank ist gesperrt. Dieses Gerät wurde bereits akzeptiert.
+  unlockDatabaseReady: Die Datenbank kann jetzt entsperrt werden.
+Paste a connection string: Verbindungszeichenfolge einfügen
+Patterns to match files for overwriting instead of merging: Muster zum Erkennen
+  von Dateien, die überschrieben statt zusammengeführt werden sollen
+Patterns to match files for syncing: Muster zum Erkennen von Dateien für die Synchronisation
+Peer-to-Peer Synchronisation: Peer-to-Peer-Synchronisation
+Perform: Ausführen
+Perform cleanup: Bereinigung ausführen
+Perform Garbage Collection: Garbage Collection ausführen
+Perform Garbage Collection to remove unused chunks and reduce database size.:
+  Führt Garbage Collection aus, um ungenutzte Chunks zu entfernen und die
+  Datenbankgröße zu reduzieren.
+Pick a file to resolve conflict: Datei zur Konfliktlösung auswählen
+Please set this device name: Bitte legen Sie den Namen dieses Geräts fest
+PureJS fallback  (Fast, W/O WebAssembly): PureJS-Fallback (schnell, ohne WebAssembly)
+Purge all download/upload cache.: Gesamten Download-/Upload-Cache leeren.
+Purge all journal counter: Alle Journal-Zähler leeren
+Rebuild local and remote database with local files.: Lokale und Remote-Datenbank anhand der lokalen Dateien neu aufbauen.
+Rebuilding Operations (Remote Only): Neuaufbau-Vorgänge (nur Remote)
+Recreate all: Alle neu erstellen
+Recreate missing chunks for all files: Fehlende Chunks für alle Dateien neu erstellen
+Remediation: Problembehebung
+Remediation Setting Changed: Problembehebungs-Einstellung geändert
+Remote Database Tweak (In sunset): Remote-Datenbank-Optimierung (wird eingestellt)
+Remote Databases: Remote-Datenbanken
+Remote name: Remote-Name
+Rename: Umbenennen
+Resend: Erneut senden
+Resend all chunks to the remote.: Alle Chunks erneut an das Remote senden.
+Reset: Zurücksetzen
+Reset all: Alles zurücksetzen
+Reset all journal counter: Alle Journal-Zähler zurücksetzen
+Reset journal received history: Empfangsverlauf des Journals zurücksetzen
+Reset journal sent history: Sendeverlauf des Journals zurücksetzen
+Reset received: Empfang zurücksetzen
+Reset sent history: Sendeverlauf zurücksetzen
+Reset Synchronisation information: Synchronisationsinformationen zurücksetzen
+Reset Synchronisation on This Device: Synchronisation auf diesem Gerät zurücksetzen
+Resolve All: Alle auflösen
+Resolve all conflicted files: Alle Konfliktdateien auflösen
+Resolve All conflicted files by the newer one: Alle Konfliktdateien mit der neueren Version auflösen
+"Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.":
+  "Löst alle Konfliktdateien zugunsten der neueren Version auf. Achtung: Dadurch
+  wird die ältere Version überschrieben und kann nicht wiederhergestellt
+  werden."
+Restart Now: Jetzt neu starten
+Restore or reconstruct local database from remote.: Lokale Datenbank aus dem Remote wiederherstellen oder neu aufbauen.
+Schedule and Restart: Planen und neu starten
+Scram!: Notfallmaßnahmen
+Select the database adapter to use.: Wählen Sie den zu verwendenden Datenbankadapter aus.
+Send: Senden
+Send chunks: Chunks senden
+Setting:
+  GenerateKeyPair:
+    Desc: >-
+      Wir haben ein Schlüsselpaar erzeugt!
+
+
+      Hinweis: Dieses Schlüsselpaar wird nie wieder angezeigt. Bitte bewahren
+      Sie es an einem sicheren Ort auf. Wenn Sie es verlieren, müssen Sie ein
+      neues Schlüsselpaar erzeugen.
+
+      Hinweis 2: Der öffentliche Schlüssel liegt im SPKI-Format vor, der private
+      Schlüssel im PKCS8-Format. Zur besseren Handhabung werden Zeilenumbrüche
+      im öffentlichen Schlüssel zu `\n` umgewandelt.
+
+      Hinweis 3: Der öffentliche Schlüssel sollte in der Remote-Datenbank
+      hinterlegt werden, der private Schlüssel auf den lokalen Geräten.
+
+
+      >[!NUR FÜR IHRE AUGEN]-
+
+      > <div class="sls-keypair">
+
+      >
+
+      > ### Öffentlicher Schlüssel
+
+      > ```
+
+      ${public_key}
+
+      > ```
+
+      >
+
+      > ### Privater Schlüssel
+
+      > ```
+
+      ${private_key}
+
+      > ```
+
+      >
+
+      > </div>
+
+
+      >[!Beides zum Kopieren]-
+
+      >
+
+      > <div class="sls-keypair">
+
+      >
+
+      > ```
+
+      ${public_key}
+
+      ${private_key}
+
+      > ```
+
+      >
+
+      > </div>
+    Title: Neues Schlüsselpaar wurde erzeugt!
+Show full banner: Vollständiges Banner anzeigen
+Show icon only: Nur Symbol anzeigen
+Show status icon instead of file warnings banner: Statussymbol statt Dateiwarnungsbanner anzeigen
+Switch to IDB: Zu IDB wechseln
+Switch to IndexedDB: Zu IndexedDB wechseln
+Synchronising files: Zu synchronisierende Dateien
+Syncing: Synchronisierung
+Target patterns: Zielmuster
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.:
+  Dadurch werden die Chunks für alle Dateien neu erstellt. Falls Chunks fehlen,
+  können die Fehler dadurch behoben werden.
+Verify all: Alle prüfen
+Verify and repair all files: Alle Dateien prüfen und reparieren
+xxhash32 (Fast but less collision resistance): xxhash32 (schnell, aber geringere Kollisionsresistenz)
+xxhash64 (Fastest): xxhash64 (am schnellsten)
+"Welcome to Self-hosted LiveSync": "Willkommen bei Self-hosted LiveSync"
+"We will now guide you through a few questions to simplify the synchronisation setup.": "Wir führen Sie nun durch einige Fragen, um die Synchronisationseinrichtung zu vereinfachen."
+"First, please select the option that best describes your current situation.": "Wählen Sie bitte zuerst die Option aus, die Ihre aktuelle Situation am besten beschreibt."
+"I am setting this up for the first time": "Ich richte dies zum ersten Mal ein"
+"(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Wählen Sie dies, wenn Sie dieses Gerät als erstes Synchronisationsgerät einrichten.) Diese Option ist geeignet, wenn Sie LiveSync neu verwenden und von Grund auf einrichten möchten."
+"I am adding a device to an existing synchronisation setup": "Ich füge ein Gerät zu einer bestehenden Synchronisationseinrichtung hinzu"
+"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Wählen Sie dies, wenn Sie die Synchronisation bereits auf einem anderen Computer oder Smartphone verwenden.) Diese Option ist geeignet, wenn Sie dieses Gerät zu einer bestehenden LiveSync-Einrichtung hinzufügen möchten."
+"Yes, I want to set up a new synchronisation": "Ja, ich möchte eine neue Synchronisation einrichten"
+"Yes, I want to add this device to my existing synchronisation": "Ja, ich möchte dieses Gerät zu meiner bestehenden Synchronisation hinzufügen"
+"No, please take me back": "Nein, bitte zurück"
+"Device Setup Method": "Einrichtungsmethode für das Gerät"
+"You are adding this device to an existing synchronisation setup.": "Sie fügen dieses Gerät zu einer bestehenden Synchronisationseinrichtung hinzu."
+"Please select a method to import the settings from another device.": "Bitte wählen Sie eine Methode, um die Einstellungen von einem anderen Gerät zu importieren."
+"Use a Setup URI (Recommended)": "Setup-URI verwenden (empfohlen)"
+"Paste the Setup URI generated from one of your active devices.": "Fügen Sie die Setup-URI ein, die auf einem Ihrer aktiven Geräte erzeugt wurde。"
+"Scan a QR Code (Recommended for mobile)": "QR-Code scannen (für Mobilgeräte empfohlen)"
+"Scan the QR code displayed on an active device using this device's camera.": "Scannen Sie den auf einem aktiven Gerät angezeigten QR-Code mit der Kamera dieses Geräts。"
+"Enter the server information manually": "Serverinformationen manuell eingeben"
+"Configure the same server information as your other devices again, manually, very advanced users only.": "Geben Sie dieselben Serverinformationen wie auf Ihren anderen Geräten erneut manuell ein. Nur für sehr erfahrene Benutzer。"
+"Proceed with Setup URI": "Mit Setup-URI fortfahren"
+"I know my server details, let me enter them": "Ich kenne meine Serverdaten, ich gebe sie selbst ein"
+"Please select an option to proceed": "Bitte wählen Sie eine Option, um fortzufahren"
+"Connection Method": "Verbindungsmethode"
+"We will now proceed with the server configuration.": "Wir fahren nun mit der Serverkonfiguration fort。"
+"How would you like to configure the connection to your server?": "Wie möchten Sie die Verbindung zu Ihrem Server konfigurieren?"
+"A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.": "Eine Setup-URI ist eine einzelne Zeichenfolge, die Ihre Serveradresse und Authentifizierungsdaten enthält. Wenn Ihre Serverinstallation eine URI erzeugt hat, bietet deren Verwendung eine einfache und sichere Konfiguration。"
+"This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": "Dies ist eine erweiterte Option für Benutzer, die keine URI haben oder detaillierte Einstellungen manuell konfigurieren möchten。"
+"Enter Server Information": "Serverinformationen eingeben"
+"Please select the type of server to which you are connecting.": "Bitte wählen Sie den Servertyp aus, mit dem Sie sich verbinden。"
+"Continue to CouchDB setup": "Weiter zur CouchDB-Einrichtung"
+"Continue to S3/MinIO/R2 setup": "Weiter zur S3/MinIO/R2-Einrichtung"
+"Continue to Peer-to-Peer only setup": "Weiter zur reinen Peer-to-Peer-Einrichtung"
+"This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.": "Dies ist die für das Design am besten geeignete Synchronisationsmethode. Alle Funktionen sind verfügbar. Sie müssen eine CouchDB-Instanz eingerichtet haben。"
+"S3/MinIO/R2 Object Storage": "S3-/MinIO-/R2-Objektspeicher"
+"Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": "Synchronisation über Journaldateien. Sie müssen einen S3/MinIO/R2-kompatiblen Objektspeicher eingerichtet haben。"
+"Peer-to-Peer only": "Nur Peer-to-Peer"
+"This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "Diese Funktion ermöglicht die direkte Synchronisation zwischen Geräten. Es wird kein Server benötigt, aber beide Geräte müssen gleichzeitig online sein, damit synchronisiert werden kann, und einige Funktionen können eingeschränkt sein. Eine Internetverbindung wird nur für das Signalling (Erkennen von Peers) benötigt, nicht für die Datenübertragung。"
+Setup:
+  RemoteE2EE:
+    Title: Ende-zu-Ende-Verschlüsselung
+    Guidance: Bitte konfigurieren Sie Ihre Einstellungen für die Ende-zu-Ende-Verschlüsselung.
+    LabelEncrypt: Ende-zu-Ende-Verschlüsselung
+    PlaceholderPassphrase: Geben Sie Ihre Passphrase ein
+    StronglyRecommendedTitle: Dringend empfohlen
+    StronglyRecommendedLine1: Wenn Sie die Ende-zu-Ende-Verschlüsselung aktivieren, werden Ihre Daten auf Ihrem Gerät verschlüsselt, bevor sie an den Remote-Server gesendet werden. Das bedeutet, dass selbst bei Zugriff auf den Server niemand Ihre Daten ohne die Passphrase lesen kann. Merken Sie sich Ihre Passphrase unbedingt, da sie auch auf anderen Geräten zum Entschlüsseln Ihrer Daten benötigt wird.
+    StronglyRecommendedLine2: >-
+      Bitte beachten Sie außerdem: Wenn Sie Peer-to-Peer-Synchronisation verwenden, wird diese Konfiguration auch dann genutzt, wenn Sie künftig zu anderen Methoden wechseln und sich mit einem Remote-Server verbinden.
+    MultiDestinationWarning: Diese Einstellung muss auch dann identisch sein, wenn Sie sich mit mehreren Synchronisationszielen verbinden.
+    LabelObfuscateProperties: Eigenschaften verschleiern
+    ObfuscatePropertiesDesc: Das Verschleiern von Eigenschaften (z. B. Dateipfad, Größe sowie Erstellungs- und Änderungsdatum) fügt eine zusätzliche Sicherheitsebene hinzu, da die Struktur und die Namen Ihrer Dateien und Ordner auf dem Remote-Server schwerer erkennbar sind. Das schützt Ihre Privatsphäre und erschwert es unbefugten Personen, Informationen über Ihre Daten abzuleiten.
+    AdvancedTitle: Erweitert
+    LabelEncryptionAlgorithm: Verschlüsselungsalgorithmus
+    DefaultAlgorithmDesc: In den meisten Fällen sollten Sie beim Standardalgorithmus (${algorithm}) bleiben. Diese Einstellung ist nur erforderlich, wenn Sie bereits einen Vault haben, der in einem anderen Format verschlüsselt wurde.
+    AlgorithmWarning: Wenn Sie den Verschlüsselungsalgorithmus ändern, können Sie nicht mehr auf Daten zugreifen, die zuvor mit einem anderen Algorithmus verschlüsselt wurden. Stellen Sie sicher, dass alle Ihre Geräte denselben Algorithmus verwenden, damit der Zugriff auf Ihre Daten erhalten bleibt.
+    PassphraseValidationLine1: Bitte beachten Sie, dass die Passphrase für die Ende-zu-Ende-Verschlüsselung erst geprüft wird, wenn der Synchronisationsvorgang tatsächlich beginnt. Dies ist eine Sicherheitsmaßnahme zum Schutz Ihrer Daten.
+    PassphraseValidationLine2: Daher bitten wir Sie, beim manuellen Konfigurieren der Serverinformationen äußerst vorsichtig zu sein. Wenn eine falsche Passphrase eingegeben wird, werden die Daten auf dem Server beschädigt. Bitte haben Sie Verständnis dafür, dass dies beabsichtigtes Verhalten ist.
+    ButtonProceed: Fortfahren
+    ButtonCancel: Abbrechen
+  UseSetupURI:
+    Title: Setup-URI eingeben
+    GuidanceLine1: Bitte geben Sie die Setup-URI ein, die während der Servereinrichtung oder auf einem anderen Gerät erzeugt wurde, zusammen mit der Passphrase des Vaults.
+    GuidanceLine2: Sie können eine neue Setup-URI erzeugen, indem Sie im Befehlsmenü den Befehl „Einstellungen als neue Setup-URI kopieren“ ausführen.
+    LabelSetupURI: Setup-URI
+    ValidInfo: Die Setup-URI ist gültig und kann verwendet werden.
+    InvalidInfo: Die Setup-URI ist ungültig. Bitte prüfen Sie sie und versuchen Sie es erneut.
+    LabelPassphrase: Vault-Passphrase
+    PlaceholderPassphrase: Geben Sie die Passphrase Ihres Vaults ein
+    ErrorPassphraseRequired: Bitte geben Sie die Passphrase des Vaults ein.
+    ErrorFailedToParse: Die Setup-URI konnte nicht verarbeitet werden. Bitte prüfen Sie URI und Passphrase.
+    ButtonProceed: Einstellungen testen und fortfahren
+    ButtonCancel: Abbrechen
+  ScanQRCode:
+    Title: QR-Code scannen
+    Guidance: Bitte folgen Sie den untenstehenden Schritten, um die Einstellungen von Ihrem vorhandenen Gerät zu importieren.
+    Step1: Lassen Sie auf diesem Gerät bitte diesen Vault geöffnet.
+    Step2: Öffnen Sie auf dem Quellgerät Obsidian.
+    Step3: Führen Sie auf dem Quellgerät im Befehlsmenü den Befehl „Einstellungen als QR-Code anzeigen“ aus.
+    Step4: Wechseln Sie auf diesem Gerät zur Kamera-App oder verwenden Sie einen QR-Code-Scanner, um den angezeigten QR-Code zu scannen.
+    ButtonClose: Diesen Dialog schließen
+"Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": Bitte aktivieren Sie „Compute revisions for chunks“ in den Einstellungen, um die Garbage Collection zu verwenden.
+"Please disable 'Read chunks online' in settings to use Garbage Collection.": Bitte deaktivieren Sie „Read chunks online“ in den Einstellungen, um die Garbage Collection zu verwenden.
+"Setup URI dialog cancelled.": Setup-URI-Dialog abgebrochen.
+"Please select 'Cancel' explicitly to cancel this operation.": Bitte wählen Sie ausdrücklich „Abbrechen“, um diesen Vorgang abzubrechen.
+"Failed to connect to remote for compaction.": Verbindung zur Remote-Datenbank für die Komprimierung fehlgeschlagen.
+"Failed to connect to remote for compaction. ${reason}": Verbindung zur Remote-Datenbank für die Komprimierung fehlgeschlagen. ${reason}
+"Compaction in progress on remote database...": Komprimierung auf der Remote-Datenbank läuft...
+"Compaction on remote database timed out.": Die Komprimierung auf der Remote-Datenbank hat eine Zeitüberschreitung erreicht.
+"Compaction on remote database completed successfully.": Die Komprimierung auf der Remote-Datenbank wurde erfolgreich abgeschlossen.
+"Compaction on remote database failed.": Die Komprimierung auf der Remote-Datenbank ist fehlgeschlagen.
+"Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": Die Einmal-Replikation vor der Garbage Collection konnte nicht gestartet werden. Die Garbage Collection wurde abgebrochen.
+"Cancel Garbage Collection": Garbage Collection abbrechen
+"No connected device information found. Cancelling Garbage Collection.": Keine Informationen zu verbundenen Geräten gefunden. Garbage Collection wird abgebrochen.
+"The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": |-
+  Für die folgenden akzeptierten Knoten fehlen die Knoteninformationen:
+  - ${missingNodes}
+
+  Das deutet darauf hin, dass sie seit einiger Zeit nicht verbunden waren oder noch eine ältere Version verwenden.
+  Es ist nach Möglichkeit besser, zunächst alle Geräte zu aktualisieren. Wenn Sie Geräte haben, die nicht mehr verwendet werden, können Sie alle akzeptierten Knoten löschen, indem Sie die Remote-Datenbank einmal sperren.
+"Ignore and Proceed": Ignorieren und fortfahren
+"Node Information Missing": Knoteninformationen fehlen
+"Garbage Collection cancelled by user.": Garbage Collection wurde vom Benutzer abgebrochen.
+"Proceeding with Garbage Collection, ignoring missing nodes.": Garbage Collection wird fortgesetzt, fehlende Knoten werden ignoriert.
+"Proceed Garbage Collection": Garbage Collection fortsetzen
+"> [!INFO]- The connected devices have been detected as follows:\n${devices}": |-
+  > [!INFO]- Die folgenden verbundenen Geräte wurden erkannt:
+  ${devices}
+"Device": Gerät
+"Node ID": Knoten-ID
+"Obsidian version": Obsidian-Version
+"Plug-in version": Plugin-Version
+"Progress": Fortschritt
+"Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.": |-
+  Einige Geräte haben unterschiedliche Fortschrittswerte (max: ${maxProgress}, min: ${minProgress}).
+  Das kann darauf hindeuten, dass einige Geräte die Synchronisation noch nicht abgeschlossen haben, was zu Konflikten führen könnte. Es wird dringend empfohlen, vor dem Fortfahren zu bestätigen, dass alle Geräte synchronisiert sind.
+"All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.": Alle Geräte haben denselben Fortschrittswert (${progress}). Ihre Geräte scheinen synchronisiert zu sein. Die Garbage Collection kann fortgesetzt werden.
+"Garbage Collection Confirmation": Bestätigung der Garbage Collection
+"Proceeding with Garbage Collection.": Garbage Collection wird ausgeführt.
+"Garbage Collection: Scanned ${scanned} / ~${docCount}": |-
+  Garbage Collection: ${scanned} / ~${docCount} gescannt
+"Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}": |-
+  Garbage Collection: Scan abgeschlossen. Gesamtzahl der Chunks: ${totalChunks}, verwendete Chunks: ${usedChunks}
+"Garbage Collection: Found ${unusedChunks} unused chunks to delete.": |-
+  Garbage Collection: ${unusedChunks} ungenutzte Chunks zum Löschen gefunden.
+"Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
+  Garbage Collection abgeschlossen. Gelöschte Chunks: ${deletedChunks} / ${totalChunks}. Benötigte Zeit: ${seconds} Sekunden.
+"Failed to start replication after Garbage Collection.": Die Replikation nach der Garbage Collection konnte nicht gestartet werden.

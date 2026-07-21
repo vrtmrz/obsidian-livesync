@@ -1,0 +1,1087 @@
+(Active): (Activo)
+(BETA) Always overwrite with a newer file: (BETA) Sobrescribir siempre con archivo más nuevo
+(Beta) Use ignore files: (Beta) Usar archivos de ignorar
+(Days passed, 0 to disable automatic-deletion): (Días transcurridos, 0 para desactivar)
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.:
+  "(Ej: Leer chunks online) Lee chunks directamente en línea. Aumente tamaño de
+  chunks personalizados"
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.:
+  (MB) Saltar cambios en archivos locales/remotos mayores a este tamaño. Si se
+  reduce, se usará versión nueva
+(Mega chars): (Millones de caracteres)
+(Not recommended) If set, credentials will be stored in the file.: (No recomendado) Almacena credenciales en el archivo
+(Obsolete) Use an old adapter for compatibility: (Obsoleto) Usar adaptador antiguo
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.:
+  (RegExp) Déjelo vacío para sincronizar todos los archivos. Defina un filtro
+  como expresión regular para limitar los archivos que se sincronizan.
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.:
+  (RegExp) Si se establece, se omitirá cualquier cambio en archivos locales y
+  remotos que coincida con este patrón.
+Access Key: Clave de acceso
+Activate: Activar
+Add default patterns: Añadir patrones predeterminados
+Add new connection: Añadir conexión
+Always prompt merge conflicts: Siempre preguntar en conflictos
+Apply Latest Change if Conflicting: Aplicar último cambio en conflictos
+Apply preset configuration: Aplicar configuración predefinida
+Ask a passphrase at every launch: Solicitar la frase de contraseña en cada inicio
+Automatically Sync all files when opening Obsidian.: Sincronizar automáticamente todos los archivos al abrir Obsidian
+Back: Volver
+Back to non-configured: Volver a no configurado
+Batch database update: Actualización por lotes de BD
+Batch limit: Límite de lotes
+Batch size: Tamaño de lote
+Batch size of on-demand fetching: Tamaño de lote para obtención bajo demanda
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.:
+  Antes de v0.17.16 usábamos adaptador antiguo. Nuevo adaptador requiere
+  reconstruir BD local. Desactive cuando pueda
+Bucket Name: Nombre del bucket
+Cancel: Cancelar
+Check and convert non-path-obfuscated files: Comprobar y convertir archivos sin ofuscación de ruta
+Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.:
+  Comprueba los documentos que aún no se hayan convertido a identificadores con
+  ruta ofuscada y conviértelos si es necesario.
+cmdConfigSync:
+  showCustomizationSync: Mostrar sincronización de personalización
+Comma separated `.gitignore, .dockerignore`: "Separados por comas: `.gitignore, .dockerignore`"
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.:
+  Compara el contenido de los archivos entre la base de datos local y el
+  almacenamiento. Si no coinciden, se te preguntará cuál deseas conservar.
+Compatibility (Conflict Behaviour): Compatibilidad (comportamiento de conflictos)
+Compatibility (Database structure): Compatibilidad (estructura de la base de datos)
+Compatibility (Internal API Usage): Compatibilidad (uso de la API interna)
+Compatibility (Metadata): Compatibilidad (metadatos)
+Compatibility (Remote Database): Compatibilidad (base de datos remota)
+Compatibility (Trouble addressed): Compatibilidad (problemas corregidos)
+Compute revisions for chunks (Previous behaviour): Calcular revisiones para chunks (comportamiento anterior)
+Configuration Encryption: Cifrado de configuración
+Configure: Configurar
+Configure And Change Remote: Configurar y cambiar remoto
+Configure E2EE: Configurar E2EE
+Configure Remote: Configurar remoto
+Copy: Copiar
+CouchDB Connection Tweak: Ajustes de conexión de CouchDB
+Cross-platform: Multiplataforma
+"Current adapter: {adapter}": "Adaptador actual: {adapter}"
+Customization Sync: Sincronización de personalización
+Customization Sync (Beta3): Sincronización de personalización (Beta3)
+Data Compression: Compresión de datos
+Database Adapter: Adaptador de base de datos
+Database Name: Nombre de la base de datos
+Database suffix: Sufijo de base de datos
+Default: Predeterminado
+Delay conflict resolution of inactive files: Retrasar resolución de conflictos en archivos inactivos
+Delay merge conflict prompt for inactive files.: Retrasar aviso de fusión para archivos inactivos
+Delete: Eliminar
+Delete all customization sync data: Eliminar todos los datos de sincronización de personalización
+Delete all data on the remote server.: Eliminar todos los datos del servidor remoto.
+Delete local database to reset or uninstall Self-hosted LiveSync:
+  Eliminar la base de datos local para restablecer o desinstalar Self-hosted
+  LiveSync
+Delete old metadata of deleted files on start-up: Borrar metadatos viejos al iniciar
+Delete Remote Configuration: Eliminar configuración remota
+Delete remote configuration '{name}'?: ¿Eliminar la configuración remota '{name}'?
+desktop: equipo de escritorio
+Developer: Desarrollador
+Device name: Nombre del dispositivo
+Disables all synchronization and restart.: Desactiva toda la sincronización y reinicia la aplicación.
+Disables logging, only shows notifications. Please disable if you report an issue.:
+  Desactiva registros, solo muestra notificaciones. Desactívelo si reporta un
+  problema.
+Display Language: Idioma de visualización
+Display name: Nombre para mostrar
+Do not check configuration mismatch before replication: No verificar incompatibilidades antes de replicar
+Do not keep metadata of deleted files.: No conservar metadatos de archivos borrados
+Do not split chunks in the background: No dividir chunks en segundo plano
+Do not use internal API: No usar API interna
+Duplicate: Duplicar
+Duplicate remote: Duplicar remoto
+E2EE Configuration: Configuración de E2EE
+Edge case addressing (Behaviour): Tratamiento de casos límite (comportamiento)
+Edge case addressing (Database): Tratamiento de casos límite (base de datos)
+Edge case addressing (Processing): Tratamiento de casos límite (procesamiento)
+Emergency restart: Reinicio de emergencia
+Enable advanced features: Habilitar características avanzadas
+Enable customization sync: Habilitar sincronización de personalización
+Enable Developers' Debug Tools.: Habilitar herramientas de depuración
+Enable edge case treatment features: Habilitar manejo de casos límite
+Enable poweruser features: Habilitar funciones para usuarios avanzados
+Enable this if your Object Storage doesn't support CORS: Habilitar si su almacenamiento no soporta CORS
+Enable this option to automatically apply the most recent change to documents even when it conflicts: Aplicar cambios recientes automáticamente aunque generen conflictos
+Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.:
+  Cifrar contenido en la base de datos remota. Se recomienda habilitar si usa la
+  sincronización del plugin.
+Encrypting sensitive configuration items: Cifrando elementos sensibles
+Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.:
+  Frase de cifrado. Si la cambia, sobrescriba la base del servidor con los
+  nuevos archivos cifrados.
+End-to-End Encryption: Cifrado de extremo a extremo
+Endpoint URL: URL del endpoint
+Enhance chunk size: Mejorar tamaño de chunks
+Export: Exportar
+Fetch: Obtener
+Fetch chunks on demand: Obtener chunks bajo demanda
+Fetch database with previous behaviour: Obtener BD con comportamiento anterior
+Fetch remote settings: Obtener ajustes remotos
+File to resolve conflict: Archivo para resolver el conflicto
+Filename: Nombre de archivo
+Flag and restart: Marcar y reiniciar
+Forces the file to be synced when opened.: Forzar sincronización al abrir archivo
+Fresh Start Wipe: Borrado para reinicio completo
+Garbage Collection V3 (Beta): Recolección de basura V3 (Beta)
+Handle files as Case-Sensitive: Manejar archivos como sensibles a mayúsculas
+Hidden Files: Archivos ocultos
+How to display network errors when the sync server is unreachable.:
+  Cómo mostrar los errores de red cuando el servidor de sincronización no está
+  disponible.
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: Si se desactiva, chunks se dividen en hilo UI (comportamiento anterior)
+If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.:
+  Habilita sincronización eficiente por archivo. Requiere migración y actualizar
+  todos dispositivos a v0.23.18. Pierde compatibilidad con versiones antiguas
+If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.: Divide chunks en máximo 100 ítems. Menos eficiente en deduplicación
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: Chunks nuevos se mantienen temporalmente en el documento hasta estabilizarse
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.:
+  Si se activa, se mostrará el icono ⛔ en el estado en lugar del banner de
+  advertencia de archivos. No se mostrarán detalles.
+If enabled, the file under 1kb will be processed in the UI thread.: Archivos <1kb se procesan en hilo UI
+If enabled, the notification of hidden files change will be suppressed.: Si se habilita, se suprimirá la notificación de cambios en archivos ocultos.
+If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour):
+  Si se habilita, todos los chunks se almacenan con la revisión hecha desde su
+  contenido. (comportamiento anterior)
+If this enabled, All files are handled as case-Sensitive (Previous behaviour).:
+  Si se habilita, todos los archivos se manejan como sensibles a mayúsculas
+  (comportamiento anterior)
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: Divide chunks en segmentos semánticos. No todos los sistemas lo soportan
+If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.:
+  Saltar cambios en archivos locales que coincidan con ignore files. Cambios
+  remotos usan ignore files locales
+If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.:
+  Mantiene conexión 60s. Si no hay cambios, reinicia socket. Útil con proxies
+  limitantes
+Ignore files: Archivos a ignorar
+Ignore patterns: Patrones de exclusión
+Import connection: Importar conexión
+Incubate Chunks in Document: Incubar chunks en documento
+Initialise all journal history, On the next sync, every item will be received and sent.:
+  Restablece todo el historial del diario. En la próxima sincronización se
+  recibirán y enviarán todos los elementos.
+Interval (sec): Intervalo (segundos)
+Keep empty folder: Mantener carpetas vacías
+lang-de: Alemán
+lang-es: Español
+lang-fr: Français
+lang-ja: Japonés
+lang-ru: Ruso
+lang-zh: Chino simplificado
+lang-zh-tw: Chino tradicional
+Later: Más tarde
+"Limit: {datetime} ({timestamp})": "Límite: {datetime} ({timestamp})"
+LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.:
+  LiveSync no puede manejar múltiples bóvedas con mismo nombre sin prefijo. Se
+  configura automáticamente
+liveSyncReplicator:
+  beforeLiveSync: Antes de LiveSync, inicia OneShot...
+  cantReplicateLowerValue: No podemos replicar un valor más bajo.
+  checkingLastSyncPoint: Buscando el último punto sincronizado.
+  couldNotConnectTo: |-
+    No se pudo conectar a ${uri} : ${name}
+    (${db})
+  couldNotConnectToRemoteDb: "No se pudo conectar a base de datos remota: ${d}"
+  couldNotConnectToServer: No se pudo conectar al servidor.
+  couldNotConnectToURI: No se pudo conectar a ${uri}:${dbRet}
+  couldNotMarkResolveRemoteDb: No se pudo marcar como resuelta la base de datos remota.
+  liveSyncBegin: Inicio de LiveSync...
+  lockRemoteDb: Bloquear base de datos remota para prevenir corrupción de datos
+  markDeviceResolved: Marcar este dispositivo como 'resuelto'.
+  oneShotSyncBegin: Inicio de sincronización OneShot... (${syncMode})
+  remoteDbCorrupted: La base de datos remota es más nueva o está dañada, asegúrese
+    de tener la última versión de self-hosted-livesync instalada
+  remoteDbCreatedOrConnected: Base de datos remota creada o conectada
+  remoteDbDestroyed: Base de datos remota destruida
+  remoteDbDestroyError: "Algo ocurrió al destruir base de datos remota:"
+  remoteDbMarkedResolved: Base de datos remota marcada como resuelta.
+  replicationClosed: Replicación cerrada
+  replicationInProgress: Replicación en curso
+  retryLowerBatchSize: Reintentar con tamaño de lote más bajo:${batch_size}/${batches_limit}
+  unlockRemoteDb: Desbloquear base de datos remota para prevenir corrupción de datos
+liveSyncSetting:
+  errorNoSuchSettingItem: "No existe el ajuste: ${key}"
+  originalValue: "Original: ${value}"
+  valueShouldBeInRange: El valor debe estar entre ${min} y ${max}
+liveSyncSettings:
+  btnApply: Aplicar
+Local Database Tweak: Ajustes de la base de datos local
+Lock: Bloquear
+Lock Server: Bloquear servidor
+Lock the remote server to prevent synchronization with other devices.:
+  Bloquea el servidor remoto para impedir la sincronización con otros
+  dispositivos.
+logPane:
+  autoScroll: Autodesplazamiento
+  logWindowOpened: Ventana de registro abierta
+  pause: Pausar
+  title: Registro de Self-hosted LiveSync
+  wrap: Ajustar
+Maximum delay for batch database updating: Retraso máximo para actualización por lotes
+Maximum file size: Tamaño máximo de archivo
+Maximum Incubating Chunk Size: Tamaño máximo de chunks incubados
+Maximum Incubating Chunks: Máximo de chunks incubados
+Maximum Incubation Period: Periodo máximo de incubación
+MB (0 to disable).: MB (0 para desactivar)
+Memory cache: Caché en memoria
+Memory cache size (by total characters): Tamaño caché memoria (por caracteres)
+Memory cache size (by total items): Tamaño caché memoria (por ítems)
+Merge: Fusionar
+Minimum delay for batch database updating: Retraso mínimo para actualización por lotes
+moduleCheckRemoteSize:
+  logCheckingStorageSizes: Comprobando tamaños de almacenamiento
+  logCurrentStorageSize: "Tamaño del almacenamiento remoto: ${measuredSize}"
+  logExceededWarning: "Tamaño del almacenamiento remoto: ${measuredSize} superó ${notifySize}"
+  logThresholdEnlarged: El umbral se ha ampliado a ${size}MB
+  msgConfirmRebuild: Esto puede llevar un poco de tiempo. ¿Realmente quieres
+    reconstruir todo ahora?
+  msgDatabaseGrowing: |
+    **¡Tu base de datos está creciendo!** Pero no te preocupes, podemos abordarlo ahora. El tiempo antes de quedarse sin espacio en el almacenamiento remoto.
+
+    | Tamaño medido | Tamaño configurado |
+    | --- | --- |
+    | ${estimatedSize} | ${maxSize} |
+
+    > [!MORE]-
+    > Si lo has estado utilizando durante muchos años, puede haber fragmentos no referenciados - es decir, basura - acumulándose en la base de datos. Por lo tanto, recomendamos reconstruir todo. Probablemente se volverá mucho más pequeño.
+    >
+    > Si el volumen de tu bóveda simplemente está aumentando, es mejor reconstruir todo después de organizar los archivos. Self-hosted LiveSync no elimina los datos reales incluso si los eliminas para acelerar el proceso. Está aproximadamente [documentado](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md).
+    >
+    > Si no te importa el aumento, puedes aumentar el límite de notificación en 100 MB. Este es el caso si lo estás ejecutando en tu propio servidor. Sin embargo, es mejor reconstruir todo de vez en cuando.
+    >
+
+    > [!WARNING]
+    > Si realizas la reconstrucción completa, asegúrate de que todos los dispositivos estén sincronizados. El complemento fusionará tanto como sea posible, sin embargo.
+  msgSetDBCapacity: >
+    Podemos configurar una advertencia de capacidad máxima de base de datos,
+    **para tomar medidas antes de quedarse sin espacio en el almacenamiento
+    remoto**.
+
+    ¿Quieres habilitar esto?
+
+
+    > [!MORE]-
+
+    > - 0: No advertir sobre el tamaño del almacenamiento.
+
+    >   Esto es recomendado si tienes suficiente espacio en el almacenamiento
+    remoto, especialmente si lo tienes autoalojado. Y puedes comprobar el tamaño
+    del almacenamiento y reconstruir manualmente.
+
+    > - 800: Advertir si el tamaño del almacenamiento remoto supera los 800 MB.
+
+    >   Esto es recomendado si estás usando fly.io con un límite de 1 GB o IBM
+    Cloudant.
+
+    > - 2000: Advertir si el tamaño del almacenamiento remoto supera los 2 GB.
+
+
+    Si hemos alcanzado el límite, se nos pedirá que aumentemos el límite paso a
+    paso.
+  option2GB: 2GB (Estándar)
+  option800MB: 800MB (Cloudant, fly.io)
+  optionAskMeLater: Pregúntame más tarde
+  optionDismiss: Descartar
+  optionIncreaseLimit: aumentar a ${newMax}MB
+  optionNoWarn: No, nunca advertir por favor
+  optionRebuildAll: Reconstruir todo ahora
+  titleDatabaseSizeLimitExceeded: El tamaño del almacenamiento remoto superó el límite
+  titleDatabaseSizeNotify: Configuración de notificación de tamaño de base de datos
+moduleInputUIObsidian:
+  defaultTitleConfirmation: Confirmación
+  defaultTitleSelect: Seleccionar
+  optionNo: No
+  optionYes: Sí
+moduleLiveSyncMain:
+  logAdditionalSafetyScan: Escanéo de seguridad adicional...
+  logLoadingPlugin: Cargando complemento...
+  logPluginInitCancelled: La inicialización del complemento fue cancelada por un módulo
+  logPluginVersion: Self-hosted LiveSync v${manifestVersion} ${packageVersion}
+  logReadChangelog: LiveSync se ha actualizado, ¡por favor lee el registro de cambios!
+  logSafetyScanCompleted: Escanéo de seguridad adicional completado
+  logSafetyScanFailed: El escaneo de seguridad adicional ha fallado en un módulo
+  logUnloadingPlugin: Descargando complemento...
+  logVersionUpdate: LiveSync se ha actualizado, en caso de actualizaciones que
+    rompan, toda la sincronización automática se ha desactivado temporalmente.
+    Asegúrate de que todos los dispositivos estén actualizados antes de
+    habilitar.
+  msgScramEnabled: >
+    Self-hosted LiveSync se ha configurado para ignorar algunos eventos. ¿Es
+    esto correcto?
+
+
+    | Tipo | Estado | Nota |
+
+    |:---:|:---:|---|
+
+    | Eventos de almacenamiento | ${fileWatchingStatus} | Se ignorará cada
+    modificación |
+
+    | Eventos de base de datos | ${parseReplicationStatus} | Cada cambio
+    sincronizado se pospondrá |
+
+
+    ¿Quieres reanudarlos y reiniciar Obsidian?
+
+
+    > [!DETAILS]-
+
+    > Estas banderas son establecidas por el complemento mientras se reconstruye
+    o se obtiene. Si el proceso termina de forma anormal, puede mantenerse sin
+    querer.
+
+    > Si no estás seguro, puedes intentar volver a ejecutar estos procesos.
+    Asegúrate de hacer una copia de seguridad de tu bóveda.
+  optionKeepLiveSyncDisabled: Mantener LiveSync desactivado
+  optionResumeAndRestart: Reanudar y reiniciar Obsidian
+  titleScramEnabled: Scram habilitado
+moduleLocalDatabase:
+  logWaitingForReady: Esperando a que la base de datos esté lista...
+moduleLog:
+  showLog: Mostrar registro
+moduleMigration:
+  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README_ES.md#how-to-use
+  logBulkSendCorrupted: El envío de fragmentos en bloque se ha habilitado, sin
+    embargo, esta función se ha corrompido. Disculpe las molestias.
+    Deshabilitado automáticamente.
+  logFetchRemoteTweakFailed: Error al obtener los valores de ajuste remoto
+  logLocalDatabaseNotReady: ¡Algo salió mal! La base de datos local no está lista
+  logMigratedSameBehaviour: Migrado a db:${current} con el mismo comportamiento que antes
+  logMigrationFailed: La migración falló o se canceló de ${old} a ${current}
+  logRedflag2CreationFail: Error al crear redflag2
+  logRemoteTweakUnavailable: No se pudieron obtener los valores de ajuste remoto
+  logSetupCancelled: La configuración ha sido cancelada, ¡Self-hosted LiveSync
+    está esperando tu configuración!
+  msgFetchRemoteAgain: >-
+    Como ya sabrás, Self-hosted LiveSync ha cambiado su comportamiento
+    predeterminado y la estructura de la base de datos.
+
+
+    Afortunadamente, con tu tiempo y esfuerzo, la base de datos remota parece
+    haber sido ya migrada. ¡Felicidades!
+
+
+    Sin embargo, necesitamos un poco más. La configuración de este dispositivo
+    no es compatible con la base de datos remota. Necesitaremos volver a obtener
+    la base de datos remota. ¿Debemos obtenerla nuevamente ahora?
+
+
+    ___Nota: No podemos sincronizar hasta que la configuración haya sido
+    cambiada y la base de datos haya sido obtenida nuevamente.___
+
+    ___Nota2: Los fragmentos son completamente inmutables, solo podemos obtener
+    los metadatos y diferencias.___
+  msgInitialSetup: >-
+    Tu dispositivo **aún no ha sido configurado**. Permíteme guiarte a través
+    del proceso de configuración.
+
+
+    Ten en cuenta que todo el contenido del diálogo se puede copiar al
+    portapapeles. Si necesitas consultarlo más tarde, puedes pegarlo en una nota
+    en Obsidian. También puedes traducirlo a tu idioma utilizando una
+    herramienta de traducción.
+
+
+    Primero, ¿tienes **URI de configuración**?
+
+
+    Nota: Si no sabes qué es, consulta la [documentación](${URI_DOC}).
+  msgRecommendSetupUri: >-
+    Te recomendamos encarecidamente que generes una URI de configuración y la
+    utilices.
+
+    Si no tienes conocimientos al respecto, consulta la
+    [documentación](${URI_DOC}) (Lo siento de nuevo, pero es importante).
+
+
+    ¿Cómo quieres configurarlo manualmente?
+  msgSinceV02321: >-
+    Desde la versión v0.23.21, Self-hosted LiveSync ha cambiado el
+    comportamiento predeterminado y la estructura de la base de datos. Se han
+    realizado los siguientes cambios:
+
+
+    1. **Sensibilidad a mayúsculas de los nombres de archivo**
+        El manejo de los nombres de archivo ahora no distingue entre mayúsculas y minúsculas. Este cambio es beneficioso para la mayoría de las plataformas, excepto Linux y iOS, que no gestionan efectivamente la sensibilidad a mayúsculas de los nombres de archivo.
+        (En estos, se mostrará una advertencia para archivos con el mismo nombre pero diferentes mayúsculas).
+
+    2. **Manejo de revisiones de los fragmentos**
+        Los fragmentos son inmutables, lo que permite que sus revisiones sean fijas. Este cambio mejorará el rendimiento al guardar archivos.
+
+    ___Sin embargo, para habilitar cualquiera de estos cambios, es necesario
+    reconstruir tanto las bases de datos remota como la local. Este proceso toma
+    unos minutos, y recomendamos hacerlo cuando tengas tiempo suficiente.___
+
+
+    - Si deseas mantener el comportamiento anterior, puedes omitir este proceso
+    usando `${KEEP}`.
+
+    - Si no tienes suficiente tiempo, por favor elige `${DISMISS}`. Se te pedirá
+    nuevamente más tarde.
+
+    - Si has reconstruido la base de datos en otro dispositivo, selecciona
+    `${DISMISS}` e intenta sincronizar nuevamente. Dado que se ha detectado una
+    diferencia, se te solicitará nuevamente.
+  optionAdjustRemote: Ajustar al remoto
+  optionDecideLater: Decidirlo más tarde
+  optionEnableBoth: Habilitar ambos
+  optionEnableFilenameCaseInsensitive: "Habilitar solo #1"
+  optionEnableFixedRevisionForChunks: "Habilitar solo #2"
+  optionHaveSetupUri: Sí, tengo
+  optionKeepPreviousBehaviour: Mantener comportamiento anterior
+  optionManualSetup: Configurarlo todo manualmente
+  optionNoAskAgain: No, por favor pregúntame de nuevo
+Setup:
+  RemoteE2EE:
+    Title: Cifrado de extremo a extremo
+    Guidance: Configura tus ajustes de cifrado de extremo a extremo.
+    LabelEncrypt: Cifrado de extremo a extremo
+    PlaceholderPassphrase: Introduce tu frase de contraseña
+    StronglyRecommendedTitle: Muy recomendable
+    StronglyRecommendedLine1: Al habilitar el cifrado de extremo a extremo, tus datos se cifran en tu dispositivo antes de enviarse al servidor remoto. Esto significa que, incluso si alguien obtiene acceso al servidor, no podrá leer tus datos sin la frase de contraseña. Asegúrate de recordarla, ya que también será necesaria para descifrar tus datos en otros dispositivos.
+    StronglyRecommendedLine2: Además, ten en cuenta que si estás usando sincronización Peer-to-Peer, esta configuración se utilizará cuando más adelante cambies a otros métodos y te conectes a un servidor remoto.
+    MultiDestinationWarning: Este ajuste debe ser el mismo incluso cuando te conectes a varios destinos de sincronización.
+    LabelObfuscateProperties: Ofuscar propiedades
+    ObfuscatePropertiesDesc: Ofuscar propiedades (por ejemplo, la ruta del archivo, el tamaño y las fechas de creación y modificación) añade una capa adicional de seguridad al dificultar la identificación de la estructura y los nombres de tus archivos y carpetas en el servidor remoto. Esto ayuda a proteger tu privacidad y dificulta que usuarios no autorizados deduzcan información sobre tus datos.
+    AdvancedTitle: Avanzado
+    LabelEncryptionAlgorithm: Algoritmo de cifrado
+    DefaultAlgorithmDesc: En la mayoría de los casos, debes mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes un Vault cifrado con un formato diferente.
+    AlgorithmWarning: Cambiar el algoritmo de cifrado impedirá el acceso a cualquier dato cifrado anteriormente con otro algoritmo. Asegúrate de que todos tus dispositivos estén configurados para usar el mismo algoritmo y así mantener el acceso a tus datos.
+    PassphraseValidationLine1: Ten en cuenta que la frase de contraseña del cifrado de extremo a extremo no se valida hasta que el proceso de sincronización comienza realmente. Esta es una medida de seguridad diseñada para proteger tus datos.
+    PassphraseValidationLine2: Por lo tanto, te pedimos que tengas muchísimo cuidado al configurar manualmente la información del servidor. Si introduces una frase de contraseña incorrecta, los datos del servidor se corromperán. Ten en cuenta que este comportamiento es intencionado.
+    ButtonProceed: Continuar
+    ButtonCancel: Cancelar
+  UseSetupURI:
+    Title: Introducir URI de configuración
+    GuidanceLine1: Introduce la URI de configuración que se generó durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña del Vault.
+    GuidanceLine2: Ten en cuenta que puedes generar una nueva URI de configuración ejecutando el comando "Copiar ajustes como nueva URI de configuración" desde la paleta de comandos.
+    LabelSetupURI: URI de configuración
+    ValidInfo: La URI de configuración es válida y está lista para usarse.
+    InvalidInfo: La URI de configuración no es válida. Revísala e inténtalo de nuevo.
+    LabelPassphrase: Frase de contraseña del Vault
+    PlaceholderPassphrase: Introduce la frase de contraseña del Vault
+    ErrorPassphraseRequired: Introduce la frase de contraseña del Vault.
+    ErrorFailedToParse: No se pudo procesar la URI de configuración. Revisa la URI y la frase de contraseña.
+    ButtonProceed: Probar ajustes y continuar
+    ButtonCancel: Cancelar
+  ScanQRCode:
+    Title: Escanear código QR
+    Guidance: Sigue los pasos de abajo para importar los ajustes desde tu dispositivo actual.
+    Step1: En este dispositivo, mantén este Vault abierto.
+    Step2: En el dispositivo de origen, abre Obsidian.
+    Step3: En el dispositivo de origen, ejecuta desde la paleta de comandos la orden "Mostrar ajustes como código QR".
+    Step4: En este dispositivo, cambia a la cámara o usa un escáner QR para escanear el código mostrado.
+    ButtonClose: Cerrar este diálogo
+  "Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": Activa "Compute revisions for chunks" en los ajustes para usar la recolección de basura.
+  "Please disable 'Read chunks online' in settings to use Garbage Collection.": Desactiva "Read chunks online" en los ajustes para usar la recolección de basura.
+  "Setup URI dialog cancelled.": Se canceló el diálogo de Setup URI.
+  "Please select 'Cancel' explicitly to cancel this operation.": Selecciona explícitamente "Cancelar" para cancelar esta operación.
+  "Failed to connect to remote for compaction.": No se pudo conectar a la base de datos remota para la compactación.
+  "Failed to connect to remote for compaction. ${reason}": No se pudo conectar a la base de datos remota para la compactación. ${reason}
+  "Compaction in progress on remote database...": La compactación está en curso en la base de datos remota...
+  "Compaction on remote database timed out.": La compactación en la base de datos remota agotó el tiempo de espera.
+  "Compaction on remote database completed successfully.": La compactación en la base de datos remota se completó correctamente.
+  "Compaction on remote database failed.": La compactación en la base de datos remota falló.
+  "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": No se pudo iniciar la replicación de una sola vez antes de la recolección de basura. La recolección de basura se canceló.
+  "Cancel Garbage Collection": Cancelar la recolección de basura
+  "No connected device information found. Cancelling Garbage Collection.": No se encontró información de dispositivos conectados. Cancelando la recolección de basura.
+  "The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": |-
+    Los siguientes nodos aceptados no tienen información del nodo:
+    - ${missingNodes}
+
+    Esto indica que no se han conectado desde hace algún tiempo o que se han quedado en una versión anterior.
+    Si es posible, es preferible actualizar todos los dispositivos. Si tienes dispositivos que ya no se usan, puedes borrar todos los nodos aceptados bloqueando el remoto una vez.
+  "Ignore and Proceed": Ignorar y continuar
+  "Node Information Missing": Falta información del nodo
+  "Garbage Collection cancelled by user.": El usuario canceló la recolección de basura.
+  "Proceeding with Garbage Collection, ignoring missing nodes.": Continuando con la recolección de basura e ignorando los nodos faltantes.
+  "Proceed Garbage Collection": Continuar con la recolección de basura
+  "> [!INFO]- The connected devices have been detected as follows:\n${devices}": |-
+    > [!INFO]- Se detectaron los siguientes dispositivos conectados:
+    ${devices}
+  "Device": Dispositivo
+  "Node ID": ID del nodo
+  "Obsidian version": Versión de Obsidian
+  "Plug-in version": Versión del complemento
+  "Progress": Progreso
+  "Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.": |-
+    Algunos dispositivos tienen valores de progreso diferentes (máx.: ${maxProgress}, mín.: ${minProgress}).
+    Esto puede indicar que algunos dispositivos no han completado la sincronización, lo que podría causar conflictos. Se recomienda encarecidamente confirmar que todos los dispositivos estén sincronizados antes de continuar.
+  "All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.": Todos los dispositivos tienen el mismo valor de progreso (${progress}). Parece que tus dispositivos están sincronizados y se puede continuar con la recolección de basura.
+  "Garbage Collection Confirmation": Confirmación de recolección de basura
+  "Proceeding with Garbage Collection.": Continuando con la recolección de basura.
+  "Garbage Collection: Scanned ${scanned} / ~${docCount}": |-
+    Recolección de basura: escaneados ${scanned} / ~${docCount}
+  "Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}": |-
+    Recolección de basura: escaneo completado. Chunks totales: ${totalChunks}, chunks usados: ${usedChunks}
+  "Garbage Collection: Found ${unusedChunks} unused chunks to delete.": |-
+    Recolección de basura: se encontraron ${unusedChunks} chunks no usados para eliminar.
+  "Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
+    Recolección de basura completada. Chunks eliminados: ${deletedChunks} / ${totalChunks}. Tiempo empleado: ${seconds} segundos.
+  "Failed to start replication after Garbage Collection.": No se pudo iniciar la replicación después de la recolección de basura.
+  optionNoSetupUri: No, no tengo
+  optionRemindNextLaunch: Recordármelo en el próximo inicio
+  optionSetupWizard: Llévame al asistente de configuración
+  optionYesFetchAgain: Sí, obtener nuevamente
+  titleCaseSensitivity: Sensibilidad a mayúsculas
+  titleRecommendSetupUri: Recomendación de uso de URI de configuración
+  titleWelcome: Bienvenido a Self-hosted LiveSync
+moduleObsidianMenu:
+  replicate: Replicar
+More actions: Más acciones
+Move remotely deleted files to the trash, instead of deleting.: Mover archivos borrados remotos a papelera en lugar de eliminarlos
+Network warning style: Estilo de advertencia de red
+New Remote: Nuevo remoto
+No limit configured: Sin límite configurado
+Non-Synchronising files: Archivos no sincronizados
+Normal Files: Archivos normales
+Not all messages have been translated. And, please revert to "Default" when reporting errors.:
+  No todos los mensajes están traducidos. Por favor, vuelva a "Predeterminado"
+  al reportar errores.
+Notify all setting files: Notificar todos los archivos de configuración
+Notify customized: Notificar personalizaciones
+Notify when other device has newly customized.: Notificar cuando otro dispositivo personalice
+Notify when the estimated remote storage size exceeds on start up: Notificar cuando el tamaño estimado del almacenamiento remoto exceda al iniciar
+Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.:
+  Número de lotes a procesar. Default 40, mínimo 2. Controla documentos en
+  memoria
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.: Número de cambios a sincronizar simultáneamente. Default 50, mínimo 2
+obsidianLiveSyncSettingTab:
+  btnApply: Aplicar
+  btnCheck: Verificar
+  btnCopy: Copiar
+  btnDisable: Desactivar
+  btnDiscard: Descartar
+  btnEnable: Activar
+  btnFix: Corregir
+  btnGotItAndUpdated: Lo entendí y actualicé.
+  btnNext: Siguiente
+  btnStart: Iniciar
+  btnTest: Probar
+  btnUse: Usar
+  buttonFetch: Obtener
+  buttonNext: Siguiente
+  defaultLanguage: Predeterminado
+  descConnectSetupURI: Este es el método recomendado para configurar Self-hosted
+    LiveSync con una URI de configuración.
+  descCopySetupURI: ¡Perfecto para configurar un nuevo dispositivo!
+  descEnableLiveSync: Solo habilita esto después de configurar cualquiera de las
+    dos opciones anteriores o completar toda la configuración manualmente.
+  descFetchConfigFromRemote: Obtener las configuraciones necesarias del servidor remoto ya configurado.
+  descManualSetup: No recomendado, pero útil si no tienes una URI de configuración
+  descTestDatabaseConnection: Abrir conexión a la base de datos. Si no se
+    encuentra la base de datos remota y tienes permiso para crear una base de
+    datos, se creará la base de datos.
+  descValidateDatabaseConfig: Verifica y soluciona cualquier problema potencial
+    con la configuración de la base de datos.
+  errAccessForbidden: Acceso prohibido.
+  errCannotContinueTest: No se pudo continuar con la prueba.
+  errCorsCredentials: ❗ cors.credentials es incorrecto
+  errCorsNotAllowingCredentials: CORS no permite credenciales
+  errCorsOrigins: ❗ cors.origins es incorrecto
+  errEnableCors: ❗ httpd.enable_cors es incorrecto
+  errMaxDocumentSize: ❗ couchdb.max_document_size es bajo)
+  errMaxRequestSize: ❗ chttpd.max_http_request_size es bajo)
+  errMissingWwwAuth: ❗ httpd.WWW-Authenticate falta
+  errRequireValidUser: ❗ chttpd.require_valid_user es incorrecto.
+  errRequireValidUserAuth: ❗ chttpd_auth.require_valid_user es incorrecto.
+  labelDisabled: "⏹️ : Desactivado"
+  labelEnabled: "🔁 : Activado"
+  levelAdvanced: " (avanzado)"
+  levelEdgeCase: " (excepción)"
+  levelPowerUser: " (experto)"
+  linkOpenInBrowser: Abrir en el navegador
+  linkPageTop: Ir arriba
+  linkTipsAndTroubleshooting: Consejos y solución de problemas
+  linkTroubleshooting: /docs/es/troubleshooting.md
+  logCannotUseCloudant: Esta función no se puede utilizar con IBM Cloudant.
+  logCheckingConfigDone: Verificación de configuración completada
+  logCheckingConfigFailed: La verificación de configuración falló
+  logCheckingDbConfig: Verificando la configuración de la base de datos
+  logCheckPassphraseFailed: |-
+    ERROR: Error al comprobar la frase de contraseña con el servidor remoto:
+    ${db}.
+  logConfiguredDisabled: "Modo de sincronización configurado: DESACTIVADO"
+  logConfiguredLiveSync: "Modo de sincronización configurado: Sincronización en Vivo"
+  logConfiguredPeriodic: "Modo de sincronización configurado: Periódico"
+  logCouchDbConfigFail: "Configuración de CouchDB: ${title} falló"
+  logCouchDbConfigSet: "Configuración de CouchDB: ${title} -> Establecer ${key} en ${value}"
+  logCouchDbConfigUpdated: "Configuración de CouchDB: ${title} actualizado correctamente"
+  logDatabaseConnected: Base de datos conectada
+  logEncryptionNoPassphrase: No puedes habilitar el cifrado sin una frase de contraseña
+  logEncryptionNoSupport: Tu dispositivo no admite el cifrado.
+  logErrorOccurred: ¡Ocurrió un error!
+  logEstimatedSize: "Tamaño estimado: ${size}"
+  logPassphraseInvalid: La frase de contraseña no es válida, por favor corrígela.
+  logPassphraseNotCompatible: "ERROR: ¡La frase de contraseña no es compatible con
+    el servidor remoto! ¡Por favor, revísala de nuevo!"
+  logRebuildNote: La sincronización ha sido desactivada, obtén y vuelve a activar si lo deseas.
+  logSelectAnyPreset: Selecciona cualquier preestablecido.
+  msgAreYouSureProceed: ¿Estás seguro de proceder?
+  msgChangesNeedToBeApplied: ¡Los cambios deben aplicarse!
+  msgConfigCheck: --Verificación de configuración--
+  msgConfigCheckFailed: La verificación de configuración ha fallado. ¿Quieres
+    continuar de todos modos?
+  msgConnectionCheck: --Verificación de conexión--
+  msgConnectionProxyNote: Si tienes problemas con la verificación de conexión
+    (incluso después de verificar la configuración), por favor verifica la
+    configuración de tu proxy reverso.
+  msgCurrentOrigin: "Origen actual: {origin}"
+  msgDiscardConfirmation: ¿Realmente deseas descartar las configuraciones y bases de datos existentes?
+  msgDone: --Hecho--
+  msgEnableCors: Configurar httpd.enable_cors
+  msgEnableEncryptionRecommendation: Recomendamos habilitar el cifrado de extremo
+    a extremo y la obfuscación de ruta. ¿Estás seguro de querer continuar sin
+    cifrado?
+  msgFetchConfigFromRemote: ¿Quieres obtener la configuración del servidor remoto?
+  msgGenerateSetupURI: ¡Todo listo! ¿Quieres generar un URI de configuración para
+    configurar otros dispositivos?
+  msgIfConfigNotPersistent: Si la configuración del servidor no es persistente
+    (por ejemplo, ejecutándose en docker), los valores aquí pueden cambiar. Una
+    vez que puedas conectarte, por favor actualiza las configuraciones en el
+    local.ini del servidor.
+  msgInvalidPassphrase: Tu frase de contraseña de cifrado podría ser inválida.
+    ¿Estás seguro de querer continuar?
+  msgNewVersionNote: ¿Aquí debido a una notificación de actualización? Por favor,
+    revise el historial de versiones. Si está satisfecho, haga clic en el botón.
+    Una nueva actualización volverá a mostrar esto.
+  msgNonHTTPSInfo: Configurado como URI que no es HTTPS. Ten en cuenta que esto
+    puede no funcionar en dispositivos móviles.
+  msgNonHTTPSWarning: No se puede conectar a URI que no sean HTTPS. Por favor,
+    actualiza tu configuración y vuelve a intentarlo.
+  msgNotice: ---Aviso---
+  msgObjectStorageWarning: >-
+    ADVERTENCIA: Esta característica está en desarrollo, así que por favor ten
+    en cuenta lo siguiente:
+
+    - Arquitectura de solo anexado. Se requiere una reconstrucción para reducir
+    el almacenamiento.
+
+    - Un poco frágil.
+
+    - Al sincronizar por primera vez, todo el historial será transferido desde
+    el remoto. Ten en cuenta los límites de datos y las velocidades lentas.
+
+    - Solo las diferencias se sincronizan en vivo.
+
+
+    Si encuentras algún problema o tienes ideas sobre esta característica, por
+    favor crea un issue en GitHub.
+
+    Aprecio mucho tu gran dedicación.
+  msgOriginCheck: "Verificación de origen: {org}"
+  msgRebuildRequired: >-
+    Es necesario reconstruir las bases de datos para aplicar los cambios. Por
+    favor selecciona el método para aplicar los cambios.
+
+
+    <details>
+
+    <summary>Legendas</summary>
+
+
+    | Símbolo | Significado |
+
+    |: ------ :| ------- |
+
+    | ⇔ | Actualizado |
+
+    | ⇄ | Sincronizar para equilibrar |
+
+    | ⇐,⇒ | Transferir para sobrescribir |
+
+    | ⇠,⇢ | Transferir para sobrescribir desde otro lado |
+
+
+    </details>
+
+
+    ## ${OPTION_REBUILD_BOTH}
+
+    A simple vista:  📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
+
+    Reconstruir tanto la base de datos local como la remota utilizando los
+    archivos existentes de este dispositivo.
+
+    Esto bloquea a otros dispositivos, y necesitan realizar la obtención.
+
+    ## ${OPTION_FETCH}
+
+    A simple vista: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
+
+    Inicializa la base de datos local y la reconstruye utilizando los datos
+    obtenidos de la base de datos remota.
+
+    Este caso incluye el caso en el que has reconstruido la base de datos
+    remota.
+
+    ## ${OPTION_ONLY_SETTING}
+
+    Almacena solo la configuración. **Precaución: esto puede provocar corrupción
+    de datos**; generalmente es necesario reconstruir la base de datos.
+  msgSelectAndApplyPreset: Por favor, selecciona y aplica cualquier elemento
+    preestablecido para completar el asistente.
+  msgSetCorsCredentials: Configurar cors.credentials
+  msgSetCorsOrigins: Configurar cors.origins
+  msgSetMaxDocSize: Configurar couchdb.max_document_size
+  msgSetMaxRequestSize: Configurar chttpd.max_http_request_size
+  msgSetRequireValidUser: Configurar chttpd.require_valid_user = true
+  msgSetRequireValidUserAuth: Configurar chttpd_auth.require_valid_user = true
+  msgSettingModified: La configuración "${setting}" fue modificada desde otro
+    dispositivo. Haz clic {HERE} para recargar la configuración. Haz clic en
+    otro lugar para ignorar los cambios.
+  msgSettingsUnchangeableDuringSync: Estas configuraciones no se pueden cambiar
+    durante la sincronización. Por favor, deshabilita toda la sincronización en
+    las "Configuraciones de Sincronización" para desbloquear.
+  msgSetWwwAuth: Configurar httpd.WWW-Authenticate
+  nameApplySettings: Aplicar configuraciones
+  nameConnectSetupURI: Conectar con URI de configuración
+  nameCopySetupURI: Copiar la configuración actual a una URI de configuración
+  nameDisableHiddenFileSync: Desactivar sincronización de archivos ocultos
+  nameDiscardSettings: Descartar configuraciones y bases de datos existentes
+  nameEnableHiddenFileSync: Activar sincronización de archivos ocultos
+  nameEnableLiveSync: Activar LiveSync
+  nameHiddenFileSynchronization: Sincronización de archivos ocultos
+  nameManualSetup: Configuración manual
+  nameTestConnection: Probar conexión
+  nameTestDatabaseConnection: Probar Conexión de Base de Datos
+  nameValidateDatabaseConfig: Validar Configuración de la Base de Datos
+  okAdminPrivileges: ✔ Tienes privilegios de administrador.
+  okCorsCredentials: ✔ cors.credentials está correcto.
+  okCorsCredentialsForOrigin: CORS credenciales OK
+  okCorsOriginMatched: ✔ Origen de CORS correcto
+  okCorsOrigins: ✔ cors.origins está correcto.
+  okEnableCors: ✔ httpd.enable_cors está correcto.
+  okMaxDocumentSize: ✔ couchdb.max_document_size está correcto.
+  okMaxRequestSize: ✔ chttpd.max_http_request_size está correcto.
+  okRequireValidUser: ✔ chttpd.require_valid_user está correcto.
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user está correcto.
+  okWwwAuth: ✔ httpd.WWW-Authenticate está correcto.
+  optionApply: Aplicar
+  optionCancel: Cancelar
+  optionCouchDB: CouchDB
+  optionDisableAllAutomatic: Desactivar lo automático
+  optionFetchFromRemote: Obtener del remoto
+  optionHere: AQUÍ
+  optionLiveSync: Sincronización LiveSync
+  optionMinioS3R2: Minio,S3,R2
+  optionOkReadEverything: OK, he leído todo.
+  optionOnEvents: En eventos
+  optionPeriodicAndEvents: Periódico y en eventos
+  optionPeriodicWithBatch: Periódico con lote
+  optionRebuildBoth: Reconstructuir ambos desde este dispositivo
+  optionSaveOnlySettings: (Peligro) Guardar solo configuración
+  panelChangeLog: Registro de cambios
+  panelGeneralSettings: Configuraciones Generales
+  panelPrivacyEncryption: Privacidad y Cifrado
+  panelRemoteConfiguration: Configuración remota
+  panelSetup: Configuración
+  titleAppearance: Apariencia
+  titleConflictResolution: Resolución de conflictos
+  titleCongratulations: ¡Felicidades!
+  titleCouchDB: Servidor CouchDB
+  titleDeletionPropagation: Propagación de eliminación
+  titleEncryptionNotEnabled: El cifrado no está habilitado
+  titleEncryptionPassphraseInvalid: La frase de contraseña de cifrado es inválida
+  titleExtraFeatures: Habilitar funciones extras y avanzadas
+  titleFetchConfig: Obtener configuración
+  titleFetchConfigFromRemote: Obtener configuración del servidor remoto
+  titleFetchSettings: Obtener configuraciones
+  titleHiddenFiles: Archivos ocultos
+  titleLogging: Registro
+  titleMinioS3R2: MinIO, S3, R2
+  titleNotification: Notificación
+  titleOnlineTips: Consejos en línea
+  titleQuickSetup: Configuración rápida
+  titleRebuildRequired: Reconstrucción necesaria
+  titleRemoteConfigCheckFailed: La verificación de configuración remota falló
+  titleRemoteServer: Servidor remoto
+  titleReset: Reiniciar
+  titleSetupOtherDevices: Para configurar otros dispositivos
+  titleSynchronizationMethod: Método de sincronización
+  titleSynchronizationPreset: Preestablecimiento de sincronización
+  titleSyncSettings: Configuraciones de Sincronización
+  titleSyncSettingsViaMarkdown: Configuración de sincronización a través de Markdown
+  titleUpdateThinning: Actualización de adelgazamiento
+  warnCorsOriginUnmatched: "⚠ El origen de CORS no coincide: {from}->{to}"
+  warnNoAdmin: ⚠ No tienes privilegios de administrador.
+Ok: Aceptar
+Old Algorithm: Algoritmo antiguo
+Older fallback (Slow, W/O WebAssembly): Alternativa anterior (lenta, sin WebAssembly)
+Open: Abrir
+Open the dialog: Abrir el diálogo
+Overwrite: Sobrescribir
+Overwrite patterns: Patrones de sobrescritura
+Overwrite remote: Sobrescribir remoto
+Overwrite remote with local DB and passphrase.: Sobrescribe el remoto con la base de datos local y la frase de contraseña.
+Overwrite Server Data with This Device's Files: Sobrescribir los datos del servidor con los archivos de este dispositivo
+paneMaintenance:
+  markDeviceResolvedAfterBackup: Marcar el dispositivo como resuelto después de hacer una copia de seguridad
+  remoteLockedAndDeviceNotAccepted: La base de datos remota está bloqueada y este
+    dispositivo aún no ha sido aceptado.
+  remoteLockedResolvedDevice: La base de datos remota está bloqueada, pero este
+    dispositivo ya fue aceptado.
+  unlockDatabaseReady: Desbloquear la base de datos
+Passphrase: Frase de contraseña
+Passphrase of sensitive configuration items: Frase para elementos sensibles
+password: contraseña
+Password: Contraseña
+Paste a connection string: Pegar cadena de conexión
+Path Obfuscation: Ofuscación de rutas
+Patterns to match files for overwriting instead of merging: Patrones para identificar archivos que se sobrescribirán en lugar de fusionarse
+Patterns to match files for syncing: Patrones para identificar archivos que se sincronizarán
+Peer-to-Peer Synchronisation: Sincronización entre pares
+Per-file-saved customization sync: Sincronización de personalización por archivo
+Perform: Ejecutar
+Perform cleanup: Ejecutar limpieza
+Perform Garbage Collection: Ejecutar recolección de basura
+Perform Garbage Collection to remove unused chunks and reduce database size.:
+  Ejecuta la recolección de basura para eliminar chunks no usados y reducir el
+  tamaño de la base de datos.
+Periodic Sync interval: Intervalo de sincronización periódica
+Pick a file to resolve conflict: Elegir un archivo para resolver el conflicto
+Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.:
+  Define un nombre para identificar este dispositivo. Debe ser único entre tus
+  dispositivos. Mientras no esté configurado, no podremos habilitar esta
+  función.
+Please set this device name: Define el nombre de este dispositivo
+Presets: Preconfiguraciones
+Process small files in the foreground: Procesar archivos pequeños en primer plano
+PureJS fallback  (Fast, W/O WebAssembly): Alternativa PureJS (rápida, sin WebAssembly)
+Purge all download/upload cache.: Purga toda la caché de descarga y carga.
+Purge all journal counter: Purgar todos los contadores del diario
+Rebuild local and remote database with local files.: Reconstruye la base de datos local y remota usando los archivos locales.
+Rebuilding Operations (Remote Only): Operaciones de reconstrucción (solo remoto)
+Recreate all: Recrear todo
+Recreate missing chunks for all files: Recrear fragmentos faltantes para todos los archivos
+Reducing the frequency with which on-disk changes are reflected into the DB: Reducir frecuencia de actualizaciones de disco a BD
+Region: Región
+Remediation: Remediación
+Remediation Setting Changed: La configuración de remediación cambió
+Remote Database Tweak (In sunset): Ajustes de base de datos remota (en retirada)
+Remote Databases: Bases de datos remotas
+Remote name: Nombre del remoto
+Remote server type: Tipo de servidor remoto
+Remote Type: Tipo de remoto
+Rename: Renombrar
+Requires restart of Obsidian: Requiere reiniciar Obsidian
+Requires restart of Obsidian.: Requiere reiniciar Obsidian
+Resend: Reenviar
+Resend all chunks to the remote.: Reenvía todos los chunks al remoto.
+Reset: Restablecer
+Reset all: Restablecer todo
+Reset all journal counter: Restablecer todos los contadores del diario
+Reset journal received history: Restablecer historial de recepción del diario
+Reset journal sent history: Restablecer historial de envío del diario
+Reset received: Restablecer recepción
+Reset sent history: Restablecer historial de envío
+Reset Synchronisation information: Restablecer información de sincronización
+Reset Synchronisation on This Device: Restablecer sincronización en este dispositivo
+Resolve All: Resolver todo
+Resolve all conflicted files: Resolver todos los archivos en conflicto
+Resolve All conflicted files by the newer one: Resolver todos los archivos en conflicto con la versión más reciente
+"Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.":
+  "Resuelve todos los archivos en conflicto conservando la versión más reciente.
+  Precaución: esto sobrescribirá la versión anterior y no podrá recuperarse."
+Restart Now: Reiniciar ahora
+Restore or reconstruct local database from remote.: Restaura o reconstruye la base de datos local desde el remoto.
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.:
+  Guardar configuración en archivo markdown. Se notificarán nuevos ajustes.
+  Puede definir diferentes archivos por plataforma
+Saving will be performed forcefully after this number of seconds.: Guardado forzado tras esta cantidad de segundos
+Scan changes on customization sync: Escanear cambios en sincronización de personalización
+Scan customization automatically: Escanear personalización automáticamente
+Scan customization before replicating.: Escanear personalización antes de replicar
+Scan customization every 1 minute.: Escanear personalización cada 1 minuto
+Scan customization periodically: Escanear personalización periódicamente
+Scan for hidden files before replication: Escanear archivos ocultos antes de replicar
+Scan hidden files periodically: Escanear archivos ocultos periódicamente
+Schedule and Restart: Programar y reiniciar
+Scram!: Medidas de emergencia
+Seconds, 0 to disable: Segundos, 0 para desactivar
+Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.:
+  Segundos. Guardado en BD local se retrasará hasta este valor tras dejar de
+  escribir/guardar
+Secret Key: Clave secreta
+Select the database adapter to use.: Selecciona el adaptador de base de datos que se usará.
+Send: Enviar
+Send chunks: Enviar chunks
+Server URI: URI del servidor
+Setting:
+  GenerateKeyPair:
+    Desc: >-
+      Hemos generado un par de claves.
+
+
+      Nota: Este par de claves no volverá a mostrarse. Guárdalo en un lugar
+      seguro. Si lo pierdes, tendrás que generar uno nuevo.
+
+      Nota 2: La clave pública está en formato spki y la clave privada en
+      formato pkcs8. Para mayor comodidad, los saltos de línea de la clave
+      pública se convierten en `\n`.
+
+      Nota 3: La clave pública debe configurarse en la base de datos remota y la
+      clave privada en los dispositivos locales.
+
+
+      >[!SOLO PARA TUS OJOS]-
+
+      > <div class="sls-keypair">
+
+      >
+
+      > ### Clave pública
+
+      > ```
+
+      ${public_key}
+
+      > ```
+
+      >
+
+      > ### Clave privada
+
+      > ```
+
+      ${private_key}
+
+      > ```
+
+      >
+
+      > </div>
+
+
+      >[!Ambas para copiar]-
+
+      >
+
+      > <div class="sls-keypair">
+
+      >
+
+      > ```
+
+      ${public_key}
+
+      ${private_key}
+
+      > ```
+
+      >
+
+      > </div>
+    Title: ¡Se ha generado un nuevo par de claves!
+Should we keep folders that don't have any files inside?: ¿Mantener carpetas vacías?
+Should we only check for conflicts when a file is opened?: ¿Solo comprobar conflictos al abrir archivo?
+Should we prompt you about conflicting files when a file is opened?: ¿Notificar sobre conflictos al abrir archivo?
+Should we prompt you for every single merge, even if we can safely merge automatcially?: ¿Preguntar en cada fusión aunque sea automática?
+Show full banner: Mostrar banner completo
+Show only notifications: Mostrar solo notificaciones
+Show status as icons only: Mostrar estado solo con íconos
+Show status icon instead of file warnings banner: Mostrar icono de estado en lugar del banner de advertencia de archivos
+Show status inside the editor: Mostrar estado dentro del editor
+Show status on the status bar: Mostrar estado en la barra de estado
+Show verbose log. Please enable if you report an issue.: Mostrar registro detallado. Actívelo si reporta un problema.
+Starts synchronisation when a file is saved.: Inicia sincronización al guardar un archivo
+Stop reflecting database changes to storage files.: Dejar de reflejar cambios de BD en archivos
+Stop watching for file changes.: Dejar de monitorear cambios en archivos
+Suppress notification of hidden files change: Suprimir notificaciones de cambios en archivos ocultos
+Suspend database reflecting: Suspender reflejo de base de datos
+Suspend file watching: Suspender monitorización de archivos
+Switch to IDB: Cambiar a IDB
+Switch to IndexedDB: Cambiar a IndexedDB
+Sync after merging file: Sincronizar tras fusionar archivo
+Sync automatically after merging files: Sincronizar automáticamente tras fusionar archivos
+Sync Mode: Modo de sincronización
+Sync on Editor Save: Sincronizar al guardar en editor
+Sync on File Open: Sincronizar al abrir archivo
+Sync on Save: Sincronizar al guardar
+Sync on Startup: Sincronizar al iniciar
+Synchronising files: Archivos sincronizados
+Syncing: Sincronización
+Target patterns: Patrones objetivo
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.:
+  Solo pruebas - Resolver conflictos sincronizando copias nuevas (puede
+  sobrescribir modificaciones)
+The delay for consecutive on-demand fetches: Retraso entre obtenciones consecutivas
+The Hash algorithm for chunk IDs: Algoritmo hash para IDs de chunks
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: Duración máxima para incubar chunks. Excedentes se independizan
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.:
+  Número máximo de chunks que pueden incubarse en el documento. Excedentes se
+  independizan
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: Tamaño total máximo de chunks incubados. Excedentes se independizan
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: Esta frase no se copia a otros dispositivos. Usará `Default` hasta reconfigurar
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.:
+  Esto recreará los fragmentos de todos los archivos. Si faltaban fragmentos,
+  esto puede corregir los errores.
+Transfer Tweak: Ajustes de transferencia
+Unique name between all synchronized devices. To edit this setting, please disable customization sync once.:
+  Nombre único entre dispositivos sincronizados. Para editarlo, desactive
+  sincronización de personalización
+Use a custom passphrase: Usar una frase de contraseña personalizada
+Use Custom HTTP Handler: Usar manejador HTTP personalizado
+Use dynamic iteration count: Usar conteo de iteraciones dinámico
+Use Segmented-splitter: Usar divisor segmentado
+Use splitting-limit-capped chunk splitter: Usar divisor de chunks con límite
+Use the trash bin: Usar papelera
+Use timeouts instead of heartbeats: Usar timeouts en lugar de latidos
+username: nombre de usuario
+Username: Usuario
+Verbose Log: Registro detallado
+Verify all: Verificar todo
+Verify and repair all files: Verificar y reparar todos los archivos
+Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.:
+  ¡Advertencia! Impacta rendimiento. Los logs no se sincronizan con nombre
+  predeterminado. Contienen información confidencial
+We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.:
+  No podemos cambiar el nombre del dispositivo mientras esta función esté
+  habilitada. Deshabilita la función para cambiarlo.
+When you save a file in the editor, start a sync automatically: Iniciar sincronización automática al guardar en editor
+Write credentials in the file: Escribir credenciales en archivo
+Write logs into the file: Escribir logs en archivo
+xxhash32 (Fast but less collision resistance): xxhash32 (rápido, pero con menor resistencia a colisiones)
+xxhash64 (Fastest): xxhash64 (el más rápido)
+"Welcome to Self-hosted LiveSync": "Bienvenido a Self-hosted LiveSync"
+"We will now guide you through a few questions to simplify the synchronisation setup.": "Ahora le guiaremos con unas pocas preguntas para simplificar la configuración de la sincronización。"
+"First, please select the option that best describes your current situation.": "Primero, seleccione la opción que describa mejor su situación actual。"
+"I am setting this up for the first time": "Estoy configurando esto por primera vez"
+"(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Seleccione esto si está configurando este dispositivo como el primer dispositivo de sincronización). Esta opción es adecuada si es nuevo en LiveSync y desea configurarlo desde cero。"
+"I am adding a device to an existing synchronisation setup": "Estoy agregando un dispositivo a una configuración de sincronización existente"
+"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。"
+"Yes, I want to set up a new synchronisation": "Sí, quiero configurar una nueva sincronización"
+"Yes, I want to add this device to my existing synchronisation": "Sí, quiero añadir este dispositivo a mi sincronización existente"
+"No, please take me back": "No, volver atrás"
+"Device Setup Method": "Método de configuración del dispositivo"
+"You are adding this device to an existing synchronisation setup.": "Está añadiendo este dispositivo a una configuración de sincronización existente。"
+"Please select a method to import the settings from another device.": "Seleccione un método para importar la configuración desde otro dispositivo。"
+"Use a Setup URI (Recommended)": "Usar un URI de configuración (recomendado)"
+"Paste the Setup URI generated from one of your active devices.": "Pegue el URI de configuración generado desde uno de sus dispositivos activos。"
+"Scan a QR Code (Recommended for mobile)": "Escanear un código QR (recomendado para móviles)"
+"Scan the QR code displayed on an active device using this device's camera.": "Escanee con la cámara de este dispositivo el código QR mostrado en un dispositivo activo。"
+"Enter the server information manually": "Introducir manualmente la información del servidor"
+"Configure the same server information as your other devices again, manually, very advanced users only.": "Configure manualmente la misma información del servidor que en sus otros dispositivos. Solo para usuarios muy avanzados。"
+"Proceed with Setup URI": "Continuar con el URI de configuración"
+"I know my server details, let me enter them": "Conozco los datos de mi servidor; permítame introducirlos"
+"Please select an option to proceed": "Seleccione una opción para continuar"
+"Connection Method": "Método de conexión"
+"We will now proceed with the server configuration.": "Ahora continuaremos con la configuración del servidor。"
+"How would you like to configure the connection to your server?": "¿Cómo desea configurar la conexión con su servidor?"
+"A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.": "Un URI de configuración es una única cadena de texto que contiene la dirección del servidor y los datos de autenticación. Si el script de instalación de su servidor generó un URI, usarlo proporciona una configuración sencilla y segura。"
+"This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": "Esta es una opción avanzada para usuarios que no disponen de un URI o que desean configurar parámetros detallados。"
+"Enter Server Information": "Introducir información del servidor"
+"Please select the type of server to which you are connecting.": "Seleccione el tipo de servidor al que se está conectando。"
+"Continue to CouchDB setup": "Continuar con la configuración de CouchDB"
+"Continue to S3/MinIO/R2 setup": "Continuar con la configuración de S3/MinIO/R2"
+"Continue to Peer-to-Peer only setup": "Continuar con la configuración solo Peer-to-Peer"
+"This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.": "Este es el método de sincronización más adecuado para el diseño. Todas las funciones están disponibles. Debe tener configurada una instancia de CouchDB。"
+"S3/MinIO/R2 Object Storage": "Almacenamiento de objetos S3/MinIO/R2"
+"Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": "Sincronización mediante archivos de registro. Debe haber configurado un almacenamiento de objetos compatible con S3/MinIO/R2。"
+"Peer-to-Peer only": "Solo Peer-to-Peer"
+"This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "Esta función permite la sincronización directa entre dispositivos. No requiere servidor, pero ambos dispositivos deben estar en línea al mismo tiempo para que la sincronización se produzca, y algunas funciones pueden ser limitadas. La conexión a Internet solo se necesita para la señalización (detección de pares), no para la transferencia de datos。"

@@ -1,0 +1,1628 @@
+(Active): （已启用）
+(BETA) Always overwrite with a newer file: 始终使用更新的文件覆盖(测试版)
+(Beta) Use ignore files: (测试版)使用忽略文件
+(Days passed, 0 to disable automatic-deletion): (已过天数,0为禁用自动删除)
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.: (例如,在线读取块)如果启用此选项,LiveSync 将直接在线读取块,而不是在本地复制块。建议增加自定义块大小
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.: (MB)如果设置了此项,大于此大小的本地和远程文件的更改将被跳过。如果文件再次变小,将使用更新的文件
+(Mega chars): (百万字符)
+(Not recommended) If set, credentials will be stored in the file.: (不建议)如果设置,凭据将存储在文件中
+(Obsolete) Use an old adapter for compatibility: (已弃用)为兼容性使用旧适配器
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.: （正则表达式）留空表示同步所有文件。可设置正则表达式来限制需要同步的文件。
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.: （正则表达式）如果已设置，则所有匹配此模式的本地和远端文件变更都会被跳过。
+Access Key: 访问密钥
+Activate: 启用
+Active Remote Configuration: 生效中的远程配置
+Add default patterns: 添加默认模式
+Add new connection: 新增连接
+Always prompt merge conflicts: 始终提示合并冲突
+Analyse: 立即分析
+Analyse database usage: 分析数据库使用情况
+Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like.: 分析数据库使用情况并生成 TSV 报告以供您自行诊断。您可以将生成的报告粘贴到您喜欢的任何电子表格中。
+Apply Latest Change if Conflicting: 如果冲突则应用最新更改
+Apply preset configuration: 应用预设配置
+Ask a passphrase at every launch: 每次启动时询问密码短语
+Automatically Sync all files when opening Obsidian.: 打开 Obsidian 时自动同步所有文件
+Back: 返回
+Back to non-configured: 恢复为未配置状态
+Batch database update: 批量数据库更新
+Batch limit: 批量限制
+Batch size: 批量大小
+Batch size of on-demand fetching: 按需获取的批量大小
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.:
+  在 v0.17.16
+  之前,我们使用旧适配器作为本地数据库。现在首选新适配器。但是,它需要重建本地数据库。请在有足够时间时禁用此开关。如果保持启用状态,并且在从远程数据库获取时,系统将要求您禁用此开关。
+Bucket Name: 存储桶名称
+Cancel: 取消
+Check: 立即检查
+Check and convert non-path-obfuscated files: 检查并转换未进行路径混淆的文件
+Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.: 检查尚未转换为路径混淆 ID 的文档，并在需要时将其转换。
+cmdConfigSync:
+  showCustomizationSync: 显示自定义同步
+Comma separated `.gitignore, .dockerignore`: 用逗号分隔,例如 `.gitignore, .dockerignore`
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.: 比较本地数据库与存储中的文件内容；如果不一致，你将被询问要保留哪一份。
+Compatibility (Conflict Behaviour): 兼容性（冲突行为）
+Compatibility (Database structure): 兼容性（数据库结构）
+Compatibility (Internal API Usage): 兼容性（内部 API 使用）
+Compatibility (Metadata): 兼容性（元数据）
+Compatibility (Remote Database): 兼容性（远端数据库）
+Compatibility (Trouble addressed): 兼容性（问题修复）
+Compute revisions for chunks: 为 chunks 计算修订版本(以前的行为)
+Configuration Encryption: 配置加密
+Configure: 配置
+Configure And Change Remote: 配置并切换远端
+Configure E2EE: 配置 E2EE
+Configure Remote: 配置远端
+Copy: 复制
+Copy Report to clipboard: 将报告复制到剪贴板
+CouchDB Connection Tweak: CouchDB 连接调优
+Cross-platform: 跨平台
+"Current adapter: {adapter}": 当前适配器：{adapter}
+Customization Sync: 自定义同步
+Customization Sync (Beta3): 自定义同步（Beta3）
+Data Compression: 数据压缩
+Database Adapter: 数据库适配器
+Database Name: 数据库名称
+Database suffix: 数据库后缀
+Default: 默认
+Delay conflict resolution of inactive files: 推迟解决不活动文件
+Delay merge conflict prompt for inactive files.: 推迟手动解决不活动文件
+Delete: 删除
+Delete all customization sync data: 删除所有自定义同步数据
+Delete all data on the remote server.: 删除远端服务器上的所有数据。
+Delete local database to reset or uninstall Self-hosted LiveSync: 删除本地数据库以重置或卸载 Self-hosted LiveSync
+Delete old metadata of deleted files on start-up: 启动时删除已删除文件的旧元数据
+Delete Remote Configuration: 删除远端配置
+Delete remote configuration '{name}'?: 要删除远端配置“{name}”吗？
+desktop: 桌面设备
+Developer: 开发者
+Device name: 设备名称
+dialog:
+  yourLanguageAvailable:
+    _value: |-
+      Self-hosted LiveSync已提供您语言的翻译,因此启用了%{Display language}
+
+      注意：并非所有消息都已翻译。我们期待您的贡献！
+      注意 2：若您创建问题报告， **请切换回%{lang-def}** ，然后截取屏幕截图、消息和日志，此操作可在设置对话框中完成
+      愿您使用顺心！
+    btnRevertToDefault: 保持%{lang-def}
+    Title: " 翻译可用!"
+Disables all synchronization and restart.: 禁用所有同步并重新启动。
+Disables logging, only shows notifications. Please disable if you report an issue.: 禁用日志记录,仅显示通知。如果您报告问题,请禁用此选项
+Display Language: 显示语言
+Display name: 显示名称
+Do not check configuration mismatch before replication: 在复制前不检查配置不匹配
+Do not keep metadata of deleted files.: "不保留已删除文件的元数据 "
+Do not split chunks in the background: 不在后台分割 chunks
+Do not use internal API: 不使用内部 API
+Doctor:
+  Button:
+    DismissThisVersion: 拒绝,并且直到下个版本前不再询问
+    Fix: 修复
+    FixButNoRebuild: 修复但不重建
+    No: 拒绝
+    Skip: 保持不变
+    Yes: 确定
+  Dialogue:
+    Main: |-
+      您好！配置医生已根据您的要求启动(感谢您)！！遗憾的是,检测到部分配置存在潜在问题。请放心,我们将逐一解决这些问题。
+
+      提前告知您,我们将就以下事项进行确认：
+
+      为数据块计算修订版本(此前行为)
+      增强块大小
+
+      我们开始处理吗?
+    MainFix: |-
+
+      ## ${name}
+
+      | Current | Ideal |
+      |:---:|:---:|
+      | ${current} | ${ideal} |
+
+      **Recommendation Level:** ${level}
+
+      ### Why this has been detected?
+
+      ${reason}
+
+      ${note}
+
+      Fix this to the ideal value?
+    Title: Self-hosted LiveSync 配置诊断
+    TitleAlmostDone: 全部完成!
+    TitleFix: 修复问题 ${current}/${total}
+  Level:
+    Must: 必须
+    Necessary: 必要
+    Optional: 可选
+    Recommended: 推荐
+  Message:
+    NoIssues: 未发现问题!
+    RebuildLocalRequired: 注意！需要重建本地数据库以应用此项！
+    RebuildRequired: 注意！需要重建才能应用此项！
+    SomeSkipped: 我们将某些问题留给了以后处理。是否要在下次启动时再次询问您？
+  RULES:
+    E2EE_V02500:
+      REASON: The End-to-End Encryption has got now more robust and faster. Also
+        because, the previous E2EE was found to be compromised in a re-conducted
+        code review. It should be applied as soon as possible. Really apologises
+        for your inconvenience. And, this setting is not forward compatible. All
+        synchronised devices must be updated to v0.25.0 or higher. Rebuilds are
+        not required and will be converted from the new transfer to the new
+        format, However, it is recommended to rebuild whenever possible.
+Duplicate: 复制
+Duplicate remote: 复制远端配置
+E2EE Configuration: E2EE 配置
+Edge case addressing (Behaviour): 边缘情况处理（行为）
+Edge case addressing (Database): 边缘情况处理（数据库）
+Edge case addressing (Processing): 边缘情况处理（处理）
+Emergency restart: 紧急重启
+Enable advanced features: 启用高级功能
+Enable customization sync: 启用自定义同步
+Enable Developers' Debug Tools.: "启用开发者调试工具 "
+Enable edge case treatment features: 启用边缘情况处理功能
+Enable poweruser features: 启用高级用户功能
+Enable this if your Object Storage doesn't support CORS: "如果您的对象存储不支持 CORS,请启用此功能 "
+Enable this option to automatically apply the most recent change to documents even when it conflicts: 启用此选项可在文档冲突时自动应用最新的更改
+Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.: "加密远程数据库中的内容。如果您使用插件的同步功能,则建议启用此功能 "
+Encrypting sensitive configuration items: 加密敏感配置项
+Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.: "加密密码。如果更改,您应该用新的(加密的)文件覆盖服务器的数据库 "
+End-to-End Encryption: 端到端加密
+Endpoint URL: 终端URL
+Enhance chunk size: 增大块大小
+Export: 导出
+Fetch: 获取
+Fetch chunks on demand: 按需获取块
+Fetch database with previous behaviour: 使用以前的行为获取数据库
+Fetch remote settings: 获取远端设置
+File to resolve conflict: 选择要解决冲突的文件
+Filename: 文件名
+Flag and restart: 标记后重启
+Forces the file to be synced when opened.: "打开文件时强制同步该文件 "
+Fresh Start Wipe: 全新开始清除
+Garbage Collection V3 (Beta): 垃圾回收 V3（Beta）
+Handle files as Case-Sensitive: 将文件视为区分大小写
+Hidden Files: 隐藏文件
+Hide completely: 完全隐藏
+How to display network errors when the sync server is unreachable.: 当同步服务器不可达时，如何显示网络错误。
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: 如果禁用(切换),chunks 将在 UI 线程上分割(以前的行为)
+If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.: 如果启用,将使用基于文件的、高效的自定义同步。启用此功能需要进行一次小的迁移。所有设备都应更新到 v0.23.18。一旦启用此功能,我们将失去与旧版本的兼容性
+If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.: 如果启用,数据块将被分割成不超过 100 项。但是,去重效果会稍弱
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: 如果启用,新创建的数据块将暂时保留在文档中,并在稳定后成为独立数据块
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.: 如果启用，状态栏内将显示 ⛔ 图标，而非文件警告横幅，不会显示任何详细信息。
+If enabled, the file under 1kb will be processed in the UI thread.: 如果启用,小于 1kb 的文件将在 UI 线程中处理
+If enabled, the notification of hidden files change will be suppressed.: 如果启用,将不再通知隐藏文件被更改
+If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour): 如果启用,所有 chunks 将使用根据其内容生成的修订版本存储(以前的行为)
+If this enabled, All files are handled as case-Sensitive (Previous behaviour).: 如果启用,所有文件都将视为区分大小写(以前的行为)
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: 如果启用此功能,数据块将被分割成具有语义意义的段落。并非所有平台都支持此功能
+If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.: 如果设置了此项,与忽略文件匹配的本地文件的更改将被跳过。远程更改使用本地忽略文件确定
+If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.:
+  如果启用此选项,PouchDB 将保持连接打开 60
+  秒,如果在此时间内没有更改到达,则关闭并重新打开套接字,而不是无限期保持打开。当代理限制请求持续时间时有用,但可能会增加资源使用ß
+Ignore files: 忽略文件
+Ignore patterns: 忽略模式
+Import connection: 导入连接
+Incubate Chunks in Document: 在文档中孵化块
+Initialise all journal history, On the next sync, every item will be received and sent.: 初始化所有日志历史。下次同步时，所有项目都会重新接收并发送。
+Interval (sec): 间隔(秒)
+K:
+  exp: 实验性
+  long_p2p_sync: "%{title_p2p_sync} (%{exp})"
+  P2P: "%{Peer}-to-%{Peer}"
+  Peer: Peer
+  ScanCustomization: 扫描自定义
+  short_p2p_sync: P2P同步(%{exp})
+  title_p2p_sync: Peer-to-Peer同步
+Keep empty folder: 保留空文件夹
+lang_def: Default
+lang-de: Deutsche
+lang-def: "%{lang_def}"
+lang-es: Español
+lang-fr: Français
+lang-ja: 日本語
+lang-ko: 한국어
+lang-ru: Русский
+lang-zh: 简体中文
+lang-zh-tw: 繁體中文
+Later: 稍后
+"Limit: {datetime} ({timestamp})": 限制：{datetime}（{timestamp}）
+LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.: LiveSync 无法处理具有相同名称但没有不同前缀的多个库。这应该自动配置
+liveSyncReplicator:
+  beforeLiveSync: 在LiveSync前,先启动OneShot一次...
+  cantReplicateLowerValue: 我们无法复制更小的值
+  checkingLastSyncPoint: 查找上次同步点
+  couldNotConnectTo: |-
+    无法连接到 ${uri} : ${name}
+    (${db})
+  couldNotConnectToRemoteDb: 无法连接到远程数据库：${d}
+  couldNotConnectToServer: 无法连接到服务器
+  couldNotConnectToURI: 无法连接到 ${uri}:${dbRet}
+  couldNotMarkResolveRemoteDb: 无法标记并解决远程数据库
+  liveSyncBegin: LiveSync 开始...
+  lockRemoteDb: 锁定远程数据库以防止数据损坏
+  markDeviceResolved: 将此设备标记为“已解决”
+  oneShotSyncBegin: OneShot同步开始...(${syncMode})
+  remoteDbCorrupted: 远程数据库较新或已损坏,请确保已安装最新版本的self-hosted-livesync
+  remoteDbCreatedOrConnected: 远程数据库已创建或连接
+  remoteDbDestroyed: 远程数据库已销毁
+  remoteDbDestroyError: 远程数据库销毁时发生错误：
+  remoteDbMarkedResolved: 远程数据库已标记为已解决
+  replicationClosed: 同步已关闭
+  replicationInProgress: 同步正在进行中
+  retryLowerBatchSize: 使用更小的批量大小重试：${batch_size}/${batches_limit}
+  unlockRemoteDb: 解锁远程数据库以防止数据损坏
+liveSyncSetting:
+  errorNoSuchSettingItem: 没有此设置项：${key}
+  originalValue: 原始值：${value}
+  valueShouldBeInRange: 值应该在 ${min} < value < ${max} 之间
+liveSyncSettings:
+  btnApply: 应用
+Lock: 锁定
+Lock Server: 锁定服务器
+Lock the remote server to prevent synchronization with other devices.: 锁定远端服务器，以阻止其他设备继续同步。
+logPane:
+  autoScroll: 自动滚动
+  logWindowOpened: 日志窗口已打开
+  pause: 暂停
+  title: Self-hosted LiveSync 日志
+  wrap: 自动换行
+Maximum delay for batch database updating: 批量数据库更新的最大延迟
+Maximum file size: 最大文件大小
+Maximum Incubating Chunk Size: 最大孵化块大小
+Maximum Incubating Chunks: 最大孵化块数
+Maximum Incubation Period: 最大孵化期
+MB (0 to disable).: MB(0为禁用)
+Memory cache size (by total characters): 内存缓存大小(按总字符数)
+Memory cache size (by total items): 内存缓存大小(按总项目数)
+Merge: 合并
+Minimum delay for batch database updating: 批量数据库更新的最小延迟
+Minimum interval for syncing: 同步最小间隔
+moduleCheckRemoteSize:
+  logCheckingStorageSizes: 正在检查存储大小
+  logCurrentStorageSize: 远程存储大小：${measuredSize}
+  logExceededWarning: 远程存储大小：${measuredSize} 超过 ${notifySize}
+  logThresholdEnlarged: 阈值已扩大到 ${size}MB
+  msgConfirmRebuild: 这可能需要一些时间。您真的想现在重建所有内容吗？
+  msgDatabaseGrowing: |
+    **您的数据库正在变大！** 但别担心,我们现在可以解决它。在远程存储空间用完之前还有时间。
+
+    | 测量大小 | 配置大小 |
+    | --- | --- |
+    | ${estimatedSize} | ${maxSize} |
+
+    > [!MORE]-
+    > 如果您已经使用了很多年,数据库中可能会积累未引用的 chunks——也就是垃圾。因此,我们建议重建所有内容。它可能会变得小得多。
+    >
+    > 如果您的库容量只是在增加,最好在整理文件后重建所有内容。即使您为了加速过程删除了文件,Self-hosted LiveSync 也不会删除实际数据。这大致[有文档记录](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)。
+    >
+    > 如果您不介意增加,可以将通知限制增加 100MB。如果您在自己的服务器上运行,就是这种情况。但是,最好还是不时地重建所有内容。
+    >
+
+    > [!WARNING]
+    > 如果您执行重建所有内容,请确保所有设备都已同步。尽管如此,插件会尽可能地合并
+  msgSetDBCapacity: |
+    我们可以设置一个最大数据库容量警告,**以便在远程存储空间耗尽前采取行动**。
+    您想启用这个功能吗?
+
+    > [!MORE]-
+    > - 0: 不警告存储大小。
+    >   如果您在远程存储(尤其是自托管)上有足够的空间,则推荐此选项。您可以手动检查存储大小并重建。
+    > - 800: 如果远程存储大小超过 800MB 则发出警告。
+    >   如果您使用的是 fly.io(1GB 限制) 或 IBM Cloudant,则推荐此选项。
+    > - 2000: 如果远程存储大小超过 2GB 则发出警告。
+
+    如果达到限制,系统会要求我们逐步增大限制
+  option2GB: 2GB (标准)
+  option800MB: 800MB (Cloudant, fly.io)
+  optionAskMeLater: 稍后问我
+  optionDismiss: 忽略
+  optionIncreaseLimit: 增加到 ${newMax}MB
+  optionNoWarn: 不,请永远不要警告
+  optionRebuildAll: 立即重建所有内容
+  titleDatabaseSizeLimitExceeded: 远程存储大小超出限制
+  titleDatabaseSizeNotify: 设置数据库大小通知
+moduleInputUIObsidian:
+  defaultTitleConfirmation: 确认
+  defaultTitleSelect: 选择
+  optionNo: 否
+  optionYes: 是
+moduleLiveSyncMain:
+  logAdditionalSafetyScan: 额外的安全扫描...
+  logLoadingPlugin: 正在加载插件...
+  logPluginInitCancelled: 插件初始化被某个模块取消
+  logPluginVersion: Self-hosted LiveSync v${manifestVersion} ${packageVersion}
+  logReadChangelog: LiveSync 已更新,请阅读更新日志！
+  logSafetyScanCompleted: 额外的安全扫描完成
+  logSafetyScanFailed: 额外的安全扫描在某个模块上失败
+  logUnloadingPlugin: 正在卸载插件...
+  logVersionUpdate: LiveSync 已更新,如果存在破坏性更新,所有自动同步已暂时禁用。请确保所有设备都更新到最新版本后再启用
+  msgScramEnabled: |
+    Self-hosted LiveSync 已被配置为忽略某些事件。这样对吗？
+
+    | 类型 | 状态 | 说明 |
+    |:---:|:---:|---|
+    | 存储事件 | ${fileWatchingStatus} | 所有修改都将被忽略 |
+    | 数据库事件 | ${parseReplicationStatus} | 所有同步的更改都将被推迟 |
+
+    您想恢复它们并重启 Obsidian 吗？
+
+    > [!DETAILS]-
+    > 这些标志是在重建或获取时由插件设置的。如果过程异常结束,它们可能会被无意中保留。
+    > 如果您不确定,可以尝试重新运行这些过程。请确保备份您的库。
+  optionKeepLiveSyncDisabled: 保持 LiveSync 禁用
+  optionResumeAndRestart: 恢复并重启 Obsidian
+  titleScramEnabled: 紧急停止已启用
+moduleLocalDatabase:
+  logWaitingForReady: 等待就绪...
+moduleLog:
+  showLog: 显示日志
+moduleMigration:
+  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/zh/README_zh.md#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8
+  fix0256:
+    buttons:
+      checkItLater: 稍后检查
+      DismissForever: 我已经修复了，不再询问
+      fix: 修复
+    message: |
+      由于最近的一个 bug（在 v0.25.6 版本中），某些文件可能未正确保存到同步数据库中
+      我们已经扫描了文件，并发现一些需要修复的文件
+
+      **准备修复的文件:**
+
+      ${files}
+
+      这些文件在存储中与原文件的大小匹配，可能是可恢复的
+      我们可以使用它们修复数据库，请点击下方的“修复”按钮进行修复
+
+      ${messageUnrecoverable}
+
+
+      如果你希望再次执行此操作，可以前往 Hatch 页面进行操作
+    messageUnrecoverable: |
+      **无法在此设备上修复的文件:**
+
+      ${filesNotRecoverable}
+
+      这些文件的元数据不一致，无法在此设备上修复（大多数情况下我们无法确定哪一个是正确的）
+      要恢复它们，请检查你的其他设备（同样使用此功能），或从备份中手动恢复
+    title: 检测到损坏的文件
+  insecureChunkExist:
+    buttons:
+      fetch: 我已经重建了远程数据库，将从远程获取
+      later: 我稍后再做
+      rebuild: 重建所有内容
+    laterMessage: 我们强烈建议尽快处理此问题！
+    message: |
+      一些块未安全存储，并且在数据库中未加密
+      **请重建数据库以修复此问题**.
+
+      如果你的远程数据库未配置 SSL，或者使用了不安全的凭据 **你可能面临暴露敏感数据的风险**.
+
+      注意：请在所有设备上将 Self-hosted LiveSync 升级到 v0.25.6 或更高版本，并确保备份你的保险库
+
+      注意2：重建所有内容和获取操作会消耗一些时间和流量，请在非高峰时段进行，并确保网络连接稳定
+    title: 发现不安全的块！
+  logBulkSendCorrupted: 已启用批量发送 chunks,但此功能已损坏。给您带来不便,我们深表歉意。已自动禁用
+  logFetchRemoteTweakFailed: 获取远程调整值失败
+  logLocalDatabaseNotReady: 出错了！本地数据库尚未准备好
+  logMigratedSameBehaviour: 已迁移到 db:${current},行为与之前相同
+  logMigrationFailed: 从 ${old} 到 ${current} 的迁移失败或已取消
+  logRedflag2CreationFail: 创建 redflag2 失败
+  logRemoteTweakUnavailable: 无法获取远程调整值
+  logSetupCancelled: 设置已取消,Self-hosted LiveSync 正在等待您的设置！
+  msgFetchRemoteAgain: |-
+    您可能已经知道,Self-hosted LiveSync 更改了其默认行为和数据库结构。
+
+    值得庆幸的是,在您的时间和努力下,远程数据库似乎已经迁移完成。恭喜！
+
+    但是,我们还需要一点点操作。此设备的配置与远程数据库不兼容。我们需要再次从远程数据库获取。我们现在应该再次从远程获取吗？
+
+    ___注意:在更改配置并再次获取数据库之前,我们无法进行同步。___
+    ___注意2:chunks 是完全不可变的,我们只能获取元数据和差异
+  msgInitialSetup: |-
+    您的设备**尚未设置**。让我引导您完成设置过程。
+
+    请记住,每个对话框内容都可以复制到剪贴板。如果以后需要参考,可以将其粘贴到 Obsidian 的笔记中。您也可以使用翻译工具将其翻译成您的语言。
+
+    首先,您有**设置 URI** 吗？
+
+    注意:如果您不知道这是什么,请参阅[文档](${URI_DOC})
+  msgRecommendSetupUri: |-
+    我们强烈建议您生成一个设置 URI 并使用它。
+    如果您对此不了解,请参阅[文档](${URI_DOC})(再次抱歉,但这很重要)。
+
+    您想如何手动设置?
+  msgSinceV02321: |-
+    自 v0.23.21 起,Self-hosted LiveSync 更改了默认行为和数据库结构。进行了以下更改：
+
+    1. **文件名的区分大小写**
+    现在处理文件名时不区分大小写。这对于大多数平台来说是一个有益的更改,除了 Linux 和 iOS,它们不能有效地管理文件名的大小写敏感性。
+    (在这些平台上,对于名称相同但大小写不同的文件将显示警告)。
+
+    2. **chunks 的版本处理**
+    chunks 是不可变的,这使得它们的版本可以固定。此更改将提高文件保存的性能。
+
+    ___然而,要启用这些更改中的任何一个,都需要重建远程和本地数据库。这个过程需要几分钟,我们建议您在有充足时间时进行。___
+
+    - 如果您希望保持以前的行为,可以使用 `${KEEP}` 跳过此过程。
+    - 如果您没有足够的时间,请选择 `${DISMISS}`。稍后会再次提示您。
+    - 如果您已在另一台设备上重建了数据库,请选择 `${DISMISS}` 并尝试再次同步。由于检测到差异,系统会再次提示您
+  optionAdjustRemote: 调整到远程设置
+  optionDecideLater: 稍后决定
+  optionEnableBoth: 启用两者
+  optionEnableFilenameCaseInsensitive: "仅启用 #1"
+  optionEnableFixedRevisionForChunks: "仅启用 #2"
+  optionHaveSetupUri: 是的,我有
+  optionKeepPreviousBehaviour: 保持以前的行为
+  optionManualSetup: 全部手动设置
+  optionNoAskAgain: 不,请稍后再次询问
+  optionNoSetupUri: 不,我没有
+  optionRemindNextLaunch: 下次启动时提醒我
+  optionSetupViaP2P: Use %{short_p2p_sync} to set up
+  optionSetupWizard: 带我进入设置向导
+  optionYesFetchAgain: 是的,再次获取
+  titleCaseSensitivity: 大小写敏感性
+  titleRecommendSetupUri: 推荐使用设置 URI
+  titleWelcome: 欢迎使用 Self-hosted LiveSync
+moduleObsidianMenu:
+  replicate: 复制
+More actions: 更多操作
+Move remotely deleted files to the trash, instead of deleting.: 将远程删除的文件移至回收站,而不是直接删除
+Network warning style: 网络警告样式
+New Remote: 新建远端
+No limit configured: 未配置限制
+Non-Synchronising files: 不同步的文件
+Normal Files: 普通文件
+Not all messages have been translated. And, please revert to "Default" when reporting errors.: 并非所有消息都已翻译。请在报告错误时恢复为"默认"
+Notify all setting files: 通知所有设置文件
+Notify customized: 通知自定义设置
+Notify when other device has newly customized.: "当其他设备有新的自定义设置时通知 "
+Notify when the estimated remote storage size exceeds on start up: 启动时当估计的远程存储大小超出时通知
+Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.: 一次处理的批量数量。默认为 40。最小为 2。此设置与批量大小一起控制一次在内存中保留多少文档
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.: 一次同步的更改数量。默认为 50。最小为 2。
+obsidianLiveSyncSettingTab:
+  btnApply: 应用
+  btnCheck: 检查
+  btnCopy: 复制
+  btnDisable: 禁用
+  btnDiscard: 丢弃
+  btnEnable: 启用
+  btnFix: 修复
+  btnGotItAndUpdated: 我明白了并且已更新
+  btnNext: 下一步
+  btnStart: 开始
+  btnTest: 测试
+  btnUse: 使用
+  buttonFetch: 获取
+  buttonNext: 下一步
+  defaultLanguage: 默认语言
+  descConnectSetupURI: 这是使用设置 URI 设置 Self-hosted LiveSync 的推荐方法
+  descCopySetupURI: 非常适合设置新设备！
+  descEnableLiveSync: 仅在配置了上述两个选项之一或手动完成所有配置后启用此选项
+  descFetchConfigFromRemote: 从已配置的远程服务器获取必要的设置
+  descManualSetup: 不推荐,但如果您没有设置 URI 则很有用
+  descTestDatabaseConnection: 打开数据库连接。如果未找到远程数据库并且您有创建数据库的权限,则将创建数据库
+  descValidateDatabaseConfig: 检查并修复数据库配置中的任何潜在问题
+  errAccessForbidden: ❗ 访问被禁止
+  errCannotContinueTest: 我们无法继续测试。
+  errCorsCredentials: ❗ cors.credentials 设置错误
+  errCorsNotAllowingCredentials: ❗ CORS 不允许凭据
+  errCorsOrigins: ❗ cors.origins 设置错误
+  errEnableCors: ❗ httpd.enable_cors 设置错误
+  errEnableCorsChttpd: ❗ chttpd.enable_cors 设置错误
+  errMaxDocumentSize: ❗ couchdb.max_document_size 设置过低)
+  errMaxRequestSize: ❗ chttpd.max_http_request_size 设置过低)
+  errMissingWwwAuth: ❗ 缺少 httpd.WWW-Authenticate 设置
+  errRequireValidUser: ❗ chttpd.require_valid_user 设置错误
+  errRequireValidUserAuth: ❗ chttpd_auth.require_valid_user 设置错误
+  labelDisabled: ⏹️：已禁用
+  labelEnabled: 🔁：已启用
+  levelAdvanced: (进阶)
+  levelEdgeCase: (边缘情况)
+  levelPowerUser: (高级用户)
+  linkOpenInBrowser: 在浏览器中打开
+  linkPageTop: 页面顶部
+  linkTipsAndTroubleshooting: 提示和故障排除
+  linkTroubleshooting: /docs/troubleshooting.md
+  logCannotUseCloudant: "此功能不能与 IBM Cloudant 一起使用 "
+  logCheckingConfigDone: 配置检查完成
+  logCheckingConfigFailed: 配置检查失败
+  logCheckingDbConfig: 正在检查数据库配置
+  logCheckPassphraseFailed: |-
+    错误：无法使用远程服务器检查密码：
+    ${db}
+  logConfiguredDisabled: 已配置的同步模式：已禁用
+  logConfiguredLiveSync: 已配置的同步模式：LiveSync
+  logConfiguredPeriodic: 已配置的同步模式：定期同步
+  logCouchDbConfigFail: CouchDB 配置：${title} 失败
+  logCouchDbConfigSet: CouchDB 配置：${title} -> 设置 ${key} 为 ${value}
+  logCouchDbConfigUpdated: CouchDB 配置：${title} 成功更新
+  logDatabaseConnected: 数据库已连接
+  logEncryptionNoPassphrase: 没有密码无法启用加密
+  logEncryptionNoSupport: "您的设备不支持加密 "
+  logErrorOccurred: 发生错误！！
+  logEstimatedSize: 估计大小：${size}
+  logPassphraseInvalid: 密码无效,请修正
+  logPassphraseNotCompatible: 错误：密码与远程服务器不兼容！请再次检查！
+  logRebuildNote: 同步已禁用,如果需要,请获取并重新启用
+  logSelectAnyPreset: 请选择任一预设。
+  msgAreYouSureProceed: 您确定要继续吗？
+  msgChangesNeedToBeApplied: 需要应用更改！
+  msgConfigCheck: --配置检查--
+  msgConfigCheckFailed: 配置检查失败。仍要继续吗？
+  msgConnectionCheck: --连接检查--
+  msgConnectionProxyNote: 如果您在连接检查时遇到问题(即使检查了配置后),请检查您的反向代理配置
+  msgCurrentOrigin: "当前源: {origin}"
+  msgDiscardConfirmation: 您真的要丢弃现有的设置和数据库吗？
+  msgDone: --完成--
+  msgEnableCors: 设置 httpd.enable_cors
+  msgEnableCorsChttpd: 设置 chttpd.enable_cors
+  msgEnableEncryptionRecommendation: 建议启用端到端加密和路径混淆。你确定要在未加密的情况下继续吗？
+  msgFetchConfigFromRemote: 要从远端服务器获取配置吗？
+  msgGenerateSetupURI: 全部完成！要生成设置 URI 以便配置其他设备吗？
+  msgIfConfigNotPersistent: 如果服务器配置不是持久的(例如,在 docker 上运行),此处的值可能会更改。一旦能够连接,请更新服务器 local.ini 中的设置
+  msgInvalidPassphrase: 你的加密密码短语可能无效。你确定要继续吗？
+  msgNewVersionNote: 因为升级通知来到这里？请查看版本历史。如果您满意,请点击按钮。新的更新将再次提示此信息
+  msgNonHTTPSInfo: 配置为非 HTTPS URI。请注意,这可能在移动设备上无法工作
+  msgNonHTTPSWarning: 无法连接到非 HTTPS URI。请更新您的配置并重试
+  msgNotice: ---注意---
+  msgObjectStorageWarning: |-
+    警告：此功能仍在开发中,请注意以下几点：
+    - 仅追加架构。需要重建才能缩小存储空间。
+    - 有点脆弱。
+    - 首次同步时,所有历史记录将从远程传输。注意数据上限和慢速。
+    - 只有差异会实时同步。
+
+    如果您遇到任何问题,或对此功能有任何想法,请在 GitHub 上创建 issue。
+    感谢您的巨大贡献
+  msgOriginCheck: "源检查: {org}"
+  msgRebuildRequired: |-
+    需要重建数据库以应用更改。请选择应用更改的方法。
+
+    <details>
+    <summary>图例</summary>
+
+    | 符号 | 含义 |
+    |: ------ :| ------- |
+    | ⇔ | 最新 |
+    | ⇄ | 同步以平衡 |
+    | ⇐,⇒ | 传输以覆盖 |
+    | ⇠,⇢ | 从另一侧传输以覆盖 |
+
+    </details>
+
+    ## ${OPTION_REBUILD_BOTH}
+    概览:📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
+    使用此设备的现有文件重建本地和远程数据库。
+    这将导致其他设备被锁定,并且它们需要执行获取操作。
+    ## ${OPTION_FETCH}
+    概览:📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
+    初始化本地数据库并使用从远程数据库获取的数据重建它。
+    这种情况包括您已经重建了远程数据库的情况。
+    ## ${OPTION_ONLY_SETTING}
+    仅存储设置。**注意：这可能导致数据损坏**；通常需要重建数据库
+  msgSelectAndApplyPreset: 请选择并应用任一预设项以完成向导。
+  msgSetCorsCredentials: 设置 cors.credentials
+  msgSetCorsOrigins: 设置 cors.origins
+  msgSetMaxDocSize: 设置 couchdb.max_document_size
+  msgSetMaxRequestSize: 设置 chttpd.max_http_request_size
+  msgSetRequireValidUser: 设置 chttpd.require_valid_user = true
+  msgSetRequireValidUserAuth: 设置 chttpd_auth.require_valid_user = true
+  msgSettingModified: 设置 "${setting}" 已从另一台设备修改。点击 {HERE} 重新加载设置。点击其他地方忽略更改
+  msgSettingsUnchangeableDuringSync: 这些设置在同步期间无法更改。请在“同步设置”中禁用所有同步以解锁
+  msgSetWwwAuth: 设置 httpd.WWW-Authenticate
+  nameApplySettings: 应用设置
+  nameConnectSetupURI: 使用设置 URI 连接
+  nameCopySetupURI: 将当前设置复制为设置 URI
+  nameDisableHiddenFileSync: 禁用隐藏文件同步
+  nameDiscardSettings: 丢弃现有设置和数据库
+  nameEnableHiddenFileSync: 启用隐藏文件同步
+  nameEnableLiveSync: 启用 LiveSync
+  nameHiddenFileSynchronization: 隐藏文件同步
+  nameManualSetup: 手动设置
+  nameTestConnection: 测试连接
+  nameTestDatabaseConnection: 测试数据库连接
+  nameValidateDatabaseConfig: 验证数据库配置
+  okAdminPrivileges: ✔ 您拥有管理员权限
+  okCorsCredentials: ✔ cors.credentials 设置正确
+  okCorsCredentialsForOrigin: CORS 凭据正常
+  okCorsOriginMatched: ✔ CORS 源正常
+  okCorsOrigins: ✔ cors.origins 设置正确
+  okEnableCors: ✔ httpd.enable_cors 设置正确
+  okEnableCorsChttpd: ✔ chttpd.enable_cors is ok.
+  okMaxDocumentSize: ✔ couchdb.max_document_size 设置正确
+  okMaxRequestSize: ✔ chttpd.max_http_request_size 设置正确
+  okRequireValidUser: ✔ chttpd.require_valid_user 设置正确
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user 设置正确
+  okWwwAuth: ✔ httpd.WWW-Authenticate 设置正确
+  optionApply: 应用
+  optionCancel: 取消
+  optionCouchDB: CouchDB
+  optionDisableAllAutomatic: 禁用所有自动同步
+  optionFetchFromRemote: 从远程获取
+  optionHere: 这里
+  optionLiveSync: LiveSync 同步
+  optionMinioS3R2: Minio, S3, R2
+  optionOkReadEverything: "好的,我已经阅读了所有内容 "
+  optionOnEvents: 事件触发时
+  optionPeriodicAndEvents: 定期与事件触发
+  optionPeriodicWithBatch: 定期（批处理）
+  optionRebuildBoth: 从此设备重建两者
+  optionSaveOnlySettings: (危险)仅保存设置
+  panelChangeLog: 更新日志
+  panelGeneralSettings: 常规设置
+  panelPrivacyEncryption: 隐私与加密
+  panelRemoteConfiguration: 远程配置
+  panelSetup: 设置
+  serverVersion: "服务器信息: ${info}"
+  titleActiveRemoteServer: 活动远程服务器
+  titleAppearance: 外观
+  titleConflictResolution: 冲突处理
+  titleCongratulations: 恭喜！
+  titleCouchDB: CouchDB 服务器
+  titleDeletionPropagation: 删除传播
+  titleEncryptionNotEnabled: 尚未启用加密
+  titleEncryptionPassphraseInvalid: 加密密码短语无效
+  titleExtraFeatures: 启用额外和高级功能
+  titleFetchConfig: 获取配置
+  titleFetchConfigFromRemote: 从远程服务器获取配置
+  titleFetchSettings: 获取设置
+  titleHiddenFiles: 隐藏文件
+  titleLogging: 日志
+  titleMinioS3R2: MinIO、S3、R2
+  titleNotification: 通知
+  titleOnlineTips: 在线提示
+  titleQuickSetup: 快速设置
+  titleRebuildRequired: 需要重建
+  titleRemoteConfigCheckFailed: 远端配置检查失败
+  titleRemoteServer: 远端服务器
+  titleReset: 重置
+  titleSetupOtherDevices: 设置其他设备
+  titleSynchronizationMethod: 同步方式
+  titleSynchronizationPreset: 同步预设
+  titleSyncSettings: 同步设置
+  titleSyncSettingsViaMarkdown: 通过 Markdown 同步设置
+  titleUpdateThinning: 更新精简
+  warnCorsOriginUnmatched: ⚠ CORS 源不匹配 {from}->{to}
+  warnNoAdmin: ⚠ 您没有管理员权限
+Ok: 确定
+Old Algorithm: 旧算法
+Older fallback (Slow, W/O WebAssembly): 旧版回退（较慢，无 WebAssembly）
+Open: 打开
+Open the dialog: 打开对话框
+Overwrite: 覆盖
+Overwrite patterns: 覆盖模式
+Overwrite remote: 覆盖远端
+Overwrite remote with local DB and passphrase.: 使用本地数据库和密码短语覆盖远端。
+Overwrite Server Data with This Device's Files: 用本设备文件覆盖服务器数据
+P2P:
+  AskPassphraseForDecrypt: 远程对等方共享了配置，请输入密码短语以解密配置
+  AskPassphraseForShare: 远程对等方请求此设备配置，请输入密码短语以共享配置。你可以通过取消此对话框来忽略此请求
+  DisabledButNeed: "%{title_p2p_sync} 已禁用。你确定要启用它吗？"
+  FailedToOpen: 无法打开 P2P 连接到信令服务器
+  NoAutoSyncPeers: 未找到自动同步的对等方，请在 %{long_p2p_sync} 面板中设置对等方
+  NoKnownPeers: 未检测到对等方，正在等待其他对等方的连接...
+  Note:
+    description: >2-
+       This replicator allows us to synchronise our vault with other devices
+      using a peer-to-peer connection. We can        use this to synchronise our
+      vault with our other devices without using a cloud service.
+
+      This replicator is based on Trystero. It also uses a signaling server to
+      establish a connection between devices. The signaling server is used to
+      exchange connection information between devices. It does (or,should) not
+      know or store any of our data.
+
+
+      The signaling server can be hosted by anyone. This is just a Nostr relay.
+      For the sake of simplicity and checking the behaviour of the replicator,
+      an instance of the signaling server is hosted by vrtmrz. You can use the
+      experimental server provided by vrtmrz, or you can use any other server.
+
+
+      By the way, even if the signaling server does not store our data, it can
+      see the connection information of some of our devices. Please be aware of
+      this. Also, be cautious when using the server provided by someone else.
+    important_note: The Experimental Implementation of the Peer-to-Peer Replicator.
+    important_note_sub: This feature is still in the experimental stage. Please be
+      aware that this feature may not work as expected. Furthermore, it may have
+      some bugs, security issues, and other issues. Please use this feature at
+      your own risk. Please contribute to the development of this feature.
+    Summary: What is this  feature? (and some important notes, please read once)
+  NotEnabled: "%{title_p2p_sync} is not enabled. We cannot open a new connection."
+  P2PReplication: "%{P2P} Replication"
+  PaneTitle: "%{long_p2p_sync}"
+  ReplicatorInstanceMissing: P2P Sync replicator is not found, possibly not have
+    been configured or enabled.
+  SeemsOffline: Peer ${name} seems offline, skipped.
+  SyncAlreadyRunning: P2P Sync is already running.
+  SyncCompleted: P2P Sync completed.
+  SyncStartedWith: P2P Sync with ${name} have been started.
+paneMaintenance:
+  markDeviceResolvedAfterBackup: 请在完成备份后将此设备标记为已处理。
+  remoteLockedAndDeviceNotAccepted: 远端数据库已锁定，且此设备尚未被接受。
+  remoteLockedResolvedDevice: 远端数据库已锁定，但此设备已被接受。
+  unlockDatabaseReady: 现在可以解锁数据库。
+Passphrase: 密码
+Passphrase of sensitive configuration items: 敏感配置项的密码
+password: 密码
+Password: 密码
+Paste a connection string: 粘贴连接字符串
+Path Obfuscation: 路径混淆
+Patterns to match files for overwriting instead of merging: 用于匹配需覆盖而非合并文件的模式
+Patterns to match files for syncing: 用于匹配同步文件的模式
+Peer-to-Peer Synchronisation: 点对点同步
+Per-file-saved customization sync: 按文件保存的自定义同步
+Perform: 执行
+Perform cleanup: 执行清理
+Perform Garbage Collection: 执行垃圾回收
+Perform Garbage Collection to remove unused chunks and reduce database size.: 执行垃圾回收以清理未使用的 chunks 并减小数据库体积。
+Periodic Sync interval: 定期同步间隔
+Pick a file to resolve conflict: 选择要解决冲突的文件
+Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.: 请设置设备名称以标识此设备。该名称在你的所有设备之间应保持唯一；未配置前无法启用此功能。
+Please set this device name: 请设置此设备名称
+Prepare the 'report' to create an issue: 准备 '报告' 以创建问题单
+Presets: 预设
+Process small files in the foreground: 在前台处理小文件
+Property Encryption: 属性加密
+PureJS fallback  (Fast, W/O WebAssembly): PureJS 回退（快速，无 WebAssembly）
+Purge all download/upload cache.: 清除所有下载／上传缓存。
+Purge all journal counter: 清除所有日志计数器
+Rebuild local and remote database with local files.: 使用本地文件重建本地和远端数据库。
+Rebuilding Operations (Remote Only): 重建操作（仅远端）
+Recreate all: 全部重建
+Recreate missing chunks for all files: 为所有文件重建缺失的 chunks
+RedFlag:
+  Fetch:
+    Method:
+      Desc: >-
+        How do you want to fetch?
+
+        - %{RedFlag.Fetch.Method.FetchSafer}.
+          **Low Traffic**, **High CPU**, **Low Risk**
+          Recommended if ...
+          - Files possibly inconsistent
+          - Files were not so much
+        - %{RedFlag.Fetch.Method.FetchSmoother}.
+          **Low Traffic**, **Moderate CPU**, **Low to Moderate Risk**
+          Recommended if ...
+          - Files probably consistent
+          - You have a lot of files.
+        - %{RedFlag.Fetch.Method.FetchTraditional}.
+          **High Traffic**, **Low CPU**, **Low to Moderate Risk**
+
+        >[!INFO]- Details
+
+        > ## %{RedFlag.Fetch.Method.FetchSafer}.
+
+        > **Low Traffic**, **High CPU**, **Low Risk**
+
+        > This option first creates a local database using existing local files
+        before fetching data from the remote source.
+
+        > If matching files exist both locally and remotely, only the
+        differences between them will be transferred.
+
+        > However, files present in both locations will initially be handled as
+        conflicted files. They will be resolved automatically if they are not
+        actually conflicted, but this process may take time.
+
+        > This is generally the safest method, minimizing data loss risk.
+
+        > ## %{RedFlag.Fetch.Method.FetchSmoother}.
+
+        > **Low Traffic**, **Moderate CPU**, **Low to Moderate Risk** (depending
+        operation)
+
+        > This option first creates chunks from local files for the database,
+        then fetches data. Consequently, only chunks missing locally are
+        transferred. However, all metadata is taken from the remote source.
+
+        > Local files are then compared against this metadata at launch. The
+        content considered newer will overwrite the older one (by modified
+        time). This outcome is then synchronised back to the remote database.
+
+        > This is generally safe if local files are genuinely the latest
+        timestamp. However, it can cause problems if a file has a newer
+        timestamp but older content (like the initial `welcome.md`).
+
+        > This uses less CPU and faster than
+        "%{RedFlag.Fetch.Method.FetchSafer}", but it may lead to data loss if
+        not used carefully.
+
+        > ## %{RedFlag.Fetch.Method.FetchTraditional}.
+
+        > **High Traffic**, **Low CPU**, **Low to Moderate Risk** (depending
+        operation)
+
+        > All things will be fetched from the remote.
+
+        > Similar to the %{RedFlag.Fetch.Method.FetchSmoother}, but all chunks
+        are fetched from the remote source.
+
+        > This is the most traditional way to fetch, typically consuming the
+        most network traffic and time. It also carries a similar risk of
+        overwriting remote files to the '%{RedFlag.Fetch.Method.FetchSmoother}'
+        option.
+
+        > However, it is often considered the most stable method because it is
+        the longest-established and most straightforward approach.
+      FetchSafer: Create a local database once before fetching
+      FetchSmoother: Create local file chunks before fetching
+      FetchTraditional: Fetch everything from the remote
+      Title: How do you want to fetch?
+  FetchRemoteConfig:
+    Buttons:
+      Cancel: No, use local settings
+      Fetch: Yes, fetch and apply remote settings
+    Message: Do you want to fetch and apply remotely stored preference settings to
+      the device?
+    Title: Fetch Remote Configuration
+Reducing the frequency with which on-disk changes are reflected into the DB: 降低将磁盘上的更改反映到数据库中的频率
+Region: 区域
+Remediation: 修复设置
+Remediation Setting Changed: 修复设置已更改
+Remote Database Tweak (In sunset): 远端数据库调优（逐步淘汰）
+Remote Databases: 远端数据库
+Remote name: 远端名称
+Remote server type: 远程服务器类型
+Remote Type: 远程类型
+Rename: 重命名
+Replicator:
+  Dialogue:
+    Locked:
+      Action:
+        Dismiss: Cancel for reconfirmation
+        Fetch: Reset Synchronisation on This Device
+        Unlock: Unlock the remote database
+      Message:
+        _value: >
+          Remote database is locked. This is due to a rebuild on one of the
+          terminals.
+
+          The device is therefore asked to withhold the connection to avoid
+          database corruption.
+
+
+          There are three options that we can do:
+
+
+          - %{Replicator.Dialogue.Locked.Action.Fetch}
+            The most preferred and reliable way. This will dispose the local database once, and fetch all from the remote database again, In most case, we can perform this safely. However, it takes some time and should be done in stable network.
+          - %{Replicator.Dialogue.Locked.Action.Unlock}
+            This method can only be used if we are already reliably synchronised by other replication methods. This does not simply mean that we have the same files. If you are not sure, you should avoid it.
+          - %{Replicator.Dialogue.Locked.Action.Dismiss}
+              This will cancel the operation. And we will asked again on next request.
+        Fetch: Fetch all has been scheduled. Plug-in will be restarted to perform it.
+        Unlocked: The remote database has been unlocked. Please retry the operation.
+      Title: Locked
+  Message:
+    Cleaned: Database cleaning up is in process. replication has been cancelled
+    InitialiseFatalError: No replicator is available, this is the fatal error.
+    Pending: Some file events are pending. Replication has been cancelled.
+    SomeModuleFailed: Replication has been cancelled by some module failure
+    VersionUpFlash: An update has been detected. Please open the Settings dialogue
+      and check the Change Log. Replication has been cancelled.
+Requires restart of Obsidian: 需要重启 Obsidian
+Requires restart of Obsidian.: "需要重启 Obsidian "
+Rerun Onboarding Wizard: 重新运行引导向导
+Rerun the onboarding wizard to set up Self-hosted LiveSync again.: 重新运行引导向导以再次设置 Self-hosted LiveSync。
+Rerun Wizard: 重新运行向导
+Resend: 重新发送
+Resend all chunks to the remote.: 将所有 chunks 重新发送到远端。
+Reset: 重置
+Reset all: 全部重置
+Reset all journal counter: 重置所有日志计数器
+Reset journal received history: 重置日志接收历史
+Reset journal sent history: 重置日志发送历史
+Reset notification threshold and check the remote database usage: 重置通知阈值并检查远程数据库使用情况
+Reset received: 重置接收记录
+Reset sent history: 重置发送历史
+Reset Synchronisation information: 重置同步信息
+Reset Synchronisation on This Device: 重置此设备上的同步
+Reset the remote storage size threshold and check the remote storage size again.: 重置远程存储大小阈值并再次检查远程存储大小。
+Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
+  通过丢弃所有非最新版本来减少存储空间。这需要远程服务器和本地客户端具备相同数量的可用空间。
+Resolve All: 全部处理
+Resolve all conflicted files: 解决所有冲突文件
+Resolve All conflicted files by the newer one: 将所有冲突文件解析为较新的版本
+"Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.": 将所有冲突文件统一保留较新的版本。注意：这会覆盖较旧的版本，且被覆盖的内容无法恢复。
+Restart Now: 立即重启
+Restore or reconstruct local database from remote.: 从远端恢复或重建本地数据库。
+Run Doctor: 立即诊断
+Scan for Broken files: 扫描损坏文件
+Scram Switches: 紧急开关
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.: "将设置保存到一个 Markdown 文件中。当新设置到达时,您将收到通知。您可以根据平台设置不同的文件 "
+Saving will be performed forcefully after this number of seconds.: "在此秒数后将强制执行保存 "
+Scan changes on customization sync: 在自定义同步时扫描更改
+Scan customization automatically: 自动扫描自定义设置
+Scan customization before replicating.: "在复制前扫描自定义设置 "
+Scan customization every 1 minute.: "每1分钟扫描自定义设置 "
+Scan customization periodically: 定期扫描自定义设置
+Scan for hidden files before replication: 复制前扫描隐藏文件
+Scan hidden files periodically: 定期扫描隐藏文件
+Schedule and Restart: 安排并重启
+Scram!: 紧急处置
+Seconds, 0 to disable: 秒,0为禁用
+Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.: "秒。在我们停止输入或保存后,保存到本地数据库将延迟此值 "
+Secret Key: Secret Key
+Select the database adapter to use.: 选择要使用的数据库适配器。
+Send: 发送
+Send chunks: 发送 chunks
+Server URI: 服务器 URI
+Setting:
+  GenerateKeyPair:
+    Desc: |-
+      我们已经生成了一组密钥对！
+
+      注意：这组密钥对之后将不会再次显示。请务必妥善保管；如果丢失，你需要重新生成新的密钥对。
+      注意 2：公钥采用 spki 格式，私钥采用 pkcs8 格式。为方便复制，公钥中的换行会被转换为 `\n`。
+      注意 3：公钥应配置在远端数据库中，私钥应配置在本地设备上。
+
+      >[!仅限本人查看]-
+      > <div class="sls-keypair">
+      >
+      > ### 公钥
+      > ```
+      ${public_key}
+      > ```
+      >
+      > ### 私钥
+      > ```
+      ${private_key}
+      > ```
+      >
+      > </div>
+
+      >[!整段复制]-
+      >
+      > <div class="sls-keypair">
+      >
+      > ```
+      ${public_key}
+      ${private_key}
+      > ```
+      >
+      > </div>
+    Title: 已生成新的密钥对！
+  TroubleShooting:
+    _value: 故障排除
+    Doctor:
+      _value: 设置诊断
+      Desc: 检测系统中不合理的设置。（与迁移期间逻辑相同）
+    ScanBrokenFiles:
+      _value: 扫描损坏或异常的文件
+      Desc: 扫描数据库中未正确存储的文件。
+SettingTab:
+  Message:
+    AskRebuild: Your changes require fetching from the remote database. Do you want
+      to proceed?
+Setup:
+  Apply:
+    Buttons:
+      ApplyAndFetch: Apply and Fetch
+      ApplyAndMerge: Apply and Merge
+      ApplyAndRebuild: Apply and Rebuild
+      Cancel: Discard and Cancel
+      OnlyApply: Only Apply
+    Message: >-
+      The new configuration is ready. Let us proceed to apply it.
+
+      There are several ways to apply this:
+
+
+      - Apply and Fetch
+        Configure this device as a new client. After applying, synchronise from the remote server.
+      - Apply and Merge
+        Configure on a device that already has the file. It processes the local files and transfers the differences. Conflicts may arise.
+      - Apply and Rebuild
+        Rebuild the remote using local files. This is typically done if the server becomes corrupted or we wish to start from scratch.
+        Other devices will be locked and required to re-fetch.
+      - Only Apply
+        Apply only. Conflicts may arise if a rebuild is required.
+    Title: Apply new configuration from the ${method}
+    WarningRebuildRecommended: "NOTE: after adjusting the settings, it has been
+      determined that a rebuild is required; Just Import is not recommended."
+  Doctor:
+    Buttons:
+      No: No, please use the settings in the URI as is
+      Yes: Yes, please consult the doctor
+    Message: >-
+      Self-hosted LiveSync has gradually become longer in history and some
+      recommended settings have changed.
+
+
+      Now, setup is a very good time to do this.
+
+
+      Do you want to run Doctor to check if the imported settings are optimal
+      compared to the latest state?
+    Title: Do you want to consult the doctor?
+  FetchRemoteConf:
+    Buttons:
+      Fetch: Yes, please fetch the configuration
+      Skip: No, please use the settings in the URI
+    Message: >-
+      If we have already synchronised once with another device, the remote
+      database stores the suitable configuration values between the synchronised
+      devices. The plug-in would like to retrieve them for robust configuration.
+
+
+      However, we have to make sure the one thing. Are we currently in a
+      situation where we can access the network safely and retrieve the
+      settings?
+
+
+      Note: Mostly, you are safe to do this, that your remote database is hosted
+      with a SSL certificate, and your network is not compromised.
+    Title: Fetch configuration from remote database?
+  QRCode: >-
+    We have generated a QR code to transfer the settings. Please scan the QR
+    code with your phone or other device.
+
+    Note: The QR code is not encrypted, so be careful to open this.
+
+
+    >[!FOR YOUR EYES ONLY]-
+
+    > <div class="sls-qr">${qr_image}</div>
+  ShowQRCode:
+    _value: 使用QR码
+    Desc: 使用QR码来传递配置
+  RemoteE2EE:
+    Title: 端到端加密
+    Guidance: 请配置你的端到端加密设置。
+    LabelEncrypt: 端到端加密
+    PlaceholderPassphrase: 输入你的密码短语
+    StronglyRecommendedTitle: 强烈推荐
+    StronglyRecommendedLine1: 启用端到端加密后，数据会先在你的设备上加密，再发送到远程服务器。这意味着即使有人获得了服务器访问权限，没有密码短语也无法读取你的数据。请务必记住你的密码短语，因为在其他设备上解密数据时也需要它。
+    StronglyRecommendedLine2: 另外请注意，如果你正在使用 Peer-to-Peer 同步，当你以后切换到其他同步方式并连接远程服务器时，也会使用这组配置。
+    MultiDestinationWarning: 即使连接到多个同步目标，此设置也必须保持一致。
+    LabelObfuscateProperties: 混淆属性
+    ObfuscatePropertiesDesc: 混淆属性（例如文件路径、大小、创建和修改日期）可以增加一层额外保护，使远程服务器上的文件与文件夹结构及名称更难被识别。这有助于保护你的隐私，也让未授权用户更难推断你的数据相关信息。
+    AdvancedTitle: 高级
+    LabelEncryptionAlgorithm: 加密算法
+    DefaultAlgorithmDesc: 在大多数情况下，你应继续使用默认算法（${algorithm}）。只有当你已有一个采用不同格式加密的 Vault 时，才需要调整此设置。
+    AlgorithmWarning: 更改加密算法会导致之前使用其他算法加密的数据无法访问。请确保所有设备都配置为使用同一算法，以保持对数据的访问能力。
+    PassphraseValidationLine1: 请注意，在同步过程真正开始之前，端到端加密密码短语不会被校验。这是一项用于保护你数据的安全措施。
+    PassphraseValidationLine2: 因此，在手动配置服务器信息时请务必格外小心。如果输入了错误的密码短语，服务器上的数据将会损坏。请理解这属于预期行为。
+    ButtonProceed: 继续
+    ButtonCancel: 取消
+  UseSetupURI:
+    Title: 输入 Setup URI
+    GuidanceLine1: 请输入在服务器安装期间或另一台设备上生成的 Setup URI，以及 Vault 密码短语。
+    GuidanceLine2: 你可以在命令面板中运行“将设置复制为新的 Setup URI”命令来生成新的 Setup URI。
+    LabelSetupURI: Setup URI
+    ValidInfo: Setup URI 有效，可以使用。
+    InvalidInfo: Setup URI 无效，请检查后重试。
+    LabelPassphrase: Vault 密码短语
+    PlaceholderPassphrase: 输入 Vault 密码短语
+    ErrorPassphraseRequired: 请输入 Vault 密码短语。
+    ErrorFailedToParse: 无法解析 Setup URI，请检查 URI 和密码短语。
+    ButtonProceed: 测试设置并继续
+    ButtonCancel: 取消
+  ScanQRCode:
+    Title: 扫描二维码
+    Guidance: 请按照以下步骤从现有设备导入设置。
+    Step1: 在这台设备上，请保持此 Vault 处于打开状态。
+    Step2: 在源设备上打开 Obsidian。
+    Step3: 在源设备上，从命令面板运行“将设置显示为二维码”命令。
+    Step4: 在这台设备上，切换到相机应用或使用二维码扫描器扫描显示出的二维码。
+    ButtonClose: 关闭此对话框
+"Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": 要使用垃圾回收，请在设置中启用“Compute revisions for chunks”。
+"Please disable 'Read chunks online' in settings to use Garbage Collection.": 要使用垃圾回收，请在设置中禁用“Read chunks online”。
+"Setup URI dialog cancelled.": Setup URI 对话框已取消。
+"Please select 'Cancel' explicitly to cancel this operation.": 如需取消此操作，请明确选择“取消”。
+"Failed to connect to remote for compaction.": 无法连接到远程数据库以执行压缩。
+"Failed to connect to remote for compaction. ${reason}": 无法连接到远程数据库以执行压缩。${reason}
+"Compaction in progress on remote database...": 正在远程数据库上执行压缩...
+"Compaction on remote database timed out.": 远程数据库压缩超时。
+"Compaction on remote database completed successfully.": 远程数据库压缩已成功完成。
+"Compaction on remote database failed.": 远程数据库压缩失败。
+"Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": 无法在垃圾回收前启动一次性复制。垃圾回收已取消。
+"Cancel Garbage Collection": 取消垃圾回收
+"No connected device information found. Cancelling Garbage Collection.": 未找到已连接设备的信息。正在取消垃圾回收。
+"The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": |-
+  以下已接受节点缺少节点信息：
+  - ${missingNodes}
+
+  这表示它们已有一段时间未连接，或仍停留在较旧版本。
+  如有可能，建议先更新所有设备。如果有已不再使用的设备，可以先锁定一次远程端以清除全部已接受节点。
+"Ignore and Proceed": 忽略并继续
+"Node Information Missing": 节点信息缺失
+"Garbage Collection cancelled by user.": 用户已取消垃圾回收。
+"Proceeding with Garbage Collection, ignoring missing nodes.": 正在继续执行垃圾回收，并忽略缺失节点。
+"Proceed Garbage Collection": 继续执行垃圾回收
+"> [!INFO]- The connected devices have been detected as follows:\n${devices}": |-
+  > [!INFO]- 已检测到以下已连接设备：
+  ${devices}
+"Device": 设备
+"Node ID": 节点 ID
+"Obsidian version": Obsidian 版本
+"Plug-in version": 插件版本
+"Progress": 进度
+"Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.": |-
+  某些设备的进度值不同（最大：${maxProgress}，最小：${minProgress}）。
+  这可能表示某些设备尚未完成同步，从而可能引发冲突。强烈建议在继续之前先确认所有设备都已同步。
+"All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.": 所有设备的进度值均相同（${progress}）。看起来你的设备已经同步，可以继续执行垃圾回收。
+"Garbage Collection Confirmation": 垃圾回收确认
+"Proceeding with Garbage Collection.": 正在执行垃圾回收。
+"Garbage Collection: Scanned ${scanned} / ~${docCount}": |-
+  垃圾回收：已扫描 ${scanned} / ~${docCount}
+"Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}": |-
+  垃圾回收：扫描完成。总 chunks：${totalChunks}，已使用 chunks：${usedChunks}
+"Garbage Collection: Found ${unusedChunks} unused chunks to delete.": |-
+  垃圾回收：发现 ${unusedChunks} 个未使用的 chunks 待删除。
+"Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
+  垃圾回收完成。已删除 chunks：${deletedChunks} / ${totalChunks}。耗时：${seconds} 秒。
+"Failed to start replication after Garbage Collection.": 垃圾回收后无法启动复制。
+Should we keep folders that don't have any files inside?: 我们是否应该保留内部没有任何文件的文件夹？
+Should we only check for conflicts when a file is opened?: 我们是否应该仅在文件打开时检查冲突？
+Should we prompt you about conflicting files when a file is opened?: 当文件打开时,是否提示冲突文件？
+Should we prompt you for every single merge, even if we can safely merge automatcially?: 即使我们可以安全地自动合并,是否也应该为每一次合并提示您？
+Show full banner: 显示完整横幅
+Show icon only: 仅显示图标
+Show only notifications: 仅显示通知
+Show status as icons only: 仅以图标显示状态
+Show status icon instead of file warnings banner: 显示状态图标，而非文件警告横幅
+Show status inside the editor: 在编辑器内显示状态
+Show status on the status bar: 在状态栏上显示状态
+Show verbose log. Please enable if you report an issue.: "显示详细日志。如果您报告问题,请启用此选项 "
+Starts synchronisation when a file is saved.: "当文件保存时启动同步 "
+Stop reflecting database changes to storage files.: "停止将数据库更改反映到存储文件 "
+Stop watching for file changes.: "停止监视文件更改 "
+Suppress notification of hidden files change: 暂停隐藏文件更改的通知
+Suspend database reflecting: 暂停数据库反映
+Suspend file watching: 暂停文件监视
+Switch to IDB: 切换到 IDB
+Switch to IndexedDB: 切换到 IndexedDB
+Sync after merging file: 合并文件后同步
+Sync automatically after merging files: 合并文件后自动同步
+Sync Mode: 同步模式
+Sync on Editor Save: 编辑器保存时同步
+Sync on File Open: 打开文件时同步
+Sync on Save: 保存时同步
+Sync on Startup: 启动时同步
+Synchronising files: 同步文件
+Syncing: 同步中
+Target patterns: 目标模式
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.: "仅供测试 - 通过同步文件的较新副本来解决文件冲突,这可能会覆盖修改过的文件。请注意 "
+The delay for consecutive on-demand fetches: 连续按需获取的延迟
+The Hash algorithm for chunk IDs: 块 ID 的哈希算法(实验性)
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: "文档中可以孵化的数据块的最大持续时间。超过此时间的数据块将成为独立数据块 "
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: "文档中可以孵化的数据块的最大数量。超过此数量的数据块将立即成为独立数据块 "
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: "文档中可以孵化的数据块的最大总大小。超过此大小的数据块将立即成为独立数据块 "
+The minimum interval for automatic synchronisation on event.: 基于事件自动同步的最小间隔。
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: "此密码不会复制到另一台设备。在您再次配置之前,它将设置为 `Default` "
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: 这会为所有文件重新生成 chunks。如果之前存在缺失的 chunks，这可能修复相关错误。
+TweakMismatchResolve:
+  Action:
+    Dismiss: Dismiss
+    UseConfigured: Use configured settings
+    UseMine: Update remote database settings
+    UseMineAcceptIncompatible: Update remote database settings but keep as is
+    UseMineWithRebuild: Update remote database settings and rebuild again
+    UseRemote: Apply settings to this device
+    UseRemoteAcceptIncompatible: Apply settings to this device, but and ignore incompatibility
+    UseRemoteWithRebuild: Apply settings to this device, and fetch again
+  Message:
+    Main: >-
+
+      The settings in the remote database are as follows. These values are
+      configured by other devices, which are synchronised with this device at
+      least once.
+
+
+      If you want to use these settings, please select
+      %{TweakMismatchResolve.Action.UseConfigured}.
+
+      If you want to keep the settings of this device, please select
+      %{TweakMismatchResolve.Action.Dismiss}.
+
+
+      ${table}
+
+
+      >[!TIP]
+
+      > If you want to synchronise all settings, please use `Sync settings via
+      markdown` after applying minimal configuration with this feature.
+
+
+      ${additionalMessage}
+    MainTweakResolving: |-
+      Your configuration has not been matched with the one on the remote server.
+
+      Following configuration should be matched:
+
+      ${table}
+
+      Let us know your decision.
+
+      ${additionalMessage}
+    UseRemote:
+      WarningRebuildRecommended: >-
+
+        >[!NOTICE]
+
+        > Some changes are compatible but may consume extra storage and transfer
+        volumes. A rebuild is recommended. However, a rebuild may not be
+        performed at present, but may be implemented in future maintenance.
+
+        > ***Please ensure that you have time and are connected to a stable
+        network to apply!***
+      WarningRebuildRequired: >-
+
+        >[!WARNING]
+
+        > Some remote configurations are not compatible with the local database
+        of this device. Rebuilding the local database will be required.
+
+        > ***Please ensure that you have time and are connected to a stable
+        network to apply!***
+    WarningIncompatibleRebuildRecommended: >-
+
+      >[!NOTICE]
+
+      > We have detected that some of the values are different to make
+      incompatible the local database with the remote database.
+
+      > Some changes are compatible but may consume extra storage and transfer
+      volumes. A rebuild is recommended. However, a rebuild may not be performed
+      at present, but may be implemented in future maintenance.
+
+      > If you want to rebuild, it takes a few minutes or more. **Make sure it
+      is safe to perform it now.**
+    WarningIncompatibleRebuildRequired: >-
+
+      >[!WARNING]
+
+      > We have detected that some of the values are different to make
+      incompatible the local database with the remote database.
+
+      > Either local or remote rebuilds are required. Both of them takes a few
+      minutes or more. **Make sure it is safe to perform it now.**
+  Table:
+    _value: |+
+      | Value name | This device | On Remote |
+      |: --- |: ---- :|: ---- :|
+      ${rows}
+
+    Row: "| ${name} | ${self} | ${remote} |"
+  Title:
+    _value: Configuration Mismatch Detected
+    TweakResolving: Configuration Mismatch Detected
+    UseRemoteConfig: Use Remote Configuration
+Ui:
+  Common:
+    Signal:
+      Caution: 注意
+      Danger: 危险
+      Notice: 提示
+      Warning: 警告
+  Settings:
+    Common:
+      Analyse: 分析
+      Back: 返回
+      Check: 检查
+      Configure: 配置
+      Continue: 继续
+      Delete: 删除
+      Fetch: 获取
+      Lock: 锁定
+      Merge: 合并
+      Open: 打开
+      Overwrite: 覆盖
+      Perform: 执行
+      ResetAll: 全部重置
+      ResolveAll: 全部解决
+      Scan: 扫描
+      Send: 发送
+      Use: 使用
+      VerifyAll: 全部校验
+    Advanced:
+      LocalDatabaseTweak: 本地数据库调整
+      MemoryCache: 内存缓存
+      TransferTweak: 传输调整
+    CustomizationSync:
+      OpenDesc: 打开此对话框
+      Panel: 自定义同步
+      WarnChangeDeviceName: 启用此功能时无法修改设备名称。请先关闭此功能，再修改设备名称。
+      WarnSetDeviceName: 请先设置用于标识此设备的设备名称。该名称应在你的设备之间保持唯一。未设置前无法启用此功能。
+    Hatch:
+      AnalyseDatabaseUsage: 分析数据库使用情况
+      AnalyseDatabaseUsageDesc: 分析数据库使用情况，并生成 TSV 报告供你自行诊断。你可以将生成的报告粘贴到任意电子表格工具中查看。
+      BackToNonConfigured: 返回未配置状态
+      ConvertNonObfuscated: 检查并转换未进行路径混淆的文件
+      ConvertNonObfuscatedDesc: 检查本地数据库中未按路径混淆方式存储的文件，并在需要时将其转换为正确格式。
+      CopyIssueReport: 复制报告到剪贴板
+      DatabaseLabel: 数据库：${details}
+      DatabaseToStorage: 数据库 -> 存储
+      DeleteCustomizationSyncData: 删除所有自定义同步数据
+      GeneratedReport: 已生成的报告
+      Missing: 缺失
+      ModifiedSize: 修改时间：${modified}，大小：${size}
+      ModifiedSizeActual: 修改时间：${modified}，大小：${size}（实际大小：${actualSize}）
+      PrepareIssueReport: 准备用于提交问题的报告
+      RecreateAll: 全部重建
+      RecreateMissingChunks: 为所有文件重新创建缺失的数据块
+      RecreateMissingChunksDesc: 此操作会为所有文件重新创建数据块。如果存在缺失的数据块，可能会修复相关错误。
+      RecoveryAndRepair: 恢复与修复
+      ResetPanel: 重置
+      ResetRemoteUsage: 重置通知阈值并检查远程数据库使用情况
+      ResetRemoteUsageDesc: 重置远程存储大小阈值，并再次检查远程存储大小。
+      ResolveAllConflictedFiles: 使用较新的版本解决所有冲突文件
+      ResolveAllConflictedFilesDesc: 使用较新的版本解决所有冲突文件。注意：此操作会覆盖较旧版本，且无法恢复被覆盖的内容。
+      RunDoctor: 运行诊断
+      ScanBrokenFiles: 扫描损坏文件
+      ScramSwitches: 紧急开关
+      ShowHistory: 查看历史
+      StorageLabel: 存储：${details}
+      StorageToDatabase: 存储 -> 数据库
+      VerifyAndRepairAllFiles: 校验并修复所有文件
+      VerifyAndRepairAllFilesDesc: 比较本地数据库与存储中的文件内容。如果内容不一致，系统会询问你保留哪一份。
+    Maintenance:
+      Cleanup: 执行清理
+      CleanupDesc: 丢弃所有非最新修订版本，以减少存储空间占用。此操作要求远程服务器和本地客户端都具备同等大小的可用空间。
+      DeleteLocalDatabase: 删除本地数据库以重置或卸载 Self-hosted LiveSync
+      EmergencyRestart: 紧急重启
+      EmergencyRestartDesc: 禁用所有同步并重新启动。
+      FreshStartWipe: 全新开始清空
+      FreshStartWipeDesc: 删除远程服务器上的所有数据。
+      GarbageCollection: 垃圾回收 V3（测试版）
+      GarbageCollectionAction: 执行垃圾回收
+      GarbageCollectionDesc: 执行垃圾回收以移除未使用的数据块并减少数据库大小。
+      LockServer: 锁定服务器
+      LockServerDesc: 锁定远程服务器，防止与其他设备继续同步。
+      OverwriteServerData: 用此设备的文件覆盖服务器数据
+      OverwriteServerDataDesc: 使用此设备上的文件重建本地和远程数据库。
+      OverwriteRemote: 覆盖远程端
+      OverwriteRemoteDesc: 使用本地数据库和密码短语覆盖远程端数据。
+      PurgeAllJournalCounter: 清空全部日志计数器
+      PurgeAllJournalCounterDesc: 清空所有下载与上传缓存。
+      RebuildingOperations: 重建操作（仅远程端）
+      Reset: 重置
+      ResetAllJournalCounter: 重置全部日志计数器
+      ResetAllJournalCounterDesc: 初始化全部日志历史。下次同步时，所有项目都会重新接收并重新发送。
+      ResetJournalReceived: 重置日志接收历史
+      ResetJournalReceivedDesc: 初始化日志接收历史。下次同步时，除当前设备发送的项目外，其余项目都会重新下载。
+      ResetReceived: 重置接收记录
+      ResetJournalSent: 重置日志发送历史
+      ResetJournalSentDesc: 初始化日志发送历史。下次同步时，除当前设备已接收的项目外，其余项目都会重新发送。
+      ResetLocalSyncInfo: 重置同步信息
+      ResetLocalSyncInfoDesc: 从远程端恢复或重建本地数据库。
+      ResetSentHistory: 重置发送记录
+      ResetThisDevice: 重置此设备上的同步状态
+      Resend: 重新发送
+      ResendDesc: 将所有数据块重新发送到远程端。
+      ScheduleAndRestart: 计划执行并重启
+      Scram: 紧急处理
+      SendChunks: 发送数据块
+      Syncing: 同步
+      WarningLockedReadyAction: 我已准备好，立即解锁数据库
+      WarningLockedReadyText: 为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。
+      WarningLockedResolveAction: 我已完成备份，将此设备标记为“已确认”
+      WarningLockedResolveText: 为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。
+      WriteRedFlagAndRestart: 标记并重启
+    Patches:
+      CompatibilityConflict: 兼容性（冲突行为）
+      CompatibilityDatabase: 兼容性（数据库结构）
+      CompatibilityInternalApi: 兼容性（内部 API 使用）
+      CompatibilityMetadata: 兼容性（元数据）
+      CompatibilityRemote: 兼容性（远程数据库）
+      CompatibilityTrouble: 兼容性（已处理问题）
+      CurrentAdapter: 当前适配器：${adapter}
+      DatabaseAdapter: 数据库适配器
+      DatabaseAdapterDesc: 选择要使用的数据库适配器。
+      EdgeCaseBehaviour: 边界情况处理（行为）
+      EdgeCaseDatabase: 边界情况处理（数据库）
+      EdgeCaseProcessing: 边界情况处理（处理流程）
+      IndexedDbWarning: IndexedDB 适配器在某些场景下通常具有更好的性能，但在 LiveSync 模式下已发现可能导致内存泄漏。使用 LiveSync 模式时，请改用 IDB 适配器。
+      MigrationWarning: 修改此设置需要迁移现有数据（可能需要一些时间）并重新启动 Obsidian。请先备份你的数据后再继续。
+      MigratingToIdb: 正在将所有数据迁移到 IDB...
+      MigratingToIndexedDb: 正在将所有数据迁移到 IndexedDB...
+      MigrationIdbCompleted: 已完成迁移到 IDB。Obsidian 将立即使用新配置重新启动。
+      MigrationIdbCompletedFollowUp: 已完成迁移到 IDB。请切换适配器并重新启动 Obsidian。
+      MigrationIndexedDbCompleted: 已完成迁移到 IndexedDB。Obsidian 将立即使用新配置重新启动。
+      MigrationIndexedDbCompletedFollowUp: 已完成迁移到 IndexedDB。请切换适配器并重新启动 Obsidian。
+      OperationToIdb: 迁移到 IDB
+      OperationToIndexedDb: 迁移到 IndexedDB
+      Remediation: 修正
+      RemediationChanged: 修正设置已更改
+      RemediationNoLimit: 未设置限制
+      RemediationRestartLater: 稍后
+      RemediationRestartMessage: 强烈建议重新启动 Obsidian。在重启之前，部分更改可能不会生效，界面显示也可能不一致。确定要现在重启吗？
+      RemediationRestartNow: 立即重启
+      RemediationRestarting: 修正设置已更改，正在重新启动 Obsidian...
+      RemediationSuffixChanged: 后缀已更改，正在重新打开数据库...
+      RemediationWithValue: 限制：${date}（${timestamp}）
+      RemoteDatabaseSunset: 远程数据库调整（即将弃用）
+      SwitchToIDB: 切换到 IDB
+      SwitchToIndexedDb: 切换到 IndexedDB
+    PowerUsers:
+      ConfigurationEncryption: 配置加密
+      ConnectionTweak: CouchDB 连接调整
+      ConnectionTweakDesc: 如果你在使用 IBM Cloudant 时遇到负载大小限制，请将 batch size 和 batch limit 调低。
+      Default: 默认
+      Developer: 开发者
+      EncryptSensitiveConfig: 加密敏感配置项
+      PromptPassphraseEveryLaunch: 每次启动时询问密码短语
+      UseCustomPassphrase: 使用自定义密码短语
+    Remote:
+      Activate: 启用
+      ActiveSuffix: （当前启用）
+      AddConnection: 新增连接
+      AddRemoteDefaultName: 新远程端
+      ConfigureAndChangeRemote: 配置并切换远程端
+      ConfigureE2EE: 配置端到端加密
+      ConfigureRemote: 配置远程端
+      DeleteRemoteConfirm: 确定要删除远程配置“${name}”吗？
+      DeleteRemoteTitle: 删除远程配置
+      DisplayName: 显示名称
+      DuplicateRemote: 复制远程配置
+      DuplicateRemoteSuffix: ${name}（副本）
+      E2EEConfiguration: 端到端加密配置
+      Export: 导出
+      FetchRemoteSettings: 获取远程设置
+      ImportConnection: 导入连接
+      ImportConnectionPrompt: 粘贴连接字符串
+      ImportedCouchDb: 已导入的 CouchDB
+      ImportedRemote: 远程端
+      MoreActions: 更多操作
+      PeerToPeerPanel: 点对点同步
+      RemoteConfigurationPrefix: 远程配置
+      RemoteDatabases: 远程数据库
+      RemoteName: 远程名称
+      RemoteNameCouchDb: CouchDB ${host}
+      RemoteNameP2P: P2P ${room}
+      RemoteNameS3: S3 ${bucket}
+      Rename: 重命名
+    Selector:
+      AddDefaultPatterns: 添加默认模式
+      CrossPlatform: 跨平台
+      Default: 默认
+      HiddenFiles: 隐藏文件
+      IgnorePatterns: 忽略模式
+      NonSynchronisingFiles: 不同步文件
+      NonSynchronisingFilesDesc: （RegExp）如果设置了该项，则本地和远程中匹配这些规则的文件变更将被跳过。
+      NormalFiles: 普通文件
+      OverwritePatterns: 覆盖模式
+      OverwritePatternsDesc: 匹配后将执行覆盖而非合并的文件模式
+      SynchronisingFiles: 同步文件
+      SynchronisingFilesDesc: （RegExp）留空则同步所有文件。可设置正则表达式以限制需要同步的文件。
+      TargetPatterns: 目标模式
+      TargetPatternsDesc: 用于匹配需要同步文件的模式
+    Setup:
+      RerunWizardButton: 重新运行向导
+      RerunWizardDesc: 重新运行引导向导，再次设置 Self-hosted LiveSync。
+      RerunWizardName: 重新运行引导向导
+    SyncSettings:
+      Merge: 合并
+      Fetch: 获取
+      Overwrite: 覆盖
+  SetupWizard:
+    Common:
+      Back: 不，带我返回
+      Cancel: 取消
+      ProceedSelectOption: 请选择一个选项后继续
+    Intro:
+      ExistingOption: 将此设备加入已有同步配置
+      ExistingOptionDesc: 如果你已经在另一台电脑或手机上使用同步，请选择此项。此选项用于将当前设备连接到既有同步配置。
+      NewOption: 首次设置同步
+      NewOptionDesc: 如果你正把这台设备作为第一台同步设备进行配置，请选择此项。
+      ProceedExisting: 是的，我要将此设备加入现有同步
+      ProceedNew: 是的，我要开始新的同步配置
+      Question: 首先，请选择最符合你当前情况的选项。
+      Title: 欢迎使用 Self-hosted LiveSync
+      Guidance: 接下来我们会通过几个问题，帮助你更轻松地完成同步配置。
+    SelectExisting:
+      Guidance: 你正在将此设备加入已有同步配置。
+      ManualOption: 手动输入服务器信息
+      ManualOptionDesc: 手动重新配置与你其他设备相同的服务器信息。此方式仅适用于高级用户。
+      ProceedManual: 我知道服务器信息，让我手动输入
+      ProceedQr: 使用本设备摄像头扫描活动设备上显示的二维码
+      ProceedSetupUri: 使用 Setup URI 继续
+      Question: 请选择一种从其他设备导入设置的方法。
+      QrOption: 扫描二维码（移动端推荐）
+      QrOptionDesc: 使用本设备摄像头扫描活动设备上显示的二维码。
+      SetupUriOption: 使用 Setup URI（推荐）
+      SetupUriOptionDesc: 粘贴从某台已启用设备生成的 Setup URI。
+      Title: 设备设置方式
+    SelectNew:
+      Guidance: 接下来将继续配置服务器连接信息。
+      ManualOption: 手动输入服务器信息
+      ManualOptionDesc: 如果你没有 Setup URI，或希望自行配置更详细的参数，可选择此高级选项。
+      ProceedManual: 我知道服务器信息，让我手动输入
+      ProceedSetupUri: 使用 Setup URI 继续
+      Question: 你希望如何配置服务器连接？
+      SetupUriOption: 使用 Setup URI（推荐）
+      SetupUriOptionDesc: Setup URI 是一段包含服务器地址和认证信息的文本。如果你的服务器安装脚本已经生成了它，这是最简单且安全的配置方式。
+      Title: 连接方式
+    OutroAskUserMode:
+      CompatibleOption: 远程端已配置完成，且当前配置兼容（或已通过本次操作变为兼容）。
+      CompatibleOptionDesc: 除非你非常确定，否则选择此项存在风险。它假定服务器配置与当前设备兼容。如果事实并非如此，可能会导致数据丢失。请确认你了解后果。
+      ExistingOption: 远程服务器已经配置完成，我想让此设备加入同步。
+      ExistingOptionDesc: 选择此项后，此设备会加入已有服务器。你需要将服务器上的现有同步数据获取到此设备。
+      Guidance: 服务器连接已成功配置。下一步需要重建本地数据库，也就是同步状态信息。
+      NewOption: 我是第一次配置新服务器 / 我想重置现有服务器。
+      NewOptionDesc: 选择此项后，服务器会使用当前设备上的数据进行初始化。服务器上的现有数据将被完全覆盖。
+      ProceedApplySettings: 应用这些设置
+      ProceedNext: 继续下一步
+      Question: 请选择你的当前情况。
+      Title: 即将完成：还需要做出选择
+    OutroNewUser:
+      GuidancePrimary: 服务器连接已成功配置。下一步将根据当前设备上的数据，在服务器端建立同步数据。
+      GuidanceWarning: 重启后，当前设备上的数据会作为主副本上传到服务器。请注意，服务器上现有的非预期数据将被完全覆盖。
+      Important: 重要
+      Proceed: 重启并初始化服务器
+      Question: 请选择下方按钮，重启并进入最终确认步骤。
+      Title: 设置完成：准备初始化服务器
+    SetupRemote:
+      BucketOption: S3/MinIO/R2 对象存储
+      BucketOptionDesc: 使用日志文件进行同步。你需要先准备好兼容 S3/MinIO/R2 的对象存储服务。
+      CouchDbOptionDesc: 这是当前设计下最适合的同步方式，所有功能都可用。你需要先准备好 CouchDB 实例。
+      Guidance: 请选择你要连接的服务器类型。
+      P2POption: 仅点对点
+      P2POptionDesc: 启用设备之间的直接同步。无需服务器，但两台设备必须同时在线，且部分功能可能受限。互联网连接仅用于信令，不用于传输数据。
+      ProceedBucket: 继续配置 S3/MinIO/R2
+      ProceedCouchDb: 继续配置 CouchDB
+      ProceedP2P: 继续配置仅点对点模式
+      Title: 输入服务器信息
+Unique name between all synchronized devices. To edit this setting, please disable customization sync once.: 所有同步设备之间的唯一名称。要编辑此设置,请首先禁用自定义同步
+Use a custom passphrase: 使用自定义密码短语
+Use Custom HTTP Handler: 使用自定义 HTTP 处理程序
+Use dynamic iteration count: 使用动态迭代次数
+Use Segmented-splitter: 使用分段分割器
+Use splitting-limit-capped chunk splitter: 使用分割限制上限的块分割器
+Use the trash bin: 使用回收站
+Use timeouts instead of heartbeats: 使用超时而不是心跳
+username: 用户名
+Username: 用户名
+Verbose Log: 详细日志
+Verify all: 全部校验
+Verify and repair all files: 校验并修复所有文件
+Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.: "警告！这将严重影响性能。并且日志不会以默认名称同步。请小心处理日志；它们通常包含您的敏感信息 "
+We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.: 启用此功能时无法更改设备名称。如需修改设备名称，请先禁用此功能。
+When you save a file in the editor, start a sync automatically: 当您在编辑器中保存文件时,自动开始同步
+Write credentials in the file: 将凭据写入文件
+Write logs into the file: 将日志写入文件
+xxhash32 (Fast but less collision resistance): xxhash32（速度快，但抗碰撞能力较弱）
+xxhash64 (Fastest): xxhash64（最快）
+"Welcome to Self-hosted LiveSync": "欢迎使用 Self-hosted LiveSync"
+"We will now guide you through a few questions to simplify the synchronisation setup.": "接下来我们会通过几个问题，引导你更轻松地完成同步设置。"
+"First, please select the option that best describes your current situation.": "首先，请选择最符合你当前情况的选项。"
+"I am setting this up for the first time": "我是第一次进行设置"
+"(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你正在将此设备配置为第一台同步设备，请选择此项。）此选项适合初次使用 LiveSync，并希望从头开始配置的用户。"
+"I am adding a device to an existing synchronisation setup": "我要将设备加入现有同步配置"
+"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你已经在另一台电脑或手机上使用同步，请选择此项。）此选项适合将当前设备加入现有 LiveSync 配置的用户。"
+"Yes, I want to set up a new synchronisation": "是的，我要配置新的同步"
+"Yes, I want to add this device to my existing synchronisation": "是的，我要把这台设备加入现有同步"
+"No, please take me back": "不，返回上一步"
+"Device Setup Method": "设备设置方式"
+"You are adding this device to an existing synchronisation setup.": "你正在将此设备加入到现有同步配置中。"
+"Please select a method to import the settings from another device.": "请选择一种从其他设备导入设置的方法。"
+"Use a Setup URI (Recommended)": "使用 Setup URI（推荐）"
+"Paste the Setup URI generated from one of your active devices.": "粘贴从一台已在使用的设备上生成的 Setup URI。"
+"Scan a QR Code (Recommended for mobile)": "扫描二维码（移动端推荐）"
+"Scan the QR code displayed on an active device using this device's camera.": "使用当前设备的摄像头扫描另一台已在使用设备上显示的二维码。"
+"Enter the server information manually": "手动输入服务器信息"
+"Configure the same server information as your other devices again, manually, very advanced users only.": "手动重新输入与你其他设备相同的服务器信息。仅适合高级用户。"
+"Proceed with Setup URI": "继续使用 Setup URI"
+"I know my server details, let me enter them": "我知道服务器详情，让我手动输入"
+"Please select an option to proceed": "请选择一个选项以继续"
+"Connection Method": "连接方式"
+"We will now proceed with the server configuration.": "接下来将继续进行服务器配置。"
+"How would you like to configure the connection to your server?": "你希望如何配置与服务器的连接？"
+"A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.": "Setup URI 是一段包含服务器地址与认证信息的文本。如果服务器安装脚本已经生成了 URI，使用它可以更简单且更安全地完成配置。"
+"This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": "这是面向没有 URI 或希望手动配置详细参数的高级选项。"
+"Enter Server Information": "输入服务器信息"
+"Please select the type of server to which you are connecting.": "请选择你要连接的服务器类型。"
+"Continue to CouchDB setup": "继续进行 CouchDB 设置"
+"Continue to S3/MinIO/R2 setup": "继续进行 S3/MinIO/R2 设置"
+"Continue to Peer-to-Peer only setup": "继续进行仅 Peer-to-Peer 设置"
+"This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.": "这是最符合当前设计的同步方式，所有功能均可用。你需要事先部署好 CouchDB 实例。"
+"S3/MinIO/R2 Object Storage": "S3/MinIO/R2 对象存储"
+"Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": "通过日志文件进行同步。你需要事先部署好兼容 S3/MinIO/R2 的对象存储服务。"
+"Peer-to-Peer only": "仅 Peer-to-Peer"
+"This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "此功能可在设备之间直接同步，无需服务器；但同步时两台设备必须同时在线，且部分功能可能受限。互联网连接仅用于信令（发现对端），不用于数据传输。"

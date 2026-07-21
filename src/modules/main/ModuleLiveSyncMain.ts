@@ -11,7 +11,7 @@ import {
     EVENT_SETTING_SAVED,
     eventHub,
 } from "@/common/events.ts";
-import { $msg, setLang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg, setLang } from "@/common/translation";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";

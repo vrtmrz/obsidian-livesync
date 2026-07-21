@@ -11,7 +11,7 @@ import { type EntryDoc, type RemoteType } from "@vrtmrz/livesync-commonlib/compa
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import type { LiveSyncCore } from "@/main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";

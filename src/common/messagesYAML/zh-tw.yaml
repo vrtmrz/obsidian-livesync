@@ -1,0 +1,443 @@
+(Active): （已啟用）
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.: （正則表示式）留空即同步所有檔案。設定正則表示式可限制要同步的檔案。
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.: （正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。
+Activate: 啟用
+Active Remote Configuration: 目前啟用的遠端設定
+Add default patterns: 新增預設模式
+Always prompt merge conflicts: 總是提示合併衝突
+Analyse: 分析
+Apply Latest Change if Conflicting: 發生衝突時套用最新變更
+Apply preset configuration: 套用預設配置
+Ask a passphrase at every launch: 每次啟動時都詢問密語
+Automatically Sync all files when opening Obsidian.: 開啟 Obsidian 時自動同步所有檔案。
+Batch database update: 批次更新資料庫
+Batch limit: 批次上限
+Batch size: 批次大小
+Batch size of on-demand fetching: 按需抓取的批次大小
+Bucket Name: 儲存桶名稱
+Check: 檢查
+Configuration Encryption: 設定加密
+CouchDB Connection Tweak: CouchDB 連線調校
+Customization Sync: 自訂同步
+Data Compression: 資料壓縮
+Database Name: 資料庫名稱
+Database suffix: 資料庫後綴
+Delay conflict resolution of inactive files: 延後處理非活動檔案的衝突
+Delay merge conflict prompt for inactive files.: 延後顯示非活動檔案的合併衝突提示。
+Delete old metadata of deleted files on start-up: 啟動時刪除已刪除檔案的舊中繼資料
+Developer: 開發者
+Disables logging, only shows notifications. Please disable if you report an issue.: 停用日誌記錄，只顯示通知。如果你要回報問題，請關閉此選項。
+Display Language: 顯示語言
+Do not check configuration mismatch before replication: 複寫前不檢查設定是否不一致
+Do not keep metadata of deleted files.: 不保留已刪除檔案的中繼資料。
+Do not split chunks in the background: 不在背景分割 chunks
+Do not use internal API: 不使用內部 API
+Add new connection: 新增連線
+Back: 返回
+Back to non-configured: 恢復為未設定狀態
+Cancel: 取消
+Check and convert non-path-obfuscated files: 檢查並轉換未進行路徑混淆的檔案
+Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.: 檢查尚未轉換為路徑混淆 ID 的文件，並在需要時進行轉換。
+cmdConfigSync:
+  showCustomizationSync: 顯示自訂同步
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.: 比較本機資料庫與儲存空間中的檔案內容；若不一致，系統會詢問你要保留哪一份。
+Compatibility (Conflict Behaviour): 相容性（衝突行為）
+Compatibility (Database structure): 相容性（資料庫結構）
+Compatibility (Internal API Usage): 相容性（內部 API 使用）
+Compatibility (Metadata): 相容性（中繼資料）
+Compatibility (Remote Database): 相容性（遠端資料庫）
+Compatibility (Trouble addressed): 相容性（問題修復）
+Configure: 設定
+Configure And Change Remote: 設定並切換遠端
+Configure E2EE: 設定 E2EE
+Configure Remote: 設定遠端
+Copy: 複製
+Cross-platform: 跨平台
+"Current adapter: {adapter}": 目前的適配器：{adapter}
+Customization Sync (Beta3): 自訂同步（Beta3）
+Database Adapter: 資料庫適配器
+Default: 預設
+Delete: 刪除
+Delete all customization sync data: 刪除所有自訂同步資料
+Delete all data on the remote server.: 刪除遠端伺服器上的所有資料。
+Delete local database to reset or uninstall Self-hosted LiveSync: 刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync
+Delete Remote Configuration: 刪除遠端設定
+Delete remote configuration '{name}'?: 要刪除遠端設定「{name}」嗎？
+desktop: 桌面裝置
+Device name: 裝置名稱
+Disables all synchronization and restart.: 停用所有同步並重新啟動。
+Display name: 顯示名稱
+Duplicate: 複製
+Duplicate remote: 複製遠端設定
+dialog:
+  yourLanguageAvailable:
+    _value: |-
+      Self-hosted LiveSync 已提供你目前語言的翻譯，因此已啟用顯示語言設定。
+
+      注意：並非所有訊息都已完成翻譯，歡迎協助補充！
+      注意 2：如果你要回報問題，請先切回預設語言，再附上截圖、訊息與日誌。
+
+      希望你使用愉快！
+    btnRevertToDefault: 恢復為預設語言
+    Title: 已提供你的語言翻譯！
+E2EE Configuration: E2EE 設定
+Enable advanced features: 啟用進階功能
+Enable customization sync: 啟用自訂同步
+Enable Developers' Debug Tools.: 啟用開發者除錯工具。
+Enable edge case treatment features: 啟用邊緣情況處理功能
+Enable poweruser features: 啟用進階使用者功能
+Enable this if your Object Storage doesn't support CORS: 如果你的物件儲存不支援 CORS，請啟用此選項
+Enable this option to automatically apply the most recent change to documents even when it conflicts: 啟用此選項後，即使發生衝突也會自動套用文件的最新變更
+Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.: 加密遠端資料庫中的內容。如果你使用外掛的同步功能，建議啟用此選項。
+Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.: 加密密語。如果變更了它，你應以新的（已加密）檔案覆寫伺服器上的資料庫。
+End-to-End Encryption: 端對端加密
+Endpoint URL: 端點 URL
+Enhance chunk size: 擴大 chunk 大小
+Fetch: 抓取
+Fetch chunks on demand: 按需抓取 chunks
+Fetch database with previous behaviour: 以前一種行為抓取資料庫
+Filename: 檔名
+Forces the file to be synced when opened.: 開啟檔案時強制同步該檔案。
+Handle files as Case-Sensitive: 將檔案視為區分大小寫
+Highlight diff: 醒目顯示差異
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: 若停用（關閉）此選項，chunks 會在 UI 執行緒上分割（舊有行為）。
+If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.: 啟用後會使用以每個檔案為單位的高效率自訂同步。啟用時需要進行一次小型遷移，且所有裝置都應升級到 v0.23.18。啟用後將不再相容舊版本。
+If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.: 啟用後，chunks 最多會分成 100 個項目，但去重效果會稍微變弱。
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: 啟用後，新建立的 chunks 會暫時保留在文件中，待穩定後再獨立出去。
+If enabled, the file under 1kb will be processed in the UI thread.: 啟用後，小於 1KB 的檔案會在 UI 執行緒中處理。
+If enabled, the notification of hidden files change will be suppressed.: 啟用後，將不再通知隱藏檔案變更。
+If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour): 啟用後，所有 chunks 都會以其內容產生的修訂版本儲存（舊有行為）。
+If this enabled, All files are handled as case-Sensitive (Previous behaviour).: 啟用後，所有檔案都會以區分大小寫方式處理（舊有行為）。
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: 啟用後，chunks 會依語意切分成有意義的區段，並非所有平台都支援此功能。
+If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.: 如果你在使用 IBM Cloudant 時遇到負載大小上限，請調低批次大小與批次上限。
+Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.: 初始化接收日誌歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。
+Initialise journal sent history. On the next sync, every item except this device received will be sent again.: 初始化傳送日誌歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。
+Edge case addressing (Behaviour): 邊緣情況處理（行為）
+Edge case addressing (Database): 邊緣情況處理（資料庫）
+Edge case addressing (Processing): 邊緣情況處理（處理）
+Emergency restart: 緊急重新啟動
+Encrypting sensitive configuration items: 加密敏感設定項目
+Export: 匯出
+Fetch remote settings: 抓取遠端設定
+File to resolve conflict: 要解決衝突的檔案
+Flag and restart: 標記後重新啟動
+Fresh Start Wipe: 全新開始清除
+Garbage Collection V3 (Beta): 垃圾回收 V3（Beta）
+Hidden Files: 隱藏檔案
+Hide completely: 完全隱藏
+How to display network errors when the sync server is unreachable.: 當同步伺服器無法連線時，如何顯示網路錯誤。
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.: 啟用後，將在狀態列中顯示 ⛔ 圖示，而不是檔案警告橫幅，且不會顯示詳細資訊。
+Ignore patterns: 忽略模式
+Import connection: 匯入連線
+Initialise all journal history, On the next sync, every item will be received and sent.: 初始化所有日誌歷史。下次同步時，每個項目都會重新接收與傳送。
+Later: 稍後
+"Limit: {datetime} ({timestamp})": 限制：{datetime}（{timestamp}）
+Lock: 鎖定
+Lock Server: 鎖定伺服器
+Lock the remote server to prevent synchronization with other devices.: 鎖定遠端伺服器，以防止其他裝置進行同步。
+More actions: 更多操作
+Network warning style: 網路警告樣式
+New Remote: 新增遠端
+No limit configured: 尚未設定限制
+Non-Synchronising files: 不同步的檔案
+Normal Files: 一般檔案
+obsidianLiveSyncSettingTab:
+  btnApply: 套用
+  btnDisable: 停用
+  btnNext: 下一步
+  buttonNext: 下一步
+  defaultLanguage: 預設語言
+  labelDisabled: "⏹️ : 已停用"
+  labelEnabled: "🔁 : 已啟用"
+  logConfiguredDisabled: 已設定的同步模式：已停用
+  logConfiguredLiveSync: 已設定的同步模式：LiveSync
+  logConfiguredPeriodic: 已設定的同步模式：定期同步
+  logSelectAnyPreset: 請選擇任一預設項目。
+  msgConfigCheckFailed: 設定檢查失敗。仍要繼續嗎？
+  msgEnableEncryptionRecommendation: 我們建議啟用端對端加密與路徑混淆。你確定要在未加密的情況下繼續嗎？
+  msgFetchConfigFromRemote: 要從遠端伺服器抓取設定嗎？
+  msgGenerateSetupURI: 全部完成！要產生 Setup URI 以便設定其他裝置嗎？
+  msgInvalidPassphrase: 你的加密密語可能無效。你確定要繼續嗎？
+  msgSelectAndApplyPreset: 請選擇並套用任一預設項目以完成精靈。
+  nameDisableHiddenFileSync: 停用隱藏檔案同步
+  nameEnableHiddenFileSync: 啟用隱藏檔案同步
+  nameHiddenFileSynchronization: 隱藏檔案同步
+  optionDisableAllAutomatic: 停用所有自動同步
+  optionLiveSync: LiveSync 同步
+  optionOnEvents: 事件觸發時
+  optionPeriodicAndEvents: 定期與事件觸發
+  optionPeriodicWithBatch: 定期（批次）
+  titleAppearance: 外觀
+  titleConflictResolution: 衝突處理
+  titleCongratulations: 恭喜！
+  titleCouchDB: CouchDB 伺服器
+  titleDeletionPropagation: 刪除傳播
+  titleEncryptionNotEnabled: 尚未啟用加密
+  titleEncryptionPassphraseInvalid: 加密密語無效
+  titleFetchConfig: 抓取設定
+  titleHiddenFiles: 隱藏檔案
+  titleLogging: 記錄
+  titleMinioS3R2: MinIO、S3、R2
+  titleNotification: 通知
+  titleRemoteConfigCheckFailed: 遠端設定檢查失敗
+  titleRemoteServer: 遠端伺服器
+  titleSynchronizationMethod: 同步方式
+  titleSynchronizationPreset: 同步預設
+  titleSyncSettingsViaMarkdown: 透過 Markdown 同步設定
+  titleUpdateThinning: 更新精簡
+Ok: 確定
+Old Algorithm: 舊演算法
+Older fallback (Slow, W/O WebAssembly): 舊版回退（較慢，無 WebAssembly）
+Overwrite patterns: 覆寫模式
+Overwrite remote: 覆寫遠端
+Overwrite remote with local DB and passphrase.: 使用本機資料庫與密語覆寫遠端。
+Overwrite Server Data with This Device's Files: 以此裝置的檔案覆寫伺服器資料
+paneMaintenance:
+  markDeviceResolvedAfterBackup: 請在完成備份後將此裝置標記為已處理。
+  remoteLockedAndDeviceNotAccepted: 遠端資料庫已鎖定，且此裝置尚未被接受。
+  remoteLockedResolvedDevice: 遠端資料庫已鎖定，但此裝置已被接受。
+  unlockDatabaseReady: 現在可以解鎖資料庫。
+Paste a connection string: 貼上連線字串
+Patterns to match files for overwriting instead of merging: 用於匹配需覆寫而非合併檔案的模式
+Patterns to match files for syncing: 用於匹配同步檔案的模式
+Peer-to-Peer Synchronisation: 點對點同步
+Perform: 執行
+Perform cleanup: 執行清理
+Perform Garbage Collection: 執行垃圾回收
+Perform Garbage Collection to remove unused chunks and reduce database size.: 執行垃圾回收以移除未使用的 chunks 並減少資料庫大小。
+Pick a file to resolve conflict: 選擇要解決衝突的檔案
+Please set this device name: 請設定此裝置名稱
+PureJS fallback  (Fast, W/O WebAssembly): PureJS 回退（快速，無 WebAssembly）
+Purge all download/upload cache.: 清除所有下載／上傳快取。
+Purge all journal counter: 清除所有日誌計數器
+Rebuild local and remote database with local files.: 以本機檔案重建本機與遠端資料庫。
+Rebuilding Operations (Remote Only): 重建作業（僅遠端）
+Recreate all: 全部重建
+Recreate missing chunks for all files: 為所有檔案重建遺失的 chunks
+Remediation: 修復設定
+Remediation Setting Changed: 修復設定已變更
+Remote Database Tweak (In sunset): 遠端資料庫調校（即將淘汰）
+Remote Databases: 遠端資料庫
+Remote name: 遠端名稱
+Rename: 重新命名
+Resend: 重新傳送
+Resend all chunks to the remote.: 將所有 chunks 重新傳送到遠端。
+Reset: 重設
+Reset all: 全部重設
+Reset all journal counter: 重設所有日誌計數器
+Reset journal received history: 重設日誌接收歷史
+Reset journal sent history: 重設日誌傳送歷史
+Reset received: 重設接收紀錄
+Reset sent history: 重設傳送歷史
+Reset Synchronisation information: 重設同步資訊
+Reset Synchronisation on This Device: 重設此裝置上的同步
+Resolve All: 全部處理
+Resolve all conflicted files: 解決所有衝突檔案
+Resolve All conflicted files by the newer one: 將所有衝突檔案統一為較新的版本
+"Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.": 將所有衝突檔案統一保留較新的版本。注意：這會覆寫較舊的版本，且被覆寫的內容無法復原。
+Restart Now: 立即重新啟動
+Restore or reconstruct local database from remote.: 從遠端還原或重建本機資料庫。
+Schedule and Restart: 排程後重新啟動
+Scram!: 緊急處置
+Select the database adapter to use.: 選擇要使用的資料庫適配器。
+Send: 傳送
+Send chunks: 傳送 chunks
+Setting:
+  GenerateKeyPair:
+    Desc: |-
+      我們已產生新的金鑰對！
+
+      注意：此金鑰對之後將不會再次顯示。請務必妥善保存；若遺失，必須重新產生新的金鑰對。
+      注意 2：公鑰採用 spki 格式，私鑰採用 pkcs8 格式。為了方便複製，公鑰中的換行會轉換為 `\n`。
+      注意 3：公鑰應設定在遠端資料庫中，私鑰則應設定在本機裝置上。
+
+      >[!僅供本人查看]-
+      > <div class="sls-keypair">
+      >
+      > ### 公鑰
+      > ```
+      ${public_key}
+      > ```
+      >
+      > ### 私鑰
+      > ```
+      ${private_key}
+      > ```
+      >
+      > </div>
+
+      >[!便於整段複製]-
+      >
+      > <div class="sls-keypair">
+      >
+      > ```
+      ${public_key}
+      ${private_key}
+      > ```
+      >
+      > </div>
+    Title: 已產生新的金鑰對！
+Show full banner: 顯示完整橫幅
+Show icon only: 僅顯示圖示
+Show status icon instead of file warnings banner: 以狀態圖示取代檔案警告橫幅
+Switch to IDB: 切換至 IDB
+Switch to IndexedDB: 切換至 IndexedDB
+Synchronising files: 同步中的檔案
+Syncing: 同步中
+Target patterns: 目標模式
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: 這會為所有檔案重新建立 chunks。若先前有遺失的 chunks，這可能修復相關錯誤。
+Verify all: 全部驗證
+Verify and repair all files: 驗證並修復所有檔案
+Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
+  透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
+Run Doctor: 執行診斷
+Scan for Broken files: 掃描損壞檔案
+Prepare the 'report' to create an issue: 準備建立 Issue 用的「報告」
+Copy Report to clipboard: 將報告複製到剪貼簿
+Analyse database usage: 分析資料庫使用情況
+Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like.:
+  分析資料庫使用情況並產生 TSV 報告，方便你自行診斷。你可以將產生的報告貼到任何慣用的試算表中查看。
+Rerun Onboarding Wizard: 重新執行導覽精靈
+Rerun the onboarding wizard to set up Self-hosted LiveSync again.: 重新執行導覽精靈以再次設定 Self-hosted LiveSync。
+Rerun Wizard: 重新執行精靈
+Reset notification threshold and check the remote database usage: 重設通知閾值並檢查遠端資料庫使用情況
+Reset the remote storage size threshold and check the remote storage size again.: 重設遠端儲存空間大小閾值，並再次檢查遠端儲存空間大小。
+Document History: 文件歷程
+File to view History: 要檢視歷程的檔案
+Pick a file to show history: 選擇要顯示歷程的檔案
+Recovery and Repair: 修復與修補
+Database -> Storage: 資料庫 -> 儲存空間
+Storage -> Database: 儲存空間 -> 資料庫
+Show history: 顯示歷程
+Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?: 強烈建議重新啟動 Obsidian。在重新啟動之前，部分變更可能尚未生效，顯示也可能不一致。你確定要現在重新啟動嗎？
+The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.: IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。
+Scram Switches: 緊急處置開關
+Minimum interval for syncing: 同步最小間隔
+The minimum interval for automatic synchronisation on event.: 事件觸發自動同步的最小間隔。
+xxhash32 (Fast but less collision resistance): xxhash32（速度快，但抗碰撞能力較弱）
+xxhash64 (Fastest): xxhash64（最快）
+"Welcome to Self-hosted LiveSync": "歡迎使用 Self-hosted LiveSync"
+"We will now guide you through a few questions to simplify the synchronisation setup.": "接下來我們會透過幾個問題，引導你更輕鬆地完成同步設定。"
+"First, please select the option that best describes your current situation.": "首先，請選擇最符合你目前情況的選項。"
+"I am setting this up for the first time": "我是第一次進行設定"
+"(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你正在將此裝置設定為第一台同步裝置，請選擇此項。）此選項適合初次使用 LiveSync，並希望從頭開始設定的使用者。"
+"I am adding a device to an existing synchronisation setup": "我要將裝置加入既有同步設定"
+"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。"
+"Yes, I want to set up a new synchronisation": "是的，我要設定新的同步"
+"Yes, I want to add this device to my existing synchronisation": "是的，我要把這台裝置加入既有同步"
+"No, please take me back": "不，返回上一步"
+"Device Setup Method": "裝置設定方式"
+"You are adding this device to an existing synchronisation setup.": "你正在將此裝置加入既有同步設定中。"
+"Please select a method to import the settings from another device.": "請選擇一種從其他裝置匯入設定的方法。"
+"Use a Setup URI (Recommended)": "使用 Setup URI（推薦）"
+"Paste the Setup URI generated from one of your active devices.": "貼上從一台已在使用裝置上產生的 Setup URI。"
+"Scan a QR Code (Recommended for mobile)": "掃描 QR Code（行動裝置推薦）"
+"Scan the QR code displayed on an active device using this device's camera.": "使用目前裝置的相機掃描另一台已在使用裝置上顯示的 QR Code。"
+"Enter the server information manually": "手動輸入伺服器資訊"
+"Configure the same server information as your other devices again, manually, very advanced users only.": "手動重新輸入與其他裝置相同的伺服器資訊。僅適合進階使用者。"
+"Proceed with Setup URI": "繼續使用 Setup URI"
+"I know my server details, let me enter them": "我知道伺服器資訊，讓我手動輸入"
+"Please select an option to proceed": "請選擇一個選項以繼續"
+"Connection Method": "連線方式"
+"We will now proceed with the server configuration.": "接下來將繼續進行伺服器設定。"
+"How would you like to configure the connection to your server?": "你希望如何設定與伺服器的連線？"
+"A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.": "Setup URI 是一段包含伺服器位址與驗證資訊的文字。如果伺服器安裝腳本已經產生 URI，使用它可以更簡單且更安全地完成設定。"
+"This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": "這是面向沒有 URI 或希望手動設定詳細參數的進階選項。"
+"Enter Server Information": "輸入伺服器資訊"
+"Please select the type of server to which you are connecting.": "請選擇你要連線的伺服器類型。"
+"Continue to CouchDB setup": "繼續進行 CouchDB 設定"
+"Continue to S3/MinIO/R2 setup": "繼續進行 S3/MinIO/R2 設定"
+"Continue to Peer-to-Peer only setup": "繼續進行僅 Peer-to-Peer 設定"
+"This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.": "這是最符合目前設計的同步方式，所有功能皆可使用。你需要事先部署好 CouchDB 實例。"
+"S3/MinIO/R2 Object Storage": "S3/MinIO/R2 物件儲存"
+"Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": "透過日誌檔進行同步。你需要事先部署好相容 S3/MinIO/R2 的物件儲存服務。"
+"Peer-to-Peer only": "僅 Peer-to-Peer"
+"This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。"
+Setup:
+  RemoteE2EE:
+    Title: 端對端加密
+    Guidance: 請設定你的端對端加密選項。
+    LabelEncrypt: 端對端加密
+    PlaceholderPassphrase: 輸入你的密語
+    StronglyRecommendedTitle: 強烈建議
+    StronglyRecommendedLine1: 啟用端對端加密後，資料會先在你的裝置上完成加密，再傳送到遠端伺服器。這表示即使有人取得伺服器存取權，沒有密語也無法讀取你的資料。請務必記住你的密語，因為其他裝置在解密資料時也需要它。
+    StronglyRecommendedLine2: 另外請注意，即使你目前使用的是 Peer-to-Peer 同步，日後若切換到其他方式並連線到遠端伺服器時，也會沿用這組設定。
+    MultiDestinationWarning: 即使連線到多個同步目標，這項設定也必須保持一致。
+    LabelObfuscateProperties: 混淆屬性
+    ObfuscatePropertiesDesc: 混淆屬性（例如檔案路徑、大小、建立時間與修改時間）可以額外增加一層安全保護，讓遠端伺服器上的檔案與資料夾結構及名稱更難被辨識。這有助於保護你的隱私，也讓未授權使用者更難推測你的資料資訊。
+    AdvancedTitle: 進階
+    LabelEncryptionAlgorithm: 加密演算法
+    DefaultAlgorithmDesc: 在大多數情況下，建議維持使用預設演算法（${algorithm}）。只有當你現有的 Vault 是以不同格式加密時，才需要調整這項設定。
+    AlgorithmWarning: 變更加密演算法後，先前以其他演算法加密的資料將無法再存取。請確認所有裝置都設定為使用相同演算法，以維持對資料的存取能力。
+    PassphraseValidationLine1: 請注意，端對端加密的密語要到同步程序實際開始時才會進行驗證。這是為了保護你資料而設計的安全措施。
+    PassphraseValidationLine2: 因此，在手動設定伺服器資訊時請務必格外小心。如果輸入了錯誤的密語，伺服器上的資料將會損毀。請理解這是系統的預期行為。
+    ButtonProceed: 繼續
+    ButtonCancel: 取消
+  UseSetupURI:
+    Title: 輸入 Setup URI
+    GuidanceLine1: 請輸入在伺服器安裝期間或其他裝置上產生的 Setup URI，以及 Vault 的密語。
+    GuidanceLine2: 你可以在命令面板中執行「將設定複製為新的 Setup URI」命令來產生新的 Setup URI。
+    LabelSetupURI: Setup URI
+    ValidInfo: Setup URI 有效，可以使用。
+    InvalidInfo: Setup URI 無效，請檢查後再試一次。
+    LabelPassphrase: Vault 密語
+    PlaceholderPassphrase: 輸入 Vault 密語
+    ErrorPassphraseRequired: 請輸入 Vault 的密語。
+    ErrorFailedToParse: 無法解析 Setup URI，請檢查 URI 與密語。
+    ButtonProceed: 測試設定並繼續
+    ButtonCancel: 取消
+  ScanQRCode:
+    Title: 掃描 QR 碼
+    Guidance: 請依照以下步驟，從現有裝置匯入設定。
+    Step1: 在這台裝置上，請保持此 Vault 開啟。
+    Step2: 在來源裝置上開啟 Obsidian。
+    Step3: 在來源裝置上，從命令面板執行「將設定顯示為 QR 碼」命令。
+    Step4: 在這台裝置上切換到相機 App，或使用 QR 碼掃描器掃描顯示出的 QR 碼。
+    ButtonClose: 關閉此對話框
+"Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": 若要使用垃圾回收，請在設定中啟用「Compute revisions for chunks」。
+"Please disable 'Read chunks online' in settings to use Garbage Collection.": 若要使用垃圾回收，請在設定中停用「Read chunks online」。
+"Setup URI dialog cancelled.": Setup URI 對話框已取消。
+"Please select 'Cancel' explicitly to cancel this operation.": 若要取消此操作，請明確選擇「取消」。
+"Failed to connect to remote for compaction.": 無法連線到遠端資料庫以執行壓縮。
+"Failed to connect to remote for compaction. ${reason}": 無法連線到遠端資料庫以執行壓縮。${reason}
+"Compaction in progress on remote database...": 正在遠端資料庫上執行壓縮...
+"Compaction on remote database timed out.": 遠端資料庫壓縮逾時。
+"Compaction on remote database completed successfully.": 遠端資料庫壓縮已成功完成。
+"Compaction on remote database failed.": 遠端資料庫壓縮失敗。
+"Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": 無法在垃圾回收前啟動一次性複寫。垃圾回收已取消。
+"Cancel Garbage Collection": 取消垃圾回收
+"No connected device information found. Cancelling Garbage Collection.": 找不到已連線裝置的資訊。正在取消垃圾回收。
+"The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": |-
+  以下已接受節點缺少節點資訊：
+  - ${missingNodes}
+
+  這表示它們已有一段時間未連線，或仍停留在較舊版本。
+  如有可能，建議先更新所有裝置。如果有已不再使用的裝置，可以先鎖定一次遠端端以清除全部已接受節點。
+"Ignore and Proceed": 忽略並繼續
+"Node Information Missing": 節點資訊缺失
+"Garbage Collection cancelled by user.": 使用者已取消垃圾回收。
+"Proceeding with Garbage Collection, ignoring missing nodes.": 正在繼續執行垃圾回收，並忽略缺失節點。
+"Proceed Garbage Collection": 繼續執行垃圾回收
+"> [!INFO]- The connected devices have been detected as follows:\n${devices}": |-
+  > [!INFO]- 已偵測到以下已連線裝置：
+  ${devices}
+"Device": 裝置
+"Node ID": 節點 ID
+"Obsidian version": Obsidian 版本
+"Plug-in version": 外掛版本
+"Progress": 進度
+"Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.": |-
+  某些裝置的進度值不同（最大：${maxProgress}，最小：${minProgress}）。
+  這可能表示某些裝置尚未完成同步，進而可能導致衝突。強烈建議在繼續之前先確認所有裝置都已同步。
+"All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.": 所有裝置的進度值均相同（${progress}）。看起來你的裝置已同步，可以繼續執行垃圾回收。
+"Garbage Collection Confirmation": 垃圾回收確認
+"Proceeding with Garbage Collection.": 正在執行垃圾回收。
+"Garbage Collection: Scanned ${scanned} / ~${docCount}": |-
+  垃圾回收：已掃描 ${scanned} / ~${docCount}
+"Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}": |-
+  垃圾回收：掃描完成。總 chunks：${totalChunks}，已使用 chunks：${usedChunks}
+"Garbage Collection: Found ${unusedChunks} unused chunks to delete.": |-
+  垃圾回收：找到 ${unusedChunks} 個未使用的 chunks 可刪除。
+"Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
+  垃圾回收完成。已刪除 chunks：${deletedChunks} / ${totalChunks}。耗時：${seconds} 秒。
+"Failed to start replication after Garbage Collection.": 垃圾回收後無法啟動複寫。

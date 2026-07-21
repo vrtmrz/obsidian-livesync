@@ -1,4 +1,5 @@
 import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
+import { createNativeElement } from "@/apps/browserDom";
 import { mount } from "svelte";
 import MenuView from "./ui/MenuView.svelte";
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
@@ -41,7 +42,7 @@ export class Menu {
     }
     waitingForClose?: PromiseWithResolvers<void>;
     showAtPosition(pos: { x: number; y: number }) {
-        const el = _activeDocument.createElement("div");
+        const el = createNativeElement(_activeDocument, "div");
         if (this.waitingForClose) {
             this.waitingForClose.resolve();
         }

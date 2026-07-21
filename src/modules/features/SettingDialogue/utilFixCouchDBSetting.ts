@@ -1,5 +1,5 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,

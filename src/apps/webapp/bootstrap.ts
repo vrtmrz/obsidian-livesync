@@ -1,4 +1,5 @@
 import { LiveSyncWebApp } from "./main";
+import { createNativeElement } from "@/apps/browserDom";
 import { VaultHistoryStore, type VaultHistoryItem } from "./vaultSelector";
 import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
@@ -55,24 +56,24 @@ async function renderHistoryList(): Promise<VaultHistoryItem[]> {
     emptyEl.classList.toggle("is-hidden", items.length > 0);
 
     for (const item of items) {
-        const row = _activeDocument.createElement("div");
+        const row = createNativeElement(_activeDocument, "div");
         row.className = "vault-item";
 
-        const info = _activeDocument.createElement("div");
+        const info = createNativeElement(_activeDocument, "div");
         info.className = "vault-item-info";
 
-        const name = _activeDocument.createElement("div");
+        const name = createNativeElement(_activeDocument, "div");
         name.className = "vault-item-name";
         name.textContent = item.name;
 
-        const meta = _activeDocument.createElement("div");
+        const meta = createNativeElement(_activeDocument, "div");
         meta.className = "vault-item-meta";
         const label = item.id === lastUsedId ? "Last used" : "Used";
         meta.textContent = `${label}: ${formatLastUsed(item.lastUsedAt)}`;
 
         info.append(name, meta);
 
-        const useButton = _activeDocument.createElement("button");
+        const useButton = createNativeElement(_activeDocument, "button");
         useButton.type = "button";
         useButton.textContent = "Use this vault";
         useButton.addEventListener("click", () => {

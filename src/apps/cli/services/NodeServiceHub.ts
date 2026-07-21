@@ -28,6 +28,7 @@ import { path as nodePath } from "@vrtmrz/livesync-commonlib/node";
 import type { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
 import { PouchDB } from "@/apps/cli/lib/pouchdb-node";
 import { NodeServiceContext } from "./NodeServiceContext";
+import { setLang } from "@/common/translation";
 
 export { NodeServiceContext } from "./NodeServiceContext";
 
@@ -95,7 +96,11 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
         const conflict = new InjectableConflictService(context);
         const fileProcessing = new InjectableFileProcessingService(context);
 
-        const setting = new NodeSettingService(context, { APIService: API }, localStoragePath);
+        const setting = new NodeSettingService(
+            context,
+            { APIService: API, onDisplayLanguageChanged: setLang },
+            localStoragePath
+        );
 
         const appLifecycle = new NodeAppLifecycleService<T>(context, {
             settingService: setting,

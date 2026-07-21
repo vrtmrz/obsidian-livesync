@@ -1,6 +1,6 @@
 <script lang="ts">
     import { getContext } from "svelte";
-    import { translateIfAvailable as translate } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+    import { translateIfAvailable as translate } from "@/common/translation";
 
     type Props = {
         title: string;

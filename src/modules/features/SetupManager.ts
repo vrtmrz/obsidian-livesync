@@ -43,6 +43,7 @@ import {
     applySettingsAndFetchOnActivation,
     applySettingsWithScheduledInitialisation,
 } from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
+import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
 
 function copySettingsForRemoteProfileUpdate(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
     return {
@@ -368,10 +369,7 @@ export class SetupManager extends AbstractModule {
                     userMode = UserMode.ExistingUser;
                 } else if (userModeResult === "compatible-existing-user") {
                     extra();
-                    const applied = await this.applySettingAndScheduleFetchOnActivation(
-                        newConf,
-                        UserMode.ExistingUser
-                    );
+                    const applied = await this.applySettingAndScheduleFetchOnActivation(newConf, UserMode.ExistingUser);
                     if (applied) this._log("Settings from wizard applied.", LOG_LEVEL_NOTICE);
                     return applied;
                 } else if (userModeResult === "cancelled") {
@@ -382,8 +380,9 @@ export class SetupManager extends AbstractModule {
         }
         const component = userMode === UserMode.NewUser ? OutroNewUser : OutroExistingUser;
         const confirm = await this.dialogManager.openWithExplicitCancel<
-            OutroNewUserResultType | OutroExistingUserResultType
-        >(component);
+            OutroNewUserResultType | OutroExistingUserResultType,
+            { isP2P: boolean }
+        >(component, { isP2P: isP2PMainRemote(newConf) });
         if (confirm === "cancelled") {
             this._log("User cancelled applying settings from wizard..", LOG_LEVEL_NOTICE);
             return false;

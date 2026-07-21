@@ -1,5 +1,5 @@
 import { delay } from "octagonal-wheels/promises";
-import { __onMissingTranslation } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { __onMissingTranslation } from "@/common/translation";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 // import { enableTestFunction } from "./devUtil/testUtils.ts";

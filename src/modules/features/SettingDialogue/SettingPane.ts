@@ -1,4 +1,4 @@
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER, type ConfigLevel } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
 

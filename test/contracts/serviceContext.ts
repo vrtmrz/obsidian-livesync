@@ -1,4 +1,4 @@
-import type { ServiceContextContract } from "@vrtmrz/livesync-commonlib/context";
+import type { CommonlibMessageKey, ServiceContextContract } from "@vrtmrz/livesync-commonlib/context";
 import type { ServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
 
 export const SERVICE_CONTEXT_MEMBERS = [
@@ -43,7 +43,10 @@ export type ServiceCompositionResult = {
  * The caller chooses the translation key because translated text is
  * host-configured. Event delivery itself is shared behaviour.
  */
-export function observeServiceContext(context: ServiceContextContract, translationKey: string): ServiceContextResult {
+export function observeServiceContext(
+    context: ServiceContextContract,
+    translationKey: CommonlibMessageKey
+): ServiceContextResult {
     const receivedEvents: string[] = [];
     const unsubscribe = context.events.onEvent("hello", (value) => receivedEvents.push(value));
     try {

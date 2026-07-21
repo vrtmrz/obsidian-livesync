@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — the implementation proof is complete, `@vrtmrz/livesync-commonlib@0.1.0-rc.2` has been published and verified as the exact downstream dependency, and the Community directory scanner preview confirms the intended package boundary.
+Accepted — the package boundary is implemented, published pre-release artefacts have been verified as exact downstream dependencies, and the Community directory scanner preview confirms the intended source boundary. Each later release candidate still requires immutable artefact and downstream validation.
 
 ## Context
 
@@ -107,11 +107,11 @@ In particular, event subscriptions, translation selection, offline-scan maps and
 
 ### Translation resources
 
-Translation lookup is separated from the generated catalogue. Core services receive a narrow translator capability, or a service-context equivalent, instead of importing a process-global `$msg` implementation which statically owns every language.
+Translation lookup is separated from the application catalogue. Commonlib owns a typed canonical English definition for the messages requested by its services and uses it when a host omits the optional translator capability. This ensures that another consumer receives meaningful English rather than symbolic keys.
 
-The first migration keeps language resources in the common-library repository and exposes them temporarily through the focused compatibility subpath `@vrtmrz/livesync-commonlib/compat/common/i18n`. Importing the root or `context` entry does not load the catalogue. Self-hosted LiveSync imports the catalogue and installs the translator at its composition root. A dedicated language subpath remains the preferred stable replacement once its contract has been narrowed.
+Self-hosted LiveSync owns the complete multilingual catalogue, generation tools, selected-language state, and translator implementation. It injects that translator into the Obsidian, CLI, and browser composition roots. Commonlib does not publish `compat/common/i18n`, `compat/common/rosetta`, generated language modules, or JSON catalogues.
 
-This is initially one versioned npm package rather than two independently versioned packages. Message identifiers and their generated catalogue change together, so an immediate package split would add version coordination before the dependency direction is proven. A later `@vrtmrz/livesync-language` package is permitted when independent use or release cadence justifies it. Its dependency must point towards message contracts or core, never from core towards the catalogue.
+The canonical Commonlib key type and English fallback change with Commonlib. LiveSync may add translations for those keys without duplicating every English definition; its translator delegates absent keys to Commonlib's canonical English fallback. A separate language package remains possible only if independent consumers and release cadence later justify it; core must never depend on an application catalogue.
 
 ### Svelte dialogue hosting
 
@@ -232,7 +232,7 @@ Every retained barrel must correspond to an explicit `exports` entry, list named
 
 - Replace `@lib/*` source aliases with package imports.
 - Remove the `src/lib` submodule, `_types`, `tsconfig.types.json`, `generate-types.mjs`, and release-workflow steps which regenerate fallback declarations.
-- Move common-library i18n tooling out of Self-hosted LiveSync release preparation.
+- Move the multilingual catalogue and its generation tooling into Self-hosted LiveSync, while retaining only Commonlib's typed English fallback in the package.
 - Keep application-owned source under `src/apps` until a separate decision moves an application.
 - Run the community scanner's branch or commit preview before releasing the converted plug-in.
 
@@ -245,15 +245,15 @@ Every retained barrel must correspond to an explicit `exports` entry, list named
 
 ## Implementation Proof
 
-The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `settings`, `remote-configurations`, `browser`, `node`, and `rpc` entries, plus the explicit compatibility exports required by the reviewed downstream revision from which it was built. It publishes neither raw TypeScript nor Svelte source. The immutable `@vrtmrz/livesync-commonlib@0.1.0-rc.2` registry artefact can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Its registry version and checksum are recorded by release validation.
+The package proof builds Commonlib as one compiled ESM package with a small root, `context`, `settings`, `remote-configurations`, `browser`, `node`, and `rpc` entries, plus only the explicit compatibility exports required by the reviewed downstream inventory. It publishes neither raw TypeScript nor Svelte source, uses no unrestricted export wildcard, and can be installed into a clean consumer, imported in Node, type-checked from declarations, and bundled independently for browser context, browser storage, browser services, and workers. Release validation records and compares the immutable registry version and checksum.
 
-The published export map contains 126 explicitly named entries, including 118 `compat/*` entries and no unrestricted wildcard. Every compatibility entry was referenced by the reviewed Self-hosted LiveSync source used to prepare the artefact. A final consumer audit then moved imports already covered by the focused `context`, `settings`, and `remote-configurations` entries. The current branch consequently uses 115 compatibility paths; `compat/common/models/setting.const.defaults`, `compat/common/models/setting.const.preferred`, and `compat/hub/hub` remain only as an immutable surplus in `rc.2`. They are candidates for removal from the next reviewed compatibility inventory rather than grounds for changing the published artefact. Remaining compatibility imports still expose migration-only service composition, broader model types, replication implementations, or another contract which the focused entries do not yet replace.
+The compatibility inventory is regenerated from the maintained Self-hosted LiveSync consumer. Focused entries replace compatibility imports when their contracts are proven; obsolete paths are removed from the next candidate rather than retained merely because an earlier immutable release contained them. The multilingual `common/i18n` and `common/rosetta` paths have been removed in this way after ownership moved to the host.
 
 The proof found and fixed three boundary defects which source-alias consumption had hidden: compiled JSON imports required explicit output extensions, precompiled Svelte output could not safely be treated as source by the downstream Svelte pipeline, and Vite's default client conditions selected Commonlib's browser worker while building the Node CLI. Packed-consumer regressions cover the first two. The CLI now uses Vite's server conditions and treats every Node built-in reported by Commonlib's Node entry as external; the built CLI is exercised through Deno E2E. Importing root or context also no longer patches DOM prototypes, translator injection prevents the context entry from loading the complete language catalogue, and standard input and protocol output are supplied by the package-owned host contract rather than direct stream access in command handlers.
 
 Self-hosted LiveSync, its CLI, Webapp, WebPeer, plug-in source, and tests compile against that exact registry artefact without `@lib/*`. Focused downstream storage tests pass against the package-owned Node and File System Access API implementations. Commonlib also owns the Trystero implementation and version; the host retains no direct Trystero dependency, preventing two transport generations from entering one application graph. The old `src/lib` Git submodule, generated `_types` fallback, type-generation scripts, and source aliases are removed by the proof branch.
 
-The Commonlib contract suite passes 21 tests covering Context results, both platform storage implementations, and standard I/O; its complete suite passes 1,123 tests across 62 files. Self-hosted LiveSync's three host-composition contract tests and complete 342-test unit suite across 38 files pass against the registry artefact. The plug-in, CLI, Webapp, and WebPeer production builds also pass. The CLI contract command completes its nine-step Deno workflow against the built Node artefact.
+Commonlib's contract and complete suites cover Context results, both platform storage implementations, standard I/O, replication, settings, and package consumption. Self-hosted LiveSync runs the same host-composition result contract for Obsidian, CLI, and browser compositions against the exact packed artefact, followed by its unit, integration, application-build, CLI E2E, and focused real-Obsidian gates.
 
 The package-owned Trystero transport also completes the canonical Compose P2P synchronisation workflow with a local relay and two isolated CLI peers. In real Obsidian, the plug-in starts with one consistent `ObsidianServiceContext`, the representative server-selection and Setup URI Svelte dialogues mount and close through their normal controls, their mobile variants satisfy viewport, safe-area, and touch-target assertions, and the settings pane exposes only the effective deletion controls. These runtime checks complement the package tests without making Webapp maintenance the primary release gate.
 
@@ -271,9 +271,9 @@ The 1.0 dependency review found two newly disclosed denial-of-service advisories
 
 The remaining audit report is the existing `werift` and `werift-ice` dependency on `ip`, for which npm offers no patched version. The advisory concerns `ip.isPublic()` misclassifying unusual loopback representations. The locked werift implementation uses `ip` for address encoding, decoding, format detection, and loopback filtering, but does not call `isPublic()` or `isPrivate()`. LiveSync reaches werift only through the Node CLI's injected `RTCPeerConnection`; the Obsidian plug-in and browser applications use their platform WebRTC implementation, and the plug-in artefact does not contain werift. The package-level finding is therefore accepted for the 1.0 integration preview as a non-reachable advisory in the reviewed call path, not as a general waiver. Revisit it when werift or `ip` publishes a replacement, or before any change which delegates address trust, routing, or URL access decisions to that dependency.
 
-The local real-Obsidian suite verifies the actual loaded `ObsidianServiceContext`, all 18 services, Vault reflection, CouchDB and Object Storage transfer, remote-activity accounting, CLI-to-Obsidian encrypted synchronisation, startup scanning, two-Vault create, update, delete, ordinary rename, case-only rename, target mismatch, Hidden File Sync, Customisation Sync, and setting Markdown export. These checks establish observable results and host composition rather than relying on declaration compatibility alone.
+The local real-Obsidian suite verifies the actual loaded `ObsidianServiceContext`, all 18 services, Vault reflection, CouchDB and Object Storage transfer, remote-activity accounting, CLI-to-Obsidian encrypted synchronisation, startup scanning, two-Vault create, update, delete, ordinary rename, case-only rename, target mismatch, Hidden File Sync, Customisation Sync, setting Markdown export, and two-device CouchDB, Object Storage, and P2P Setup URI workflows. These checks establish observable results and host composition rather than relying on declaration compatibility alone.
 
-The current browser Harness has a pre-existing settings-migration initialisation timeout which reproduces on the untouched baseline. The Webapp Playwright workflow also currently reuses an unrelated process on its configured port and reaches a `Not Found` page. Neither failure is evidence for or against the package boundary. The Webapp production build and direct composition contract pass, while Webapp browser E2E remains supplementary until its runner is repaired. Current acceptance therefore relies primarily on Commonlib owner and packed-consumer tests, LiveSync unit and integration tests, Deno CLI E2E, application production builds, and the focused local real-Obsidian suite. The unrelated Harness and Playwright defects should be tracked independently.
+The obsolete mocked browser Harness and its `harness-ci` workflow have been removed. Webapp production builds and the direct browser composition contract remain part of the package-boundary proof; future Webapp browser automation is a Webapp-owned workflow rather than a substitute for real Obsidian E2E.
 
 ## Scanner and Repository Consequences
 
@@ -331,12 +331,11 @@ The following are later SDK-stabilisation gates, not blockers for accepting the 
 - Community directory scanning distinguishes plug-in source from the reviewed dependency.
 - Changes which span the package and plug-in require coordinated package and downstream validation rather than one atomic source commit.
 - Temporary compatibility exports increase the first package surface, but their pre-1.0 status and explicit classification prevent them from becoming silent permanent contracts.
-- Translation, Svelte, and platform dependencies become optional composition concerns rather than root-package side effects.
+- Application translation, Svelte, and platform dependencies become optional composition concerns rather than root-package side effects; Commonlib's small English fallback remains safe by default.
 - Fancy Kit may gain a generally useful typed Obsidian Modal host without acquiring LiveSync policy or a mandatory Svelte dependency.
 
-## Open Questions Before Acceptance
+## Later Open Questions
 
-- Define the focused stable language entry point which will replace the temporary compatibility subpath.
 - Define the minimum conflict and conditional-write guarantees required by the first public high-level client.
 - Continue narrowing the broad model, service-composition, and replication compatibility paths as focused result contracts become available.
 - Confirm whether another Fancy Kit consumer needs the framework-neutral Modal host before it is added to the Kit, or whether LiveSync should pilot the contract first.

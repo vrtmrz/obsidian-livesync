@@ -1,7 +1,7 @@
 import { getLanguage, requireApiVersion } from "@/deps";
 import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@vrtmrz/livesync-commonlib/compat/common/rosetta";
-import { $msg, __onMissingTranslation, setLang } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta";
+import { $msg, __onMissingTranslation, setLang } from "@/common/translation";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 
 function tryGetLanguage(onError: (error: unknown) => void) {

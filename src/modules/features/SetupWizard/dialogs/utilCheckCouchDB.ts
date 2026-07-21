@@ -1,5 +1,5 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";

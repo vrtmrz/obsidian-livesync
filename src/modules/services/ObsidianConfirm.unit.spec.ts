@@ -93,6 +93,7 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
             expect.objectContaining({
                 message: "Continue?",
                 actions: ["yes", "no"],
+                actionLayout: "vertical",
                 defaultAction: "no",
             }),
             { signal: expect.any(AbortSignal) }
@@ -109,15 +110,14 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
         expect(mocks.legacyAskSelectString).not.toHaveBeenCalled();
     });
 
-    it("uses Kit for untimed action dialogues and retains the legacy countdown path", async () => {
+    it("keeps untimed and countdown action dialogues vertically stacked", async () => {
         const { confirm, app, plugin } = createConfirm();
         mocks.confirmAction.mockResolvedValueOnce("Apply").mockResolvedValueOnce("Yes");
-        mocks.legacyConfirm.mockResolvedValueOnce("Cancel");
-        mocks.legacyWideConfirm.mockResolvedValueOnce("No");
+        mocks.legacyWideConfirm.mockResolvedValueOnce("Cancel").mockResolvedValueOnce("No");
 
-        await expect(
-            confirm.confirmWithMessage("Review", "**Apply?**", ["Apply", "Cancel"], "Cancel", undefined, "vertical")
-        ).resolves.toBe("Apply");
+        await expect(confirm.confirmWithMessage("Review", "**Apply?**", ["Apply", "Cancel"], "Cancel")).resolves.toBe(
+            "Apply"
+        );
         await expect(confirm.askYesNoDialog("Continue?", { title: "Question", defaultOption: "Yes" })).resolves.toBe(
             "yes"
         );
@@ -139,8 +139,29 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
             },
             { signal: expect.any(AbortSignal) }
         );
-        expect(mocks.legacyConfirm).toHaveBeenCalledWith(plugin, "Timed", "Wait", ["Apply", "Cancel"], "Cancel", 30);
-        expect(mocks.legacyWideConfirm).toHaveBeenCalledWith(
+        expect(mocks.confirmAction).toHaveBeenNthCalledWith(
+            2,
+            app,
+            expect.objectContaining({
+                title: "Question",
+                message: "Continue?",
+                actions: ["Yes", "No"],
+                actionLayout: "vertical",
+                defaultAction: "Yes",
+            }),
+            { signal: expect.any(AbortSignal) }
+        );
+        expect(mocks.legacyWideConfirm).toHaveBeenNthCalledWith(
+            1,
+            plugin,
+            "Timed",
+            "Wait",
+            ["Apply", "Cancel"],
+            "Cancel",
+            30
+        );
+        expect(mocks.legacyWideConfirm).toHaveBeenNthCalledWith(
+            2,
             plugin,
             expect.any(String),
             "Timed?",
@@ -148,6 +169,7 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
             expect.any(String),
             10
         );
+        expect(mocks.legacyConfirm).not.toHaveBeenCalled();
     });
 
     it("uses Kit for untimed multi-action selection and keeps timed wide actions on the countdown dialogue", async () => {
@@ -176,6 +198,7 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
                 title: "Next step",
                 message: "Choose the next step",
                 actions,
+                actionLayout: "vertical",
                 defaultAction: "Review later",
                 sourcePath: "/",
             },

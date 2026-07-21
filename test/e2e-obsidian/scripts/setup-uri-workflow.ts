@@ -22,6 +22,7 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
+import { generateSetupURIFromDevice, resumeCompatibilityReviewIfShown } from "../runner/setupUri.ts";
 import {
     captureObsidianDialogue,
     captureObsidianElement,
@@ -39,6 +40,9 @@ const initialisationTimeoutMs = Number(process.env.E2E_OBSIDIAN_SETUP_INITIALISA
 const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
 const notePath = "E2E/setup-uri/provisioned-workflow.md";
 const noteContent = "# Provisioned Setup URI\n\nThis note travelled through the generated CouchDB Setup URI.\n";
+const returnNotePath = "E2E/setup-uri/from-second-device.md";
+const returnNoteContent =
+    "# CouchDB from the second device\n\nThis note completed the return journey through CouchDB.\n";
 const snippetPath = ".obsidian/snippets/setup-uri-workflow.css";
 const snippetContent = [
     "body {",
@@ -704,6 +708,7 @@ async function main(): Promise<void> {
         activeSessions: new Set(),
     };
     const screenshots: string[] = [];
+    let secondDeviceArtifact: SetupArtifact | undefined;
 
     try {
         await assertCouchDbReachable(couchDb);
@@ -735,6 +740,7 @@ async function main(): Promise<void> {
             );
             if (firstCompletion.screenshot) screenshots.push(firstCompletion.screenshot);
             const firstState = firstCompletion.state;
+            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
             assertEqual(firstState.remoteType, "", "The first device did not activate the CouchDB remote profile.");
             assertEqual(
                 firstState.syncInternalFiles,
@@ -750,6 +756,16 @@ async function main(): Promise<void> {
             );
             await enableHiddenFileSync(context.cliBinary, session.cliEnv);
             await uploadWorkflowFiles(context, session, vaultA);
+            const generated = await generateSetupURIFromDevice(
+                session.remoteDebuggingPort,
+                randomBytes(24).toString("base64url"),
+                { scenario: "setup-uri-workflow", guide: "quick-setup" }
+            );
+            if (generated.artifact.setupURI === artifact.setupURI) {
+                throw new Error("The first device returned the bootstrap Setup URI instead of generating a new one.");
+            }
+            secondDeviceArtifact = generated.artifact;
+            screenshots.push(...generated.screenshots);
         } catch (error) {
             await captureFailure(session);
             throw error;
@@ -759,7 +775,9 @@ async function main(): Promise<void> {
 
         session = await startUnconfiguredSession(context, vaultB);
         try {
-            await enterSetupURI(session.remoteDebuggingPort, "existing", artifact);
+            if (!secondDeviceArtifact)
+                throw new Error("The first device did not generate the second-device Setup URI.");
+            await enterSetupURI(session.remoteDebuggingPort, "existing", secondDeviceArtifact);
             screenshots.push(await captureAndStartInitialisation(session.remoteDebuggingPort, "existing"));
             screenshots.push(...(await confirmFastFetch(session.remoteDebuggingPort)));
             const secondCompletion = await finishInitialisation(
@@ -770,6 +788,7 @@ async function main(): Promise<void> {
             );
             if (secondCompletion.screenshot) screenshots.push(secondCompletion.screenshot);
             const secondState = secondCompletion.state;
+            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
             assertEqual(secondState.remoteType, "", "The second device did not activate the CouchDB remote profile.");
             await enableHiddenFileSync(context.cliBinary, session.cliEnv);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
@@ -783,6 +802,27 @@ async function main(): Promise<void> {
                 "The hidden snippet did not reach the second Setup URI device."
             );
             screenshots.push(await captureSynchronisedNote(session.remoteDebuggingPort));
+            await writeNoteViaObsidian(context.cliBinary, session.cliEnv, returnNotePath, returnNoteContent);
+            const returnEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, returnNotePath);
+            await pushLocalChanges(context.cliBinary, session.cliEnv);
+            await waitForRemoteEntry(context, returnEntry);
+        } catch (error) {
+            await captureFailure(session);
+            throw error;
+        } finally {
+            await stopTrackedSession(context, session);
+        }
+
+        session = await startUnconfiguredSession(context, vaultA);
+        try {
+            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await pushLocalChanges(context.cliBinary, session.cliEnv);
+            const receivedReturnNote = await waitForPathContent(vaultA.path, returnNotePath, returnNoteContent);
+            assertEqual(
+                receivedReturnNote,
+                returnNoteContent,
+                "The second device's ordinary note did not return to the first Setup URI device."
+            );
         } catch (error) {
             await captureFailure(session);
             throw error;
@@ -791,7 +831,7 @@ async function main(): Promise<void> {
         }
 
         console.log(
-            `The public provisioning and Setup URI workflow configured two fresh devices, synchronised a note, and synchronised a hidden snippet. Screenshots: ${screenshots.join(", ")}`
+            `The public provisioning and first-device-generated Setup URI workflow configured two fresh devices, completed an ordinary-note round-trip, and synchronised a hidden snippet. Screenshots: ${screenshots.join(", ")}`
         );
     } finally {
         await stopTrackedSessions(context).catch((error: unknown) => {

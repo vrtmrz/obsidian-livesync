@@ -46,12 +46,24 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 1. [Set up CouchDB on fly.io](docs/setup_flyio.md)
 2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
 
-### Manual Setup
+### Setup workflows
 
-1. Set up the server
-   1. [Set up CouchDB on fly.io](docs/setup_flyio.md)
-   2. [Set up your CouchDB](docs/setup_own_server.md)
-2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
+Choose a synchronisation method, prepare its server where required, then follow the corresponding client setup:
+
+1. CouchDB
+   1. Prepare the server:
+      - [Set up your own CouchDB server](docs/setup_own_server.md).
+      - [Set up CouchDB on fly.io](docs/setup_flyio.md).
+   2. Configure the clients by following [CouchDB Quick Setup](docs/quick_setup.md).
+2. Object Storage
+   1. Prepare the server. A maintained MinIO server installation guide is not currently available here, so set up an S3-compatible service or server of your choice.
+   2. Configure the clients by following [Object Storage Setup](docs/setup_object_storage.md).
+3. Peer-to-Peer
+   1. No server setup is required.
+   2. Configure the clients by following [Peer-to-Peer Setup](docs/setup_p2p.md).
+
+Each workflow establishes ordinary note synchronisation on the first device, generates the additional-device Setup URI from that working device, and verifies synchronisation in both directions.
+
 > [!TIP]
 > Fly.io is no longer free. Fortunately, we can still use IBM Cloudant despite some limitations. Refer to [Set up IBM Cloudant](docs/setup_cloudant.md).
 > We can also use peer-to-peer synchronisation without a server. Alternatively, cheap object storage like Cloudflare R2 can be used for free.

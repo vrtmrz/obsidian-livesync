@@ -3,6 +3,7 @@ import {
     SvelteDialogManagerBase,
     SvelteDialogMixIn,
 } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
+import { createNativeElement } from "@/apps/browserDom";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { SvelteDialogManagerDependencies } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
@@ -15,13 +16,13 @@ export class ShimModal {
     isOpen: boolean = false;
     baseEl: HTMLElement;
     constructor() {
-        const baseEl = _activeDocument.createElement("popup");
+        const baseEl = createNativeElement(_activeDocument, "popup");
         this.baseEl = baseEl;
-        this.contentEl = _activeDocument.createElement("div");
+        this.contentEl = createNativeElement(_activeDocument, "div");
         this.contentEl.className = "modal-content";
-        this.titleEl = _activeDocument.createElement("div");
+        this.titleEl = createNativeElement(_activeDocument, "div");
         this.titleEl.className = "modal-title";
-        this.modalEl = _activeDocument.createElement("div");
+        this.modalEl = createNativeElement(_activeDocument, "div");
         this.modalEl.className = "modal";
         this.modalEl.hidden = true;
         this.modalEl.appendChild(this.titleEl);

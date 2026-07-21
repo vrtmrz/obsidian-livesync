@@ -172,8 +172,8 @@ This policy is intentionally aligned with the conflict checkboxes and compatibil
 ### Internationalisation (i18n)
 
 - **Translation Workflow**:
-    1. Edit the human-readable YAML files in `src/common/messagesYAML/` in the `livesync-commonlib` repository
-    2. Run `npm run i18n:bake` in that repository to compile YAML → JSON → TypeScript constants
+    1. Edit the human-readable YAML files in this repository under `src/common/messagesYAML/`
+    2. Run `npm run i18n:bake` to compile YAML → JSON → TypeScript constants
     3. Use `$t()`, `$msg()` functions for translations
        You can also use `$f` for formatted messages with Tagged Template Literals.
 - **Usage**:
@@ -182,7 +182,9 @@ This policy is intentionally aligned with the conflict checkboxes and compatibil
     $t("Some message"); // Direct translation
     $f`Hello, ${userName}`; // Formatted message
     ```
-- **Supported languages**: `def` (English), `de`, `es`, `ja`, `ko`, `ru`, `zh`, `zh-tw`
+- **Supported languages**: `def` (English), `de`, `es`, `fr`, `he`, `ja`, `ko`, `ru`, `zh`, `zh-tw`
+
+Commonlib owns the typed English fallback for messages requested by its services. LiveSync owns the multilingual application catalogue and injects its translator into the Obsidian, CLI, and browser service compositions. Adding a Commonlib message therefore requires its canonical English definition in Commonlib; LiveSync may provide translations here, while an untranslated key falls back to Commonlib English. Importing a Commonlib language catalogue is not part of the boundary.
 
 ### File Path Handling
 

@@ -1,4 +1,5 @@
 import type { Confirm, ConfirmActionLayout } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import { createNativeElement } from "@/apps/browserDom";
 
 import MessageBox from "./ui/MessageBox.svelte";
 import TextInputBox from "./ui/TextInputBox.svelte";
@@ -13,9 +14,9 @@ function displayMessageBox<T, U extends string[]>(
     buttons: U,
     title: string,
     commit: (ret: U[number]) => T,
-    actionLayout?: ConfirmActionLayout
+    actionLayout: ConfirmActionLayout = "vertical"
 ): Promise<T> {
-    const el = _activeDocument.createElement("div");
+    const el = createNativeElement(_activeDocument, "div");
     const p = promiseWithResolvers<T>();
     mount(MessageBox, {
         target: el,
@@ -42,7 +43,7 @@ function promptForInput(
     placeholder: string,
     isPassword?: boolean
 ): Promise<string | false> {
-    const el = _activeDocument.createElement("div");
+    const el = createNativeElement(_activeDocument, "div");
     const p = promiseWithResolvers<string | false>();
     mount(TextInputBox, {
         target: el,
@@ -103,12 +104,12 @@ export class BrowserConfirm<T extends ServiceContext> implements Confirm {
         const existing = _activeDocument.querySelector(`[data-livesync-popup="${CSS.escape(key)}"]`);
         existing?.remove();
 
-        const notice = _activeDocument.createElement("div");
+        const notice = createNativeElement(_activeDocument, "div");
         notice.className = "livesync-browser-notice";
         notice.dataset.livesyncPopup = key;
         const [beforeText, afterText] = dialogText.split("{HERE}", 2);
         notice.append(beforeText);
-        const anchor = _activeDocument.createElement("a");
+        const anchor = createNativeElement(_activeDocument, "a");
         anchor.href = "#";
         anchorCallback(anchor);
         anchor.addEventListener("click", () => notice.remove());

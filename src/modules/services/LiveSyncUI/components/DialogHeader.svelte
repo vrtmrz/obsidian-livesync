@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, tick } from "svelte";
-    import { translateIfAvailable as translate } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+    import { translateIfAvailable as translate } from "@/common/translation";
     import { getDialogContext } from "@/modules/services/LiveSyncUI/svelteDialog";
     import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 

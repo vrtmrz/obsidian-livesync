@@ -12,6 +12,12 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 ## Unreleased
 
+### Important
+
+- This is an opt-in 1.0 integration preview for BRAT and real-Vault validation. It does not replace the latest stable release. Use it with a current backup, and update every participating device before resuming synchronisation.
+- An upgraded, copied, or restored Vault may pause replication for an explicit compatibility review. The review preserves the existing automatic synchronisation choices and resumes them only after the decision has been saved successfully.
+- If an existing Vault has no saved file-name case policy, choose either the legacy case-sensitive behaviour or cross-platform case-insensitive handling. Check for case-only path conflicts and rebuild the local database before adopting the case-insensitive policy.
+
 ### Improved
 
 - Clarified the 1.0 maturity of optional features. P2P and Hidden File Sync are supported opt-in features; JWT, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 remain previews; and legacy database-format settings remain compatibility paths rather than recommendations.
@@ -24,14 +30,20 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Self-hosted CouchDB provisioning and Setup URI generation now consume the immutable Commonlib registry package. New database provisioning records the package-owned database version, and generated CouchDB, Object Storage, and random-room P2P URIs use current new-Vault defaults and selected remote profiles instead of legacy embedded settings.
 - Removed the ineffective 'Use the trash bin' toggle from the settings interface. Remote deletions continue to follow Obsidian's deletion preference, while the legacy setting key remains accepted for compatibility.
 - Kept content-derived chunk revisions permanently enabled, as they have been since 0.25.6, and removed the obsolete stored key from recommendations, database-maintenance prerequisites, and review tooling.
-- Aligned new-Vault, full-reset, and CLI-generated settings with the 1.0 recommendations. New Vaults use cross-platform case-insensitive file-name handling, while an existing Vault with no saved case policy remains paused until case-sensitive legacy behaviour is explicitly retained or a case-insensitive database rebuild is planned.
+- Aligned new-Vault, full-reset, and CLI-generated settings with the 1.0 recommendations. New Vaults use cross-platform case-insensitive file-name handling, while existing Vaults require the explicit compatibility decision described above.
 - Improved P2P restart and settings-reapplication handling by serialising transport start and stop, keeping event handlers bound to the active replicator, and using one package-owned Trystero transport generation.
 - Kept the release history available in the settings while removing automatic unread-version tracking and redirection. Release versions are no longer treated as a data-compatibility signal.
 - Internal database and settings compatibility reviews now use a dedicated explanation and an explicit, case-specific resume action. They block replication without rewriting the user's automatic synchronisation choices, and older installations cannot dismiss state created by a newer version.
-- Stacked compatibility-review actions vertically and kept persistent review reminders clear of mobile close controls. Long setup dialogues now keep their action area inside the mobile safe area while their content remains scrollable. A configured Vault with no device-local acknowledgement now explains that it may have been copied, restored, or opened in a new profile instead of trying to infer safety from an empty local database.
+- Stacked confirmation and compatibility-review actions vertically, and kept persistent review reminders clear of mobile close controls. Long setup dialogues now keep their action area inside the mobile safe area while their content remains scrollable. A configured Vault with no device-local acknowledgement now explains that it may have been copied, restored, or opened in a new profile instead of trying to infer safety from an empty local database.
 - Combined Hidden File Sync plug-in reload and Obsidian restart notifications into one mobile-safe message with clearly labelled actions, avoiding the stacked notifications reported in [issue #555](https://github.com/vrtmrz/obsidian-livesync/issues/555). A group dismissed by the user no longer reappears with its previously acknowledged rows when a later change arrives.
 - Replaced remote-size decision prompts shown during startup with long-lived, clickable notices. The detailed choices now open only when requested and no longer select an answer automatically after a timeout.
 - Removed the obsolete prompt and automatic bulk chunk pre-send from initial and rebuild uploads. These operations retain the standard two-pass replication used to converge follow-up writes and conflict resolution.
+
+### Fixed
+
+- P2P first-device setup no longer attempts central-remote reset or upload operations which do not exist for a peer-to-peer destination. Its initialisation confirmations now describe the local database preparation instead of warning about overwriting a central server.
+- Importing a P2P Setup URI on an additional device now asks for the source peer once and completes one finite Fetch before reflecting the Vault, instead of opening the peer-selection dialogue twice.
+- Config Doctor now limits the V3 chunk-size recommendation to self-hosted CouchDB and no longer offers the CouchDB-specific change for Object Storage or P2P profiles.
 
 ### Security
 
@@ -41,6 +53,8 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 ### Miscellaneous
 
 - Replaced the embedded Commonlib source and generated fallback declarations with a locked compiled package, reducing duplicated release and repository-scanner inputs without changing synchronisation behaviour.
+- Moved the multilingual catalogue and its generation tools to Self-hosted LiveSync. Commonlib now publishes only its typed canonical English fallback and accepts an optional host translator, so other consumers receive meaningful English without carrying every LiveSync language.
+    - This means that translation contributions can now be made directly to the Self-hosted LiveSync repository.
 - Moved CLI standard input, prompting, and protocol output behind a host-injected Commonlib contract, and routed adapter diagnostics through the service logging API, without changing command output formats.
 - Routed Webapp, WebPeer, and plug-in diagnostics through their application-owned log paths instead of writing directly to the browser console.
 - Split the release history into the current 1.x line, the 0.25 line, and a legacy archive while preserving the previous `updates_old.md` link as a compatibility index.
@@ -53,3 +67,4 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Added reusable Context result contracts for Obsidian, CLI, and Webapp compositions, including a real-Obsidian smoke assertion that every service retains the host-provided Context.
 - Added Commonlib stream-contract tests and downstream CLI unit and Deno E2E coverage for injected text, binary, prompt, and error channels.
 - Added a dependency-ownership regression and verified the package-owned P2P transport through Compose CLI synchronisation, real-Obsidian startup and Context checks, representative desktop and mobile dialogues, and the settings pane.
+- Added visible two-device Setup URI workflows for CouchDB, Object Storage, and P2P. Each workflow generates the additional-device URI on the working first device, verifies synchronisation in both directions, and checks owned fixture cleanup.

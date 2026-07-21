@@ -11,7 +11,7 @@ import {
 import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { $msg } from "@vrtmrz/livesync-commonlib/compat/common/i18n";
+import { $msg } from "@/common/translation";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import {
