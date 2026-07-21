@@ -50,6 +50,17 @@ These tests are intended for local verification, not the default CI gate. Reuse 
 
 ## Commands
 
+After changing plug-in source, use the focused wrapper rather than invoking a scenario directly. It always rebuilds `main.js` before launching real Obsidian, and it builds the local CLI too when the CLI-to-Obsidian scenario needs it:
+
+```bash
+npm run test:e2e:obsidian:focused -- settings-ui
+npm run test:e2e:obsidian:focused -- two-vault-sync
+```
+
+The wrapper accepts only maintained real-Obsidian scenario names; run it with `--help` for the current list. It deliberately does not manage CouchDB or Object Storage. Start the required fixtures first, or use the complete service-managed suite.
+
+The principal entry points are:
+
 ```bash
 npm run test:contract:contexts
 npm run test:contract:context:webapp
@@ -59,25 +70,11 @@ npm run test:e2e:obsidian:runner
 npm run test:e2e:obsidian:install-appimage
 npm run test:e2e:obsidian:discover
 npm run test:e2e:obsidian:cli-help -- vaults verbose
-npm run test:e2e:obsidian:smoke
-npm run test:e2e:obsidian:onboarding-invitation
-npm run test:e2e:obsidian:dialog-mounts
-npm run test:e2e:obsidian:settings-ui
-npm run test:e2e:obsidian:review-harness
-npm run test:e2e:obsidian:p2p-pane
-npm run test:e2e:obsidian:vault-reflection
-npm run test:e2e:obsidian:couchdb-upload
-npm run test:e2e:obsidian:cli-to-obsidian-sync
-npm run test:e2e:obsidian:minio-upload
-npm run test:e2e:obsidian:startup-scan
-npm run test:e2e:obsidian:setup-uri-workflow
-npm run test:e2e:obsidian:two-vault-sync
-npm run test:e2e:obsidian:hidden-file-snippet-sync
-npm run test:e2e:obsidian:customisation-sync
-npm run test:e2e:obsidian:setting-markdown-export
 npm run test:e2e:obsidian:local-suite
 npm run test:e2e:obsidian:local-suite:services
 ```
+
+The underlying `test:e2e:obsidian:<scenario>` scripts remain available for an immediate rerun against an already built, unchanged bundle. They do not build `main.js`; do not use them as the first verification after a source change. The complete local suite performs its own build.
 
 `test:contract:contexts` runs the directly observable host contract against the Obsidian, CLI, and Webapp compositions. It verifies event and translation results, host-specific capabilities, and that the CLI and Webapp Service Hubs pass one exact Context to all exposed services. `test:contract:context:webapp` runs only the Webapp part.
 
