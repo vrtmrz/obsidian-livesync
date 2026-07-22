@@ -12,6 +12,10 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 ## Unreleased
 
+## 1.0.0-beta.1
+
+22nd July, 2026
+
 ### Important
 
 - This corrected opt-in integration preview follows `1.0.0-beta.0` and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
