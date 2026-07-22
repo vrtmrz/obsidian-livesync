@@ -608,7 +608,10 @@ async function runObjectStorageUpgrade(context: RunnerContext, ports: readonly [
         await prepareStableRemote(context.cliBinary, session.cliEnv);
         await runStableFileHistory(context.cliBinary, session.cliEnv, paths, async () => {
             const result = await runJournalReplicationObserved(context.cliBinary, session.cliEnv);
-            assert(result.succeeded, "The stable Object Storage synchronisation failed.");
+            assert(
+                result.succeeded,
+                `The stable Object Storage synchronisation failed.\nObservation: ${JSON.stringify(result)}`
+            );
         });
         await verifyPreUpgradeHistory(upgradeVault, paths);
 

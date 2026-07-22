@@ -190,6 +190,43 @@ export async function prepareStableRemote(cliBinary: string, environment: NodeJS
             "const settings=core.services.setting.currentSettings();",
             "const replicator=core.services.replicator.getActiveReplicator();",
             "await replicator.tryCreateRemoteDatabase(settings);",
+            "return JSON.stringify({ok:true});",
+            "})()",
+        ].join(""),
+        environment
+    );
+
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_REMOTE_READY_TIMEOUT_MS ?? 15000);
+    const intervalMs = Number(process.env.E2E_OBSIDIAN_REMOTE_READY_INTERVAL_MS ?? 250);
+    const deadline = Date.now() + timeoutMs;
+    let securitySeedReady = false;
+    do {
+        securitySeedReady = await evalObsidianJson<boolean>(
+            cliBinary,
+            [
+                "(async()=>{",
+                "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                "const settings=core.services.setting.currentSettings();",
+                "const replicator=core.services.replicator.getActiveReplicator();",
+                "return JSON.stringify(!!(await replicator.ensurePBKDF2Salt(settings,true,false)));",
+                "})()",
+            ].join(""),
+            environment
+        );
+        if (securitySeedReady) break;
+        if (Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    } while (Date.now() < deadline);
+    if (!securitySeedReady) {
+        throw new Error(`Timed out waiting for the stable release Security Seed after ${timeoutMs}ms.`);
+    }
+
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const settings=core.services.setting.currentSettings();",
+            "const replicator=core.services.replicator.getActiveReplicator();",
             "await replicator.markRemoteResolved(settings);",
             "return JSON.stringify({ok:true});",
             "})()",
