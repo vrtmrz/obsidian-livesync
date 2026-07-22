@@ -12,6 +12,10 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 ## Unreleased
 
+## 1.0.0-beta.0
+
+22nd July, 2026
+
 ### Important
 
 - This is an opt-in 1.0 integration preview for BRAT and testing with existing Vaults. It does not replace the latest stable release. Use it with a current backup, and update every participating device before resuming synchronisation.
