@@ -50,7 +50,7 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Fly.io setup now generates CouchDB and Vault encryption secrets from cryptographically secure randomness instead of short word combinations.
 - Updated the glob expansion used by Commonlib path matching and CLI ignore rules to prevent pathological brace patterns from consuming excessive CPU.
 - Updated Markdown link detection to avoid excessive work on maliciously structured `mailto:` links.
-- Kept CLI Vault reads, writes, discovery, deletion, and atomic renames inside the selected Vault root by rejecting paths which contain symbolic links.
+- Hardened CLI Vault path handling by rejecting traversal paths and symbolic-link components detected before reads, writes, discovery, deletion, and atomic renames.
 
 ### Miscellaneous
 

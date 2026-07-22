@@ -156,7 +156,9 @@ A later composition may place the constructed storage contract on a host-specifi
 
 The paired adapters run against the same contract suite for metadata, text and binary access, append, listing, removal, missing paths, parent creation, empty-root handling, and traversal rejection. Timestamp fidelity remains platform-specific because the File System Access API does not provide the same creation-time and timestamp-setting facilities as Node.
 
-The Node adapter rejects symbolic links in adapter paths and opens file entries without following the final link where the platform supports that flag. The CLI delegates its Vault reads, writes, discovery, deletion, and atomic rename to this rooted adapter rather than maintaining a second direct `fs` path. This keeps remote-derived paths within the host-selected Vault root while retaining case-only and cross-directory rename behaviour.
+The Node adapter rejects symbolic-link components which it observes in adapter paths before an operation and opens file entries without following the final link where the platform supports that flag. The CLI delegates its Vault reads, writes, discovery, deletion, and atomic rename to this rooted adapter rather than maintaining a second direct `fs` path. This rejects traversal paths and symbolic links which already exist when a remote-derived operation begins, while retaining case-only and cross-directory rename behaviour.
+
+This adapter is not an operating-system filesystem sandbox. The CLI assumes that the host-selected Vault root and its local filesystem are trusted and are not concurrently rewritten by an untrusted local process. A privileged CLI must therefore not use a Vault root which is writable by a less-trusted local actor.
 
 The Node entry also centralises direct Node built-in access needed by trusted headless application code. This is a package and scanner boundary, not an assertion that Node and browser APIs are interchangeable. Cross-platform behaviour belongs in a shared contract with separate implementations, as demonstrated by rooted storage.
 
