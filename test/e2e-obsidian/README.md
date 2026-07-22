@@ -32,7 +32,7 @@ Multi-session workflows must keep each started Obsidian session tracked until it
 
 ## Local Setup
 
-Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location. Set `OBSIDIAN_CLI` as well when its companion executable is outside the built-in discovery paths, including when a temporary consumer checkout reuses executables from another worktree.
+Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location. Set `OBSIDIAN_CLI` as well when its companion executable is outside the built-in discovery paths.
 
 For an AppImage on Linux without FUSE, use the helper script:
 
