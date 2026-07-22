@@ -287,19 +287,7 @@ export async function configureObjectStorage(
     settings: ObjectStorageConfig & { bucketPrefix: string },
     overrides: Record<string, unknown> = {}
 ): Promise<ConfiguredSettings> {
-    const nextSettings = {
-        remoteType: "MINIO",
-        endpoint: settings.endpoint,
-        accessKey: settings.accessKey,
-        secretKey: settings.secretKey,
-        bucket: settings.bucket,
-        region: settings.region,
-        forcePathStyle: settings.forcePathStyle,
-        bucketPrefix: settings.bucketPrefix,
-        bucketCustomHeaders: "",
-        ...E2E_PREFERRED_SETTINGS,
-        ...overrides,
-    };
+    const nextSettings = createE2eObjectStoragePluginData(settings, overrides);
     return await evalObsidianJson<ConfiguredSettings>(
         cliBinary,
         [
@@ -326,6 +314,25 @@ export async function configureObjectStorage(
         ].join(""),
         env
     );
+}
+
+export function createE2eObjectStoragePluginData(
+    settings: ObjectStorageConfig & { bucketPrefix: string },
+    overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+    return {
+        remoteType: "MINIO",
+        endpoint: settings.endpoint,
+        accessKey: settings.accessKey,
+        secretKey: settings.secretKey,
+        bucket: settings.bucket,
+        region: settings.region,
+        forcePathStyle: settings.forcePathStyle,
+        bucketPrefix: settings.bucketPrefix,
+        bucketCustomHeaders: "",
+        ...E2E_PREFERRED_SETTINGS,
+        ...overrides,
+    };
 }
 
 export async function waitForLiveSyncCoreReady(

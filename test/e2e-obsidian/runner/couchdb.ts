@@ -26,6 +26,22 @@ export type CouchDbAllDocsResponse = {
     }>;
 };
 
+export type CouchDbLocalDocsResponse = {
+    rows: Array<{
+        id: string;
+        key: string;
+        value: { rev: string };
+        doc?: CouchDbDocument;
+    }>;
+};
+
+export type CouchDbDatabaseInfo = {
+    db_name: string;
+    doc_count: number;
+    doc_del_count: number;
+    update_seq: number | string;
+};
+
 function parseEnvFile(content: string): Record<string, string> {
     const entries = content
         .split(/\r?\n/u)
@@ -168,6 +184,28 @@ export async function fetchAllCouchDbDocs(config: CouchDbConfig, dbName: string)
         );
     }
     return (await response.json()) as CouchDbAllDocsResponse;
+}
+
+export async function fetchCouchDbLocalDocs(config: CouchDbConfig, dbName: string): Promise<CouchDbLocalDocsResponse> {
+    const response = await fetch(databaseUrl(config, dbName, "/_local_docs?include_docs=true"), {
+        headers: { authorization: authHeader(config) },
+    });
+    if (!response.ok) {
+        throw new Error(
+            `Failed to read CouchDB local documents from ${dbName}. HTTP ${response.status}: ${await response.text()}`
+        );
+    }
+    return (await response.json()) as CouchDbLocalDocsResponse;
+}
+
+export async function fetchCouchDbDatabaseInfo(config: CouchDbConfig, dbName: string): Promise<CouchDbDatabaseInfo> {
+    const response = await fetch(databaseUrl(config, dbName), {
+        headers: { authorization: authHeader(config) },
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to inspect CouchDB ${dbName}. HTTP ${response.status}: ${await response.text()}`);
+    }
+    return (await response.json()) as CouchDbDatabaseInfo;
 }
 
 export async function waitForCouchDbDocs(

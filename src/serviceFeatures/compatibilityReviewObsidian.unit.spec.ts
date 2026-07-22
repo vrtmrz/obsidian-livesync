@@ -9,22 +9,15 @@ vi.mock("@/deps.ts", () => ({
     },
 }));
 
-const unresolvedFilenameCasePause: CompatibilityPause = {
+const resumablePause: CompatibilityPause = {
     resumable: true,
     reasons: [
         {
-            source: "settings-schema",
-            sourceVersion: 10,
-            currentVersion: 10,
-            isFromFutureSchema: false,
+            source: "database-version",
+            state: "upgrade",
+            acknowledgedVersion: 11,
+            currentVersion: 12,
             resumable: true,
-            reviewReasons: [
-                {
-                    code: "filename-case-sensitivity-unresolved",
-                    fromVersion: 10,
-                    toVersion: 10,
-                },
-            ],
         },
     ],
 };
@@ -49,23 +42,15 @@ describe("Obsidian compatibility review", () => {
         expect(details).toContain("does not mean that it is safe to resume automatically");
     });
 
-    it("explains the safe choices for an unresolved filename-case policy", () => {
-        const details = compatibilityReviewDetailsMarkdown(unresolvedFilenameCasePause);
-        expect(details).toContain("file-name case policy");
-        expect(details).toContain("case-sensitive handling preserves the earlier behaviour");
-        expect(details).toContain("case-insensitive handling requires a database rebuild");
-    });
-
-    it("offers the legacy-compatible case decision instead of a generic resume action", async () => {
-        const label = "Keep case-sensitive handling and resume";
-        const confirmWithMessage = vi.fn().mockResolvedValue(label);
+    it("offers the generic resume action in a vertical action dialogue", async () => {
+        const confirmWithMessage = vi.fn().mockResolvedValue("Resume synchronisation");
         const ui = new ObsidianCompatibilityReviewUi({ confirmWithMessage } as never);
 
-        await expect(ui.showSummary(unresolvedFilenameCasePause)).resolves.toBe("use-case-sensitive");
+        await expect(ui.showSummary(resumablePause)).resolves.toBe("resume");
         expect(confirmWithMessage).toHaveBeenCalledWith(
             "Synchronisation paused for compatibility review",
             expect.any(String),
-            ["Review compatibility details", label, "Keep synchronisation paused"],
+            ["Review compatibility details", "Resume synchronisation", "Keep synchronisation paused"],
             "Keep synchronisation paused",
             undefined,
             "vertical"

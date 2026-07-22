@@ -39,7 +39,6 @@ vi.mock("./liveSyncWorkflow.ts", () => ({
     assertE2eCompatibilityReviewPending: vi.fn(async () => undefined),
     configureCouchDb: vi.fn(async () => undefined),
     createE2eCouchDbPluginData: vi.fn(() => ({})),
-    createE2eObsidianDeviceLocalState: vi.fn(() => ({})),
     prepareRemote: vi.fn(async () => undefined),
     pushLocalChanges: vi.fn(async () => {
         throw new Error("simulated Obsidian CLI timeout");

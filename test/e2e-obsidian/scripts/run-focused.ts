@@ -23,6 +23,7 @@ const focusedScenarios = new Set([
     "hidden-file-snippet-sync",
     "customisation-sync",
     "setting-markdown-export",
+    "upgrade-from-stable",
 ]);
 
 function usage(): string {

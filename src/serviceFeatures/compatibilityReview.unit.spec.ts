@@ -28,6 +28,7 @@ function createFixture(
         marker?: string | null;
         legacyMarker?: string | null;
         versionUpFlash?: string;
+        isConfigured?: boolean;
         migration?: Record<string, unknown>;
     } = {}
 ) {
@@ -39,10 +40,10 @@ function createFixture(
     if (options.legacyMarker !== undefined && options.legacyMarker !== null) {
         local.set(legacyKey, options.legacyMarker);
     }
-    const settings: {
-        versionUpFlash: string;
-        handleFilenameCaseSensitive?: boolean;
-    } = { versionUpFlash: options.versionUpFlash ?? "" };
+    const settings = {
+        versionUpFlash: options.versionUpFlash ?? "",
+        isConfigured: options.isConfigured ?? true,
+    };
     const saveSettingData = vi.fn().mockResolvedValue(undefined);
     const applySettings = vi.fn().mockResolvedValue(true);
     const setting = {
@@ -77,7 +78,7 @@ describe("compatibility review controller", () => {
     });
 
     it("initialises the acknowledged version for a new Vault without showing a pause", async () => {
-        const fixture = createFixture({ marker: null, migration: { isNewVault: true } });
+        const fixture = createFixture({ marker: null, isConfigured: false, migration: { isNewVault: true } });
 
         expect(fixture.controller.initialised).toBe(false);
 
@@ -87,6 +88,30 @@ describe("compatibility review controller", () => {
         expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
         expect(fixture.controller.pendingPause).toBeUndefined();
         expect(fixture.saveSettingData).not.toHaveBeenCalled();
+    });
+
+    it("defers a missing database marker while the Vault remains unconfigured", async () => {
+        const fixture = createFixture({ marker: null, isConfigured: false });
+
+        await expect(fixture.controller.initialise()).resolves.toBe(true);
+
+        expect(fixture.controller.pendingPause).toBeUndefined();
+        expect(fixture.settings.versionUpFlash).toBe("");
+        expect(fixture.local.has(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe(false);
+        expect(fixture.saveSettingData).not.toHaveBeenCalled();
+
+        fixture.settings.isConfigured = true;
+        await expect(fixture.controller.initialise()).resolves.toBe(true);
+
+        expect(fixture.controller.pendingPause?.reasons).toContainEqual({
+            source: "database-version",
+            state: "missing",
+            currentVersion: 12,
+            resumable: true,
+        });
+        expect(fixture.settings.versionUpFlash).toBe(COMPATIBILITY_PAUSE_SETTING_MESSAGE);
+        expect(fixture.local.has(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe(false);
+        expect(fixture.saveSettingData).toHaveBeenCalledOnce();
     });
 
     it("preserves preferences and advances the marker only after an upgrade review is resumed", async () => {
@@ -107,61 +132,6 @@ describe("compatibility review controller", () => {
         expect(fixture.applySettings).toHaveBeenCalledOnce();
         expect(fixture.controller.pendingPause).toBeUndefined();
         expect(fixture.ui.clearReminder).toHaveBeenCalled();
-    });
-
-    it("requires an explicit legacy-compatible filename-case decision before resuming", async () => {
-        const fixture = createFixture({
-            marker: "12",
-            migration: {
-                sourceVersion: 10,
-                targetVersion: 10,
-                requiresSyncReview: true,
-                reviewReasons: [
-                    {
-                        code: "filename-case-sensitivity-unresolved",
-                        fromVersion: 10,
-                        toVersion: 10,
-                    },
-                ],
-            },
-        });
-        vi.mocked(fixture.ui.showSummary).mockResolvedValue("use-case-sensitive" as never);
-
-        await fixture.controller.initialise();
-        await fixture.controller.openReview();
-
-        expect(fixture.settings.handleFilenameCaseSensitive).toBe(true);
-        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
-        expect(fixture.saveSettingData).toHaveBeenCalledTimes(2);
-        expect(fixture.applySettings).toHaveBeenCalledOnce();
-        expect(fixture.controller.pendingPause).toBeUndefined();
-    });
-
-    it("does not let a generic resume action bypass an unresolved filename-case decision", async () => {
-        const fixture = createFixture({
-            marker: "12",
-            migration: {
-                sourceVersion: 10,
-                targetVersion: 10,
-                requiresSyncReview: true,
-                reviewReasons: [
-                    {
-                        code: "filename-case-sensitivity-unresolved",
-                        fromVersion: 10,
-                        toVersion: 10,
-                    },
-                ],
-            },
-        });
-        vi.mocked(fixture.ui.showSummary).mockResolvedValue("resume");
-
-        await fixture.controller.initialise();
-        await fixture.controller.openReview();
-
-        expect(fixture.settings.handleFilenameCaseSensitive).toBeUndefined();
-        expect(fixture.applySettings).not.toHaveBeenCalled();
-        expect(fixture.controller.pendingPause).toBeDefined();
-        expect(fixture.ui.showReminder).toHaveBeenCalledOnce();
     });
 
     it("does not allow a downgrade pause to be resumed", async () => {

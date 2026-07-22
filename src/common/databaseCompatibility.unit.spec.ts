@@ -109,11 +109,11 @@ describe("database compatibility evaluation", () => {
         });
     });
 
-    it("retains an unresolved filename-case decision in the host compatibility reason", () => {
+    it("retains a settings migration review in the host compatibility reason", () => {
         const reviewReasons = [
             {
-                code: "filename-case-sensitivity-unresolved",
-                fromVersion: 10,
+                code: "legacy-update-review-pending",
+                fromVersion: 9,
                 toVersion: 10,
             },
         ];
@@ -121,7 +121,7 @@ describe("database compatibility evaluation", () => {
             acknowledgedVersion: "12",
             currentVersion: 12,
             migrationState: migrationState({
-                sourceVersion: 10,
+                sourceVersion: 9,
                 targetVersion: 10,
                 requiresSyncReview: true,
                 reviewReasons,
@@ -131,7 +131,7 @@ describe("database compatibility evaluation", () => {
 
         expect(result.pause?.reasons).toContainEqual({
             source: "settings-schema",
-            sourceVersion: 10,
+            sourceVersion: 9,
             currentVersion: 10,
             isFromFutureSchema: false,
             resumable: true,

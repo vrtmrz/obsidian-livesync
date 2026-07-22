@@ -64,6 +64,7 @@
         "test:e2e:obsidian:hidden-file-snippet-sync": "tsx test/e2e-obsidian/scripts/hidden-file-snippet-sync.ts",
         "test:e2e:obsidian:customisation-sync": "tsx test/e2e-obsidian/scripts/customisation-sync.ts",
         "test:e2e:obsidian:setting-markdown-export": "tsx test/e2e-obsidian/scripts/setting-markdown-export.ts",
+        "test:e2e:obsidian:upgrade-from-stable": "tsx test/e2e-obsidian/scripts/upgrade-from-stable.ts",
         "test:e2e:obsidian:local-suite": "tsx test/e2e-obsidian/scripts/local-suite.ts",
         "test:e2e:obsidian:local-suite:services": "tsx test/e2e-obsidian/scripts/local-suite.ts --manage-services",
         "test:docker-p2p:start": "docker compose -f test/fixtures/p2p-relay/compose.yml up -d",

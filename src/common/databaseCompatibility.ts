@@ -55,16 +55,6 @@ export interface CompatibilityEvaluationInput {
     legacyReviewMessage: string;
 }
 
-const FILENAME_CASE_SENSITIVITY_UNRESOLVED = "filename-case-sensitivity-unresolved";
-
-export function requiresFilenameCaseSensitivityDecision(pause: CompatibilityPause): boolean {
-    return pause.reasons.some(
-        (reason) =>
-            reason.source === "settings-schema" &&
-            reason.reviewReasons.some(({ code }) => code === FILENAME_CASE_SENSITIVITY_UNRESOLVED)
-    );
-}
-
 function databaseVersionReason(
     acknowledgedVersion: string | null,
     currentVersion: number,
