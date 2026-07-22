@@ -8,12 +8,12 @@ There are many settings in Self-hosted LiveSync. This document describes each se
 
 The following status applies to optional and compatibility features in the 1.0 line:
 
-| Status                 | Features                                                                                                                                              | 1.0 policy                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supported, opt-in      | Peer-to-Peer Synchronisation, Hidden File Sync, and Customisation Sync                                                                                | Maintained and covered by focused real-runtime tests. Enable them only where their separate setup and operational constraints are acceptable.                                   |
-| Maintained, advanced   | Data Compression                                                                                                                                      | Available as an explicit storage and bandwidth trade-off. It remains disabled by default because the measured processing and memory costs outweigh the mixed-dataset saving.    |
-| Beta or experimental   | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3                                                 | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
-| Compatibility only     | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
+| Status               | Features                                                                                                                                              | 1.0 policy                                                                                                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supported, opt-in    | Peer-to-Peer Synchronisation, Hidden File Sync, and Customisation Sync                                                                                | Maintained and covered by focused real-runtime tests. Enable them only where their separate setup and operational constraints are acceptable.                                   |
+| Maintained, advanced | Data Compression                                                                                                                                      | Available as an explicit storage and bandwidth trade-off. It remains disabled by default because the measured processing and memory costs outweigh the mixed-dataset saving.    |
+| Beta or experimental | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3                                                 | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
+| Compatibility only   | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
 
 | Icon | Description                                                        |
 | :--: | ------------------------------------------------------------------ |
@@ -34,7 +34,7 @@ The following status applies to optional and compatibility features in the 1.0 l
 
 This pane always shows the current release history. It does not track whether a particular plug-in version has been read and does not open automatically after an ordinary update.
 
-Internal database or settings compatibility reviews use a separate safety dialogue, not this pane. The dialogue explains why remote synchronisation has been paused and preserves the automatic synchronisation choices which were configured before the update. A configured Vault which was copied, restored, or opened in a new Obsidian profile can require this review because its device-local acknowledgement is not part of the Vault data. An empty local database is not accepted as evidence that it is safe to continue. Closing the dialogue keeps synchronisation paused. When the detected state can be handled by the running version, the explicit resume action records the current internal database version and restores the configured behaviour. A persistent Notice and the `Review why synchronisation is paused` command reopen the review. An older installation cannot dismiss a pause caused by a newer database or settings version.
+Internal database or settings compatibility reviews use a separate safety dialogue, not this pane. The dialogue explains why remote synchronisation has been paused and preserves the automatic synchronisation choices which were configured before the update. A configured Vault which was copied, restored, or opened in a new Obsidian profile can require this review because its device-local acknowledgement is not part of the Vault data. An empty local database is not accepted as evidence that it is safe to continue. An existing unconfigured Vault remains in onboarding without this synchronisation warning; its missing acknowledgement is not filled in automatically, so it is evaluated if the Vault is configured later. Closing the dialogue keeps synchronisation paused. When the detected state can be handled by the running version, the explicit resume action records the current internal database version and restores the configured behaviour. A persistent Notice and the `Review why synchronisation is paused` command reopen the review. An older installation cannot dismiss a pause caused by a newer database or settings version.
 
 ## 1. Setup
 
@@ -637,6 +637,8 @@ If this is set, changes to local files which are matched by the ignore files wil
 Setting key: ignoreFiles
 Comma separated `.gitignore, .dockerignore`
 
+When a saved setting changes whether a normal file can be reflected, LiveSync re-evaluates the normal-file metadata already held in the local database. This covers selector expressions, ignore-file settings, maximum-size and modification-time limits, and file-name case handling. A remote revision which was received and checkpointed while excluded can therefore be reflected after the criteria are broadened, without rewinding the remote checkpoint. Narrowing the criteria does not delete files which have already been reflected.
+
 ### 2. Hidden Files (Advanced)
 
 #### Ignore patterns
@@ -898,7 +900,7 @@ If this enabled, All files are handled as case-Sensitive (Previous behaviour).
 
 When this setting is disabled, changing only the letter case of a file name within the same directory is synchronised as a rename. Changing the letter case of a directory name is not supported by this handling.
 
-New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. If an existing Vault has no saved value, remote synchronisation remains paused until case-sensitive handling is explicitly retained. Changing such a Vault to case-insensitive handling requires checking for paths which differ only by letter case and rebuilding the database through the normal compatibility setting workflow.
+New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. Earlier releases also followed the case-insensitive branch when this value was absent, so 1.0 saves a missing legacy value as `false` without requiring a compatibility review or database rebuild.
 
 ### 4. Compatibility (Internal API Usage)
 

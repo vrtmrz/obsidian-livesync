@@ -16,7 +16,6 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 - This is an opt-in 1.0 integration preview for BRAT and real-Vault validation. It does not replace the latest stable release. Use it with a current backup, and update every participating device before resuming synchronisation.
 - An upgraded, copied, or restored Vault may pause replication for an explicit compatibility review. The review preserves the existing automatic synchronisation choices and resumes them only after the decision has been saved successfully.
-- If an existing Vault has no saved file-name case policy, choose either the legacy case-sensitive behaviour or cross-platform case-insensitive handling. Check for case-only path conflicts and rebuild the local database before adopting the case-insensitive policy.
 
 ### Improved
 
@@ -30,10 +29,10 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Self-hosted CouchDB provisioning and Setup URI generation now consume the immutable Commonlib registry package. New database provisioning records the package-owned database version, and generated CouchDB, Object Storage, and random-room P2P URIs use current new-Vault defaults and selected remote profiles instead of legacy embedded settings.
 - Removed the ineffective 'Use the trash bin' toggle from the settings interface. Remote deletions continue to follow Obsidian's deletion preference, while the legacy setting key remains accepted for compatibility.
 - Kept content-derived chunk revisions permanently enabled, as they have been since 0.25.6, and removed the obsolete stored key from recommendations, database-maintenance prerequisites, and review tooling.
-- Aligned new-Vault, full-reset, and CLI-generated settings with the 1.0 recommendations. New Vaults use cross-platform case-insensitive file-name handling, while existing Vaults require the explicit compatibility decision described above.
+- Aligned new-Vault, full-reset, and CLI-generated settings with the 1.0 recommendations. New Vaults use cross-platform case-insensitive file-name handling. Existing Vaults preserve an explicit choice, while a missing legacy value is saved as case-insensitive to retain its earlier effective behaviour.
 - Improved P2P restart and settings-reapplication handling by serialising transport start and stop, keeping event handlers bound to the active replicator, and using one package-owned Trystero transport generation.
 - Kept the release history available in the settings while removing automatic unread-version tracking and redirection. Release versions are no longer treated as a data-compatibility signal.
-- Internal database and settings compatibility reviews now use a dedicated explanation and an explicit, case-specific resume action. They block replication without rewriting the user's automatic synchronisation choices, and older installations cannot dismiss state created by a newer version.
+- Internal database and settings compatibility reviews now use a dedicated explanation and an explicit resume action. They block replication without rewriting the user's automatic synchronisation choices, and older installations cannot dismiss state created by a newer version.
 - Stacked confirmation and compatibility-review actions vertically, and kept persistent review reminders clear of mobile close controls. Long setup dialogues now keep their action area inside the mobile safe area while their content remains scrollable. A configured Vault with no device-local acknowledgement now explains that it may have been copied, restored, or opened in a new profile instead of trying to infer safety from an empty local database.
 - Combined Hidden File Sync plug-in reload and Obsidian restart notifications into one mobile-safe message with clearly labelled actions, avoiding the stacked notifications reported in [issue #555](https://github.com/vrtmrz/obsidian-livesync/issues/555). A group dismissed by the user no longer reappears with its previously acknowledged rows when a later change arrives.
 - Replaced remote-size decision prompts shown during startup with long-lived, clickable notices. The detailed choices now open only when requested and no longer select an answer automatically after a timeout.
@@ -41,6 +40,9 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 ### Fixed
 
+- Existing Vaults with no stored file-name case value now persist the case-insensitive behaviour used by earlier releases, without presenting a spurious compatibility review or requiring a database rebuild.
+- Legacy settings without an explicit configured-state flag retain the 0.25.83 inference: default-equivalent settings remain unconfigured, non-default settings remain configured, and either result is persisted during migration. An unconfigured Vault stays in onboarding without a misleading compatibility pause; its missing acknowledgement remains pending for any later configured start.
+- Changing normal-file reflection criteria now re-evaluates documents which were received and checkpointed while excluded, so broadening a selector, ignore rule, size limit, modification-time limit, or file-name case policy can reflect those documents without requiring another remote revision.
 - P2P first-device setup no longer attempts central-remote reset or upload operations which do not exist for a peer-to-peer destination. Its initialisation confirmations now describe the local database preparation instead of warning about overwriting a central server.
 - Importing a P2P Setup URI on an additional device now asks for the source peer once and completes one finite Fetch before reflecting the Vault, instead of opening the peer-selection dialogue twice.
 - Config Doctor now limits the V3 chunk-size recommendation to self-hosted CouchDB and no longer offers the CouchDB-specific change for Object Storage or P2P profiles.
