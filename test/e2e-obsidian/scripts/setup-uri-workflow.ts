@@ -22,7 +22,11 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { generateSetupURIFromDevice, resumeCompatibilityReviewIfShown } from "../runner/setupUri.ts";
+import {
+    assertVerticalActionLayout,
+    generateSetupURIFromDevice,
+    resumeCompatibilityReviewIfShown,
+} from "../runner/setupUri.ts";
 import {
     captureObsidianDialogue,
     captureObsidianElement,
@@ -344,6 +348,7 @@ async function acknowledgeDisabledOptionalFeatures(port: number): Promise<string
 
 async function confirmFastFetch(port: number): Promise<string[]> {
     const firstTitle = "Data retrieval scheduled";
+    await assertVerticalActionLayout(port, firstTitle);
     const firstScreenshot = await captureObsidianDialogue(
         port,
         "setup-uri-second-retrieval-method.png",
@@ -359,6 +364,7 @@ async function confirmFastFetch(port: number): Promise<string[]> {
     });
 
     const secondTitle = "How to handle extra existing local files?";
+    await assertVerticalActionLayout(port, secondTitle);
     const secondScreenshot = await captureObsidianDialogue(
         port,
         "setup-uri-second-local-file-policy.png",

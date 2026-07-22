@@ -41,6 +41,17 @@ export async function captureGuideDialogue(port: number, filename: string, title
     return await captureObsidianElement(port, filename, (page) => modalByTitle(page, title).locator(".modal").first());
 }
 
+export async function assertVerticalActionLayout(port: number, title: string): Promise<void> {
+    await withObsidianPage(port, async (page) => {
+        const actions = modalByTitle(page, title).locator(".vpk-action-dialog__actions").first();
+        await actions.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const flexDirection = await actions.evaluate((element) => getComputedStyle(element).flexDirection);
+        if (flexDirection !== "column") {
+            throw new Error(`Expected vertically stacked actions in '${title}', received '${flexDirection}'.`);
+        }
+    });
+}
+
 export async function selectRadioOption(modal: Locator, title: string): Promise<void> {
     const radio = modal.locator("label").filter({ hasText: title }).locator('input[type="radio"]').first();
     await radio.check({ timeout: uiTimeoutMs });
@@ -257,6 +268,7 @@ export async function acknowledgeDisabledOptionalFeatures(port: number, captures
 
 export async function confirmFastFetch(port: number, captures: SetupCaptureNames): Promise<string[]> {
     const firstTitle = "Data retrieval scheduled";
+    await assertVerticalActionLayout(port, firstTitle);
     const firstScreenshot = await captureGuideDialogue(
         port,
         `guide-${captures.guide}-retrieval-method.png`,
@@ -269,6 +281,7 @@ export async function confirmFastFetch(port: number, captures: SetupCaptureNames
     });
 
     const secondTitle = "How to handle extra existing local files?";
+    await assertVerticalActionLayout(port, secondTitle);
     const secondScreenshot = await captureGuideDialogue(
         port,
         `guide-${captures.guide}-local-file-policy.png`,
