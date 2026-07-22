@@ -106,6 +106,24 @@ describe("release notes", () => {
         expect(validated.status, validated.stderr).toBe(0);
     });
 
+    it("ends rotated notes with one newline when Unreleased is the final release section", () => {
+        const directory = createReleaseFixture();
+        writeFileSync(
+            join(directory, "updates.md"),
+            "# 1.0\n\n## Unreleased\n\n### Fixed\n\n- Preserved file content.\n",
+            "utf8"
+        );
+
+        const prepared = runNode(releaseNotesScript, ["prepare", "1.0.0-beta.0"], directory, {
+            RELEASE_DATE: "22nd July, 2026",
+        });
+
+        expect(prepared.status, prepared.stderr).toBe(0);
+        expect(readFileSync(join(directory, "updates.md"), "utf8")).toBe(
+            "# 1.0\n\n## Unreleased\n\n## 1.0.0-beta.0\n\n22nd July, 2026\n\n### Fixed\n\n- Preserved file content.\n"
+        );
+    });
+
     it("rejects an empty Unreleased section unless explicitly allowed", () => {
         const directory = createReleaseFixture();
         writeFileSync(
