@@ -153,6 +153,10 @@ Markdown conflict auto-merge should behave like a conservative three-way merge. 
 
 When in doubt, prefer the safer outcome: preserve data, keep the conflict visible, and ask the user rather than silently discarding content or choosing one side.
 
+The detailed contract is documented in [Conflict resolution and revision provenance](docs/specs_conflict_resolution.md). Determine the merge base by intersecting the exact `available` revision IDs from both leaf histories and selecting the nearest shared revision. Do not infer ancestry from revision generation numbers. When a remote resolution reaches a Vault which still contains the exact content of a deleted losing branch, treat that content as known synchronised history so the resolution can be reflected without recreating the conflict.
+
+File operations made while a conflict is active must use the device-local file-reflection provenance injected into `ServiceFileHandlerBase`. Treat its exact revision as authoritative; use byte equality only to reconstruct a missing record when exactly one available revision matches. If branch identity remains unknown, preserve data and leave the conflict visible. Do not hide key-value database readiness behind an implicit wait: maintained hosts open it through the sequential settings lifecycle before file events or replication begin.
+
 - If one side deletes a line and the other side leaves that same line unchanged, treat it as a safe deletion. The deleted line must not be reintroduced into the merged result.
 - If one side inserts new content in a different region while the other side deletes an unchanged old region, preserve the insertion and the deletion.
 - If one side deletes a line and the other side modifies that same line, keep the conflict for user resolution.

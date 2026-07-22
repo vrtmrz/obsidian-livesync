@@ -10,6 +10,7 @@ import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
 import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
+import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance";
 
 export interface FSAPIServiceModules extends ServiceModules {
     vaultAccess: FileAccessFSAPI;
@@ -84,6 +85,7 @@ export function initialiseServiceModulesFSAPI(
         path: services.path,
         replication: services.replication,
         storageAccess: storageAccess,
+        fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
     });
 
     // Rebuilder (platform-independent)

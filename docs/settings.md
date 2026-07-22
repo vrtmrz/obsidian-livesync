@@ -555,10 +555,12 @@ Should we keep folders that do not have any files inside?
 
 ### 5. Conflict resolution (Advanced)
 
+Conflict resolution preserves unknown local content and automatically merges only when the available revision history supplies a safe shared base. See [Conflict resolution and revision provenance](specs_conflict_resolution.md) for the revision-tree rules, stale and concurrent resolutions, binary-file limitation, and the device-local provenance used for operations while a conflict is live.
+
 #### (BETA) Always overwrite with a newer file
 
 Setting key: resolveConflictsByNewerFile
-Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.
+Testing only. Resolve file conflicts by selecting the copy with the newer modification time. This can overwrite modified files and cannot establish which revision reflects the user's intent.
 
 #### Delay conflict resolution of inactive files
 

@@ -259,6 +259,14 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
     }
 
     openSimpleStore<T>(kind: string): SimpleStore<T> {
+        // Service modules are composed before onSettingLoaded opens the file-
+        // backed database, so handle creation must not touch it. Actual store
+        // operations are deliberately fail-fast: the sequential lifecycle opens
+        // the database before scans, watchers, or replication start. Waiting here
+        // could hang forever after failed initialisation, or deadlock if a future
+        // initialisation handler tried to use the store it was waiting to open.
+        // Reset is likewise a transient unavailable boundary, not a wait state;
+        // callers must avoid store work there because an operation may fail.
         const getDB = () => {
             if (!this._kvDB) {
                 throw new Error("KeyValueDB is not initialized yet");
@@ -293,7 +301,9 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
                     .filter((key) => key >= lower && key <= upper)
                     .map((key) => key.substring(prefix.length));
             },
-            db: Promise.resolve(getDB()),
+            get db() {
+                return Promise.resolve(getDB());
+            },
         } satisfies SimpleStore<T>;
     }
 }

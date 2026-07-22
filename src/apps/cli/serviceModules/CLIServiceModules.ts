@@ -10,6 +10,7 @@ import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
 import { StorageEventManagerCLI } from "@/apps/cli/managers/StorageEventManagerCLI";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import type { IgnoreRules } from "./IgnoreRules";
+import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance";
 
 /**
  * Initialize service modules for CLI version
@@ -93,6 +94,7 @@ export function initialiseServiceModulesCLI(
         path: services.path,
         replication: services.replication,
         storageAccess: storageAccess,
+        fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
     });
 
     // Rebuilder (platform-independent)

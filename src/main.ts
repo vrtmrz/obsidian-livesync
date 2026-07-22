@@ -46,6 +46,7 @@ import { useReviewHarness } from "./serviceFeatures/useReviewHarness.ts";
 import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync/P2PReplicator/P2PReplicationUI.ts";
 import { useCompatibilityReview } from "./serviceFeatures/compatibilityReview.ts";
 import { createObsidianCompatibilityReviewUi } from "./serviceFeatures/compatibilityReviewObsidian.ts";
+import { createFileReflectionProvenance } from "./serviceModules/FileReflectionProvenance.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -104,6 +105,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             path: services.path,
             replication: services.replication,
             storageAccess: storageAccess,
+            fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
         });
         const rebuilder = new ServiceRebuilder({
             events: services.context.events,

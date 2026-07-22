@@ -39,6 +39,12 @@ const renameToPath = "E2E/two-vault/renamed/rename-target.md";
 const caseRenameFromPath = "E2E/two-vault/Case-Rename.md";
 const caseRenameToPath = "E2E/two-vault/case-rename.md";
 const conflictPath = "E2E/two-vault/conflict.md";
+const conflictEditPath = "E2E/two-vault/conflict-operations/edit.md";
+const conflictDeletePath = "E2E/two-vault/conflict-operations/delete.md";
+const conflictCaseFromPath = "E2E/two-vault/conflict-operations/Case-Rename.md";
+const conflictCaseToPath = "E2E/two-vault/conflict-operations/case-rename.md";
+const conflictRenameFromPath = "E2E/two-vault/conflict-operations/rename-source.md";
+const conflictRenameToPath = "E2E/two-vault/conflict-operations/renamed/rename-target.md";
 const targetMismatchPath = "E2E/two-vault/target-mismatch.md";
 const encryptedPath = "E2E/two-vault/encrypted.md";
 
@@ -49,6 +55,17 @@ type RunnerContext = {
     dbName: string;
     reviewedVaults: Set<string>;
     activeSessions: Set<ObsidianLiveSyncSession>;
+};
+
+type FileConflictState = {
+    currentRev: string;
+    branches: {
+        rev: string;
+        parentRev?: string;
+        content: string;
+        deleted: boolean;
+        path: string;
+    }[];
 };
 
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
@@ -279,25 +296,116 @@ async function storeFileRevision(
     return result.rev;
 }
 
-async function createMarkdownConflict(
-    context: RunnerContext,
-    session: ObsidianLiveSyncSession,
-    vault: TemporaryVault,
-    path: string,
-    base: string,
-    left: string,
-    right: string
-): Promise<void> {
-    const baseRev = await storeFileRevision(context.cliBinary, session.cliEnv, path, base);
-    await pushLocalChanges(context.cliBinary, session.cliEnv);
-    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, path);
-    await storeFileRevision(context.cliBinary, session.cliEnv, path, left, baseRev);
-    await storeFileRevision(context.cliBinary, session.cliEnv, path, right, baseRev);
-    await writeVaultFile(vault.path, path, right);
+async function readFileConflictState(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string
+): Promise<FileConflictState> {
+    return await evalObsidianJson<FileConflictState>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const meta=await core.localDatabase.getDBEntryMeta(path,{conflicts:true},true);",
+            "if(!meta) throw new Error(`Could not find conflict metadata: ${path}`);",
+            "const revisions=[meta._rev,...(meta._conflicts??[])];",
+            "const branches=[];",
+            "for(const rev of revisions){",
+            "  const branchMeta=await core.localDatabase.getDBEntryMeta(path,{rev,revs:true},true);",
+            "  const entry=await core.localDatabase.getDBEntry(path,{rev},false,true,true);",
+            "  if(!branchMeta||!entry) throw new Error(`Could not read conflict revision: ${path} ${rev}`);",
+            "  const content=Array.isArray(entry.data)?entry.data.join(''):entry.data;",
+            "  if(typeof content!=='string') throw new Error(`Conflict revision was not text: ${path} ${rev}`);",
+            "  const ids=branchMeta._revisions?.ids??[];",
+            "  const parentRev=ids[1]?`${branchMeta._revisions.start-1}-${ids[1]}`:undefined;",
+            "  branches.push({rev,parentRev,content,deleted:Boolean(branchMeta.deleted||branchMeta._deleted),path:branchMeta.path});",
+            "}",
+            "return JSON.stringify({currentRev:meta._rev,branches});",
+            "})()",
+        ].join(""),
+        env
+    );
 }
 
-async function autoMergeMarkdownConflict(cliBinary: string, env: NodeJS.ProcessEnv, path: string): Promise<void> {
-    await evalObsidianJson<unknown>(
+async function waitForFileConflict(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string
+): Promise<FileConflictState> {
+    const deadline = Date.now() + Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000);
+    let state = await readFileConflictState(cliBinary, env, path);
+    while (state.branches.length < 2 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        state = await readFileConflictState(cliBinary, env, path);
+    }
+    if (state.branches.length < 2) {
+        throw new Error(`Timed out waiting for a file conflict: ${path}`);
+    }
+    return state;
+}
+
+async function waitForConflictBranch(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string,
+    predicate: (branch: FileConflictState["branches"][number]) => boolean
+): Promise<FileConflictState["branches"][number]> {
+    const deadline = Date.now() + Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000);
+    let state = await readFileConflictState(cliBinary, env, path);
+    while (Date.now() < deadline) {
+        const branch = state.branches.find(predicate);
+        if (branch) return branch;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        state = await readFileConflictState(cliBinary, env, path);
+    }
+    throw new Error(`Timed out waiting for the expected conflict branch: ${path}; ${JSON.stringify(state)}`);
+}
+
+async function readFileReflectionProvenance(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string
+): Promise<{ revision: string; observedStorageMtime?: number } | null> {
+    return await evalObsidianJson<{ revision: string; observedStorageMtime?: number } | null>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const store=core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1');",
+            "return JSON.stringify((await store.get(path))??null);",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function readPathIdentity(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    paths: readonly string[]
+): Promise<{ caseSensitive: boolean; ids: Record<string, string> }> {
+    return await evalObsidianJson<{ caseSensitive: boolean; ids: Record<string, string> }>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const paths=${JSON.stringify(paths)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const ids={};",
+            "for(const path of paths) ids[path]=await core.services.path.path2id(path);",
+            "return JSON.stringify({",
+            "  caseSensitive:Boolean(core.services.setting.currentSettings().handleFilenameCaseSensitive),",
+            "  ids,",
+            "});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function calculateMarkdownAutoMerge(cliBinary: string, env: NodeJS.ProcessEnv, path: string): Promise<string> {
+    const result = await evalObsidianJson<{ content: string }>(
         cliBinary,
         [
             "(async()=>{",
@@ -307,11 +415,29 @@ async function autoMergeMarkdownConflict(cliBinary: string, env: NodeJS.ProcessE
             "if(!('result' in result)){",
             "  throw new Error(`Markdown conflict was not auto-mergeable: ${path}; ${JSON.stringify(result)}`);",
             "}",
-            "if(!(await core.databaseFileAccess.storeContent(path,result.result))){",
-            "  throw new Error(`Could not store merged Markdown content: ${path}`);",
-            "}",
-            "if(!(await core.fileHandler.deleteRevisionFromDB(path,result.conflictedRev))){",
-            "  throw new Error(`Could not delete conflicted revision: ${path}`);",
+            "return JSON.stringify({content:result.result});",
+            "})()",
+        ].join(""),
+        env
+    );
+    return result.content;
+}
+
+async function deleteRevisionAndReflect(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string,
+    revision: string
+): Promise<void> {
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            `const revision=${JSON.stringify(revision)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "if(!(await core.fileHandler.deleteRevisionFromDB(path,revision))){",
+            "  throw new Error(`Could not delete conflicted revision: ${path} ${revision}`);",
             "}",
             "if(!(await core.fileHandler.dbToStorage(path,path,true))){",
             "  throw new Error(`Could not reflect merged Markdown content: ${path}`);",
@@ -468,31 +594,290 @@ async function runMarkdownAutoMerge(
     const base = "# Conflict\n\nTop anchor\n\nMiddle anchor\n\nBottom anchor\n";
     const left = "# Conflict\n\nTop anchor\n\nLeft line\n\nMiddle anchor\n\nBottom anchor\n";
     const right = "# Conflict\n\nTop anchor\n\nMiddle anchor\n\nRight tail\n\nBottom anchor\n";
+    const conflictOverrides = {
+        disableMarkdownAutoMerge: true,
+        checkConflictOnlyOnOpen: true,
+        showMergeDialogOnlyOnActive: true,
+    };
 
-    let session = await startConfiguredSession(context, vaultB);
-    await createMarkdownConflict(context, session, vaultB, conflictPath, base, left, right);
-    await autoMergeMarkdownConflict(context.cliBinary, session.cliEnv, conflictPath);
+    let session = await startConfiguredSession(context, vaultA, conflictOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, conflictPath, base);
+    await uploadNote(context, session, conflictPath);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, conflictOverrides);
+    await syncAndApply(context, session);
+    const baseOnB = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, conflictPath);
+    await waitForPathContent(vaultB.path, conflictPath, (content) => content === base);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultA, conflictOverrides);
+    const baseOnA = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, conflictPath);
+    await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, left, baseOnA.rev);
+    await writeVaultFile(vaultA.path, conflictPath, left);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, conflictOverrides);
+    await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, right, baseOnB.rev);
+    await writeVaultFile(vaultB.path, conflictPath, right);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    const conflict = await waitForFileConflict(context.cliBinary, session.cliEnv, conflictPath);
+    const leftBranch = conflict.branches.find((branch) => branch.content === left);
+    const rightBranch = conflict.branches.find((branch) => branch.content === right);
+    if (!leftBranch || !rightBranch) {
+        throw new Error(`The two Vault edits did not form the expected conflict: ${JSON.stringify(conflict)}`);
+    }
+
+    const merged = await calculateMarkdownAutoMerge(context.cliBinary, session.cliEnv, conflictPath);
+    if (!merged.includes("Left line") || !merged.includes("Right tail")) {
+        throw new Error(`Markdown auto-merge discarded a non-overlapping edit: ${JSON.stringify({ merged })}`);
+    }
+    const mergedRev = await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, merged, rightBranch.rev);
+    await deleteRevisionAndReflect(context.cliBinary, session.cliEnv, conflictPath, leftBranch.rev);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
     const mergedOnB = await waitForPathContent(
         vaultB.path,
         conflictPath,
-        (content) => content.includes("Left line") && content.includes("Right tail"),
+        (content) => content === merged,
         Number(process.env.E2E_OBSIDIAN_MERGE_FILE_TIMEOUT_MS ?? 30000)
     );
+
+    const afterResolution = `${merged.trimEnd()}\n\nPost-resolution edit on B.\n`;
+    await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, afterResolution, mergedRev);
+    await writeVaultFile(vaultB.path, conflictPath, afterResolution);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultA);
+    session = await startConfiguredSession(context, vaultA, conflictOverrides);
     await syncAndApply(context, session);
-    const mergedOnA = await waitForPathContent(
+    const resolvedOnA = await waitForPathContent(
         vaultA.path,
         conflictPath,
-        (content) => content.includes("Left line") && content.includes("Right tail"),
+        (content) => content === afterResolution,
         Number(process.env.E2E_OBSIDIAN_MERGE_FILE_TIMEOUT_MS ?? 30000)
+    );
+    const resolvedState = await readFileConflictState(context.cliBinary, session.cliEnv, conflictPath);
+    await stopTrackedSession(context, session);
+
+    assertEqual(mergedOnB, merged, "The resolving Vault did not reflect the merged Markdown content.");
+    assertEqual(
+        resolvedOnA,
+        afterResolution,
+        "The resolved Markdown content did not replace the known losing revision."
+    );
+    assertEqual(
+        resolvedState.branches.length,
+        1,
+        "The receiving Vault recreated a conflict from the known losing revision."
+    );
+    console.log(
+        "A two-Vault Markdown conflict was merged, edited again, and propagated to the Vault holding the resolved losing revision."
+    );
+}
+
+async function runConflictTimeStorageOperations(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault
+): Promise<void> {
+    const paths = [conflictEditPath, conflictDeletePath, conflictCaseFromPath, conflictRenameFromPath] as const;
+    const conflictOverrides = {
+        disableMarkdownAutoMerge: true,
+        checkConflictOnlyOnOpen: true,
+        showMergeDialogOnlyOnActive: true,
+        handleFilenameCaseSensitive: false,
+    };
+    const baseContent = Object.fromEntries(paths.map((path) => [path, `# Conflict operation\n\nBase for ${path}.\n`])) as Record<
+        (typeof paths)[number],
+        string
+    >;
+    const leftContent = Object.fromEntries(
+        paths.map((path) => [path, `${baseContent[path]}\nEdit made on Vault A.\n`])
+    ) as Record<(typeof paths)[number], string>;
+    const rightContent = Object.fromEntries(
+        paths.map((path) => [path, `${baseContent[path]}\nDisplayed edit made on Vault B.\n`])
+    ) as Record<(typeof paths)[number], string>;
+
+    let session = await startConfiguredSession(context, vaultA, conflictOverrides);
+    for (const path of paths) {
+        await writeNoteViaObsidian(context.cliBinary, session.cliEnv, path, baseContent[path]);
+        await uploadNote(context, session, path);
+    }
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, conflictOverrides);
+    await syncAndApply(context, session);
+    for (const path of paths) {
+        await waitForPathContent(vaultB.path, path, (content) => content === baseContent[path]);
+    }
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultA, conflictOverrides);
+    for (const path of paths) {
+        await writeNoteViaObsidian(context.cliBinary, session.cliEnv, path, leftContent[path]);
+        await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, path);
+    }
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, conflictOverrides);
+    for (const path of paths) {
+        await writeNoteViaObsidian(context.cliBinary, session.cliEnv, path, rightContent[path]);
+        await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, path);
+    }
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+
+    const displayedRevisions = new Map<string, string>();
+    const initialBranchRevisions = new Map<string, Set<string>>();
+    for (const path of paths) {
+        const state = await waitForFileConflict(context.cliBinary, session.cliEnv, path);
+        const displayedBranch = state.branches.find((branch) => branch.content === rightContent[path] && !branch.deleted);
+        if (!displayedBranch) {
+            throw new Error(`Could not identify the branch displayed by Vault B: ${path}; ${JSON.stringify(state)}`);
+        }
+        const provenance = await readFileReflectionProvenance(context.cliBinary, session.cliEnv, path);
+        assertEqual(
+            provenance?.revision,
+            displayedBranch.rev,
+            `Vault B did not retain the exact displayed revision for ${path}.`
+        );
+        displayedRevisions.set(path, displayedBranch.rev);
+        initialBranchRevisions.set(path, new Set(state.branches.map((branch) => branch.rev)));
+    }
+
+    const editedAgain = `${rightContent[conflictEditPath]}\nSecond edit while the conflict is active.\n`;
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, conflictEditPath, editedAgain);
+    const editedBranch = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictEditPath,
+        (branch) => branch.content === editedAgain
+    );
+    assertEqual(
+        editedBranch.parentRev,
+        displayedRevisions.get(conflictEditPath),
+        "A conflict-time edit did not extend the displayed revision."
+    );
+
+    await deleteNoteViaObsidian(context.cliBinary, session.cliEnv, conflictDeletePath);
+    const deletedBranch = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictDeletePath,
+        (branch) => branch.deleted
+    );
+    assertEqual(
+        deletedBranch.parentRev,
+        displayedRevisions.get(conflictDeletePath),
+        "A conflict-time deletion did not extend the displayed revision."
+    );
+
+    await renameNoteViaObsidian(
+        context.cliBinary,
+        session.cliEnv,
+        conflictCaseFromPath,
+        conflictCaseToPath
+    );
+    const caseRenamedBranch = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictCaseToPath,
+        (branch) =>
+            !initialBranchRevisions.get(conflictCaseFromPath)?.has(branch.rev) &&
+            branch.path === conflictCaseToPath &&
+            branch.content === rightContent[conflictCaseFromPath] &&
+            !branch.deleted
+    );
+    const expectedCaseParent = displayedRevisions.get(conflictCaseFromPath);
+    if (caseRenamedBranch.parentRev !== expectedCaseParent) {
+        const [state, oldProvenance, newProvenance, identity] = await Promise.all([
+            readFileConflictState(context.cliBinary, session.cliEnv, conflictCaseToPath),
+            readFileReflectionProvenance(context.cliBinary, session.cliEnv, conflictCaseFromPath),
+            readFileReflectionProvenance(context.cliBinary, session.cliEnv, conflictCaseToPath),
+            readPathIdentity(context.cliBinary, session.cliEnv, [conflictCaseFromPath, conflictCaseToPath]),
+        ]);
+        throw new Error(
+            `A conflict-time case-only rename did not extend the displayed revision: ${JSON.stringify({
+                expectedCaseParent,
+                caseRenamedBranch,
+                state,
+                oldProvenance,
+                newProvenance,
+                identity,
+            })}`
+        );
+    }
+    const [oldCaseProvenance, newCaseProvenance] = await Promise.all([
+        readFileReflectionProvenance(context.cliBinary, session.cliEnv, conflictCaseFromPath),
+        readFileReflectionProvenance(context.cliBinary, session.cliEnv, conflictCaseToPath),
+    ]);
+    assertEqual(oldCaseProvenance, null, "A conflict-time case-only rename retained the old provenance path.");
+    assertEqual(
+        newCaseProvenance?.revision,
+        caseRenamedBranch.rev,
+        "A conflict-time case-only rename did not record the new displayed revision."
+    );
+
+    await renameNoteViaObsidian(
+        context.cliBinary,
+        session.cliEnv,
+        conflictRenameFromPath,
+        conflictRenameToPath
+    );
+    const renamedTarget = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, conflictRenameToPath);
+    const renamedSourceDeletion = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictRenameFromPath,
+        (branch) => branch.deleted
+    );
+    assertEqual(
+        renamedSourceDeletion.parentRev,
+        displayedRevisions.get(conflictRenameFromPath),
+        "A conflict-time cross-path rename did not soft-delete the displayed source revision."
+    );
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultA, conflictOverrides);
+    await syncAndApply(context, session);
+    const replicatedBranches = [
+        [conflictEditPath, editedBranch],
+        [conflictDeletePath, deletedBranch],
+        [conflictCaseToPath, caseRenamedBranch],
+        [conflictRenameFromPath, renamedSourceDeletion],
+    ] as const;
+    for (const [path, expectedBranch] of replicatedBranches) {
+        const replicated = await waitForConflictBranch(
+            context.cliBinary,
+            session.cliEnv,
+            path,
+            (branch) => branch.rev === expectedBranch.rev
+        );
+        assertEqual(
+            replicated.parentRev,
+            expectedBranch.parentRev,
+            `The exact conflict-operation revision tree did not replicate for ${path}.`
+        );
+    }
+    await waitForPathContent(
+        vaultA.path,
+        conflictRenameToPath,
+        (content) => content === rightContent[conflictRenameFromPath]
+    );
+    const targetOnA = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, conflictRenameToPath);
+    assertEqual(targetOnA.id, renamedTarget.id, "The cross-path rename target did not replicate as the same document.");
+    assertEqual(
+        await readVaultFile(vaultA.path, conflictDeletePath),
+        leftContent[conflictDeletePath],
+        "A logical deletion from one conflict branch removed the other Vault's live branch."
     );
     await stopTrackedSession(context, session);
 
-    assertEqual(mergedOnA, mergedOnB, "Merged Markdown content was not consistent across both vaults.");
-    console.log("Markdown conflict was automatically merged and propagated by the next synchronisation.");
+    console.log(
+        "Conflict-time edit, logical deletion, case-only rename, and cross-path rename extended the displayed branches and replicated their revision trees."
+    );
 }
 
 async function runTargetMismatch(
@@ -617,14 +1002,22 @@ async function main(): Promise<void> {
         console.log(`Temporary CouchDB database: ${dbName}`);
         console.log(`Temporary encrypted CouchDB database: ${encryptedDbName}`);
 
-        await runCreateUpdateDelete(context, vaultA, vaultB);
-        await runRename(context, vaultA, vaultB);
-        await runCaseOnlyRename(context, vaultA, vaultB);
-        if (process.env.E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT === "true") {
-            await runMarkdownAutoMerge(context, vaultA, vaultB);
+        const onlyConflictOperations = process.env.E2E_OBSIDIAN_ONLY_CONFLICT_OPERATIONS === "true";
+        if (!onlyConflictOperations) {
+            await runCreateUpdateDelete(context, vaultA, vaultB);
+            await runRename(context, vaultA, vaultB);
+            await runCaseOnlyRename(context, vaultA, vaultB);
+            if (process.env.E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT === "true") {
+                await runMarkdownAutoMerge(context, vaultA, vaultB);
+            }
         }
-        await runTargetMismatch(context, vaultA, vaultB);
-        await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
+        if (onlyConflictOperations || process.env.E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS === "true") {
+            await runConflictTimeStorageOperations(context, vaultA, vaultB);
+        }
+        if (!onlyConflictOperations) {
+            await runTargetMismatch(context, vaultA, vaultB);
+            await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
+        }
     } finally {
         await stopTrackedSessions(context);
         await stopTrackedSessions(encryptedContext);
