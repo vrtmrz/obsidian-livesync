@@ -18,7 +18,6 @@ import {
     assertE2eCompatibilityReviewPending,
     configureCouchDb,
     createE2eCouchDbPluginData,
-    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     resumeCompatibilityReview,
@@ -196,10 +195,6 @@ async function startConfiguredSession(
         vault,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         pluginData: createE2eCouchDbPluginData(couchDbSettings, overrides),
-        // The real profile retains this device-local acknowledgement. Seed it
-        // on later process launches because the isolated Electron runner does
-        // not currently preserve localStorage across those launches.
-        localStorageEntries: reviewAlreadyCompleted ? createE2eObsidianDeviceLocalState(vault.name) : undefined,
     });
     context.activeSessions.add(session);
     try {
@@ -517,6 +512,7 @@ async function runTargetMismatch(
         syncOnlyRegEx: "^E2E/two-vault/allowed/.*",
     });
     await syncAndApply(context, session);
+    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, targetMismatchPath);
     assertEqual(
         await pathExists(vaultB.path, targetMismatchPath),
         false,
@@ -525,8 +521,24 @@ async function runTargetMismatch(
     await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB, {
-        syncOnlyRegEx: "",
+        syncOnlyRegEx: "^E2E/two-vault/allowed/.*",
     });
+    assertEqual(
+        await pathExists(vaultB.path, targetMismatchPath),
+        false,
+        "A checkpointed non-target note was reflected before its target filter changed."
+    );
+    await configureCouchDb(
+        context.cliBinary,
+        session.cliEnv,
+        {
+            uri: context.couchDb.uri,
+            username: context.couchDb.username,
+            password: context.couchDb.password,
+            dbName: context.dbName,
+        },
+        { syncOnlyRegEx: "" }
+    );
     await syncAndApply(context, session);
     const reflectedAfterEnabling = await waitForPathContent(
         vaultB.path,

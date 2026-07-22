@@ -26,6 +26,7 @@ import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.
 import type PouchDB from "pouchdb-core";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
+const REPROCESS_BATCH_SIZE = 100;
 type ReplicateResultProcessorState = {
     queued: PouchDB.Core.ExistingDocument<EntryDoc>[];
     processing: PouchDB.Core.ExistingDocument<EntryDoc>[];
@@ -181,6 +182,26 @@ export class ReplicateResultProcessor {
                 this.enqueueChange(change);
             }
         }
+    }
+
+    /**
+     * Requeues stored normal-file metadata after its reflection filters change.
+     * Replication checkpoints may already cover documents which were skipped
+     * by the previous filter, so a later ordinary sync cannot emit them again.
+     */
+    public async reprocessStoredDocuments(): Promise<number> {
+        let count = 0;
+        let batch: PouchDB.Core.ExistingDocument<EntryDoc>[] = [];
+        for await (const document of this.localDatabase.findAllNormalDocs()) {
+            batch.push(document);
+            count++;
+            if (batch.length < REPROCESS_BATCH_SIZE) continue;
+            this.enqueueAll(batch);
+            batch = [];
+        }
+        if (batch.length > 0) this.enqueueAll(batch);
+        this.log(`Requeued ${count} stored document(s) after the reflection filters changed`, LOG_LEVEL_INFO);
+        return count;
     }
     /**
      * Process the change if it is not a document change.

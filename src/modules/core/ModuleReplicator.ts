@@ -6,7 +6,11 @@ import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import { type EntryDoc, type RemoteType } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    type EntryDoc,
+    type ObsidianLiveSyncSettings,
+    type RemoteType,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
@@ -72,17 +76,51 @@ export class ModuleReplicator extends AbstractModule {
         this._unresolvedErrorManager.clearErrors();
     }
 
+    private _normalFileReflectionFilterSignature: string | undefined;
+
+    private getNormalFileReflectionFilterSignature(
+        settings: Pick<
+            ObsidianLiveSyncSettings,
+            | "handleFilenameCaseSensitive"
+            | "ignoreFiles"
+            | "maxMTimeForReflectEvents"
+            | "syncIgnoreRegEx"
+            | "syncInternalFiles"
+            | "syncMaxSizeInMB"
+            | "syncOnlyRegEx"
+            | "useIgnoreFiles"
+        >
+    ): string {
+        return JSON.stringify({
+            handleFilenameCaseSensitive: settings.handleFilenameCaseSensitive ?? false,
+            ignoreFiles: settings.ignoreFiles ?? "",
+            maxMTimeForReflectEvents: settings.maxMTimeForReflectEvents ?? 0,
+            syncIgnoreRegEx: settings.syncIgnoreRegEx ?? "",
+            syncInternalFiles: settings.syncInternalFiles ?? false,
+            syncMaxSizeInMB: settings.syncMaxSizeInMB ?? 0,
+            syncOnlyRegEx: settings.syncOnlyRegEx ?? "",
+            useIgnoreFiles: settings.useIgnoreFiles ?? false,
+        });
+    }
+
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
+        this._normalFileReflectionFilterSignature = this.getNormalFileReflectionFilterSignature(this.settings);
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
             if (this.settings.syncOnSave && !this.core.services.appLifecycle.isSuspended()) {
                 scheduleTask("perform-replicate-after-save", 250, () => this.services.replication.replicateByEvent());
             }
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
+            const previousReflectionFilter = this._normalFileReflectionFilterSignature;
+            const nextReflectionFilter = this.getNormalFileReflectionFilterSignature(setting);
+            this._normalFileReflectionFilterSignature = nextReflectionFilter;
             if (this.core.settings.suspendParseReplicationResult) {
                 this.processor.suspend();
             } else {
                 this.processor.resume();
+            }
+            if (previousReflectionFilter !== undefined && previousReflectionFilter !== nextReflectionFilter) {
+                fireAndForget(() => this.processor.reprocessStoredDocuments());
             }
         });
 
