@@ -6,7 +6,7 @@ import { NodeConversionAdapter } from "./NodeConversionAdapter";
 import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
-import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 
 /**
@@ -29,7 +29,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         this.typeGuard = new NodeTypeGuardAdapter();
         this.conversion = new NodeConversionAdapter();
         this.storage = new NodeStorageAdapter(basePath);
-        this.vault = new NodeVaultAdapter(basePath);
+        this.vault = new NodeVaultAdapter(this.storage);
     }
 
     private resolvePath(p: FilePath | string): string {
@@ -43,11 +43,12 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     private async hasExactPathCase(pathStr: string): Promise<boolean> {
         try {
             const segments = pathStr.split("/").filter((segment) => segment !== "");
-            let currentPath = this.basePath;
+            let currentPath = "";
             for (const segment of segments) {
-                const entries = await fs.readdir(currentPath);
-                if (!entries.includes(segment)) return false;
-                currentPath = path.join(currentPath, segment);
+                const entries = await this.storage.list(currentPath);
+                const candidatePath = currentPath === "" ? segment : `${currentPath}/${segment}`;
+                if (!entries.files.includes(candidatePath) && !entries.folders.includes(candidatePath)) return false;
+                currentPath = candidatePath;
             }
             return segments.length > 0;
         } catch {
@@ -118,9 +119,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     async refreshFile(p: string): Promise<NodeFile | null> {
         const pathStr = this.normalisePath(p);
         try {
-            const fullPath = this.resolvePath(pathStr);
-            const stat = await fs.stat(fullPath);
-            if (!stat.isFile()) {
+            const stat = await this.storage.stat(pathStr);
+            if (stat?.type !== "file") {
                 this.fileCache.delete(pathStr);
                 return null;
             }
@@ -129,8 +129,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                 path: pathStr as FilePath,
                 stat: {
                     size: stat.size,
-                    mtime: Math.floor(stat.mtimeMs),
-                    ctime: Math.floor(stat.ctimeMs),
+                    mtime: stat.mtime,
+                    ctime: stat.ctime,
                     type: "file",
                 },
             };
@@ -149,27 +149,21 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     async scanDirectory(relativePath: string = ""): Promise<void> {
         const fullPath = this.resolvePath(relativePath);
         try {
-            const entries = await fs.readdir(fullPath, { withFileTypes: true });
+            const directoryStat = await this.storage.stat(relativePath);
+            if (directoryStat?.type !== "folder") throw new Error(`Directory does not exist: ${fullPath}`);
+            const entries = await this.storage.list(relativePath);
 
-            for (const entry of entries) {
-                const entryRelativePath = path.join(relativePath, entry.name).replace(/\\/g, "/");
-
-                if (entry.isDirectory()) {
-                    await this.scanDirectory(entryRelativePath);
-                } else if (entry.isFile()) {
-                    const entryFullPath = this.resolvePath(entryRelativePath);
-                    const stat = await fs.stat(entryFullPath);
-                    const file: NodeFile = {
-                        path: entryRelativePath as FilePath,
-                        stat: {
-                            size: stat.size,
-                            mtime: Math.floor(stat.mtimeMs),
-                            ctime: Math.floor(stat.ctimeMs),
-                            type: "file",
-                        },
-                    };
-                    this.fileCache.set(entryRelativePath, file);
-                }
+            for (const entryPath of entries.files) {
+                const stat = await this.storage.stat(entryPath);
+                if (stat?.type !== "file") continue;
+                const file: NodeFile = {
+                    path: entryPath as FilePath,
+                    stat,
+                };
+                this.fileCache.set(entryPath, file);
+            }
+            for (const entryPath of entries.folders) {
+                await this.scanDirectory(entryPath);
             }
         } catch (error) {
             // Directory doesn't exist or is not readable

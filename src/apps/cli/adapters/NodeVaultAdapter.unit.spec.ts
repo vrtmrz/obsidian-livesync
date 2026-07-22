@@ -24,6 +24,59 @@ describe("NodeVaultAdapter.rename", () => {
             await fsPromises.rm(directory, { recursive: true, force: true });
         }
     });
+
+    it("does not move a file through a symbolic link outside the vault root", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-rename-root-"));
+        const outsideDirectory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-rename-outside-"));
+        try {
+            await fsPromises.writeFile(path.join(directory, "source.md"), "content", "utf8");
+            await fsPromises.symlink(
+                outsideDirectory,
+                path.join(directory, "linked"),
+                process.platform === "win32" ? "junction" : "dir"
+            );
+            const adapter = new NodeVaultAdapter(directory);
+            const file = {
+                path: "source.md" as FilePath,
+                stat: { ctime: 1, mtime: 2, size: 7, type: "file" as const },
+            };
+
+            await expect(adapter.rename(file, "linked/moved.md")).rejects.toThrow(/symbolic link/i);
+
+            await expect(fsPromises.readFile(path.join(directory, "source.md"), "utf8")).resolves.toBe("content");
+            await expect(fsPromises.stat(path.join(outsideDirectory, "moved.md"))).rejects.toMatchObject({
+                code: "ENOENT",
+            });
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+            await fsPromises.rm(outsideDirectory, { recursive: true, force: true });
+        }
+    });
+
+    it("does not modify a file through a symbolic link outside the vault root", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-modify-root-"));
+        const outsideDirectory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-modify-outside-"));
+        try {
+            await fsPromises.writeFile(path.join(outsideDirectory, "victim.md"), "before", "utf8");
+            await fsPromises.symlink(
+                outsideDirectory,
+                path.join(directory, "linked"),
+                process.platform === "win32" ? "junction" : "dir"
+            );
+            const adapter = new NodeVaultAdapter(directory);
+            const file = {
+                path: "linked/victim.md" as FilePath,
+                stat: { ctime: 1, mtime: 2, size: 6, type: "file" as const },
+            };
+
+            await expect(adapter.modify(file, "after")).rejects.toThrow(/symbolic link/i);
+
+            await expect(fsPromises.readFile(path.join(outsideDirectory, "victim.md"), "utf8")).resolves.toBe("before");
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+            await fsPromises.rm(outsideDirectory, { recursive: true, force: true });
+        }
+    });
 });
 
 describe("NodeFileSystemAdapter path case", () => {
@@ -62,6 +115,26 @@ describe("NodeFileSystemAdapter path case", () => {
             );
         } finally {
             await fsPromises.rm(directory, { recursive: true, force: true });
+        }
+    });
+
+    it("does not discover a file through a symbolic link outside the vault root", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-discovery-root-"));
+        const outsideDirectory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-discovery-outside-"));
+        try {
+            await fsPromises.writeFile(path.join(outsideDirectory, "outside.md"), "content", "utf8");
+            await fsPromises.symlink(
+                outsideDirectory,
+                path.join(directory, "linked"),
+                process.platform === "win32" ? "junction" : "dir"
+            );
+            const adapter = new NodeFileSystemAdapter(directory);
+
+            await expect(adapter.getAbstractFileByPath("linked/outside.md")).resolves.toBeNull();
+            await expect(adapter.getFiles()).resolves.toEqual([]);
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+            await fsPromises.rm(outsideDirectory, { recursive: true, force: true });
         }
     });
 });

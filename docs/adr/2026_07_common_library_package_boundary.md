@@ -156,6 +156,8 @@ A later composition may place the constructed storage contract on a host-specifi
 
 The paired adapters run against the same contract suite for metadata, text and binary access, append, listing, removal, missing paths, parent creation, empty-root handling, and traversal rejection. Timestamp fidelity remains platform-specific because the File System Access API does not provide the same creation-time and timestamp-setting facilities as Node.
 
+The Node adapter rejects symbolic links in adapter paths and opens file entries without following the final link where the platform supports that flag. The CLI delegates its Vault reads, writes, discovery, deletion, and atomic rename to this rooted adapter rather than maintaining a second direct `fs` path. This keeps remote-derived paths within the host-selected Vault root while retaining case-only and cross-directory rename behaviour.
+
 The Node entry also centralises direct Node built-in access needed by trusted headless application code. This is a package and scanner boundary, not an assertion that Node and browser APIs are interchangeable. Cross-platform behaviour belongs in a shared contract with separate implementations, as demonstrated by rooted storage.
 
 ### Standard input and output
