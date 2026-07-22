@@ -2,6 +2,7 @@ import type { UXDataWriteOptions } from "@lib/common/types";
 import type { IStorageAdapter } from "@lib/serviceModules/adapters";
 import { toArrayBuffer } from "@lib/serviceModules/FileAccessBase";
 import type { Stat, App } from "obsidian";
+import { toIntegerTimestamps } from "./sanitizeWriteOptions";
 
 /**
  * Storage adapter implementation for Obsidian
@@ -40,15 +41,15 @@ export class ObsidianStorageAdapter implements IStorageAdapter<Stat> {
     }
 
     async write(path: string, data: string, options?: UXDataWriteOptions): Promise<void> {
-        return await this.app.vault.adapter.write(path, data, options);
+        return await this.app.vault.adapter.write(path, data, toIntegerTimestamps(options));
     }
 
     async writeBinary(path: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<void> {
-        return await this.app.vault.adapter.writeBinary(path, toArrayBuffer(data), options);
+        return await this.app.vault.adapter.writeBinary(path, toArrayBuffer(data), toIntegerTimestamps(options));
     }
 
     async append(path: string, data: string, options?: UXDataWriteOptions): Promise<void> {
-        return await this.app.vault.adapter.append(path, data, options);
+        return await this.app.vault.adapter.append(path, data, toIntegerTimestamps(options));
     }
 
     list(basePath: string): Promise<{ files: string[]; folders: string[] }> {
