@@ -49,6 +49,8 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 
 - Fly.io setup now generates CouchDB and Vault encryption secrets from cryptographically secure randomness instead of short word combinations.
 - Updated the glob expansion used by Commonlib path matching and CLI ignore rules to prevent pathological brace patterns from consuming excessive CPU.
+- Updated Markdown link detection to avoid excessive work on maliciously structured `mailto:` links.
+- Kept CLI Vault reads, writes, discovery, deletion, and atomic renames inside the selected Vault root by rejecting paths which contain symbolic links.
 
 ### Miscellaneous
 
@@ -68,3 +70,4 @@ Earlier releases remain available in the [0.25 release history](docs/releases/0.
 - Added Commonlib stream-contract tests and downstream CLI unit and Deno E2E coverage for injected text, binary, prompt, and error channels.
 - Added a dependency-ownership regression and verified the package-owned P2P transport through Compose CLI synchronisation, real-Obsidian startup and Context checks, representative desktop and mobile dialogues, and the settings pane.
 - Added visible two-device Setup URI workflows for CouchDB, Object Storage, and P2P. Each workflow generates the additional-device URI on the working first device, verifies synchronisation in both directions, and checks owned fixture cleanup.
+- Made the typed Svelte and Community lint gates deterministic across machines by disabling ESLint file-level concurrency for these repository-wide checks.
