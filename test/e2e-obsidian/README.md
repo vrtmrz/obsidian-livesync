@@ -32,7 +32,7 @@ Multi-session workflows must keep each started Obsidian session tracked until it
 
 ## Local Setup
 
-Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location.
+Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location. Set `OBSIDIAN_CLI` as well when its companion executable is outside the built-in discovery paths, including when a temporary consumer checkout reuses executables from another worktree.
 
 For an AppImage on Linux without FUSE, use the helper script:
 
@@ -174,6 +174,7 @@ npm run test:e2e:obsidian:local-suite:services
 Useful environment variables:
 
 - `OBSIDIAN_BINARY`: explicit Obsidian executable path.
+- `OBSIDIAN_CLI`: explicit companion `obsidian-cli` executable path.
 - `E2E_OBSIDIAN_VERSION`: Obsidian AppImage version for `test:e2e:obsidian:install-appimage`; default is `1.12.7`.
 - `E2E_OBSIDIAN_APPIMAGE_ARCH`: AppImage architecture override, such as `arm64` or `x86_64`.
 - `E2E_OBSIDIAN_APPIMAGE_URL`: explicit AppImage URL override.
