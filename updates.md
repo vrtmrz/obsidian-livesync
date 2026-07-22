@@ -14,6 +14,23 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 ### Important
 
+- This corrected opt-in integration preview follows `1.0.0-beta.0` and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
+
+### Fixed
+
+- Conflict resolutions made on another device no longer recreate the same conflict when the receiving Vault still contains the exact content of the deleted losing revision. Automatic text and structured-data merge now uses the nearest revision actually shared by both branches instead of inferring ancestry from revision generation numbers.
+- Edits, deletions, and renames made while a file is conflicted now extend the exact revision displayed on that device. If LiveSync cannot prove the displayed branch, it preserves the affected branches for review instead of silently applying the operation to the database winner.
+
+### Testing
+
+- Added revision-tree regressions and focused real-Obsidian scenarios for propagated resolutions and file operations performed while a conflict remains active.
+
+## 1.0.0-beta.0
+
+22nd July, 2026
+
+### Important
+
 - This is an opt-in 1.0 integration preview for BRAT and testing with existing Vaults. It does not replace the latest stable release. Use it with a current backup, and update every participating device before resuming synchronisation.
 - An upgraded, copied, or restored Vault may pause replication for an explicit compatibility review. The review preserves the existing automatic synchronisation choices and resumes them only after the decision has been saved successfully.
 
@@ -31,8 +48,6 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 ### Fixed
 
-- Conflict resolutions made on another device no longer recreate the same conflict when the receiving Vault still contains the exact content of the deleted losing revision. Automatic text and structured-data merge now uses the nearest revision actually shared by both branches instead of inferring ancestry from revision generation numbers.
-- Edits, deletions, and renames made while a file is conflicted now extend the exact revision displayed on that device. If LiveSync cannot prove the displayed branch, it preserves the affected branches for review instead of silently applying the operation to the database winner.
 - The optional Custom HTTP Handler used by Object Storage now sends the correct byte range from binary request bodies and reports unsupported body types instead of silently sending an empty request.
 - When selectors, ignore files, size limits, modification-time limits, or file-name case settings are broadened, LiveSync now rechecks previously received files without requiring another remote update.
 - P2P setup on the first device no longer displays reset or upload steps for a central database, and Config Doctor now offers its chunk size recommendation for CouchDB only when a CouchDB remote profile is selected.

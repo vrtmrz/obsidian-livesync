@@ -267,7 +267,8 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 - Publish a stable draft as the latest release, or publish a pre-release draft without replacing the latest stable release. In either case, keep the release PR in draft and leave its base branch unchanged until BRAT validation succeeds. Record that state in the PR.
 - Validate the published release through BRAT. Confirm start-up, ordinary bidirectional synchronisation, and any regression scenario relevant to the release.
 - After BRAT validation succeeds, mark the release PR ready and merge it into the selected base branch with a merge commit. This keeps the tagged release commit in that branch's history.
-- If BRAT validation fails, keep the release PR in draft. Do not move published tags; prepare and publish a new patch release instead.
+- If BRAT validation fails, keep the release PR in draft and do not move published tags. Before preparing the next version, add a reviewed metadata-only commit to the selected base branch which records the published version in `versions.json` and moves its exact tagged release notes out of `## Unreleased`. Keep only changes made after that tag under `## Unreleased`. Compare the historical section with `git show <tag>:updates.md`; do not merge the failed release PR or describe it as validated. The next release PR can then rotate only the correction notes while preserving the immutable release history.
+- Prepare and publish the next patch or pre-release version from that reconciled base. Leave the failed release PR draft until it is deliberately closed as superseded under a separate maintainer action.
 - For a pre-release, set `prerelease=true` in `Finalise Release Tags`. A hyphenated version is rejected unless that input is enabled.
 
 ### Release Cheat Sheet
@@ -296,7 +297,7 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 8. Update the PR state message to describe the published release and state that merging remains on hold until BRAT validation is complete.
 9. Validate the published release through BRAT, including start-up, ordinary bidirectional synchronisation, and any release-specific regression scenario.
 10. After BRAT validation succeeds, mark the release PR ready and merge it into the selected base branch with a merge commit.
-11. If validation fails, leave the PR in draft and prepare a new patch release without moving the published tags.
+11. If validation fails, leave the PR in draft and do not move the published tags. Reconcile the published version's `updates.md` section and `versions.json` entry into the base branch as metadata only, then prepare the next patch or pre-release version from the remaining `## Unreleased` entries.
 
 ## Contribution Guidelines
 
