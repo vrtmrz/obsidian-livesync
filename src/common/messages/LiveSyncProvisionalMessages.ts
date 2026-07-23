@@ -8,6 +8,8 @@
  */
 export const liveSyncProvisionalEnglishMessages = {
     "This file has unresolved conflicts.": "This file has unresolved conflicts.",
+    "This file has ${COUNT} unresolved versions. They will be reviewed one pair at a time.":
+        "This file has ${COUNT} unresolved versions. They will be reviewed one pair at a time.",
 } as const;
 
 export type LiveSyncProvisionalMessageKey = keyof typeof liveSyncProvisionalEnglishMessages;

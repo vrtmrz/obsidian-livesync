@@ -25,6 +25,7 @@ Resolving a conflict writes the selected or merged result on one observed branch
 - A receiving Vault file which exactly matches any available revision in the document tree is treated as previously synchronised content. This includes an ancestor below a deleted losing leaf.
 - A receiving Vault file whose bytes do not match any available revision is preserved as an unsynchronised local change.
 - File bytes, rather than path, size, modification time, or revision generation, determine whether content is known.
+- Three or more live versions are reviewed one pair at a time in a deterministic order, with each completed pair committed before the next live pair is read.
 - Each device records the exact revision most recently reflected in each Vault file. An edit, deletion, or case-only rename made while a conflict is active extends that displayed branch rather than the deterministic database winner.
 - A cross-path rename stores the target before logically deleting only the displayed source branch.
 
@@ -72,6 +73,16 @@ A device can resolve only the leaves which it has observed. If another device ha
 
 A higher revision generation or modification time does not make either result authoritative. The resolver must examine every current live leaf again until one result remains or user action is required. This is continued conflict processing, not a reset of the synchronisation checkpoint.
 
+## More than two live versions
+
+When three or more versions remain, LiveSync compares the current PouchDB winner with one conflict leaf at a time. Commonlib orders the remaining candidates by revision generation ascending, original leaf modification time ascending, then the complete revision ID in code-unit lexical order. A missing or non-finite modification time is ordered before a finite value. Modification time makes pair selection reproducible here; it does not decide which content wins.
+
+For each pair, LiveSync first collapses identical content, then attempts a conservative sensible merge, and finally asks the user when neither automatic action is safe. A completed action is written to the ordinary revision tree and its losing observed leaf is deleted before LiveSync reads the remaining live leaves again. There is no separate persistent merge accumulator.
+
+**Concat both** writes the concatenated result as a new child of the displayed PouchDB winner, then deletes only the other leaf shown in that dialogue. With two live versions, that action resolves the conflict. With three or more, the new child remains live against every untouched leaf and becomes part of the next pairwise review; it does not create an unrelated root or consume an unseen branch.
+
+Consequently, choosing **Not now** or closing Obsidian cannot undo a completed pair. After restart, LiveSync reconstructs the next pair from the live tree. If replication changes either revision while a dialogue is open, LiveSync discards the stale selection, refreshes the live count, and rechecks the path rather than deleting a revision which was not the one shown.
+
 ## Device-local file provenance
 
 LiveSync composes Commonlib's injected `FileReflectionProvenance` with its local key-value database. Each device stores:
@@ -102,24 +113,34 @@ If an edit's base cannot be proved, LiveSync keeps the bytes as another manual-r
 Choosing **Not now** postpones repeated merge dialogues for the same
 uninterrupted conflict episode in the current plug-in session. Ordinary file
 checks and replication do not reopen the dialogue while at least one conflict
-leaf remains. If the in-editor status display is enabled, the active file keeps
-the warning **This file has unresolved conflicts.** so that postponement does
-not make the conflict invisible.
+leaf remains. If the in-editor status display is enabled, the active file shows
+**This file has 3 unresolved versions. They will be reviewed one pair at a
+time.** for three or more live versions, using the current count, and **This
+file has unresolved conflicts.** for two. Postponement therefore does not make
+the conflict invisible.
 
 The command **Resolve if conflicted.**, and selecting a file through **Pick a
 file to resolve conflict**, explicitly clear the postponement and request the
 dialogue again. Cancellation caused by another conflict dialogue does not count
 as **Not now**. Once the document has no remaining conflicts, the episode ends;
 a later conflict at the same path prompts normally. The postponement is not
-persisted across a plug-in reload.
+persisted across a plug-in reload. Completed pairwise resolutions are persisted
+in the ordinary revision tree, so a reload forgets only the postponement and
+does not repeat an already committed stage.
 
 When synchronisation supplies a resolved document, the existing incoming-file
 processing event closes an open conflict dialogue for that path. The same event
 rechecks the local revision tree: if no conflict leaf remains, it ends any
-postponed episode and removes the active-file warning. If another conflict leaf
-still exists, the stale dialogue closes, but the warning remains. A postponed
-episode stays postponed; otherwise, subsequent conflict processing may open a
-fresh dialogue for the current revision tree.
+postponed episode and removes the active-file warning. If conflict leaves still
+exist, the stale dialogue closes and the warning changes to the current live
+version count. A postponed episode stays postponed; otherwise, subsequent
+conflict processing may open a fresh dialogue for the current revision tree.
+Each dialogue owns its completion result, so a prompt which is answered or
+closed immediately still completes the waiting conflict operation; the result
+does not depend on a later global listener being ready.
+The end of an automatic repeat is silent. An explicit **Pick a file to resolve
+conflict** request which starts with no conflicts may show one confirmation
+Notice.
 
 ## Example device scenarios
 
@@ -167,6 +188,12 @@ Android may resolve a conflict and continue editing while Mac still shows the lo
 
 If the user edited the file on Mac before the resolution arrived, the bytes no longer match that historical revision. LiveSync preserves the Mac edit as an unsynchronised conflict instead of overwriting it.
 
+### A three-version review is interrupted
+
+Mac receives three live versions of `shared.md`. The active-file status reports three unresolved versions, and the first dialogue compares the deterministic winner with the first ordered conflict leaf. The user completes that pair, leaving two live versions, then chooses **Not now** on the next dialogue and closes Obsidian.
+
+The first decision has already changed the ordinary revision tree. On restart, LiveSync reads the two surviving versions and presents only that remaining pair; it does not reconstruct the original three-version state. If another device resolves the remaining pair before or while the dialogue is open, the warning disappears and the stale dialogue closes.
+
 ### The device-local record is missing
 
 A local-database reset removes revision provenance. On the next scan, if the Vault file matches exactly one available revision, LiveSync can reconstruct which branch was displayed and continue from it. If the bytes match multiple revisions, or no available revision, the branch remains unproved.
@@ -193,6 +220,8 @@ Do not:
 
 ## Verification
 
-Commonlib's real-PouchDB and injected-boundary unit tests cover unequal branch lengths, exact shared ancestry, content below a deleted losing leaf, recorded and reconstructed branch identity, ambiguous matches, conflict-time editing, logical deletion, case-only rename, cross-path rename, and safe unproven fallbacks.
+Commonlib's real-PouchDB and injected-boundary unit tests cover unequal branch lengths, exact shared ancestry, deterministic ordering of multiple live leaves, a sensible stage followed by reconstruction of a manual pair, content below a deleted losing leaf, recorded and reconstructed branch identity, ambiguous matches, conflict-time editing, logical deletion, case-only rename, cross-path rename, and safe unproven fallbacks.
 
 LiveSync's optional real-Obsidian two-Vault checks have two scopes. `E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT=true` resolves and edits a Markdown conflict, propagates it to a Vault which still displays the deleted losing content, and requires one live result to remain. `E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS=true` edits, deletes, case-renames, and cross-path-renames files while conflicts remain active; it verifies the parent revision of each resulting branch, replicates those exact trees, and confirms that the other live branches remain intact.
+
+The focused `test:e2e:obsidian:conflict-dialog-policy` scenario creates three live versions in one real Obsidian Vault. It verifies the count warning, commits a concatenated child of the displayed winner, confirms that the untouched leaf remains as one conflict, postpones that remaining pair, restarts the isolated Obsidian profile, and confirms that only the live pair is reconstructed. It also verifies that an incoming resolution closes a stale dialogue, completes the waiting conflict operation, and clears the warning.

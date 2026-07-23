@@ -12,6 +12,8 @@ import { ModuleConflictResolver } from "./ModuleConflictResolver";
 function createModule(files: FilePathWithPrefix[] = []) {
     const resolveByDeletingRevision = vi.fn(async () => AUTO_MERGED);
     const tryAutoMerge = vi.fn();
+    const queueCheckFor = vi.fn(async () => undefined);
+    const resolveByUserInteraction = vi.fn(async () => false);
     const core = {
         _services: {
             API: {
@@ -27,6 +29,17 @@ function createModule(files: FilePathWithPrefix[] = []) {
             conflict: {
                 resolveByNewest: vi.fn(async () => true),
                 resolveByDeletingRevision,
+                resolveByUserInteraction,
+                queueCheckFor,
+            },
+            appLifecycle: {
+                isSuspended: vi.fn(() => false),
+            },
+            replication: {
+                replicateByEvent: vi.fn(async () => true),
+            },
+            vault: {
+                getActiveFilePath: vi.fn(() => undefined),
             },
         },
         settings: DEFAULT_SETTINGS,
@@ -49,7 +62,7 @@ function createModule(files: FilePathWithPrefix[] = []) {
 
     const module = new ModuleConflictResolver(core);
     module._log = vi.fn();
-    return { module, resolveByDeletingRevision, tryAutoMerge };
+    return { module, queueCheckFor, resolveByDeletingRevision, resolveByUserInteraction, tryAutoMerge };
 }
 
 describe("ModuleConflictResolver bulk newest resolution", () => {
@@ -192,5 +205,41 @@ describe("ModuleConflictResolver sensible merge hand-off", () => {
             "Title\nLeft changed\nRight changed\n"
         );
         expect(resolveByDeletingRevision).toHaveBeenCalledWith(path, "2-right", "Sensible");
+    });
+
+    it("commits a sensible pair before rechecking the remaining manual pair", async () => {
+        const path = "three-versions.md" as FilePathWithPrefix;
+        const { module, queueCheckFor, resolveByDeletingRevision, resolveByUserInteraction, tryAutoMerge } =
+            createModule();
+        const remainingManualPair = {
+            leftRev: "3-merged",
+            rightRev: "2-third",
+            leftLeaf: { rev: "3-merged", data: "Merged\n", ctime: 1, mtime: 3 },
+            rightLeaf: { rev: "2-third", data: "Overlapping\n", ctime: 1, mtime: 2 },
+        };
+        tryAutoMerge
+            .mockResolvedValueOnce({
+                result: "Merged\n",
+                conflictedRev: "2-second",
+            })
+            .mockResolvedValueOnce(remainingManualPair);
+
+        await (module as any)._resolveConflict(path);
+
+        expect(module.core.databaseFileAccess.storeContent).toHaveBeenCalledWith(path, "Merged\n");
+        expect(resolveByDeletingRevision).toHaveBeenCalledWith(path, "2-second", "Sensible");
+        expect(queueCheckFor).toHaveBeenCalledWith(path);
+        expect(resolveByUserInteraction).not.toHaveBeenCalled();
+
+        await (module as any)._resolveConflict(path);
+
+        expect(tryAutoMerge).toHaveBeenCalledTimes(2);
+        expect(resolveByUserInteraction).toHaveBeenCalledWith(
+            path,
+            expect.objectContaining({
+                left: remainingManualPair.leftLeaf,
+                right: remainingManualPair.rightLeaf,
+            })
+        );
     });
 });

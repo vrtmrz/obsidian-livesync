@@ -143,6 +143,6 @@ export function $msg<T extends AllMessageKeys>(
 export type LiveSyncMessageTranslator = MessageTranslator<AllMessageKeys>;
 
 export const translateLiveSyncMessage: LiveSyncMessageTranslator = (key, params) => {
-    if (!isLiveSyncMessageKey(key)) return englishMessageTranslator(key as CommonlibMessageKey, params);
+    if (!isLiveSyncMessageKey(key)) return englishMessageTranslator(key, params);
     return $msg(key, params === undefined ? undefined : { ...params });
 };

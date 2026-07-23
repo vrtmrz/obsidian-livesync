@@ -28,6 +28,11 @@ describe("LiveSync-owned translation catalogue", () => {
 
     it("uses LiveSync-owned provisional English without extending Commonlib's message contract", () => {
         expect($msg("This file has unresolved conflicts.")).toBe("This file has unresolved conflicts.");
+        expect(
+            $msg("This file has ${COUNT} unresolved versions. They will be reviewed one pair at a time.", {
+                COUNT: "3",
+            })
+        ).toBe("This file has 3 unresolved versions. They will be reviewed one pair at a time.");
         expect(translateLiveSyncMessage("This file has unresolved conflicts.")).toBe(
             "This file has unresolved conflicts."
         );
