@@ -12,23 +12,34 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 ## Unreleased
 
-### Important
-
-- This corrected opt-in integration preview follows `1.0.0-beta.0` and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
-
 ### Improved
 
 - Choosing **Not now** on a merge conflict now postpones repeated dialogues for that conflict while the active file retains an unresolved-conflict warning. Three or more live versions show their current count and are reviewed one deterministic pair at a time; completed pairs remain resolved across restart. The existing conflict commands can reopen a postponed conflict explicitly, and a later conflict prompts again after the current one has been resolved.
 
 ### Fixed
 
-- Conflict resolutions made on another device no longer recreate the same conflict when the receiving Vault still contains the exact content of the deleted losing revision. Automatic text and structured-data merge now uses the nearest revision actually shared by both branches instead of inferring ancestry from revision generation numbers.
-- Edits, deletions, and renames made while a file is conflicted now extend the exact revision displayed on that device. If LiveSync cannot prove the displayed branch, it preserves the affected branches for review instead of silently applying the operation to the database winner.
 - Answering or externally closing a merge dialogue immediately no longer leaves conflict processing waiting for a response which has already occurred.
 
 ### Testing
 
-- Added revision-tree regressions and focused real-Obsidian scenarios for multiple-version review, restart between resolution stages, propagated resolutions, and file operations performed while a conflict remains active.
+- Added revision-tree regressions and focused real-Obsidian scenarios for multiple-version review and restart between resolution stages.
+
+## 1.0.0-beta.1
+
+22nd July, 2026
+
+### Important
+
+- This corrected opt-in integration preview follows `1.0.0-beta.0` and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
+
+### Fixed
+
+- Conflict resolutions made on another device no longer recreate the same conflict when the receiving Vault still contains the exact content of the deleted losing revision. Automatic text and structured-data merge now uses the nearest revision actually shared by both branches instead of inferring ancestry from revision generation numbers.
+- Edits, deletions, and renames made while a file is conflicted now extend the exact revision displayed on that device. If LiveSync cannot prove the displayed branch, it preserves the affected branches for review instead of silently applying the operation to the database winner.
+
+### Testing
+
+- Added revision-tree regressions and focused real-Obsidian scenarios for propagated resolutions and file operations performed while a conflict remains active.
 
 ## 1.0.0-beta.0
 
