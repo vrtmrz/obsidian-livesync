@@ -102,6 +102,7 @@ To prevent file and database corruption, please avoid closing Obsidian until all
 ## Tips and Troubleshooting
 - If you want a faster and simpler initial replication when setting up subsequent devices, see the [Fast Setup Guide](docs/tips/fast-setup.md).
 - Configure [Hidden File Sync](docs/tips/hidden-file-sync.md) only after ordinary note synchronisation works.
+- Self-hosted LiveSync 1.0 requires Obsidian 1.7.2 or later. If you need to use 1.0 on an earlier Obsidian version, please [open an issue](https://github.com/vrtmrz/obsidian-livesync/issues/new?template=issue-report.md) with your version, platform, and reason for remaining on it so that we can assess whether extending support is practical. The standard Community Plugins installer otherwise selects an older compatible plug-in release.
 - If you are having problems getting the plug-in working, see [Tips and Troubleshooting](docs/troubleshooting.md).
 
 ## Acknowledgements
