@@ -31,6 +31,7 @@ import {
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import {
+    captureObsidianPage,
     captureJsonResolveDialogue,
     clickJsonResolveOption,
     obsidianRemoteDebuggingPort,
@@ -58,6 +59,7 @@ const mergeJsonPath = ".obsidian/livesync-e2e-merge.json";
 const manualMergeJsonPath = ".obsidian/livesync-e2e-manual-merge.json";
 const targetPath = ".obsidian/livesync-targeted/only-a.json";
 const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
+const hiddenFileInitialisationStateKey = "__livesyncE2EHiddenFileInitialisation";
 
 type RunnerContext = {
     binary: string;
@@ -558,6 +560,230 @@ async function clearHiddenFileNoticeFixtures(port: number): Promise<void> {
     });
 }
 
+async function runInitialisationNoticeGrouping(context: RunnerContext, vault: TemporaryVault): Promise<void> {
+    const session = await startConfiguredSession(context, vault, {
+        syncInternalFiles: false,
+        syncInternalFilesBeforeReplication: false,
+    });
+    const port = session.remoteDebuggingPort;
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_NOTICE_TIMEOUT_MS ?? 10_000);
+    try {
+        await withObsidianPage(port, async (page) => {
+            const deadline = Date.now() + timeoutMs;
+            while ((await page.locator(".notice:visible").count()) > 0 && Date.now() < deadline) {
+                await page.locator(".notice:visible").first().click({
+                    force: true,
+                    position: { x: 2, y: 2 },
+                    timeout: timeoutMs,
+                });
+            }
+            assertEqual(
+                await page.locator(".notice:visible").count(),
+                0,
+                "Transient start-up Notices remained before the Hidden File Sync initialisation check."
+            );
+        });
+        await withObsidianPage(port, async (page) => {
+            await page.evaluate((stateKey) => {
+                const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;
+                const plugin = obsidianApp.plugins.plugins["obsidian-livesync"];
+                const core = plugin.core;
+                const addOn = core.getAddOn("HiddenFileSync");
+                const setting = core.services.setting;
+                const originalApplyPartial = setting.applyPartial;
+                const originalRebuildMerging = addOn.rebuildMerging;
+                const state = {
+                    done: false,
+                    reachedPreparation: false,
+                    reachedInitialisation: false,
+                    maxVisibleProgressNotices: 0,
+                    visibleProgressNoticeTexts: [] as string[],
+                    sawStandaloneGatheringNotice: false,
+                    sawStandaloneRestartNotice: false,
+                    releasePreparation: undefined as (() => void) | undefined,
+                    releaseInitialisation: undefined as (() => void) | undefined,
+                    error: undefined as string | undefined,
+                };
+                (globalThis as unknown as Record<string, typeof state>)[stateKey] = state;
+
+                const observer = new MutationObserver(() => {
+                    const notices = Array.from(document.querySelectorAll<HTMLElement>(".notice"));
+                    const progressNotices = notices.filter((notice) => notice.textContent?.includes("[⚙"));
+                    state.sawStandaloneGatheringNotice ||= notices.some((notice) =>
+                        notice.textContent?.includes("Gathering files for enabling Hidden File Sync")
+                    );
+                    state.sawStandaloneRestartNotice ||= notices.some((notice) =>
+                        notice.textContent?.includes("Done! Restarting the app is strongly recommended!")
+                    );
+                    if (progressNotices.length > state.maxVisibleProgressNotices) {
+                        state.maxVisibleProgressNotices = progressNotices.length;
+                        state.visibleProgressNoticeTexts = progressNotices.map(
+                            (notice) => notice.textContent?.trim() ?? ""
+                        );
+                    }
+                });
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                });
+
+                setting.applyPartial = async (...args: unknown[]) => {
+                    const update = args[0] as { syncInternalFiles?: unknown } | undefined;
+                    if (update?.syncInternalFiles === true && !state.reachedPreparation) {
+                        state.reachedPreparation = true;
+                        await new Promise<void>((resolve) => {
+                            state.releasePreparation = resolve;
+                        });
+                    }
+                    return await originalApplyPartial.apply(setting, args);
+                };
+
+                addOn.rebuildMerging = async (...args: unknown[]) => {
+                    state.reachedInitialisation = true;
+                    await new Promise<void>((resolve) => {
+                        state.releaseInitialisation = resolve;
+                    });
+                    return await originalRebuildMerging.apply(addOn, args);
+                };
+
+                void core.services.setting
+                    .enableOptionalFeature("MERGE")
+                    .then(
+                        () => {
+                            state.done = true;
+                        },
+                        (error: unknown) => {
+                            state.error = error instanceof Error ? error.message : String(error);
+                            state.done = true;
+                        }
+                    )
+                    .finally(() => {
+                        setting.applyPartial = originalApplyPartial;
+                        addOn.rebuildMerging = originalRebuildMerging;
+                        const notices = Array.from(document.querySelectorAll<HTMLElement>(".notice"));
+                        const progressNotices = notices.filter((notice) => notice.textContent?.includes("[⚙"));
+                        state.sawStandaloneGatheringNotice ||= notices.some((notice) =>
+                            notice.textContent?.includes("Gathering files for enabling Hidden File Sync")
+                        );
+                        state.sawStandaloneRestartNotice ||= notices.some((notice) =>
+                            notice.textContent?.includes("Done! Restarting the app is strongly recommended!")
+                        );
+                        if (progressNotices.length > state.maxVisibleProgressNotices) {
+                            state.maxVisibleProgressNotices = progressNotices.length;
+                            state.visibleProgressNoticeTexts = progressNotices.map(
+                                (notice) => notice.textContent?.trim() ?? ""
+                            );
+                        }
+                        observer.disconnect();
+                    });
+            }, hiddenFileInitialisationStateKey);
+        });
+
+        const screenshotPath = await captureObsidianPage(
+            port,
+            "hidden-file-initial-scan-progress.png",
+            async (page) => {
+                await page.waitForFunction(
+                    (stateKey) =>
+                        (globalThis as unknown as Record<string, { reachedPreparation?: boolean } | undefined>)[
+                            stateKey
+                        ]?.reachedPreparation === true,
+                    hiddenFileInitialisationStateKey,
+                    { timeout: timeoutMs }
+                );
+                const progressNotices = page.locator(".notice").filter({ hasText: "[⚙" });
+                await progressNotices.first().waitFor({ state: "visible", timeout: timeoutMs });
+                assertEqual(
+                    await progressNotices.count(),
+                    1,
+                    "Hidden File Sync showed more than one progress Notice before saving its enabled setting."
+                );
+                await progressNotices
+                    .filter({ hasText: "Preparing Hidden File Sync..." })
+                    .waitFor({ state: "visible", timeout: timeoutMs });
+            }
+        );
+
+        const result = await withObsidianPage(port, async (page) => {
+            await page.evaluate((stateKey) => {
+                const state = (globalThis as unknown as Record<
+                    string,
+                    { releasePreparation?: () => void } | undefined
+                >)[stateKey];
+                state?.releasePreparation?.();
+            }, hiddenFileInitialisationStateKey);
+            await page.waitForFunction(
+                (stateKey) =>
+                    (globalThis as unknown as Record<string, { reachedInitialisation?: boolean } | undefined>)[
+                        stateKey
+                    ]?.reachedInitialisation === true,
+                hiddenFileInitialisationStateKey,
+                { timeout: timeoutMs }
+            );
+            const progressNotices = page.locator(".notice").filter({ hasText: "[⚙" });
+            assertEqual(
+                await progressNotices.count(),
+                1,
+                "Hidden File Sync replaced its parent progress Notice when the first child phase started."
+            );
+            await page.evaluate((stateKey) => {
+                const state = (
+                    globalThis as unknown as Record<string, { releaseInitialisation?: () => void } | undefined>
+                )[stateKey];
+                state?.releaseInitialisation?.();
+            }, hiddenFileInitialisationStateKey);
+            await page.waitForFunction(
+                (stateKey) =>
+                    (globalThis as unknown as Record<string, { done?: boolean } | undefined>)[stateKey]?.done === true,
+                hiddenFileInitialisationStateKey,
+                { timeout: hiddenFileCliTimeoutMs }
+            );
+            return await page.evaluate(
+                (stateKey) =>
+                    (
+                        globalThis as unknown as Record<
+                            string,
+                            {
+                                error?: string;
+                                maxVisibleProgressNotices: number;
+                                visibleProgressNoticeTexts: string[];
+                                sawStandaloneGatheringNotice: boolean;
+                                sawStandaloneRestartNotice: boolean;
+                            }
+                        >
+                    )[stateKey],
+                hiddenFileInitialisationStateKey
+            );
+        });
+        if (result.error) {
+            throw new Error(`Hidden File Sync initialisation failed: ${result.error}`);
+        }
+        assertEqual(
+            result.maxVisibleProgressNotices,
+            1,
+            `Hidden File Sync split initialisation across multiple progress Notices: ${JSON.stringify(
+                result.visibleProgressNoticeTexts
+            )}`
+        );
+        assertEqual(
+            result.sawStandaloneGatheringNotice,
+            false,
+            "Hidden File Sync showed the old standalone gathering Notice."
+        );
+        assertEqual(
+            result.sawStandaloneRestartNotice,
+            false,
+            "Hidden File Sync showed the old standalone restart recommendation."
+        );
+        console.log(
+            `Hidden File Sync showed one progress Notice before settings were saved and retained it throughout initialisation. Screenshot: ${screenshotPath}`
+        );
+    } finally {
+        await session.app.stop();
+    }
+}
+
 async function runConfigurationNoticeGrouping(context: RunnerContext, vault: TemporaryVault): Promise<void> {
     const session = await startConfiguredSession(context, vault);
     const port = session.remoteDebuggingPort;
@@ -646,6 +872,7 @@ async function main(): Promise<void> {
         await runJsonConflictRoundTrip(context, vaultA, vaultB);
         await runJsonManualConflictResolution(context, vaultB);
         await runTargetMismatch(context, vaultA, vaultB);
+        await runInitialisationNoticeGrouping(context, vaultB);
         await runConfigurationNoticeGrouping(context, vaultB);
     } finally {
         await vaultA.dispose();

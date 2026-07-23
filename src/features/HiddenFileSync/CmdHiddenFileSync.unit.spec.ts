@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 vi.mock("@/deps.ts", () => ({}));
 vi.mock("@/features/HiddenFileCommon/JsonResolveModal.ts", () => ({
@@ -21,6 +22,7 @@ vi.mock("./configureHiddenFileSyncMode.ts", () => ({
 }));
 
 import { HiddenFileSync } from "./CmdHiddenFileSync.ts";
+import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
 
 describe("HiddenFileSync configuration-change notices", () => {
     it("groups plug-in reloads and an Obsidian restart into one finished Notice", async () => {
@@ -101,5 +103,107 @@ describe("HiddenFileSync configuration-change notices", () => {
         restartAction();
         expect(core.services.appLifecycle.scheduleRestart).toHaveBeenCalledOnce();
         expect(noticeGroups.removeItem).toHaveBeenCalledWith("hidden-file-changes", "restart");
+    });
+
+    it("keeps subordinate initialisation phases below Notice level so one progress Notice owns the scan", async () => {
+        const progress = {
+            log: vi.fn(),
+            once: vi.fn(),
+            done: vi.fn(),
+        };
+        const rebuildMerging = vi.fn(async () => []);
+        const adoptCurrentStorageFilesAsProcessed = vi.fn(async () => undefined);
+        const adoptCurrentDatabaseFilesAsProcessed = vi.fn(async () => undefined);
+        const scanAllStorageChanges = vi.fn(async () => undefined);
+        const scanAllDatabaseChanges = vi.fn(async () => undefined);
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            _progress: vi.fn(() => progress),
+            rebuildMerging,
+            adoptCurrentStorageFilesAsProcessed,
+            adoptCurrentDatabaseFilesAsProcessed,
+            scanAllStorageChanges,
+            scanAllDatabaseChanges,
+        });
+
+        await hiddenFileSync.initialiseInternalFileSync("safe", true);
+
+        expect(rebuildMerging).toHaveBeenCalledWith(false, false);
+        expect(scanAllStorageChanges).toHaveBeenCalledWith(false, true, false);
+        expect(scanAllDatabaseChanges).toHaveBeenCalledWith(false, true, false);
+        expect(progress.done).toHaveBeenCalledOnce();
+    });
+
+    it("does not surround the initialisation progress with separate gathering and restart Notices", async () => {
+        vi.mocked(configureHiddenFileSyncMode).mockImplementation(async (_mode, handlers) => {
+            await handlers.enable();
+            await handlers.initialise("safe");
+            return "enabled";
+        });
+        const events: string[] = [];
+        const progress = {
+            log: vi.fn((message: string) => {
+                events.push(`progress:${message}`);
+            }),
+            once: vi.fn(),
+            done: vi.fn(),
+        };
+        const createProgress = vi.fn(() => progress);
+        const applyPartial = vi.fn(async () => {
+            events.push("apply-settings");
+        });
+        const initialiseInternalFileSync = vi.fn(async () => undefined);
+        const log = vi.fn();
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: {
+                services: {
+                    setting: { applyPartial },
+                },
+            },
+            initialiseInternalFileSync,
+            _progress: createProgress,
+            _log: log,
+        });
+
+        await hiddenFileSync.configureHiddenFileSync("MERGE");
+
+        expect(createProgress).toHaveBeenCalledWith("[⚙ Initialise]\n", LOG_LEVEL_NOTICE);
+        expect(events[0]).toBe("progress:Preparing Hidden File Sync...");
+        expect(initialiseInternalFileSync).toHaveBeenCalledWith("safe", true, false, progress);
+        expect(log).not.toHaveBeenCalledWith("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
+        expect(log).not.toHaveBeenCalledWith("Done! Restarting the app is strongly recommended!", LOG_LEVEL_NOTICE);
+        expect(log).toHaveBeenCalledWith("Hidden File Sync initialisation completed.", expect.any(Number));
+    });
+
+    it("closes the preparation Notice when enabling Hidden File Sync fails", async () => {
+        vi.mocked(configureHiddenFileSyncMode).mockImplementation(async (_mode, handlers) => {
+            await handlers.enable();
+            return "enabled";
+        });
+        const error = new Error("setting persistence failed");
+        const progress = {
+            log: vi.fn(),
+            once: vi.fn(),
+            done: vi.fn(),
+        };
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: {
+                services: {
+                    setting: {
+                        applyPartial: vi.fn(async () => {
+                            throw error;
+                        }),
+                    },
+                },
+            },
+            _progress: vi.fn(() => progress),
+            _log: vi.fn(),
+        });
+
+        await expect(hiddenFileSync.configureHiddenFileSync("MERGE")).rejects.toBe(error);
+
+        expect(progress.done).toHaveBeenCalledWith("Failed");
     });
 });

@@ -2,7 +2,8 @@ import { evalObsidianJson } from "./cli.ts";
 import { SERVICE_CONTEXT_MEMBERS } from "../../contracts/serviceContext.ts";
 import { DATABASE_COMPATIBILITY_VERSION_KEY } from "../../../src/common/databaseCompatibility.ts";
 import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { type ObsidianLiveSyncSettings, VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import type { CouchDbConfig } from "./couchdb.ts";
 import type { ObjectStorageConfig } from "./objectStorage.ts";
 import { captureObsidianDialogue, withObsidianPage } from "./ui.ts";
@@ -236,7 +237,7 @@ export function createE2eCouchDbPluginData(
     settings: Pick<CouchDbConfig, "uri" | "username" | "password"> & { dbName: string },
     overrides: Record<string, unknown> = {}
 ): Record<string, unknown> {
-    return {
+    const pluginData = {
         couchDB_URI: settings.uri,
         couchDB_USER: settings.username,
         couchDB_PASSWORD: settings.password,
@@ -245,6 +246,12 @@ export function createE2eCouchDbPluginData(
         ...E2E_PREFERRED_SETTINGS,
         ...overrides,
     };
+    upsertRemoteConfigurationInPlace(pluginData as ObsidianLiveSyncSettings, "couchdb", {
+        id: "e2e-couchdb",
+        name: "E2E CouchDB",
+        activate: true,
+    });
+    return pluginData;
 }
 
 export function assertEqual(actual: unknown, expected: unknown, message: string): void {
