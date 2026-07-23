@@ -65,7 +65,9 @@ export type I18N_LANGS =
 export type MESSAGE = { [key in I18N_LANGS]?: string };
 
 import { Logger } from "octagonal-wheels/common/logger";
+import type { CommonlibMessageKey } from "@vrtmrz/livesync-commonlib/context";
 import type { MessageKeys } from "./messages/combinedMessages.dev.ts";
+import type { LiveSyncProvisionalMessageKey } from "./messages/LiveSyncProvisionalMessages.ts";
 
 export function expandKeywords<T extends Record<string, U>, U extends Record<string, string>>(
     message: T,
@@ -114,4 +116,8 @@ export function expandKeywords<T extends Record<string, U>, U extends Record<str
     return ret as T;
 }
 
-export type AllMessageKeys = MessageKeys;
+/** Keys translated by LiveSync itself, including English-only provisional messages. */
+export type LiveSyncCatalogueMessageKey = MessageKeys | LiveSyncProvisionalMessageKey;
+
+/** Keys accepted by the composed LiveSync and Commonlib translation boundary. */
+export type AllMessageKeys = LiveSyncCatalogueMessageKey | CommonlibMessageKey;

@@ -2,10 +2,12 @@ import { App, Modal } from "@/deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
 import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { eventHub } from "@/common/events.ts";
+import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
 import { globalSlipBoard } from "@vrtmrz/livesync-commonlib/compat/bureau/bureau";
 
-export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
+export const POSTPONED = Symbol("postponed");
+
+export type MergeDialogResult = typeof CANCELLED | typeof POSTPONED | typeof LEAVE_TO_SUBSEQUENT | string;
 
 declare global {
     interface Slips {
@@ -100,7 +102,7 @@ export class ConflictResolveModal extends Modal {
         if (this.offEvent) {
             this.offEvent();
         }
-        this.offEvent = eventHub.onEvent("conflict-cancelled", (path) => {
+        this.offEvent = eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (path) => {
             if (path === this.filename) {
                 this.sendResponse(CANCELLED);
             }
@@ -169,7 +171,7 @@ export class ConflictResolveModal extends Modal {
         }
         contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => {
             e.addClass("conflict-action-button");
-            e.addEventListener("click", () => this.sendResponse(CANCELLED));
+            e.addEventListener("click", () => this.sendResponse(this.pluginPickMode ? CANCELLED : POSTPONED));
         });
         if (diffLength > 100 * 1024) {
             this.diffView.empty();

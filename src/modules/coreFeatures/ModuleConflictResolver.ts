@@ -16,15 +16,9 @@ import { TARGET_IS_NEW } from "@vrtmrz/livesync-commonlib/compat/common/models/s
 import { compareMTime, displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { eventHub } from "@/common/events.ts";
+import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-
-declare global {
-    interface LSEvents {
-        "conflict-cancelled": FilePathWithPrefix;
-    }
-}
 
 export class ModuleConflictResolver extends AbstractModule {
     private async _resolveConflictByDeletingRev(
@@ -41,7 +35,7 @@ export class ModuleConflictResolver extends AbstractModule {
             );
             return MISSING_OR_ERROR;
         }
-        eventHub.emitEvent("conflict-cancelled", path);
+        eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, path);
         this._log(
             `${title} Conflicted revision has been deleted ${displayRev(deleteRevision)} ${path}`,
             LOG_LEVEL_INFO
@@ -131,11 +125,12 @@ export class ModuleConflictResolver extends AbstractModule {
         // const filename = filenames[0];
         return await serialized(`conflict-resolve:${filename}`, async () => {
             const conflictCheckResult = await this.checkConflictAndPerformAutoMerge(filename);
-            if (
-                conflictCheckResult === MISSING_OR_ERROR ||
-                conflictCheckResult === NOT_CONFLICTED ||
-                conflictCheckResult === CANCELLED
-            ) {
+            if (conflictCheckResult === NOT_CONFLICTED) {
+                eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+                this._log(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
+                return;
+            }
+            if (conflictCheckResult === MISSING_OR_ERROR || conflictCheckResult === CANCELLED) {
                 // nothing to do.
                 this._log(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
                 return;
@@ -161,7 +156,7 @@ export class ModuleConflictResolver extends AbstractModule {
                 }
             }
             this._log("[conflict] Manual merge required!");
-            eventHub.emitEvent("conflict-cancelled", filename);
+            eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
             await this.services.conflict.resolveByUserInteraction(filename, conflictCheckResult);
         });
     }

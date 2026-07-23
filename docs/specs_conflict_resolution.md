@@ -45,6 +45,27 @@ The all-branch history check prevents a resolved conflict from being recreated m
 
 The compatibility implementation currently selects the newer modification time for differing binary conflicts even when the general **Always overwrite with a newer file** option is disabled. This is existing behaviour, not a new 1.0 guarantee. Changing it to explicit selection only is a separate compatibility decision.
 
+### Two devices independently create the same path
+
+If two devices create the same full synchronised path before either device has
+received the other creation, the two generation-one leaves have no shared
+revision. Files with the same name in different directories remain separate
+paths and do not form this conflict.
+
+When the independently created files contain identical bytes, LiveSync deletes
+one duplicate leaf without synthesising merged content. A device which still
+records the deleted duplicate as its displayed revision already has the same
+bytes as the surviving revision, so it does not recreate the conflict. It
+rebinds its device-local provenance to the surviving revision.
+
+When the independently created files contain different bytes, conservative
+three-way merge has no valid base. LiveSync therefore leaves the two versions
+for manual selection; it does not guess an empty base or concatenate unrelated
+files. If both versions instead descend from a revision which the devices had
+previously synchronised, they are ordinary divergent branches: LiveSync may
+merge non-overlapping text or structured-data changes from that shared base,
+and otherwise asks the user.
+
 ## Stale and concurrent resolutions
 
 A device can resolve only the leaves which it has observed. If another device has already extended a branch, later replication can reveal another live leaf and require another resolution. Two devices can also produce different resolutions concurrently, leaving multiple live leaves after their trees meet.
@@ -75,6 +96,30 @@ When no record exists, LiveSync may reconstruct the displayed revision only if t
 - A cross-path rename stores the target document first, then writes a logical-deletion child on the displayed source branch.
 
 If an edit's base cannot be proved, LiveSync keeps the bytes as another manual-resolution branch instead of attaching them silently to the database winner. If a deletion's displayed branch cannot be proved after the file body has gone, LiveSync preserves every branch and requests conflict review. For an unproven cross-path rename, the new target remains stored and every source branch is preserved for review. These fallbacks can leave a temporary duplicate or unresolved source, but they do not discard an unproven branch.
+
+## Interactive dialogue policy
+
+Choosing **Not now** postpones repeated merge dialogues for the same
+uninterrupted conflict episode in the current plug-in session. Ordinary file
+checks and replication do not reopen the dialogue while at least one conflict
+leaf remains. If the in-editor status display is enabled, the active file keeps
+the warning **This file has unresolved conflicts.** so that postponement does
+not make the conflict invisible.
+
+The command **Resolve if conflicted.**, and selecting a file through **Pick a
+file to resolve conflict**, explicitly clear the postponement and request the
+dialogue again. Cancellation caused by another conflict dialogue does not count
+as **Not now**. Once the document has no remaining conflicts, the episode ends;
+a later conflict at the same path prompts normally. The postponement is not
+persisted across a plug-in reload.
+
+When synchronisation supplies a resolved document, the existing incoming-file
+processing event closes an open conflict dialogue for that path. The same event
+rechecks the local revision tree: if no conflict leaf remains, it ends any
+postponed episode and removes the active-file warning. If another conflict leaf
+still exists, the stale dialogue closes, but the warning remains. A postponed
+episode stays postponed; otherwise, subsequent conflict processing may open a
+fresh dialogue for the current revision tree.
 
 ## Example device scenarios
 

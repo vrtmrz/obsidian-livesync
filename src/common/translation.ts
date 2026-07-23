@@ -1,10 +1,19 @@
 // Avoid using Obsidian's native function for CLIs.
 import { getLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { englishMessageTranslator, type MessageTranslator } from "@vrtmrz/livesync-commonlib/context";
+import {
+    commonlibEnglishMessages,
+    englishMessageTranslator,
+    type CommonlibMessageKey,
+    type MessageTranslator,
+} from "@vrtmrz/livesync-commonlib/context";
 import { LOG_KIND_WARNING, notice } from "octagonal-wheels/common/logger";
 import type { TaggedType } from "octagonal-wheels/common/types";
-import type { AllMessageKeys, I18N_LANGS } from "./rosetta";
+import type { AllMessageKeys, I18N_LANGS, LiveSyncCatalogueMessageKey } from "./rosetta";
 import { allMessages } from "./messages/combinedMessages.prod.ts";
+import {
+    liveSyncProvisionalEnglishMessages,
+    type LiveSyncProvisionalMessageKey,
+} from "./messages/LiveSyncProvisionalMessages.ts";
 
 const obsidianLangMap: Record<string, I18N_LANGS> = {
     de: "de",
@@ -58,7 +67,10 @@ export function setLang(lang: I18N_LANGS) {
 function _getMessage(key: string, lang: I18N_LANGS) {
     if (key.trim() == "") return key;
 
-    const msgs = allMessages[key] ?? undefined;
+    const provisionalEnglish = liveSyncProvisionalEnglishMessages[key as LiveSyncProvisionalMessageKey];
+    const msgs =
+        allMessages[key] ?? (provisionalEnglish === undefined ? undefined : ({ def: provisionalEnglish } as const));
+    if (msgs === undefined && isCommonlibMessageKey(key)) return englishMessageTranslator(key);
     const resolvedLang = resolveLanguage(lang);
     let msg = msgs?.[resolvedLang];
 
@@ -87,12 +99,16 @@ export function $t(message: string, lang?: I18N_LANGS) {
 }
 
 export function translateIfAvailable(message: string, lang?: I18N_LANGS) {
-    if (message.trim() == "" || allMessages[message] === undefined) return message;
+    if (message.trim() == "" || (!isLiveSyncMessageKey(message) && !isCommonlibMessageKey(message))) return message;
     return $t(message, lang);
 }
 
-function isLiveSyncMessageKey(key: string): key is AllMessageKeys {
-    return key in allMessages;
+function isCommonlibMessageKey(key: string): key is CommonlibMessageKey {
+    return key in commonlibEnglishMessages;
+}
+
+function isLiveSyncMessageKey(key: string): key is LiveSyncCatalogueMessageKey {
+    return key in allMessages || key in liveSyncProvisionalEnglishMessages;
 }
 
 /**
@@ -124,7 +140,9 @@ export function $msg<T extends AllMessageKeys>(
 }
 
 /** Supplies the LiveSync-owned language catalogue through the Commonlib host boundary. */
-export const translateLiveSyncMessage: MessageTranslator = (key, params) => {
-    if (!isLiveSyncMessageKey(key)) return englishMessageTranslator(key, params);
+export type LiveSyncMessageTranslator = MessageTranslator<AllMessageKeys>;
+
+export const translateLiveSyncMessage: LiveSyncMessageTranslator = (key, params) => {
+    if (!isLiveSyncMessageKey(key)) return englishMessageTranslator(key as CommonlibMessageKey, params);
     return $msg(key, params === undefined ? undefined : { ...params });
 };

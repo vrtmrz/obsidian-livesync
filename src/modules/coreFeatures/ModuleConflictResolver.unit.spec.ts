@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+    AUTO_MERGED,
     DEFAULT_SETTINGS,
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -9,6 +10,8 @@ import {
 import { ModuleConflictResolver } from "./ModuleConflictResolver";
 
 function createModule(files: FilePathWithPrefix[] = []) {
+    const resolveByDeletingRevision = vi.fn(async () => AUTO_MERGED);
+    const tryAutoMerge = vi.fn();
     const core = {
         _services: {
             API: {
@@ -23,6 +26,7 @@ function createModule(files: FilePathWithPrefix[] = []) {
             },
             conflict: {
                 resolveByNewest: vi.fn(async () => true),
+                resolveByDeletingRevision,
             },
         },
         settings: DEFAULT_SETTINGS,
@@ -32,6 +36,10 @@ function createModule(files: FilePathWithPrefix[] = []) {
         },
         databaseFileAccess: {
             getConflictedRevs: vi.fn(async () => []),
+            storeContent: vi.fn(async () => true),
+        },
+        localDatabase: {
+            tryAutoMerge,
         },
         storageAccess: {
             getFileNames: vi.fn(async () => files),
@@ -41,7 +49,7 @@ function createModule(files: FilePathWithPrefix[] = []) {
 
     const module = new ModuleConflictResolver(core);
     module._log = vi.fn();
-    return { module };
+    return { module, resolveByDeletingRevision, tryAutoMerge };
 }
 
 describe("ModuleConflictResolver bulk newest resolution", () => {
@@ -114,5 +122,75 @@ describe("ModuleConflictResolver bulk newest resolution", () => {
             "resolveAllConflictedFilesByNewerOnes"
         );
         expect(module._log).toHaveBeenCalledTimes(3);
+    });
+});
+
+describe("ModuleConflictResolver independent same-path creation", () => {
+    const path = "independently-created.md" as FilePathWithPrefix;
+
+    function leaf(rev: string, data: string, mtime: number) {
+        return {
+            rev,
+            data,
+            mtime,
+            ctime: mtime,
+            deleted: false,
+        } as any;
+    }
+
+    it("collapses one duplicate revision when independently created files have identical content", async () => {
+        const { module, resolveByDeletingRevision, tryAutoMerge } = createModule();
+        const leftLeaf = leaf("1-left", "Same content\n", 1000);
+        const rightLeaf = leaf("1-right", "Same content\n", 2000);
+        tryAutoMerge.mockResolvedValue({
+            leftRev: leftLeaf.rev,
+            rightRev: rightLeaf.rev,
+            leftLeaf,
+            rightLeaf,
+        });
+
+        const result = await module.checkConflictAndPerformAutoMerge(path);
+
+        expect(result).toBe(AUTO_MERGED);
+        expect(resolveByDeletingRevision).toHaveBeenCalledOnce();
+        expect(resolveByDeletingRevision).toHaveBeenCalledWith(path, "1-left", "same");
+    });
+
+    it("returns a manual diff when independently created files have different content", async () => {
+        const { module, resolveByDeletingRevision, tryAutoMerge } = createModule();
+        const leftLeaf = leaf("1-left", "Left content\n", 1000);
+        const rightLeaf = leaf("1-right", "Right content\n", 2000);
+        tryAutoMerge.mockResolvedValue({
+            leftRev: leftLeaf.rev,
+            rightRev: rightLeaf.rev,
+            leftLeaf,
+            rightLeaf,
+        });
+
+        const result = await module.checkConflictAndPerformAutoMerge(path);
+
+        expect(result).toMatchObject({ left: leftLeaf, right: rightLeaf });
+        expect(result).toHaveProperty("diff");
+        expect(resolveByDeletingRevision).not.toHaveBeenCalled();
+    });
+});
+
+describe("ModuleConflictResolver sensible merge hand-off", () => {
+    it("stores the merged body and removes the resolved conflict leaf", async () => {
+        const path = "sensible.md" as FilePathWithPrefix;
+        const { module, resolveByDeletingRevision, tryAutoMerge } = createModule();
+        tryAutoMerge.mockResolvedValue({
+            result: "Title\nLeft changed\nRight changed\n",
+            conflictedRev: "2-right",
+        });
+
+        const result = await module.checkConflictAndPerformAutoMerge(path);
+
+        expect(result).toBe(AUTO_MERGED);
+        expect(module.core.databaseFileAccess.storeContent).toHaveBeenCalledWith(
+            path,
+            "Title\nLeft changed\nRight changed\n"
+        );
+        expect(resolveByDeletingRevision).toHaveBeenCalledWith(path, "2-right", "Sensible");
     });
 });

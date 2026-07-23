@@ -16,6 +16,10 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 - This corrected opt-in integration preview follows `1.0.0-beta.0` and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
 
+### Improved
+
+- Choosing **Not now** on a merge conflict now postpones repeated dialogues for that conflict while the active file retains an unresolved-conflict warning. The existing conflict commands can reopen it explicitly, and a later conflict prompts again after the current one has been resolved.
+
 ### Fixed
 
 - Conflict resolutions made on another device no longer recreate the same conflict when the receiving Vault still contains the exact content of the deleted losing revision. Automatic text and structured-data merge now uses the nearest revision actually shared by both branches instead of inferring ancestry from revision generation numbers.

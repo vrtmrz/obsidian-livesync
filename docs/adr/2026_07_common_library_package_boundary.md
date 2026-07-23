@@ -113,6 +113,8 @@ Self-hosted LiveSync owns the complete multilingual catalogue, generation tools,
 
 The canonical Commonlib key type and English fallback change with Commonlib. LiveSync may add translations for those keys without duplicating every English definition; its translator delegates absent keys to Commonlib's canonical English fallback. A separate language package remains possible only if independent consumers and release cadence later justify it; core must never depend on an application catalogue.
 
+LiveSync-owned wording may remain in a typed, application-local provisional English map while it is being exercised. The LiveSync translator composes those keys with the generated application catalogue and the Commonlib key type. Moving a stable message into LiveSync's YAML catalogue makes it available for translation without changing Commonlib.
+
 ### Svelte dialogue hosting
 
 The present Svelte dialogue implementation is split into three responsibilities:

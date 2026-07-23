@@ -25,4 +25,11 @@ describe("LiveSync-owned translation catalogue", () => {
 
         expect(translateLiveSyncMessage("Active Remote Type")).toBe(englishMessageTranslator("Active Remote Type"));
     });
+
+    it("uses LiveSync-owned provisional English without extending Commonlib's message contract", () => {
+        expect($msg("This file has unresolved conflicts.")).toBe("This file has unresolved conflicts.");
+        expect(translateLiveSyncMessage("This file has unresolved conflicts.")).toBe(
+            "This file has unresolved conflicts."
+        );
+    });
 });

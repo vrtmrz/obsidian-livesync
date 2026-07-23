@@ -31,7 +31,18 @@ Commit the edited YAML and all regenerated JSON and TypeScript resources togethe
 
 ## Make a message translatable
 
-1. Add its canonical English entry and translations to `src/common/messagesYAML/`.
+LiveSync-owned messages may first be added to
+`src/common/messages/LiveSyncProvisionalMessages.ts` while their wording is being
+exercised. This keeps an application-only message out of Commonlib and provides a
+typed English fallback without requiring contributors to update every language.
+
+When the wording is ready for translation:
+
+1. Move its canonical English entry from
+   `src/common/messages/LiveSyncProvisionalMessages.ts` to
+   `src/common/messagesYAML/en.yaml`. Remove the provisional entry in the same
+   change. Translations in the other LiveSync YAML files may follow as contributor
+   updates.
 2. Replace the source literal with `$msg()` or another existing translation helper, using the English catalogue key as the typed contract.
 3. Run `npm run i18n:bake`, build the plug-in, and verify the affected workflow.
 
