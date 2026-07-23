@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import istanbul from "vite-plugin-istanbul";
 import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
@@ -15,35 +14,9 @@ function readVersion(filePath: string): string | undefined {
 
 const packageVersion = readVersion(path.resolve(repoRoot, "package.json"));
 const manifestVersion = readVersion(path.resolve(repoRoot, "manifest.json"));
-const enableCoverage = process.env.PW_COVERAGE === "1";
 // https://vite.dev/config/
 export default defineConfig({
-    plugins: [
-        svelte(),
-        ...(enableCoverage
-            ? [
-                  istanbul({
-                      cwd: repoRoot,
-                      include: ["src/**/*.ts", "src/**/*.svelte"],
-                      exclude: [
-                          "node_modules",
-                          "dist",
-                          "test",
-                          "coverage",
-                          "src/apps/webapp/test/**",
-                          "playwright.config.ts",
-                          "vite.config.ts",
-                          "**/*.spec.ts",
-                          "**/*.test.ts",
-                      ],
-                      extension: [".js", ".ts", ".svelte"],
-                      requireEnv: false,
-                      cypress: false,
-                      checkProd: false,
-                  }),
-              ]
-            : []),
-    ],
+    plugins: [svelte()],
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "../../"),
@@ -55,12 +28,9 @@ export default defineConfig({
         outDir: "dist",
         emptyOutDir: true,
         rollupOptions: {
-            // test.html is used by the Playwright dev-server; include it here
-            // so the production build doesn't emit warnings about unused inputs.
             input: {
                 index: path.resolve(__dirname, "index.html"),
                 webapp: path.resolve(__dirname, "webapp.html"),
-                test: path.resolve(__dirname, "test.html"),
             },
             external: ["crypto"],
         },

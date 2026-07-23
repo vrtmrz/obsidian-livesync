@@ -147,7 +147,7 @@ describe("SetupManager", () => {
         expect(configureManually).toHaveBeenCalledWith(createNewVaultSettings(), UserMode.NewUser);
     });
 
-    it("onUseSetupURI should normalise imported legacy remote settings before applying", async () => {
+    it("compatibility: normalises imported flat remote settings from a Setup URI before applying", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         dialogManager.openWithExplicitCancel
             .mockResolvedValueOnce(createLegacyRemoteSetting())
@@ -162,7 +162,7 @@ describe("SetupManager", () => {
         expect(setting.currentSettings().activeConfigurationId).toBe("legacy-couchdb");
     });
 
-    it("decodeQR should normalise imported legacy remote settings before applying", async () => {
+    it("compatibility: normalises imported flat remote settings from QR data before applying", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         vi.mocked(decodeSettingsFromQRCodeData).mockReturnValue(createLegacyRemoteSetting());
         dialogManager.openWithExplicitCancel.mockResolvedValueOnce("compatible-existing-user");

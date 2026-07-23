@@ -309,7 +309,7 @@ describe("useP2PReplicatorUI commands", () => {
         expect(ribbon.remove).toHaveBeenCalledOnce();
     });
 
-    it("replaces a restored legacy P2P leaf with the current status view without opening another leaf", async () => {
+    it("compatibility: migrates a restored P2P leaf to the current status view without opening another leaf", async () => {
         let layoutReady: (() => Promise<unknown>) | undefined;
         const legacyLeaf = {
             setViewState: vi.fn(async () => undefined),

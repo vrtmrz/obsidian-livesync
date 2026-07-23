@@ -88,7 +88,7 @@ describe("LocalDatabaseMaintenance prerequisites", () => {
         expect(applyPartial).not.toHaveBeenCalled();
     });
 
-    it("does not treat the obsolete fixed-revision key as a maintenance prerequisite", async () => {
+    it("retirement guard: ignores the obsolete fixed-revision key as a maintenance prerequisite", async () => {
         const { settings, askSelectStringDialogue, applyPartial } = createPrerequisites({
             doNotUseFixedRevisionForChunks: false,
             readChunksOnline: false,

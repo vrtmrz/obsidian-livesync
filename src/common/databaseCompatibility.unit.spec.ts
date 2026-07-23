@@ -139,7 +139,7 @@ describe("database compatibility evaluation", () => {
         });
     });
 
-    it("retains an existing legacy review when no structured reason can be reconstructed", () => {
+    it("compatibility: retains an earlier unstructured review when no structured reason can be reconstructed", () => {
         const result = evaluateCompatibilityPause({
             acknowledgedVersion: "12",
             currentVersion: 12,
@@ -159,7 +159,7 @@ describe("database compatibility evaluation", () => {
         });
     });
 
-    it("scopes the legacy marker to the Vault", () => {
+    it("compatibility: scopes the earlier review marker to the Vault", () => {
         expect(legacyDatabaseCompatibilityVersionKey("Example Vault")).toBe("obsidian-live-sync-verExample Vault");
     });
 });

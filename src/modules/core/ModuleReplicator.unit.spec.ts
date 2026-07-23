@@ -116,7 +116,7 @@ describe("ModuleReplicator", () => {
     });
 });
 
-describe("ModuleReplicator legacy cleanup", () => {
+describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", () => {
     it("keeps its finite replication and balancing work inside the shared activity boundary", async () => {
         const activityFinished = vi.fn();
         const runBoundedRemoteActivity = vi.fn(async (task: () => unknown) => {

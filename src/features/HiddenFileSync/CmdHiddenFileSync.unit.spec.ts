@@ -134,7 +134,7 @@ describe("HiddenFileSync configuration-change notices", () => {
         expect(progress.done).toHaveBeenCalledOnce();
     });
 
-    it("does not surround the initialisation progress with separate gathering and restart Notices", async () => {
+    it("retirement guard: does not restore separate gathering and restart Notices", async () => {
         vi.mocked(configureHiddenFileSyncMode).mockImplementation(async (_mode, handlers) => {
             await handlers.enable();
             await handlers.initialise("safe");

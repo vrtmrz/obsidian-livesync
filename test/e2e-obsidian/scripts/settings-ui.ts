@@ -223,6 +223,7 @@ async function verifyEffectiveSettings(): Promise<void> {
             .getByText("Keep empty folder", { exact: true })
             .waitFor({ state: "visible", timeout: uiTimeoutMs });
 
+        // Retirement guard: the removed toggle must not reappear in the current settings pane.
         const obsoleteToggleCount = await deletionPanel.getByText("Use the trash bin", { exact: true }).count();
         if (obsoleteToggleCount !== 0) {
             throw new Error(

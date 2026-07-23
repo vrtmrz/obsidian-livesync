@@ -29,7 +29,7 @@ import {
     synchroniseAllFilesBetweenDBandStorage,
 } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import {
-    SIMPLE_FETCH_STAGE1_LEGACY,
+    SIMPLE_FETCH_STAGE1_DETAILED,
     SIMPLE_FETCH_STAGE1_NEWER_WINS,
     SIMPLE_FETCH_STAGE1_REMOTE_WINS,
     SIMPLE_FETCH_STAGE2_NEWER_CLEANUP,
@@ -476,12 +476,12 @@ describe("Red Flag Feature", () => {
             // but we can verify rebuilder was called.
         });
 
-        it("should restore legacy fetch flow when requested", async () => {
+        it("opens the detailed Fetch flow when requested", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
 
             host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
-            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_LEGACY);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
             host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
                 vault: "identical",
                 backup: "backup_skipped",
@@ -665,11 +665,11 @@ describe("Red Flag Feature", () => {
             await expect(askSimpleFetchMode(host as any)).resolves.toBe("cancelled");
         });
 
-        it("should return legacy mode when selected", async () => {
+        it("selects the detailed Fetch flow", async () => {
             const host = createHostMock();
-            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_LEGACY);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
 
-            await expect(askSimpleFetchMode(host as any)).resolves.toEqual({ mode: "legacy", options: {} });
+            await expect(askSimpleFetchMode(host as any)).resolves.toEqual({ mode: "detailed", options: {} });
         });
 
         it("should return remote-only with keep-local option", async () => {
@@ -818,12 +818,12 @@ describe("Red Flag Feature", () => {
             expect(host.mocks.appLifecycle.performRestart).toHaveBeenCalled();
         });
 
-        it("should return undefined when legacy mode is selected", async () => {
+        it("leaves the detailed Fetch flow to its existing handler", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
             const cleanupFlag = vi.fn().mockResolvedValue(undefined);
 
-            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_LEGACY);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
 
             const result = await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
 
@@ -1477,7 +1477,7 @@ describe("Red Flag Feature", () => {
 
             host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
             host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({});
-            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_LEGACY);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
             host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
 
             const handler = createFetchAllFlagHandler(host as any, log);
@@ -1559,7 +1559,7 @@ describe("Red Flag Feature", () => {
             } as any);
 
             host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
-            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_LEGACY);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
             host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({ vault: "identical", extra: {} });
             host.mocks.rebuilder.$fetchLocal.mockResolvedValueOnce();
             const handler = createFetchAllFlagHandler(host as any, log);

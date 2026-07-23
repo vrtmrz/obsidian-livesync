@@ -145,7 +145,8 @@ export class ModuleReplicator extends AbstractModule {
     }
 
     /**
-     * obsolete method. No longer maintained and will be removed in the future.
+     * Reconciles local chunks when an older IndexedDB client reports that the remote database was cleaned.
+     * This compatibility path remains reachable while those clients can still set `remoteCleaned`.
      * @deprecated v0.24.17
      * @param showMessage If true, show message to the user.
      */

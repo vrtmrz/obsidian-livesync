@@ -38,7 +38,7 @@ describe("compatibility marker persistence", () => {
 });
 
 describe("configured CouchDB fixture", () => {
-    it("starts in the current remote-profile format instead of exercising legacy migration", () => {
+    it("uses a current remote profile for ordinary configured fixtures", () => {
         const pluginData = createE2eCouchDbPluginData({
             uri: "https://couch.example",
             username: "alice",
