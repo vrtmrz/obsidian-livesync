@@ -21,6 +21,10 @@ const testSteps: Step[] = [
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },
     { name: "CouchDB upload", args: ["run", "test:e2e:obsidian:couchdb-upload"] },
     {
+        name: "manual CouchDB setup workflow",
+        args: ["run", "test:e2e:obsidian:couchdb-manual-setup-workflow"],
+    },
+    {
         name: "CLI to real Obsidian synchronisation",
         args: ["run", "test:e2e:obsidian:cli-to-obsidian-sync"],
     },

@@ -55,6 +55,7 @@
         "test:e2e:obsidian:p2p-pane": "tsx test/e2e-obsidian/scripts/p2p-pane.ts",
         "test:e2e:obsidian:vault-reflection": "tsx test/e2e-obsidian/scripts/vault-reflection.ts",
         "test:e2e:obsidian:couchdb-upload": "tsx test/e2e-obsidian/scripts/couchdb-upload.ts",
+        "test:e2e:obsidian:couchdb-manual-setup-workflow": "tsx test/e2e-obsidian/scripts/couchdb-manual-setup-workflow.ts",
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",

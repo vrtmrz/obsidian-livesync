@@ -24,9 +24,9 @@
         if (userType === TYPE_COUCHDB) {
             return "Continue to CouchDB setup";
         } else if (userType === TYPE_BUCKET) {
-            return "Continue to S3/MinIO/R2 setup";
+            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedBucket");
         } else if (userType === TYPE_P2P) {
-            return "Continue to Peer-to-Peer only setup";
+            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedP2P");
         } else {
             return "Please select an option to proceed";
         }
@@ -36,18 +36,26 @@
     });
 </script>
 
-<DialogHeader title="Enter Server Information" />
+<DialogHeader title={translateMessage("Ui.SetupWizard.SetupRemote.Title")} />
 <Instruction>
-    <Question>Please select the type of server to which you are connecting.</Question>
+    <Question>{translateMessage("Ui.SetupWizard.SetupRemote.Guidance")}</Question>
     <Options>
         <Option selectedValue={TYPE_COUCHDB} title="CouchDB" bind:value={userType}>
             This is the most suitable synchronisation method for the design. All functions are available. You must have
             set up a CouchDB instance.
         </Option>
-        <Option selectedValue={TYPE_BUCKET} title="S3/MinIO/R2 Object Storage" bind:value={userType}>
-            Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.
+        <Option
+            selectedValue={TYPE_BUCKET}
+            title={translateMessage("Ui.SetupWizard.SetupRemote.BucketOption")}
+            bind:value={userType}
+        >
+            {translateMessage("Ui.SetupWizard.SetupRemote.BucketOptionDesc")}
         </Option>
-        <Option selectedValue={TYPE_P2P} title="Peer-to-Peer only" bind:value={userType}>
+        <Option
+            selectedValue={TYPE_P2P}
+            title={translateMessage("Ui.SetupWizard.SetupRemote.P2POption")}
+            bind:value={userType}
+        >
             {translateMessage(
                 "No central data-storage server is required, but a signalling relay is required for peer discovery. Both devices must be online at the same time. Vault data travels through the encrypted P2P connection, not through the signalling relay. Some features may be limited."
             )}

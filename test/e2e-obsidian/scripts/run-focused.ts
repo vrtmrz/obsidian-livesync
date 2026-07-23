@@ -13,6 +13,7 @@ const focusedScenarios = new Set([
     "p2p-pane",
     "vault-reflection",
     "couchdb-upload",
+    "couchdb-manual-setup-workflow",
     "cli-to-obsidian-sync",
     "minio-upload",
     "object-storage-setup-uri-workflow",

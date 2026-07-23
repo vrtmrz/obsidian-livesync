@@ -167,7 +167,7 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 
 ## 4. Client Setup
 > [!TIP]
-> Now manual configuration is not recommended for some reasons. However, if you want to do so, please use `Setup wizard`. The recommended extra configurations will be also set.
+> A generated Setup URI is the recommended path because it carries the current new-Vault defaults and remote profile. If a Setup URI cannot be generated, follow [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device), then generate a new Setup URI from that working device for every additional device.
 
 ### 1. Generate the setup URI on a desktop device or server
 ```bash

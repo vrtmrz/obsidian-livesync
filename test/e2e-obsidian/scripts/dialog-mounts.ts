@@ -196,14 +196,14 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
         `setup-remote-selection-dialogue${mode === "mobile" ? "-mobile" : ""}.png`,
         async (page) => {
             const modal = page.locator(".modal-container").filter({
-                has: page.locator(".modal-title").filter({ hasText: "Enter Server Information" }),
+                has: page.locator(".modal-title").filter({ hasText: "Choose a synchronisation remote" }),
             });
             const dialogue = modal.locator(".dialog-host");
             await modal.waitFor({
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
-            for (const label of ["CouchDB", "S3/MinIO/R2 Object Storage", "Peer-to-Peer only"]) {
+            for (const label of ["CouchDB", "S3-compatible Object Storage", "Peer-to-Peer (P2P)"]) {
                 await dialogue.getByText(label, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
             }
             await dialogue
@@ -222,7 +222,7 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
     );
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const modal = page.locator(".modal-container").filter({
-            has: page.locator(".modal-title").filter({ hasText: "Enter Server Information" }),
+            has: page.locator(".modal-title").filter({ hasText: "Choose a synchronisation remote" }),
         });
         if (mode === "mobile") {
             const previousDialogue = await modal.locator(".modal").last().elementHandle();
@@ -243,7 +243,7 @@ async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string
     await openRemoteSelectionDialogue();
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const remoteSelection = page.locator(".modal-container").filter({
-            has: page.locator(".modal-title").filter({ hasText: "Enter Server Information" }),
+            has: page.locator(".modal-title").filter({ hasText: "Choose a synchronisation remote" }),
         });
         await remoteSelection
             .locator("label")
