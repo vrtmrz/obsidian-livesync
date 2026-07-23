@@ -419,6 +419,47 @@ async function waitForDetectedPeer(port: number): Promise<void> {
     });
 }
 
+async function capturePeerActionsMenu(port: number): Promise<string> {
+    await withObsidianPage(port, async (page) => {
+        const moreActions = page.getByRole("button", { name: /^More actions for /u }).first();
+        await moreActions.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await moreActions.click({ timeout: uiTimeoutMs });
+        const menu = page.locator(".menu:visible").last();
+        await menu.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        for (const label of [
+            "Synchronise when this device connects",
+            "Follow whenever this device connects",
+            "Include in the P2P synchronisation command",
+        ]) {
+            await menu.getByText(label, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
+        }
+        const layout = await menu.evaluate((element) => {
+            const rect = element.getBoundingClientRect();
+            return {
+                insideViewport:
+                    rect.left >= 0 &&
+                    rect.top >= 0 &&
+                    rect.right <= document.documentElement.clientWidth &&
+                    rect.bottom <= document.documentElement.clientHeight,
+                hasHorizontalOverflow: element.scrollWidth > element.clientWidth,
+            };
+        });
+        if (!layout.insideViewport || layout.hasHorizontalOverflow) {
+            throw new Error(`P2P peer actions menu did not fit the viewport: ${JSON.stringify(layout)}`);
+        }
+    });
+    const screenshot = await captureObsidianElement(
+        port,
+        "guide-p2p-setup-peer-actions-menu.png",
+        (page) => page.locator(".menu:visible").last()
+    );
+    await withObsidianPage(port, async (page) => {
+        await page.keyboard.press("Escape");
+        await page.locator(".menu:visible").waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+    return screenshot;
+}
+
 async function captureNote(port: number, path: string, text: string, filename: string): Promise<string> {
     await withObsidianPage(port, async (page) => {
         await page.evaluate((notePath) => {
@@ -496,12 +537,15 @@ async function main(): Promise<void> {
         screenshots.push(
             await captureNote(portB, noteFromFirst, "P2P from the first device", "guide-p2p-setup-first-to-second.png")
         );
+        console.log("P2P workflow: initial Fetch from the first device completed.");
 
         await writeNote(context.cliBinary, sessionB.cliEnv, noteFromSecond, secondContent);
         await reconnectP2PStatus(portA);
         await reconnectP2PStatus(portB);
         await waitForDetectedPeer(portA);
         screenshots.push(await openP2PStatus(portA, "guide-p2p-setup-devices-connected.png"));
+        screenshots.push(await capturePeerActionsMenu(portA));
+        console.log("P2P workflow: peer actions menu verified; starting the return journey.");
         let returnJourneyFinished = false;
         const returnJourneyAcceptor = acceptConnectionRequests(
             [portA, portB],
@@ -510,10 +554,13 @@ async function main(): Promise<void> {
         );
         try {
             await replicateFromStatusPane(portA);
+            console.log("P2P workflow: return replication requested; waiting for the second device's note.");
             await waitForPathContent(vaultA, noteFromSecond, secondContent);
+            console.log("P2P workflow: return note reached the first device.");
         } finally {
             returnJourneyFinished = true;
             await returnJourneyAcceptor;
+            console.log("P2P workflow: return connection approval loop stopped.");
         }
         screenshots.push(
             await captureNote(
@@ -526,9 +573,11 @@ async function main(): Promise<void> {
 
         console.log(`P2P Setup URI and two-device roundtrip succeeded. Screenshots: ${screenshots.join(", ")}`);
     } finally {
+        console.log("P2P workflow: stopping tracked Obsidian sessions.");
         await stopSessions(context).catch((error: unknown) => {
             console.warn(error instanceof Error ? error.message : error);
         });
+        console.log("P2P workflow: disposing temporary Vaults.");
         await vaultA.dispose();
         await vaultB.dispose();
     }

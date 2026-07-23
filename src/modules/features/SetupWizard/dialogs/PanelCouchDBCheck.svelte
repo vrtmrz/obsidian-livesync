@@ -7,10 +7,14 @@
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "./utilCheckCouchDB";
     import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
+    import { $msg as translateMessage } from "@/common/translation";
+    import { getDialogContext } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { getCouchDBServerFixConfirmation } from "./couchDBServerFixConfirmation";
     type Props = {
         trialRemoteSetting: ObsidianLiveSyncSettings;
     };
     const { trialRemoteSetting }: Props = $props();
+    const context = getDialogContext();
     let detectedIssues = $state<ConfigCheckResult[]>([]);
     async function testAndFixSettings() {
         detectedIssues = [];
@@ -33,14 +37,23 @@
     }
     let processing = $state(false);
     async function fixIssue(issue: ResultError<unknown>) {
+        const confirmation = getCouchDBServerFixConfirmation(issue.settingKey, issue.expectedValue);
+        const confirmed = await context.services.confirm.askYesNoDialog(confirmation.message, {
+            title: confirmation.title,
+            defaultOption: "No",
+        });
+        if (confirmed !== "yes") {
+            return;
+        }
         try {
             processing = true;
             await issue.fix();
         } catch (e) {
             Logger(e, LOG_LEVEL_VERBOSE, "setup-couchdb-fix");
+        } finally {
+            await testAndFixSettings();
+            processing = false;
         }
-        await testAndFixSettings();
-        processing = false;
     }
     const errorIssueCount = $derived.by(() => {
         return detectedIssues.filter((issue) => isErrorResult(issue)).length;
@@ -64,7 +77,7 @@
     </div>
 {/snippet}
 <UserDecisions>
-    <Decision title="Detect and Fix CouchDB Issues" important={true} commit={testAndFixSettings} />
+    <Decision title={translateMessage("Check server requirements")} important={true} commit={testAndFixSettings} />
 </UserDecisions>
 <div class="check-results">
     <details open={!isAllSuccess}>

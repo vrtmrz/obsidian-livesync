@@ -10,22 +10,55 @@ authors:
 
 # Peer-to-Peer Synchronisation Tips
 
-For the complete first-device, Setup URI, second-device, and two-way verification procedure, see [Set up peer-to-peer synchronisation](../setup_p2p.md).
+For the first device, Setup URI, additional device, and two-way verification procedure, see [Set up peer-to-peer synchronisation](../setup_p2p.md). For the communication and privacy model, see [How peer-to-peer synchronisation works](../p2p.md).
 
 > [!IMPORTANT]
-> Peer-to-peer synchronisation is a supported opt-in feature. WebRTC connectivity still depends on the networks, relays, and optional TURN servers available to every device, so a working connection cannot be guaranteed in every environment.
+> P2P is a supported opt-in feature, but WebRTC connectivity still depends on the networks available to every device. A direct connection cannot be guaranteed in every environment.
 
-## Difficulties with Peer-to-Peer Synchronisation
+## A peer does not appear
 
-It is often the case that peer-to-peer connections do not function correctly, for instance, when using mobile data services.
-In such circumstances, we recommend connecting all devices to a single Virtual Private Network (VPN). It is advisable to select a service, such as Tailscale, which facilitates direct communication between peers wherever possible.
-Should one be in an environment where even Tailscale is unable to connect, or where it cannot be lawfully installed, please continue reading.
+Check discovery before changing any Vault settings:
 
-## A More Detailed Explanation
+1. Confirm that both devices use the same **Signalling relay URLs**, Group ID, and P2P passphrase.
+2. Confirm that each device has a distinct device name.
+3. Open `P2P Status` on both devices and confirm that each shows `Connected`.
+4. Select `Refresh` after the other device joins.
+5. If the peer remains absent, select `Disconnect`, then `Open connection` on the device which should be advertised again.
 
-The failure of a Peer-to-Peer connection via WebRTC can be attributed to several factors. These may include an unsuccessful UDP hole-punching attempt, or an intermediary gateway intentionally terminating the connection. Troubleshooting this matter is not a simple undertaking. Furthermore, and rather unfortunately, gateway administrators are typically aware of this type of network behaviour. Whilst a legitimate purpose for such traffic can be cited, such as for web conferencing, this is often insufficient to prevent it from being blocked.
+The signalling relay discovers peers; it does not prove that the networks can carry a WebRTC data connection.
 
-This situation, however, is the primary reason that our project does not provide a TURN server. Although it is said that a TURN server within WebRTC does not decrypt communications, the project holds the view that the risk of a malicious party impersonating a TURN server must be avoided. Consequently, configuring a TURN server for relay communication is not currently possible through the user interface. Furthermore, there is no official project TURN server, which is to say, one that could be monitored by a third party.
+## A peer appears but synchronisation cannot connect
 
-We request that you provide your own server, using your own Fully Qualified Domain Name (FQDN), and subsequently enter its details into the advanced settings.
-For testing purposes, Cloudflare's Real-Time TURN Service is exceedingly convenient and offers a generous amount of free data. However, it must be noted that because it is a well-known destination, such traffic is highly conspicuous. There is also a significant possibility that it may be blocked by default. We advise proceeding with caution.
+WebRTC may fail when UDP hole punching is blocked by carrier-grade NAT, a firewall, a VPN policy, or an intermediary gateway.
+
+Try these in order:
+
+1. Put both devices on the same ordinary network and retry.
+2. Remove a VPN temporarily if it blocks peer traffic, or use a trusted VPN such as Tailscale when it provides a reachable path between the devices.
+3. In `P2P Configuration` -> `Advanced Settings`, configure a trusted TURN service.
+
+TURN is a fallback for encrypted WebRTC traffic. It is different from the required signalling relay. The project does not operate an official TURN service. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume.
+
+## A connected peer does not receive later edits
+
+An open signalling connection does not automatically move every change.
+
+- Use `Replicate now` to prove an explicit bidirectional round trip.
+- Enable `Announce changes` on the source device before it dispatches notifications.
+- Enable `Follow changes` for that source on the receiving device before it fetches in response.
+- Use the peer's `More actions` menu only after the manual round trip works.
+
+If the device was asleep, Obsidian was in the background, or the peer disconnected, run an explicit synchronisation after both devices are visible and connected.
+
+## Mobile limitations
+
+Keep Obsidian visible and the device awake during initial transfer, rebuild, or a large finite synchronisation. Wake Lock support is best effort and cannot prevent the operating system from suspending or terminating a background application.
+
+## Collect evidence
+
+If the same room works on one network but not another, include both network types in the report. Run `Generate full report for opening the issue with debug info`, remove credentials and private relay details, and state whether:
+
+- both devices reached `Connected`;
+- each device appeared in `Detected Peers`;
+- a connection request appeared; and
+- a TURN server or VPN was in use.

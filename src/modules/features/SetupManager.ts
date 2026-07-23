@@ -1,6 +1,5 @@
 import {
     type BucketSyncSetting,
-    type CouchDBConnection,
     type EncryptionSettings,
     type ObsidianLiveSyncSettings,
     type P2PSyncSetting,
@@ -34,6 +33,7 @@ import type {
     ScanQRCodeResultType,
     SetupRemoteBucketResultType,
     SetupRemoteCouchDBResultType,
+    SetupRemoteCouchDBInitialData,
     SetupRemoteE2EEResultType,
     SetupRemoteP2PResultType,
     SetupRemoteResultType,
@@ -171,8 +171,16 @@ export class SetupManager extends AbstractModule {
     ): Promise<boolean> {
         const couchConf = await this.dialogManager.openWithExplicitCancel<
             SetupRemoteCouchDBResultType,
-            CouchDBConnection
-        >(SetupRemoteCouchDB, currentSetting);
+            SetupRemoteCouchDBInitialData
+        >(SetupRemoteCouchDB, {
+            settings: currentSetting,
+            mode:
+                userMode === UserMode.NewUser
+                    ? "create-or-connect"
+                    : userMode === UserMode.ExistingUser
+                      ? "connect-existing"
+                      : "settings",
+        });
         if (couchConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);

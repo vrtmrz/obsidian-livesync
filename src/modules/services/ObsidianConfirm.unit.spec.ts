@@ -214,6 +214,31 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
         );
     });
 
+    it("refers P2P connection approvals to the current P2P Status pane", async () => {
+        const { confirm, plugin } = createConfirm();
+        const actions = ["Accept", "Ignore"] as const;
+        mocks.legacyWideConfirm.mockResolvedValueOnce("Ignore");
+
+        await confirm.askSelectStringDialogue(
+            "You can revoke your decision from the Peer-to-Peer Replicator Pane.",
+            actions,
+            {
+                title: "P2P Connection Request",
+                defaultAction: "Ignore",
+                timeout: 30,
+            }
+        );
+
+        expect(mocks.legacyWideConfirm).toHaveBeenCalledWith(
+            plugin,
+            "P2P Connection Request",
+            "You can revoke your decision from the P2P Status pane.",
+            actions,
+            "Ignore",
+            30
+        );
+    });
+
     it("dismisses an open Kit dialogue when the plug-in unload event is emitted", async () => {
         const { confirm, events } = createConfirm();
         let observedSignal: AbortSignal | undefined;

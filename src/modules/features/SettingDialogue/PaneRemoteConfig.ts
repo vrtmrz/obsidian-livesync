@@ -29,6 +29,10 @@ import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svel
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import type {
+    SetupRemoteCouchDBInitialData,
+    SetupRemoteCouchDBResultType,
+} from "@/modules/features/SetupWizard/dialogs/setupDialogTypes.ts";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
 function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianLiveSyncSettings {
@@ -216,7 +220,13 @@ export function paneRemoteConfig(
                     return { ...baseSettings, ...p2pConf, remoteType: REMOTE_P2P };
                 }
 
-                const couchConf = await dialogManager.openWithExplicitCancel(SetupRemoteCouchDB, baseSettings);
+                const couchConf = await dialogManager.openWithExplicitCancel<
+                    SetupRemoteCouchDBResultType,
+                    SetupRemoteCouchDBInitialData
+                >(SetupRemoteCouchDB, {
+                    settings: baseSettings,
+                    mode: "settings",
+                });
                 if (couchConf === "cancelled" || typeof couchConf !== "object") {
                     return false;
                 }

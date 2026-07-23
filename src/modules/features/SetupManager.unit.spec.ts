@@ -348,6 +348,39 @@ describe("SetupManager", () => {
         expect(activeProfile?.uri).toContain("sls+https://alice:secret@couch.example");
     });
 
+    it.each([
+        [UserMode.NewUser, "create-or-connect"],
+        [UserMode.ExistingUser, "connect-existing"],
+        [UserMode.Update, "settings"],
+    ] as const)(
+        "passes the %s CouchDB database policy to the manual setup dialogue",
+        async (userMode, expectedMode) => {
+            const { manager, setting, dialogManager } = createSetupManager();
+            const couchConf = {
+                couchDB_URI: "https://couch.example",
+                couchDB_USER: "alice",
+                couchDB_PASSWORD: "secret",
+                couchDB_DBNAME: "notes",
+                couchDB_CustomHeaders: "",
+                useJWT: false,
+                jwtAlgorithm: "",
+                jwtKey: "",
+                jwtKid: "",
+                jwtSub: "",
+                jwtExpDuration: 5,
+                useRequestAPI: false,
+            };
+            dialogManager.openWithExplicitCancel.mockResolvedValueOnce(couchConf).mockResolvedValueOnce("cancelled");
+
+            await manager.onCouchDBManualSetup(userMode, setting.currentSettings());
+
+            expect(dialogManager.openWithExplicitCancel).toHaveBeenNthCalledWith(1, expect.anything(), {
+                settings: setting.currentSettings(),
+                mode: expectedMode,
+            });
+        }
+    );
+
     it("adds and activates a manually configured Object Storage profile without replacing existing profiles", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         setting.settings = {

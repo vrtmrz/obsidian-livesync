@@ -1,6 +1,7 @@
 <script lang="ts">
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
     import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
     import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
     import Option from "@/modules/services/LiveSyncUI/components/Option.svelte";
@@ -8,6 +9,7 @@
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import { TYPE_NEW_USER, TYPE_EXISTING_USER, TYPE_CANCELLED, type IntroResultType } from "./setupDialogTypes";
+    import { $msg as translateMessage } from "@/common/translation";
 
     type Props = {
         setResult: (result: IntroResultType) => void;
@@ -30,6 +32,11 @@
 
 <DialogHeader title="Welcome to Self-hosted LiveSync" />
 <Guidance>We will now guide you through a few questions to simplify the synchronisation setup.</Guidance>
+<InfoNote>
+    {translateMessage(
+        "This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI."
+    )}
+</InfoNote>
 <Instruction>
     <Question>First, please select the option that best describes your current situation.</Question>
     <Options>

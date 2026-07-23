@@ -163,4 +163,16 @@ describe("createOpenRebuildUI", () => {
         expect(replicator.replicateFrom).toHaveBeenCalledWith("peer-a", true, true);
         expect(replicator.clearOnSetup).toHaveBeenCalledOnce();
     });
+
+    it("does not complete Fetch when the rebuild dialogue closes without selecting a peer", async () => {
+        const replicator = createReplicator();
+        const session = createOpenRebuildUI({} as any)(replicator)(true);
+        const modal = modalState.instances[0];
+
+        modal.onClosed?.();
+
+        await expect(session).resolves.toBe(false);
+        expect(replicator.replicateFrom).not.toHaveBeenCalled();
+        expect(replicator.setOnSetup).not.toHaveBeenCalled();
+    });
 });

@@ -314,7 +314,7 @@ These settings are configured within the CouchDB Setup dialogue when adding (`âž
 Setting key: couchDB_URI
 
 The URI of the CouchDB server.
-Note: Only Secure (HTTPS) connections can be used on Obsidian Mobile. The URI must not end with a trailing slash.
+Only secure HTTPS connections can be used on Obsidian Mobile. The setup dialogue accepts a complete HTTP or HTTPS URL and normalises it when the settings are applied.
 
 #### Username
 
@@ -332,14 +332,13 @@ The password used to authenticate with CouchDB.
 
 Setting key: couchDB_DBNAME
 
-The name of the database.
-Note: The database name cannot contain capital letters, spaces, or special characters other than `_$()+/-`, and cannot start with an underscore (`_`).
+The name of the database. It must not be empty. CouchDB validates the name when the connection is attempted; the setup dialogue does not apply a narrower client-side naming rule.
 
 #### Use Request API to avoid inevitable CORS problem
 
 Setting key: useRequestAPI
 
-This option is labeled **Use Internal API** in the setup dialogue. If enabled, Obsidian's internal request API will be used to bypass CORS restrictions. This is a workaround that may not be compliant with web standards and is less secure. Note that this might break in future Obsidian versions.
+This option is labelled **Use Internal API** in the setup dialogue. If enabled, Obsidian's internal request API is used to bypass CORS restrictions. It sends the configured credentials to the CouchDB server through an Obsidian-owned API, so use it only with a server you trust. Configure CouchDB CORS correctly where possible; this compatibility workaround may change in future Obsidian versions.
 
 #### Custom Headers
 
@@ -383,13 +382,20 @@ Setting key: jwtSub
 
 The subject (`sub`) claim of the JWT, which should match your CouchDB username.
 
-#### Test Database Connection
+#### Connection and save actions
 
-Open database connection. If the remote database is not found and you have permission to create a database, the database will be created.
+The action depends on why the dialogue was opened:
 
-#### Validate Database Configuration
+- First-device onboarding uses **Create or connect to database and continue**. It may create the database when it does not exist and the supplied account has permission.
+- Additional-device onboarding uses **Connect to existing database and continue**. It does not create a missing database.
+- Adding or editing a saved remote profile uses **Test connection and save**. It does not create a missing database.
+- Settings mode also offers **Save without connecting**. The existing profile is updated, but automatic synchronisation may fail until the connection is corrected.
 
-Checks and fixes any potential issues with the database config.
+Onboarding requires a successful connection. It does not expose an unverified continuation action.
+
+#### Check server requirements
+
+This optional check reads the CouchDB server configuration through Obsidian's internal request API and sends the configured credentials to that server. Administrator access may be required. The initial check is read-only. Each offered fix names the exact CouchDB setting and proposed value, and requires separate confirmation before making that change.
 
 #### Apply Settings
 
@@ -401,11 +407,11 @@ Setting key: P2P_Enabled
 
 Enable direct peer-to-peer synchronisation via WebRTC.
 
-#### Relay URL
+#### Signalling relay URLs
 
 Setting key: P2P_relays
 
-The WebSocket relay server URL(s) used for coordinating P2P connections via WebRTC. Multiple URLs can be separated by commas.
+The Nostr-compatible WebSocket relay URL or URLs used for peer discovery and WebRTC connection negotiation. Multiple URLs can be separated by commas. A signalling relay does not store or transfer Vault contents. See [How peer-to-peer synchronisation works](p2p.md).
 
 #### Group ID
 
@@ -435,17 +441,17 @@ This option is labeled **Auto Start P2P Connection** in the setup dialogue. If e
 
 Closing a P2P connection leaves the LiveSync P2P room, stops its replication service, closes the signalling relay sockets, and pauses their automatic reconnection. An idle WebRTC connection may remain temporarily under the transport's ownership so that it can be reused, but it cannot carry traffic for the room which has been left. Connecting again resumes relay reconnection and joins a new LiveSync room.
 
-#### Automatically broadcast changes to connected peers
+#### Announce changes automatically after connecting
 
 Setting key: P2P_AutoBroadcast
 
-This option is labeled **Auto Broadcast Changes** in the setup dialogue. If enabled, changes will be automatically broadcasted to connected peers, requesting them to fetch the changes.
+When enabled, this device notifies connected peers after a local change. The notification contains no Vault data. A receiving peer fetches the change only when it follows this device.
 
 #### TURN Server URLs (comma-separated)
 
 Setting key: P2P_turnServers
 
-A comma-separated list of TURN/STUN server URLs. Used to relay P2P connections when direct WebRTC connection fails due to strict NAT or firewalls. In most cases, these can be left blank.
+A comma-separated list of TURN server URLs. TURN is an optional fallback which relays encrypted WebRTC traffic when strict NAT or firewall rules prevent a direct peer connection. It is distinct from the required signalling relay. In most environments, this field can remain blank.
 
 #### TURN Username
 

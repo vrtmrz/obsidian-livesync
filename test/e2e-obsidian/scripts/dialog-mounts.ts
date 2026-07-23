@@ -1,8 +1,15 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
-import { waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
+import { createE2eCouchDbPluginData, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
 import { assertMobileDialogueLayout, assertMobileNoticeLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { captureObsidianDialogue, obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
+import {
+    captureObsidianDialogue,
+    captureObsidianPage,
+    obsidianRemoteDebuggingPort,
+    withObsidianPage,
+} from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const dialogRunStateKey = "__livesyncE2EDialogMount";
@@ -199,6 +206,12 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
             for (const label of ["CouchDB", "S3/MinIO/R2 Object Storage", "Peer-to-Peer only"]) {
                 await dialogue.getByText(label, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
             }
+            await dialogue
+                .getByText(
+                    "No central data-storage server is required, but a signalling relay is required for peer discovery.",
+                    { exact: false }
+                )
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
             await modal
                 .getByRole("button", { name: "No, please take me back" })
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
@@ -221,6 +234,78 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
             await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
         await modal.getByRole("button", { name: "No, please take me back" }).click({ timeout: uiTimeoutMs });
+    });
+    await assertDialogueRunCompleted();
+    return screenshotPath;
+}
+
+async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string> {
+    await openRemoteSelectionDialogue();
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const remoteSelection = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Enter Server Information" }),
+        });
+        await remoteSelection
+            .locator("label")
+            .filter({ hasText: "CouchDB" })
+            .locator('input[type="radio"]')
+            .first()
+            .check({ timeout: uiTimeoutMs });
+        await remoteSelection
+            .getByRole("button", { name: "Continue to CouchDB setup", exact: true })
+            .click({ timeout: uiTimeoutMs });
+    });
+    const screenshotPath = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        `setup-couchdb-dialogue${mode === "mobile" ? "-mobile" : ""}.png`,
+        async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "CouchDB Configuration" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            for (const label of [
+                "Check server requirements",
+                "Test connection and save",
+                "Save without connecting",
+                "Cancel",
+            ]) {
+                await modal.getByRole("button", { name: label, exact: true }).waitFor({
+                    state: "visible",
+                    timeout: uiTimeoutMs,
+                });
+            }
+            await modal
+                .getByText(
+                    "This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server.",
+                    { exact: false }
+                )
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await modal
+                .getByText("CouchDB validates the database name when you connect.", { exact: false })
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            if ((await modal.getByRole("button", { name: "Continue anyway", exact: true }).count()) !== 0) {
+                throw new Error("CouchDB onboarding still exposes the ambiguous Continue anyway action.");
+            }
+            const buttonGroups = modal.locator(".button-group");
+            for (let index = 0; index < (await buttonGroups.count()); index++) {
+                const flexDirection = await buttonGroups.nth(index).evaluate((element) => {
+                    return getComputedStyle(element).flexDirection;
+                });
+                if (flexDirection !== "column") {
+                    throw new Error(`Expected vertical CouchDB actions, received ${flexDirection}.`);
+                }
+            }
+            if (mode === "mobile") {
+                await assertMobileDialogueLayout(page, modal, "CouchDB settings dialogue");
+            }
+        }
+    );
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modal = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "CouchDB Configuration" }),
+        });
+        await modal.getByRole("button", { name: "Cancel", exact: true }).click({ timeout: uiTimeoutMs });
+        await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
     await assertDialogueRunCompleted();
     return screenshotPath;
@@ -337,10 +422,14 @@ async function main(): Promise<void> {
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-            pluginData: {
-                doctorProcessedVersion: "0.25.27",
-                isConfigured: true,
-                liveSync: false,
+            pluginData: createE2eCouchDbPluginData(
+                {
+                    uri: "http://127.0.0.1:5984",
+                    username: "",
+                    password: "",
+                    dbName: "dialog-mounts-ui-only",
+                },
+                {
                 notifyThresholdOfRemoteStorageSize: -1,
                 syncOnStart: false,
                 syncOnSave: false,
@@ -348,9 +437,35 @@ async function main(): Promise<void> {
                 syncOnFileOpen: false,
                 syncAfterMerge: false,
                 periodicReplication: false,
-            },
+                }
+            ),
         });
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        try {
+            await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        } catch (error) {
+            const screenshot = await captureObsidianPage(
+                obsidianRemoteDebuggingPort(),
+                "dialog-mounts-core-not-ready.png",
+                async () => undefined
+            );
+            console.error(`Core readiness diagnostic screenshot: ${screenshot}`);
+            const persistedSettings = JSON.parse(
+                await readFile(join(session.install.pluginDir, "data.json"), "utf8")
+            ) as Record<string, unknown>;
+            console.error(
+                `Persisted readiness settings: ${JSON.stringify({
+                    isConfigured: persistedSettings.isConfigured,
+                    remoteType: persistedSettings.remoteType,
+                    settingVersion: persistedSettings.settingVersion,
+                    couchDB_URI: persistedSettings.couchDB_URI,
+                    couchDB_DBNAME: persistedSettings.couchDB_DBNAME,
+                    remoteConfigurationCount: Object.keys(
+                        (persistedSettings.remoteConfigurations as Record<string, unknown> | undefined) ?? {}
+                    ).length,
+                })}`
+            );
+            throw error;
+        }
 
         const remoteSizeScreenshots = await verifyRemoteSizeNoticeAndDialogue();
         console.log(
@@ -359,6 +474,10 @@ async function main(): Promise<void> {
 
         const remoteScreenshot = await verifyRemoteSelectionDialogue("desktop");
         console.log(`Remote selection dialogue mounted and closed successfully. Screenshot: ${remoteScreenshot}`);
+        const couchDBScreenshot = await verifyCouchDBSettingsDialogue("desktop");
+        console.log(
+            `CouchDB settings mode exposed explicit connection, unverified-save, and server-check actions. Screenshot: ${couchDBScreenshot}`
+        );
         const setupUriScreenshot = await verifySetupUriDialogue("desktop");
         console.log(`Setup URI dialogue mounted and closed successfully. Screenshot: ${setupUriScreenshot}`);
 
@@ -371,6 +490,10 @@ async function main(): Promise<void> {
             const mobileRemoteScreenshot = await verifyRemoteSelectionDialogue("mobile");
             console.log(
                 `Mobile remote selection dialogue passed viewport, safe-area, touch-target, and close-control checks. Screenshot: ${mobileRemoteScreenshot}`
+            );
+            const mobileCouchDBScreenshot = await verifyCouchDBSettingsDialogue("mobile");
+            console.log(
+                `Mobile CouchDB settings dialogue passed viewport, touch-target, and vertical-action checks. Screenshot: ${mobileCouchDBScreenshot}`
             );
             const mobileSetupUriScreenshot = await verifySetupUriDialogue("mobile");
             console.log(

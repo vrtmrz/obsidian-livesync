@@ -3,7 +3,6 @@ import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
-import { P2PReplicatorPaneView, VIEW_TYPE_P2P } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneView";
 import {
     P2PServerStatusPaneView,
     VIEW_TYPE_P2P_SERVER_STATUS,
@@ -11,6 +10,34 @@ import {
 import type { LiveSyncCore } from "@/main";
 import type { WorkspaceLeaf } from "@/deps";
 import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+
+export const LEGACY_VIEW_TYPE_P2P = "p2p-replicator";
+
+class LegacyP2PStatusPaneView extends P2PServerStatusPaneView {
+    override getViewType() {
+        return LEGACY_VIEW_TYPE_P2P;
+    }
+}
+
+export function hasP2PConfiguration(settings: Partial<ObsidianLiveSyncSettings>): boolean {
+    if (
+        settings.remoteType === REMOTE_P2P ||
+        settings.P2P_Enabled === true ||
+        (settings.P2P_roomID ?? "").trim() !== "" ||
+        (settings.P2P_passphrase ?? "").trim() !== ""
+    ) {
+        return true;
+    }
+    return Object.values(settings.remoteConfigurations ?? {}).some((configuration) => {
+        try {
+            return ConnectionStringParser.parse(configuration.uri).type === "p2p";
+        } catch {
+            return false;
+        }
+    });
+}
 
 /**
  * Obsidian-specific P2P views, commands, status collection, and ribbon wiring.
@@ -45,8 +72,7 @@ export function useP2PReplicatorUI(
             icon: string,
             title: string,
             callback: () => void
-        ) => { addClass?: (name: string) => unknown } | undefined;
-        getPlatform: () => string;
+        ) => { addClass?: (name: string) => unknown; remove?: () => void } | undefined;
     };
 
     // const env: LiveSyncTrysteroReplicatorEnv = { services: host.services as any };
@@ -64,15 +90,12 @@ export function useP2PReplicatorUI(
         storeP2PStatusLine,
     };
 
-    // Register view, commands and ribbon if a view factory is provided
-    const viewType = VIEW_TYPE_P2P;
-    const factory = (leaf: WorkspaceLeaf) => {
-        return new P2PReplicatorPaneView(leaf, core, p2pParams);
-    };
     const statusFactory = (leaf: WorkspaceLeaf) => {
         return new P2PServerStatusPaneView(leaf, core, p2pParams);
     };
-    const openPane = () => api.showWindow(viewType);
+    const legacyStatusFactory = (leaf: WorkspaceLeaf) => {
+        return new LegacyP2PStatusPaneView(leaf, core, p2pParams);
+    };
     const openStatusPane = () => {
         if (api.showWindowOnRight) {
             return api.showWindowOnRight(VIEW_TYPE_P2P_SERVER_STATUS);
@@ -88,20 +111,36 @@ export function useP2PReplicatorUI(
             { label: "replication" }
         );
     };
-    api.registerWindow(viewType, factory);
+    // Keep the retired view type registered only long enough to restore an
+    // existing workspace leaf with the current status UI. Layout-ready
+    // migration below rewrites it to the current type without opening a leaf.
+    api.registerWindow(LEGACY_VIEW_TYPE_P2P, legacyStatusFactory);
     api.registerWindow(VIEW_TYPE_P2P_SERVER_STATUS, statusFactory);
+
+    let ribbonElement: { addClass?: (name: string) => unknown; remove?: () => void } | undefined;
+    const updateRibbon = (settings: Partial<ObsidianLiveSyncSettings>) => {
+        if (hasP2PConfiguration(settings)) {
+            if (ribbonElement) return;
+            ribbonElement = api.addRibbonIcon("waypoints", "P2P Status", () => {
+                void openStatusPane();
+            });
+            ribbonElement?.addClass?.("livesync-ribbon-p2p-server-status");
+            return;
+        }
+        ribbonElement?.remove?.();
+        ribbonElement = undefined;
+    };
+
+    // Settings are loaded after onInitialise. Reading them from the earlier
+    // phase aborts the plug-in lifecycle before the local database can open.
+    host.services.appLifecycle.onSettingLoaded.addHandler(() => {
+        updateRibbon(host.services.setting.currentSettings());
+        return Promise.resolve(true);
+    });
 
     host.services.appLifecycle.onInitialise.addHandler(() => {
         eventHub.onEvent(EVENT_REQUEST_OPEN_P2P, () => {
-            void openPane();
-        });
-
-        api.addCommand({
-            id: "open-p2p-replicator",
-            name: "P2P Sync : Open P2P Replicator (Old UI)",
-            callback: () => {
-                void openPane();
-            },
+            void openStatusPane();
         });
 
         api.addCommand({
@@ -147,27 +186,37 @@ export function useP2PReplicatorUI(
             },
         });
 
-        // api.addRibbonIcon("waypoints", "P2P Replicator", () => {
-        //     void openPane();
-        // })?.addClass?.("livesync-ribbon-replicate-p2p");
-
-        api.addRibbonIcon("waypoints", "P2P Status", () => {
-            void openStatusPane();
-        })?.addClass?.("livesync-ribbon-p2p-server-status");
+        host.services.setting.onSettingSaved?.addHandler((settings) => {
+            updateRibbon(settings);
+            return Promise.resolve(true);
+        });
 
         return Promise.resolve(true);
     });
 
-    host.services.appLifecycle.onLayoutReady.addHandler(() => {
-        if (api.getPlatform() !== "obsidian") {
-            return Promise.resolve(true);
+    host.services.appLifecycle.onLayoutReady.addHandler(async () => {
+        const workspace = (
+            host.services.context as {
+                app?: {
+                    workspace?: {
+                        getLeavesOfType(type: string): WorkspaceLeaf[];
+                    };
+                };
+            }
+        ).app?.workspace;
+        if (!workspace) {
+            return true;
         }
-        if (api.showWindowOnRight) {
-            void api.showWindowOnRight(VIEW_TYPE_P2P_SERVER_STATUS);
-        } else {
-            void api.showWindow(VIEW_TYPE_P2P_SERVER_STATUS);
-        }
-        return Promise.resolve(true);
+        const legacyLeaves = workspace.getLeavesOfType(LEGACY_VIEW_TYPE_P2P);
+        await Promise.all(
+            legacyLeaves.map((leaf) =>
+                leaf.setViewState({
+                    type: VIEW_TYPE_P2P_SERVER_STATUS,
+                    active: false,
+                })
+            )
+        );
+        return true;
     });
     return p2pParams;
 }

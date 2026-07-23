@@ -1,454 +1,156 @@
-# Tips and Troubleshooting
-- [Tips and Troubleshooting](#tips-and-troubleshooting)
-  - [Tips](#tips)
-    - [CORS avoidance](#cors-avoidance)
-    - [CORS configuration with reverse proxy](#cors-configuration-with-reverse-proxy)
-      - [Nginx](#nginx)
-      - [Nginx and subdirectory](#nginx-and-subdirectory)
-      - [Caddy](#caddy)
-      - [Caddy and subdirectory](#caddy-and-subdirectory)
-      - [Apache](#apache)
-    - [Show all setting panes](#show-all-setting-panes)
-    - [How to resolve `Tweaks Mismatched of Changed`](#how-to-resolve-tweaks-mismatched-of-changed)
-  - [Notable bugs and fixes](#notable-bugs-and-fixes)
-    - [Binary files get bigger on iOS](#binary-files-get-bigger-on-ios)
-    - [Some setting name has been changed](#some-setting-name-has-been-changed)
-  - [Questions and Answers](#questions-and-answers)
-    - [How should I share the settings between multiple devices?](#how-should-i-share-the-settings-between-multiple-devices)
-    - [What should I enter for the passphrase of Setup-URI?](#what-should-i-enter-for-the-passphrase-of-setup-uri)
-    - [Why the settings of Self-hosted LiveSync itself is disabled in default?](#why-the-settings-of-self-hosted-livesync-itself-is-disabled-in-default)
-    - [The plug-in says `something went wrong`.](#the-plug-in-says-something-went-wrong)
-    - [A large number of files were deleted, and were synchronised!](#a-large-number-of-files-were-deleted-and-were-synchronised)
-    - [Why `Use an old adapter for compatibility` is somehow enabled in my vault?](#why-use-an-old-adapter-for-compatibility-is-somehow-enabled-in-my-vault)
-    - [ZIP (or any extensions) files were not synchronised. Why?](#zip-or-any-extensions-files-were-not-synchronised-why)
-    - [I hope to report the issue, but you said you needs `Report`. How to make it?](#i-hope-to-report-the-issue-but-you-said-you-needs-report-how-to-make-it)
-    - [Where can I check the log?](#where-can-i-check-the-log)
-    - [Why are the logs volatile and ephemeral?](#why-are-the-logs-volatile-and-ephemeral)
-    - [Some network logs are not written into the file.](#some-network-logs-are-not-written-into-the-file)
-    - [If a file were deleted or trimmed, the capacity of the database should be reduced, right?](#if-a-file-were-deleted-or-trimmed-the-capacity-of-the-database-should-be-reduced-right)
-    - [How to launch the DevTools](#how-to-launch-the-devtools)
-      - [On Desktop Devices](#on-desktop-devices)
-      - [On Android](#on-android)
-      - [On iOS, iPadOS devices](#on-ios-ipados-devices)
-    - [How can I use the DevTools?](#how-can-i-use-the-devtools)
-      - [Checking the network log](#checking-the-network-log)
-  - [Troubleshooting](#troubleshooting)
-    - [While using Cloudflare Tunnels, often Obsidian API fallback and `524` error occurs.](#while-using-cloudflare-tunnels-often-obsidian-api-fallback-and-524-error-occurs)
-    - [On the mobile device, cannot synchronise on the local network!](#on-the-mobile-device-cannot-synchronise-on-the-local-network)
-    - [I think that something bad happening on the vault...](#i-think-that-something-bad-happening-on-the-vault)
-    - [Flag Files](#flag-files)
-    - [Old tips](#old-tips)
+# Troubleshooting
 
-<!-- - -->
-
-## Tips
-
-### CORS avoidance
-
-If we are unable to configure CORS properly for any reason (for example, if we cannot configure non-administered network devices), we may choose to ignore CORS.
-To use the Obsidian API (also known as the Non-Native API) to bypass CORS, we can enable the toggle ``Use Request API to avoid `inevitable` CORS problem``.
-
-<!-- Add **Long explanation of CORS** here for integrity -->
-
-### CORS configuration with reverse proxy
-
-- IMPORTANT: CouchDB handles CORS by itself. Do not process CORS on the reverse
-  proxy.
-    - Do not process `Option` requests on the reverse proxy!
-    - Make sure `host` and `X-Forwarded-For` headers are forwarded to the CouchDB.
-    - If you are using a subdirectory, make sure to handle it properly. More
-      detailed information is in the
-      [CouchDB documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html).
-
-Minimal configurations are as follows:
-
-#### Nginx
-
-```nginx
-location / {
-    proxy_pass http://localhost:5984;
-    proxy_redirect off;
-    proxy_buffering off;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-}
-```
-
-#### Nginx and subdirectory
-
-```nginx
-location /couchdb {
-    rewrite ^ $request_uri;
-    rewrite ^/couchdb/(.*) /$1 break;
-    proxy_pass http://localhost:5984$uri;
-    proxy_redirect off;
-    proxy_buffering off;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-}
-
-location /_session {
-    proxy_pass http://localhost:5984/_session;
-    proxy_redirect off;
-    proxy_buffering off;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-}
-```
-
-#### Caddy
-
-```caddyfile
-domain.com {
-   reverse_proxy localhost:5984
-}
-```
-
-#### Caddy and subdirectory
-
-```caddyfile
-domain.com {
-    reverse_proxy /couchdb/* localhost:5984
-    reverse_proxy /_session/* localhost:5984/_session
-}
-```
-
-#### Apache
-
-Sorry, Apache is not recommended for CouchDB. Omit the configuration from here.
-Please refer to the
-[Official documentation](https://docs.couchdb.org/en/stable/best-practices/reverse-proxies.html#reverse-proxying-with-apache-http-server).
-
-### Show all setting panes
-
-Full pane is not shown by default. To show all panes, please toggle all in
-`🧙‍♂️ Wizard` -> `Enable extra and advanced features`.
-
-For your information, the all panes are as follows:
-![All Panes](all_toggles.png)
-
-### How to resolve `Tweaks Mismatched of Changed`
-
-(Since v0.23.17)
-
-If you have changed some configurations or tweaks which should be unified
-between the devices, you will be asked how to reflect (or not) other devices at
-the next synchronisation. It also occurs on the device itself, where changes are
-made, to prevent unexpected configuration changes from unwanted propagation.\
-(We may thank this behaviour if we have synchronised or backed up and restored
-Self-hosted LiveSync. At least, for me so).
-
-Following dialogue will be shown: ![Dialogue](tweak_mismatch_dialogue.png)
-
-- If we want to propagate the setting of the device, we should choose
-  `Update with mine`.
-- On other devices, we should choose `Use configured` to accept and use the
-  configured configuration.
-- `Dismiss` can postpone a decision. However, we cannot synchronise until we
-  have decided.
-
-Rest assured that in most cases we can choose `Use configured`. (Unless you are
-certain that you have not changed the configuration).
-
-If we see it for the first time, it reflects the settings of the device that has
-been synchronised with the remote for the first time since the upgrade.
-Probably, we can accept that.
-
-<!-- Add here -->
-
-## Notable bugs and fixes
-
-### Binary files get bigger on iOS
-
-- Reported at: v0.20.x
-- Fixed at: v0.21.2 (Fixed but not reviewed)
-- Required action: larger files will not be fixed automatically, please perform
-  `Verify and repair all files`. If our local database and storage are not
-  matched, we will be asked to apply which one.
-
-### Some setting name has been changed
-
-- Fixed at: v0.22.6
-
-| Previous name                | New name                                 |
-| ---------------------------- | ---------------------------------------- |
-| Open setup URI               | Use the copied setup URI                 |
-| Copy setup URI               | Copy current settings as a new setup URI |
-| Setup Wizard                 | Minimal Setup                            |
-| Check database configuration | Check and Fix database configuration     |
-
-## Questions and Answers
-
-### How should I share the settings between multiple devices?
-
-- Device setup:
-    - Using `Setup URI` is the most straightforward way.
-- Setting changes during use:
-    - Use `Sync settings via Markdown files` on the `🔄️ Sync settings` pane.
-
-### What should I enter for the passphrase of Setup-URI?
-
-- Anything you like is OK. However, the recommendation is as follows:
-    - Include the vault (group) information.
-    - Include the date of operation.
-    - Anything random for your security.
-    - For example, `MyVault-20240901-r4nd0mStr1ng`.
-- Why?
-    - The Setup-URI is encoded; that means it cannot indicate the actual settings. Hence, if you use the same passphrase for multiple vaults, you may accidentally mix up vaults.
-
-### Why the settings of Self-hosted LiveSync itself is disabled in default?
-
-Basically, if we configure all `additionalSuffixOfDatabaseName` the same, we can synchronise this file between multiple devices.
-(`additionalSuffixOfDatabaseName` should be unique in each device, not in the synchronised vaults).
-However, if we synchronise the settings of Self-hosted LiveSync itself, we may encounter some unexpected behaviours.
-For example, if a setting that 'let Self-hosted LiveSync setting be excluded' is synced, it is very unlikely that things will recover automatically after this, and there is little chance we will even notice this. Even if we change our minds and change the settings back on other devices. It could get even worse if incompatible changes are automatically reflected; everything will break.
-
-### The plug-in says `something went wrong`.
-
-There are many cases where this is really unclear. One possibility is that the chunk fetch did not go well.
-
-1. Restarting Obsidian sometimes helps (fetch-order problem).
-2. If actually there are no chunks, please perform `Recreate missing chunks for all files` on the `🧰 Hatch` pane at the other devices. And synchronise again. (also restart Obsidian may effect).
-3. If the problem persists, please perform `Verify and repair all files` on the `🧰 Hatch` pane. If our local database and storage are not matched, we will be asked to apply which one.
-
-### A large number of files were deleted, and were synchronised!
-
-1. Backup everything important.
-    - Your local vault.
-    - Your CouchDB database (this can be done by replicating to another database).
-2. Prepare the empty vault
-3. Place `redflag.md` at the top of the vault.
-4. Apply the settings **BUT DO NOT PROCEED TO RESTORE YET**.
-     - You can use `Setup URI`, QR Code, or manually apply the settings.
-5. Set `Maximum file modification time for reflected file events` in `Remediation` on the `🩹 Patches` pane.
-    - If you know when the files were deleted, set the time a bit before that.
-    - If not, bisecting may help us.
-6. Delete `redflag.md`.
-7. Perform `Reset Synchronisation on This Device` on the `🎛️ Maintenance` pane.
-
-This mode is very fragile. Please be careful.
-
-### Why `Use an old adapter for compatibility` is somehow enabled in my vault?
-
-Because you are a compassionate and experienced user. Before v0.17.16, we used
-an old adapter for the local database. At that time, current default adapter has
-not been stable. The new adapter has better performance and has a new feature
-like purging. Therefore, we should use new adapters and current default is so.
-
-However, when switching from an old adapter to a new adapter, some converting or
-local database rebuilding is required, and it takes some time. It was a long
-time ago now, but we once inconvenienced everyone in a hurry when we changed the
-format of our database. For these reasons, this toggle is automatically on if we
-have upgraded from vault which using an old adapter.
-
-When you overwrite server data with this device's files or reset synchronisation on this device again, you will be asked to
-switch this.
-
-Therefore, experienced users (especially those stable enough not to have to
-overwrite server data) may have this toggle enabled in their Vault. Please
-disable it when you have enough time.
-
-### ZIP (or any extensions) files were not synchronised. Why?
-
-It depends on Obsidian detects. May toggling `Detect all extensions` of
-`File and links` (setting of Obsidian) will help us.
-
-### I hope to report the issue, but you said you needs `Report`. How to make it?
-
-We can copy the report to the clipboard, by performing 
-`Generate full report for opening the issue with debug info` command!
-
-### Where can I check the log?
-
-We can launch the log pane by `Show log` on the command palette. And if you have
-troubled something, please enable the `Verbose Log` on the `General Setting`
-pane.
-`Generate full report for opening the issue with debug info` command also contains 
-the recent 1000 log lines, which is very helpful for debugging. Full-report is 
-already set to the verbose level, so it contains all the logs without enabling the 
-`Verbose Log` toggle.
-
-Let me note that please be sure to remove any sensitive information before sharing the report.
-
-However, the logs would not be kept so long and cleared when restarted. If you
-want to check the logs, please enable `Write logs into the file` temporarily.
-
-![ScreenShot](../images/write_logs_into_the_file.png)
+Start with the symptom which is visible now. Do not reset a database, change transport, or enable P2P merely to see whether the problem disappears.
 
 > [!IMPORTANT]
->
-> - Writing logs into the file will impact the performance.
-> - Please make sure that you have erased all your confidential information
->   before reporting issue.
+> If Obsidian will not start, do not give up. Close it, create `redflag.md` at the Vault root with the operating system's file manager, then follow [Recovery and flag files](recovery.md). This is the supported route for intervening before ordinary LiveSync start-up work.
 
-### Why are the logs volatile and ephemeral?
+Before changing settings:
 
-To avoid unexpected exposure to our confidential things.
+1. Back up the affected Vaults and, where possible, the remote database or bucket.
+2. Stop editing on other devices.
+3. Confirm that every participating device uses the intended plug-in version.
+4. Identify whether the active main remote is CouchDB, Object Storage, or P2P.
+5. Open `Show log` and note the first error, rather than only the final summary.
 
-### Some network logs are not written into the file.
+For a report, run `Generate full report for opening the issue with debug info`, remove credentials and private server details, and include the steps which caused the symptom.
 
-Especially the CORS error will be reported as a general error to the plug-in for
-security reasons. So we cannot detect and log it. We are only able to
-investigate them by [Checking the network log](#checking-the-network-log).
+## CouchDB does not connect
 
-### If a file were deleted or trimmed, the capacity of the database should be reduced, right?
+Check the connection in this order:
 
-No, even though if files were deleted, chunks were not deleted. Self-hosted
-LiveSync splits the files into multiple chunks and transfers only newly created.
-This behaviour enables us to less traffic. And, the chunks will be shared
-between the files to reduce the total usage of the database.
+1. Confirm that the URL is complete and points to the intended server.
+2. On mobile, use HTTPS with a certificate trusted by the operating system. Plain HTTP and self-signed certificates are not supported.
+3. Confirm the username, password, database name, and any custom headers.
+4. Confirm that the server responds outside the plug-in and that the database exists on additional devices.
+5. Use the setup dialogue's connection test.
+6. If basic access works, run **Check server requirements**. Its initial check is read-only. Each offered server change requires separate confirmation.
 
-And one more thing, we can handle the conflicts on any device even though it has
-happened on other devices. This means that conflicts will happen in the past,
-after the time we have synchronised. Hence we cannot collect and delete the
-unused chunks even though if we are not currently referenced.
+Configure CouchDB CORS first. Reverse-proxy examples belong in [Set up your own CouchDB server](setup_own_server.md), alongside the rest of the server configuration.
 
-To shrink the database size, `Overwrite Server Data with This Device's Files` is the only reliable and effective way.
-But do not worry, if we have synchronised well. We have the actual and real
-files. Only it takes a bit of time and traffic.
+`Use Internal API` is a compatibility workaround for a trusted server. It sends the configured credentials through Obsidian's internal request API. Enable it only after checking the destination, and do not treat a fallback through that API as proof that the server or proxy is correctly configured.
 
-### How to launch the DevTools
+A Cloudflare `524` response means that Cloudflare timed out while waiting for the origin. The response may also lack the CORS headers which would have been present on an ordinary CouchDB response. Correct the long-running server or proxy request first. The advanced CouchDB option `Use timeouts instead of heartbeats` may help only when the underlying operation is otherwise healthy.
 
-#### On Desktop Devices
+For JWT-specific setup and key-format errors, see [JWT Authentication on CouchDB](tips/jwt-on-couchdb.md).
 
-We can launch the DevTools by pressing `ctrl`+`shift`+`i` (`Command`+`shift`+`i` on Mac).
+## CouchDB was working but synchronisation stopped
 
-#### On Android
+Do not switch to P2P or reset the database as the first response. Check:
 
-Please refer to [Remote debug Android devices](https://developer.chrome.com/docs/devtools/remote-debugging/).
-Once the DevTools have been launched, everything operates the same as on a PC.
+1. the active remote profile and connection state;
+2. the plug-in version on every device;
+3. the CouchDB response and server logs;
+4. pending LiveSync progress indicators;
+5. `Check server requirements`; and
+6. the LiveSync log and full report.
 
-#### On iOS, iPadOS devices
+If the remote is healthy but one device's local database is not, use [Reset Synchronisation on This Device](recovery.md#reset-synchronisation-on-this-device) only after backing up unsynchronised local files.
 
-If we have a Mac, we can inspect from Safari on the Mac. Please refer to [Inspecting iOS and iPadOS](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios).
+## Files are missing or excluded
 
-### How can I use the DevTools?
+Check Obsidian's `Detect all file extensions`, LiveSync selectors, ignore files, file-size limits, modification-time limits, and Hidden File Sync rules. A filtered file is different from a file which reached the database but could not be reconstructed from its chunks.
 
-#### Checking the network log
+If the log reports missing chunks or a size mismatch:
+
+1. restart Obsidian once to rule out an interrupted fetch;
+2. on a device which has the correct file, run `Recreate missing chunks for all files`, then synchronise; and
+3. if the mismatch remains, run `Verify and repair all files` from `Hatch` and review which copy is authoritative.
+
+## A configuration-mismatch dialogue blocks synchronisation
+
+Some settings must match across devices. LiveSync pauses synchronisation when the local and remote values differ rather than propagating an unexpected change silently.
+
+- Choose `Update with mine` only when this device's setting is the intended shared value.
+- Choose `Use configured` to accept the value already stored for the synchronisation group.
+- `Dismiss` postpones the decision, but synchronisation remains paused until it is resolved.
+
+![Configuration mismatch dialogue](tweak_mismatch_dialogue.png)
+
+Historic defect notices and renamed controls are retained in the [0.25 release history](releases/0.25.md) and [legacy release history](releases/legacy.md), rather than in the current troubleshooting path.
+
+## Setup and settings questions
+
+### Share a configuration with another device
+
+Generate an encrypted Setup URI from a working device. This preserves the intended remote profiles and selections while allowing the additional device to keep its own device-specific name. Store the URI and its passphrase separately.
+
+For deliberate setting changes during normal use, use `Sync settings via Markdown files` under `Sync settings`.
+
+### Choose a Setup URI passphrase
+
+Use a strong passphrase which is distinct from the Vault encryption passphrase. Record enough context outside the encrypted URI to identify the intended Vault and date, but do not rely on a reused human-readable pattern alone.
+
+### Why synchronising LiveSync's own settings is disabled by default
+
+An automatically propagated transport, database, or exclusion setting can disable the mechanism needed to reverse it. LiveSync therefore keeps its own settings out of Customisation Sync by default. Enable that advanced behaviour only with an independent recovery path and device-specific database suffixes.
+
+### The plug-in reports that something went wrong
+
+Use the first specific error in `Show log` to choose the relevant section. When it names chunks or a size mismatch, follow [Files are missing or excluded](#files-are-missing-or-excluded). Do not rebuild solely from the generic final message.
+
+### A large deletion propagated
+
+Stop every device, preserve the available copies, and follow [Recovery and flag files](recovery.md). If the deletion time is known, `Maximum file modification time for reflected file events` under `Remediation` can limit which remote events are applied while recovering into a separate, backed-up Vault. Treat that as a forensic recovery constraint, not as an ordinary synchronisation setting.
+
+### An old database adapter is still selected
+
+Very old Vaults may retain the compatibility adapter until a deliberate local database migration or reset. Do not toggle it merely to troubleshoot an unrelated current failure. The history and migration notes are in the [legacy release history](releases/legacy.md).
+
+### ZIP or another extension is not synchronised
+
+Enable Obsidian's `Detect all file extensions`, then check LiveSync selectors, ignore rules, and size limits as described in [Files are missing or excluded](#files-are-missing-or-excluded).
+
+## Collect a report
+
+Run `Generate full report for opening the issue with debug info` to copy the current settings summary and recent verbose log lines. Remove credentials, remote URLs, Vault names, file contents, and other private information before sharing it.
+
+Use `Show log` for live inspection. Logs are intentionally kept in memory for a limited time to reduce accidental disclosure. Enable `Write logs into the file` only while reproducing a problem, then disable it and remove the file after review because persistent logging affects performance and may contain private data.
+
+![Write logs into the file](../images/write_logs_into_the_file.png)
+
+Browser security errors, particularly CORS failures, may reach the plug-in only as a general network error. Use the network inspector when the ordinary log cannot show the rejected response.
+
+## The database remains large after files are deleted
+
+LiveSync stores file metadata, chunks, revision history, conflicts, deletions, and tombstones. Deleting or shortening a file therefore does not immediately remove every object which once represented it.
+
+Garbage Collection can remove unreferenced chunks, but it is appropriate only when the Vault and local database are healthy and all relevant devices have synchronised. Tombstones and retained revisions are not free, so Garbage Collection does not guarantee a minimal database.
+
+`Overwrite Server Data with This Device's Files` is a separate rebuild operation and is the more certain way to reconstruct a central remote from a chosen authoritative Vault. It is also destructive and may discard changes which exist only on another device. Review [Recovery and flag files](recovery.md#garbage-collection-is-not-rebuild) before choosing between them.
+
+## Inspect a network failure
+
+### Desktop
+
+Open Developer Tools with `Ctrl`+`Shift`+`I`, or `Command`+`Option`+`I` on macOS.
+
+### Android
+
+Follow Chrome's [Remote debug Android devices](https://developer.chrome.com/docs/devtools/remote-debugging/) guide.
+
+### iOS and iPadOS
+
+Use Safari on a Mac and follow Apple's [Inspecting iOS and iPadOS](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios) guide.
+
+### Network evidence
 
 1. Open the network pane.
-2. Find the requests marked in red.\
+2. Reproduce the failure and select the request marked in red.
    ![Errored](../images/devtools1.png)
-3. Capture the `Headers`, `Payload`, and, `Response`. **Please be sure to keep
-   important information confidential**. If the `Response` contains secrets, you
-   can omitted that. Note: Headers contains a some credentials. **The path of
-   the request URL, Remote Address, authority, and authorization must be
-   concealed.**\
+3. Record the status, timing, and a sanitised version of the headers, payload, and response.
+4. Remove the request path, remote address, authority, authorisation, cookies, credentials, and response secrets before sharing.
+
    ![Concealed sample](../images/devtools2.png)
 
-## Troubleshooting
+## P2P does not connect or transfer changes
 
-<!-- Add here -->
+Use [Peer-to-Peer Synchronisation Tips](tips/p2p-sync-tips.md). Check signalling discovery separately from the WebRTC data path, and confirm which devices announce and follow changes. P2P is not a repair step for another transport.
 
-### While using Cloudflare Tunnels, often Obsidian API fallback and `524` error occurs.
+## Obsidian or LiveSync remains suspended
 
-A `524` error occurs when the request to the server is not completed within a
-`specified time`. This is a timeout error from Cloudflare. From the reported
-issue, it seems to be 100 seconds. (#627).
+Follow [Recovery and flag files](recovery.md). A `redflag.md` emergency stop remains active until it is removed outside Obsidian. Fetch and rebuild flags have different, potentially destructive meanings; do not create them merely to clear a warning.
 
-Therefore, this error returns from Cloudflare, not from the server. Hence, the
-result contains no CORS field. It means that this response makes the Obsidian
-API fallback.
+## Further technical context
 
-However, even if the Obsidian API fallback occurs, the request is still not
-completed within the `specified time`, 100 seconds.
-
-To solve this issue, we need to configure the timeout settings.
-
-Please enable the toggle in `💪 Power users` -> `CouchDB Connection Tweak` ->
-`Use timeouts instead of heartbeats`.
-
-### On the mobile device, cannot synchronise on the local network!
-
-Obsidian mobile is not able to connect to the non-secure end-point, such as
-starting with `http://`. Make sure your URI of CouchDB. Also not able to use a
-self-signed certificate.
-
-### I think that something bad happening on the vault...
-
-Place the [flag file](#flag-files) on top of the vault, and restart Obsidian. The most simple
-way is to create a new note and rename it to `redflag`. Of course, we can put it
-without Obsidian.
-
-For example, if there is `redflag.md`, Self-hosted LiveSync suspends all database and storage
-processes.
-
-### Scram State and Flag Files (SCRAM Warning Loop)
-
-The plug-in uses a **Scram state** (emergency suspension of all synchronisation processes) to prevent database corruption when severe errors or conflicts are detected. This state is often triggered or persisted by **flag files** placed at the root of the vault.
-
-If you encounter a warning saying **"Scram detected, all sync operations are suspended per SCRAM"** or get caught in an infinite loop where the warning persists even after clicking "Resume", it is likely due to a flag file in your vault.
-
-#### Flag Files
-
-A flag file is a simple Markdown file located at the root of your vault. Its very existence is significant; it may be left blank or contain any text. These files are used so they can be easily placed or deleted from outside Obsidian (e.g., when Obsidian fails to launch).
-
-| Filename      | Human-Friendly Name | Description                                                                             |
-| ------------- | ------------------- | --------------------------------------------------------------------------------------- |
-| `redflag.md`  | -                   | Suspends all processes (activates Scram).                                               |
-| `redflag2.md` | `flag_rebuild.md`   | Suspends all processes, and overwrites server data with this device's files.           |
-| `redflag3.md` | `flag_fetch.md`     | Suspends all processes, discards the local database, and resets synchronisation on this device. |
-
-When resetting synchronisation on this device or overwriting server data, restarting Obsidian is performed once for safety reasons. At that time, Self-hosted LiveSync uses these files to determine whether the process should be carried out. (This mechanism is especially useful on mobile devices to force cancellation if the database rebuilding fails). These files are not subject to synchronisation.
-
-Flag-file recovery is handled before the compatibility-review dialogue. `redflag.md` keeps start-up stopped, while a cancelled recovery or one which schedules a restart also prevents a second dialogue from competing with it in that process. When fetch-all or rebuild-all completes and start-up continues, Self-hosted LiveSync can still ask for compatibility review before ordinary synchronisation resumes. Completing a recovery does not automatically acknowledge a database or settings version; use the explicit resume action after reviewing the explanation.
-
-#### How to Resolve the Scram Loop
-
-If you cannot disable Scram, please follow these steps:
-1. Close Obsidian completely.
-2. Open your system's file manager and check the root directory of your vault.
-3. Locate and delete any flag files (such as `redflag.md`, `redflag2.md`, or `redflag3.md`).
-4. Launch Obsidian.
-5. Go to the settings dialogue -> **Hatch** -> **Scram Switches**, and manually toggle **Suspend file watching** and **Suspend database reflecting** to `false` (disabled) if they have not been reset automatically.
-
-> [!TIP]
-> This is the reason why flag files are standard `.md` files: it allows you to manage them externally. On mobile devices, you can use system file manager applications (such as the native **Files** app on iOS/iPadOS or **Files by Google** on Android) to find and delete these files to resolve a lock, or conversely, create/place a new `redflag.md` file (or directory) at the root of your vault to force-suspend synchronisation and stop Obsidian's boot-up sequence if you need to fix a database issue.
-
-### JWT Authentication Errors
-
-#### DataError when configuring JWT authentication
-
-If you encounter a `DataError:` with no additional information in the logs when configuring JWT authentication, this usually indicates a private key formatting issue.
-
-Self-hosted LiveSync requires the private key (for ES256/ES512 algorithms) to be in the **PKCS#8 PEM** format. Standard SEC1 EC private keys (which begin with `-----BEGIN EC PRIVATE KEY-----`) will trigger this error.
-
-To resolve this, convert your private key to PKCS#8 format using the following `openssl` command:
-```bash
-openssl pkcs8 -topk8 -inform PEM -nocrypt -in private.key -out pkcs8.key
-```
-Then paste the contents of `pkcs8.key` (which begins with `-----BEGIN PRIVATE KEY-----`) into the JWT Key field.
-
-### Old tips
-
-- Rarely, a file in the database could be corrupted. The plug-in will not write
-  to local storage when a file looks corrupted. If a local version of the file
-  is on your device, the corruption could be fixed by editing the local file and
-  synchronising it. But if the file does not exist on any of your devices, then
-  it can not be rescued. In this case, you can delete these items from the
-  settings dialogue.
-- To stop the boot-up sequence (eg. for fixing problems on databases), you can
-  put a `redflag.md` file (or directory) at the root of your vault. Tip for iOS:
-  a redflag directory can be created at the root of the vault using the File
-  application.
-- Also, with `redflag2.md` placed, we can automatically overwrite server data with this device's files during the boot-up sequence. With `redflag3.md`, we
-  can discard only the local database and reset synchronisation on this device.
-- Q: The database is growing, how can I shrink it down? A: each of the docs is
-  saved with their past 100 revisions for detecting and resolving conflicts.
-  Picturing that one device has been offline for a while, and comes online
-  again. The device has to compare its notes with the remotely saved ones. If
-  there exists a historic revision in which the note used to be identical, it
-  could be updated safely (like git fast-forward). Even if that is not in
-  revision histories, we only have to check the differences after the revision
-  that both devices commonly have. This is like git's conflict-resolving method.
-  So, We have to make the database again like an enlarged git repo if you want
-  to solve the root of the problem.
-- And more technical Information is in the [Technical Information](tech_info.md)
-- If you want to synchronise files without obsidian, you can use
-  [filesystem-livesync](https://github.com/vrtmrz/filesystem-livesync).
-- WebClipper is also available on Chrome Web
-  Store:[obsidian-livesync-webclip](https://chrome.google.com/webstore/detail/obsidian-livesync-webclip/jfpaflmpckblieefkegjncjoceapakdf)
-
-Repo is here:
-[obsidian-livesync-webclip](https://github.com/vrtmrz/obsidian-livesync-webclip).
-(Docs are a work in progress.)
+See [Technical Information](tech_info.md) for database and synchronisation internals. Current behaviour belongs in this guide; older defect-specific instructions remain in the release histories.

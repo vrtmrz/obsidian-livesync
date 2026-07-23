@@ -23,6 +23,10 @@ export type ConfiguredSettings = {
 export type CoreReadiness = {
     databaseReady: boolean;
     appReady: boolean;
+    configured?: boolean;
+    remoteType?: string;
+    settingVersion?: number;
+    suspended?: boolean;
 };
 
 export type ReplicationAttempt = CoreReadiness & {
@@ -348,9 +352,14 @@ export async function waitForLiveSyncCoreReady(
             [
                 "(async()=>{",
                 "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                "const settings=core.services.setting.currentSettings();",
                 "return JSON.stringify({",
                 "databaseReady:core.services.database.isDatabaseReady(),",
                 "appReady:core.services.appLifecycle.isReady(),",
+                "configured:settings?.isConfigured===true,",
+                "remoteType:settings?.remoteType??'',",
+                "settingVersion:settings?.settingVersion,",
+                "suspended:core.services.appLifecycle.isSuspended(),",
                 "});",
                 "})()",
             ].join(""),

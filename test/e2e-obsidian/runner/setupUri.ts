@@ -177,16 +177,34 @@ export async function captureAndStartInitialisation(
     captures: SetupCaptureNames
 ): Promise<string> {
     const p2pFirstDevice = mode === "new" && captures.guide === "p2p-setup";
+    const p2pAdditionalDevice = mode === "existing" && captures.guide === "p2p-setup";
     const title = p2pFirstDevice
         ? "Setup Complete: Preparing This P2P Device"
+        : p2pAdditionalDevice
+          ? "Setup Complete: Preparing to Fetch from Another Device"
         : mode === "new"
           ? "Setup Complete: Preparing to Initialise Server"
           : "Setup Complete: Preparing to Fetch Synchronisation Data";
     const button = p2pFirstDevice
         ? "Restart and Prepare This Device"
+        : p2pAdditionalDevice
+          ? "Restart and Select Source Device"
         : mode === "new"
           ? "Restart and Initialise Server"
           : "Restart and Fetch Data";
+    if (p2pAdditionalDevice) {
+        await withObsidianPage(port, async (page) => {
+            const modal = modalByTitle(page, title);
+            await modal
+                .getByText("After restarting, select an online source device for the initial Fetch.", {
+                    exact: false,
+                })
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            if ((await modal.getByText("downloaded from the server", { exact: false }).count()) !== 0) {
+                throw new Error("P2P additional-device setup still describes the initial Fetch as a server download.");
+            }
+        });
+    }
     const screenshot = await captureGuideDialogue(
         port,
         `guide-${captures.guide}-${mode === "new" ? "first-initialise" : "second-fetch"}.png`,

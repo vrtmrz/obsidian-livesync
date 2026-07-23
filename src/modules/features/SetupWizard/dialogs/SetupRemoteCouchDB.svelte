@@ -21,18 +21,27 @@
     import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import { copyTo, pickCouchDBSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
-    import { TYPE_CANCELLED, type SetupRemoteCouchDBResultType } from "./setupDialogTypes";
+    import {
+        TYPE_CANCELLED,
+        type CouchDBSetupMode,
+        type SetupRemoteCouchDBInitialData,
+        type SetupRemoteCouchDBResultType,
+    } from "./setupDialogTypes";
+    import { isValidCouchDBServerURL, probeCouchDBConnection } from "./couchDBConnectionProbe";
+    import { $msg as translateMessage } from "@/common/translation";
 
     const default_setting = pickCouchDBSyncSettings(DEFAULT_SETTINGS);
 
     let syncSetting = $state<CouchDBConnection>({ ...default_setting });
-    type Props = GuestDialogProps<SetupRemoteCouchDBResultType, CouchDBConnection>;
+    let setupMode = $state<CouchDBSetupMode>("settings");
+    type Props = GuestDialogProps<SetupRemoteCouchDBResultType, SetupRemoteCouchDBInitialData>;
     const { setResult, getInitialData }: Props = $props();
     onMount(() => {
         if (getInitialData) {
             const initialData = getInitialData();
             if (initialData) {
-                copyTo(initialData, syncSetting);
+                setupMode = initialData.mode;
+                copyTo(initialData.settings, syncSetting);
             }
         }
     });
@@ -69,11 +78,15 @@
                 return "Failed to create replicator instance.";
             }
             try {
-                const result = await replicator.tryConnectRemote(trialRemoteSetting, false);
-                if (result) {
+                const result = await probeCouchDBConnection(
+                    replicator,
+                    trialRemoteSetting,
+                    setupMode === "create-or-connect"
+                );
+                if (result.ok) {
                     return "";
                 } else {
-                    return "Failed to connect to the server. Please check your settings.";
+                    return `Failed to connect to the server: ${result.reason}`;
                 }
             } catch (e) {
                 return `Failed to connect to the server: ${e}`;
@@ -122,7 +135,7 @@
     });
     const canProceed = $derived.by(() => {
         return (
-            syncSetting.couchDB_URI.trim().length > 0 &&
+            isValidCouchDBServerURL(syncSetting.couchDB_URI.trim()) &&
             syncSetting.couchDB_USER.trim().length > 0 &&
             syncSetting.couchDB_PASSWORD.trim().length > 0 &&
             syncSetting.couchDB_DBNAME.trim().length > 0 &&
@@ -131,6 +144,18 @@
     });
     const testSettings = $derived.by(() => {
         return generateSetting();
+    });
+    const isURLInvalid = $derived.by(
+        () => syncSetting.couchDB_URI.trim() !== "" && !isValidCouchDBServerURL(syncSetting.couchDB_URI.trim())
+    );
+    const primaryActionTitle = $derived.by(() => {
+        if (setupMode === "create-or-connect") {
+            return translateMessage("Create or connect to database and continue");
+        }
+        if (setupMode === "connect-existing") {
+            return translateMessage("Connect to existing database and continue");
+        }
+        return translateMessage("Test connection and save");
     });
 </script>
 
@@ -150,6 +175,7 @@
     />
 </InputRow>
 <InfoNote warning visible={isURIInsecure}>We can use only Secure (HTTPS) connections on Obsidian Mobile.</InfoNote>
+<InfoNote warning visible={isURLInvalid}>{translateMessage("Enter a complete HTTP or HTTPS URL.")}</InfoNote>
 <InputRow label="Username">
     <input
         type="text"
@@ -180,13 +206,11 @@
         autocapitalize="off"
         spellcheck="false"
         required
-        pattern="^[a-z][a-z0-9_$()+/-]*$"
         bind:value={syncSetting.couchDB_DBNAME}
     />
 </InputRow>
 <InfoNote>
-    You cannot use capital letters, spaces, or special characters in the database name. And not allowed to start with an
-    underscore (_).
+    {translateMessage("CouchDB validates the database name when you connect. The name must not be empty.")}
 </InfoNote>
 <InputRow label="Use Internal API">
     <input type="checkbox" name="couchdb-use-internal-api" bind:checked={syncSetting.useRequestAPI} />
@@ -270,6 +294,11 @@
     </InfoNote>
 </ExtraItems>
 
+<InfoNote warning>
+    {translateMessage(
+        "This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required."
+    )}
+</InfoNote>
 <PanelCouchDBCheck trialRemoteSetting={testSettings}></PanelCouchDBCheck>
 <hr />
 
@@ -281,8 +310,19 @@
     Checking connection... Please wait.
 {:else}
     <UserDecisions>
-        <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />
-        <Decision title="Continue anyway" commit={() => commit()} />
+        <Decision title={primaryActionTitle} important disabled={!canProceed} commit={() => checkAndCommit()} />
+        {#if setupMode === "settings"}
+            <InfoNote warning>
+                {translateMessage(
+                    "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected."
+                )}
+            </InfoNote>
+            <Decision
+                title={translateMessage("Save without connecting")}
+                disabled={!canProceed}
+                commit={() => commit()}
+            />
+        {/if}
         <Decision title="Cancel" commit={() => cancel()} />
     </UserDecisions>
 {/if}

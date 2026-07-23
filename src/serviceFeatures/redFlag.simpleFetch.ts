@@ -93,7 +93,7 @@ export async function askSimpleFetchMode(
 
     const msg = `We are about to retrieve the remote data.
 
-Firstly, how shall we handle the data retrieved from this remote server?
+Firstly, how shall we handle the data retrieved from this remote source?
 
 - **${SIMPLE_FETCH_STAGE1_NEWER_WINS}**: Compares the modified time of files and takes the newer one.
   If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.

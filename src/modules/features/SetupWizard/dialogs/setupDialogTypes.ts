@@ -102,6 +102,11 @@ export type SetupRemoteE2EEResultType = typeof TYPE_CANCELLED | EncryptionSettin
 export type SetupRemoteBucketResultType = typeof TYPE_CANCELLED | BucketSyncSetting;
 
 export type SetupRemoteCouchDBResultType = typeof TYPE_CANCELLED | CouchDBConnection;
+export type CouchDBSetupMode = "create-or-connect" | "connect-existing" | "settings";
+export type SetupRemoteCouchDBInitialData = {
+    settings: CouchDBConnection;
+    mode: CouchDBSetupMode;
+};
 
 export type SetupRemoteP2PResultType = typeof TYPE_CANCELLED | P2PConnectionInfo;
 

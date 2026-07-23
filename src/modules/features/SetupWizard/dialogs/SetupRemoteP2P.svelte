@@ -33,6 +33,8 @@
     import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
     import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
     import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
+    import { $msg as translateMessage } from "@/common/translation";
+    import { probeP2PSetupConnection } from "./p2pSetupConnectionProbe";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
@@ -119,29 +121,15 @@
             };
             const replicator = new TrysteroReplicator(env);
             try {
-                await replicator.setOnSetup();
-                await replicator.allowReconnection();
-                await replicator.open();
-                for (let i = 0; i < 10; i++) {
-                    // await delay(1000);
-                    await new Promise((resolve) => window.setTimeout(resolve, 1000));
-                    // Logger(`Checking known advertisements... (${i})`, LOG_LEVEL_INFO);
-                    if (replicator.knownAdvertisements.length > 0) {
-                        break;
-                    }
-                }
-                // context.holdingSettings = trialRemoteSetting;
-
-                if (replicator.knownAdvertisements.length === 0) {
-                    return "Your settings seem correct, but no other peers were found.";
+                const result = await probeP2PSetupConnection(replicator);
+                if (!result.ok) {
+                    return `Failed to connect to the signalling relay: ${result.reason}`;
                 }
                 return "";
-            } catch (e) {
-                return `Failed to connect to other peers: ${e}`;
             } finally {
                 try {
-                    replicator.close();
-                    dummyPouch.destroy();
+                    await replicator.close();
+                    await dummyPouch.destroy();
                 } catch (e) {
                     Logger(e, LOG_LEVEL_VERBOSE, "setup-p2p-cleanup");
                 }
@@ -195,18 +183,31 @@
 <InputRow label="Enabled">
     <input type="checkbox" name="p2p-enabled" bind:checked={syncSetting.P2P_Enabled} />
 </InputRow>
-<InputRow label="Relay URL">
+<InputRow label={translateMessage("Signalling relay URLs")}>
     <input
         type="text"
         name="p2p-relay-url"
-        placeholder="Enter the Relay URL)"
+        placeholder="wss://relay.example.com"
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
         bind:value={syncSetting.P2P_relays}
     />
-    <button class="button" onclick={() => setDefaultRelay()}>Use vrtmrz's relay</button>
+    <button class="button" onclick={() => setDefaultRelay()}>
+        {translateMessage("Use the project's public signalling relay")}
+    </button>
 </InputRow>
+<InfoNote>
+    {translateMessage("Peer discovery uses Nostr-compatible signalling relays.")}
+    {translateMessage(
+        "The project's public signalling relay is a best-effort convenience operated by the project author. It does not store Vault contents, but signalling metadata may be visible to the relay. Availability and log retention are not guaranteed. You can replace it with your own Nostr-compatible relay."
+    )}
+    <a
+        href="https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/p2p.md"
+        target="_blank"
+        rel="noopener noreferrer">{translateMessage("Learn more about P2P connections")}</a
+    >.
+</InfoNote>
 <InputRow label="Group ID">
     <input
         type="text"
@@ -245,12 +246,13 @@
     If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in
     launches.
 </InfoNote>
-<InputRow label="Auto Broadcast Changes">
+<InputRow label={translateMessage("Announce changes automatically after connecting")}>
     <input type="checkbox" name="p2p-auto-broadcast" bind:checked={syncSetting.P2P_AutoBroadcast} />
 </InputRow>
 <InfoNote>
-    If "Auto Broadcast Changes" is enabled, changes will be automatically broadcasted to connected peers without
-    requiring manual intervention. This requests peers to fetch this device's changes.
+    {translateMessage(
+        "When enabled, this device notifies connected peers after a local change. The notification contains no Vault data; a peer which follows this device then fetches the change through the encrypted P2P connection."
+    )}
 </InfoNote>
 <ExtraItems title="Advanced Settings">
     <InfoNote>
@@ -258,10 +260,14 @@
         connections. In most cases, you can leave these fields blank.
     </InfoNote>
     <InfoNote warning>
-        Using public TURN servers may have privacy implications, as your data will be relayed through third-party
-        servers. Even if your data are encrypted, your existence may be known to them. Please ensure you trust the TURN
-        server provider before using their services. Also your `network administrator` too. You should consider setting
-        up your own TURN server for your FQDN, if possible.
+        {translateMessage(
+            "TURN relays the encrypted WebRTC connection only when a direct path cannot be established. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust."
+        )}
+        <a
+            href="https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/p2p.md#signalling-relay-and-turn-server"
+            target="_blank"
+            rel="noopener noreferrer">{translateMessage("Learn more about signalling and TURN")}</a
+        >.
     </InfoNote>
     <InputRow label="TURN Server URLs (comma-separated)">
         <textarea

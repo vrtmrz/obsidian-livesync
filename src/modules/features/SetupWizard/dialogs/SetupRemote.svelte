@@ -6,6 +6,7 @@
     import Options from "@/modules/services/LiveSyncUI/components/Options.svelte";
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import { $msg as translateMessage } from "@/common/translation";
     import {
         TYPE_COUCHDB,
         TYPE_BUCKET,
@@ -47,9 +48,9 @@
             Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.
         </Option>
         <Option selectedValue={TYPE_P2P} title="Peer-to-Peer only" bind:value={userType}>
-            This feature enables direct synchronisation between devices. No server is required, but both devices must be
-            online at the same time for synchronisation to occur, and some features may be limited. Internet connection
-            is only required to signalling (detecting peers) and not for data transfer.
+            {translateMessage(
+                "No central data-storage server is required, but a signalling relay is required for peer discovery. Both devices must be online at the same time. Vault data travels through the encrypted P2P connection, not through the signalling relay. Some features may be limited."
+            )}
         </Option>
     </Options>
 </Instruction>

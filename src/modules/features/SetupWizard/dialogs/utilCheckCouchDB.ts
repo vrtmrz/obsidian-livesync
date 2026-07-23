@@ -12,7 +12,15 @@ import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };
 export type ResultOk<T> = { message: string; result: "ok"; value?: T };
-export type ResultError<T> = { message: string; result: "error"; value: T; fixMessage: string; fix(): Promise<void> };
+export type ResultError<T> = {
+    message: string;
+    result: "error";
+    value: T;
+    fixMessage: string;
+    settingKey: string;
+    expectedValue: string;
+    fix(): Promise<void>;
+};
 export type ConfigCheckResult<T = unknown, U = unknown> =
     | ResultOk<T>
     | ResultError<U>
@@ -79,8 +87,15 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
     const addSuccess = <T>(msg: string, value?: T) => {
         result.push({ message: msg, result: "ok", value });
     };
-    const _addError = <T>(message: string, fixMessage: string, fix: () => Promise<void>, value?: T) => {
-        result.push({ message, result: "error", fixMessage, fix, value });
+    const _addError = <T>(
+        message: string,
+        fixMessage: string,
+        settingKey: string,
+        expectedValue: string,
+        fix: () => Promise<void>,
+        value?: T
+    ) => {
+        result.push({ message, result: "error", fixMessage, settingKey, expectedValue, fix, value });
     };
     const addErrorMessage = (msg: string, classes: string[] = []) => {
         result.push({ message: msg, result: "error", classes });
@@ -90,6 +105,8 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         _addError(
             message,
             fixMessage,
+            key,
+            expected,
             async () => {
                 await updateRemoteSetting(editingSettings, key, expected);
             },

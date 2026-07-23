@@ -15,6 +15,9 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 ### Improved
 
 - Choosing **Not now** on a merge conflict now postpones repeated dialogues for that conflict while the active file retains an unresolved-conflict warning. Three or more live versions show their current count and are reviewed one deterministic pair at a time; completed pairs remain resolved across restart. The existing conflict commands can reopen a postponed conflict explicitly, and a later conflict prompts again after the current one has been resolved.
+- P2P is now presented only after it has been configured: its status pane no longer opens at start-up, its ribbon icon remains hidden for CouchDB-only Vaults, and the retired P2P pane command has been removed. The current pane distinguishes announcing changes, following a peer, and persistent per-device actions. Setup and guidance now distinguish the required signalling relay from optional TURN, and describe the public signalling relay's privacy and availability limits.
+- First-device P2P setup now accepts a successfully opened signalling room without requiring another peer to be online. Additional-device Fetch still requires selecting a source peer and completing `P2P Rebuild`.
+- Manual CouchDB setup now distinguishes creating a first database from connecting an additional device to an existing one. Settings mode can save an unverified profile explicitly, while onboarding requires a successful connection, and each proposed server-configuration fix requires separate confirmation.
 
 ### Fixed
 
@@ -23,6 +26,7 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 ### Testing
 
 - Added revision-tree regressions and focused real-Obsidian scenarios for multiple-version review and restart between resolution stages.
+- Added regressions for P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, and mobile dialogues.
 
 ## 1.0.0-beta.1
 

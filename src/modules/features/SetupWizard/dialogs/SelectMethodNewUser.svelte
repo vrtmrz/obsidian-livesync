@@ -7,6 +7,7 @@
     import Options from "@/modules/services/LiveSyncUI/components/Options.svelte";
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import { $msg as translateMessage } from "@/common/translation";
     import {
         TYPE_USE_SETUP_URI,
         TYPE_CONFIGURE_MANUALLY,
@@ -49,7 +50,10 @@
         >
             This is an advanced option for users who do not have a URI or who wish to configure detailed settings.
             You can also select this option if you intend to use <strong>P2P (Peer-to-Peer) synchronisation</strong>
-            instead of a CouchDB/S3 server — P2P requires no server setup at all.
+            instead of a CouchDB/S3 server.
+            {translateMessage(
+                "P2P requires no central data-storage server, but it still uses a signalling relay for peer discovery."
+            )}
         </Option>
     </Options>
 </Instruction>

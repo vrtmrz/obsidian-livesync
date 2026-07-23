@@ -13,6 +13,7 @@
     import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
         getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
@@ -134,15 +135,16 @@
 
     {#if showBroadcastToggle}
     <div class="status-item status-action broadcast-row">
-        <!-- Live-push to peers: stream this device's changes to connected peers for LiveSync -->
         <label class="broadcast-label" for="broadcast-toggle">
-            Live-push to peers
+            {translateMessage("Announce changes")}
         </label>
         <button
             id="broadcast-toggle"
             class="broadcast-button {isBroadcasting ? 'is-on' : 'is-off'}"
             onclick={toggleBroadcast}
-            title={isBroadcasting ? 'Pushing changes to peers — click to stop' : 'Start pushing changes to peers'}
+            title={isBroadcasting
+                ? translateMessage("Stop announcing changes")
+                : translateMessage("Start announcing changes")}
         >
             {isBroadcasting ? '📡 On' : '📡 Off'}
         </button>

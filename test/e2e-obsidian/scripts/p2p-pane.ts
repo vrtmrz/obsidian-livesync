@@ -1,6 +1,12 @@
-import { assertNoHorizontalOverflow } from "@vrtmrz/obsidian-test-session";
+import { assertLocatorWithinViewport, assertNoHorizontalOverflow } from "@vrtmrz/obsidian-test-session";
+import type { Page } from "playwright";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
-import { createE2eObsidianDeviceLocalState, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
+import {
+    createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
+    waitForLiveSyncCoreReady,
+} from "../runner/liveSyncWorkflow.ts";
+import { setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { captureObsidianPage, obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
@@ -8,7 +14,10 @@ import { createTemporaryVault } from "../runner/vault.ts";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_P2P_PANE_TIMEOUT_MS ?? 10000);
 
 type ObsidianTestApp = {
-    commands?: { executeCommandById(commandId: string): boolean };
+    commands?: {
+        commands?: Record<string, unknown>;
+        executeCommandById(commandId: string): boolean;
+    };
 };
 
 type ObsidianTestGlobal = typeof globalThis & { app?: ObsidianTestApp };
@@ -25,9 +34,9 @@ async function openP2PStatusPane(): Promise<void> {
     }
 }
 
-async function verifyP2PStatusPane(): Promise<string> {
+async function verifyP2PStatusPane(filename: string, mobile: boolean): Promise<string> {
     await openP2PStatusPane();
-    return await captureObsidianPage(obsidianRemoteDebuggingPort(), "p2p-status-pane.png", async (page) => {
+    return await captureObsidianPage(obsidianRemoteDebuggingPort(), filename, async (page) => {
         const heading = page.getByRole("heading", { name: "Signalling Status" }).last();
         await heading.waitFor({ state: "visible", timeout: uiTimeoutMs });
         const pane = heading.locator(
@@ -39,7 +48,119 @@ async function verifyP2PStatusPane(): Promise<string> {
             timeout: uiTimeoutMs,
         });
         await assertNoHorizontalOverflow(page, pane, { label: "P2P status pane" });
+        if (mobile) {
+            await assertLocatorWithinViewport(page, pane, { label: "mobile P2P status pane" });
+        }
+        await dismissOpenNotices(page);
     });
+}
+
+async function assertP2PUIIsOptIn(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const state = await page.evaluate(() => {
+            const commands = (globalThis as ObsidianTestGlobal).app?.commands?.commands ?? {};
+            return {
+                currentCommand: commands["obsidian-livesync:open-p2p-server-status"] !== undefined,
+                legacyCommand: commands["obsidian-livesync:open-p2p-replicator"] !== undefined,
+            };
+        });
+        if (!state.currentCommand) {
+            throw new Error("The current P2P status command was not registered.");
+        }
+        if (state.legacyCommand) {
+            throw new Error("The retired P2P pane command is still exposed.");
+        }
+        if ((await page.locator(".workspace-leaf-content[data-type='p2p-server-status']:visible").count()) !== 0) {
+            throw new Error("The P2P status pane opened automatically for an unconfigured CouchDB user.");
+        }
+        if ((await page.locator(".livesync-ribbon-p2p-server-status").count()) !== 0) {
+            throw new Error("The P2P ribbon icon was shown without a P2P configuration.");
+        }
+    });
+}
+
+async function assertConfiguredP2PUIIsAvailable(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.locator(".livesync-ribbon-p2p-server-status").waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        if ((await page.locator(".workspace-leaf-content[data-type='p2p-server-status']:visible").count()) !== 0) {
+            throw new Error("The configured P2P status pane opened before the user requested it.");
+        }
+    });
+}
+
+async function dismissOpenNotices(page: Page): Promise<void> {
+    const deadline = Date.now() + uiTimeoutMs;
+    let quietSince = Date.now();
+    while (Date.now() < deadline) {
+        const notices = page.locator(".notice:visible");
+        if ((await notices.count()) === 0) {
+            if (Date.now() - quietSince >= 500) {
+                return;
+            }
+            await page.waitForTimeout(100);
+            continue;
+        }
+        quietSince = Date.now();
+        const closeButton = notices.first().locator(".notice-close-button");
+        if ((await closeButton.count()) > 0) {
+            await closeButton.click({ force: true, timeout: uiTimeoutMs });
+        } else {
+            // Obsidian 1.12 does not render a separate close control for every
+            // Notice; clicking the Notice itself is its standard dismiss action.
+            await notices.first().click({ force: true, position: { x: 2, y: 2 }, timeout: uiTimeoutMs });
+        }
+    }
+    throw new Error("Transient Obsidian notices did not become quiet before the P2P status screenshot.");
+}
+
+const basePluginData = createE2eCouchDbPluginData(
+    {
+        uri: "http://127.0.0.1:5984",
+        username: "",
+        password: "",
+        dbName: "p2p-pane-ui-only",
+    },
+    {
+        notifyThresholdOfRemoteStorageSize: -1,
+        periodicReplication: false,
+        P2P_Enabled: false,
+        P2P_AutoStart: false,
+        syncAfterMerge: false,
+        syncOnEditorSave: false,
+        syncOnFileOpen: false,
+        syncOnSave: false,
+        syncOnStart: false,
+    }
+);
+
+async function withP2PSession(
+    binary: string,
+    cliBinary: string,
+    pluginData: Record<string, unknown>,
+    verify: () => Promise<void>
+): Promise<void> {
+    const vault = await createTemporaryVault();
+    let session: ObsidianLiveSyncSession | undefined;
+    try {
+        session = await startObsidianLiveSyncSession({
+            binary,
+            cliBinary,
+            vault,
+            startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+            pluginData,
+            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
+        });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        await verify();
+    } finally {
+        if (session) {
+            await session.app.stop();
+        }
+        await vault.dispose();
+    }
 }
 
 async function main(): Promise<void> {
@@ -48,39 +169,33 @@ async function main(): Promise<void> {
     if (!cli.binary) {
         throw new Error(`Could not find obsidian-cli. Checked paths: ${cli.checked.join(", ")}`);
     }
-    const vault = await createTemporaryVault();
-    let session: ObsidianLiveSyncSession | undefined;
-    try {
-        session = await startObsidianLiveSyncSession({
-            binary,
-            cliBinary: cli.binary,
-            vault,
-            startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-            pluginData: {
-                doctorProcessedVersion: "0.25.27",
-                isConfigured: true,
-                liveSync: false,
-                notifyThresholdOfRemoteStorageSize: -1,
-                periodicReplication: false,
-                P2P_Enabled: false,
-                P2P_AutoStart: false,
-                syncAfterMerge: false,
-                syncOnEditorSave: false,
-                syncOnFileOpen: false,
-                syncOnSave: false,
-                syncOnStart: false,
-            },
-            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
-        });
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
-        const screenshot = await verifyP2PStatusPane();
-        console.log(`P2P status pane mounted without network fixtures. Screenshot: ${screenshot}`);
-    } finally {
-        if (session) {
-            await session.app.stop();
+
+    await withP2PSession(binary, cli.binary, basePluginData, async () => {
+        await assertP2PUIIsOptIn();
+    });
+
+    await withP2PSession(
+        binary,
+        cli.binary,
+        {
+            ...basePluginData,
+            P2P_roomID: "configured-p2p-room",
+            P2P_passphrase: "configured-p2p-passphrase",
+        },
+        async () => {
+            await assertConfiguredP2PUIIsAvailable();
+            const desktopScreenshot = await verifyP2PStatusPane("p2p-status-pane.png", false);
+            await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), true, uiTimeoutMs);
+            try {
+                const mobileScreenshot = await verifyP2PStatusPane("p2p-status-pane-mobile.png", true);
+                console.log(
+                    `Configured P2P status UI remained opt-in and was reachable on desktop and mobile. Screenshots: ${desktopScreenshot}, ${mobileScreenshot}`
+                );
+            } finally {
+                await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), false, uiTimeoutMs);
+            }
         }
-        await vault.dispose();
-    }
+    );
 }
 
 main().catch((error: unknown) => {
