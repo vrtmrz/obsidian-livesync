@@ -12,6 +12,10 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 
 ## Unreleased
 
+## 1.0.0-beta.2
+
+23rd July, 2026
+
 ### Improved
 
 - Choosing **Not now** on a merge conflict now postpones repeated dialogues for that conflict while the active file retains an unresolved-conflict warning. Three or more live versions show their current count and are reviewed one deterministic pair at a time; completed pairs remain resolved across restart. The existing conflict commands can reopen a postponed conflict explicitly, and a later conflict prompts again after the current one has been resolved.
