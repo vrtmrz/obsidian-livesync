@@ -25,6 +25,48 @@ async function waitFor(description, predicate) {
     throw new Error(`Timed out waiting for ${description}`);
 }
 
+async function waitForSocketOpen(socket, description) {
+    if (socket.readyState === WebSocket.OPEN) {
+        // Node can expose OPEN before it dispatches the event. Yield once so
+        // Trystero's previously registered onopen handler has completed before
+        // this probe starts the close handshake.
+        await delay(0);
+        if (socket.readyState === WebSocket.OPEN) return;
+    }
+
+    await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error(`Timed out waiting for ${description}; readyState=${socket.readyState}`));
+        }, timeoutMs);
+        const cleanup = () => {
+            clearTimeout(timeout);
+            socket.removeEventListener("open", onOpen);
+            socket.removeEventListener("close", onClose);
+            socket.removeEventListener("error", onError);
+        };
+        const onOpen = () => {
+            cleanup();
+            resolve();
+        };
+        const onClose = () => {
+            cleanup();
+            reject(new Error(`${description} closed before opening`));
+        };
+        const onError = () => {
+            cleanup();
+            reject(new Error(`${description} failed before opening`));
+        };
+
+        // Trystero installs its onopen handler while constructing the socket,
+        // before this observer is registered. Waiting for the actual event
+        // therefore establishes transport readiness without a fixed delay.
+        socket.addEventListener("open", onOpen, { once: true });
+        socket.addEventListener("close", onClose, { once: true });
+        socket.addEventListener("error", onError, { once: true });
+    });
+}
+
 const room = joinRoom(
     {
         appId: `livesync-relay-disconnect-probe-${Date.now()}`,
@@ -39,10 +81,11 @@ const room = joinRoom(
 );
 
 try {
-    await waitFor("the relay WebSocket to open", () =>
-        Object.values(getRelaySockets()).some((socket) => socket.readyState === WebSocket.OPEN)
-    );
+    await waitFor("the relay WebSocket to be registered", () => Object.values(getRelaySockets()).length > 0);
     const originalSockets = Object.values(getRelaySockets());
+    await Promise.all(
+        originalSockets.map((socket, index) => waitForSocketOpen(socket, `relay WebSocket ${index + 1} to open`))
+    );
 
     const replicator = new TrysteroReplicator(
         {},
@@ -62,9 +105,13 @@ try {
     }
 
     replicator.allowReconnection();
-    await waitFor("a replacement relay WebSocket to open", () =>
-        Object.values(getRelaySockets()).some(
-            (socket) => !originalSockets.includes(socket) && socket.readyState === WebSocket.OPEN
+    await waitFor("a replacement relay WebSocket to be registered", () =>
+        Object.values(getRelaySockets()).some((socket) => !originalSockets.includes(socket))
+    );
+    const replacementSockets = Object.values(getRelaySockets()).filter((socket) => !originalSockets.includes(socket));
+    await Promise.all(
+        replacementSockets.map((socket, index) =>
+            waitForSocketOpen(socket, `replacement relay WebSocket ${index + 1} to open`)
         )
     );
 
