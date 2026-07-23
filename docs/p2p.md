@@ -53,7 +53,7 @@ The **P2P Status** pane is the current Obsidian interface for P2P connections.
 - LiveSync does not open the pane merely because Obsidian has started. If the pane was already part of the saved Obsidian workspace, Obsidian may restore it.
 - Workspaces containing the retired P2P pane are migrated to the current status pane. The retired command is no longer exposed.
 
-The active P2P remote is selected independently from the main CouchDB or Object Storage remote. Devices can therefore use P2P as an additional transport without replacing their main remote.
+The active P2P remote is selected independently from the main CouchDB or Object Storage remote. Devices can therefore use P2P alongside their main remote without replacing it.
 
 ![P2P Status on desktop](../images/p2p-setup/p2p-status-pane.png)
 
@@ -74,9 +74,9 @@ Every participating device must use the same signalling relay set, Group ID, and
 - A notification contains no Vault data. It only asks the following peer to fetch through the encrypted P2P connection.
 - Missing a notification does not make an explicit later synchronisation unsafe; **Replicate now** still compares the available data.
 
-The peer's **More actions** menu contains persistent conveniences:
+The peer's **More actions** menu can save these choices for that device:
 
-- **Synchronise when this device connects** runs a finite synchronisation when that named peer is discovered.
+- **Synchronise when this device connects** runs one synchronisation when that named peer is discovered.
 - **Follow whenever this device connects** restores following for that named peer.
 - **Include in the P2P synchronisation command** includes that peer when the command for registered targets is run.
 
@@ -88,11 +88,11 @@ Configure these only after a manual round trip has succeeded. Device names used 
 
 A device must approve a peer before serving its data. Permanent approval is stored; session approval lasts only for the current Obsidian session. Check the displayed device name before approving a request.
 
-The encrypted Setup URI contains the shared P2P configuration but deliberately omits the device-specific name. Store the Setup URI and its passphrase separately, and generate the additional-device URI from a working first device.
+The encrypted Setup URI contains the shared P2P configuration but deliberately omits the device-specific name. Store the Setup URI and its passphrase separately, and generate a Setup URI for another device from a first device which has completed setup.
 
 ## Operational limits
 
 - At least one device which already has the required data must be online while another device fetches it.
 - P2P does not provide the continuously available central copy offered by CouchDB or Object Storage. Keep independent backups.
-- Mobile operating systems may pause Obsidian in the background. Keep Obsidian visible and the device awake during initial transfer, rebuild, or a large finite synchronisation.
+- Mobile operating systems may pause Obsidian in the background. Keep Obsidian visible and the device awake during initial transfer, rebuild, or a large synchronisation.
 - Changing from CouchDB to P2P is not a repair operation for a stopped CouchDB setup. Diagnose the existing transport first.

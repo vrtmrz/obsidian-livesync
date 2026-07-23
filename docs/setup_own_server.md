@@ -167,7 +167,7 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 
 ## 4. Client Setup
 > [!TIP]
-> A generated Setup URI is the recommended path because it carries the current new-Vault defaults and remote profile. If a Setup URI cannot be generated, follow [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device), then generate a new Setup URI from that working device for every additional device.
+> A generated Setup URI is the recommended path because it carries the current defaults for a new Vault and the selected remote profile. If a Setup URI cannot be generated, follow [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device), then generate a new Setup URI from that working device for every additional device.
 
 ### 1. Generate the setup URI on a desktop device or server
 ```bash
@@ -185,7 +185,7 @@ deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.co
 >
 > If `uri_passphrase` is omitted, the generator creates a cryptographically random value and prints it once.
 
-The generator consumes the exact registry-pinned Commonlib release used by the provisioning utility. It creates a configured CouchDB remote profile, applies the current new-Vault defaults, and encodes them with Commonlib's Setup URI contract.
+The generator consumes the exact registry-pinned Commonlib release used by the provisioning utility. It creates a configured CouchDB remote profile, applies the current defaults for a new Vault, and encodes them with Commonlib's Setup URI contract.
 
 You will then get the following output:
 
@@ -202,7 +202,7 @@ Store the Setup URI and its passphrase separately.
 
 Follow [Quick setup](./quick_setup.md#set-up-the-first-device) for the first device. It covers the current onboarding Notice, Setup URI import, server initialisation, and the safety prompts shown for a newly provisioned database.
 
-After ordinary note synchronisation works, [generate a new Setup URI on that first device](./quick_setup.md#create-a-setup-uri-for-another-device), then follow [Add another device](./quick_setup.md#add-another-device). Do not make the second device depend on retaining the provisioning-time bootstrap URI. Configure optional features only after the normal path is verified; [Hidden File Sync has its own guide](./tips/hidden-file-sync.md).
+After ordinary note synchronisation works, [generate a new Setup URI on that first device](./quick_setup.md#create-a-setup-uri-for-another-device), then follow [Add another device](./quick_setup.md#add-another-device). Do not make the second device depend on retaining the initial Setup URI produced during provisioning. Configure optional features only after the normal path is verified; [Hidden File Sync has its own guide](./tips/hidden-file-sync.md).
 
 ---
 

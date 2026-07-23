@@ -52,7 +52,7 @@ If the device was asleep, Obsidian was in the background, or the peer disconnect
 
 ## Mobile limitations
 
-Keep Obsidian visible and the device awake during initial transfer, rebuild, or a large finite synchronisation. Wake Lock support is best effort and cannot prevent the operating system from suspending or terminating a background application.
+Keep Obsidian visible and the device awake during initial transfer, rebuild, or a large synchronisation. Wake Lock support is best effort and cannot prevent the operating system from suspending or terminating a background application.
 
 ## Collect evidence
 

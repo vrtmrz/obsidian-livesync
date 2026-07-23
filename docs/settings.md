@@ -386,8 +386,8 @@ The subject (`sub`) claim of the JWT, which should match your CouchDB username.
 
 The action depends on why the dialogue was opened:
 
-- First-device onboarding uses **Create or connect to database and continue**. It may create the database when it does not exist and the supplied account has permission.
-- Additional-device onboarding uses **Connect to existing database and continue**. It does not create a missing database.
+- Onboarding for the first device uses **Create or connect to database and continue**. It may create the database when it does not exist and the supplied account has permission.
+- Onboarding for an additional device uses **Connect to existing database and continue**. It does not create a missing database.
 - Adding or editing a saved remote profile uses **Test connection and save**. It does not create a missing database.
 - Settings mode also offers **Save without connecting**. The existing profile is updated, but automatic synchronisation may fail until the connection is corrected.
 

@@ -200,7 +200,7 @@ Current implementation status:
 Current implementation status:
 
 - The mocked Vitest browser suites, their P2P runner, their root-level relay helpers, and the manual `harness-ci` workflow have been removed after maintained suites covered the critical flows.
-- Headless CouchDB and Object Storage combinations, with and without encryption, remain owned by the CLI two-Vault matrix. P2P transport replacement and relay lifecycle remain owned by the CLI Compose E2E suite. Real Obsidian owns the visible CouchDB, Object Storage, and P2P Setup URI workflows, including first-device URI generation, second-device import, and two-way Vault synchronisation.
+- Headless CouchDB and Object Storage combinations, with and without encryption, remain owned by the CLI two-Vault matrix. P2P transport replacement and relay lifecycle remain owned by the CLI Compose E2E suite. Real Obsidian owns the visible CouchDB, Object Storage, and P2P Setup URI workflows, including URI generation on the first device, import on the second device, and two-way Vault synchronisation.
 - The Obsidian compatibility implementation still needed by the Webapp has moved to `src/apps/webapp/obsidianMock.ts`; it is not a retained browser E2E Harness.
 - Remaining high-value scenarios, including RedFlag and Fast Setup (Simple Fetch) variants, should be added according to their owning integration boundary rather than copied line by line from the retired suite.
 

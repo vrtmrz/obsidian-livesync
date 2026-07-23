@@ -58,7 +58,7 @@ Choose a synchronisation method, prepare its server where required, then follow 
    1. No central data-storage server is required. The project's public signalling relay requires no server provisioning; controlled deployments can provide another compatible relay.
    2. Configure the clients by following [Peer-to-Peer Setup](docs/setup_p2p.md).
 
-Each workflow establishes ordinary note synchronisation on the first device, generates the additional-device Setup URI from that working device, and verifies synchronisation in both directions.
+Each workflow establishes ordinary note synchronisation on the first device, generates a Setup URI for each additional device from that working device, and verifies synchronisation in both directions.
 
 > [!TIP]
 > Fly.io is no longer free. Fortunately, we can still use IBM Cloudant despite some limitations. Refer to [Set up IBM Cloudant](docs/setup_cloudant.md).

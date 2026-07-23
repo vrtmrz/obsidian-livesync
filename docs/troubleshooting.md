@@ -57,7 +57,7 @@ If the log reports missing chunks or a size mismatch:
 2. on a device which has the correct file, run `Recreate missing chunks for all files`, then synchronise; and
 3. if the mismatch remains, run `Verify and repair all files` from `Hatch` and review which copy is authoritative.
 
-## A configuration-mismatch dialogue blocks synchronisation
+## A configuration mismatch dialogue blocks synchronisation
 
 Some settings must match across devices. LiveSync pauses synchronisation when the local and remote values differ rather than propagating an unexpected change silently.
 
@@ -153,4 +153,4 @@ Follow [Recovery and flag files](recovery.md). A `redflag.md` emergency stop rem
 
 ## Further technical context
 
-See [Technical Information](tech_info.md) for database and synchronisation internals. Current behaviour belongs in this guide; older defect-specific instructions remain in the release histories.
+See [Technical Information](tech_info.md) for database and synchronisation internals. Current behaviour belongs in this guide; instructions for older defects remain in the release histories.

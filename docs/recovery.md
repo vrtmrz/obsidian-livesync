@@ -14,7 +14,7 @@ Use the least destructive operation which matches the evidence:
 - If the correct data is uncertain, suspend all work with `redflag.md`, preserve every copy, and inspect them before proceeding.
 - If the central remote is healthy and should win, use **Reset Synchronisation on This Device** or `flag_fetch.md`.
 - If this device's Vault is healthy and should replace a damaged or unwanted central remote, use **Overwrite Server Data with This Device's Files** or `flag_rebuild.md`.
-- If both the Vault and local database are healthy and the only concern is unused storage, Garbage Collection may be appropriate. It is not a damaged-database recovery operation.
+- If both the Vault and local database are healthy and the only concern is unused storage, Garbage Collection may be appropriate. It does not repair a damaged database.
 
 Do not switch transport, enable P2P, or run Garbage Collection as a substitute for diagnosing a stopped CouchDB or Object Storage setup.
 
@@ -58,7 +58,7 @@ The readable flag is `flag_rebuild.md`; the legacy name `redflag2.md` remains ac
 
 For CouchDB and Object Storage, this is destructive to the selected remote state. Other devices may still contain revisions or files which are not present in the authoritative Vault, so keep them stopped until the new remote has been verified and then reset them from that remote.
 
-For a P2P-only setup, there is no central remote database to overwrite. The corresponding first-device preparation rebuilds this device's local LiveSync database from its Vault.
+For a P2P-only setup, there is no central remote database to overwrite. Preparing the first device instead rebuilds its local LiveSync database from its Vault.
 
 ## Garbage Collection is not Rebuild
 

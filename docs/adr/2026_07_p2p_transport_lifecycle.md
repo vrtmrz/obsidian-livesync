@@ -46,7 +46,7 @@ Lifecycle operations on one `LiveSyncTrysteroReplicator` are serialised. A close
 
 Relay sockets retain their Trystero-provided close handlers. LiveSync pauses relay reconnection, closes the sockets, and later resumes reconnection through Trystero's public functions. It does not replace `socket.onclose`, because Trystero uses that handler to retire and recreate shared relay clients correctly.
 
-P2P setup follows the transport's actual ownership model. First-device initialisation resets and scans the local database, but does not attempt to lock, reset, or upload to a non-existent central remote database. Its confirmation dialogues therefore describe preparing this device and do not present the central-server overwrite warnings or remote-configuration option. An additional device performs one explicit peer-selection and finite Fetch pass, then resumes database and Vault reflection. The generic second convergence pass remains reserved for central remote types because repeating it for P2P would ask the user to select the same peer twice.
+P2P setup follows the transport's actual ownership model. Initialising the first device resets and scans the local database, but does not attempt to lock, reset, or upload to a non-existent central remote database. Its confirmation dialogues therefore describe preparing this device and do not present warnings about overwriting a central server or an option to fetch its configuration. An additional device selects a peer once, performs Fetch once, then resumes database and Vault reflection. The generic second convergence pass remains reserved for central remote types because repeating it for P2P would ask the user to select the same peer twice.
 
 ## Ownership
 
@@ -74,7 +74,7 @@ This interferes with Trystero's shared relay clients. The public pause and resum
 
 ## Verification
 
-Commonlib unit tests prove that normal P2P host closure calls `room.leave()` without directly closing Trystero-owned peer connections. Additional package tests cover the action API, replaceable peer-event subscriptions, multiple RPC transport disposers, serialised open and close operations, local-only first-device initialisation, and one-pass additional-device Fetch.
+Commonlib unit tests prove that normal P2P host closure calls `room.leave()` without directly closing Trystero-owned peer connections. Additional package tests cover the action API, replaceable peer-event subscriptions, multiple RPC transport disposers, serialised open and close operations, initialisation of the first device without a central remote, and Fetch running once for an additional device.
 
 Self-hosted LiveSync unit tests prove that settings and database replacement leave panes on the current replicator, and that an explicit P2P rebuild bypasses the policy intended for ordinary replication.
 
