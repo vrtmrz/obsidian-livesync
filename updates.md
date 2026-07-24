@@ -21,6 +21,7 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 - First-device P2P setup now accepts a successfully opened signalling room without requiring another peer to be online. Additional-device Fetch still requires selecting a source peer and completing `P2P Rebuild`.
 - Manual CouchDB setup now distinguishes creating a first database from connecting an additional device to an existing one. Settings mode can save an unverified profile explicitly, while onboarding requires a successful connection, and each proposed server-configuration fix requires separate confirmation.
 - Differences limited to the chunk hash algorithm, chunk size, or splitter version are now aligned automatically by default. Existing content remains readable, while an explicit opt-out and any difference which also involves an incompatible setting retain manual review.
+- Text in setup and review dialogues can now be selected for copying or translation.
 
 ### Fixed
 
@@ -31,7 +32,7 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ### Testing
 
-- Added regressions for revision repair, P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, mobile dialogues, conflict-aware chunk reachability, device-progress safeguards, compaction timeouts, shared chunks, collection propagation, and content-addressed chunk recreation.
+- Added regressions for revision repair, P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, selectable and mobile dialogues, conflict-aware chunk reachability, device-progress safeguards, compaction timeouts, shared chunks, collection propagation, and content-addressed chunk recreation.
 
 ## 1.0.0-beta.2
 

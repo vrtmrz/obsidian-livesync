@@ -194,6 +194,28 @@ async function verifyRemoteSizeNoticeAndDialogue(): Promise<{
                     .filter({ hasText: "Synchronisation paused for compatibility review" }),
             });
             await compatibilityReview.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const message = compatibilityReview.locator(".vpk-action-dialog__message");
+            const textSelection = await message.evaluate((element) => {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+                const selectedText = selection?.toString() ?? "";
+                selection?.removeAllRanges();
+                return {
+                    selectedText,
+                    userSelect: getComputedStyle(element).userSelect,
+                };
+            });
+            if (
+                textSelection.userSelect !== "text" ||
+                !textSelection.selectedText.includes("Remote synchronisation is paused on this device")
+            ) {
+                throw new Error(
+                    `Expected the action dialogue message to be selectable, received user-select=${textSelection.userSelect} and selected text '${textSelection.selectedText}'.`
+                );
+            }
             const actions = compatibilityReview.locator(".vpk-action-dialog__actions--vertical");
             await actions.waitFor({ state: "visible", timeout: uiTimeoutMs });
             const flexDirection = await actions.evaluate((element) => getComputedStyle(element).flexDirection);
@@ -286,12 +308,32 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
             for (const label of ["CouchDB", "S3-compatible Object Storage", "Peer-to-Peer (P2P)"]) {
                 await dialogue.getByText(label, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
             }
-            await dialogue
-                .getByText(
-                    "No central data-storage server is required, but a signalling relay is required for peer discovery.",
-                    { exact: false }
-                )
-                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const p2pDescription = dialogue.getByText(
+                "No central data-storage server is required, but a signalling relay is required for peer discovery.",
+                { exact: false }
+            );
+            await p2pDescription.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const textSelection = await p2pDescription.evaluate((element) => {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+                const selectedText = selection?.toString() ?? "";
+                selection?.removeAllRanges();
+                return {
+                    selectedText,
+                    userSelect: getComputedStyle(element).userSelect,
+                };
+            });
+            if (
+                textSelection.userSelect !== "text" ||
+                !textSelection.selectedText.includes("signalling relay is required for peer discovery")
+            ) {
+                throw new Error(
+                    `Expected Svelte dialogue prose to be selectable, received user-select=${textSelection.userSelect} and selected text '${textSelection.selectedText}'.`
+                );
+            }
             await modal
                 .getByRole("button", { name: "No, please take me back" })
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
@@ -831,9 +873,13 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
                 }
             };
         }, repairRunStateKey);
-        await liveSyncSettings.getByRole("button", { name: "Recreate all", exact: true }).click({
-            timeout: uiTimeoutMs,
-        });
+        await page
+            .locator(".sls-setting:visible")
+            .last()
+            .getByRole("button", { name: "Recreate current chunks", exact: true })
+            .click({
+                timeout: uiTimeoutMs,
+            });
         await page.waitForFunction(
             (stateKey) =>
                 (globalThis as unknown as Record<string, DialogueRunState | undefined>)[stateKey]?.done === true,
@@ -848,9 +894,13 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
             throw new Error(`Recreate missing chunks failed: ${repairState.error}`);
         }
 
-        await liveSyncSettings.getByRole("button", { name: "Verify all", exact: true }).click({
-            timeout: uiTimeoutMs,
-        });
+        await page
+            .locator(".sls-setting:visible")
+            .last()
+            .getByRole("button", { name: "Verify all", exact: true })
+            .click({
+                timeout: uiTimeoutMs,
+            });
         await page
             .locator(".notice")
             .filter({ hasText: /^done$/u })

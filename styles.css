@@ -12,6 +12,11 @@
     background-color: var(--text-muted);
 }
 
+.vpk-action-dialog__message {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
 .conflict-dev-name {
     display: inline-block;
     min-width: 5em;

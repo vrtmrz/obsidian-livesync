@@ -68,6 +68,8 @@
         display: flex;
         flex-direction: column;
         padding-bottom: var(--keyboard-height, 0px);
+        user-select: text;
+        -webkit-user-select: text;
     }
 
     .dialog-host :global(button) {
