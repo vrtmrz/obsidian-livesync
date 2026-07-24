@@ -61,9 +61,14 @@ If the log reports missing chunks or a size mismatch:
 
 Some settings must match across devices. LiveSync pauses synchronisation when the local and remote values differ rather than propagating an unexpected change silently.
 
-- Choose `Update with mine` only when this device's setting is the intended shared value.
-- Choose `Use configured` to accept the value already stored for the synchronisation group.
-- `Dismiss` postpones the decision, but synchronisation remains paused until it is resolved.
+Current releases automatically align compatible settings which control how new chunks are created, by default and where possible. This applies to the chunk hash algorithm, chunk size, and splitter version. Existing content remains readable across these choices, although using different choices can reduce chunk reuse and increase storage or transfer work. An explicit opt-out retains the manual review. A mismatch involving encryption, path obfuscation, file-name case handling, or any combination which includes one of those settings always remains a manual decision.
+
+The available actions depend on when the mismatch is found:
+
+- While checking a remote profile, `Use configured settings` accepts the shared values already stored in that remote. `Dismiss` leaves this device's settings unchanged.
+- For a mismatch found before synchronisation, `Apply settings to this device` accepts the remote values. Choose `Update remote database settings` only when this device's values are intended to become the shared values.
+- When the change requires local or remote reconstruction, the action itself states that Fetch or Rebuild will follow. Make sure that the intended authoritative copy is available before choosing it.
+- `Dismiss` postpones a mismatch found before synchronisation. Synchronisation remains paused until the mismatch is resolved.
 
 ![Configuration mismatch dialogue](tweak_mismatch_dialogue.png)
 
@@ -75,7 +80,7 @@ Historic defect notices and renamed controls are retained in the [0.25 release h
 
 Generate an encrypted Setup URI from a working device. This preserves the intended remote profiles and selections while allowing the additional device to keep its own device-specific name. Store the URI and its passphrase separately.
 
-For deliberate setting changes during normal use, use `Sync settings via Markdown files` under `Sync settings`.
+For deliberate setting changes during normal use, use `Sync Settings via Markdown` under `Sync settings`.
 
 ### Choose a Setup URI passphrase
 

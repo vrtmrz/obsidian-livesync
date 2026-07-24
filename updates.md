@@ -19,10 +19,13 @@ Earlier releases remain available in the [0.25 release history](https://github.c
 - P2P is now presented only after it has been configured: its status pane no longer opens at start-up, its ribbon icon remains hidden for CouchDB-only Vaults, and the retired P2P pane command has been removed. The current pane distinguishes announcing changes, following a peer, and persistent per-device actions. Setup and guidance now distinguish the required signalling relay from optional TURN, and describe the public signalling relay's privacy and availability limits.
 - First-device P2P setup now accepts a successfully opened signalling room without requiring another peer to be online. Additional-device Fetch still requires selecting a source peer and completing `P2P Rebuild`.
 - Manual CouchDB setup now distinguishes creating a first database from connecting an additional device to an existing one. Settings mode can save an unverified profile explicitly, while onboarding requires a successful connection, and each proposed server-configuration fix requires separate confirmation.
+- Differences limited to the chunk hash algorithm, chunk size, or splitter version are now aligned automatically by default. Existing content remains readable, while an explicit opt-out and any difference which also involves an incompatible setting retain manual review.
 
 ### Fixed
 
 - Answering or externally closing a merge dialogue immediately no longer leaves conflict processing waiting for a response which has already occurred.
+- Choosing **Apply settings to this device, and fetch again** for a compatible configuration mismatch now applies the remote settings before Fetch, instead of updating the remote database with this device's settings.
+- Accepted settings which control how new chunks are created now take effect before synchronisation is retried, rather than leaving the previous hash or splitter active until restart.
 
 ### Testing
 

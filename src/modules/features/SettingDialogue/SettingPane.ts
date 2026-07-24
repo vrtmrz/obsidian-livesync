@@ -75,6 +75,7 @@ export type AutoWireOption = {
     holdValue?: boolean;
     isPassword?: boolean;
     invert?: boolean;
+    defaultToggleValue?: boolean;
     onUpdate?: OnUpdateFunc;
     obsolete?: boolean;
 };

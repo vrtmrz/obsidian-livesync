@@ -29,6 +29,7 @@
         "i18n:json2yaml": "tsx _tools/json2yaml.ts",
         "i18n:yaml2json": "tsx _tools/yaml2json.ts",
         "test:unit": "vitest run --config vitest.config.unit.ts",
+        "inspect:troubleshooting": "tsx _tools/inspect-troubleshooting-docs.ts",
         "test:setup-tools": "bash utils/flyio/setenv.test.sh && deno test -A --config=utils/flyio/deno.jsonc --frozen --lock=utils/flyio/deno.lock utils/livesync-commonlib-version.test.ts utils/couchdb/provision.test.ts utils/setup/generate_setup_uri.test.ts utils/flyio/generate_setupuri.test.ts",
         "test:contract:contexts": "vitest run --config vitest.config.unit.ts src/modules/services/ObsidianServiceContext.unit.spec.ts src/apps/cli/services/NodeServiceContext.unit.spec.ts src/apps/browser/createLiveSyncBrowserServiceHub.unit.spec.ts",
         "test:contract:context:webapp": "vitest run --config vitest.config.unit.ts src/apps/browser/createLiveSyncBrowserServiceHub.unit.spec.ts",

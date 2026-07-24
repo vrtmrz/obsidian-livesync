@@ -959,6 +959,12 @@ If disabled(toggled), chunks will be split on the UI thread (Previous behaviour)
 Setting key: processSmallFilesInUIThread
 If enabled, the file under 1kb will be processed in the UI thread.
 
+#### Automatically align compatible chunk settings
+
+Setting key: autoAcceptCompatibleTweak
+
+Current releases enable this by default when the differences are limited to compatible chunk settings. The side with the newer recorded modification time is used for the chunk hash algorithm, chunk size, or splitter version; the remote value is used when neither side has a recorded time or the times are equal. No dialogue or database reconstruction is required. Existing content remains readable, but changing these values can reduce chunk reuse. Turn this off to review compatible differences manually. Any difference which also involves an incompatible setting always requires an explicit decision.
+
 ### 8. Compatibility (Trouble addressed)
 
 #### Do not check configuration mismatch before replication

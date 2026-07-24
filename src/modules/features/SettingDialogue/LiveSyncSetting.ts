@@ -206,7 +206,8 @@ export class LiveSyncSetting extends Setting {
             const setValue = wrapMemo((value: boolean) => {
                 toggle.setValue(opt?.invert ? !value : value);
             });
-            this.invalidateValue = () => setValue(LiveSyncSetting.env.editingSettings[key] ?? false);
+            this.invalidateValue = () =>
+                setValue(LiveSyncSetting.env.editingSettings[key] ?? opt?.defaultToggleValue ?? false);
             this.invalidateValue();
 
             toggle.onChange(async (value) => {

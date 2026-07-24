@@ -38,6 +38,11 @@ Before submitting a pull request, you must run verification scripts locally to e
   ```bash
   npm run test:unit
   ```
+- When changing the troubleshooting or recovery guides, inspect their current English UI labels and local references:
+  ```bash
+  npm run inspect:troubleshooting
+  ```
+  This read-only Inspector prints JSON containing `ok`, `checkedFiles`, `checkedLocalReferences`, and `errors`, and exits unsuccessfully when a contract is stale.
 
 If you have the capability and a suitable environment (such as Linux and Docker), running the CLI End-to-End (E2E) tests is also highly appreciated. Instructions are detailed in [devs.md](devs.md). If you cannot run E2E tests locally, please explicitly ask to run the tests on the CI by stating 'Please run CI tests' in your pull request description.
 
