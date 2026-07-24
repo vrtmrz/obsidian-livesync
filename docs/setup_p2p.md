@@ -34,7 +34,7 @@ Before starting:
     ![P2P local database confirmation on the first device](../images/p2p-setup/guide-p2p-setup-first-rebuild-confirmation.png)
 
 7. Keep optional features disabled until ordinary note synchronisation works.
-8. Open `Self-hosted LiveSync: P2P Sync : Open P2P Status` from the command palette. After a P2P profile exists, the P2P ribbon icon provides the same destination. Select `Open connection` if signalling is disconnected.
+8. After saving the P2P profile, open `Self-hosted LiveSync: P2P Sync : Open P2P Status` from the command palette. The P2P ribbon icon provides the same destination. Select `Open connection` if signalling is disconnected.
 
     ![First P2P device connected to the signalling relay](../images/p2p-setup/guide-p2p-setup-first-device-connected.png)
 

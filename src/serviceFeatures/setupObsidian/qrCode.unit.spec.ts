@@ -114,4 +114,44 @@ describe("setupObsidian/qrCode", () => {
         );
         expect(onEventSpy).toHaveBeenCalledWith(EVENT_REQUEST_SHOW_SETUP_QR, expect.any(Function));
     });
+
+    it("keeps the QR command out of the palette until setup is complete", async () => {
+        const addHandler = vi.fn();
+        const commands: Array<{
+            id: string;
+            checkCallback?: (checking: boolean) => boolean | void;
+        }> = [];
+        const settings = { isConfigured: false };
+        const host = {
+            services: {
+                context: createServiceContext(),
+                API: {
+                    addCommand: vi.fn((command) => commands.push(command)),
+                },
+                appLifecycle: {
+                    onLoaded: {
+                        addHandler,
+                    },
+                },
+                setting: {
+                    currentSettings: vi.fn(() => settings),
+                },
+                UI: {
+                    confirm: {
+                        confirmWithMessage: vi.fn(),
+                    },
+                },
+            },
+        } as any;
+
+        useSetupQRCodeFeature(host);
+        const loadedHandler = addHandler.mock.calls[0][0] as () => Promise<boolean>;
+        await loadedHandler();
+
+        const command = commands.find((candidate) => candidate.id === "livesync-setting-qr")!;
+        expect(command.checkCallback?.(true)).toBe(false);
+
+        settings.isConfigured = true;
+        expect(command.checkCallback?.(true)).toBe(true);
+    });
 });

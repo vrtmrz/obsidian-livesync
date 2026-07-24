@@ -48,11 +48,6 @@ export function useSetupManagerHandlersFeature(
 ) {
     host.services.appLifecycle.onLoaded.addHandler(() => {
         host.services.API.addCommand({
-            id: "livesync-open-onboarding",
-            name: "Open onboarding wizard",
-            callback: () => fireAndForget(() => openOnboarding(setupManager)),
-        });
-        host.services.API.addCommand({
             id: "livesync-opensetupuri",
             name: "Use the copied setup URI (Formerly Open setup URI)",
             callback: () => fireAndForget(openSetupURI(setupManager)),

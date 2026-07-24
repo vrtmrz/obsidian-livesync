@@ -355,6 +355,10 @@ body {
     justify-content: center;
 }
 
+body:not(.is-mobile):has(.sls-setting) .notice:has(.sls-onboarding-invitation-action) {
+    margin-right: 96px;
+}
+
 .sls-review-harness {
     box-sizing: border-box;
     max-width: 100%;

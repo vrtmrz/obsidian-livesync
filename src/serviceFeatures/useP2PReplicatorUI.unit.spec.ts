@@ -85,7 +85,12 @@ describe("useP2PReplicatorUI commands", () => {
                     onSettingLoaded: { addHandler: vi.fn() },
                     onLayoutReady: { addHandler: vi.fn() },
                 },
-                setting: { currentSettings: vi.fn(() => ({ remoteType: "COUCHDB" })) },
+                setting: {
+                    currentSettings: vi.fn(() => ({
+                        remoteType: "COUCHDB",
+                        P2P_Enabled: true,
+                    })),
+                },
                 replicator: { runFiniteReplicationActivity },
             },
         } as any;
@@ -143,7 +148,11 @@ describe("useP2PReplicatorUI commands", () => {
     });
 
     it("retains only the current P2P status command and routes existing open requests to it", async () => {
-        const commands: Array<{ id: string; callback?: () => void }> = [];
+        const commands: Array<{
+            id: string;
+            callback?: () => void;
+            checkCallback?: (checking: boolean) => boolean | void;
+        }> = [];
         let initialise: (() => Promise<unknown>) | undefined;
         const showWindow = vi.fn(async () => undefined);
         const showWindowOnRight = vi.fn(async () => undefined);
@@ -183,10 +192,88 @@ describe("useP2PReplicatorUI commands", () => {
 
         expect(commands.map((command) => command.id)).not.toContain("open-p2p-replicator");
         expect(commands.map((command) => command.id)).toContain("open-p2p-server-status");
+        expect(commands.find((command) => command.id === "open-p2p-server-status")?.checkCallback?.(true)).toBe(false);
 
         eventHub.emitEvent(EVENT_REQUEST_OPEN_P2P);
         await vi.waitFor(() => expect(showWindowOnRight).toHaveBeenCalledWith("p2p-status"));
         expect(showWindow).not.toHaveBeenCalledWith("p2p");
+    });
+
+    it("shows P2P commands only when a P2P configuration exists and their runtime prerequisites are met", async () => {
+        const commands: Array<{
+            id: string;
+            checkCallback?: (checking: boolean) => boolean | void;
+        }> = [];
+        let initialise: (() => Promise<unknown>) | undefined;
+        let settings: Record<string, unknown> = {
+            remoteType: "COUCHDB",
+            remoteConfigurations: {},
+        };
+        const host = {
+            services: {
+                context: createServiceContext(),
+                API: {
+                    showWindow: vi.fn(async () => undefined),
+                    showWindowOnRight: vi.fn(async () => undefined),
+                    registerWindow: vi.fn(),
+                    addCommand: vi.fn((command) => commands.push(command)),
+                    addRibbonIcon: vi.fn(),
+                },
+                appLifecycle: {
+                    onInitialise: {
+                        addHandler: vi.fn((handler) => {
+                            initialise = handler;
+                        }),
+                    },
+                    onSettingLoaded: { addHandler: vi.fn() },
+                    onLayoutReady: { addHandler: vi.fn() },
+                },
+                setting: {
+                    currentSettings: vi.fn(() => settings),
+                    onSettingSaved: { addHandler: vi.fn() },
+                },
+                replicator: { runFiniteReplicationActivity: vi.fn() },
+            },
+        } as any;
+        const p2p = {
+            replicator: {
+                server: { isServing: true },
+                openReplication: vi.fn(),
+                replicateFromCommand: vi.fn(),
+            },
+        } as any;
+
+        useP2PReplicatorUI(host, {} as any, p2p);
+        await initialise?.();
+
+        for (const commandId of [
+            "open-p2p-server-status",
+            "replicate-now-by-p2p-default-peer",
+            "replicate-now-by-p2p",
+            "p2p-sync-targets",
+        ]) {
+            expect(commands.find(({ id }) => id === commandId)?.checkCallback?.(true)).toBe(false);
+        }
+
+        settings = {
+            ...settings,
+            remoteConfigurations: {
+                peer: {
+                    id: "peer",
+                    name: "Peer",
+                    uri: "sls+p2p://room?passphrase=secret",
+                    isEncrypted: false,
+                },
+            },
+        };
+        for (const commandId of [
+            "open-p2p-server-status",
+            "replicate-now-by-p2p-default-peer",
+            "replicate-now-by-p2p",
+            "p2p-sync-targets",
+        ]) {
+            expect(commands.find(({ id }) => id === commandId)?.checkCallback?.(true)).toBe(true);
+        }
     });
 
     it("does not open the P2P status pane automatically when the workspace becomes ready", async () => {

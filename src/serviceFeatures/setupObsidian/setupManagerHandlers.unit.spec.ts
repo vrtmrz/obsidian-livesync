@@ -109,7 +109,7 @@ describe("setupObsidian/setupManagerHandlers", () => {
         expect(preventDefault).toHaveBeenCalledOnce();
     });
 
-    it("useSetupManagerHandlersFeature should register onLoaded handler that wires command and events", async () => {
+    it("keeps onboarding out of the command palette while wiring the setup URI command and events", async () => {
         const addHandler = vi.fn();
         const addCommand = vi.fn();
         const events = { onEvent: vi.fn() };
@@ -147,10 +147,9 @@ describe("setupObsidian/setupManagerHandlers", () => {
         const loadedHandler = addHandler.mock.calls[0][0] as () => Promise<boolean>;
         await loadedHandler();
 
-        expect(addCommand).toHaveBeenCalledWith(
+        expect(addCommand).not.toHaveBeenCalledWith(
             expect.objectContaining({
                 id: "livesync-open-onboarding",
-                name: "Open onboarding wizard",
             })
         );
         expect(addCommand).toHaveBeenCalledWith(

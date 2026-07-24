@@ -67,7 +67,12 @@ export function useP2PReplicatorUI(
         showWindow: (type: string) => Promise<void>;
         showWindowOnRight?: (type: string) => Promise<void>;
         registerWindow: (type: string, factory: (leaf: WorkspaceLeaf) => unknown) => void;
-        addCommand: (command: { id: string; name: string; callback: () => void }) => unknown;
+        addCommand: (command: {
+            id: string;
+            name: string;
+            callback?: () => void;
+            checkCallback?: (checking: boolean) => boolean | void;
+        }) => unknown;
         addRibbonIcon: (
             icon: string,
             title: string,
@@ -146,8 +151,12 @@ export function useP2PReplicatorUI(
         api.addCommand({
             id: "open-p2p-server-status",
             name: "P2P Sync : Open P2P Status",
-            callback: () => {
-                void openStatusPane();
+            checkCallback: (checking) => {
+                if (!hasP2PConfiguration(host.services.setting.currentSettings())) return false;
+                if (!checking) {
+                    void openStatusPane();
+                }
+                return true;
             },
         });
         host.services.API.addCommand({
@@ -155,11 +164,15 @@ export function useP2PReplicatorUI(
             name: "Replicate P2P to default peer",
             checkCallback: (isChecking: boolean) => {
                 const settings = host.services.setting.currentSettings();
-                if (isChecking) {
-                    if (settings.remoteType == REMOTE_P2P) return false;
-                    return replicator.replicator?.server?.isServing ?? false;
+                const isAvailable =
+                    hasP2PConfiguration(settings) &&
+                    settings.remoteType !== REMOTE_P2P &&
+                    (replicator.replicator?.server?.isServing ?? false);
+                if (!isAvailable) return false;
+                if (!isChecking) {
+                    runOpenReplication();
                 }
-                runOpenReplication();
+                return true;
             },
         });
         host.services.API.addCommand({
@@ -167,11 +180,15 @@ export function useP2PReplicatorUI(
             name: "Replicate now by P2P",
             checkCallback: (isChecking: boolean) => {
                 const settings = host.services.setting.currentSettings();
-                if (isChecking) {
-                    if (settings.remoteType == REMOTE_P2P) return false;
-                    return replicator.replicator?.server?.isServing ?? false;
+                const isAvailable =
+                    hasP2PConfiguration(settings) &&
+                    settings.remoteType !== REMOTE_P2P &&
+                    (replicator.replicator?.server?.isServing ?? false);
+                if (!isAvailable) return false;
+                if (!isChecking) {
+                    runOpenReplication();
                 }
-                runOpenReplication();
+                return true;
             },
         });
 
@@ -179,10 +196,14 @@ export function useP2PReplicatorUI(
             id: "p2p-sync-targets",
             name: "P2P: Sync with targets",
             checkCallback: (isChecking: boolean) => {
-                if (isChecking) {
-                    return replicator.replicator?.server?.isServing ?? false;
+                const isAvailable =
+                    hasP2PConfiguration(host.services.setting.currentSettings()) &&
+                    (replicator.replicator?.server?.isServing ?? false);
+                if (!isAvailable) return false;
+                if (!isChecking) {
+                    void replicator.replicator?.replicateFromCommand(true);
                 }
-                void replicator.replicator?.replicateFromCommand(true);
+                return true;
             },
         });
 

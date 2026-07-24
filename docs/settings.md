@@ -40,7 +40,7 @@ Internal database or settings compatibility reviews use a separate safety dialog
 
 This pane is used for setting up Self-hosted LiveSync. There are several options to set up Self-hosted LiveSync.
 
-An unconfigured installation does not open the onboarding dialogue automatically or scan the Vault into the local database. A long-lived Notice offers the onboarding action, and **Open onboarding wizard** remains available from the command palette after that Notice closes.
+An unconfigured installation does not open the onboarding dialogue automatically or scan the Vault into the local database. A long-lived Notice offers the onboarding action. If the Notice is dismissed, open **Self-hosted LiveSync settings** → **Setup** → **Rerun Onboarding Wizard**.
 
 Choose the new-device path when this device owns the files which should initialise synchronisation. Choose the existing-device path when it should receive an established remote state. The wizard reserves Rebuild or Fetch respectively before enabling the settings and requesting a restart, so the selected initialisation runs before the ordinary start-up scan.
 

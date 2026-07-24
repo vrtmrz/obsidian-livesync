@@ -26,7 +26,10 @@ type UnconfiguredStartupEvidence = {
 };
 
 type ObsidianTestApp = {
-    commands?: { executeCommandById(commandId: string): boolean };
+    setting?: {
+        open(): void;
+        openTabById(tabId: string): void;
+    };
 };
 
 type ObsidianTestGlobal = typeof globalThis & { app?: ObsidianTestApp };
@@ -151,14 +154,38 @@ async function captureAndCloseIntro(filename: string, mobile: boolean): Promise<
     return screenshot;
 }
 
-async function openPermanentCommand(): Promise<void> {
-    const opened = await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        return await page.evaluate(
-            (commandId) => (globalThis as ObsidianTestGlobal).app?.commands?.executeCommandById(commandId) === true,
-            "obsidian-livesync:livesync-open-onboarding"
-        );
+async function openOnboardingFromSettings(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.evaluate(() => {
+            const setting = (globalThis as ObsidianTestGlobal).app?.setting;
+            if (setting === undefined) throw new Error("Obsidian settings are unavailable");
+            setting.open();
+            setting.openTabById("obsidian-livesync");
+        });
+
+        const liveSyncSettings = page.locator(".sls-setting");
+        await liveSyncSettings.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Setup"]').click({ timeout: uiTimeoutMs });
+
+        const onboardingSetting = liveSyncSettings.locator(".setting-item").filter({
+            has: page.locator(".setting-item-name").filter({ hasText: "Rerun Onboarding Wizard" }),
+        });
+        await onboardingSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await onboardingSetting
+            .getByRole("button", { name: "Rerun Wizard", exact: true })
+            .click({ timeout: uiTimeoutMs });
+        await onboardingDialogue(page).waitFor({ state: "visible", timeout: uiTimeoutMs });
     });
-    if (!opened) throw new Error("The permanent onboarding command was not registered.");
+}
+
+async function closeSettings(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const settingsContainer = page.locator(".modal-container").filter({
+            has: page.locator(".sls-setting"),
+        });
+        await settingsContainer.locator(".modal-close-button").click({ timeout: uiTimeoutMs });
+        await settingsContainer.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
 }
 
 async function main(): Promise<void> {
@@ -190,8 +217,9 @@ async function main(): Promise<void> {
         console.log(`Fresh Vault startup evidence: ${JSON.stringify(evidence)}`);
 
         const desktopInvitation = await captureDesktopInvitation();
-        await openPermanentCommand();
-        const commandIntro = await captureAndCloseIntro("onboarding-intro-command-desktop.png", false);
+        await openOnboardingFromSettings();
+        const settingsIntro = await captureAndCloseIntro("onboarding-intro-settings-desktop.png", false);
+        await closeSettings();
         const mobileInvitation = await captureAndSelectMobileInvitation();
         const mobileIntro = await captureAndCloseIntro("onboarding-intro-mobile.png", true);
 
@@ -200,7 +228,7 @@ async function main(): Promise<void> {
                 desktopInvitation,
                 mobileInvitation,
                 mobileIntro,
-                commandIntro,
+                settingsIntro,
             ].join(", ")}`
         );
     } finally {

@@ -4,6 +4,8 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
+    REMOTE_COUCHDB,
+    REMOTE_P2P,
     type DocumentID,
     type EntryDoc,
     type EntryLeaf,
@@ -38,16 +40,28 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
             id: "analyse-database",
             name: "Analyse Database Usage (advanced)",
             icon: "database-search",
-            callback: async () => {
-                await this.analyseDatabase();
+            checkCallback: (checking) => {
+                if (!this.settings.useAdvancedMode || !this._isDatabaseReady()) return false;
+                if (!checking) {
+                    void this.analyseDatabase();
+                }
+                return true;
             },
         });
         this.plugin.addCommand({
             id: "gc-v3",
             name: "Garbage Collection V3 (advanced, beta)",
             icon: "trash-2",
-            callback: async () => {
-                await this.gcv3();
+            checkCallback: (checking) => {
+                const isApplicableRemote =
+                    this.settings.remoteType === REMOTE_COUCHDB || this.settings.remoteType === REMOTE_P2P;
+                if (!this.settings.useEdgeCaseMode || !this._isDatabaseReady() || !isApplicableRemote) {
+                    return false;
+                }
+                if (!checking) {
+                    void this.gcv3();
+                }
+                return true;
             },
         });
         eventHub.onEvent(EVENT_ANALYSE_DB_USAGE, () => this.analyseDatabase());

@@ -48,7 +48,7 @@ A TURN provider cannot read LiveSync's encrypted Vault contents, but it can obse
 
 The **P2P Status** pane is the current Obsidian interface for P2P connections.
 
-- The command **Self-hosted LiveSync: P2P Sync : Open P2P Status** remains available from the command palette.
+- After a P2P configuration exists, the command **Self-hosted LiveSync: P2P Sync : Open P2P Status** is available from the command palette.
 - The P2P ribbon icon appears only after a P2P configuration exists.
 - LiveSync does not open the pane merely because Obsidian has started. If the pane was already part of the saved Obsidian workspace, Obsidian may restore it.
 - Workspaces containing the retired P2P pane are migrated to the current status pane. The retired command is no longer exposed.

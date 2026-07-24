@@ -77,7 +77,7 @@ Commonlib unit tests cover preserving existing profiles, opaque-ID insertion, ge
 
 Self-hosted LiveSync unit tests cover preserving modern Setup URI profiles and their active selection, retaining legacy Setup URI and QR migration, adding CouchDB and Object Storage profiles beside an existing profile, independent P2P selection, fresh P2P selection as both main and P2P remote, and cancellation without mutation.
 
-The real-Obsidian onboarding E2E owns the invitation, dialogue presentation, safe-area and touch-target checks, cancellation, and command reopening. It does not contact a remote or submit credentials. Remote connection correctness remains owned by the CouchDB, Object Storage, P2P, and two-Vault suites. The end-to-end Setup URI and provisioning acceptance workflow remains a separate release gate.
+The real-Obsidian onboarding E2E owns the invitation, dialogue presentation, safe-area and touch-target checks, cancellation, and reopening from the Setup pane. It does not contact a remote or submit credentials. Remote connection correctness remains owned by the CouchDB, Object Storage, P2P, and two-Vault suites. The end-to-end Setup URI and provisioning acceptance workflow remains a separate release gate.
 
 ## Consequences
 

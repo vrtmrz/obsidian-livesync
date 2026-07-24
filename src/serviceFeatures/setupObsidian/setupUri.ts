@@ -50,19 +50,33 @@ export function useSetupURIFeature(host: NecessaryServices<"API" | "UI" | "setti
         host.services.API.addCommand({
             id: "livesync-copysetupuri",
             name: "Copy settings as a new setup URI",
-            callback: () => fireAndForget(copySetupURI(host, log)),
+            checkCallback: (checking) => {
+                if (!host.services.setting.currentSettings().isConfigured) return false;
+                if (!checking) fireAndForget(copySetupURI(host, log));
+                return true;
+            },
         });
 
         host.services.API.addCommand({
             id: "livesync-copysetupuri-short",
             name: "Copy settings as a new setup URI (With customization sync)",
-            callback: () => fireAndForget(copySetupURI(host, log, false)),
+            checkCallback: (checking) => {
+                const settings = host.services.setting.currentSettings();
+                if (!settings.isConfigured || !settings.usePluginSync) return false;
+                if (!checking) fireAndForget(copySetupURI(host, log, false));
+                return true;
+            },
         });
 
         host.services.API.addCommand({
             id: "livesync-copysetupurifull",
             name: "Copy settings as a new setup URI (Full)",
-            callback: () => fireAndForget(copySetupURIFull(host, log)),
+            checkCallback: (checking) => {
+                const settings = host.services.setting.currentSettings();
+                if (!settings.isConfigured || !settings.useAdvancedMode) return false;
+                if (!checking) fireAndForget(copySetupURIFull(host, log));
+                return true;
+            },
         });
 
         host.services.context.events.onEvent(EVENT_REQUEST_COPY_SETUP_URI, () =>

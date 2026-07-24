@@ -12,7 +12,7 @@ import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { request } from "@/deps.ts";
-import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
+import { SetupManager } from "@/modules/features/SetupManager.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import {
     createCoreSettingsAfterFullReset,
@@ -40,8 +40,7 @@ export function paneSetup(
             .addButton((text) => {
                 text.setButtonText($msg("Rerun Wizard")).onClick(async () => {
                     const setupManager = this.core.getModule(SetupManager);
-                    await setupManager.onOnboard(UserMode.ExistingUser);
-                    // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
+                    await setupManager.startOnBoarding();
                 });
             });
 

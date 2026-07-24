@@ -156,4 +156,57 @@ describe("setupObsidian/setupUri", () => {
         expect(addCommand).toHaveBeenCalledWith(expect.objectContaining({ id: "livesync-copysetupurifull" }));
         expect(onEventSpy).toHaveBeenCalledWith(EVENT_REQUEST_COPY_SETUP_URI, expect.any(Function));
     });
+
+    it("shows Setup URI variants only when their configuration level is relevant", async () => {
+        const addHandler = vi.fn();
+        const commands: Array<{
+            id: string;
+            checkCallback?: (checking: boolean) => boolean | void;
+        }> = [];
+        const settings = {
+            isConfigured: false,
+            usePluginSync: false,
+            useAdvancedMode: false,
+        };
+        const host = {
+            services: {
+                context: createServiceContext(),
+                API: {
+                    addCommand: vi.fn((command) => commands.push(command)),
+                    addLog: vi.fn(),
+                },
+                appLifecycle: {
+                    onLoaded: {
+                        addHandler,
+                    },
+                },
+                setting: {
+                    currentSettings: vi.fn(() => settings),
+                },
+                UI: {
+                    confirm: {
+                        askString: vi.fn(() => "pass"),
+                    },
+                    promptCopyToClipboard: vi.fn(() => true),
+                },
+            },
+        } as any;
+
+        useSetupURIFeature(host);
+        const loadedHandler = addHandler.mock.calls[0][0] as () => Promise<boolean>;
+        await loadedHandler();
+
+        const command = (id: string) => commands.find((candidate) => candidate.id === id)!;
+        expect(command("livesync-copysetupuri").checkCallback?.(true)).toBe(false);
+
+        settings.isConfigured = true;
+        expect(command("livesync-copysetupuri").checkCallback?.(true)).toBe(true);
+        expect(command("livesync-copysetupuri-short").checkCallback?.(true)).toBe(false);
+        expect(command("livesync-copysetupurifull").checkCallback?.(true)).toBe(false);
+
+        settings.usePluginSync = true;
+        settings.useAdvancedMode = true;
+        expect(command("livesync-copysetupuri-short").checkCallback?.(true)).toBe(true);
+        expect(command("livesync-copysetupurifull").checkCallback?.(true)).toBe(true);
+    });
 });

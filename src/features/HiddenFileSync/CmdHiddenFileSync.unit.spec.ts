@@ -8,12 +8,15 @@ vi.mock("@/features/HiddenFileCommon/JsonResolveModal.ts", () => ({
 vi.mock("@/features/LiveSyncCommands.ts", () => ({
     LiveSyncCommands: class LiveSyncCommands {
         plugin!: { app: unknown };
-        core!: { services: unknown };
+        core!: { services: unknown; settings: unknown };
         get app() {
             return this.plugin.app;
         }
         get services() {
             return this.core.services;
+        }
+        get settings() {
+            return this.core.settings;
         }
     },
 }));
@@ -25,6 +28,66 @@ import { HiddenFileSync } from "./CmdHiddenFileSync.ts";
 import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
 
 describe("HiddenFileSync configuration-change notices", () => {
+    it("shows manual Hidden File Sync commands only when the feature, Advanced mode, and runtime are ready", () => {
+        const commands: Array<{
+            id: string;
+            checkCallback?: (checking: boolean) => boolean | void;
+        }> = [];
+        const settings = {
+            syncInternalFiles: false,
+            useAdvancedMode: false,
+        };
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: {
+                settings,
+                services: {
+                    API: {
+                        addCommand: vi.fn((command) => commands.push(command)),
+                    },
+                },
+            },
+            _isMainReady: vi.fn(() => true),
+            _isMainSuspended: vi.fn(() => false),
+            _isDatabaseReady: vi.fn(() => true),
+        });
+
+        hiddenFileSync.onload();
+
+        const commandIds = [
+            "livesync-sync-internal",
+            "livesync-scaninternal-storage",
+            "livesync-scaninternal-database",
+            "livesync-internal-scan-offline-changes",
+        ];
+        for (const commandId of commandIds) {
+            const command = commands.find(({ id }) => id === commandId);
+            expect(command?.checkCallback?.(true)).toBe(false);
+        }
+
+        settings.syncInternalFiles = true;
+        settings.useAdvancedMode = true;
+        for (const commandId of commandIds) {
+            const command = commands.find(({ id }) => id === commandId);
+            expect(command?.checkCallback?.(true)).toBe(true);
+        }
+    });
+
+    it("does not report Hidden File Sync as ready before the main runtime is ready", () => {
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: {
+                settings: {
+                    syncInternalFiles: true,
+                },
+            },
+            _isMainReady: vi.fn(() => false),
+            _isMainSuspended: vi.fn(() => false),
+        });
+
+        expect(hiddenFileSync.isReady()).toBe(false);
+    });
+
     it("groups plug-in reloads and an Obsidian restart into one finished Notice", async () => {
         const noticeGroups = {
             setItem: vi.fn(),

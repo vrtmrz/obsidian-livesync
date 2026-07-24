@@ -454,8 +454,14 @@ export class ConfigSync extends LiveSyncCommands {
         this.services.API.addCommand({
             id: "livesync-plugin-dialog-ex",
             name: "Show customization sync dialog",
-            callback: () => {
-                this.showPluginSyncModal();
+            checkCallback: (checking) => {
+                if (!this.isThisModuleEnabled()) {
+                    return false;
+                }
+                if (!checking) {
+                    this.showPluginSyncModal();
+                }
+                return true;
             },
         });
         this.addRibbonIcon("custom-sync", $msg("cmdConfigSync.showCustomizationSync"), () => {

@@ -60,7 +60,7 @@ Keep configured-state inference separate from new-Vault initialisation. If an ex
 
 ### Onboarding activation and initialisation
 
-- Keep an unconfigured Vault outside database initialisation, offline scanning, and configured-only checks. Offer setup through the long-lived onboarding Notice and the permanent command instead of opening a competing dialogue automatically.
+- Keep an unconfigured Vault outside database initialisation, offline scanning, and configured-only checks. Offer setup through the long-lived onboarding Notice, and allow the wizard to be reopened from the Setup pane instead of opening a competing dialogue automatically.
 - For new-device onboarding, reserve Rebuild before enabling and saving the accepted settings.
 - For an unconfigured existing device, reserve Fetch before enabling and saving imported or manually confirmed settings.
 - Suspend the current runtime after the flag has been written, apply the accepted settings through the scheduler's preparation callback, and request restart only after that callback succeeds.

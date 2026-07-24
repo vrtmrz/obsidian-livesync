@@ -54,10 +54,7 @@ import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
 import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
-import {
-    configureHiddenFileSyncMode,
-    type ConfigureHiddenFileSyncResult,
-} from "./configureHiddenFileSyncMode.ts";
+import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
@@ -109,37 +106,45 @@ export class HiddenFileSync extends LiveSyncCommands {
         this.services.API.addCommand({
             id: "livesync-sync-internal",
             name: "(re)initialise hidden files between storage and database",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.initialiseInternalFileSync("safe", true);
                 }
+                return true;
             },
         });
         this.services.API.addCommand({
             id: "livesync-scaninternal-storage",
             name: "Scan hidden file changes on the storage",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.scanAllStorageChanges(true);
                 }
+                return true;
             },
         });
         this.services.API.addCommand({
             id: "livesync-scaninternal-database",
             name: "Scan hidden file changes on the local database",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.scanAllDatabaseChanges(true);
                 }
+                return true;
             },
         });
         this.services.API.addCommand({
             id: "livesync-internal-scan-offline-changes",
             name: "Scan and apply all offline hidden-file changes",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.applyOfflineChanges(true);
                 }
+                return true;
             },
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, () => {
@@ -191,10 +196,14 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     isReady() {
-        if (!this._isMainReady) return false;
+        if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
         return true;
+    }
+
+    private isManualCommandAvailable() {
+        return this.settings.useAdvancedMode && this.isReady() && this._isDatabaseReady();
     }
 
     async performStartupScan(showNotice: boolean) {
