@@ -698,6 +698,12 @@ Open the dialogue
 
 #### Make report to inform the issue
 
+#### Copy database information for a file
+
+Select a file to copy its local database information. The command **Copy database information for the active file** performs the same inspection for the file open in the editor.
+
+The report includes the Vault-relative path, document and chunk identifiers, local database revisions, conflicts, and local chunk availability. It does not query the remote or include file contents. Paths and identifiers can still be private metadata, so review the report before sharing it.
+
 #### Write logs into the file
 
 Setting key: writeLogToTheFile
@@ -721,17 +727,19 @@ Stop reflecting database changes to storage files.
 
 ### 3. Recovery and Repair
 
-#### Recreate missing chunks for all files
+#### Recreate chunks for current Vault files
 
-This will recreate chunks for all files. If there were missing chunks, this may fix the errors.
+Recreate chunks from files currently present in the Vault. This can repair missing chunks for those exact current contents after they have been confirmed as authoritative. It cannot reconstruct unavailable historical or conflict content.
 
 #### Resolve All conflicted files by the newer one
 
-Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.
+After confirmation, resolve every conflict by modification time. This logically deletes every version except the newest one. It is a destructive policy choice and cannot recover content which is already unavailable.
 
 #### Verify and repair all files
 
-Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.
+Compare each Vault file with every current live revision in the local database. Each winner and conflict revision is shown separately with its exact revision identifier, local chunk availability, and relationship to the current Vault file. Unavailable shared ancestors are reported separately because they prevent conservative three-way merging but are not live revisions which can be discarded.
+
+`Retry reading revision` retries the configured chunk-retrieval path without changing the revision tree. `Discard unreadable revision` is offered only for an exact current live revision which remains unreadable; after confirmation, it creates a logical deletion for that revision. Prefer recovery from another replica or backup before discarding it.
 
 #### Check and convert non-path-obfuscated files
 

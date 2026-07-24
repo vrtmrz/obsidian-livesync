@@ -722,7 +722,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
             await liveSyncSettings.locator('.sls-setting-menu-btn[title="Hatch"]').click({ timeout: uiTimeoutMs });
             for (const label of [
                 "Write logs into the file",
-                "Recreate missing chunks for all files",
+                "Recreate chunks for current Vault files",
                 "Verify and repair all files",
             ]) {
                 await liveSyncSettings.locator(".setting-item-name", { hasText: label }).waitFor({
@@ -730,7 +730,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
                     timeout: uiTimeoutMs,
                 });
             }
-            await liveSyncSettings.getByRole("button", { name: "Recreate all", exact: true }).waitFor({
+            await liveSyncSettings.getByRole("button", { name: "Recreate current chunks", exact: true }).waitFor({
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
@@ -739,7 +739,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
                 timeout: uiTimeoutMs,
             });
             await liveSyncSettings
-                .locator(".setting-item-name", { hasText: "Recreate missing chunks for all files" })
+                .locator(".setting-item-name", { hasText: "Recreate chunks for current Vault files" })
                 .scrollIntoViewIfNeeded();
             return liveSyncSettings;
         }

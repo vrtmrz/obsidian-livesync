@@ -15,6 +15,7 @@ const testSteps: Step[] = [
     { name: "smoke", args: ["run", "test:e2e:obsidian:smoke"] },
     { name: "onboarding invitation", args: ["run", "test:e2e:obsidian:onboarding-invitation"] },
     { name: "Svelte dialogue mounts", args: ["run", "test:e2e:obsidian:dialog-mounts"] },
+    { name: "revision repair", args: ["run", "test:e2e:obsidian:revision-repair"] },
     { name: "settings UI", args: ["run", "test:e2e:obsidian:settings-ui"] },
     { name: "Review Harness", args: ["run", "test:e2e:obsidian:review-harness"] },
     { name: "P2P status pane", args: ["run", "test:e2e:obsidian:p2p-pane"] },

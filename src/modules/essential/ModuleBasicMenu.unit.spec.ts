@@ -136,4 +136,35 @@ describe("ModuleBasicMenu command palette", () => {
         expect(fixture.getCommand("livesync-abortsync").checkCallback?.(true)).toBe(true);
     });
 
+    it("keeps active-file database information available and opens it in a copy dialogue", async () => {
+        const fixture = createFixture();
+
+        await fixture.module._everyOnloadStart();
+
+        const command = fixture.getCommand("livesync-dump");
+        expect(command.name).toBe("Copy database information for the active file");
+        expect(command.checkCallback?.(true)).toBe(true);
+
+        command.checkCallback?.(false);
+
+        await vi.waitFor(() => {
+            expect(fixture.services.UI.promptCopyToClipboard).toHaveBeenCalledOnce();
+        });
+        const [title, report] = fixture.services.UI.promptCopyToClipboard.mock.calls[0];
+        expect(title).toBe("Database information for note.md");
+        expect(report).toContain("note.md");
+        expect(report).toContain("2-current");
+        expect(report).toContain("h:private-chunk-id");
+        expect(report).toContain("1-chunk");
+        expect(fixture.core.localDatabase.getDBEntry).not.toHaveBeenCalled();
+    });
+
+    it("hides the active-file database report when no file is active", async () => {
+        const fixture = createFixture();
+        fixture.services.vault.getActiveFilePath.mockReturnValue(null);
+
+        await fixture.module._everyOnloadStart();
+
+        expect(fixture.getCommand("livesync-dump").checkCallback?.(true)).toBe(false);
+    });
 });

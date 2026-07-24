@@ -3,6 +3,7 @@ import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "@/modules/AbstractModule";
 import { $msg } from "@/common/translation";
+import { copyFileDatabaseInfo } from "@/serviceFeatures/fileDatabaseInfo";
 // Separated Module for basic menu commands, which are not related to obsidian specific features. It is expected to be used in other platforms with minimal changes.
 // However, it is odd that it has here at all; it really ought to be in each respective feature. It will likely be moved eventually. Until now, addCommand pointed to Obsidian's version.
 export class ModuleBasicMenu extends AbstractModule {
@@ -16,11 +17,14 @@ export class ModuleBasicMenu extends AbstractModule {
         });
         this.addCommand({
             id: "livesync-dump",
-            name: "Dump information of this doc ",
-            callback: () => {
+            name: $msg("Copy database information for the active file"),
+            checkCallback: (checking) => {
                 const file = this.services.vault.getActiveFilePath();
-                if (!file) return;
-                fireAndForget(() => this.localDatabase.getDBEntry(file, {}, true, false));
+                if (!file) return false;
+                if (!checking) {
+                    fireAndForget(() => copyFileDatabaseInfo(this.core, file));
+                }
+                return true;
             },
         });
         this.addCommand({

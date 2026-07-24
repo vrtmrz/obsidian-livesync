@@ -46,6 +46,22 @@ The all-branch history check prevents a resolved conflict from being recreated m
 
 The compatibility implementation currently selects the newer modification time for differing binary conflicts even when the general **Always overwrite with a newer file** option is disabled. This is existing behaviour, not a new 1.0 guarantee. Changing it to explicit selection only is a separate compatibility decision.
 
+## Unreadable revisions and repair
+
+A document revision can remain in the PouchDB tree while one or more chunks needed to reconstruct its content are unavailable. Missing content is not evidence that the revision is obsolete. LiveSync therefore leaves an unreadable winner or conflict revision in the tree instead of deleting it during automatic conflict processing.
+
+**Hatch** → **Verify and repair all files** inspects the current winner, every current conflict revision, and the nearest shared ancestor for each conflict. It reports exact revision identifiers and local chunk availability separately:
+
+- **Retry reading revision** attempts the configured chunk-retrieval path again. It does not change the revision tree.
+- **Discard unreadable revision** is available only for a current winner or conflict revision which remains unreadable when the action is performed. It requires confirmation and creates a logical deletion for that exact revision.
+- A shared ancestor is informational. An ancestor which is no longer a live revision cannot be discarded independently through this workflow. If its body is unavailable, conservative three-way merge remains disabled, although readable live revisions can still be selected manually.
+
+Logical deletion does not recreate missing bytes, purge the document history, or prove that the deleted version was unimportant. Another replica or backup may still contain the missing chunks. Recover from that source before discarding a revision whenever possible.
+
+**Recreate chunks for current Vault files** can recreate chunks only from files which are readable in the current Vault. It cannot reconstruct unique bytes from an unavailable historical or conflict revision.
+
+A generation-one revision has no parent. When its body is unavailable, LiveSync cannot preserve a changed Vault file as a sibling branch without inventing ancestry. It leaves the operation unresolved. Recover the missing chunks from another replica or backup, or explicitly discard that live revision. If the current Vault file is the intended replacement, it can be stored after the unreadable revision has been logically deleted.
+
 ### Two devices independently create the same path
 
 If two devices create the same full synchronised path before either device has
@@ -220,8 +236,8 @@ Do not:
 
 ## Verification
 
-Commonlib's real-PouchDB and injected-boundary unit tests cover unequal branch lengths, exact shared ancestry, deterministic ordering of multiple live leaves, a sensible stage followed by reconstruction of a manual pair, content below a deleted losing leaf, recorded and reconstructed branch identity, ambiguous matches, conflict-time editing, logical deletion, case-only rename, cross-path rename, and safe unproven fallbacks.
+Commonlib's real-PouchDB and injected-boundary unit tests cover unequal branch lengths, exact shared ancestry, deterministic ordering of multiple live leaves, a sensible stage followed by reconstruction of a manual pair, content below a deleted losing leaf, recorded and reconstructed branch identity, ambiguous matches, conflict-time editing, missing-body preservation when parent metadata is available, refusal to invent a parent for a generation-one revision, logical deletion, case-only rename, cross-path rename, and safe unproven fallbacks.
 
 LiveSync's optional real-Obsidian two-Vault checks have two scopes. `E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT=true` resolves and edits a Markdown conflict, propagates it to a Vault which still displays the deleted losing content, and requires one live result to remain. `E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS=true` edits, deletes, case-renames, and cross-path-renames files while conflicts remain active; it verifies the parent revision of each resulting branch, replicates those exact trees, and confirms that the other live branches remain intact.
 
-The focused `test:e2e:obsidian:conflict-dialog-policy` scenario creates three live versions in one real Obsidian Vault. It verifies the count warning, commits a concatenated child of the displayed winner, confirms that the untouched leaf remains as one conflict, postpones that remaining pair, restarts the isolated Obsidian profile, and confirms that only the live pair is reconstructed. It also verifies that an incoming resolution closes a stale dialogue, completes the waiting conflict operation, and clears the warning.
+The focused `test:e2e:obsidian:conflict-dialog-policy` scenario creates three live versions in one real Obsidian Vault. It verifies the count warning, commits a concatenated child of the displayed winner, confirms that the untouched leaf remains as one conflict, postpones that remaining pair, restarts the isolated Obsidian profile, and confirms that only the live pair is reconstructed. It also verifies that an incoming resolution closes a stale dialogue, completes the waiting conflict operation, and clears the warning. The repair scenario removes a referenced local chunk, confirms that the exact unreadable live revision remains in the tree, and exercises explicit retry and discard controls without deleting another live revision.

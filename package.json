@@ -50,6 +50,7 @@
         "test:e2e:obsidian:onboarding-invitation": "tsx test/e2e-obsidian/scripts/onboarding-invitation.ts",
         "test:e2e:obsidian:dialog-mounts": "tsx test/e2e-obsidian/scripts/dialog-mounts.ts",
         "test:e2e:obsidian:conflict-dialog-policy": "tsx test/e2e-obsidian/scripts/conflict-dialog-policy.ts",
+        "test:e2e:obsidian:revision-repair": "tsx test/e2e-obsidian/scripts/revision-repair.ts",
         "test:e2e:obsidian:settings-ui": "tsx test/e2e-obsidian/scripts/settings-ui.ts",
         "test:e2e:obsidian:review-harness": "tsx test/e2e-obsidian/scripts/review-harness.ts",
         "test:e2e:obsidian:p2p-pane": "tsx test/e2e-obsidian/scripts/p2p-pane.ts",

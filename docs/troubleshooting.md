@@ -53,9 +53,16 @@ Check Obsidian's `Detect all file extensions`, LiveSync selectors, ignore files,
 
 If the log reports missing chunks or a size mismatch:
 
-1. restart Obsidian once to rule out an interrupted fetch;
-2. on a device which has the correct file, run `Recreate missing chunks for all files`, then synchronise; and
-3. if the mismatch remains, run `Verify and repair all files` from `Hatch` and review which copy is authoritative.
+1. stop editing the affected file and keep a separate copy of any readable content;
+2. restart Obsidian once to rule out an interrupted fetch;
+3. synchronise a device or restore a backup which still has the correct content;
+4. on that healthy device, run `Recreate chunks for current Vault files`, then synchronise;
+5. run `Verify and repair all files` from `Hatch`; review the winner, every conflict revision, and any unavailable shared ancestor separately; and
+6. use `Discard unreadable revision` only after confirming that the exact revision is no longer recoverable or wanted.
+
+`Retry reading revision` does not change the revision tree. `Discard unreadable revision` creates a logical deletion for one current winner or conflict revision after rechecking it. It does not purge history or reconstruct missing content. An unavailable non-live ancestor cannot be deleted through this workflow; it disables conservative three-way merge but does not prevent explicit selection between readable live revisions.
+
+`Recreate chunks for current Vault files` uses current Vault content. It cannot recreate unique bytes which exist only in an unreadable historical or conflict revision.
 
 ## A configuration mismatch dialogue blocks synchronisation
 
@@ -109,6 +116,8 @@ Enable Obsidian's `Detect all file extensions`, then check LiveSync selectors, i
 ## Collect a report
 
 Run `Generate full report for opening the issue with debug info` to copy the current settings summary and recent verbose log lines. Remove credentials, remote URLs, Vault names, file contents, and other private information before sharing it.
+
+When a problem concerns one file, run **Copy database information for the active file**, or use **Hatch** → **Copy database information for a file** to select another file. The report describes this device's local database view, including the Vault-relative path, document and chunk identifiers, local database revisions, conflicts, and local chunk availability. It does not query the remote server or include file contents. Treat paths and identifiers as private metadata before sharing.
 
 Use `Show log` for live inspection. Logs are intentionally kept in memory for a limited time to reduce accidental disclosure. Enable `Write logs into the file` only while reproducing a problem, then disable it and remove the file after review because persistent logging affects performance and may contain private data.
 

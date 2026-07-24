@@ -8,6 +8,7 @@ const focusedScenarios = new Set([
     "smoke",
     "onboarding-invitation",
     "dialog-mounts",
+    "revision-repair",
     "settings-ui",
     "review-harness",
     "p2p-pane",

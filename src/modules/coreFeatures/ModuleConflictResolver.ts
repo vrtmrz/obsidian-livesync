@@ -86,8 +86,11 @@ export class ModuleConflictResolver extends AbstractModule {
             return MISSING_OR_ERROR;
         }
         if (rightLeaf == false) {
-            // Conflicted item could not load, delete this.
-            return await this.services.conflict.resolveByDeletingRevision(path, rightRev, "MISSING OLD REV");
+            // A locally unreadable conflict leaf may still be recoverable from another
+            // replica or backup. Keep it visible for explicit repair instead of treating
+            // missing chunks as evidence that the branch is obsolete.
+            this._log(`could not read conflicted revision ${rightRev}:${path}`, LOG_LEVEL_NOTICE);
+            return MISSING_OR_ERROR;
         }
 
         const isSame = leftLeaf.data == rightLeaf.data && leftLeaf.deleted == rightLeaf.deleted;

@@ -4,6 +4,7 @@ import {
     DEFAULT_SETTINGS,
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
+    MISSING_OR_ERROR,
     type FilePathWithPrefix,
     type MetaEntry,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -189,6 +190,28 @@ describe("ModuleConflictResolver independent same-path creation", () => {
 });
 
 describe("ModuleConflictResolver sensible merge hand-off", () => {
+    it("keeps an unreadable non-winner revision unresolved", async () => {
+        const path = "missing-conflict-body.md" as FilePathWithPrefix;
+        const { module, resolveByDeletingRevision, tryAutoMerge } = createModule();
+        tryAutoMerge.mockResolvedValue({
+            leftRev: "3-current",
+            rightRev: "2-unreadable",
+            leftLeaf: {
+                rev: "3-current",
+                data: "Readable current body\n",
+                ctime: 1,
+                mtime: 3,
+                deleted: false,
+            },
+            rightLeaf: false,
+        });
+
+        const result = await module.checkConflictAndPerformAutoMerge(path);
+
+        expect(result).toBe(MISSING_OR_ERROR);
+        expect(resolveByDeletingRevision).not.toHaveBeenCalled();
+    });
+
     it("stores the merged body and removes the resolved conflict leaf", async () => {
         const path = "sensible.md" as FilePathWithPrefix;
         const { module, resolveByDeletingRevision, tryAutoMerge } = createModule();

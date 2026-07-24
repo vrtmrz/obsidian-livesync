@@ -595,6 +595,49 @@ body.is-mobile .livesync-compatibility-review-notice {
     word-break: break-all;
 }
 
+.sls-repair-results {
+    display: grid;
+    gap: var(--size-4-3);
+}
+
+.sls-repair-result {
+    padding: var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
+
+.sls-repair-revision {
+    margin-top: var(--size-4-2);
+    padding: var(--size-4-2);
+    border-left: 3px solid var(--background-modifier-border);
+    background: var(--background-primary-alt);
+}
+
+.sls-repair-revision-title {
+    font-weight: var(--font-semibold);
+    overflow-wrap: anywhere;
+}
+
+.sls-repair-revision code {
+    display: block;
+    margin-top: var(--size-4-1);
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.sls-repair-ancestor-warning {
+    margin-top: var(--size-4-2);
+    color: var(--text-warning);
+}
+
+.sls-repair-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    margin-top: var(--size-4-2);
+}
+
 /* Diff navigation */
 .diff-options-row {
     display: flex;
