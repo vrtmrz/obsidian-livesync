@@ -47,7 +47,7 @@ A pattern containing only `snippets` does not admit the `.obsidian` parent, so t
    ![Hidden File Sync initialisation choices](../../images/hidden-file-sync/guide-hidden-file-enable.png)
 
 2. Under `Enable Hidden File Sync`, select the initialisation direction chosen above.
-3. Keep Obsidian open while the initial scan and synchronisation finish. A progress Notice appears when preparation begins and remains visible while the initial scan is running.
+3. Keep Obsidian open while the initial scan and synchronisation finish. A progress Notice appears when preparation begins and remains visible until the initial scan has finished.
 
    ![Hidden File Sync initial scan progress Notice](../../images/hidden-file-sync/guide-hidden-file-initial-scan-progress.png)
 

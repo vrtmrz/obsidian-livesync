@@ -119,7 +119,7 @@ Use this path when CouchDB is ready but a Setup URI is unavailable. It configure
 
 5. On `Choose a synchronisation remote`, select `CouchDB`, then select `Continue to CouchDB setup`.
 
-   ![CouchDB option in the synchronisation remote choices](../images/couchdb-manual/guide-couchdb-manual-remote-selection.png)
+   ![CouchDB option in the list of synchronisation remotes](../images/couchdb-manual/guide-couchdb-manual-remote-selection.png)
 
 6. Enter the complete CouchDB URL, username, password, and database name.
    - Obsidian Mobile requires HTTPS. Plain HTTP is suitable only for a trusted local connection from a desktop device.
