@@ -113,7 +113,7 @@
         "@types/transform-pouch": "^1.0.6",
         "@typescript-eslint/parser": "8.56.1",
         "@vitest/coverage-v8": "^4.1.8",
-        "@vrtmrz/obsidian-test-session": "0.2.4",
+        "@vrtmrz/obsidian-test-session": "0.2.5",
         "dotenv-cli": "^11.0.0",
         "esbuild": "0.28.1",
         "esbuild-plugin-inline-worker": "^0.1.1",
