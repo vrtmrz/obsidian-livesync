@@ -169,9 +169,9 @@ Show verbose log. Please enable when you report the logs
 
 ## 3. Remote Configuration
 
-### 1. Remote Server
+### 1. Connection settings
 
-Self-hosted LiveSync supports multiple remote connection profiles under **Remote Server** -> **Remote Databases**. This allows you to save and switch between multiple databases or bucket configurations in a single vault.
+Self-hosted LiveSync stores multiple remote connection profiles under **Connection settings** → **Saved connections**. Each profile represents a CouchDB database, an Object Storage connection, or a P2P configuration, and several profiles can be kept in one Vault.
 
 Each profile has an opaque identifier and a presentation name. The name does not need to be unique and is not used to select the profile. The main remote and the P2P remote are selected independently, so code and settings imports must preserve both selections rather than relying on a special identifier such as `default`.
 
@@ -185,7 +185,7 @@ Each profile has an opaque identifier and a presentation name. The name does not
 
 Setting key: remoteType
 
-The active remote server type. This is automatically projected to the legacy configuration when you activate a connection profile.
+The active connection type. This is automatically projected to the legacy configuration when you activate a connection profile.
 
 ### 2. Notification
 

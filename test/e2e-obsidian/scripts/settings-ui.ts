@@ -214,6 +214,17 @@ async function verifyEffectiveSettings(): Promise<void> {
             throw new Error("The Change Log still contains a compatibility or release-note acknowledgement control.");
         }
 
+        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Remote Configuration"]').click();
+        const connectionPanel = liveSyncSettings
+            .locator("h4.sls-setting-panel-title")
+            .filter({ hasText: "Connection settings" })
+            .locator("..");
+        await connectionPanel.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await connectionPanel.getByText("Saved connections", { exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+
         await liveSyncSettings.locator('.sls-setting-menu-btn[title="Sync Settings"]').click();
         const deletionPanel = liveSyncSettings
             .locator("h4.sls-setting-panel-title")

@@ -65,7 +65,7 @@ The special meaning would duplicate `activeConfigurationId`, make a user-visible
 
 ### Add profile naming and full list editing to onboarding
 
-That would make the first-run path longer and duplicate the established Remote Databases interface. Automatic descriptive names and later renaming keep this change limited to data integrity and consistent selection.
+That would make the first-run path longer and duplicate the established Saved connections interface. Automatic descriptive names and later renaming keep this change limited to data integrity and consistent selection.
 
 ### Replace the compatibility fields immediately
 
@@ -81,7 +81,7 @@ The real-Obsidian onboarding E2E owns the invitation, dialogue presentation, saf
 
 ## Consequences
 
-- Manual onboarding and the Remote Databases pane share one Commonlib profile contract.
+- Manual onboarding and the Saved connections list share one Commonlib profile contract.
 - Existing profiles survive reconfiguration, and a newly configured connection becomes explicitly selectable.
 - Modern imports retain user-assigned profile identity and names.
 - Legacy Setup URIs continue to work through an isolated compatibility boundary.

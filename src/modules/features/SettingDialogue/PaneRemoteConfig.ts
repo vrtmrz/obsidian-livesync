@@ -133,8 +133,8 @@ export function paneRemoteConfig(
     }
     {
         // TODO: very WIP. need to refactor the UI.
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleRemoteServer"), () => {}).then((paneEl) => {
-            const actions = new Setting(paneEl).setName("Remote Databases");
+        void addPanel(paneEl, $msg("Connection settings"), () => {}).then((paneEl) => {
+            const actions = new Setting(paneEl).setName($msg("Saved connections"));
             // actions.addButton((button) =>
             //     button
             //         .setButtonText("Change Remote and Setup")

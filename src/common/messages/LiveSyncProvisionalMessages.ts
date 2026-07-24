@@ -66,6 +66,8 @@ export const liveSyncProvisionalEnglishMessages = {
         "This file has ${COUNT} unresolved versions. They will be reviewed one pair at a time.",
     "Sync now": "Sync now",
     "Apply pending changes now": "Apply pending changes now",
+    "Connection settings": "Connection settings",
+    "Saved connections": "Saved connections",
 } as const;
 
 export type LiveSyncProvisionalMessageKey = keyof typeof liveSyncProvisionalEnglishMessages;
