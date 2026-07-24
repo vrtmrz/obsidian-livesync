@@ -69,7 +69,7 @@ Garbage Collection removes unreferenced chunks while preserving the current data
 - all relevant devices have synchronised; and
 - the remaining historical and deletion state is understood.
 
-Deleted documents and tombstones are not free, and historical revisions may keep chunks reachable. Garbage Collection therefore cannot promise the smallest possible remote.
+Deleted documents, tombstones, live conflicts, and retained metadata are not free. Live conflict branches keep the chunks needed for review, while an ordinary superseded linear revision does not protect its former chunks. Garbage Collection can therefore make old content unreadable and cannot promise the smallest possible remote. Review the [Garbage Collection V3 specification](specs_garbage_collection.md) before using it.
 
 Rebuild is a different operation. It reconstructs the database from a chosen authoritative state and is the more certain way to remove unwanted history or repair a damaged remote, but it is also more disruptive and can discard changes which exist only elsewhere.
 

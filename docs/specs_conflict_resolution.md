@@ -60,6 +60,8 @@ Logical deletion does not recreate missing bytes, purge the document history, or
 
 **Recreate chunks for current Vault files** can recreate chunks only from files which are readable in the current Vault. It cannot reconstruct unique bytes from an unavailable historical or conflict revision.
 
+Garbage Collection V3 treats every live conflict revision and its nearest available shared ancestor as reachable. Their locally available chunks are retained until the conflict is resolved. After resolution, chunks used only by the discarded branch or no-longer-needed merge ancestry can become eligible for collection. See the [Garbage Collection V3 specification](specs_garbage_collection.md).
+
 A generation-one revision has no parent. When its body is unavailable, LiveSync cannot preserve a changed Vault file as a sibling branch without inventing ancestry. It leaves the operation unresolved. Recover the missing chunks from another replica or backup, or explicitly discard that live revision. If the current Vault file is the intended replacement, it can be stored after the unreadable revision has been logically deleted.
 
 ### Two devices independently create the same path

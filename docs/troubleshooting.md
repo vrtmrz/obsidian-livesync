@@ -129,7 +129,7 @@ Browser security errors, particularly CORS failures, may reach the plug-in only 
 
 LiveSync stores file metadata, chunks, revision history, conflicts, deletions, and tombstones. Deleting or shortening a file therefore does not immediately remove every object which once represented it.
 
-Garbage Collection can remove unreferenced chunks, but it is appropriate only when the Vault and local database are healthy and all relevant devices have synchronised. Tombstones and retained revisions are not free, so Garbage Collection does not guarantee a minimal database.
+Garbage Collection V3 can remove unreferenced chunks from a healthy CouchDB setup, but it is appropriate only when the Vault and local database are healthy and all relevant devices have synchronised. Current files and live conflict branches protect their required chunks; an ordinary superseded revision does not. Tombstones and retained metadata are not free, so Garbage Collection does not guarantee a minimal database. Review the [Garbage Collection V3 specification](specs_garbage_collection.md) before using it.
 
 `Overwrite Server Data with This Device's Files` is a separate rebuild operation and is the more certain way to reconstruct a central remote from a chosen authoritative Vault. It is also destructive and may discard changes which exist only on another device. Review [Recovery and flag files](recovery.md#garbage-collection-is-not-rebuild) before choosing between them.
 

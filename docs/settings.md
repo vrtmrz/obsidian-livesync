@@ -12,7 +12,7 @@ The following status applies to optional and compatibility features in the 1.0 l
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Supported, opt-in    | Peer-to-Peer Synchronisation, Hidden File Sync, and Customisation Sync                                                                                | Maintained and covered by focused real-runtime tests. Enable them only where their separate setup and operational constraints are acceptable.                                   |
 | Maintained, advanced | Data Compression                                                                                                                                      | Available as an explicit storage and bandwidth trade-off. It remains disabled by default because the measured processing and memory costs outweigh the mixed-dataset saving.    |
-| Beta or experimental | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3                                                 | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
+| Beta or experimental | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 for CouchDB                                     | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
 | Compatibility only   | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
 
 | Icon | Description                                                        |
@@ -1046,6 +1046,12 @@ Purge all download/upload cache.
 #### Fresh Start Wipe
 
 Delete all data on the remote server.
+
+### 6. Garbage Collection V3 (CouchDB only)
+
+Garbage Collection V3 identifies chunk documents which are not reachable from any current file or live conflict branch, creates logical deletions for those chunks locally, propagates the deletions to CouchDB, and requests remote compaction.
+
+Use it only when the Vault, local database, and remote are healthy, and every relevant device has synchronised. It can make an ordinary superseded file revision unreadable when no live state still needs its chunks. It does not repair corruption or replace a deliberate rebuild. See the [Garbage Collection V3 specification](specs_garbage_collection.md).
 
 ### 7. Reset
 

@@ -187,7 +187,7 @@ export function paneMaintenance(
             )
             .addOnUpdate(this.onlyOnMinIO);
     });
-    void addPanel(paneEl, "Garbage Collection V3 (Beta)", (e) => e, this.onlyOnP2POrCouchDB).then((paneEl) => {
+    void addPanel(paneEl, "Garbage Collection V3 (Beta)", (e) => e, this.onlyOnCouchDB).then((paneEl) => {
         new Setting(paneEl)
             .setName("Perform Garbage Collection")
             .setDesc("Perform Garbage Collection to remove unused chunks and reduce database size.")
