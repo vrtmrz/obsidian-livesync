@@ -19,14 +19,14 @@ After the user starts Garbage Collection V3, LiveSync:
 
 1. completes a one-shot bidirectional CouchDB synchronisation;
 2. reads the accepted-device list and current progress recorded on the remote;
-3. warns when an accepted device has no current information or device progress differs, then requires explicit confirmation;
+3. requires parseable progress information, warns when an accepted device has no current information or device progress differs, then requires explicit confirmation;
 4. computes the chunks reachable from the local PouchDB revision tree;
 5. creates a logical deletion for each locally present chunk which is not reachable;
 6. completes a push-only replication so that those deletions reach CouchDB;
 7. requests CouchDB compaction and waits for it for up to two minutes; and
 8. clears the local chunk caches.
 
-If the initial synchronisation, device inspection, or confirmation fails, the workflow stops before collection. If push-only replication fails, the local logical deletions have already been created, but remote compaction is not started; synchronise again before retrying or using another device. A compaction failure is reported separately.
+If the initial synchronisation, device inspection, or confirmation fails, the workflow stops before collection. Missing or invalid device progress is treated as a failed inspection rather than offered as a confirmation override. If push-only replication fails, the local logical deletions have already been created, but remote compaction is not started; synchronise again before retrying or using another device. A compaction failure or completion timeout is reported separately and is not also reported as a successful completion.
 
 ## Reachability rules
 

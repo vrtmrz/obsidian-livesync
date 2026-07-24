@@ -760,7 +760,7 @@ Success: ${successCount}, Errored: ${errored}`;
                 timeout -= 2000;
                 if (timeout <= 0) {
                     this._notice("Compaction on remote database timed out.", "gc-compact");
-                    break;
+                    return;
                 }
             } else {
                 break;
@@ -883,9 +883,14 @@ It is preferable to update all devices if possible. If you have any devices that
         }
 
         //2. Check whether the progress values in NodeData are roughly the same (only the numerical part is needed).
-        const progressValues = Object.values(node_info)
-            .map((e) => e.progress.split("-")[0])
-            .map((e) => parseInt(e));
+        const progressValues = Object.values(node_info).map((entry) => {
+            const progress = typeof entry.progress === "string" ? entry.progress.split("-")[0] : "";
+            return /^\d+$/u.test(progress) ? Number(progress) : Number.NaN;
+        });
+        if (progressValues.length === 0 || progressValues.some((progress) => !Number.isSafeInteger(progress))) {
+            this._notice("No connected device information found. Cancelling Garbage Collection.");
+            return;
+        }
         const maxProgress = Math.max(...progressValues);
         const minProgress = Math.min(...progressValues);
         const progressDifference = maxProgress - minProgress;

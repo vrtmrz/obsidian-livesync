@@ -9,6 +9,13 @@ vi.mock("octagonal-wheels/concurrency/lock_v2", () => ({
 vi.mock("octagonal-wheels/collection", () => ({
     arrayToChunkedArray: vi.fn((values: unknown[]) => [values]),
 }));
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/utils", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/compat/common/utils")>();
+    return {
+        ...actual,
+        delay: vi.fn(async () => undefined),
+    };
+});
 vi.mock("@/features/LiveSyncCommands", () => ({
     LiveSyncCommands: class LiveSyncCommands {
         core!: { settings: unknown };
@@ -209,6 +216,108 @@ describe("LocalDatabaseMaintenance prerequisites", () => {
 });
 
 describe("LocalDatabaseMaintenance Garbage Collection V3", () => {
+    it("does not report remote compaction as successful after its completion wait times out", async () => {
+        const maintenance = Object.create(LocalDatabaseMaintenance.prototype) as LocalDatabaseMaintenance;
+        const notice = vi.fn();
+        const remoteDatabase = {
+            compact: vi.fn(async () => ({ ok: true })),
+            info: vi.fn(async () => ({ compact_running: true })),
+        };
+        Object.assign(maintenance, {
+            core: {
+                replicator: {
+                    connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase })),
+                },
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    remoteType: REMOTE_COUCHDB,
+                },
+            },
+            _notice: notice,
+        });
+
+        await maintenance.compactDatabase();
+
+        expect(notice).toHaveBeenCalledWith("Compaction on remote database timed out.", "gc-compact");
+        expect(notice).not.toHaveBeenCalledWith(
+            "Compaction on remote database completed successfully.",
+            "gc-compact"
+        );
+    });
+
+    it.each([
+        ["no device progress entries", {}],
+        [
+            "an unparseable device progress entry",
+            {
+                "device-a": {
+                    progress: "",
+                    device_name: "Device A",
+                    app_version: "1.12.7",
+                    plugin_version: "1.0.0-beta.0",
+                },
+            },
+        ],
+        [
+            "a missing device progress entry",
+            {
+                "device-a": {
+                    device_name: "Device A",
+                    app_version: "1.12.7",
+                    plugin_version: "1.0.0-beta.0",
+                },
+            },
+        ],
+    ] as const)("cancels before collection when the milestone has %s", async (_case, nodeInfo) => {
+        const maintenance = Object.create(LocalDatabaseMaintenance.prototype) as LocalDatabaseMaintenance;
+        const pushModes: string[] = [];
+        const allChunks = vi.fn(async () => ({
+            used: new Set<string>(),
+            existing: new Map(),
+        }));
+        const replicator = {
+            openOneShotReplication: vi.fn(async (...args: unknown[]) => {
+                pushModes.push(String(args[3]));
+                return true;
+            }),
+            getConnectedDeviceList: vi.fn(async () => ({
+                accepted_nodes: Object.keys(nodeInfo),
+                node_info: nodeInfo,
+            })),
+        };
+        const notice = vi.fn();
+        Object.assign(maintenance, {
+            core: {
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    remoteType: REMOTE_COUCHDB,
+                },
+                replicator,
+                confirm: {
+                    askSelectStringDialogue: vi.fn(async () => "Proceed Garbage Collection"),
+                },
+            },
+            localDatabase: {
+                allChunks,
+                localDatabase: {
+                    bulkDocs: vi.fn(async () => []),
+                },
+            },
+            _notice: notice,
+        });
+        vi.spyOn(maintenance, "ensureAvailable").mockResolvedValue(true);
+        vi.spyOn(maintenance, "compactDatabase").mockResolvedValue(undefined);
+        vi.spyOn(maintenance, "clearHash").mockImplementation(() => undefined);
+
+        await maintenance.gcv3();
+
+        expect(allChunks).not.toHaveBeenCalled();
+        expect(pushModes).toEqual(["sync"]);
+        expect(notice).toHaveBeenCalledWith(
+            "No connected device information found. Cancelling Garbage Collection."
+        );
+    });
+
     it("keeps chunks referenced by a live conflict revision and deletes only unreachable chunks", async () => {
         const maintenance = Object.create(LocalDatabaseMaintenance.prototype) as LocalDatabaseMaintenance;
         const pushModes: string[] = [];

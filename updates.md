@@ -25,13 +25,13 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 ### Fixed
 
 - An unreadable conflict revision is no longer deleted automatically merely because its chunks are unavailable on the current device.
-- Garbage Collection V3 now protects chunks required by every live conflict branch and the available revision ancestry needed to review and merge conflicts, instead of considering only the database winner. The action is offered only for CouchDB because P2P has no central database to compact and does not provide the device inventory required by the workflow.
+- Garbage Collection V3 now protects chunks required by every live conflict branch and the available revision ancestry needed to review and merge conflicts, instead of considering only the database winner. The action is offered only for CouchDB because P2P has no central database to compact and does not provide the device inventory required by the workflow. Collection now stops when device progress cannot be verified, and a compaction timeout is no longer followed by a contradictory success message.
 - Choosing **Apply settings to this device, and fetch again** for a compatible configuration mismatch now applies the remote settings before Fetch, instead of updating the remote database with this device's settings.
 - Accepted settings which control how new chunks are created now take effect before synchronisation is retried, rather than leaving the previous hash or splitter active until restart.
 
 ### Testing
 
-- Added regressions for revision repair, P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, mobile dialogues, conflict-aware chunk reachability, shared chunks, collection propagation, and content-addressed chunk recreation.
+- Added regressions for revision repair, P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, mobile dialogues, conflict-aware chunk reachability, device-progress safeguards, compaction timeouts, shared chunks, collection propagation, and content-addressed chunk recreation.
 
 ## 1.0.0-beta.2
 
