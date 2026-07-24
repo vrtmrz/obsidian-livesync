@@ -1,4 +1,6 @@
 import { assertLocatorWithinViewport, assertNoHorizontalOverflow } from "@vrtmrz/obsidian-test-session";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import type { Page } from "playwright";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
@@ -47,6 +49,17 @@ async function verifyP2PStatusPane(filename: string, mobile: boolean): Promise<s
             state: "visible",
             timeout: uiTimeoutMs,
         });
+        const remoteSelector = pane.getByRole("combobox", { name: "Select active P2P remote" });
+        await remoteSelector.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        if ((await remoteSelector.inputValue()).trim() === "") {
+            throw new Error("The configured P2P status pane did not select an active P2P remote.");
+        }
+        if (
+            (await pane.getByText("Please select an active P2P remote configuration to change P2P sync targets.").count()) !==
+            0
+        ) {
+            throw new Error("The configured P2P status pane still requested an active P2P remote.");
+        }
         await assertNoHorizontalOverflow(page, pane, { label: "P2P status pane" });
         if (mobile) {
             await assertLocatorWithinViewport(page, pane, { label: "mobile P2P status pane" });
@@ -116,25 +129,41 @@ async function dismissOpenNotices(page: Page): Promise<void> {
     throw new Error("Transient Obsidian notices did not become quiet before the P2P status screenshot.");
 }
 
-const basePluginData = createE2eCouchDbPluginData(
-    {
-        uri: "http://127.0.0.1:5984",
-        username: "",
-        password: "",
-        dbName: "p2p-pane-ui-only",
-    },
-    {
-        notifyThresholdOfRemoteStorageSize: -1,
-        periodicReplication: false,
-        P2P_Enabled: false,
-        P2P_AutoStart: false,
-        syncAfterMerge: false,
-        syncOnEditorSave: false,
-        syncOnFileOpen: false,
-        syncOnSave: false,
-        syncOnStart: false,
-    }
-);
+function createBaseP2PPluginData(): Record<string, unknown> {
+    return createE2eCouchDbPluginData(
+        {
+            uri: "http://127.0.0.1:5984",
+            username: "",
+            password: "",
+            dbName: "p2p-pane-ui-only",
+        },
+        {
+            notifyThresholdOfRemoteStorageSize: -1,
+            periodicReplication: false,
+            P2P_Enabled: false,
+            P2P_AutoStart: false,
+            syncAfterMerge: false,
+            syncOnEditorSave: false,
+            syncOnFileOpen: false,
+            syncOnSave: false,
+            syncOnStart: false,
+        }
+    );
+}
+
+function createConfiguredP2PPluginData(): Record<string, unknown> {
+    const pluginData = {
+        ...createBaseP2PPluginData(),
+        P2P_roomID: "configured-p2p-room",
+        P2P_passphrase: "configured-p2p-passphrase",
+    };
+    upsertRemoteConfigurationInPlace(pluginData as ObsidianLiveSyncSettings, "p2p", {
+        id: "e2e-p2p",
+        name: "P2P Remote",
+        activateForP2P: true,
+    });
+    return pluginData;
+}
 
 async function withP2PSession(
     binary: string,
@@ -170,18 +199,14 @@ async function main(): Promise<void> {
         throw new Error(`Could not find obsidian-cli. Checked paths: ${cli.checked.join(", ")}`);
     }
 
-    await withP2PSession(binary, cli.binary, basePluginData, async () => {
+    await withP2PSession(binary, cli.binary, createBaseP2PPluginData(), async () => {
         await assertP2PUIIsOptIn();
     });
 
     await withP2PSession(
         binary,
         cli.binary,
-        {
-            ...basePluginData,
-            P2P_roomID: "configured-p2p-room",
-            P2P_passphrase: "configured-p2p-passphrase",
-        },
+        createConfiguredP2PPluginData(),
         async () => {
             await assertConfiguredP2PUIIsAvailable();
             const desktopScreenshot = await verifyP2PStatusPane("p2p-status-pane.png", false);

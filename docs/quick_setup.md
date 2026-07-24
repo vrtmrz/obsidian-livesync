@@ -107,15 +107,30 @@ Use this path when CouchDB is ready but a Setup URI is unavailable. It configure
 1. Install and enable Self-hosted LiveSync in the intended Vault.
 2. Select the `Welcome to Self-hosted LiveSync` Notice, choose `I am setting this up for the first time`, then confirm that you want to set up a new synchronisation.
 3. On `Connection Method`, select `Configure a remote manually`, then select `Proceed with manual configuration`.
+
+   ![Manual remote configuration option during onboarding](../images/couchdb-manual/guide-couchdb-manual-connection-method.png)
+
 4. On `End-to-End Encryption`, decide how the synchronised data will be protected.
    - For an ordinary new Vault, enable `End-to-End Encryption` and enter a strong Vault encryption passphrase.
    - Enable `Obfuscate Properties` if remote document properties should also be concealed.
    - Store the Vault encryption passphrase securely. It is separate from the passphrase used to protect a Setup URI.
+
+   ![CouchDB Vault encryption settings with the passphrase masked](../images/couchdb-manual/guide-couchdb-manual-encryption.png)
+
 5. On `Choose a synchronisation remote`, select `CouchDB`, then select `Continue to CouchDB setup`.
+
+   ![CouchDB option in the synchronisation remote choices](../images/couchdb-manual/guide-couchdb-manual-remote-selection.png)
+
 6. Enter the complete CouchDB URL, username, password, and database name.
    - Obsidian Mobile requires HTTPS. Plain HTTP is suitable only for a trusted local connection from a desktop device.
    - Use credentials which are allowed to connect to the selected database and, when configuring the first device, create it if it does not exist.
+
+   ![Manual CouchDB connection fields with the password masked](../images/couchdb-manual/guide-couchdb-manual-connection-details.png)
+
 7. `Check server requirements` is optional. It sends the displayed credentials to the configured server through Obsidian's internal request API, and some checks require CouchDB administrator access. The initial check is read-only. If it offers a server change, review and confirm that individual change separately.
+
+   ![Successful optional CouchDB server requirements check](../images/couchdb-manual/guide-couchdb-manual-server-requirements.png)
+
 8. Select `Create or connect to database and continue`. Onboarding requires this connection test to succeed.
 9. Review `Setup Complete: Preparing to Initialise Server`, then select `Restart and Initialise Server`.
 10. Read the final overwrite warning. Select `I Understand, Overwrite Server` only when this device is intentionally the source of truth and a current backup exists.

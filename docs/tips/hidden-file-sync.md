@@ -47,7 +47,10 @@ A pattern containing only `snippets` does not admit the `.obsidian` parent, so t
    ![Hidden File Sync initialisation choices](../../images/hidden-file-sync/guide-hidden-file-enable.png)
 
 2. Under `Enable Hidden File Sync`, select the initialisation direction chosen above.
-3. Keep Obsidian open while the initial scan and synchronisation finish.
+3. Keep Obsidian open while the initial scan and synchronisation finish. A progress Notice appears when preparation begins and remains visible while the initial scan is running.
+
+   ![Hidden File Sync initial scan progress Notice](../../images/hidden-file-sync/guide-hidden-file-initial-scan-progress.png)
+
 4. Restart Obsidian when the completion Notice recommends it.
 5. Confirm that the expected hidden files, and only those files, are present in the remote synchronisation state.
 
