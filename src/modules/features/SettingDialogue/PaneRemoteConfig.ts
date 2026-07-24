@@ -6,9 +6,9 @@ import {
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Menu, type ButtonComponent } from "@/deps.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -16,23 +16,23 @@ import type { PageFunctions } from "./SettingPane.ts";
 import InfoPanel from "./InfoPanel.svelte";
 import { writable } from "svelte/store";
 import { SveltePanel } from "./SveltePanel.ts";
-import {
-    getBucketConfigSummary,
-    getP2PConfigSummary,
-    getCouchDBConfigSummary,
-    getE2EEConfigSummary,
-} from "./settingUtils.ts";
-import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types.ts";
+import { getE2EEConfigSummary } from "./settingUtils.ts";
 import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
-import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig.ts";
-import { ConnectionStringParser } from "@lib/common/ConnectionString.ts";
-import type { RemoteConfigurationResult } from "@lib/common/ConnectionString.ts";
-import type { RemoteConfiguration } from "@lib/common/models/setting.type.ts";
+import {
+    activateRemoteConfiguration,
+    type RemoteConfiguration,
+} from "@vrtmrz/livesync-commonlib/remote-configurations";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import type {
+    SetupRemoteCouchDBInitialData,
+    SetupRemoteCouchDBResultType,
+} from "@/modules/features/SetupWizard/dialogs/setupDialogTypes.ts";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
 function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianLiveSyncSettings {
@@ -43,15 +43,6 @@ function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianL
     }
     return workObj;
 }
-const toggleActiveSyncClass = (el: HTMLElement, isActive: () => boolean) => {
-    if (isActive()) {
-        el.addClass("active-pane");
-    } else {
-        el.removeClass("active-pane");
-    }
-    return {};
-};
-
 function createRemoteConfigurationId(): string {
     return `remote-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -142,8 +133,8 @@ export function paneRemoteConfig(
     }
     {
         // TODO: very WIP. need to refactor the UI.
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleRemoteServer"), () => {}).then((paneEl) => {
-            const actions = new Setting(paneEl).setName("Remote Databases");
+        void addPanel(paneEl, $msg("Connection settings"), () => {}).then((paneEl) => {
+            const actions = new Setting(paneEl).setName($msg("Saved connections"));
             // actions.addButton((button) =>
             //     button
             //         .setButtonText("Change Remote and Setup")
@@ -229,7 +220,13 @@ export function paneRemoteConfig(
                     return { ...baseSettings, ...p2pConf, remoteType: REMOTE_P2P };
                 }
 
-                const couchConf = await dialogManager.openWithExplicitCancel(SetupRemoteCouchDB, baseSettings);
+                const couchConf = await dialogManager.openWithExplicitCancel<
+                    SetupRemoteCouchDBResultType,
+                    SetupRemoteCouchDBInitialData
+                >(SetupRemoteCouchDB, {
+                    settings: baseSettings,
+                    mode: "settings",
+                });
                 if (couchConf === "cancelled" || typeof couchConf !== "object") {
                     return false;
                 }
@@ -517,123 +514,6 @@ export function paneRemoteConfig(
             refreshList();
         });
     }
-    // eslint-disable-next-line no-constant-condition
-    if (false) {
-        const initialProps = {
-            info: getCouchDBConfigSummary(this.editingSettings),
-        };
-        const summaryWritable = writable(initialProps);
-        const updateSummary = () => {
-            summaryWritable.set({
-                info: getCouchDBConfigSummary(this.editingSettings),
-            });
-        };
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleCouchDB"), () => {}).then((paneEl) => {
-            new SveltePanel(InfoPanel, paneEl, summaryWritable);
-            const setupButton = new Setting(paneEl).setName("Configure Remote");
-            setupButton
-                .addButton((button) =>
-                    button
-                        .setButtonText("Configure")
-                        .setCta()
-                        .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
-                            const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
-                            await setupManager.onCouchDBManualSetup(
-                                UserMode.Update,
-                                originalSettings,
-                                this.editingSettings.remoteType === REMOTE_COUCHDB
-                            );
-
-                            updateSummary();
-                        })
-                )
-                .addOnUpdate(() =>
-                    toggleActiveSyncClass(paneEl, () => this.editingSettings.remoteType === REMOTE_COUCHDB)
-                );
-        });
-    }
-    // eslint-disable-next-line no-constant-condition
-    if (false) {
-        const initialProps = {
-            info: getBucketConfigSummary(this.editingSettings),
-        };
-        const summaryWritable = writable(initialProps);
-        const updateSummary = () => {
-            summaryWritable.set({
-                info: getBucketConfigSummary(this.editingSettings),
-            });
-        };
-        void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleMinioS3R2"), () => {}).then((paneEl) => {
-            new SveltePanel(InfoPanel, paneEl, summaryWritable);
-            const setupButton = new Setting(paneEl).setName("Configure Remote");
-            setupButton
-                .addButton((button) =>
-                    button
-                        .setButtonText("Configure")
-                        .setCta()
-                        .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
-                            const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
-                            await setupManager.onBucketManualSetup(
-                                UserMode.Update,
-                                originalSettings,
-                                this.editingSettings.remoteType === REMOTE_MINIO
-                            );
-                            //TODO
-                            updateSummary();
-                        })
-                )
-                .addOnUpdate(() =>
-                    toggleActiveSyncClass(paneEl, () => this.editingSettings.remoteType === REMOTE_MINIO)
-                );
-        });
-    }
-    // eslint-disable-next-line no-constant-condition
-    if (false) {
-        const getDevicePeerId = () => this.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) || "";
-        const initialProps = {
-            info: getP2PConfigSummary(this.editingSettings, {
-                "Device Peer ID": getDevicePeerId(),
-            }),
-        };
-        const summaryWritable = writable(initialProps);
-        const updateSummary = () => {
-            summaryWritable.set({
-                info: getP2PConfigSummary(this.editingSettings, {
-                    "Device Peer ID": getDevicePeerId(),
-                }),
-            });
-        };
-        void addPanel(paneEl, "Peer-to-Peer Synchronisation", () => {}).then((paneEl) => {
-            new SveltePanel(InfoPanel, paneEl, summaryWritable);
-            const setupButton = new Setting(paneEl).setName("Configure Remote");
-            setupButton
-                .addButton((button) =>
-                    button
-                        .setButtonText("Configure")
-                        .setCta()
-                        .onClick(async () => {
-                            const setupManager = this.core.getModule(SetupManager);
-                            const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
-                            await setupManager.onP2PManualSetup(
-                                UserMode.Update,
-                                originalSettings,
-                                this.editingSettings.remoteType === REMOTE_P2P
-                            );
-                            //TODO
-                            updateSummary();
-                        })
-                )
-                .addOnUpdate(() =>
-                    toggleActiveSyncClass(
-                        paneEl,
-                        () => this.editingSettings.remoteType === REMOTE_P2P || this.editingSettings.P2P_Enabled
-                    )
-                );
-        });
-    }
-
     // new Setting(paneEl)
     //     .setDesc("Generate ES256 Keypair for testing")
     //     .addButton((button) =>

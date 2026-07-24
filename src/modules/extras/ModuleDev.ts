@@ -1,11 +1,11 @@
 import { delay } from "octagonal-wheels/promises";
-import { __onMissingTranslation } from "@lib/common/i18n";
+import { __onMissingTranslation } from "@/common/translation";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 // import { enableTestFunction } from "./devUtil/testUtils.ts";
 import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
-import type { FilePathWithPrefix } from "@lib/common/types.ts";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncCore } from "@/main.ts";
 import type { WorkspaceLeaf } from "@/deps.ts";
 export class ModuleDev extends AbstractObsidianModule {
@@ -74,12 +74,13 @@ export class ModuleDev extends AbstractObsidianModule {
                 if (w) {
                     const id = await this.services.path.path2id(filename as FilePathWithPrefix);
                     const f = await this.core.localDatabase.getRaw(id);
-                    console.log(f);
-                    console.log(f._rev);
+                    this._log(f, LOG_LEVEL_VERBOSE);
+                    this._log(f._rev, LOG_LEVEL_VERBOSE);
                     const revConflict = f._rev.split("-")[0] + "-" + (parseInt(f._rev.split("-")[1]) + 1).toString();
-                    console.log(await this.core.localDatabase.bulkDocsRaw([f], { new_edits: false }));
-                    console.log(
-                        await this.core.localDatabase.bulkDocsRaw([{ ...f, _rev: revConflict }], { new_edits: false })
+                    this._log(await this.core.localDatabase.bulkDocsRaw([f], { new_edits: false }), LOG_LEVEL_VERBOSE);
+                    this._log(
+                        await this.core.localDatabase.bulkDocsRaw([{ ...f, _rev: revConflict }], { new_edits: false }),
+                        LOG_LEVEL_VERBOSE
                     );
                 }
             },

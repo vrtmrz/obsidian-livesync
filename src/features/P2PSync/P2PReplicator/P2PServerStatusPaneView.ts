@@ -2,7 +2,7 @@ import { WorkspaceLeaf } from "@/deps.ts";
 import { mount } from "svelte";
 import { SvelteItemView } from "@/common/SvelteItemView.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { P2PPaneParams } from "@lib/replication/trystero/UseP2PReplicatorResult";
+import type { P2PPaneParams } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 import P2PServerStatusPane from "./P2PServerStatusPane.svelte";
 
 export const VIEW_TYPE_P2P_SERVER_STATUS = "p2p-server-status";
@@ -35,7 +35,7 @@ export class P2PServerStatusPaneView extends SvelteItemView {
         return mount(P2PServerStatusPane, {
             target,
             props: {
-                liveSyncReplicator: this._p2pResult.replicator,
+                getLiveSyncReplicator: () => this._p2pResult.replicator,
                 core: this.core,
             },
         });

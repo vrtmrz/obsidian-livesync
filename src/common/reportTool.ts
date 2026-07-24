@@ -1,13 +1,12 @@
-import { REMOTE_COUCHDB, REMOTE_MINIO } from "@lib/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
-import { generateCredentialObject } from "@lib/replication/httplib";
-import { parseHeaderValues } from "@lib/common/utils";
+import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
+import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { requestToCouchDBWithCredentials } from "./utils";
-import { LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger";
-import { DEFAULT_SETTINGS } from "@lib/common/models/setting.const.defaults";
-import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
-import { compatGlobal } from "@lib/common/coreEnvFunctions";
-import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars";
+import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 function redactObject(obj: Record<string, unknown>, dotted: string, redactedValue = "REDACTED") {
     const keys = dotted.split(".");
@@ -17,7 +16,6 @@ function redactObject(obj: Record<string, unknown>, dotted: string, redactedValu
         if (!(key in current)) {
             current[key] = {};
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         current = current[key] as Record<string, unknown>;
     }
     const lastKey = keys[keys.length - 1];

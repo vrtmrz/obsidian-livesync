@@ -2,24 +2,29 @@ import type { LiveSyncCore } from "@/main";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "@/modules/AbstractModule";
+import { $msg } from "@/common/translation";
+import { copyFileDatabaseInfo } from "@/serviceFeatures/fileDatabaseInfo";
 // Separated Module for basic menu commands, which are not related to obsidian specific features. It is expected to be used in other platforms with minimal changes.
 // However, it is odd that it has here at all; it really ought to be in each respective feature. It will likely be moved eventually. Until now, addCommand pointed to Obsidian's version.
 export class ModuleBasicMenu extends AbstractModule {
     _everyOnloadStart(): Promise<boolean> {
         this.addCommand({
             id: "livesync-replicate",
-            name: "Replicate now",
+            name: $msg("Sync now"),
             callback: async () => {
                 await this.services.replication.replicate();
             },
         });
         this.addCommand({
             id: "livesync-dump",
-            name: "Dump information of this doc ",
-            callback: () => {
+            name: $msg("Copy database information for the active file"),
+            checkCallback: (checking) => {
                 const file = this.services.vault.getActiveFilePath();
-                if (!file) return;
-                fireAndForget(() => this.localDatabase.getDBEntry(file, {}, true, false));
+                if (!file) return false;
+                if (!checking) {
+                    fireAndForget(() => copyFileDatabaseInfo(this.core, file));
+                }
+                return true;
             },
         });
         this.addCommand({
@@ -56,14 +61,18 @@ export class ModuleBasicMenu extends AbstractModule {
         this.addCommand({
             id: "livesync-scan-files",
             name: "Scan storage and database again",
-            callback: async () => {
-                await this.services.vault.scanVault(true);
+            checkCallback: (checking) => {
+                if (!this.settings.useAdvancedMode) return false;
+                if (!checking) {
+                    fireAndForget(() => this.services.vault.scanVault(true));
+                }
+                return true;
             },
         });
 
         this.addCommand({
             id: "livesync-runbatch",
-            name: "Run pended batch processes",
+            name: $msg("Apply pending changes now"),
             callback: async () => {
                 await this.services.fileProcessing.commitPendingFileEvents();
             },
@@ -73,8 +82,12 @@ export class ModuleBasicMenu extends AbstractModule {
         this.addCommand({
             id: "livesync-abortsync",
             name: "Abort synchronization immediately",
-            callback: () => {
-                this.core.replicator.terminateSync();
+            checkCallback: (checking) => {
+                if (!this.settings.useAdvancedMode) return false;
+                if (!checking) {
+                    this.core.replicator.terminateSync();
+                }
+                return true;
             },
         });
         return Promise.resolve(true);

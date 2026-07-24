@@ -6,9 +6,9 @@ import {
     type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
-} from "@lib/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { ModuleReplicator } from "./ModuleReplicator";
-import { isChunk } from "@lib/common/typeUtils";
+import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -16,15 +16,17 @@ import {
     LOG_LEVEL_VERBOSE,
     Logger,
     type LOG_LEVEL,
-} from "@lib/common/logger";
-import { fireAndForget, isAnyNote, throttle } from "@lib/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { fireAndForget, isAnyNote, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { isNotFoundError } from "@lib/common/utils.doc";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import type PouchDB from "pouchdb-core";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
+const REPROCESS_BATCH_SIZE = 100;
 type ReplicateResultProcessorState = {
     queued: PouchDB.Core.ExistingDocument<EntryDoc>[];
     processing: PouchDB.Core.ExistingDocument<EntryDoc>[];
@@ -180,6 +182,26 @@ export class ReplicateResultProcessor {
                 this.enqueueChange(change);
             }
         }
+    }
+
+    /**
+     * Requeues stored normal-file metadata after its reflection filters change.
+     * Replication checkpoints may already cover documents which were skipped
+     * by the previous filter, so a later ordinary sync cannot emit them again.
+     */
+    public async reprocessStoredDocuments(): Promise<number> {
+        let count = 0;
+        let batch: PouchDB.Core.ExistingDocument<EntryDoc>[] = [];
+        for await (const document of this.localDatabase.findAllNormalDocs()) {
+            batch.push(document);
+            count++;
+            if (batch.length < REPROCESS_BATCH_SIZE) continue;
+            this.enqueueAll(batch);
+            batch = [];
+        }
+        if (batch.length > 0) this.enqueueAll(batch);
+        this.log(`Requeued ${count} stored document(s) after the reflection filters changed`, LOG_LEVEL_INFO);
+        return count;
     }
     /**
      * Process the change if it is not a document change.

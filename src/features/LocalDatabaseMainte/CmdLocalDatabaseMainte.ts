@@ -4,20 +4,21 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
+    REMOTE_COUCHDB,
     type DocumentID,
     type EntryDoc,
     type EntryLeaf,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "@lib/common/types";
-import { getNoFromRev } from "@lib/pouchdb/LiveSyncLocalDB";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { getNoFromRev } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
-import type { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import { delay } from "@lib/common/utils";
-import { isNotFoundError } from "@lib/common/utils.doc";
+import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
@@ -38,16 +39,27 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
             id: "analyse-database",
             name: "Analyse Database Usage (advanced)",
             icon: "database-search",
-            callback: async () => {
-                await this.analyseDatabase();
+            checkCallback: (checking) => {
+                if (!this.settings.useAdvancedMode || !this._isDatabaseReady()) return false;
+                if (!checking) {
+                    void this.analyseDatabase();
+                }
+                return true;
             },
         });
         this.plugin.addCommand({
             id: "gc-v3",
             name: "Garbage Collection V3 (advanced, beta)",
             icon: "trash-2",
-            callback: async () => {
-                await this.gcv3();
+            checkCallback: (checking) => {
+                const isApplicableRemote = this.settings.remoteType === REMOTE_COUCHDB;
+                if (!this.settings.useEdgeCaseMode || !this._isDatabaseReady() || !isApplicableRemote) {
+                    return false;
+                }
+                if (!checking) {
+                    void this.gcv3();
+                }
+                return true;
             },
         });
         eventHub.onEvent(EVENT_ANALYSE_DB_USAGE, () => this.analyseDatabase());
@@ -315,7 +327,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                 // If we have more revisions than we want to keep, we need to delete the extras
             }
             const keepRevID = sortedRevId.slice(0, KEEP_MAX_REVS);
-            keepRevID.forEach((e) => e[1].forEach((ee) => unusedSet.delete(ee)));
+            keepRevID.forEach((e) => e[1].forEach((ee: DocumentID) => unusedSet.delete(ee)));
         }
         return {
             chunkSet,
@@ -450,7 +462,7 @@ Note: **Make sure to synchronise all devices before deletion.**
         const confirmMessage = `This function deletes unused chunks from the device. If there are differences between devices, some chunks may be missing when resolving conflicts.
 Be sure to synchronise before executing.
 
-However, if you have deleted them, you may be able to recover them by performing Hatch -> Recreate missing chunks for all files.
+If chunks used by current Vault files are deleted, Hatch -> Recreate chunks for current Vault files can recreate them only from files currently present in the Vault. It cannot recover unreadable historical or conflict content.
 
 Are you ready to delete unused chunks?`;
 
@@ -748,7 +760,7 @@ Success: ${successCount}, Errored: ${errored}`;
                 timeout -= 2000;
                 if (timeout <= 0) {
                     this._notice("Compaction on remote database timed out.", "gc-compact");
-                    break;
+                    return;
                 }
             } else {
                 break;
@@ -871,9 +883,14 @@ It is preferable to update all devices if possible. If you have any devices that
         }
 
         //2. Check whether the progress values in NodeData are roughly the same (only the numerical part is needed).
-        const progressValues = Object.values(node_info)
-            .map((e) => e.progress.split("-")[0])
-            .map((e) => parseInt(e));
+        const progressValues = Object.values(node_info).map((entry) => {
+            const progress = typeof entry.progress === "string" ? entry.progress.split("-")[0] : "";
+            return /^\d+$/u.test(progress) ? Number(progress) : Number.NaN;
+        });
+        if (progressValues.length === 0 || progressValues.some((progress) => !Number.isSafeInteger(progress))) {
+            this._notice("No connected device information found. Cancelling Garbage Collection.");
+            return;
+        }
         const maxProgress = Math.max(...progressValues);
         const minProgress = Math.min(...progressValues);
         const progressDifference = maxProgress - minProgress;
@@ -912,41 +929,22 @@ This may indicate that some devices have not completed synchronisation, which co
         const gcStartTime = Date.now();
         // Perform Garbage Collection (new implementation).
         const localDatabase = this.localDatabase.localDatabase;
-        const usedChunks = new Set<DocumentID>();
-        const allChunks = new Map<DocumentID, string>();
-
-        const IDs = this.localDatabase.findEntryNames("", "", {});
-        let i = 0;
-        const doc_count = (await localDatabase.info()).doc_count;
-        for await (const id of IDs) {
-            const doc = await this.localDatabase.getRaw(id as DocumentID);
-            i++;
-            if (i % 100 == 0) {
-                this._notice(`Garbage Collection: Scanned ${i} / ~${doc_count} `, "gc-scanning");
-            }
-            if (!doc) continue;
-            if ("children" in doc) {
-                const children = (doc.children || []) as DocumentID[];
-                for (const chunkId of children) {
-                    usedChunks.add(chunkId);
-                }
-            } else if (doc.type === EntryTypes.CHUNK) {
-                allChunks.set(doc._id, doc._rev);
-            }
-        }
+        // Use the revision-aware reachability scan. Reading only winning revisions
+        // would make chunks used exclusively by live conflict branches look unused.
+        const { used: usedChunks, existing: allChunks } = await this.localDatabase.allChunks();
         this._notice(
             `Garbage Collection: Scanning completed. Total chunks: ${allChunks.size}, Used chunks: ${usedChunks.size}`,
             "gc-scanning"
         );
 
-        const unusedChunks = [...allChunks.keys()].filter((e) => !usedChunks.has(e));
+        const unusedChunks = [...allChunks.entries()].filter(([chunkId]) => !usedChunks.has(chunkId));
         this._notice(`Garbage Collection: Found ${unusedChunks.length} unused chunks to delete.`, "gc-scanning");
         const deleteChunkDocs = unusedChunks.map(
-            (chunkId) =>
+            ([chunkId, chunk]) =>
                 ({
-                    _id: chunkId,
+                    _id: chunkId as DocumentID,
                     _deleted: true,
-                    _rev: allChunks.get(chunkId),
+                    _rev: chunk._rev,
                 }) as EntryLeaf
         );
         const response = await localDatabase.bulkDocs(deleteChunkDocs);

@@ -4,16 +4,33 @@ import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/log
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import type { TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import { type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "@lib/mock_and_interop/stores.ts";
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import type { LiveSyncCore } from "@/main.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+
+type MutableCommandDefinition = {
+    callback?: () => void;
+};
+
+type InternalCommandRegistry = {
+    commands?: Record<string, MutableCommandDefinition | undefined>;
+    executeCommandById(commandId: string): unknown;
+};
+
+type AppWithInternalCommands = {
+    commands?: InternalCommandRegistry;
+};
+
+type CodeMirrorAdapter = {
+    commands: { save: () => void };
+};
 
 export class ModuleObsidianEvents extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -40,10 +57,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
     swapSaveCommand() {
         this._log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor Tweaking
-        const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
+        const commandRegistry = (this.app as unknown as AppWithInternalCommands).commands;
+        const saveCommandDefinition = commandRegistry?.commands?.["editor:save-file"];
         const save = saveCommandDefinition?.callback;
-        if (typeof save === "function") {
+        if (saveCommandDefinition && typeof save === "function") {
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {
@@ -61,17 +78,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 save();
             };
         }
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const _this = this;
-        //@ts-ignore
-        if (!compatGlobal.CodeMirrorAdapter) {
+        const codeMirrorAdapter = (compatGlobal as typeof compatGlobal & { CodeMirrorAdapter?: CodeMirrorAdapter })
+            .CodeMirrorAdapter;
+        if (!codeMirrorAdapter) {
             this._log("CodeMirrorAdapter is not available");
             return;
         }
-        //@ts-ignore
-        compatGlobal.CodeMirrorAdapter.commands.save = () => {
-            //@ts-ignore
-            void _this.app.commands.executeCommandById("editor:save-file");
+        codeMirrorAdapter.commands.save = () => {
+            void commandRegistry?.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
         };
     }
@@ -82,18 +96,18 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
         this.watchOnline = this.watchOnline.bind(this);
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerDomEvent(activeDocument, "visibilitychange", this.watchWindowVisibility);
         this.plugin.registerDomEvent(compatGlobal, "focus", () => this.setHasFocus(true));
         this.plugin.registerDomEvent(compatGlobal, "blur", () => this.setHasFocus(false));
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerDomEvent(compatGlobal, "online", this.watchOnline);
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerDomEvent(compatGlobal, "offline", this.watchOnline);
     }
 
@@ -317,7 +331,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 // const proc = this.core.processingFileEventCount.value;
                 const e = 0;
                 const proc = 0;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reading the tick establishes the reactive polling dependency.
                 const __ = __tick.value;
                 return (
                     dbCount +

@@ -7,7 +7,7 @@ import { join } from "@std/path";
 // CLI root (src/apps/cli/) is two levels up.
 // import.meta.dirname is available in Deno 1.40+ as an OS-native path string.
 export const CLI_DIR: string = join(import.meta.dirname!, "..", "..");
-const CLI_DIST = join(CLI_DIR, "dist", "index.cjs");
+export const CLI_DIST = join(CLI_DIR, "dist", "index.cjs");
 
 // ---------------------------------------------------------------------------
 // Result type

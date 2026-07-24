@@ -1,10 +1,10 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
-    import { logMessages } from "@lib/mock_and_interop/stores";
+    import { logMessages } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
     import { reactive, type ReactiveInstance } from "octagonal-wheels/dataobject/reactive";
-    import { Logger } from "@lib/common/logger";
-    import { $msg as msg, currentLang as lang } from "@lib/common/i18n.ts";
-    import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+    import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+    import { $msg as msg, currentLang as lang } from "@/common/translation";
+    import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
     let unsubscribe: () => void;
     let messages = $state([] as string[]);

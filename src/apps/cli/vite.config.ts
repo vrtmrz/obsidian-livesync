@@ -1,13 +1,20 @@
-import { defineConfig } from "vite";
+import { defaultServerConditions, defaultServerMainFields, defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import path from "node:path";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, fs, isBuiltin, path } from "@vrtmrz/livesync-commonlib/node";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
 const repoRoot = path.resolve(__dirname, "../../..");
-const packageJson = JSON.parse(readFileSync(path.resolve(repoRoot, "package.json"), "utf-8"));
-const manifestJson = JSON.parse(readFileSync(path.resolve(repoRoot, "manifest.json"), "utf-8"));
+
+function readVersion(filePath: string): string | undefined {
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    if (typeof parsed !== "object" || parsed === null || !("version" in parsed)) {
+        return undefined;
+    }
+    return typeof parsed.version === "string" ? parsed.version : undefined;
+}
+
+const packageVersion = readVersion(path.resolve(repoRoot, "package.json"));
+const manifestVersion = readVersion(path.resolve(repoRoot, "manifest.json"));
 // https://vite.dev/config/
 const defaultExternal = [
     "obsidian",
@@ -47,7 +54,7 @@ function injectBanner(): import("vite").Plugin {
         name: "inject-banner",
         generateBundle(_options, bundle) {
             for (const chunk of Object.values(bundle)) {
-                if (chunk.type === "chunk" && chunk.fileName.startsWith("entrypoint")) {
+                if (chunk.type === "chunk" && chunk.isEntry) {
                     // Insert after the shebang line if present, otherwise at the top.
                     if (chunk.code.startsWith("#!")) {
                         const newline = chunk.code.indexOf("\n");
@@ -62,20 +69,27 @@ function injectBanner(): import("vite").Plugin {
     };
 }
 
+const buildInputs: Record<string, string> = {
+    index: resolve(__dirname, "entrypoint.ts"),
+};
+if (process.env.LIVESYNC_CLI_TEST_SUPPORT === "1") {
+    buildInputs["p2p-lifecycle-test"] = resolve(__dirname, "test-support/p2p-lifecycle-entrypoint.ts");
+}
+
 export default defineConfig({
     plugins: [svelte(), injectBanner()],
     resolve: {
+        // This bundle runs in Node. Vite's client defaults include the `browser`
+        // export condition, which would select Commonlib's inline Web Worker.
+        conditions: [...defaultServerConditions],
+        mainFields: [...defaultServerMainFields],
         alias: {
-            "@lib/worker/bgWorker.ts": "../../lib/src/worker/bgWorker.mock.ts",
-            "@lib/pouchdb/pouchdb-browser.ts": resolve(__dirname, "lib/pouchdb-node.ts"),
             // The CLI runs on Node.js; force AWS XML builder to its CJS Node entry
             // so Vite does not resolve the browser DOMParser-based XML parser.
             "@aws-sdk/xml-builder": resolve(__dirname, "../../../node_modules/@aws-sdk/xml-builder/dist-cjs/index.js"),
             // Force fflate to the Node CJS entry; browser entry expects Web Worker globals.
             fflate: resolve(__dirname, "../../../node_modules/fflate/lib/node.cjs"),
             "@": resolve(__dirname, "../../"),
-            "@lib": resolve(__dirname, "../../lib/src"),
-            "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
         },
     },
 
@@ -85,26 +99,22 @@ export default defineConfig({
         emptyOutDir: true,
         minify: false,
         rollupOptions: {
-            input: {
-                index: resolve(__dirname, "entrypoint.ts"),
-            },
+            input: buildInputs,
             external: (id) => {
+                if (isBuiltin(id)) return true;
                 if (defaultExternal.includes(id)) return true;
                 if (id.startsWith(".") || id.startsWith("/")) return false;
-                if (id.startsWith("@/") || id.startsWith("@lib/")) return false;
+                if (id.startsWith("@/")) return false;
                 if (id.endsWith(".ts") || id.endsWith(".js")) return false;
-                if (id === "fs" || id === "fs/promises" || id === "path" || id === "crypto" || id === "worker_threads")
-                    return true;
                 if (id.startsWith("pouchdb-")) return true;
                 if (id.startsWith("werift")) return true;
-                if (id.startsWith("node:")) return true;
                 return false;
             },
         },
         lib: {
             entry: resolve(__dirname, "entrypoint.ts"),
             formats: ["cjs"],
-            fileName: "index",
+            fileName: (_format, entryName) => `${entryName}.cjs`,
         },
     },
     define: {
@@ -112,7 +122,7 @@ export default defineConfig({
         global: "globalThis",
         nonInteractive: "true",
         // localStorage: "undefined", // Prevent usage of localStorage in the CLI environment
-        MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestJson.version || "0.0.0"),
-        PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageJson.version || "0.0.0"),
+        MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestVersion || "0.0.0"),
+        PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageVersion || "0.0.0"),
     },
 });

@@ -6,6 +6,7 @@ import {
     selectVerificationEntries,
 } from "./helpers/benchmarkVerification.ts";
 import type { DatasetEntry } from "./helpers/dataset.ts";
+import { createCompressionBenchmarkDataset } from "./helpers/compressionDataset.ts";
 
 function getFreePort(): number {
     const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
@@ -106,6 +107,22 @@ Deno.test("CouchDB latency proxy applies half the requested RTT in each directio
         assertEquals(await response.text(), "ok");
         assertEquals(proxy.directionalDelayMs, 10);
         assertEquals(delays, [10, 10]);
+        assertEquals(proxy.snapshotCounters(), {
+            requestCount: 1,
+            requestBodyBytes: 0,
+            responseBodyBytes: 2,
+        });
+        proxy.resetCounters();
+        const posted = await fetch(`http://127.0.0.1:${proxyPort}/probe`, {
+            method: "POST",
+            body: "abc",
+        });
+        assertEquals(await posted.text(), "ok");
+        assertEquals(proxy.snapshotCounters(), {
+            requestCount: 1,
+            requestBodyBytes: 3,
+            responseBodyBytes: 2,
+        });
     } finally {
         await proxy.stop();
         await backend.shutdown();
@@ -121,6 +138,100 @@ Deno.test("CouchDB latency proxy applies half the requested RTT in each directio
         assertEquals(halfMillisecondProxy.directionalDelayMs, 0.5);
     } finally {
         await halfMillisecondProxy.stop();
+    }
+});
+
+Deno.test("compression benchmark dataset covers representative file kinds deterministically", async () => {
+    const fixtureRoot = await Deno.makeTempDir({
+        prefix: "livesync-compression-contract-",
+    });
+    const repositoryRoot = `${fixtureRoot}/repository`;
+    const vaultA = `${fixtureRoot}/vault-a`;
+    const vaultB = `${fixtureRoot}/vault-b`;
+    const repositoryFiles = [
+        "docs/settings.md",
+        "docs/quick_setup.md",
+        "updates.md",
+        "instruction_images/cloudant_1.png",
+        "images/quick-setup/guide-quick-setup-first-setup-uri.png",
+        "package.json",
+        "manifest.json",
+        "src/modules/core/ModuleReplicator.ts",
+        "src/modules/core/ReplicateResultProcessor.ts",
+    ];
+    try {
+        for (const [index, relativePath] of repositoryFiles.entries()) {
+            const absolutePath = `${repositoryRoot}/${relativePath}`;
+            await Deno.mkdir(
+                absolutePath.slice(0, absolutePath.lastIndexOf("/")),
+                { recursive: true },
+            );
+            await Deno.writeFile(
+                absolutePath,
+                new TextEncoder().encode(
+                    `fixture-${index}-${relativePath}\n`.repeat(20),
+                ),
+            );
+        }
+        await Deno.mkdir(vaultA, { recursive: true });
+        await Deno.mkdir(vaultB, { recursive: true });
+        const jpegEncoder = async (_input: string, output: string) => {
+            await Deno.writeFile(
+                output,
+                new Uint8Array([
+                    0xff,
+                    0xd8,
+                    0xff,
+                    0xdb,
+                    0,
+                    1,
+                    2,
+                    3,
+                    0xff,
+                    0xd9,
+                ]),
+            );
+            return "contract JPEG encoder";
+        };
+        const first = await createCompressionBenchmarkDataset({
+            rootDir: vaultA,
+            repositoryRoot,
+            seed: "contract-seed",
+            jpegEncoder,
+        });
+        const second = await createCompressionBenchmarkDataset({
+            rootDir: vaultB,
+            repositoryRoot,
+            seed: "contract-seed",
+            jpegEncoder,
+        });
+
+        assertEquals(first.filesByKind, {
+            md: 3,
+            jpg: 2,
+            png: 2,
+            json: 2,
+            ts: 2,
+            gz: 1,
+            bin: 1,
+        });
+        assertEquals(first.totalFiles, 13);
+        assertEquals(first.jpegGenerator, "contract JPEG encoder");
+        assertEquals(
+            first.entries.map((entry) => [
+                entry.kind,
+                entry.relativePath,
+                entry.size,
+            ]),
+            second.entries.map((entry) => [
+                entry.kind,
+                entry.relativePath,
+                entry.size,
+            ]),
+        );
+        assert(first.entries.every((entry) => entry.size > 0));
+    } finally {
+        await Deno.remove(fixtureRoot, { recursive: true }).catch(() => {});
     }
 });
 

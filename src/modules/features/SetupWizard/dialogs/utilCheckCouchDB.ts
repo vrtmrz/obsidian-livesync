@@ -1,17 +1,26 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils";
-import { $msg } from "@lib/common/i18n";
-import { Logger } from "@lib/common/logger";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import { parseHeaderValues } from "@lib/common/utils";
-import { isCloudantURI } from "@lib/pouchdb/utils_couchdb";
-import { generateCredentialObject } from "@lib/replication/httplib";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { isUnauthorizedError } from "@lib/common/utils.doc";
+import { $msg } from "@/common/translation";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
+import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
 
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };
 export type ResultOk<T> = { message: string; result: "ok"; value?: T };
-export type ResultError<T> = { message: string; result: "error"; value: T; fixMessage: string; fix(): Promise<void> };
+export type ResultError<T> = {
+    message: string;
+    result: "error";
+    value: T;
+    fixMessage: string;
+    settingKey: string;
+    expectedValue: string;
+    fix(): Promise<void>;
+};
 export type ConfigCheckResult<T = unknown, U = unknown> =
     | ResultOk<T>
     | ResultError<U>
@@ -78,8 +87,15 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
     const addSuccess = <T>(msg: string, value?: T) => {
         result.push({ message: msg, result: "ok", value });
     };
-    const _addError = <T>(message: string, fixMessage: string, fix: () => Promise<void>, value?: T) => {
-        result.push({ message, result: "error", fixMessage, fix, value });
+    const _addError = <T>(
+        message: string,
+        fixMessage: string,
+        settingKey: string,
+        expectedValue: string,
+        fix: () => Promise<void>,
+        value?: T
+    ) => {
+        result.push({ message, result: "error", fixMessage, settingKey, expectedValue, fix, value });
     };
     const addErrorMessage = (msg: string, classes: string[] = []) => {
         result.push({ message: msg, result: "error", classes });
@@ -89,6 +105,8 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
         _addError(
             message,
             fixMessage,
+            key,
+            expected,
             async () => {
                 await updateRemoteSetting(editingSettings, key, expected);
             },
@@ -115,7 +133,7 @@ export const checkConfig = async (editingSettings: ObsidianLiveSyncSettings) => 
             undefined,
             customHeaders
         );
-        const responseConfig = r.json;
+        const responseConfig = normaliseCouchDBConfiguration(r.json as unknown);
         addMessage($msg("obsidianLiveSyncSettingTab.msgNotice"), ["ob-btn-config-head"]);
         addMessage($msg("obsidianLiveSyncSettingTab.msgIfConfigNotPersistent"), ["ob-btn-config-info"]);
         addMessage($msg("obsidianLiveSyncSettingTab.msgConfigCheck"), ["ob-btn-config-head"]);

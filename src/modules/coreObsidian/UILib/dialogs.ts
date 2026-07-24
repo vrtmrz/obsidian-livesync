@@ -1,23 +1,19 @@
 import { ButtonComponent } from "@/deps.ts";
 import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting, Component } from "@/deps.ts";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
-import { compatGlobal, type CompatIntervalHandle } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal, type CompatIntervalHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 class AutoClosableModal extends Modal {
-    _closeByUnload() {
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+    _closeByUnload = () => {
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
         this.close();
-    }
+    };
 
     constructor(app: App) {
         super(app);
-        this._closeByUnload = this._closeByUnload.bind(this);
-        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.once(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
     override onClose() {
-        // eslint-disable-next-line @typescript-eslint/unbound-method
         eventHub.off(EVENT_PLUGIN_UNLOADED, this._closeByUnload);
     }
 }
@@ -192,6 +188,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
     override onOpen() {
         this.component.load();
         const { contentEl } = this;
+        contentEl.closest(".modal-container")?.classList.add("livesync-message-box-container");
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
         div.setCssStyles({

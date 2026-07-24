@@ -1,9 +1,19 @@
 import { LiveSyncWebApp } from "./main";
+import { createNativeElement } from "@/apps/browserDom";
 import { VaultHistoryStore, type VaultHistoryItem } from "./vaultSelector";
-import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 const historyStore = new VaultHistoryStore();
 let app: LiveSyncWebApp | null = null;
+
+type LiveSyncWebAppDebugApi = {
+    getApp: () => LiveSyncWebApp | null;
+    historyStore: VaultHistoryStore;
+};
+
+type LiveSyncWebAppGlobal = typeof compatGlobal & {
+    livesyncApp?: LiveSyncWebAppDebugApi;
+};
 
 function getRequiredElement<T extends HTMLElement>(id: string): T {
     const element = _activeDocument.getElementById(id);
@@ -46,24 +56,24 @@ async function renderHistoryList(): Promise<VaultHistoryItem[]> {
     emptyEl.classList.toggle("is-hidden", items.length > 0);
 
     for (const item of items) {
-        const row = _activeDocument.createElement("div");
+        const row = createNativeElement(_activeDocument, "div");
         row.className = "vault-item";
 
-        const info = _activeDocument.createElement("div");
+        const info = createNativeElement(_activeDocument, "div");
         info.className = "vault-item-info";
 
-        const name = _activeDocument.createElement("div");
+        const name = createNativeElement(_activeDocument, "div");
         name.className = "vault-item-name";
         name.textContent = item.name;
 
-        const meta = _activeDocument.createElement("div");
+        const meta = createNativeElement(_activeDocument, "div");
         meta.className = "vault-item-meta";
         const label = item.id === lastUsedId ? "Last used" : "Used";
         meta.textContent = `${label}: ${formatLastUsed(item.lastUsedAt)}`;
 
         info.append(name, meta);
 
-        const useButton = _activeDocument.createElement("button");
+        const useButton = createNativeElement(_activeDocument, "button");
         useButton.type = "button";
         useButton.textContent = "Use this vault";
         useButton.addEventListener("click", () => {
@@ -92,7 +102,6 @@ async function startWithHistory(item: VaultHistoryItem): Promise<void> {
         const handle = await historyStore.activateHistoryItem(item);
         await startWithHandle(handle);
     } catch (error) {
-        console.error("[Directory] Failed to open history vault:", error);
         setStatus("error", `Failed to open saved vault: ${String(error)}`);
         setBusyState(false);
     }
@@ -104,7 +113,6 @@ async function startWithNewPicker(): Promise<void> {
         const handle = await historyStore.pickNewVault();
         await startWithHandle(handle);
     } catch (error) {
-        console.error("[Directory] Failed to pick vault:", error);
         setStatus("warning", `Vault selection was cancelled or failed: ${String(error)}`);
         setBusyState(false);
     }
@@ -123,7 +131,6 @@ async function initializeVaultSelector(): Promise<void> {
 
 compatGlobal.addEventListener("load", () => {
     initializeVaultSelector().catch((error) => {
-        console.error("Failed to initialize vault selector:", error);
         setStatus("error", `Initialization failed: ${String(error)}`);
     });
 });
@@ -131,8 +138,7 @@ compatGlobal.addEventListener("load", () => {
 compatGlobal.addEventListener("beforeunload", () => {
     void app?.shutdown();
 });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- patching
-(compatGlobal as any).livesyncApp = {
+(compatGlobal as LiveSyncWebAppGlobal).livesyncApp = {
     getApp: () => app,
     historyStore,
 };

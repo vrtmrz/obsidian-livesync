@@ -1,0 +1,16 @@
+{
+    "extends": "../../../tsconfig.json",
+    "compilerOptions": {
+        "target": "ES2020",
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "paths": {
+            "@/*": ["../../*"]
+        }
+    },
+    "include": ["**/*.ts", "**/*.svelte"],
+    "exclude": ["**/*.unit.spec.ts"]
+}

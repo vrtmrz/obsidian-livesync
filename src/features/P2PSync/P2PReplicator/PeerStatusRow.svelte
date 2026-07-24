@@ -1,9 +1,9 @@
 <script lang="ts">
     import { getContext } from "svelte";
-    import { AcceptedStatus, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicatorPaneController } from "./P2PReplicatorPaneController";
     import { eventHub } from "@/common/events";
-    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
 
     interface Props {
         peerStatus: PeerStatus;
@@ -57,7 +57,7 @@
     let isNew = $derived.by(() => peer.accepted === AcceptedStatus.UNKNOWN);
 
     function makeDecision(isAccepted: boolean, isTemporary: boolean) {
-        replicator.makeDecision({
+        getReplicator().makeDecision({
             peerId: peer.peerId,
             name: peer.name,
             decision: isAccepted,
@@ -65,12 +65,12 @@
         });
     }
     function revokeDecision() {
-        replicator.revokeDecision({
+        getReplicator().revokeDecision({
             peerId: peer.peerId,
             name: peer.name,
         });
     }
-    const replicator = getContext<() => LiveSyncTrysteroReplicator>("getReplicator")();
+    const getReplicator = getContext<() => P2PReplicatorPaneController>("getReplicator");
 
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
@@ -86,14 +86,14 @@
         return attrs;
     });
     function startWatching() {
-        replicator?.watchPeer(peer.peerId);
+        getReplicator().watchPeer(peer.peerId);
     }
     function stopWatching() {
-        replicator?.unwatchPeer(peer.peerId);
+        getReplicator().unwatchPeer(peer.peerId);
     }
 
     function sync() {
-        void replicator?.sync(peer.peerId, false);
+        void getReplicator().sync(peer.peerId, false);
     }
 
     function moreMenu(evt: MouseEvent) {

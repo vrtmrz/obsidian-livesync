@@ -2,7 +2,8 @@
 # Image tag format: <manifest-version>-<unix-epoch>-cli
 # Example: 0.25.56-1743500000-cli
 #
-# The image is also tagged 'latest' for convenience.
+# Stable releases are also tagged with their major-minor version and 'latest'.
+# Pre-releases receive immutable version and SHA-qualified tags only.
 # Image name: ghcr.io/<owner>/livesync-cli
 name: Build and Push CLI Docker Image
 
@@ -22,7 +23,6 @@ on:
             - "src/apps/webpeer/**"
             - ".github/workflows/release.yml"
             - ".github/workflows/unit-ci.yml"
-            - ".github/workflows/harness-ci.yml"
     workflow_dispatch:
         inputs:
             dry_run:
@@ -47,8 +47,6 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-              with:
-                  submodules: recursive
 
             - name: Derive image tag
               id: meta
@@ -61,8 +59,13 @@ jobs:
                   # Build tag list based on the event and git ref
                   TAGS=""
                   if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-                      # Stable release builds
-                      TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${MAJOR_MINOR}-cli,${IMAGE}:latest,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
+                      if [[ "${VERSION}" == *-* ]]; then
+                          # Pre-release builds must not advance stable moving tags.
+                          TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
+                      else
+                          # Stable release builds
+                          TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${MAJOR_MINOR}-cli,${IMAGE}:latest,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
+                      fi
                   elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
                       # Bleeding-edge / nightly builds
                       TAGS="${IMAGE}:edge"

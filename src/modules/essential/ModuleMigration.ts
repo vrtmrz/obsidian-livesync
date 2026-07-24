@@ -1,4 +1,9 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger.ts";
+import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    Logger,
+} from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
@@ -8,14 +13,24 @@ import {
     eventHub,
 } from "@/common/events.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { $msg } from "@lib/common/i18n.ts";
-import { performDoctorConsultation, RebuildOptions } from "@lib/common/configForDoc.ts";
+import { $msg } from "@/common/translation";
+import { performDoctorConsultation, RebuildOptions } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { isValidPath } from "@/common/utils.ts";
-import { isMetaEntry } from "@lib/common/types.ts";
-import { isDeletedEntry, isDocContentSame, isLoadedEntry, readAsBlob } from "@lib/common/utils.ts";
-import { countCompromisedChunks } from "@lib/pouchdb/negotiation.ts";
+import { isMetaEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    isDeletedEntry,
+    isDocContentSame,
+    isLoadedEntry,
+    readAsBlob,
+} from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import type { LiveSyncCore } from "@/main.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
+import { showOnboardingInvitation } from "@/serviceFeatures/setupObsidian/setupManagerHandlers.ts";
+import {
+    runConfiguredStartupLifecycle,
+    runStartupEntryLifecycle,
+} from "@/serviceFeatures/configuredStartupLifecycle.ts";
 
 type ErrorInfo = {
     path: string;
@@ -26,10 +41,22 @@ type ErrorInfo = {
     isConflicted?: boolean;
 };
 
-export class ModuleMigration extends AbstractModule {
+const INCOMPLETE_DOCUMENT_NOTICE_GROUP = "startup-integrity-check";
+
+export class ModuleMigration extends AbstractModule<LiveSyncCore> {
+    constructor(
+        core: LiveSyncCore,
+        private readonly waitForCompatibilityReview: () => Promise<void> = () => Promise.resolve()
+    ) {
+        super(core);
+    }
+
     async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
         const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
-            this.core,
+            {
+                confirm: this.core.confirm,
+                translate: this.services.context.translate,
+            },
             this.settings,
             {
                 localRebuild: skipRebuild ? RebuildOptions.SkipEvenIfRequired : RebuildOptions.AutomaticAcceptable,
@@ -65,9 +92,9 @@ export class ModuleMigration extends AbstractModule {
         }
     }
 
-    async initialMessage() {
+    initialMessage() {
         const manager = this.core.getModule(SetupManager);
-        return await manager.startOnBoarding();
+        showOnboardingInvitation(this.core, manager);
         /*
         const message = $msg("moduleMigration.msgInitialSetup", {
             URI_DOC: $msg("moduleMigration.docUri"),
@@ -124,133 +151,152 @@ export class ModuleMigration extends AbstractModule {
             return Promise.resolve(true);
         }
 
-        this._log("Checking for incomplete documents...", LOG_LEVEL_NOTICE, "check-incomplete");
-
-        const errorFiles = [] as ErrorInfo[];
-        for await (const metaDoc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
-            const path = this.getPath(metaDoc);
-
-            if (!isValidPath(path)) {
-                continue;
-            }
-            if (!(await this.services.vault.isTargetFile(path))) {
-                continue;
-            }
-            if (!isMetaEntry(metaDoc)) {
-                continue;
-            }
-
-            const doc = await this.localDatabase.getDBEntryFromMeta(metaDoc);
-            if (!doc || !isLoadedEntry(doc)) {
-                continue;
-            }
-            if (isDeletedEntry(doc)) {
-                continue;
-            }
-            const isConflicted = metaDoc?._conflicts && metaDoc._conflicts.length > 0;
-
-            let storageFileContent;
-            try {
-                storageFileContent = await this.core.storageAccess.readHiddenFileBinary(path);
-            } catch (e) {
-                Logger(`Failed to read file ${path}: Possibly unprocessed or missing`);
-                Logger(e, LOG_LEVEL_VERBOSE);
-                continue;
-            }
-            // const storageFileBlob = createBlob(storageFileContent);
-            const sizeOnStorage = storageFileContent.byteLength;
-            const recordedSize = doc.size;
-            const docBlob = readAsBlob(doc);
-            const actualSize = docBlob.size;
-            if (
-                recordedSize !== actualSize ||
-                sizeOnStorage !== actualSize ||
-                sizeOnStorage !== recordedSize ||
-                isConflicted
-            ) {
-                const contentMatched = await isDocContentSame(doc.data, storageFileContent);
-                errorFiles.push({
-                    path,
-                    recordedSize,
-                    actualSize,
-                    storageSize: sizeOnStorage,
-                    contentMatched,
-                    isConflicted,
-                });
-                Logger(
-                    `Size mismatch for ${path}: ${recordedSize} (DB Recorded) , ${actualSize} (DB Stored) , ${sizeOnStorage} (Storage Stored), ${contentMatched ? "Content Matched" : "Content Mismatched"} ${isConflicted ? "Conflicted" : "Not Conflicted"}`
-                );
-            }
-        }
-        if (errorFiles.length == 0) {
-            Logger("No size mismatches found", LOG_LEVEL_NOTICE);
-            await this.core.kvDB.set("checkIncompleteDocs", true);
-            return Promise.resolve(true);
-        }
-        Logger(`Found ${errorFiles.length} size mismatches`, LOG_LEVEL_NOTICE);
-        // We have to repair them following rules and situations:
-        // A. DB Recorded != DB Stored
-        //   A.1. DB Recorded == Storage Stored
-        //        Possibly recoverable from storage. Just overwrite the DB content with storage content.
-        //   A.2. Neither
-        //        Probably it cannot be resolved on this device. Even if the storage content is larger than DB Recorded, it possibly corrupted.
-        //        We do not fix it automatically. Leave it as is. Possibly other device can do this.
-        // B. DB Recorded == DB Stored ,  < Storage Stored
-        //   Very fragile, if DB Recorded size is less than Storage Stored size, we possibly repair the content (The issue was `unexpectedly shortened file`).
-        //   We do not fix it automatically, but it will be automatically overwritten in other process.
-        // C. DB Recorded == DB Stored ,  > Storage Stored
-        //   Probably restored by the user by resolving A or B on other device, We should overwrite the storage
-        //   Also do not fix it automatically. It should be overwritten by replication.
-        const recoverable = errorFiles.filter((e) => {
-            return e.recordedSize === e.storageSize && !e.isConflicted;
+        const noticeGroups = this.core.services.context.noticeGroups;
+        noticeGroups.setItem(INCOMPLETE_DOCUMENT_NOTICE_GROUP, "checking", {
+            message: "Checking for incomplete documents...",
         });
-        const unrecoverable = errorFiles.filter((e) => {
-            return e.recordedSize !== e.storageSize || e.isConflicted;
-        });
-        const fileInfo = (e: (typeof errorFiles)[0]) => {
-            return `${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize}) ${e.isConflicted ? "(Conflicted)" : ""}`;
-        };
-        const messageUnrecoverable =
-            unrecoverable.length > 0
-                ? $msg("moduleMigration.fix0256.messageUnrecoverable", {
-                      filesNotRecoverable: unrecoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
-                  })
-                : "";
+        this._log("Checking for incomplete documents...", LOG_LEVEL_VERBOSE);
 
-        const message = $msg("moduleMigration.fix0256.message", {
-            files: recoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
-            messageUnrecoverable,
-        });
-        const CHECK_IT_LATER = $msg("moduleMigration.fix0256.buttons.checkItLater");
-        const FIX = $msg("moduleMigration.fix0256.buttons.fix");
-        const DISMISS = $msg("moduleMigration.fix0256.buttons.DismissForever");
-        const ret = await this.core.confirm.askSelectStringDialogue(message, [CHECK_IT_LATER, FIX, DISMISS], {
-            title: $msg("moduleMigration.fix0256.title"),
-            defaultAction: CHECK_IT_LATER,
-        });
-        if (ret == FIX) {
-            for (const file of recoverable) {
-                // Overwrite the database with the files on the storage
-                const stubFile = await this.core.storageAccess.getFileStub(file.path);
-                if (stubFile == null) {
-                    Logger(`Could not find stub file for ${file.path}`, LOG_LEVEL_NOTICE);
+        try {
+            const errorFiles = [] as ErrorInfo[];
+            for await (const metaDoc of this.localDatabase.findAllNormalDocs({ conflicts: true })) {
+                const path = this.getPath(metaDoc);
+
+                if (!isValidPath(path)) {
+                    continue;
+                }
+                if (!(await this.services.vault.isTargetFile(path))) {
+                    continue;
+                }
+                if (!isMetaEntry(metaDoc)) {
                     continue;
                 }
 
-                stubFile.stat.mtime = Date.now();
-                const result = await this.core.fileHandler.storeFileToDB(stubFile, true, false);
-                if (result) {
-                    Logger(`Successfully restored ${file.path} from storage`);
-                } else {
-                    Logger(`Failed to restore ${file.path} from storage`, LOG_LEVEL_NOTICE);
+                const doc = await this.localDatabase.getDBEntryFromMeta(metaDoc);
+                if (!doc || !isLoadedEntry(doc)) {
+                    continue;
+                }
+                if (isDeletedEntry(doc)) {
+                    continue;
+                }
+                const isConflicted = metaDoc?._conflicts && metaDoc._conflicts.length > 0;
+
+                let storageFileContent;
+                try {
+                    storageFileContent = await this.core.storageAccess.readHiddenFileBinary(path);
+                } catch (e) {
+                    Logger(`Failed to read file ${path}: Possibly unprocessed or missing`);
+                    Logger(e, LOG_LEVEL_VERBOSE);
+                    continue;
+                }
+                // const storageFileBlob = createBlob(storageFileContent);
+                const sizeOnStorage = storageFileContent.byteLength;
+                const recordedSize = doc.size;
+                const docBlob = readAsBlob(doc);
+                const actualSize = docBlob.size;
+                if (
+                    recordedSize !== actualSize ||
+                    sizeOnStorage !== actualSize ||
+                    sizeOnStorage !== recordedSize ||
+                    isConflicted
+                ) {
+                    const contentMatched = await isDocContentSame(doc.data, storageFileContent);
+                    errorFiles.push({
+                        path,
+                        recordedSize,
+                        actualSize,
+                        storageSize: sizeOnStorage,
+                        contentMatched,
+                        isConflicted,
+                    });
+                    Logger(
+                        `Size mismatch for ${path}: ${recordedSize} (DB Recorded) , ${actualSize} (DB Stored) , ${sizeOnStorage} (Storage Stored), ${contentMatched ? "Content Matched" : "Content Mismatched"} ${isConflicted ? "Conflicted" : "Not Conflicted"}`
+                    );
                 }
             }
-        } else if (ret === DISMISS) {
-            // User chose to dismiss the issue
-            await this.core.kvDB.set("checkIncompleteDocs", true);
-        }
+            if (errorFiles.length == 0) {
+                Logger("No size mismatches found", LOG_LEVEL_INFO);
+                noticeGroups.setItem(INCOMPLETE_DOCUMENT_NOTICE_GROUP, "result", {
+                    message: "No size mismatches found",
+                });
+                await this.core.kvDB.set("checkIncompleteDocs", true);
+                return Promise.resolve(true);
+            }
+            Logger(`Found ${errorFiles.length} size mismatches`, LOG_LEVEL_INFO);
+            noticeGroups.setItem(INCOMPLETE_DOCUMENT_NOTICE_GROUP, "result", {
+                message: `Found ${errorFiles.length} size mismatches`,
+            });
+            // We have to repair them following rules and situations:
+            // A. DB Recorded != DB Stored
+            //   A.1. DB Recorded == Storage Stored
+            //        Possibly recoverable from storage. Just overwrite the DB content with storage content.
+            //   A.2. Neither
+            //        Probably it cannot be resolved on this device. Even if the storage content is larger than DB Recorded, it possibly corrupted.
+            //        We do not fix it automatically. Leave it as is. Possibly other device can do this.
+            // B. DB Recorded == DB Stored ,  < Storage Stored
+            //   Very fragile, if DB Recorded size is less than Storage Stored size, we possibly repair the content (The issue was `unexpectedly shortened file`).
+            //   We do not fix it automatically, but it will be automatically overwritten in other process.
+            // C. DB Recorded == DB Stored ,  > Storage Stored
+            //   Probably restored by the user by resolving A or B on other device, We should overwrite the storage
+            //   Also do not fix it automatically. It should be overwritten by replication.
+            const recoverable = errorFiles.filter((e) => {
+                return e.recordedSize === e.storageSize && !e.isConflicted;
+            });
+            const unrecoverable = errorFiles.filter((e) => {
+                return e.recordedSize !== e.storageSize || e.isConflicted;
+            });
+            const fileInfo = (e: (typeof errorFiles)[0]) => {
+                return `${e.path} (M: ${e.recordedSize}, A: ${e.actualSize}, S: ${e.storageSize}) ${e.isConflicted ? "(Conflicted)" : ""}`;
+            };
+            const messageUnrecoverable =
+                unrecoverable.length > 0
+                    ? $msg("moduleMigration.fix0256.messageUnrecoverable", {
+                          filesNotRecoverable: unrecoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
+                      })
+                    : "";
 
-        return Promise.resolve(true);
+            const message = $msg("moduleMigration.fix0256.message", {
+                files: recoverable.map((e) => `- ${fileInfo(e)}`).join("\n"),
+                messageUnrecoverable,
+            });
+            const CHECK_IT_LATER = $msg("moduleMigration.fix0256.buttons.checkItLater");
+            const FIX = $msg("moduleMigration.fix0256.buttons.fix");
+            const DISMISS = $msg("moduleMigration.fix0256.buttons.DismissForever");
+            const ret = await this.core.confirm.askSelectStringDialogue(message, [CHECK_IT_LATER, FIX, DISMISS], {
+                title: $msg("moduleMigration.fix0256.title"),
+                defaultAction: CHECK_IT_LATER,
+            });
+            if (ret == FIX) {
+                for (const file of recoverable) {
+                    // Overwrite the database with the files on the storage
+                    const stubFile = await this.core.storageAccess.getFileStub(file.path);
+                    if (stubFile == null) {
+                        Logger(`Could not find stub file for ${file.path}`, LOG_LEVEL_NOTICE);
+                        continue;
+                    }
+
+                    stubFile.stat.mtime = Date.now();
+                    const result = await this.core.fileHandler.storeFileToDB(stubFile, true, false);
+                    if (result) {
+                        Logger(`Successfully restored ${file.path} from storage`);
+                    } else {
+                        Logger(`Failed to restore ${file.path} from storage`, LOG_LEVEL_NOTICE);
+                    }
+                }
+            } else if (ret === DISMISS) {
+                // User chose to dismiss the issue
+                await this.core.kvDB.set("checkIncompleteDocs", true);
+            }
+
+            return Promise.resolve(true);
+        } catch (error) {
+            noticeGroups.setItem(INCOMPLETE_DOCUMENT_NOTICE_GROUP, "result", {
+                message: "The incomplete document check could not be completed.",
+            });
+            throw error;
+        } finally {
+            noticeGroups.finish(INCOMPLETE_DOCUMENT_NOTICE_GROUP);
+        }
     }
 
     async hasCompromisedChunks(): Promise<boolean> {
@@ -310,39 +356,22 @@ export class ModuleMigration extends AbstractModule {
     }
 
     async _everyOnFirstInitialize(): Promise<boolean> {
-        if (!this.localDatabase.isReady) {
-            this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE);
-            return false;
-        }
-        if (this.settings.isConfigured) {
-            if (!(await this.hasCompromisedChunks())) {
-                return false;
-            }
-            if (!(await this.hasIncompleteDocs())) {
-                return false;
-            }
-            if (!(await this.migrateUsingDoctor(false))) {
-                return false;
-            }
-            // await this.migrationCheck();
-            await this.migrateDisableBulkSend();
-        }
-        if (!this.settings.isConfigured) {
-            // if (!(await this.initialMessage()) || !(await this.askAgainForSetupURI())) {
-            //     this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
-            //     return false;
-            // }
-            if (!(await this.initialMessage())) {
-                this._log($msg("moduleMigration.logSetupCancelled"), LOG_LEVEL_NOTICE);
-                return false;
-            }
-            if (!(await this.migrateUsingDoctor(true))) {
-                return false;
-            }
-        }
-        return true;
+        return await runConfiguredStartupLifecycle({
+            databaseReady: this.localDatabase.isReady,
+            reportDatabaseNotReady: () => this._log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE),
+            hasCompromisedChunks: () => this.hasCompromisedChunks(),
+            hasIncompleteDocuments: () => this.hasIncompleteDocs(),
+            waitForCompatibilityReview: () => this.waitForCompatibilityReview(),
+            runDoctor: () => this.migrateUsingDoctor(false),
+            migrateBulkSend: () => this.migrateDisableBulkSend(),
+        });
     }
     _everyOnLayoutReady(): Promise<boolean> {
+        const shouldInitialiseDatabase = runStartupEntryLifecycle({
+            configured: this.settings.isConfigured === true,
+            inviteToOnboarding: () => this.initialMessage(),
+        });
+        if (!shouldInitialiseDatabase) return Promise.resolve(false);
         eventHub.onEvent(EVENT_REQUEST_RUN_DOCTOR, async (reason) => {
             await this.migrateUsingDoctor(false, reason, true);
         });

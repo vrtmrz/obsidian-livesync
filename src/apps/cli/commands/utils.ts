@@ -1,7 +1,6 @@
-import { path, readline } from "@/apps/cli/node-compat";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- required in environments where Buffer.buffer is ArrayBufferLike
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
 }
 
@@ -22,29 +21,4 @@ export function toDatabaseRelativePath(inputPath: string, databasePath: string):
         throw new Error(`Path ${inputPath} is outside of the local database directory`);
     }
     return rel.replace(/\\/g, "/");
-}
-
-export async function readStdinAsUtf8(): Promise<string> {
-    const chunks = [];
-    for await (const chunk of process.stdin) {
-        if (typeof chunk === "string") {
-            chunks.push(Buffer.from(chunk, "utf-8"));
-        } else {
-            chunks.push(chunk as Buffer);
-        }
-    }
-    return Buffer.concat(chunks as Uint8Array[]).toString("utf-8");
-}
-
-export async function promptForPassphrase(prompt = "Enter setup URI passphrase: "): Promise<string> {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    try {
-        const passphrase = await rl.question(prompt);
-        if (!passphrase) {
-            throw new Error("Passphrase is required");
-        }
-        return passphrase;
-    } finally {
-        rl.close();
-    }
 }

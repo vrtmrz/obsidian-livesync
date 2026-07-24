@@ -1,6 +1,6 @@
-import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_ADVANCED } from "@lib/common/types.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_ADVANCED } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
@@ -222,8 +222,6 @@ export function paneSyncSettings(
         LEVEL_ADVANCED
     ).then((paneEl) => {
         paneEl.addClass("wizardHidden");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("trashInsteadDelete");
-
         new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
     });
     void addPanel(

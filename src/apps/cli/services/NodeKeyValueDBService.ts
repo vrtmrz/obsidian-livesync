@@ -1,13 +1,14 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/logger";
-import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase";
-import type { IKeyValueDBService } from "@lib/services/base/IService";
-import { ServiceBase, type ServiceContext } from "@lib/services/base/ServiceBase";
-import type { InjectableAppLifecycleService } from "@lib/services/implements/injectable/InjectableAppLifecycleService";
-import type { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
-import type { IVaultService } from "@lib/services/base/IService";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
+import type { IKeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { ServiceBase } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import type { InjectableAppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAppLifecycleService";
+import type { InjectableDatabaseEventService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService";
+import type { IVaultService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import { fs as nodeFs, path as nodePath } from "@/apps/cli/node-compat";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { fs as nodeFs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
 
 const NODE_KV_TYPED_KEY = "__nodeKvType";
 const NODE_KV_VALUES_KEY = "values";
@@ -81,6 +82,17 @@ function deserializeFromNodeKV(value: unknown): unknown {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deserializeFromNodeKV(v)]));
 }
 
+function asKeyString(key: unknown): string {
+    if (typeof key === "string") {
+        return key;
+    }
+    const serialised = JSON.stringify(key);
+    if (typeof serialised !== "string") {
+        throw new TypeError("The IndexedDB key could not be serialised");
+    }
+    return serialised;
+}
+
 class NodeFileKeyValueDatabase implements KeyValueDatabase {
     private filePath: string;
     private data = new Map<string, unknown>();
@@ -88,13 +100,6 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     constructor(filePath: string) {
         this.filePath = filePath;
         this.load();
-    }
-
-    private asKeyString(key: IDBValidKey): string {
-        if (typeof key === "string") {
-            return key;
-        }
-        return JSON.stringify(key);
     }
 
     private load() {
@@ -115,17 +120,17 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     }
 
     async get<T>(key: IDBValidKey): Promise<T> {
-        return this.data.get(this.asKeyString(key)) as T;
+        return this.data.get(asKeyString(key)) as T;
     }
 
     async set<T>(key: IDBValidKey, value: T): Promise<IDBValidKey> {
-        this.data.set(this.asKeyString(key), value);
+        this.data.set(asKeyString(key), value);
         this.flush();
         return key;
     }
 
     async del(key: IDBValidKey): Promise<void> {
-        this.data.delete(this.asKeyString(key));
+        this.data.delete(asKeyString(key));
         this.flush();
     }
 
@@ -143,11 +148,12 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         let filtered = allKeys;
         if (typeof query !== "undefined") {
             if (this.isIDBKeyRangeLike(query)) {
-                const lower = query.lower?.toString() ?? "";
-                const upper = query.upper?.toString() ?? "\uffff";
+                const lower = query.lower === undefined ? "" : String(query.lower);
+                const upper = query.upper === undefined ? "\uffff" : String(query.upper);
                 filtered = filtered.filter((key) => key >= lower && key <= upper);
             } else {
-                const exact = query.toString();
+                const exactValue: unknown = query;
+                const exact = String(exactValue);
                 filtered = filtered.filter((key) => key === exact);
             }
         }
@@ -253,6 +259,14 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
     }
 
     openSimpleStore<T>(kind: string): SimpleStore<T> {
+        // Service modules are composed before onSettingLoaded opens the file-
+        // backed database, so handle creation must not touch it. Actual store
+        // operations are deliberately fail-fast: the sequential lifecycle opens
+        // the database before scans, watchers, or replication start. Waiting here
+        // could hang forever after failed initialisation, or deadlock if a future
+        // initialisation handler tried to use the store it was waiting to open.
+        // Reset is likewise a transient unavailable boundary, not a wait state;
+        // callers must avoid store work there because an operation may fail.
         const getDB = () => {
             if (!this._kvDB) {
                 throw new Error("KeyValueDB is not initialized yet");
@@ -271,7 +285,15 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
                 await getDB().del(`${prefix}${key}`);
             },
             keys: async (from: string | undefined, to: string | undefined, count?: number): Promise<string[]> => {
-                const allKeys = (await getDB().keys(undefined, count)).map((e) => e.toString());
+                const rawKeys: unknown = await getDB().keys(undefined, count);
+                if (!Array.isArray(rawKeys)) {
+                    throw new TypeError("The key-value database returned an invalid key list");
+                }
+                const keyList: unknown[] = rawKeys;
+                const allKeys: string[] = [];
+                for (const key of keyList) {
+                    allKeys.push(String(key));
+                }
                 const lower = `${prefix}${from ?? ""}`;
                 const upper = `${prefix}${to ?? "\uffff"}`;
                 return allKeys
@@ -279,7 +301,9 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
                     .filter((key) => key >= lower && key <= upper)
                     .map((key) => key.substring(prefix.length));
             },
-            db: Promise.resolve(getDB()),
+            get db() {
+                return Promise.resolve(getDB());
+            },
         } satisfies SimpleStore<T>;
     }
 }

@@ -19,8 +19,7 @@
         "strictBindCallApply": true,
         "strictFunctionTypes": true,
         "paths": {
-            "@/*": ["./src/*"],
-            "@lib/*": ["./src/lib/src/*", "./_types/src/lib/src/*"]
+            "@/*": ["./src/*"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts", "**/*.svelte"],

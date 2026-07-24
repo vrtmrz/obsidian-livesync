@@ -7,7 +7,7 @@ import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-ht
 import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";
 import { buildQueryString } from "@smithy/querystring-builder";
 import { requestUrl, type RequestUrlParam } from "@/deps.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 ////////////////////////////////////////////////////////////////////////////////
 // special handler using Obsidian requestUrl
@@ -23,6 +23,19 @@ function requestTimeout(timeoutInMs: number = 0): Promise<never> {
             }, timeoutInMs);
         }
     });
+}
+
+function normaliseRequestBody(body: unknown): string | ArrayBuffer | undefined {
+    if (body === undefined) return undefined;
+    if (typeof body === "string" || body instanceof ArrayBuffer) return body;
+    if (ArrayBuffer.isView(body)) {
+        if (body.buffer instanceof ArrayBuffer && body.byteOffset === 0 && body.byteLength === body.buffer.byteLength) {
+            return body.buffer;
+        }
+        return new Uint8Array(body.buffer, body.byteOffset, body.byteLength).slice().buffer;
+    }
+    const bodyType = Object.prototype.toString.call(body).slice(8, -1);
+    throw new TypeError(`Obsidian requestUrl does not support the request body type ${bodyType}`);
 }
 
 /**
@@ -64,7 +77,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             urlObj.host = this.reverseProxyNoSignUrl;
             url = urlObj.href;
         }
-        const body = method === "GET" || method === "HEAD" ? undefined : request.body;
+        const body: unknown = method === "GET" || method === "HEAD" ? undefined : request.body;
 
         const transformedHeaders: Record<string, string> = {};
         for (const key of Object.keys(request.headers)) {
@@ -80,10 +93,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             contentType = transformedHeaders["content-type"];
         }
 
-        let transformedBody = body;
-        if (ArrayBuffer.isView(body)) {
-            transformedBody = new Uint8Array(body.buffer).buffer;
-        }
+        const transformedBody = normaliseRequestBody(body);
 
         const param: RequestUrlParam = {
             body: transformedBody,

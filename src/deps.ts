@@ -1,4 +1,4 @@
-import { type FilePath } from "@lib/common/types.ts";
+import { type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 export {
     addIcon,
@@ -27,6 +27,7 @@ export {
     Menu,
     request,
     getLanguage,
+    requireApiVersion,
     ButtonComponent,
     TextComponent,
     ToggleComponent,

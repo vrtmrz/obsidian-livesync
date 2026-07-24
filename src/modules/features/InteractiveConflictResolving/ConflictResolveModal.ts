@@ -1,25 +1,26 @@
 import { App, Modal } from "@/deps.ts";
 import { DIFF_DELETE, DIFF_EQUAL, DIFF_INSERT } from "diff-match-patch";
-import { CANCELLED, LEAVE_TO_SUBSEQUENT, type diff_result } from "@lib/common/types.ts";
-import { delay } from "@lib/common/utils.ts";
-import { eventHub } from "@/common/events.ts";
-import { globalSlipBoard } from "@lib/bureau/bureau.ts";
+import {
+    CANCELLED,
+    LEAVE_TO_SUBSEQUENT,
+    type diff_result,
+    type FilePathWithPrefix,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 
-export type MergeDialogResult = typeof CANCELLED | typeof LEAVE_TO_SUBSEQUENT | string;
+export const POSTPONED = Symbol("postponed");
 
-declare global {
-    interface Slips extends LSSlips {
-        "conflict-resolved": typeof CANCELLED | MergeDialogResult;
-    }
-}
+export type MergeDialogResult = typeof CANCELLED | typeof POSTPONED | typeof LEAVE_TO_SUBSEQUENT | string;
 
 export class ConflictResolveModal extends Modal {
     result: diff_result;
-    filename: string;
+    filename: FilePathWithPrefix;
 
     response: MergeDialogResult = CANCELLED;
     isClosed = false;
     consumed = false;
+    private readonly resultPromise = promiseWithResolvers<MergeDialogResult>();
 
     title: string = "Conflicting changes";
 
@@ -31,7 +32,13 @@ export class ConflictResolveModal extends Modal {
     diffView!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
 
-    constructor(app: App, filename: string, diff: diff_result, pluginPickMode?: boolean, remoteName?: string) {
+    constructor(
+        app: App,
+        filename: FilePathWithPrefix,
+        diff: diff_result,
+        pluginPickMode?: boolean,
+        remoteName?: string
+    ) {
         super(app);
         this.result = diff;
         this.filename = filename;
@@ -41,9 +48,6 @@ export class ConflictResolveModal extends Modal {
             this.remoteName = `${remoteName || "Remote"}`;
             this.localName = "Local";
         }
-        // Send cancel signal for the previous merge dialogue
-        // if not there, simply be ignored.
-        // sendValue("close-resolve-conflict:" + this.filename, false);
     }
 
     appendDiffFragment(container: HTMLDivElement, text: string, cls: string) {
@@ -94,23 +98,24 @@ export class ConflictResolveModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        // Send cancel signal for the previous merge dialogue
-        // if not there, simply be ignored.
-        globalSlipBoard.submit("conflict-resolved", this.filename, CANCELLED);
         if (this.offEvent) {
             this.offEvent();
         }
-        this.offEvent = eventHub.onEvent("conflict-cancelled", (path) => {
+        // Cancel an older dialogue for this path before subscribing this
+        // instance. Emitting after subscription would close the replacement
+        // itself; the instance-owned result promise then completes the older
+        // caller even when it only begins waiting after this event.
+        eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, this.filename);
+        this.offEvent = eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (path) => {
             if (path === this.filename) {
                 this.sendResponse(CANCELLED);
             }
         });
-        // sendValue("close-resolve-conflict:" + this.filename, false);
         this.titleEl.setText(this.title);
         contentEl.empty();
         const diffOptionsRow = contentEl.createDiv("");
         diffOptionsRow.addClass("diff-options-row");
-        diffOptionsRow.createEl("span", { text: this.filename });
+        diffOptionsRow.createSpan({ text: this.filename });
 
         const diffNavContainer = diffOptionsRow.createDiv("");
         diffNavContainer.addClass("diff-nav");
@@ -122,7 +127,7 @@ export class ConflictResolveModal extends Modal {
             e.addClass("diff-nav-btn");
             e.addEventListener("click", () => this.navigateDiff("next"));
         });
-        this.diffNavIndicator = diffNavContainer.createEl("span", { text: "\u2014" });
+        this.diffNavIndicator = diffNavContainer.createSpan({ text: "\u2014" });
         this.diffNavIndicator.addClass("diff-nav-indicator");
 
         this.diffView = contentEl.createDiv("");
@@ -153,23 +158,24 @@ export class ConflictResolveModal extends Modal {
             new Date(this.result.right.mtime).toLocaleString() + (this.result.right.deleted ? " (Deleted)" : "");
         this.appendVersionInfo(div2, "deleted", this.localName, date1);
         this.appendVersionInfo(div2, "added", this.remoteName, date2);
-        contentEl.createEl("button", { text: `Use ${this.localName}` }, (e) => {
+        const actionContainer = contentEl.createDiv("conflict-action-container");
+        actionContainer.createEl("button", { text: `Use ${this.localName}` }, (e) => {
             e.addClass("conflict-action-button");
             e.addEventListener("click", () => this.sendResponse(this.result.right.rev));
         });
-        contentEl.createEl("button", { text: `Use ${this.remoteName}` }, (e) => {
+        actionContainer.createEl("button", { text: `Use ${this.remoteName}` }, (e) => {
             e.addClass("conflict-action-button");
             e.addEventListener("click", () => this.sendResponse(this.result.left.rev));
         });
         if (!this.pluginPickMode) {
-            contentEl.createEl("button", { text: "Concat both" }, (e) => {
+            actionContainer.createEl("button", { text: "Concat both" }, (e) => {
                 e.addClass("conflict-action-button");
                 e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT));
             });
         }
-        contentEl.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => {
+        actionContainer.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => {
             e.addClass("conflict-action-button");
-            e.addEventListener("click", () => this.sendResponse(CANCELLED));
+            e.addEventListener("click", () => this.sendResponse(this.pluginPickMode ? CANCELLED : POSTPONED));
         });
         if (diffLength > 100 * 1024) {
             this.diffView.empty();
@@ -194,12 +200,10 @@ export class ConflictResolveModal extends Modal {
             return;
         }
         this.consumed = true;
-        globalSlipBoard.submit("conflict-resolved", this.filename, this.response);
+        this.resultPromise.resolve(this.response);
     }
 
     async waitForResult(): Promise<MergeDialogResult> {
-        await delay(100);
-        const r = await globalSlipBoard.awaitNext("conflict-resolved", this.filename);
-        return r;
+        return await this.resultPromise.promise;
     }
 }

@@ -73,8 +73,12 @@ const moduleAliasPlugin = {
 const removePragmaCommentsPlugin = {
     name: "remove-pragma-comments",
     setup(build) {
+        const sourceRoot = `${path.resolve("src")}${path.sep}`;
         // Filter target extensions (e.g., JavaScript and TypeScript)
         build.onLoad({ filter: /\.[jt]s?$/ }, async (args) => {
+            // Dependencies are already compiled and may contain comment-like text inside strings.
+            // Only maintained plug-in source needs its local suppression directives removed.
+            if (!args.path.startsWith(sourceRoot)) return;
             const source = await fs.promises.readFile(args.path, "utf8");
 
             // Regex targeting both single-line and multi-line comments

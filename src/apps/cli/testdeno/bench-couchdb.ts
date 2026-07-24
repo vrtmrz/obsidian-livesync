@@ -188,9 +188,17 @@ function readOptionalResultPath(): string | undefined {
 
 export type CouchdbProxyHandle = {
     stop: () => Promise<void>;
+    resetCounters: () => void;
+    snapshotCounters: () => CouchdbProxyCounters;
     applied: boolean;
     note: string;
     directionalDelayMs: number;
+};
+
+export type CouchdbProxyCounters = {
+    requestCount: number;
+    requestBodyBytes: number;
+    responseBodyBytes: number;
 };
 
 export function startCouchdbProxy(
@@ -208,6 +216,11 @@ export function startCouchdbProxy(
         ((milliseconds: number) =>
             new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
     const controller = new AbortController();
+    const counters: CouchdbProxyCounters = {
+        requestCount: 0,
+        requestBodyBytes: 0,
+        responseBodyBytes: 0,
+    };
 
     const listener = Deno.serve(
         {
@@ -238,6 +251,8 @@ export function startCouchdbProxy(
                     requestBody = undefined;
                 }
             }
+            counters.requestCount += 1;
+            counters.requestBodyBytes += requestBody?.byteLength ?? 0;
 
             const upstream = await fetch(targetUrl, {
                 method: request.method,
@@ -249,6 +264,7 @@ export function startCouchdbProxy(
             const responseHeaders = new Headers(upstream.headers);
             responseHeaders.delete("content-length");
             const responseBody = await upstream.arrayBuffer();
+            counters.responseBodyBytes += responseBody.byteLength;
             await delay(halfDelayMs);
 
             return new Response(responseBody, {
@@ -264,6 +280,12 @@ export function startCouchdbProxy(
         directionalDelayMs: halfDelayMs,
         note:
             `local reverse proxy on ${proxy.origin} with ${halfDelayMs}ms request-path and ${halfDelayMs}ms response-path delay`,
+        resetCounters: () => {
+            counters.requestCount = 0;
+            counters.requestBodyBytes = 0;
+            counters.responseBodyBytes = 0;
+        },
+        snapshotCounters: () => ({ ...counters }),
         stop: async () => {
             controller.abort();
             await listener.finished.catch(() => {});

@@ -8,16 +8,76 @@ import {
     type DocumentID,
     type FilePathWithPrefix,
     type diff_result,
-} from "@lib/common/types.ts";
-import { ConflictResolveModal } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ConflictResolveModal, POSTPONED } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { displayRev } from "@/common/utils.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncCore } from "@/main.ts";
+import { EVENT_CONFLICT_CANCELLED, EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
+import { $msg } from "@/common/translation.ts";
+import type { Editor, MarkdownFileInfo, MarkdownView } from "@/deps.ts";
 
 export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
+    private postponedConflictEpisodes = new Set<FilePathWithPrefix>();
+
+    private async getConflictVersionCount(filename: FilePathWithPrefix): Promise<number | undefined> {
+        try {
+            const conflictCount = (await this.core.databaseFileAccess.getConflictedRevs(filename)).length;
+            return conflictCount === 0 ? 0 : conflictCount + 1;
+        } catch (error) {
+            this._log(`Could not inspect the conflict state of ${filename}`, LOG_LEVEL_VERBOSE);
+            this._log(error, LOG_LEVEL_VERBOSE);
+            return undefined;
+        }
+    }
+
+    private async getActiveConflictMessages(): Promise<string[]> {
+        const filename = this.services.vault.getActiveFilePath();
+        if (!filename) return [];
+        const versionCount = await this.getConflictVersionCount(filename);
+        if (versionCount === 0) {
+            this.postponedConflictEpisodes.delete(filename);
+            return [];
+        }
+        if (versionCount !== undefined && versionCount >= 3) {
+            return [
+                $msg("This file has ${COUNT} unresolved versions. They will be reviewed one pair at a time.", {
+                    COUNT: `${versionCount}`,
+                }),
+            ];
+        }
+        if (versionCount === 2 || this.postponedConflictEpisodes.has(filename)) {
+            return [$msg("This file has unresolved conflicts.")];
+        }
+        return [];
+    }
+
+    private async refreshConflictState(filename: FilePathWithPrefix): Promise<void> {
+        if ((await this.getConflictVersionCount(filename)) === 0) {
+            this.postponedConflictEpisodes.delete(filename);
+        }
+        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+    }
+
+    private async requestConflictResolution(filename: FilePathWithPrefix): Promise<void> {
+        this.postponedConflictEpisodes.delete(filename);
+        eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+        await this.services.conflict.queueCheckFor(filename);
+        await this.services.conflict.ensureAllProcessed();
+    }
+
     _everyOnloadStart(): Promise<boolean> {
+        this.addCommand({
+            id: "livesync-checkdoc-conflicted",
+            name: "Resolve if conflicted.",
+            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
+                const file = view.file;
+                if (!file) return;
+                void this.requestConflictResolution(file.path as FilePathWithPrefix);
+            },
+        });
         this.addCommand({
             id: "livesync-conflictcheck",
             name: "Pick a file to resolve conflict",
@@ -38,10 +98,21 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     async _anyResolveConflictByUI(filename: FilePathWithPrefix, conflictCheckResult: diff_result): Promise<boolean> {
         // UI for resolving conflicts should one-by-one.
         return await serialized(`conflict-resolve-ui`, async () => {
+            if (this.postponedConflictEpisodes.has(filename)) {
+                this._log(`Merge: Postponed ${filename}`, LOG_LEVEL_VERBOSE);
+                eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+                return false;
+            }
             this._log("Merge:open conflict dialog", LOG_LEVEL_VERBOSE);
             const dialog = new ConflictResolveModal(this.app, filename, conflictCheckResult);
             dialog.open();
             const selected = await dialog.waitForResult();
+            if (selected === POSTPONED) {
+                this.postponedConflictEpisodes.add(filename);
+                eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
+                this._log(`Merge: Postponed ${filename}`, LOG_LEVEL_INFO);
+                return false;
+            }
             if (selected === CANCELLED) {
                 // Cancelled by UI, or another conflict.
                 this._log(`Merge: Cancelled ${filename}`, LOG_LEVEL_INFO);
@@ -52,8 +123,21 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                 this._log(`Merge: Could not read ${filename} from the local database`, LOG_LEVEL_VERBOSE);
                 return false;
             }
-            if (!testDoc._conflicts) {
+            if (!testDoc._conflicts || testDoc._conflicts.length === 0) {
                 this._log(`Merge: Nothing to do ${filename}`, LOG_LEVEL_VERBOSE);
+                await this.refreshConflictState(filename);
+                return false;
+            }
+            if (
+                testDoc._rev !== conflictCheckResult.left.rev ||
+                !testDoc._conflicts.includes(conflictCheckResult.right.rev)
+            ) {
+                this._log(
+                    `Merge: The compared revisions changed while the dialogue was open: ${filename}`,
+                    LOG_LEVEL_INFO
+                );
+                await this.refreshConflictState(filename);
+                await this.services.conflict.queueCheckFor(filename);
                 return false;
             }
             const toDelete = selected;
@@ -62,7 +146,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                 // Concatenate both conflicted revisions.
                 // Create a new file by concatenating both conflicted revisions.
                 const p = conflictCheckResult.diff.map((e) => e[1]).join("");
-                const delRev = testDoc._conflicts[0];
+                const delRev = conflictCheckResult.right.rev;
                 if (!(await this.core.databaseFileAccess.storeContent(filename, p))) {
                     this._log(`Concatenated content cannot be stored:${filename}`, LOG_LEVEL_NOTICE);
                     return false;
@@ -78,7 +162,10 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                     );
                     return false;
                 }
-            } else if (typeof toDelete === "string") {
+            } else if (
+                typeof toDelete === "string" &&
+                (toDelete === conflictCheckResult.left.rev || toDelete === conflictCheckResult.right.rev)
+            ) {
                 // Select one of the conflicted revision to delete.
                 if (
                     (await this.services.conflict.resolveByDeletingRevision(filename, toDelete, "UI Selected")) ==
@@ -88,7 +175,7 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
                     return false;
                 }
             } else {
-                this._log(`Merge: Something went wrong: ${filename}, (${toDelete as string})`, LOG_LEVEL_NOTICE);
+                this._log(`Merge: Something went wrong: ${filename}, (${String(toDelete)})`, LOG_LEVEL_NOTICE);
                 return false;
             }
             // In here, some merge has been processed.
@@ -103,10 +190,13 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         });
     }
     async allConflictCheck() {
-        while (await this.pickFileForResolve());
+        let notifyIfEmpty = true;
+        while (await this.pickFileForResolve(notifyIfEmpty)) {
+            notifyIfEmpty = false;
+        }
     }
 
-    async pickFileForResolve() {
+    async pickFileForResolve(notifyIfEmpty = true) {
         const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of this.localDatabase.findAllDocs({ conflicts: true })) {
             if (!("_conflicts" in doc)) continue;
@@ -120,14 +210,15 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);
         if (notesList.length == 0) {
-            this._log("There are no conflicted documents", LOG_LEVEL_NOTICE);
+            if (notifyIfEmpty) {
+                this._log("There are no conflicted documents", LOG_LEVEL_NOTICE);
+            }
             return false;
         }
         const target = await this.core.confirm.askSelectString("File to resolve conflict", notesList);
         if (target) {
             const targetItem = notes.find((e) => e.dispPath == target)!;
-            await this.services.conflict.queueCheckFor(targetItem.path);
-            await this.services.conflict.ensureAllProcessed();
+            await this.requestConflictResolution(targetItem.path);
             return true;
         }
         return false;
@@ -172,6 +263,10 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onScanningStartupIssues.addHandler(this._allScanStat.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.getUnresolvedMessages.addHandler(this.getActiveConflictMessages.bind(this));
         services.conflict.resolveByUserInteraction.addHandler(this._anyResolveConflictByUI.bind(this));
+        eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (filename) => {
+            fireAndForget(() => this.refreshConflictState(filename));
+        });
     }
 }

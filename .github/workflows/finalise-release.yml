@@ -15,6 +15,16 @@ on:
                 description: Full head commit SHA reviewed in the release PR
                 required: true
                 type: string
+            prerelease:
+                description: Mark the GitHub Release as a pre-release
+                required: false
+                type: boolean
+                default: false
+            publish_cli:
+                description: Create the CLI tag and publish its container image
+                required: false
+                type: boolean
+                default: true
 
 jobs:
     finalise:
@@ -41,7 +51,6 @@ jobs:
               with:
                   ref: ${{ steps.branch.outputs.name }}
                   fetch-depth: 0
-                  submodules: recursive
 
             - name: Use Node.js
               uses: actions/setup-node@v4
@@ -52,11 +61,16 @@ jobs:
               env:
                   VERSION: ${{ inputs.version }}
                   EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+                  PRERELEASE: ${{ inputs.prerelease }}
               run: |
                   set -euo pipefail
                   ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
                   if [[ "${ACTUAL_HEAD_SHA}" != "${EXPECTED_HEAD_SHA}" ]]; then
                     echo "Release branch head is ${ACTUAL_HEAD_SHA}, expected ${EXPECTED_HEAD_SHA}." >&2
+                    exit 1
+                  fi
+                  if [[ "${VERSION}" == *-* && "${PRERELEASE}" != "true" ]]; then
+                    echo "Version ${VERSION} is a pre-release version, but prerelease was not enabled." >&2
                     exit 1
                   fi
                   node utils/release-notes.mjs validate "${VERSION}"
@@ -65,37 +79,50 @@ jobs:
               env:
                   VERSION: ${{ inputs.version }}
                   EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+                  PUBLISH_CLI: ${{ inputs.publish_cli }}
               run: |
                   set -euo pipefail
                   git fetch --tags --force
-                  node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}"
-                  git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"
+                  if [[ "${PUBLISH_CLI}" == "true" ]]; then
+                    node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}"
+                    git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"
+                  else
+                    node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}" --plugin-only
+                    git push origin "refs/tags/${VERSION}"
+                  fi
 
             - name: Dispatch release workflows
               env:
                   GH_TOKEN: ${{ github.token }}
                   VERSION: ${{ inputs.version }}
+                  PRERELEASE: ${{ inputs.prerelease }}
               run: |
                   set -euo pipefail
                   gh workflow run release.yml \
                     --ref "${VERSION}" \
                     --field tag="${VERSION}" \
                     --field draft=true \
-                    --field prerelease=false
-                  gh workflow run cli-docker.yml \
-                    --ref "${VERSION}-cli" \
-                    --field dry_run=false \
-                    --field force=false
+                    --field prerelease="${PRERELEASE}"
 
             - name: Summarise next steps
               env:
                   VERSION: ${{ inputs.version }}
+                  PRERELEASE: ${{ inputs.prerelease }}
+                  PUBLISH_CLI: ${{ inputs.publish_cli }}
               run: |
                   {
-                    echo "Ensured tags \`${VERSION}\` and \`${VERSION}-cli\` point to the reviewed release commit."
+                    echo "Ensured the plug-in tag \`${VERSION}\` points to the reviewed release commit."
+                    if [[ "${PUBLISH_CLI}" == "true" ]]; then
+                      echo "The CLI tag \`${VERSION}-cli\` was also created; its tag event starts the container workflow."
+                    else
+                      echo "CLI publication was omitted."
+                    fi
                     echo ""
                     echo "Dispatched the plug-in release workflow for \`${VERSION}\`. After approval for the release environment, it creates a draft GitHub Release."
-                    echo "Dispatched the CLI Docker workflow for \`${VERSION}-cli\`. It publishes the version, major-minor, latest, and SHA-qualified image tags."
                     echo ""
-                    echo "Keep the release pull request in draft after publishing the GitHub Release as the latest stable release. Mark it ready and merge it only after BRAT validation succeeds."
+                    if [[ "${PRERELEASE}" == "true" ]]; then
+                      echo "Publish the draft as a pre-release, keep the release pull request in draft, and merge only after BRAT validation succeeds."
+                    else
+                      echo "Publish the draft as the latest stable release, keep the release pull request in draft, and merge only after BRAT validation succeeds."
+                    fi
                   } >> "$GITHUB_STEP_SUMMARY"

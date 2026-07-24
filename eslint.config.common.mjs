@@ -91,8 +91,8 @@ export const baseRules = {
  */
 export const obsidianRules = {
     // -- Obsidian rules
-    // obsidianmd/no-unsupported-api: usually this project checks for API support at runtime, so this rule is not critical but can be helpful to catch potential issues.
-    "obsidianmd/no-unsupported-api": warnWhileDev,
+    // Runtime fallbacks must use requireApiVersion guards recognised by the official rule.
+    "obsidianmd/no-unsupported-api": "error",
 
     // -- Plugin specific overrides
     "obsidianmd/rule-custom-message": "off",
@@ -112,7 +112,6 @@ export const ImportAliasRules = (base) => ({
             aliasForSubpaths: true,
             alias: {
                 "@": `${base}/src`,
-                "@lib": `${base}/src/lib/src`,
             },
         },
     ],

@@ -2,12 +2,16 @@
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { DEFAULT_SETTINGS, type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@lib/common/types";
-import { parseYaml, stringifyYaml } from "@/deps";
+import {
+    DEFAULT_SETTINGS,
+    type FilePathWithPrefix,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { parseYaml, stringifyYaml, type Editor, type MarkdownView } from "@/deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import type { ServiceContext } from "@lib/services/base/ServiceBase.ts";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 const SETTING_HEADER = "````yaml:livesync-setting\n";
 const SETTING_FOOTER = "\n````";
@@ -28,7 +32,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
         this.addCommand({
             id: "livesync-import-config",
             name: "Parse setting file",
-            editorCheckCallback: (checking, editor, ctx) => {
+            editorCheckCallback: (checking: boolean, editor: Editor, ctx: MarkdownView) => {
                 if (checking) {
                     const doc = editor.getValue();
                     const ret = this.extractSettingFromWholeText(doc);
@@ -104,7 +108,11 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
         const { body } = await this.parseSettingFromMarkdown(filename);
         let newSetting = {} as Partial<ObsidianLiveSyncSettings>;
         try {
-            newSetting = parseYaml(body);
+            const parsed: unknown = parseYaml(body);
+            if (typeof parsed !== "object" || parsed === null) {
+                throw new TypeError("The YAML settings must contain an object");
+            }
+            newSetting = parsed;
         } catch (ex) {
             this._log("Could not parse YAML", LOG_LEVEL_NOTICE);
             this._log(ex, LOG_LEVEL_VERBOSE);

@@ -32,7 +32,7 @@ Converts standard global variable usages to compatibility wrappers to ensure saf
 *   **Targets**: `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval`, `requestAnimationFrame`, `cancelAnimationFrame`, `localStorage`, `navigator`, `location`, `window`, `globalThis`, and `document`.
 *   **Actions**:
     *   Replaces global namespace references (like `window` and `globalThis`) with `compatGlobal`.
-    *   Replaces `document` with `_activeDocument` (from `@lib/common/coreEnvFunctions.ts`).
+    *   Replaces `document` with `_activeDocument` from the Commonlib compatibility entry.
     *   Injects or updates the necessary imports in modified files.
 *   **Command**:
     ```bash
@@ -86,29 +86,15 @@ Scans the codebase and logs all occurrences of explicit `any` types.
     ```
 
 ### 6. Import Normalisation (`normalise-imports.ts`)
-Ensures that all import statements are standardised across the codebase, resolving paths to aliases such as `@lib/` and `@/` where applicable.
+Ensures that internal plug-in import statements are standardised to the `@/` alias where applicable. Commonlib imports remain explicit package subpaths and are not rewritten.
 
 *   **Command**:
     ```bash
     deno run --allow-read --allow-write --allow-env normalise-imports.ts
     ```
 
-### 7. CLI Node.js Import Redirection (`refactor-cli-node-imports.ts`)
-Redirects direct Node.js built-in module imports (like `fs` and `path`) within the CLI codebase to use a single barrel file (`src/apps/cli/node-compat.ts`).
-
-*   **Actions**:
-    *   Finds imports of Node.js built-in APIs (`fs`, `fs/promises`, `path`, and `readline/promises`) in CLI source files.
-    *   Replaces them with imports from the local `node-compat.ts` barrel file.
-    *   This eliminates duplicate browser-targeted linter warnings on Node.js built-ins in the CLI workspace, keeping linter ignores consolidated.
-*   **Command**:
-    ```bash
-    deno run --allow-read --allow-write --allow-env refactor-cli-node-imports.ts
-    ```
-
----
-
 ## Safety and Exclusions
 
 *   **Tests Excluded**: All scripts automatically skip files located in `_test/` or `testdeno/` folders, as well as files ending with `.spec.ts` or `.test.ts`.
-*   **Submodule Caution**: Some tools will run against the `src/lib/` submodule. Ensure you verify changes inside the submodule prior to committing.
+*   **Package Boundary**: These tools operate on this repository only. Changes to Commonlib belong in its own repository and must be validated with its package checks.
 *   **Verification**: Always run `npm run check` and `npm run test:unit` after performing refactoring tasks to verify that type safety and tests remain intact.

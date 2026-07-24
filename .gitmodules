@@ -1,3 +1,0 @@
-[submodule "src/lib"]
-	path = src/lib
-	url = https://github.com/vrtmrz/livesync-commonlib

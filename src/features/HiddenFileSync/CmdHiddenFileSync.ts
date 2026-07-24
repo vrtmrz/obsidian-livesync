@@ -1,4 +1,4 @@
-import { type PluginManifest, type ListedFiles } from "@/deps.ts";
+import { type ListedFiles } from "@/deps.ts";
 import {
     type LoadedEntry,
     type FilePathWithPrefix,
@@ -15,7 +15,7 @@ import {
     LOG_LEVEL_DEBUG,
     type MetaEntry,
     type UXDataWriteOptions,
-} from "@lib/common/types.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
 import {
     readAsBlob,
@@ -26,7 +26,7 @@ import {
     fireAndForget,
     type CustomRegExp,
     getFileRegExp,
-} from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     compareMTime,
     isInternalMetadata,
@@ -44,25 +44,30 @@ import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
-import { addPrefix, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
+import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { hiddenFilesEventCount, hiddenFilesProcessingCount } from "@lib/mock_and_interop/stores.ts";
+import {
+    hiddenFilesEventCount,
+    hiddenFilesProcessingCount,
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
-import { tryGetFilePath } from "@lib/common/utils.doc.ts";
-import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
+import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
+import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
+import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
-declare global {
-    interface OPTIONAL_SYNC_FEATURES {
-        FETCH: "FETCH";
-        OVERWRITE: "OVERWRITE";
-        MERGE: "MERGE";
-        DISABLE: "DISABLE";
-        DISABLE_HIDDEN: "DISABLE_HIDDEN";
-    }
-}
+type HiddenFileInitialisationProgress = {
+    log(message: string): void;
+    once(message: string): void;
+    done(message?: string): void;
+};
+
+const HIDDEN_FILE_NOTICE_GROUP = "hidden-file-changes";
+const HIDDEN_FILE_NOTICE_DURATION_MS = 20_000;
+
 function getComparingMTime(
     doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
     includeDeleted = false
@@ -101,37 +106,45 @@ export class HiddenFileSync extends LiveSyncCommands {
         this.services.API.addCommand({
             id: "livesync-sync-internal",
             name: "(re)initialise hidden files between storage and database",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.initialiseInternalFileSync("safe", true);
                 }
+                return true;
             },
         });
         this.services.API.addCommand({
             id: "livesync-scaninternal-storage",
             name: "Scan hidden file changes on the storage",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.scanAllStorageChanges(true);
                 }
+                return true;
             },
         });
         this.services.API.addCommand({
             id: "livesync-scaninternal-database",
             name: "Scan hidden file changes on the local database",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.scanAllDatabaseChanges(true);
                 }
+                return true;
             },
         });
         this.services.API.addCommand({
             id: "livesync-internal-scan-offline-changes",
             name: "Scan and apply all offline hidden-file changes",
-            callback: () => {
-                if (this.isReady()) {
+            checkCallback: (checking) => {
+                if (!this.isManualCommandAvailable()) return false;
+                if (!checking) {
                     void this.applyOfflineChanges(true);
                 }
+                return true;
             },
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, () => {
@@ -183,10 +196,14 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
 
     isReady() {
-        if (!this._isMainReady) return false;
+        if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
         return true;
+    }
+
+    private isManualCommandAvailable() {
+        return this.settings.useAdvancedMode && this.isReady() && this._isDatabaseReady();
     }
 
     async performStartupScan(showNotice: boolean) {
@@ -1224,42 +1241,43 @@ Offline Changed files: ${files.length}`;
     notifyConfigChange() {
         const updatedFolders = [...this.queuedNotificationFiles];
         this.queuedNotificationFiles.clear();
+        const noticeGroups = this.services.context.noticeGroups;
+        let hasNoticeItems = false;
         try {
-            //@ts-ignore
-            const manifests = Object.values(this.app.plugins.manifests) as unknown as PluginManifest[];
-            //@ts-ignore
-            const enabledPlugins = this.app.plugins.enabledPlugins as Set<string>;
-            const enabledPluginManifests = manifests.filter((e) => enabledPlugins.has(e.id));
+            const pluginManager = getObsidianCommunityPluginManager(this.app);
+            const enabledPluginManifests = pluginManager.manifests.filter((manifest) =>
+                pluginManager.enabledPlugins.has(manifest.id)
+            );
             const modifiedManifests = enabledPluginManifests.filter((e) => updatedFolders.indexOf(e?.dir ?? "") >= 0);
             for (const manifest of modifiedManifests) {
                 // If notified about plug-ins, reloading Obsidian may not be necessary.
                 const updatePluginId = manifest.id;
                 const updatePluginName = manifest.name;
-                this.core.confirm.askInPopup(
-                    `updated-${updatePluginId}`,
-                    `Files in ${updatePluginName} has been updated!\nPress {HERE} to reload ${updatePluginName}, or press elsewhere to dismiss this message.`,
-                    (anchor) => {
-                        anchor.text = "HERE";
-                        anchor.addEventListener("click", () => {
+                const itemKey = `plugin:${updatePluginId}`;
+                noticeGroups.setItem(HIDDEN_FILE_NOTICE_GROUP, itemKey, {
+                    message: `Files in ${updatePluginName} were updated.`,
+                    action: {
+                        label: `Reload ${updatePluginName}`,
+                        onSelect: () => {
                             fireAndForget(async () => {
                                 this._log(
                                     `Unloading plugin: ${updatePluginName}`,
                                     LOG_LEVEL_NOTICE,
                                     "plugin-reload-" + updatePluginId
                                 );
-                                // @ts-ignore
-                                await this.app.plugins.unloadPlugin(updatePluginId);
-                                // @ts-ignore
-                                await this.app.plugins.loadPlugin(updatePluginId);
+                                await pluginManager.unloadPlugin(updatePluginId);
+                                await pluginManager.loadPlugin(updatePluginId);
                                 this._log(
                                     `Plugin reloaded: ${updatePluginName}`,
                                     LOG_LEVEL_NOTICE,
                                     "plugin-reload-" + updatePluginId
                                 );
+                                noticeGroups.removeItem(HIDDEN_FILE_NOTICE_GROUP, itemKey);
                             });
-                        });
-                    }
-                );
+                        },
+                    },
+                });
+                hasNoticeItems = true;
             }
         } catch (ex) {
             this._log("Error on checking plugin status.");
@@ -1269,17 +1287,23 @@ Offline Changed files: ${files.length}`;
         // If something changes left, notify for reloading Obsidian.
         if (updatedFolders.indexOf(this.services.API.getSystemConfigDir()) >= 0) {
             if (!this.services.appLifecycle.isReloadingScheduled()) {
-                this.core.confirm.askInPopup(
-                    `updated-any-hidden`,
-                    `Some setting files have been modified\nPress {HERE} to schedule a reload of Obsidian, or press elsewhere to dismiss this message.`,
-                    (anchor) => {
-                        anchor.text = "HERE";
-                        anchor.addEventListener("click", () => {
+                noticeGroups.setItem(HIDDEN_FILE_NOTICE_GROUP, "restart", {
+                    message: "Other Obsidian settings files were updated.",
+                    action: {
+                        label: "Schedule an Obsidian restart",
+                        onSelect: () => {
                             this.services.appLifecycle.scheduleRestart();
-                        });
-                    }
-                );
+                            noticeGroups.removeItem(HIDDEN_FILE_NOTICE_GROUP, "restart");
+                        },
+                    },
+                });
+                hasNoticeItems = true;
+            } else {
+                noticeGroups.removeItem(HIDDEN_FILE_NOTICE_GROUP, "restart");
             }
+        }
+        if (hasNoticeItems) {
+            noticeGroups.finish(HIDDEN_FILE_NOTICE_GROUP, { durationMs: HIDDEN_FILE_NOTICE_DURATION_MS });
         }
     }
 
@@ -1415,13 +1439,18 @@ Offline Changed files: ${files.length}`;
         direction: SyncDirection,
         showMessage: boolean,
         // filesAll: InternalFileInfo[] | false = false,
-        targetFilesSrc: string[] | false = false
+        targetFilesSrc: string[] | false = false,
+        initialisationProgress?: HiddenFileInitialisationProgress
     ) {
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
-        const p = this._progress("[⚙ Initialise]\n", logLevel);
+        const p = initialisationProgress ?? this._progress("[⚙ Initialise]\n", logLevel);
         // p.log("Resolving conflicts before starting...");
         // await this.resolveConflictOnInternalFiles();
         p.log("Initialising hidden files sync...");
+        // The initialisation progress owns the user-visible Notice. Its child
+        // rebuild and scan operations still write ordinary log entries, but
+        // must not each create another keep-alive Notice.
+        const showChildNotices = false;
         // TODO: Handling ignore files cannot be performed to the hidden files.
 
         const targetFiles = targetFilesSrc
@@ -1430,35 +1459,38 @@ Offline Changed files: ${files.length}`;
         if (direction == "pushForce" || direction == "push") {
             const onlyNew = direction == "push";
             p.log(`Started: Storage --> Database ${onlyNew ? "(Only New)" : ""}`);
-            const updatedFiles = await this.rebuildFromStorage(showMessage, targetFiles, onlyNew);
+            const updatedFiles = await this.rebuildFromStorage(showChildNotices, targetFiles, onlyNew);
             // making doubly sure, No more losing files.
             // I did so many times during the development.
             await this.adoptCurrentStorageFilesAsProcessed(updatedFiles);
             await this.adoptCurrentDatabaseFilesAsProcessed(updatedFiles);
             // And, scan other changes on the database (i.e. files which are on only other devices)
-            await this.scanAllStorageChanges(showMessage, true, false);
-            await this.scanAllDatabaseChanges(showMessage, true, false);
+            p.log("Checking for remaining storage and database changes...");
+            await this.scanAllStorageChanges(showChildNotices, true, false);
+            await this.scanAllDatabaseChanges(showChildNotices, true, false);
         }
         if (direction == "pullForce" || direction == "pull") {
             const onlyNew = direction == "pull";
             p.log(`Started: Database --> Storage ${onlyNew ? "(Only New)" : ""}`);
-            const updatedEntries = await this.rebuildFromDatabase(showMessage, targetFiles, onlyNew);
+            const updatedEntries = await this.rebuildFromDatabase(showChildNotices, targetFiles, onlyNew);
             const updatedFiles = updatedEntries.map((e) => stripAllPrefixes(this.getPath(e)));
             // making doubly sure, No more losing files.
             await this.adoptCurrentStorageFilesAsProcessed(updatedFiles);
             await this.adoptCurrentDatabaseFilesAsProcessed(updatedFiles);
             // And, scan other changes on the database (i.e. files which are on only other devices)
-            await this.scanAllDatabaseChanges(showMessage, true, false);
-            await this.scanAllStorageChanges(showMessage, true, false);
+            p.log("Checking for remaining database and storage changes...");
+            await this.scanAllDatabaseChanges(showChildNotices, true, false);
+            await this.scanAllStorageChanges(showChildNotices, true, false);
         }
         if (direction == "safe") {
             p.log(`Started: Database <--> Storage (by modified date)`);
-            const updatedFiles = await this.rebuildMerging(showMessage, targetFiles);
+            const updatedFiles = await this.rebuildMerging(showChildNotices, targetFiles);
             await this.adoptCurrentStorageFilesAsProcessed(updatedFiles);
             await this.adoptCurrentDatabaseFilesAsProcessed(updatedFiles);
             // And, scan other changes on the database (i.e. files which are on only other devices)
-            await this.scanAllStorageChanges(showMessage, true, false);
-            await this.scanAllDatabaseChanges(showMessage, true, false);
+            p.log("Checking for remaining storage and database changes...");
+            await this.scanAllStorageChanges(showChildNotices, true, false);
+            await this.scanAllDatabaseChanges(showChildNotices, true, false);
         }
         p.done();
     }
@@ -1765,56 +1797,6 @@ Offline Changed files: ${files.length}`;
 
     // <-- Database To Storage Functions
 
-    private async _allAskUsingOptionalSyncFeature(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        await this.__askHiddenFileConfiguration(opt);
-        return true;
-    }
-    private async __askHiddenFileConfiguration(opt: { enableFetch?: boolean; enableOverwrite?: boolean }) {
-        const messageFetch = `${opt.enableFetch ? `> - Fetch: Use the files stored from other devices. Choose this option if you have already configured hidden file synchronization on those devices and wish to accept their files.\n` : ""}`;
-        const messageOverwrite = `${opt.enableOverwrite ? `> - Overwrite: Use the files from this device. Select this option if you want to overwrite the files stored on other devices.\n` : ""}`;
-        const messageMerge = `> - Merge: Merge the files from this device with those on other devices. Choose this option if you wish to combine files from multiple sources.
->  However, please be reminded that merging may cause conflicts if the files are not identical. Additionally, this process may occur within the same folder, potentially breaking your plug-in or theme settings that comprise multiple files.\n`;
-        const message = `Would you like to enable **Hidden File Synchronization**?
-
-> [!DETAILS]-
-> This feature allows you to synchronize all hidden files without any user interaction.
-> To enable this feature, you should choose one of the following options:
-${messageFetch}${messageOverwrite}${messageMerge}
-
-> [!IMPORTANT]
-> Please keep in mind that enabling this feature alongside customisation sync may override certain behaviors.`;
-        const CHOICE_FETCH = "Fetch";
-        const CHOICE_OVERWRITE = "Overwrite";
-        const CHOICE_MERGE = "Merge";
-        const CHOICE_DISABLE = "Disable";
-        const choices = [];
-        if (opt?.enableFetch) {
-            choices.push(CHOICE_FETCH);
-        }
-        if (opt?.enableOverwrite) {
-            choices.push(CHOICE_OVERWRITE);
-        }
-        choices.push(CHOICE_MERGE);
-        choices.push(CHOICE_DISABLE);
-
-        const ret = await this.core.confirm.confirmWithMessage(
-            "Hidden file sync",
-            message,
-            choices,
-            CHOICE_DISABLE,
-            40
-        );
-        if (ret == CHOICE_FETCH) {
-            await this.configureHiddenFileSync("FETCH");
-        } else if (ret == CHOICE_OVERWRITE) {
-            await this.configureHiddenFileSync("OVERWRITE");
-        } else if (ret == CHOICE_MERGE) {
-            await this.configureHiddenFileSync("MERGE");
-        } else if (ret == CHOICE_DISABLE) {
-            await this.configureHiddenFileSync("DISABLE_HIDDEN");
-        }
-    }
-
     private _allSuspendExtraSync(): Promise<boolean> {
         if (this.core.settings.syncInternalFiles) {
             this._log(
@@ -1827,38 +1809,50 @@ ${messageFetch}${messageOverwrite}${messageMerge}
     }
 
     // --> Configuration handling
-    private async _allConfigureOptionalSyncFeature(mode: keyof OPTIONAL_SYNC_FEATURES) {
+    private async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
 
-    async configureHiddenFileSync(mode: keyof OPTIONAL_SYNC_FEATURES) {
-        const result = await configureHiddenFileSyncMode(mode, {
-            disable: async () => {
-                // await this.core.$allSuspendExtraSync();
-                await this.core.services.setting.applyPartial(
-                    {
-                        syncInternalFiles: false,
-                    },
-                    true
-                );
-                // this.core.settings.syncInternalFiles = false;
-                // await this.core.saveSettings();
-            },
-            enable: async () => {
-                this._log("Gathering files for enabling Hidden File Sync", LOG_LEVEL_NOTICE);
-                await this.core.services.setting.applyPartial(
-                    {
-                        useAdvancedMode: true,
-                        syncInternalFiles: true,
-                    },
-                    true
-                );
-            },
-            initialise: async (direction) => {
-                await this.initialiseInternalFileSync(direction, true);
-            },
-        });
+    async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
+        let initialisationProgress: HiddenFileInitialisationProgress | undefined;
+        let result: ConfigureHiddenFileSyncResult;
+        try {
+            result = await configureHiddenFileSyncMode(mode, {
+                disable: async () => {
+                    // await this.core.$allSuspendExtraSync();
+                    await this.core.services.setting.applyPartial(
+                        {
+                            syncInternalFiles: false,
+                        },
+                        true
+                    );
+                    // this.core.settings.syncInternalFiles = false;
+                    // await this.core.saveSettings();
+                },
+                enable: async () => {
+                    // Open the one user-visible progress Notice before saving
+                    // the setting. Large Vaults can otherwise appear idle
+                    // before the initial file enumeration begins.
+                    initialisationProgress = this._progress("[⚙ Initialise]\n", LOG_LEVEL_NOTICE);
+                    initialisationProgress.log("Preparing Hidden File Sync...");
+                    await this.core.services.setting.applyPartial(
+                        {
+                            useAdvancedMode: true,
+                            syncInternalFiles: true,
+                        },
+                        true
+                    );
+                },
+                initialise: async (direction) => {
+                    await this.initialiseInternalFileSync(direction, true, false, initialisationProgress);
+                    initialisationProgress = undefined;
+                },
+            });
+        } catch (error) {
+            initialisationProgress?.done("Failed");
+            throw error;
+        }
         if (result == "ignored" || result == "disabled") {
             return;
         }
@@ -1866,7 +1860,7 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         // this.plugin.settings.syncInternalFiles = true;
 
         // await this.plugin.saveSettings();
-        this._log(`Done! Restarting the app is strongly recommended!`, LOG_LEVEL_NOTICE);
+        this._log("Hidden File Sync initialisation completed.", LOG_LEVEL_INFO);
     }
     // <-- Configuration handling
 
@@ -1988,8 +1982,9 @@ ${messageFetch}${messageOverwrite}${messageMerge}
         services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
         services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
         services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
-        services.setting.suggestOptionalFeatures.addHandler(this._allAskUsingOptionalSyncFeature.bind(this));
         services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
-        services.vault.isTargetFileInExtra.addHandler(this.isTargetFile.bind(this));
+        services.vault.isTargetFileInExtra.addHandler((file) =>
+            this.isTargetFile((typeof file === "string" ? file : stripAllPrefixes(file.path)) as FilePath)
+        );
     }
 }

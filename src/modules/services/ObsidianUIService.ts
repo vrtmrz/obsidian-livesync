@@ -1,11 +1,11 @@
-import type { ConfigService } from "@lib/services/base/ConfigService";
-import type { AppLifecycleService } from "@lib/services/base/AppLifecycleService";
-import type { ReplicatorService } from "@lib/services/base/ReplicatorService";
-import { UIService } from "@lib/services/implements/base/UIService";
-import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
+import type { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService";
+import type { AppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
+import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
+import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
+import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian";
-import DialogToCopy from "@lib/UI/dialogues/DialogueToCopy.svelte";
-import type { IAPIService, IControlService } from "@lib/services/base/IService";
+import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy.svelte";
+import type { IAPIService, IControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = ObsidianServiceContext> = {
     appLifecycle: AppLifecycleService<T>;
     config: ConfigService<T>;
@@ -28,7 +28,6 @@ export class ObsidianUIService extends UIService<ObsidianServiceContext> {
             control: dependents.control,
         });
         super(context, {
-            appLifecycle: dependents.appLifecycle,
             dialogManager: obsidianSvelteDialogManager,
             APIService: dependents.APIService,
         });

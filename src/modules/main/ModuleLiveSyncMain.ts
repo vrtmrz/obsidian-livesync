@@ -1,5 +1,9 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, VER, type ObsidianLiveSyncSettings } from "@lib/common/types.ts";
+import {
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
@@ -7,14 +11,12 @@ import {
     EVENT_SETTING_SAVED,
     eventHub,
 } from "@/common/events.ts";
-import { $msg, setLang } from "@lib/common/i18n.ts";
-import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
+import { $msg, setLang } from "@/common/translation";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub.ts";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-import { initialiseWorkerModule } from "@lib/worker/bgWorker.ts";
-import { manifestVersion, packageVersion } from "@lib/common/coreEnvVars.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker/bgWorker";
+import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -81,7 +83,7 @@ export class ModuleLiveSyncMain extends AbstractModule {
     }
 
     async _onLiveSyncLoad(): Promise<boolean> {
-        initialiseWorkerModule();
+        initialiseWorkerModule(this.services.context.events);
         await this.services.appLifecycle.onWireUpEvents();
         // debugger;
         eventHub.emitEvent(EVENT_PLUGIN_LOADED);
@@ -97,30 +99,6 @@ export class ModuleLiveSyncMain extends AbstractModule {
             this._log($msg("moduleLiveSyncMain.logPluginInitCancelled"), LOG_LEVEL_NOTICE);
             return false;
         }
-        const lsKey = "obsidian-live-sync-ver" + this.services.vault.getVaultName();
-        const last_version = compatGlobal.localStorage.getItem(lsKey);
-
-        const lastVersion = ~~(versionNumberString2Number(manifestVersion) / 1000);
-        if (lastVersion > this.settings.lastReadUpdates && this.settings.isConfigured) {
-            this._log($msg("moduleLiveSyncMain.logReadChangelog"), LOG_LEVEL_NOTICE);
-        }
-
-        // //@ts-ignore
-        // if (this.isMobile) {
-        //     this.settings.disableRequestURI = true;
-        // }
-        if (last_version && Number(last_version) < VER) {
-            this.settings.liveSync = false;
-            this.settings.syncOnSave = false;
-            this.settings.syncOnEditorSave = false;
-            this.settings.syncOnStart = false;
-            this.settings.syncOnFileOpen = false;
-            this.settings.syncAfterMerge = false;
-            this.settings.periodicReplication = false;
-            this.settings.versionUpFlash = $msg("moduleLiveSyncMain.logVersionUpdate");
-            await this.saveSettings();
-        }
-        compatGlobal.localStorage.setItem(lsKey, `${VER}`);
         await this.services.database.openDatabase({
             databaseEvents: this.services.databaseEvents,
             replicator: this.services.replicator,

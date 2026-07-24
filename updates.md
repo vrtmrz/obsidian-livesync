@@ -1,187 +1,107 @@
-# 0.25
-Since 19th July, 2025 (beta1 in 0.25.0-beta1, 13th July, 2025)
+# 1.0
 
-The head note of 0.25 is now in [updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md). Because 0.25 got a lot of updates, thankfully, compatibility is kept and we do not need breaking changes! In other words, when get enough stabled. The next version will be v1.0.0. Even though it my hope.
+Well then, everyone: it has been roughly a year since I declared the 0.25 beta. During that time, we have concentrated mainly on fixing defects and completing the features that the project needed.
+
+Version 1.0 has been in mind for some time. We have now brought together the work intended to make it possible: stronger CI, more detailed tests, an E2E runner suited to synchronisation, and testing tools for physical devices. These now form a coherent Kit rather than a collection of isolated pieces. With those foundations in place, it seems that the time has finally come to reshape the structure of this repository.
+
+None of this would have been possible without your issue reports, pull requests, sponsorship, and the support provided through OpenAI's Codex for Open Source. I would like to express my gratitude once again. As with every pull request contributed to the project, code produced with Codex and similar tools is reviewed and audited by me, vrtmrz. Anyone interested in how I manage that process can refer to my dotfiles.
+
+This will call for your help once again. I would be very grateful for your co-operation as we build a sounder foundation for the project and its future development.
+
+Earlier releases remain available in the 0.25 release history and the legacy release history.
 
 ## Unreleased
 
-## 0.25.83
+### Improved
 
-16th July, 2026
-
-Our plug-in continues to improve every day thanks to all of your contributions. We have finally resolved an issue first reported in 2023. Thank you for everything you contribute.
+- **Verify and repair all files** now reports the database winner, every conflict revision, missing chunks, and unavailable shared ancestors separately. It can retry an exact revision without changing the tree, while discarding an unreadable live revision requires explicit confirmation.
+- Command-palette actions now use clearer names and appear only when their feature and current context make them usable. Renamed commands keep their identifiers, so hotkeys already assigned to them continue to work. The onboarding wizard can be reopened from **Self-hosted LiveSync settings** → **Setup**.
+- Enabling Hidden File Sync now opens one progress Notice before its setting is saved and reuses that Notice throughout the initial file scan, instead of stacking separate phase and restart Notices.
+- P2P is now presented only after it has been configured: its status pane no longer opens at start-up, its ribbon icon remains hidden for CouchDB-only Vaults, and the retired P2P pane command has been removed. The current pane distinguishes announcing changes, following a peer, and persistent per-device actions. Setup and guidance now distinguish the required signalling relay from optional TURN, and describe the public signalling relay's privacy and availability limits.
+- First-device P2P setup now accepts a successfully opened signalling room without requiring another peer to be online. Additional-device Fetch still requires selecting a source peer and completing `P2P Rebuild`.
+- Manual CouchDB setup now distinguishes creating a first database from connecting an additional device to an existing one. Settings mode can save an unverified profile explicitly, while onboarding requires a successful connection, and each proposed server-configuration fix requires separate confirmation.
+- Differences limited to the chunk hash algorithm, chunk size, or splitter version are now aligned automatically by default. Existing content remains readable, while an explicit opt-out and any difference which also involves an incompatible setting retain manual review.
+- Text in setup and review dialogues can now be selected for copying or translation.
 
 ### Fixed
 
-- Fixed the 📲 remote-activity indicator remaining visible after CouchDB requests had completed.
-- Fixed missing chunks being reported unavailable while an in-progress on-demand fetch or finite replication could still deliver them. Reads now follow the actual delivery lifecycle and recheck the local database when it finishes.
-- Fixed an issue where changing only the letter case of a file name within the same directory could delete it on other devices when 'Handle files as Case-Sensitive' was disabled. Directory case changes remain unsupported (#198, PR #1014; [commonlib PR #68](https://github.com/vrtmrz/livesync-commonlib/pull/68)). Thank you to @metrovoc for the fix!
-- Fixed **Resolve All conflicted files by the newer one** displaying a separate success notice for every resolved file and updating its progress notice for nine out of every ten checked files. Successful per-file results are now logged, progress updates every ten files, and errors and non-bulk success notices remain visible (#1016, PR #1017). Thank you to @apple-ouyang for the fix!
-
-### Improved
-
-- Split the status-bar remote activity display into `📲` for a finite remote operation and `🌐N` for the approximate number of tracked CouchDB or Object Storage requests currently in progress.
-
-## 0.25.82
-
-15th July, 2026
-
-Recently, I created a repository called Fancy Kit and have been trying to build some proper infrastructure around it. Does any of this look like cumbersome bureaucracy? No need to worry: you can carry on as usual. Codex is simply tidying up my usual rambling prose, terrible pull requests, and disjointed remarks.
-
-### Fixed
-
-- Refreshed the remote Security Seed before each replication, preventing a client that remained open during a remote database rebuild from uploading data encrypted with the previous seed (#1018, PR #1019). Thank you to @apple-ouyang for the fix!
-- The P2P **Start Sync & Close** action now waits for synchronisation to settle before closing the dialogue, avoiding premature release of screen-awake protection while work remains in flight.
-
-### Improved
-
-- On supported mobile and desktop devices, one-shot replication, P2P peer discovery and selection, database rebuild and fetch operations, and remote chunk fetching now keep the screen awake for the duration of these finite remote operations. LiveSync also postpones its normal visibility suspension until the operation finishes, although platform restrictions may still pause or terminate background work.
-- The 📲 status-bar indicator now covers finite remote work as well as HTTP requests. It reports broad remote activity, such as P2P peer selection and remote chunk fetching, rather than an exact physical connection count.
-
-### Improved (CLI)
-
-- CLI container images are now published for both AMD64 and ARM64 platforms.
+- An unreadable conflict revision is no longer deleted automatically merely because its chunks are unavailable on the current device.
+- Garbage Collection V3 now protects chunks required by every live conflict branch and the available revision ancestry needed to review and merge conflicts, instead of considering only the database winner. The action is offered only for CouchDB because P2P has no central database to compact and does not provide the device inventory required by the workflow. Collection now stops when device progress cannot be verified, and a compaction timeout is no longer followed by a contradictory success message.
+- Choosing **Apply settings to this device, and fetch again** for a compatible configuration mismatch now applies the remote settings before Fetch, instead of updating the remote database with this device's settings.
+- Accepted settings which control how new chunks are created now take effect before synchronisation is retried, rather than leaving the previous hash or splitter active until restart.
 
 ### Testing
 
-- Added a local real-Obsidian compatibility test that writes an encrypted, path-obfuscated note through the LiveSync CLI and verifies that the plug-in materialises the same content.
+- Added regressions for revision repair, P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, selectable and mobile dialogues, conflict-aware chunk reachability, device-progress safeguards, compaction timeouts, shared chunks, collection propagation, and content-addressed chunk recreation.
 
-## 0.25.81
+## 1.0.0-beta.2
 
-14th July, 2026
-
-I am releasing this update to make the chunk-boundary fix available before the next broader release. Thank you to everyone who helped reproduce, trace, and verify the issue.
-
-### Fixed
-
-- Fixed an issue where a U+FEFF character at a Rabin–Karp chunk boundary could be lost, changing the reconstructed file and causing repeated size-mismatch conflicts (#1000).
+23rd July, 2026
 
 ### Improved
 
-- Improved vault scanning and CLI file filtering by reusing compiled ignore patterns, reducing processing overhead for vaults with many files or ignore rules (#1006, #1007, and #1008).
+- Choosing **Not now** on a merge conflict now postpones repeated dialogues for that conflict while the active file retains an unresolved-conflict warning. Three or more live versions show their current count and are reviewed one deterministic pair at a time; completed pairs remain resolved across restart. The existing conflict commands can reopen a postponed conflict explicitly, and a later conflict prompts again after the current one has been resolved.
 
-### Improved (CLI and Webapp)
+### Fixed
 
-- Rooted storage adapters now reject absolute, drive-qualified, backslash-separated, and traversal paths. They also prevent file writes, appends, and removal from targeting the configured root itself.
-- File System Access API storage can now create files below previously missing parent directories, matching the existing Node behaviour.
+- Answering or externally closing a merge dialogue immediately no longer leaves conflict processing waiting for a response which has already occurred.
 
 ### Testing
 
-- Added shared Node and File System Access API storage contract coverage for metadata, text and binary operations, append, listing, removal, path containment, and empty-root handling.
-- Added a Compose-based P2P end-to-end smoke test and repeatable network benchmark cases for local performance investigations.
+- Added revision-tree regressions and focused real-Obsidian scenarios for multiple-version review and restart between resolution stages.
 
-### Miscellaneous
+## 1.0.0-beta.1
 
-- Split the internal storage adapter contract into focused capability views without changing existing runtime behaviour.
+22nd July, 2026
 
-## 0.25.80
+### Important
 
-7th July, 2026
-
-### Fixed
-
-- Improved Markdown conflict auto-merge so that non-overlapping edits are merged while overlapping delete-and-edit cases remain visible for manual resolution (#993).
-  - Behaviour change:
-    - When one side deletes an unchanged line and the other side edits a different region, the deleted line is no longer reintroduced into the merged result.
-    - When one side deletes a line and the other side modifies that same line, the conflict is preserved instead of silently choosing one side.
-- Fixed an issue where applying a newer database entry to storage could incorrectly preserve an older local file as a conflict (#994).
-  - Behaviour change:
-    - Local storage is preserved as a conflict when it may contain unsynchronised changes that are not represented in the revision history. A newer incoming text entry is applied without creating a conflict only when it clearly extends the existing local text.
-- Fixed an issue where choosing Disable and then Overwrite in Hidden File Sync could silently skip hidden files, because the overwrite setup ran while hidden file synchronisation was still disabled (#989, PR #992).
-  - Hidden File Sync is now re-enabled before the Fetch, Overwrite, or Merge initialisation runs, instead of after it completes. If that initialisation fails, the setting may remain enabled.
-
-## 0.25.79
-
-29th June, 2026
+- This corrected opt-in integration preview follows `1.0.0-beta.0` and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
 
 ### Fixed
 
-- Fast Fetch now retries transient stream interruptions and resumes from the latest persisted checkpoint, instead of starting over after ordinary network or platform interruptions (#977, PR #978; commonlib PR #59). Thank you so much for @apple-ouyang for the fix!
-- Simple Fetch now remembers the selected setup choices while an interrupted Fetch All operation is still pending, so users are not asked the same questions again on retry (#977, PR #978). Thank you so much for @apple-ouyang for the fix!
-- No longer hidden storage events, such as `.git` paths, reach the normal target-file filter when internal file synchronisation is disabled. This avoids noisy non-target logs before those files are skipped (commonlib PR #60). Thank you so much for @apple-ouyang for the fix!
-- Fixed an issue where a file deleted from storage could be resurrected by the offline scanner because the database tombstone was not written when the storage file was already gone (commonlib PR #56). Thank you so much for @cosmic-fire-eng for the fix!
-
-### Improved
-
-- Local database maintenance commands now ask before applying the required chunk settings, and can apply those prerequisites before continuing (#980, PR #981). Thank you so much for @apple-ouyang for the improvement!
-- Improved CouchDB replication event handling by using the new `StreamInbox` helper from `octagonal-wheels` (commonlib PR #62).
-
-### Documentation
-
-- Added `nginx` to the setup documentation table of contents (PR #976). Thank you so much for @kiraventom for the improvement!
-
-### Miscellaneous
-
-- Updated `octagonal-wheels` to `0.1.47` across the plug-in and workspace packages to use the newly published helper modules.
-
-## 0.25.78
-
-23rd June, 2026
-
-### Fixed
-- No longer fast synchronisation (a.k.a. Fast Fetch) causes a rewind and re-fetch of the entire database when some errors occur during the process (#972, PR #973). Thank you so much for @apple-ouyang for the fix!
-
-### Improved
-
-- Overhauled the Object Storage (e.g., MinIO and S3) replication engine ('Journal Replicator 2nd Edition').
-  - It now leverages the standard Web Streams API for a resilient, backpressure-aware architecture, reducing memory footprints/temporary storage usage on large vaults.
-  - Decoupled the physical storage logic to make it easier to add new storage backends in the future.
-  - Stricter compliance with CouchDB's replication protocol (proper `_revisions` transfers with `new_edits: false`) when using Object Storage.
+- Conflict resolutions made on another device no longer recreate the same conflict when the receiving Vault still contains the exact content of the deleted losing revision. Automatic text and structured-data merge now uses the nearest revision actually shared by both branches instead of inferring ancestry from revision generation numbers.
+- Edits, deletions, and renames made while a file is conflicted now extend the exact revision displayed on that device. If LiveSync cannot prove the displayed branch, it preserves the affected branches for review instead of silently applying the operation to the database winner.
 
 ### Testing
-  - Added comprehensive unit tests for the new `JournalSyncCore` engine, covering streams, backpressure, and `new_edits: false` validation.
-  - Improved integration test workflows in the CI pipeline to run MinIO tests automatically using standard environment variables.
 
-## 0.25.77
+- Added revision-tree regressions and focused real-Obsidian scenarios for propagated resolutions and file operations performed while a conflict remains active.
 
-19th June, 2026
+## 1.0.0-beta.0
 
-This update is mostly meaningless for users. But for maintainers, not, I hope. I wonder if I were done well in the start, there would be no hassles. It really was a great opportunity.
+22nd July, 2026
 
-Also, this update is a very large one, even if we had a lot of time, and we had CI tests, and mostly only fixing the types. Please let me know if you find any issues!
+### Important
 
-### Improved
-
-- File deletion now respects the user's deletion preferences (by utilising the `FileManager.trashFile` API) on Obsidian v1.7.2 or newer, regardless of the plug-in's internal trashbin setting.
-
-### Miscellaneous
-- Typings of the library are now included
-- Many typing errors have been improved.
-- Import paths have been normalised to be relative to the root and to the `lib/src` directory, to avoid breaking the boundary between the library and the plug-in.
-- Subprojects, such as the CLI and the webapp, are now in the workspace.
-
-## 0.25.76
-
-15th June, 2026
-
-### Fixed
-
-- Now the S3 connection with custom headers works properly (#875).
-  - Previously, custom headers injected for proxy authentication were incorrectly included in the AWS Signature v4 calculation. This led to a '400 Bad Request' error (such as 'signed header is not present') on strict S3 backends (for example, Garage), or when reverse proxies modified, renamed, or stripped these headers before they reached the storage service.
-- No longer connection information of the P2P synchronisation is broken on the specific platform (#956).
-
-## 0.25.75
-
-13th June, 2026
-
-### Fixed
-
-- Fixed an issue where using fast synchronisation caused a TypeError in some environments (#953).
-
-### New features
-- Now we can configure to keep replication active in the background on desktop platforms (#939, PR #949). Thank you so much for @migsferro!
-
-### Fixed (CLI, automated)
-
-- Fixed an issue where the mirror command could fail to apply updates when conflict preservation checks prevented overwriting unsynchronised local changes, even when the `force` parameter or `writeDocumentsIfConflicted` setting was enabled.
+- This is an opt-in 1.0 integration preview for BRAT and testing with existing Vaults. It does not replace the latest stable release. Use it with a current backup, and update every participating device before resuming synchronisation.
+- An upgraded, copied, or restored Vault may pause replication for an explicit compatibility review. The review preserves the existing automatic synchronisation choices and resumes them only after the decision has been saved successfully.
 
 ### Improved
 
-- (CLI) Ported the remaining bash regression tests (`test-daemon-linux.sh`, `test-decoupled-vault-linux.sh`, and `test-remote-commands-linux.sh`) to Deno for cross-platform validation.
+- An unconfigured installation now waits for you to start setup. A long-lived Notice offers the setup action, and **Open onboarding wizard** remains available from the command palette instead of the dialogue opening automatically.
+- The setup wizard now creates named remote profiles for CouchDB, Object Storage, and P2P. Current Setup URIs preserve their profile names and selections, and the wizard reserves Rebuild or Fetch before the ordinary start-up scan begins.
+- Peer-to-Peer Synchronisation (P2P) and Hidden File Sync are supported opt-in features. JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 remain previews. Customisation Sync remains a supported advanced workflow.
+- Data Compression remains available after measurement showed a modest, workload-dependent reduction in stored and transferred chunk data. Its benefits, costs, and reason for remaining disabled by default in 1.0 are described in the Data Compression specification.
+- Compatibility review now runs before Config Doctor without overlapping it. Existing Vaults retain their automatic synchronisation choices and explicit file-name case setting. For installations created by earlier releases, LiveSync preserves whether setup had been completed and saves a missing legacy case setting as case-insensitive.
+- P2P connections now restart reliably after settings are reapplied or the local database is reset. Setup on an additional device asks you to select the source device once. Disconnecting leaves the LiveSync room and closes its signalling relay connections so that reconnecting can establish a new room.
+- Action buttons are stacked vertically, long setup dialogues keep their controls reachable on mobile screens, and persistent Notices no longer cover close controls. Hidden File Sync reload and restart requests are grouped into one message, including the case reported in issue #555.
+- Warnings about estimated remote storage size now appear as long-lived clickable Notices instead of timed dialogues. Initial uploads and Rebuild operations no longer prompt to send every chunk in advance; ordinary replication completes the transfer.
+- Removed the obsolete **Use the trash bin** control and the setting for fixed chunk revisions. Remote deletion still follows Obsidian's preference, and chunk revisions remain content-derived. The Change Log remains available but no longer opens automatically or tracks unread versions.
+
+### Fixed
+
+- The optional Custom HTTP Handler used by Object Storage now sends the correct byte range from binary request bodies and reports unsupported body types instead of silently sending an empty request.
+- When selectors, ignore files, size limits, modification-time limits, or file-name case settings are broadened, LiveSync now rechecks previously received files without requiring another remote update.
+- P2P setup on the first device no longer displays reset or upload steps for a central database, and Config Doctor now offers its chunk size recommendation for CouchDB only when a CouchDB remote profile is selected.
+
+### Security
+
+- Fly.io setup now generates CouchDB and Vault encryption secrets with cryptographically secure randomness. Dependency updates prevent excessive CPU use from specially crafted path patterns and `mailto:` links. The CLI rejects path traversal and symbolic-link components detected before Vault operations.
 
 ### Miscellaneous
-- Some dependencies have been updated.
-- Now we check the compatibility with iOS 15 in the CI tests to ensure the plugin continues to work on older iOS versions even after we upgrade some dependencies.
 
-Full notes are in
-[updates_old.md](https://github.com/vrtmrz/obsidian-livesync/blob/main/updates_old.md).
+- Self-hosted LiveSync now owns its translation catalogue. Commonlib provides English messages to other applications, and translation contributions can be made directly to the Self-hosted LiveSync repository.
+
+### Testing
+
+- Expanded automated testing in Obsidian for upgrades, synchronisation between two devices, CouchDB, Object Storage, P2P, Hidden File Sync, mobile dialogues, and clean-up after failures.

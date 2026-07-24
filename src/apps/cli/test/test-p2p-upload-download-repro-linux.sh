@@ -93,9 +93,8 @@ data.encrypt = true;
 data.passphrase = process.env.PASSPHRASE_VAL;
 data.usePathObfuscation = true;
 data.handleFilenameCaseSensitive = false;
-data.customChunkSize = 50;
+data.customChunkSize = 60;
 data.usePluginSyncV2 = true;
-data.doNotUseFixedRevisionForChunks = false;
 data.P2P_DevicePeerName = process.env.DEVICE_NAME;
 data.isConfigured = true;
 

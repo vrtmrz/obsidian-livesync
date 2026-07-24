@@ -5,11 +5,11 @@ import { SvelteItemView } from "@/common/SvelteItemView.ts";
 import { eventHub } from "@/common/events.ts";
 
 import { unique } from "octagonal-wheels/collection";
-import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@lib/common/types.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon.ts";
+import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { P2PPaneParams } from "@lib/replication/trystero/UseP2PReplicatorResult";
+import type { P2PPaneParams } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {
@@ -187,7 +187,7 @@ And you can also drop the local database to rebuild from the remote device.`,
         return mount(ReplicatorPaneComponent, {
             target: target,
             props: {
-                cmdSync: this._p2pResult.replicator,
+                getCmdSync: () => this._p2pResult.replicator,
                 core: this.core,
             },
         });

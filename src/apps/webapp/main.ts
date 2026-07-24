@@ -3,23 +3,30 @@
  * Browser-based version of Self-hosted LiveSync plugin using FileSystem API
  */
 
-import { BrowserServiceHub } from "@lib/services/BrowserServices";
+import type { BrowserServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/BrowserServices";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
-import { initialiseServiceModulesFSAPI } from "./serviceModules/FSAPIServiceModules";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
-import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
-import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules";
+import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
+    type LOG_LEVEL,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { BrowserAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/BrowserAPIService";
+import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
+import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
-import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
-import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
-import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
+import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize";
+import { useSetupURIFeature } from "@/serviceFeatures/setupObsidian/setupUri";
+import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import { SetupManager } from "@/modules/features/SetupManager";
 import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
-import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
-import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
-import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
+import { useP2PReplicatorCommands } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorCommands";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
+import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createLiveSyncBrowserServiceHub } from "@/apps/browser/createLiveSyncBrowserServiceHub";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";
@@ -52,19 +59,22 @@ class LiveSyncWebApp {
     private rootHandle: FileSystemDirectoryHandle;
     private core: LiveSyncBaseCore<ServiceContext, never> | null = null;
     private serviceHub: BrowserServiceHub<ServiceContext> | null = null;
+    private platformServiceModules: FSAPIServiceModules | null = null;
 
     constructor(rootHandle: FileSystemDirectoryHandle) {
         this.rootHandle = rootHandle;
     }
 
+    private addLog(message: unknown, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string): void {
+        this.serviceHub?.API.addLog(message, level, key);
+    }
+
     async initialize() {
-        console.log("Self-hosted LiveSync WebApp");
-        console.log("Initializing...");
-
-        console.log(`Vault directory: ${this.rootHandle.name}`);
-
         // Create service context and hub
-        this.serviceHub = new BrowserServiceHub<ServiceContext>();
+        this.serviceHub = createLiveSyncBrowserServiceHub<ServiceContext>();
+        this.addLog("Self-hosted LiveSync WebApp", LOG_LEVEL_INFO, "initialise");
+        this.addLog("Initialising...", LOG_LEVEL_VERBOSE, "initialise");
+        this.addLog(`Vault directory: ${this.rootHandle.name}`, LOG_LEVEL_VERBOSE, "initialise");
 
         // Setup API service
         (this.serviceHub.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
@@ -77,9 +87,9 @@ class LiveSyncWebApp {
         settingService.saveData.setHandler(async (data: ObsidianLiveSyncSettings) => {
             try {
                 await this.saveSettingsToFile(data);
-                console.log("[Settings] Saved to .livesync/settings.json");
+                this.addLog("Saved to .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
             } catch (error) {
-                console.error("[Settings] Failed to save:", error);
+                this.addLog(`Failed to save settings: ${String(error)}`, LOG_LEVEL_NOTICE, "settings");
             }
         });
 
@@ -87,11 +97,11 @@ class LiveSyncWebApp {
             try {
                 const data = await this.loadSettingsFromFile();
                 if (data) {
-                    console.log("[Settings] Loaded from .livesync/settings.json");
+                    this.addLog("Loaded from .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
                     return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
                 }
             } catch {
-                console.log("[Settings] Failed to load, using defaults");
+                this.addLog("Failed to load settings; using defaults", LOG_LEVEL_NOTICE, "settings");
             }
             return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
         });
@@ -99,7 +109,7 @@ class LiveSyncWebApp {
         // App lifecycle handlers
         this.serviceHub.appLifecycle.scheduleRestart.setHandler(() => {
             void (async () => {
-                console.log("[AppLifecycle] Restart requested");
+                this.addLog("Restart requested", LOG_LEVEL_INFO, "app-lifecycle");
                 await this.shutdown();
                 await this.initialize();
                 compatGlobal.setTimeout(() => {
@@ -112,7 +122,9 @@ class LiveSyncWebApp {
         this.core = new LiveSyncBaseCore<ServiceContext, never>(
             this.serviceHub,
             (core, serviceHub) => {
-                return initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
+                const serviceModules = initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
+                this.platformServiceModules = serviceModules;
+                return serviceModules;
             },
             (core) => [
                 // new ModuleObsidianEvents(this, core),
@@ -148,19 +160,14 @@ class LiveSyncWebApp {
     }
 
     private async saveSettingsToFile(data: ObsidianLiveSyncSettings): Promise<void> {
-        try {
-            // Create .livesync directory if it doesn't exist
-            const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR, { create: true });
+        // Create .livesync directory if it does not exist
+        const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR, { create: true });
 
-            // Create/overwrite settings.json
-            const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(JSON.stringify(data, null, 2));
-            await writable.close();
-        } catch (error) {
-            console.error("[Settings] Error saving to file:", error);
-            throw error;
-        }
+        // Create/overwrite settings.json
+        const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
     }
 
     private async loadSettingsFromFile(): Promise<Partial<ObsidianLiveSyncSettings> | null> {
@@ -169,7 +176,11 @@ class LiveSyncWebApp {
             const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE);
             const file = await fileHandle.getFile();
             const text = await file.text();
-            return JSON.parse(text);
+            const parsed: unknown = JSON.parse(text);
+            if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+                throw new Error("The WebApp settings file does not contain an object");
+            }
+            return parsed;
         } catch {
             // File doesn't exist yet
             return null;
@@ -182,58 +193,57 @@ class LiveSyncWebApp {
         }
 
         try {
-            console.log("[Starting] Initializing LiveSync...");
+            this.addLog("Initialising LiveSync...", LOG_LEVEL_INFO, "start");
 
             const loadResult = await this.core.services.control.onLoad();
             if (!loadResult) {
-                console.error("[Error] Failed to initialize LiveSync");
+                this.addLog("Failed to initialise LiveSync", LOG_LEVEL_NOTICE, "start");
                 this.showError("Failed to initialize LiveSync");
                 return;
             }
 
             await this.core.services.control.onReady();
 
-            console.log("[Ready] LiveSync is running");
+            this.addLog("LiveSync is running", LOG_LEVEL_INFO, "ready");
 
             // Check if configured
             const settings = this.core.services.setting.currentSettings();
             if (!settings.isConfigured) {
-                console.warn("[Warning] LiveSync is not configured yet");
+                this.addLog("LiveSync is not configured yet", LOG_LEVEL_NOTICE, "configuration");
                 this.showWarning("Please configure CouchDB connection in settings");
             } else {
-                console.log("[Info] LiveSync is configured and ready");
-                console.log(`[Info] Database: ${settings.couchDB_URI}/${settings.couchDB_DBNAME}`);
+                this.addLog("LiveSync is configured and ready", LOG_LEVEL_INFO, "configuration");
+                this.addLog(`Database: ${settings.couchDB_DBNAME}`, LOG_LEVEL_VERBOSE, "configuration");
                 this.showSuccess("LiveSync is ready!");
             }
 
             // Scan the directory to populate file cache
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const fileAccess = (this.core as any)._serviceModules?.storageAccess?.vaultAccess;
-            if (fileAccess?.fsapiAdapter) {
-                console.log("[Scanning] Scanning vault directory...");
+            const fileAccess = this.platformServiceModules?.vaultAccess;
+            if (fileAccess) {
+                this.addLog("Scanning vault directory...", LOG_LEVEL_VERBOSE, "scan");
                 await fileAccess.fsapiAdapter.scanDirectory();
                 const files = await fileAccess.fsapiAdapter.getFiles();
-                console.log(`[Scanning] Found ${files.length} files`);
+                this.addLog(`Found ${files.length} files`, LOG_LEVEL_VERBOSE, "scan");
             }
         } catch (error) {
-            console.error("[Error] Failed to start:", error);
+            this.addLog(`Failed to start: ${String(error)}`, LOG_LEVEL_NOTICE, "start");
             this.showError(`Failed to start: ${error}`);
         }
     }
 
     async shutdown() {
         if (this.core) {
-            console.log("[Shutdown] Shutting down...");
+            this.addLog("Shutting down...", LOG_LEVEL_INFO, "shutdown");
 
             // Stop file watching
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const storageEventManager = (this.core as any)._serviceModules?.storageAccess?.storageEventManager;
-            if (storageEventManager?.cleanup) {
+            const storageEventManager = this.platformServiceModules?.storageEventManager;
+            if (storageEventManager) {
                 await storageEventManager.cleanup();
             }
 
             await this.core.services.control.onUnload();
-            console.log("[Shutdown] Complete");
+            this.platformServiceModules = null;
+            this.addLog("Shutdown complete", LOG_LEVEL_INFO, "shutdown");
         }
     }
 

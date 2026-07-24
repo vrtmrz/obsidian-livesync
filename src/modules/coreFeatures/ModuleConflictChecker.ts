@@ -1,8 +1,8 @@
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "@lib/common/types";
+import { LOG_LEVEL_NOTICE, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { sendValue } from "octagonal-wheels/messagepassing/signal";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 
 export class ModuleConflictChecker extends AbstractModule {

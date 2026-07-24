@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { Menu } from "@lib/services/implements/browser/Menu";
-    import { getDialogContext } from "@lib/services/implements/base/SvelteDialog";
+    import { Menu } from "@/apps/browser/BrowserMenu";
+    import { getDialogContext } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
     let result = $state<string | boolean>("");
 
     const context = getDialogContext();
@@ -23,16 +23,13 @@
             .addItem((item) => item.setTitle("📤 Only Send").onClick(() => {}))
             .addSeparator()
             .addItem((item) => {
-                item.setTitle("🔧 Get Configuration").onClick(async () => {
-                    console.log("Get Configuration");
-                });
+                item.setTitle("🔧 Get Configuration").onClick(async () => {});
             })
             .addSeparator()
             .addItem((item) => {
                 const mark = "checkmark";
                 item.setTitle("Toggle Sync on connect")
                     .onClick(async () => {
-                        console.log("Toggle Sync on connect");
                         // await this.toggleProp(peer, "syncOnConnect");
                     })
                     .setIcon(mark);
@@ -41,7 +38,6 @@
                 const mark = null;
                 item.setTitle("Toggle Watch on connect")
                     .onClick(async () => {
-                        console.log("Toggle Watch on connect");
                         // await this.toggleProp(peer, "watchOnConnect");
                     })
                     .setIcon(mark);

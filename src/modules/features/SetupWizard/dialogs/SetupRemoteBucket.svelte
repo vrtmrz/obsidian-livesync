@@ -1,23 +1,23 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
-    import InfoNote from "@lib/UI/components/InfoNote.svelte";
-    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
-    import InputRow from "@lib/UI/components/InputRow.svelte";
-    import Password from "@lib/UI/components/Password.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
+    import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
+    import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
     import {
         type BucketSyncSetting,
         type ObsidianLiveSyncSettings,
         DEFAULT_SETTINGS,
         PREFERRED_JOURNAL_SYNC,
         RemoteTypes,
-    } from "@lib/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
-    import { copyTo, pickBucketSyncSettings } from "@lib/common/utils";
+    import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);

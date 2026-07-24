@@ -1,7 +1,7 @@
-import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@lib/managers/StorageEventManager";
+import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
 import { FSAPIStorageEventManagerAdapter } from "./FSAPIStorageEventManagerAdapter";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 
 export class StorageEventManagerFSAPI extends StorageEventManagerBase<FSAPIStorageEventManagerAdapter> {
     core: LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>;
@@ -12,7 +12,9 @@ export class StorageEventManagerFSAPI extends StorageEventManagerBase<FSAPIStora
         core: LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>,
         dependencies: StorageEventManagerBaseDependencies
     ) {
-        const adapter = new FSAPIStorageEventManagerAdapter(rootHandle);
+        const adapter = new FSAPIStorageEventManagerAdapter(rootHandle, (message, level, key) =>
+            dependencies.APIService.addLog(message, level, key)
+        );
         super(adapter, dependencies);
         this.fsapiAdapter = adapter;
         this.core = core;

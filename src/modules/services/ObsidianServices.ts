@@ -1,15 +1,15 @@
-import { InjectableConflictService } from "@lib/services/implements/injectable/InjectableConflictService";
-import { InjectableDatabaseEventService } from "@lib/services/implements/injectable/InjectableDatabaseEventService";
-import { InjectableFileProcessingService } from "@lib/services/implements/injectable/InjectableFileProcessingService";
-import { InjectableRemoteService } from "@lib/services/implements/injectable/InjectableRemoteService";
-import { InjectableReplicationService } from "@lib/services/implements/injectable/InjectableReplicationService";
-import { InjectableReplicatorService } from "@lib/services/implements/injectable/InjectableReplicatorService";
-import { InjectableTestService } from "@lib/services/implements/injectable/InjectableTestService";
-import { InjectableTweakValueService } from "@lib/services/implements/injectable/InjectableTweakValueService";
-import { ConfigServiceBrowserCompat } from "@lib/services/implements/browser/ConfigServiceBrowserCompat";
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext.ts";
-import { KeyValueDBService } from "@lib/services/base/KeyValueDBService";
-import { ControlService } from "@lib/services/base/ControlService";
+import { InjectableConflictService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableConflictService";
+import { InjectableDatabaseEventService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService";
+import { InjectableFileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableFileProcessingService";
+import { InjectableRemoteService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableRemoteService";
+import { InjectableReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicationService";
+import { InjectableReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicatorService";
+import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTestService";
+import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTweakValueService";
+import { ConfigServiceBrowserCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/ConfigServiceBrowserCompat";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
+import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 
 export class ObsidianDatabaseEventService extends InjectableDatabaseEventService<ObsidianServiceContext> {}
 

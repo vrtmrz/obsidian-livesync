@@ -74,8 +74,8 @@ All guidelines and conventions listed below are disclosed and maintained solely 
     - A privacy option that encrypts file paths and folder names on the remote server.
 - plug-in
     - We use the hyphenated form `plug-in` in user-facing messages and general documentation, while `plugin` may appear in codebase files, configuration settings, or technical contexts.
-- Relay Server (P2P relays)
-    - A WebSocket-based coordination server used to establish direct WebRTC peer-to-peer connections. The default relay is provided by the plug-in author.
+- Signalling relay (P2P)
+    - A Nostr-compatible WebSocket relay used for peer discovery and WebRTC connection negotiation. It does not store or transfer Vault contents. The project author operates a public relay as a best-effort convenience, and users can provide another compatible relay.
 - Remediation (maxMTimeForReflectEvents)
     - A recovery setting that restricts the propagation of changes from the database to local storage, ignoring any file events (such as accidental mass deletions) that occurred after a specified date and time.
 - Reset Synchronisation on This Device
@@ -95,7 +95,7 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 - Sync Mode
     - The replication trigger mechanism. Users can select from `On Events` (synchronising on local file changes), `Periodic and Events` (synchronising at fixed intervals as well as on events), or `LiveSync` (continuous, real-time synchronisation).
 - TURN Server (WebRTC P2P)
-    - A server type (Traversal Using Relays around NAT) used as a fallback to relay traffic when direct WebRTC peer-to-peer connection is blocked by strict NAT or firewalls.
+    - A Traversal Using Relays around NAT server used as an optional fallback to relay encrypted WebRTC traffic when strict NAT or firewall rules block a direct peer connection. It is distinct from the signalling relay.
 - Update Thinning (Batch database update)
     - An optimisation that groups multiple local file edits together over a short delay before committing them to the local database, reducing the number of database write operations.
 - WebRTC P2P (Peer-to-Peer)

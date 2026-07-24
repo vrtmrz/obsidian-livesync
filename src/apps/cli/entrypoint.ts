@@ -1,20 +1,21 @@
 #!/usr/bin/env node
-// eslint-disable -- This is the entry point for the CLI application.
-import * as polyfill from "werift";
+import { RTCPeerConnection } from "werift";
 import { main } from "./main";
-import { compatGlobal } from "@lib/common/coreEnvFunctions";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node";
+import { writeStderrLine } from "./cliOutput";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Polyfill
-const rtcPolyfillCtor = (polyfill as any).RTCPeerConnection;
 if (
     typeof (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection === "undefined" &&
-    typeof rtcPolyfillCtor === "function"
+    typeof RTCPeerConnection === "function"
 ) {
     // Fill only the standard WebRTC global in Node CLI runtime.
-    (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection = rtcPolyfillCtor;
+    (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection = RTCPeerConnection;
 }
 
-main().catch((error) => {
-    console.error(`[Fatal Error]`, error);
+const standardIo = createNodeStandardIo();
+
+main(standardIo).catch((error) => {
+    writeStderrLine(standardIo, `[Fatal Error]`, error);
     process.exit(1);
 });

@@ -1,8 +1,8 @@
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 type MaintenancePrerequisiteSettings = Pick<
     ObsidianLiveSyncSettings,
-    "doNotUseFixedRevisionForChunks" | "readChunksOnline"
+    "readChunksOnline"
 >;
 
 type MaintenancePrerequisiteOptions = {
@@ -23,14 +23,10 @@ export async function ensureLocalDatabaseMaintenancePrerequisites({
     applyPartial,
 }: MaintenancePrerequisiteOptions): Promise<boolean> {
     const requiredSettings = {
-        doNotUseFixedRevisionForChunks: true,
         readChunksOnline: false,
     } satisfies MaintenancePrerequisiteSettings;
 
-    const missing = [
-        ...(settings.doNotUseFixedRevisionForChunks ? [] : ["- Compute revisions for chunks: On (currently Off)"]),
-        ...(settings.readChunksOnline ? ["- Fetch chunks on demand: Off (currently On)"] : []),
-    ];
+    const missing = settings.readChunksOnline ? ["- Fetch chunks on demand: Off (currently On)"] : [];
 
     if (missing.length == 0) return true;
 

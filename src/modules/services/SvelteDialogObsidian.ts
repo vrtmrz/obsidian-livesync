@@ -5,9 +5,9 @@ import {
     SvelteDialogMixIn,
     type ComponentHasResult,
     type SvelteDialogManagerDependencies,
-} from "@lib/services/implements/base/SvelteDialog";
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
-import DialogHost from "@lib/UI/DialogHost.svelte";
+} from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import DialogHost from "@/modules/services/LiveSyncUI/DialogHost.svelte";
 export const SvelteDialogBase = SvelteDialogMixIn(Modal, DialogHost);
 export class SvelteDialogObsidian<
     T,
@@ -22,6 +22,11 @@ export class SvelteDialogObsidian<
     ) {
         super(context.app);
         this.initDialog(context, dependents, component, initialData);
+    }
+
+    override onOpen(): void {
+        super.onOpen();
+        this.contentEl.closest(".modal-container")?.classList.add("livesync-svelte-dialog-container");
     }
 }
 

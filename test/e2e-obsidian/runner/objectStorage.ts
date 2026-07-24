@@ -1,6 +1,7 @@
 import {
     CreateBucketCommand,
     DeleteObjectsCommand,
+    GetObjectCommand,
     ListObjectsV2Command,
     S3Client,
     type _Object,
@@ -118,6 +119,22 @@ export async function listObjectStorageObjects(config: ObjectStorageConfig, pref
     } finally {
         client.destroy();
     }
+}
+
+export async function readObjectStorageObject(config: ObjectStorageConfig, key: string): Promise<Uint8Array> {
+    const client = createObjectStorageClient(config);
+    try {
+        const response = await client.send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+        if (!response.Body) throw new Error(`Object Storage returned an empty body for ${key}.`);
+        return await response.Body.transformToByteArray();
+    } finally {
+        client.destroy();
+    }
+}
+
+export async function readObjectStorageJson<T>(config: ObjectStorageConfig, key: string): Promise<T> {
+    const bytes = await readObjectStorageObject(config, key);
+    return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
 export async function deleteObjectStoragePrefix(config: ObjectStorageConfig, prefix: string): Promise<void> {

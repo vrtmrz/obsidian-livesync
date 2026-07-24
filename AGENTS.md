@@ -5,10 +5,10 @@ When working on this repository (writing code, comments, documentation, or commi
 ## Required Reference Files
 
 Before making changes to documentation, user-facing text, or settings:
-1. Read [docs/terms.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/terms.md) for terminology, vocabulary conventions, and technical definitions.
-2. Read [docs/settings.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/settings.md) (and [docs/settings_ja.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/settings_ja.md)) for UI settings and setting key mappings.
-3. Read [docs/troubleshooting.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/docs/troubleshooting.md) for troubleshooting guidelines and common recovery steps (such as flag files and SCRAM state).
-4. Read [devs.md](file:///Users/vorotamoroz/dev/js/obsidian-livesync/devs.md) for development workflows, module architecture, and testing infrastructure.
+1. Read [docs/terms.md](docs/terms.md) for terminology, vocabulary conventions, and technical definitions.
+2. Read [docs/settings.md](docs/settings.md) (and [docs/settings_ja.md](docs/settings_ja.md)) for UI settings and setting key mappings.
+3. Read [docs/troubleshooting.md](docs/troubleshooting.md) for troubleshooting guidelines and common recovery steps (such as flag files and SCRAM state).
+4. Read [devs.md](devs.md) for development workflows, module architecture, and testing infrastructure.
 
 ---
 
@@ -45,10 +45,10 @@ Always adhere to the following stylistic and spelling rules:
    - **Fast Setup (Simple Fetch)** is the preferred flow for initial replication on secondary devices. It utilises stream-based replication for high speed and delays local file reflection to suppress temporary synchronisation warnings.
    - **Flag files** (such as `redflag.md`, `redflag2.md`, and `redflag3.md`) at the root of the vault control the boot-up sequence and trigger automated fetch/rebuild tasks.
 3. **Subrepositories**:
-   - The directory [src/lib](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/lib) is a subrepository (Git submodule) pointing to the shared library `livesync-commonlib`. Do not make modifications inside this directory without careful consideration, as changes affect the shared library.
+   - Treat `@vrtmrz/livesync-commonlib` as an external, authoritative package. Make Commonlib changes in its repository, validate the packed artefact and downstream LiveSync consumer, and update the exact dependency here. Do not recreate a `src/lib` source mirror or generated `_types` fallback.
 4. **Application Directories**:
-   - The directory [src/apps](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/apps) contains independent application modules:
-     - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](file:///Users/vorotamoroz/dev/js/obsidian-livesync/src/apps/cli) using its local `package.json` scripts.
+   - The directory [src/apps](src/apps) contains independent application modules:
+     - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](src/apps/cli) using its local `package.json` scripts.
      - `webapp`: A Web-based application.
      - `webpeer`: A Web-based peer utility.
 
@@ -62,7 +62,8 @@ Before submitting code, you should run verification scripts locally to ensure co
    - Run `npm run check` to perform code verification. This runs type-checking (`tsc-check`), ESLint (`lint`), and Svelte checks (`svelte-check`).
 2. **Unit Tests**:
    - Run `npm run test:unit` to execute fast local unit tests.
-   - Run `npm run test` or `npm run test:full` for full testing suites (including dockerised services).
+   - Run `npm run test:unit:coverage` when unit-test coverage is required.
+   - Run focused integration, CLI E2E, or real Obsidian E2E commands for the boundary being changed. Start only the Docker services required by that command.
 3. **Build**:
    - Run `npm run build` to compile the production bundle (`main.js`).
    - Run `npm run dev` for the development watch/build task.

@@ -1,4 +1,4 @@
-import type { FilePath, UXStat } from "@lib/common/types";
+import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type {
     IFileSystemAdapter,
     IPathAdapter,
@@ -6,7 +6,7 @@ import type {
     IConversionAdapter,
     IStorageAdapter,
     IVaultAdapter,
-} from "@lib/serviceModules/adapters";
+} from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { TAbstractFile, TFile, TFolder, Stat, App } from "obsidian";
 import { ObsidianConversionAdapter } from "./ObsidianConversionAdapter";
 import { ObsidianPathAdapter } from "./ObsidianPathAdapter";

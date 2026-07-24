@@ -1,11 +1,12 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import Question from "@lib/UI/components/Question.svelte";
-    import Option from "@lib/UI/components/Option.svelte";
-    import Options from "@lib/UI/components/Options.svelte";
-    import Instruction from "@lib/UI/components/Instruction.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
+    import Option from "@/modules/services/LiveSyncUI/components/Option.svelte";
+    import Options from "@/modules/services/LiveSyncUI/components/Options.svelte";
+    import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import { $msg as translateMessage } from "@/common/translation";
     import {
         TYPE_COUCHDB,
         TYPE_BUCKET,
@@ -23,9 +24,9 @@
         if (userType === TYPE_COUCHDB) {
             return "Continue to CouchDB setup";
         } else if (userType === TYPE_BUCKET) {
-            return "Continue to S3/MinIO/R2 setup";
+            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedBucket");
         } else if (userType === TYPE_P2P) {
-            return "Continue to Peer-to-Peer only setup";
+            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedP2P");
         } else {
             return "Please select an option to proceed";
         }
@@ -35,21 +36,29 @@
     });
 </script>
 
-<DialogHeader title="Enter Server Information" />
+<DialogHeader title={translateMessage("Ui.SetupWizard.SetupRemote.Title")} />
 <Instruction>
-    <Question>Please select the type of server to which you are connecting.</Question>
+    <Question>{translateMessage("Ui.SetupWizard.SetupRemote.Guidance")}</Question>
     <Options>
         <Option selectedValue={TYPE_COUCHDB} title="CouchDB" bind:value={userType}>
             This is the most suitable synchronisation method for the design. All functions are available. You must have
             set up a CouchDB instance.
         </Option>
-        <Option selectedValue={TYPE_BUCKET} title="S3/MinIO/R2 Object Storage" bind:value={userType}>
-            Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.
+        <Option
+            selectedValue={TYPE_BUCKET}
+            title={translateMessage("Ui.SetupWizard.SetupRemote.BucketOption")}
+            bind:value={userType}
+        >
+            {translateMessage("Ui.SetupWizard.SetupRemote.BucketOptionDesc")}
         </Option>
-        <Option selectedValue={TYPE_P2P} title="Peer-to-Peer only" bind:value={userType}>
-            This feature enables direct synchronisation between devices. No server is required, but both devices must be
-            online at the same time for synchronisation to occur, and some features may be limited. Internet connection
-            is only required to signalling (detecting peers) and not for data transfer.
+        <Option
+            selectedValue={TYPE_P2P}
+            title={translateMessage("Ui.SetupWizard.SetupRemote.P2POption")}
+            bind:value={userType}
+        >
+            {translateMessage(
+                "No central data-storage server is required, but a signalling relay is required for peer discovery. Both devices must be online at the same time. Vault data travels through the encrypted P2P connection, not through the signalling relay. Some features may be limited."
+            )}
         </Option>
     </Options>
 </Instruction>

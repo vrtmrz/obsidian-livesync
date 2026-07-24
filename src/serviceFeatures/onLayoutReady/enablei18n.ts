@@ -1,17 +1,18 @@
-import { getLanguage } from "@/deps";
-import { createServiceFeature } from "@lib/interfaces/ServiceModule";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@lib/common/rosetta";
-import { $msg, __onMissingTranslation, setLang } from "@lib/common/i18n";
+import { getLanguage, requireApiVersion } from "@/deps";
+import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta";
+import { $msg, __onMissingTranslation, setLang } from "@/common/translation";
+import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 
-function tryGetLanguage() {
-    try {
-        // Note: 1.8.7+ is required. but it is 18, Feb., 2025. we want to fallback on earlier versions, so we catch the error here.
-        // eslint-disable-next-line obsidianmd/no-unsupported-api
-        return getLanguage();
-    } catch (e) {
-        console.error("Failed to get Obsidian language, defaulting to 'def'", e);
-        return "en";
+function tryGetLanguage(onError: (error: unknown) => void) {
+    if (requireApiVersion("1.8.7")) {
+        try {
+            return getLanguage();
+        } catch (e) {
+            onError(e);
+        }
     }
+    return "en";
 }
 
 export const enableI18nFeature = createServiceFeature(async ({ services: { setting, API } }) => {
@@ -20,7 +21,13 @@ export const enableI18nFeature = createServiceFeature(async ({ services: { setti
     let isChanged = false;
     const settings = setting.currentSettings();
     if (settings.displayLanguage == "") {
-        const obsidianLanguage = tryGetLanguage();
+        const obsidianLanguage = tryGetLanguage((error) => {
+            API.addLog(
+                `Failed to get Obsidian language; defaulting to 'en': ${String(error)}`,
+                LOG_LEVEL_VERBOSE,
+                "i18n-language"
+            );
+        });
         if (
             SUPPORTED_I18N_LANGS.indexOf(obsidianLanguage) !== -1 && // Check if the language is supported
             obsidianLanguage != settings.displayLanguage // Check if the language is different from the current setting

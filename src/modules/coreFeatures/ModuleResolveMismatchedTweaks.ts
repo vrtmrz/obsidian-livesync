@@ -10,13 +10,13 @@ import {
     type RemoteDBSettings,
     IncompatibleChangesInSpecificPattern,
     CompatibleButLossyChanges,
-} from "@lib/common/types.ts";
-import { escapeMarkdownValue } from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { $msg } from "@lib/common/i18n.ts";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import { $msg } from "@/common/translation";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-import { REMOTE_P2P } from "@lib/common/models/setting.const.ts";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 
 function valueToString(value: string | number | boolean | object | undefined): string {
     if (typeof value === "boolean") {
@@ -29,8 +29,6 @@ function valueToString(value: string | number | boolean | object | undefined): s
 }
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule {
-    private _hasNotifiedAutoAcceptCompatibleUndefined = false;
-
     private _collectMismatchedTweakKeys(current: TweakValues, preferred: Partial<TweakValues>) {
         const items = Object.keys(
             TweakValuesShouldMatchedTemplate
@@ -64,33 +62,17 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         );
         if (!hasOnlyCompatibleLossyMismatches) return undefined;
 
+        let autoAcceptCompatibleTweak = this.settings.autoAcceptCompatibleTweak;
         if (this.settings.autoAcceptCompatibleTweak === undefined) {
-            if (this._hasNotifiedAutoAcceptCompatibleUndefined) {
-                return undefined;
-            }
-            this._hasNotifiedAutoAcceptCompatibleUndefined = true;
-            const CHOICE_ENABLE = $msg("TweakMismatchResolve.Action.EnableAutoAcceptCompatible");
-            const CHOICE_DISABLE = $msg("TweakMismatchResolve.Action.DisableAutoAcceptCompatible");
-            const CHOICES = [CHOICE_ENABLE, CHOICE_DISABLE] as const;
-            const message = $msg("TweakMismatchResolve.Message.AutoAcceptCompatibleUndefined");
-            const ret = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
-                title: $msg("TweakMismatchResolve.Title.AutoAcceptCompatible"),
-                timeout: 0,
-                defaultAction: CHOICE_ENABLE,
-            });
-            if (ret !== CHOICE_ENABLE) {
-                return undefined;
-            }
-            await this.services.setting.applyPartial(
-                {
-                    autoAcceptCompatibleTweak: true,
-                },
-                true
-            );
-            Logger("Auto-accept for compatible tweak mismatch has been enabled.");
+            // Keep the settings object stable: settings panes and an in-flight replication retry can
+            // retain this reference while the default is persisted.
+            this.settings.autoAcceptCompatibleTweak = true;
+            await this.services.setting.saveSettingData();
+            autoAcceptCompatibleTweak = true;
+            Logger("Automatic alignment of compatible chunk settings has been enabled.");
         }
 
-        if (this.settings.autoAcceptCompatibleTweak !== true) return undefined;
+        if (autoAcceptCompatibleTweak !== true) return undefined;
         return this._selectNewerTweakSide(current, preferred);
     }
 
@@ -215,7 +197,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         } else if (rebuildRecommended) {
             CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE, [preferred, false]]);
             CHOICE_AND_VALUES.push([CHOICE_USE_MINE, [true, false]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_WITH_REBUILD, [true, true]]);
+            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_WITH_REBUILD, [preferred, true]]);
             CHOICE_AND_VALUES.push([CHOICE_USE_MINE_WITH_REBUILD, [true, true]]);
         } else {
             CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE, [preferred, false]]);
@@ -255,9 +237,16 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             return "CHECKAGAIN";
         }
         if (conf) {
-            this.settings = { ...this.settings, ...conf };
-            await this.core.replicator.setPreferredRemoteTweakSettings(this.settings);
+            // ReplicationService retains the current settings object while it performs the immediate
+            // CHECKAGAIN retry. Update that object in place so the retry observes the accepted values.
+            Object.assign(this.settings, extractObject(TweakValuesTemplate, conf));
             await this.services.setting.saveSettingData();
+            if (!rebuildRequired) {
+                // The failed replication has settled before mismatch resolution runs. Reinitialise the
+                // chunk-generation managers now so hash and splitter changes take effect before retrying.
+                await this.localDatabase.managers.reinitialise();
+            }
+            await this.core.replicator.setPreferredRemoteTweakSettings(this.settings);
             if (rebuildRequired) {
                 await this.core.rebuilder.$fetchLocal();
             }
