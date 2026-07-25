@@ -765,18 +765,39 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
             for (const label of [
                 "Write logs into the file",
                 "Recreate chunks for current Vault files",
-                "Verify and repair all files",
+                "Inspect conflicts and file/database differences",
+                "Resolve All conflicted files by the newer one",
             ]) {
                 await liveSyncSettings.locator(".setting-item-name", { hasText: label }).waitFor({
                     state: "visible",
                     timeout: uiTimeoutMs,
                 });
             }
+            const settingNames = await liveSyncSettings.locator(".setting-item-name").allTextContents();
+            const recreateIndex = settingNames.findIndex((name) =>
+                name.includes("Recreate chunks for current Vault files")
+            );
+            const inspectIndex = settingNames.findIndex((name) =>
+                name.includes("Inspect conflicts and file/database differences")
+            );
+            const resolveIndex = settingNames.findIndex((name) =>
+                name.includes("Resolve All conflicted files by the newer one")
+            );
+            if (
+                recreateIndex === -1 ||
+                inspectIndex === -1 ||
+                resolveIndex === -1 ||
+                !(recreateIndex < inspectIndex && inspectIndex < resolveIndex)
+            ) {
+                throw new Error(
+                    "Recovery actions are not ordered from chunk recreation through inspection to bulk conflict resolution"
+                );
+            }
             await liveSyncSettings.getByRole("button", { name: "Recreate current chunks", exact: true }).waitFor({
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
-            await liveSyncSettings.getByRole("button", { name: "Verify all", exact: true }).waitFor({
+            await liveSyncSettings.getByRole("button", { name: "Scan all files", exact: true }).waitFor({
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
@@ -897,7 +918,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
         await page
             .locator(".sls-setting:visible")
             .last()
-            .getByRole("button", { name: "Verify all", exact: true })
+            .getByRole("button", { name: "Scan all files", exact: true })
             .click({
                 timeout: uiTimeoutMs,
             });

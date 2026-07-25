@@ -50,9 +50,9 @@ The compatibility implementation currently selects the newer modification time f
 
 A document revision can remain in the PouchDB tree while one or more chunks needed to reconstruct its content are unavailable. Missing content is not evidence that the revision is obsolete. LiveSync therefore leaves an unreadable winner or conflict revision in the tree instead of deleting it during automatic conflict processing.
 
-**Hatch** → **Verify and repair all files** inspects the current winner, every current conflict revision, and the nearest shared ancestor for each conflict. A logical-deletion winner and an absent Vault file already agree, so that state is not reported unless another live branch still requires attention. When the Vault already matches the winner but conflict branches remain, the card shows the compact status `✅ Vault matches winner · ⚠️ Conflicts: N`; matching the winner does not mean that the conflict has been resolved.
+**Hatch** → **Inspect conflicts and file/database differences** inspects the current winner, every current conflict revision, and the nearest shared ancestor for each conflict. A logical-deletion winner and an absent Vault file already agree, so that state is not reported unless another live branch still requires attention. When the Vault already matches the winner but conflict branches remain, the card shows the compact status `✅ Vault matches winner · ⚠️ Conflicts: N`; matching the winner does not mean that the conflict has been resolved.
 
-Each reported live revision has a compact **…** menu. The available actions depend on the exact revision and current Vault state:
+Each reported live revision has a compact wrench menu. The available actions depend on the exact revision and current Vault state:
 
 - **Compare with Vault** opens the existing difference dialogue in read-only mode for differing text files.
 - **Apply this revision to Vault** writes the selected readable revision, even when it is not the database winner. Replacing an existing file requires confirmation.

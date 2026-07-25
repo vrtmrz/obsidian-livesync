@@ -32,6 +32,28 @@ While suspended:
 
 The flag deliberately enables file logging, which may affect performance. Remove it after the emergency has been understood.
 
+## Recover a conflicted or mismatched file
+
+Use this workflow when one file, or a small number of known files, has conflicts, missing chunks, or a difference between the current Vault file and the local LiveSync database. The inspection is device-local: it does not query a remote database or prove that another device has the same chunks.
+
+The `Hatch` recovery controls are ordered by escalation. Running **Recreate chunks for current Vault files** again with unchanged chunk settings and file contents produces the same chunks, and does not alter the revision tree. **Inspect conflicts and file/database differences** then provides actions for exact revisions. **Resolve All conflicted files by the newer one** is last because it applies a modification-time policy in bulk and logically deletes every other live version.
+
+1. Stop editing the affected file, pause replication on the participating devices, and keep a separate copy of every readable version.
+2. If another device or backup has the intended content, preserve that copy before changing any revision.
+3. If the current Vault file is readable, select **Recreate current chunks**. This can restore only chunks derived from the current Vault contents; it cannot reconstruct unique bytes from an unavailable historical or conflict revision.
+4. Select **Inspect conflicts and file/database differences** → **Scan all files**.
+5. Review the database winner, every conflict revision, and any unavailable shared ancestor separately. Revision identifiers, `Δsize`, `Δtime`, and chunk availability are diagnostic evidence; they do not decide which content is correct.
+6. Use the wrench menu on the exact revision:
+   - **Compare with Vault** opens a read-only comparison for readable text.
+   - **Apply this revision to Vault** replaces the Vault file with that readable database revision.
+   - **Mark this revision as the Vault version** records an exact byte-for-byte match without creating a child revision.
+   - **Store Vault file as a child of this revision** preserves the current Vault bytes on that selected branch.
+   - **Retry reading revision** retries configured chunk retrieval without changing the revision tree.
+   - **Apply logical deletion to Vault**, **Discard this branch**, and **Discard unreadable revision** are destructive decisions. Use them only after preserving every version which may still be needed.
+7. Synchronise the healthy source if chunks were restored, scan again, and confirm that the expected conflict or difference has disappeared before resuming ordinary editing.
+
+An absent Vault file and a logical-deletion winner already agree and do not require a repair card unless another live branch remains. If the scan reports many unrelated files, or the local database itself is incomplete or corrupt, stop the per-file workflow and use [Reset synchronisation on this device](#reset-synchronisation-on-this-device) from a trusted remote. If the central remote must instead be reconstructed from an authoritative Vault, use [Overwrite server data with this device's files](#overwrite-server-data-with-this-devices-files).
+
 ## Reset synchronisation on this device
 
 Use this when the remote copy is trusted but this device's local LiveSync database is incomplete, corrupt, or no longer aligned with it.

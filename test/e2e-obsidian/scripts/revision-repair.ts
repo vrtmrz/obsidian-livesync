@@ -230,12 +230,15 @@ function revisionCard(settings: Locator, revision: string): Locator {
 }
 
 async function openRevisionActionMenu(page: Page, settings: Locator, revision: string): Promise<Locator> {
-    await revisionCard(settings, revision)
-        .getByRole("button", {
-            name: `More actions for revision ${revision}`,
-            exact: true,
-        })
-        .click({ timeout: uiTimeoutMs });
+    const actionButton = revisionCard(settings, revision).getByRole("button", {
+        name: `More actions for revision ${revision}`,
+        exact: true,
+    });
+    await actionButton.locator("svg.lucide-wrench").waitFor({
+        state: "visible",
+        timeout: uiTimeoutMs,
+    });
+    await actionButton.click({ timeout: uiTimeoutMs });
     const menu = page.locator(".menu:visible").last();
     await menu.waitFor({ state: "visible", timeout: uiTimeoutMs });
     const box = await menu.boundingBox();
@@ -366,16 +369,18 @@ async function main(): Promise<void> {
             await settings.waitFor({ state: "visible", timeout: uiTimeoutMs });
             await settings.locator('.sls-setting-menu-btn[title="Hatch"]').click({ timeout: uiTimeoutMs });
             const verifySetting = settings.locator(".setting-item").filter({
-                has: page.getByText("Verify and repair all files", { exact: true }),
+                has: page.getByText("Inspect conflicts and file/database differences", {
+                    exact: true,
+                }),
             });
-            await verifySetting.getByRole("button", { name: "Verify all", exact: true }).click({
+            await verifySetting.getByRole("button", { name: "Scan all files", exact: true }).click({
                 timeout: uiTimeoutMs,
             });
             const card = repairCard(settings);
             await card.waitFor({ state: "visible", timeout: uiTimeoutMs });
             if ((await settings.locator(".sls-repair-result").filter({ hasText: healthyDeletedPath }).count()) !== 0) {
                 throw new Error(
-                    `Verify and Repair reported the healthy logical deletion ${healthyDeletedPath} (${healthyDeletionRevision}).`
+                    `File/database inspection reported the healthy logical deletion ${healthyDeletedPath} (${healthyDeletionRevision}).`
                 );
             }
             const winnerRevision = revisionCard(settings, fixture.winnerRevision);

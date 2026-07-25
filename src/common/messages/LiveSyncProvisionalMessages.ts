@@ -140,10 +140,11 @@ export const liveSyncProvisionalEnglishMessages = {
     "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable.":
         "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable.",
     "Resolve all conflicts by the newest version": "Resolve all conflicts by the newest version",
-    "Verify and repair all files": "Verify and repair all files",
-    "Compare each Vault file with every live local-database revision. Unreadable conflict versions remain visible until you retry or explicitly discard an exact revision.":
-        "Compare each Vault file with every live local-database revision. Unreadable conflict versions remain visible until you retry or explicitly discard an exact revision.",
-    "Verify all": "Verify all",
+    "Inspect conflicts and file/database differences":
+        "Inspect conflicts and file/database differences",
+    "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision.":
+        "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision.",
+    "Scan all files": "Scan all files",
     "Connection settings": "Connection settings",
     "Saved connections": "Saved connections",
 } as const;

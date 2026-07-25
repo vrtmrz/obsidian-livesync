@@ -10,7 +10,7 @@ import {
 import { createBlob, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { shouldBeIgnored } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { Menu, diff_match_patch } from "@/deps.ts";
+import { Menu, diff_match_patch, setIcon } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -142,7 +142,8 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             if (actions.length === 0) {
                 return;
             }
-            this.createEl(parent, "button", { text: "…", cls: "sls-repair-action-menu" }, (button) => {
+            this.createEl(parent, "button", { cls: "sls-repair-action-menu" }, (button) => {
+                setIcon(button, "wrench");
                 button.setAttr("aria-label", label);
                 button.setAttr("title", label);
                 button.onClickEvent(() => {
@@ -823,47 +824,20 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     })
             );
         new Setting(paneEl)
-            .setName("Resolve All conflicted files by the newer one")
-            .setDesc(
-                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Resolve All")
-                    .setCta()
-                    .onClick(async () => {
-                        const confirmed =
-                            (await this.core.confirm.askYesNoDialog(
-                                $msg(
-                                    "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable."
-                                ),
-                                {
-                                    title: $msg("Resolve all conflicts by the newest version"),
-                                    defaultOption: "No",
-                                }
-                            )) === "yes";
-                        if (!confirmed) {
-                            return;
-                        }
-                        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
-                    })
-            );
-
-        new Setting(paneEl)
-            .setName($msg("Verify and repair all files"))
+            .setName($msg("Inspect conflicts and file/database differences"))
             .setDesc(
                 $msg(
-                    "Compare each Vault file with every live local-database revision. Unreadable conflict versions remain visible until you retry or explicitly discard an exact revision."
+                    "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision."
                 )
             )
             .addButton((button) =>
                 button
-                    .setButtonText($msg("Verify all"))
+                    .setButtonText($msg("Scan all files"))
                     .setDisabled(false)
                     .setCta()
                     .onClick(async () => {
                         resultArea.replaceChildren();
-                        Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
+                        Logger("Start inspecting file/database state", LOG_LEVEL_NOTICE, "verify");
                         this.core.localDatabase.clearCaches();
                         const allPaths = await collectFileDatabaseInfoPaths(this.core);
                         let i = 0;
@@ -918,6 +892,32 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         await Promise.all(processes);
                         Logger("done", LOG_LEVEL_NOTICE, "verify");
                         // Logger(`${i}/${files.length}\n`, LOG_LEVEL_NOTICE, "verify-processed");
+                    })
+            );
+        new Setting(paneEl)
+            .setName("Resolve All conflicted files by the newer one")
+            .setDesc(
+                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Resolve All")
+                    .setCta()
+                    .onClick(async () => {
+                        const confirmed =
+                            (await this.core.confirm.askYesNoDialog(
+                                $msg(
+                                    "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable."
+                                ),
+                                {
+                                    title: $msg("Resolve all conflicts by the newest version"),
+                                    defaultOption: "No",
+                                }
+                            )) === "yes";
+                        if (!confirmed) {
+                            return;
+                        }
+                        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
                     })
             );
         new Setting(paneEl)

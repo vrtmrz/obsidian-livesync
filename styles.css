@@ -654,10 +654,18 @@ body.is-mobile .livesync-compatibility-review-notice {
 }
 
 .sls-repair-action-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: var(--clickable-icon-size);
     width: var(--clickable-icon-size);
     height: var(--clickable-icon-size);
     padding: 0;
+}
+
+.sls-repair-action-menu .svg-icon {
+    width: 18px;
+    height: 18px;
 }
 
 .sls-repair-revision {

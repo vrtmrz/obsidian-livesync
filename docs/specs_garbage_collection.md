@@ -47,7 +47,7 @@ Garbage Collection deliberately trades historical recoverability for storage. A 
 
 Writing the same bytes again produces the same content-derived chunk identifier. If that chunk was collected previously, the normal chunk-writing path creates a new live revision for it, and ordinary replication can transfer it again. This does not recover an older file revision automatically; it only makes the newly written content available.
 
-Garbage Collection does not reconstruct a chunk which is already missing, determine whether an unreadable revision is important, or repair a damaged local database. Use **Verify and repair all files**, another healthy replica, or a backup for those cases. Use **Overwrite Server Data with This Device's Files** only when a chosen Vault is authoritative and a deliberate remote rebuild is required.
+Garbage Collection does not reconstruct a chunk which is already missing, determine whether an unreadable revision is important, or repair a damaged local database. Use **Inspect conflicts and file/database differences**, another healthy replica, or a backup for those cases. Use **Overwrite Server Data with This Device's Files** only when a chosen Vault is authoritative and a deliberate remote rebuild is required.
 
 ## Verification
 

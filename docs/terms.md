@@ -27,7 +27,7 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 - Boot-up sequence (boot-sequence)
     - The initialisation process of the plug-in when Obsidian starts. It starts with the loading of the plug-in, setting up core services, loading saved settings, and opening the local database. Once the layout is ready, the plug-in checks for the presence of flag files, runs configuration diagnostics, connects to the remote database, and begins file watching. The sequence finishes once the plug-in is fully ready and operational.
 - Broken files (Size mismatch)
-    - A state where a file's metadata and the actual content stored in its chunks do not match, causing file retrieval or synchronisation failures. These mismatches can be detected and resolved by running validation tools such as `Verify and repair all files` on the Hatch pane.
+    - A state where a file's metadata and the actual content stored in its chunks do not match, causing file retrieval or synchronisation failures. These mismatches can be inspected with `Inspect conflicts and file/database differences` on the Hatch pane, then handled one exact revision at a time.
 - Chunk / Chunks
     - Divided units of data stored in the database or object storage to facilitate efficient synchronisation.
 - Compaction

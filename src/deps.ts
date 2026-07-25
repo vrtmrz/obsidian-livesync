@@ -26,6 +26,7 @@ export {
     WorkspaceLeaf,
     Menu,
     request,
+    setIcon,
     getLanguage,
     requireApiVersion,
     ButtonComponent,
