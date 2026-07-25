@@ -13,6 +13,13 @@ export const POSTPONED = Symbol("postponed");
 
 export type MergeDialogResult = typeof CANCELLED | typeof POSTPONED | typeof LEAVE_TO_SUBSEQUENT | string;
 
+export type ConflictResolveModalOptions = {
+    readOnly?: boolean;
+    title?: string;
+    localName?: string;
+    remoteName?: string;
+};
+
 export class ConflictResolveModal extends Modal {
     result: diff_result;
     filename: FilePathWithPrefix;
@@ -25,6 +32,7 @@ export class ConflictResolveModal extends Modal {
     title: string = "Conflicting changes";
 
     pluginPickMode: boolean = false;
+    readOnly: boolean = false;
     localName: string = "Base";
     remoteName: string = "Conflicted";
     offEvent?: ReturnType<typeof eventHub.onEvent>;
@@ -37,16 +45,22 @@ export class ConflictResolveModal extends Modal {
         filename: FilePathWithPrefix,
         diff: diff_result,
         pluginPickMode?: boolean,
-        remoteName?: string
+        remoteName?: string,
+        options?: ConflictResolveModalOptions
     ) {
         super(app);
         this.result = diff;
         this.filename = filename;
         this.pluginPickMode = pluginPickMode || false;
+        this.readOnly = options?.readOnly ?? false;
         if (this.pluginPickMode) {
             this.title = "Pick a version";
             this.remoteName = `${remoteName || "Remote"}`;
             this.localName = "Local";
+        } else if (this.readOnly) {
+            this.title = options?.title ?? "Vault and database revision";
+            this.localName = options?.localName ?? "Vault file";
+            this.remoteName = options?.remoteName ?? "Database revision";
         }
     }
 
@@ -101,16 +115,18 @@ export class ConflictResolveModal extends Modal {
         if (this.offEvent) {
             this.offEvent();
         }
-        // Cancel an older dialogue for this path before subscribing this
-        // instance. Emitting after subscription would close the replacement
-        // itself; the instance-owned result promise then completes the older
-        // caller even when it only begins waiting after this event.
-        eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, this.filename);
-        this.offEvent = eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (path) => {
-            if (path === this.filename) {
-                this.sendResponse(CANCELLED);
-            }
-        });
+        if (!this.readOnly) {
+            // Cancel an older dialogue for this path before subscribing this
+            // instance. Emitting after subscription would close the replacement
+            // itself; the instance-owned result promise then completes the older
+            // caller even when it only begins waiting after this event.
+            eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, this.filename);
+            this.offEvent = eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (path) => {
+                if (path === this.filename) {
+                    this.sendResponse(CANCELLED);
+                }
+            });
+        }
         this.titleEl.setText(this.title);
         contentEl.empty();
         const diffOptionsRow = contentEl.createDiv("");
@@ -159,24 +175,31 @@ export class ConflictResolveModal extends Modal {
         this.appendVersionInfo(div2, "deleted", this.localName, date1);
         this.appendVersionInfo(div2, "added", this.remoteName, date2);
         const actionContainer = contentEl.createDiv("conflict-action-container");
-        actionContainer.createEl("button", { text: `Use ${this.localName}` }, (e) => {
-            e.addClass("conflict-action-button");
-            e.addEventListener("click", () => this.sendResponse(this.result.right.rev));
-        });
-        actionContainer.createEl("button", { text: `Use ${this.remoteName}` }, (e) => {
-            e.addClass("conflict-action-button");
-            e.addEventListener("click", () => this.sendResponse(this.result.left.rev));
-        });
-        if (!this.pluginPickMode) {
-            actionContainer.createEl("button", { text: "Concat both" }, (e) => {
+        if (this.readOnly) {
+            actionContainer.createEl("button", { text: "Close" }, (e) => {
                 e.addClass("conflict-action-button");
-                e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT));
+                e.addEventListener("click", () => this.sendResponse(CANCELLED));
+            });
+        } else {
+            actionContainer.createEl("button", { text: `Use ${this.localName}` }, (e) => {
+                e.addClass("conflict-action-button");
+                e.addEventListener("click", () => this.sendResponse(this.result.right.rev));
+            });
+            actionContainer.createEl("button", { text: `Use ${this.remoteName}` }, (e) => {
+                e.addClass("conflict-action-button");
+                e.addEventListener("click", () => this.sendResponse(this.result.left.rev));
+            });
+            if (!this.pluginPickMode) {
+                actionContainer.createEl("button", { text: "Concat both" }, (e) => {
+                    e.addClass("conflict-action-button");
+                    e.addEventListener("click", () => this.sendResponse(LEAVE_TO_SUBSEQUENT));
+                });
+            }
+            actionContainer.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => {
+                e.addClass("conflict-action-button");
+                e.addEventListener("click", () => this.sendResponse(this.pluginPickMode ? CANCELLED : POSTPONED));
             });
         }
-        actionContainer.createEl("button", { text: !this.pluginPickMode ? "Not now" : "Cancel" }, (e) => {
-            e.addClass("conflict-action-button");
-            e.addEventListener("click", () => this.sendResponse(this.pluginPickMode ? CANCELLED : POSTPONED));
-        });
         if (diffLength > 100 * 1024) {
             this.diffView.empty();
             this.diffView.setText("(Too large diff to display)");

@@ -35,6 +35,8 @@ export type DiscardUnreadableRevisionResult =
     | "no-longer-live"
     | "revision-is-readable";
 
+export type DiscardLiveBranchResult = "discarded" | "failed" | "no-longer-live" | "only-live-revision";
+
 export async function inspectFileRepair(core: FileRepairCore, path: string): Promise<FileRepairInspection> {
     const information = await inspectFileDatabaseInfo(core, path);
     const storageContent = information.storage.exists
@@ -62,12 +64,12 @@ export async function inspectFileRepair(core: FileRepairCore, path: string): Pro
     }
 
     const winner = revisions.find(({ role }) => role === "winner");
+    const winnerRepresentsStoredFile = winner !== undefined && !winner.metadata.deleted;
     const databaseAndStorageDiffer =
-        information.storage.exists !== information.database.exists ||
+        information.storage.exists !== winnerRepresentsStoredFile ||
         (information.storage.exists &&
-            winner !== undefined &&
-            (winner.metadata.deleted || winner.contentMatchesStorage === false)) ||
-        (!information.storage.exists && winner !== undefined && !winner.metadata.deleted);
+            winnerRepresentsStoredFile &&
+            winner.contentMatchesStorage === false);
     const unreadableLiveRevision =
         information.database.unavailableConflictRevisions.length > 0 ||
         revisions.some(({ contentReadable }) => !contentReadable);
@@ -102,6 +104,27 @@ export async function discardUnreadableLiveRevision(
     const metadataUnavailable = latest.database.unavailableConflictRevisions.includes(revision);
     if (!metadataUnavailable && (metadata?.deleted || metadata?.contentAvailableLocally)) {
         return "revision-is-readable";
+    }
+
+    const deleted = await core.fileHandler.deleteRevisionFromDB(latest.databasePath, revision);
+    return deleted ? "discarded" : "failed";
+}
+
+export async function discardLiveBranch(
+    core: FileRepairCore,
+    path: string,
+    revision: string
+): Promise<DiscardLiveBranchResult> {
+    const latest = await inspectFileDatabaseInfo(core, path);
+    const liveRevisions = [
+        latest.database.currentRevision,
+        ...latest.database.conflictRevisions,
+    ].filter((candidate): candidate is string => candidate !== null);
+    if (!liveRevisions.includes(revision)) {
+        return "no-longer-live";
+    }
+    if (liveRevisions.length < 2) {
+        return "only-live-revision";
     }
 
     const deleted = await core.fileHandler.deleteRevisionFromDB(latest.databasePath, revision);

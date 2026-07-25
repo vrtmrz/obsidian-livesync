@@ -1530,6 +1530,29 @@ Offline Changed files: ${files.length}`;
         }
     }
 
+    private async getLiveInternalRevision(
+        prefixedFileName: FilePathWithPrefix,
+        revision: string
+    ): Promise<MetaEntry | false> {
+        const [selected, current, conflicts] = await Promise.all([
+            this.core.databaseFileAccess.fetchEntryMeta(prefixedFileName, revision, true),
+            this.core.databaseFileAccess.fetchEntryMeta(prefixedFileName, undefined, true),
+            this.core.databaseFileAccess.getConflictedRevs(prefixedFileName),
+        ]);
+        const liveRevisions = new Set([
+            ...(current && current._rev ? [current._rev] : []),
+            ...conflicts,
+        ]);
+        if (!selected || selected._rev !== revision || !liveRevisions.has(revision)) {
+            this._log(
+                `Could not use hidden-file revision ${revision} of ${stripAllPrefixes(prefixedFileName)}; the selected revision is no longer live`,
+                LOG_LEVEL_NOTICE
+            );
+            return false;
+        }
+        return selected;
+    }
+
     async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
         const storeFilePath = stripAllPrefixes(file.path);
         const storageFilePath = file.path;
@@ -1575,6 +1598,79 @@ Offline Changed files: ${files.length}`;
                 return success;
             } catch (ex) {
                 this._log(`STORAGE --> DB:${storageFilePath}: (hidden) Failed`);
+                this._log(ex, LOG_LEVEL_VERBOSE);
+                return false;
+            }
+        });
+    }
+
+    async storeInternalFileToDatabaseWithBaseRevision(
+        file: InternalFileInfo | UXFileInfo,
+        baseRevision: string,
+        createIfDifferent = true
+    ): Promise<boolean> {
+        const storeFilePath = stripAllPrefixes(file.path);
+        const storageFilePath = file.path;
+        if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
+            return false;
+        }
+        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
+
+        return await serialized("file-" + prefixedFileName, async () => {
+            try {
+                const baseData = await this.getLiveInternalRevision(prefixedFileName, baseRevision);
+                if (baseData === false) {
+                    return false;
+                }
+                const fileInfo = "stat" in file && "body" in file ? file : await this.loadFileWithInfo(storeFilePath);
+                if (fileInfo.deleted) {
+                    throw new Error(`Hidden file:${storeFilePath} is deleted. This should not be occurred.`);
+                }
+                if (!baseData.deleted && !baseData._deleted) {
+                    const loadedBase = await this.core.databaseFileAccess.fetchEntryFromMeta(baseData, true, true);
+                    if (loadedBase && (await isDocContentSame(readAsBlob(loadedBase), fileInfo.body))) {
+                        this.updateLastProcessed(storeFilePath, baseData, fileInfo.stat);
+                        return true;
+                    }
+                }
+                if (!createIfDifferent) {
+                    this._log(
+                        `Could not mark hidden file ${storeFilePath} as revision ${baseRevision}; the storage content differs`,
+                        LOG_LEVEL_NOTICE
+                    );
+                    return false;
+                }
+
+                const storedRevision = await this.core.databaseFileAccess.storeWithBaseRevision(
+                    {
+                        ...fileInfo,
+                        path: storeFilePath,
+                        name: fileInfo.name || storeFilePath.split("/").pop() || "",
+                        isInternal: true,
+                    },
+                    baseRevision,
+                    true
+                );
+                if (storedRevision === false) {
+                    return false;
+                }
+                this.updateLastProcessed(
+                    storeFilePath,
+                    {
+                        ...baseData,
+                        _rev: storedRevision,
+                        path: prefixedFileName,
+                        ctime: fileInfo.stat.ctime,
+                        mtime: fileInfo.stat.mtime,
+                        size: fileInfo.stat.size,
+                        deleted: false,
+                    },
+                    fileInfo.stat
+                );
+                this._log(`STORAGE --> DB:${storageFilePath}: (hidden, selected branch) Done`);
+                return true;
+            } catch (ex) {
+                this._log(`STORAGE --> DB:${storageFilePath}: (hidden, selected branch) Failed`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
                 return false;
             }
@@ -1644,7 +1740,8 @@ Offline Changed files: ${files.length}`;
         metaEntry?: MetaEntry | LoadedEntry,
         preventDoubleProcess = true,
         onlyNew = false,
-        includeDeletion = true
+        includeDeletion = true,
+        requiredLiveRevision?: string
     ) {
         const prefixedFileName = addPrefix(storageFilePath, ICHeader);
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
@@ -1653,9 +1750,11 @@ Offline Changed files: ${files.length}`;
         return await serialized("file-" + prefixedFileName, async () => {
             try {
                 // Check conflicted status
-                const metaOnDB = metaEntry
-                    ? metaEntry
-                    : await this.localDatabase.getDBEntryMeta(prefixedFileName, { conflicts: true }, true);
+                const metaOnDB = requiredLiveRevision
+                    ? await this.getLiveInternalRevision(prefixedFileName, requiredLiveRevision)
+                    : metaEntry
+                      ? metaEntry
+                      : await this.localDatabase.getDBEntryMeta(prefixedFileName, { conflicts: true }, true);
                 if (metaOnDB === false) throw new Error(`File not found on database.:${storageFilePath}`);
                 // Prevent overwrite for Prevent overwriting while some conflicted revision exists.
                 if (metaOnDB?._conflicts?.length) {
@@ -1727,6 +1826,24 @@ Offline Changed files: ${files.length}`;
                 return false;
             }
         });
+    }
+
+    async extractInternalFileRevisionFromDatabase(
+        storageFilePath: FilePath,
+        revision: string,
+        force = false
+    ): Promise<boolean> {
+        return Boolean(
+            await this.extractInternalFileFromDatabase(
+                storageFilePath,
+                force,
+                undefined,
+                true,
+                false,
+                true,
+                revision
+            )
+        );
     }
 
     async __checkIsNeedToWriteFile(storageFilePath: FilePath, content: string | ArrayBuffer): Promise<boolean> {

@@ -5,6 +5,8 @@ import { CANCELLED, type diff_result, type FilePathWithPrefix } from "@vrtmrz/li
 vi.mock("@/deps.ts", () => ({
     App: class App {},
     Modal: class Modal {
+        createdButtons: string[] = [];
+
         private createElement(): Record<string, unknown> {
             const element: Record<string, unknown> = {
                 addClass: vi.fn(),
@@ -22,6 +24,14 @@ vi.mock("@/deps.ts", () => ({
             };
             element.createDiv = vi.fn(() => this.createElement());
             element.createEl = vi.fn((_tag: string, _options?: unknown, callback?: (child: unknown) => void) => {
+                if (
+                    _tag === "button" &&
+                    typeof _options === "object" &&
+                    _options !== null &&
+                    "text" in _options
+                ) {
+                    this.createdButtons.push(String((_options as { text: unknown }).text));
+                }
                 const child = this.createElement();
                 callback?.(child);
                 return child;
@@ -81,5 +91,56 @@ describe("ConflictResolveModal result lifecycle", () => {
 
         expect(previousResult).toBe(CANCELLED);
         expect(replacementState).toBe("still-open");
+    });
+
+    it("renders a read-only comparison with no resolution actions", () => {
+        const ReadOnlyModal = ConflictResolveModal as unknown as new (
+            ...args: unknown[]
+        ) => ConflictResolveModal & { createdButtons: string[] };
+        const modal = new ReadOnlyModal(
+            {},
+            "repair-preview.md",
+            conflict,
+            false,
+            undefined,
+            {
+                readOnly: true,
+                title: "Vault and database revision",
+                localName: "Vault file",
+                remoteName: "Database revision",
+            }
+        );
+
+        modal.onOpen();
+
+        expect(modal.createdButtons).toContain("Close");
+        expect(modal.createdButtons).not.toContain("Use Vault file");
+        expect(modal.createdButtons).not.toContain("Use Database revision");
+        expect(modal.createdButtons).not.toContain("Concat both");
+        expect(modal.createdButtons).not.toContain("Not now");
+        modal.close();
+    });
+
+    it("does not cancel an active conflict dialogue when a read-only comparison opens for the same file", async () => {
+        const filename = "repair-alongside-conflict.md" as FilePathWithPrefix;
+        const previous = new ConflictResolveModal({} as never, filename, conflict);
+        const ReadOnlyModal = ConflictResolveModal as unknown as new (
+            ...args: unknown[]
+        ) => ConflictResolveModal;
+        const comparison = new ReadOnlyModal({}, filename, conflict, false, undefined, {
+            readOnly: true,
+        });
+        previous.onOpen();
+
+        comparison.onOpen();
+        const previousState = await Promise.race([
+            previous.waitForResult(),
+            new Promise<"still-open">((resolve) => setTimeout(() => resolve("still-open"), 25)),
+        ]);
+
+        previous.sendResponse(CANCELLED);
+        comparison.close();
+
+        expect(previousState).toBe("still-open");
     });
 });

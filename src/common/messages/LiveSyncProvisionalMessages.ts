@@ -74,21 +74,51 @@ export const liveSyncProvisionalEnglishMessages = {
     "Database information for ${FILE}": "Database information for ${FILE}",
     "All revisions and chunk availability below are a snapshot of this device's local database; the remote is not queried. Review the Vault-relative path, document identifier, content-derived chunk identifiers, and metadata before sharing this report. File contents are omitted.":
         "All revisions and chunk availability below are a snapshot of this device's local database; the remote is not queried. Review the Vault-relative path, document identifier, content-derived chunk identifiers, and metadata before sharing this report. File contents are omitted.",
-    "Vault file: modified ${TIME}, size ${SIZE}": "Vault file: modified ${TIME}, size ${SIZE}",
-    "Vault file: missing": "Vault file: missing",
-    "Local database document: missing": "Local database document: missing",
+    "📁 Vault: ${SIZE} B · ${TIME}": "📁 Vault: ${SIZE} B · ${TIME}",
+    "📁 Vault: missing": "📁 Vault: missing",
+    "🗄️ Local DB: missing": "🗄️ Local DB: missing",
+    "Vault and database revision": "Vault and database revision",
+    "Vault file": "Vault file",
+    "Database revision": "Database revision",
+    "Vault file is newer": "Vault file is newer",
+    "Database revision is newer": "Database revision is newer",
+    "Within the two-second comparison window": "Within the two-second comparison window",
+    "Timestamp comparison unavailable": "Timestamp comparison unavailable",
     "${ROLE}: ${REVISION}": "${ROLE}: ${REVISION}",
     "Winner revision": "Winner revision",
     "Conflict revision": "Conflict revision",
     "Unknown revision": "Unknown revision",
-    "Logical deletion": "Logical deletion",
+    "🗑️ Logical deletion": "🗑️ Logical deletion",
     "Readable on this device; recorded size ${RECORDED}, decoded size ${ACTUAL}":
         "Readable on this device; recorded size ${RECORDED}, decoded size ${ACTUAL}",
-    "Unreadable on this device; ${COUNT} referenced chunks are missing or deleted":
-        "Unreadable on this device; ${COUNT} referenced chunks are missing or deleted",
-    "Matches the current Vault file": "Matches the current Vault file",
-    "Differs from the current Vault file": "Differs from the current Vault file",
+    "🧩 Missing chunks: ${COUNT}": "🧩 Missing chunks: ${COUNT}",
+    "📦 DB: recorded ${RECORDED} B · decoded ${DECODED} B · Δsize ${DIFFERENCE} B":
+        "📦 DB: recorded ${RECORDED} B · decoded ${DECODED} B · Δsize ${DIFFERENCE} B",
+    "📦 DB: recorded ${RECORDED} B · decoded unavailable":
+        "📦 DB: recorded ${RECORDED} B · decoded unavailable",
+    "📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B":
+        "📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B",
+    "🕒 DB ${DATABASE_TIME} · Vault ${VAULT_TIME} · Δtime ${DIFFERENCE} ms (${RELATION})":
+        "🕒 DB ${DATABASE_TIME} · Vault ${VAULT_TIME} · Δtime ${DIFFERENCE} ms (${RELATION})",
+    "✅ Matches Vault": "✅ Matches Vault",
+    "⚠️ Differs from Vault": "⚠️ Differs from Vault",
+    "✅ Vault matches winner": "✅ Vault matches winner",
+    "⚠️ Conflicts: ${COUNT}": "⚠️ Conflicts: ${COUNT}",
+    "Compare with Vault": "Compare with Vault",
+    "Apply this revision to Vault": "Apply this revision to Vault",
+    "Apply database revision ${REVISION} to ${FILE}? The current Vault file will be overwritten.":
+        "Apply database revision ${REVISION} to ${FILE}? The current Vault file will be overwritten.",
+    "Apply database revision to Vault": "Apply database revision to Vault",
+    "Mark this revision as the Vault version": "Mark this revision as the Vault version",
+    "Store Vault file as a child of this revision": "Store Vault file as a child of this revision",
+    "Apply logical deletion to Vault": "Apply logical deletion to Vault",
+    "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.":
+        "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.",
     "Retry reading revision": "Retry reading revision",
+    "Discard this branch": "Discard this branch",
+    "Discard branch": "Discard branch",
+    "Discard database branch ${REVISION} of ${FILE}? This creates a logical deletion for that exact live branch. The current Vault file will not be changed.":
+        "Discard database branch ${REVISION} of ${FILE}? This creates a logical deletion for that exact live branch. The current Vault file will not be changed.",
     "Discard unreadable revision": "Discard unreadable revision",
     "Discard database revision ${REVISION} of ${FILE}? This creates a logical deletion for that exact live revision. Missing content cannot be recovered by this action.":
         "Discard database revision ${REVISION} of ${FILE}? This creates a logical deletion for that exact live revision. Missing content cannot be recovered by this action.",
@@ -97,9 +127,11 @@ export const liveSyncProvisionalEnglishMessages = {
         "Shared ancestor ${REVISION} is not readable on this device. Automatic three-way merging may be unavailable, but the live revisions remain available for explicit review.",
     "No shared ancestor is available for this conflict. The live revisions remain available for explicit review.":
         "No shared ancestor is available for this conflict. The live revisions remain available for explicit review.",
+    "More actions for revision ${REVISION}": "More actions for revision ${REVISION}",
+    "More actions for ${FILE}": "More actions for ${FILE}",
     "Show revision history": "Show revision history",
-    "Use Vault file in local database": "Use Vault file in local database",
-    "Restore database winner to Vault": "Restore database winner to Vault",
+    "Store Vault file as a new local database document":
+        "Store Vault file as a new local database document",
     "Copy database information": "Copy database information",
     "Recreate chunks for current Vault files": "Recreate chunks for current Vault files",
     "Recreate chunks from the files currently present in this Vault. This cannot reconstruct unavailable historical or conflict content.":

@@ -50,11 +50,24 @@ The compatibility implementation currently selects the newer modification time f
 
 A document revision can remain in the PouchDB tree while one or more chunks needed to reconstruct its content are unavailable. Missing content is not evidence that the revision is obsolete. LiveSync therefore leaves an unreadable winner or conflict revision in the tree instead of deleting it during automatic conflict processing.
 
-**Hatch** → **Verify and repair all files** inspects the current winner, every current conflict revision, and the nearest shared ancestor for each conflict. It reports exact revision identifiers and local chunk availability separately:
+**Hatch** → **Verify and repair all files** inspects the current winner, every current conflict revision, and the nearest shared ancestor for each conflict. A logical-deletion winner and an absent Vault file already agree, so that state is not reported unless another live branch still requires attention. When the Vault already matches the winner but conflict branches remain, the card shows the compact status `✅ Vault matches winner · ⚠️ Conflicts: N`; matching the winner does not mean that the conflict has been resolved.
 
+Each reported live revision has a compact **…** menu. The available actions depend on the exact revision and current Vault state:
+
+- **Compare with Vault** opens the existing difference dialogue in read-only mode for differing text files.
+- **Apply this revision to Vault** writes the selected readable revision, even when it is not the database winner. Replacing an existing file requires confirmation.
+- **Mark this revision as the Vault version** is offered when the bytes already match. It records exact device-local provenance without creating a child revision, and refuses the operation if the file changed after inspection.
+- **Store Vault file as a child of this revision** preserves the current Vault bytes on the explicitly selected live branch.
+- **Apply logical deletion to Vault** removes an existing Vault file after confirmation. An absent file needs no retained deletion provenance.
 - **Retry reading revision** attempts the configured chunk-retrieval path again. It does not change the revision tree.
-- **Discard unreadable revision** is available only for a current winner or conflict revision which remains unreadable when the action is performed. It requires confirmation and creates a logical deletion for that exact revision.
-- A shared ancestor is informational. An ancestor which is no longer a live revision cannot be discarded independently through this workflow. If its body is unavailable, conservative three-way merge remains disabled, although readable live revisions can still be selected manually.
+- **Discard this branch** is available for each exact live revision while at least one other live branch remains. It requires confirmation and creates a logical deletion on only the selected branch without changing the current Vault file.
+- **Discard unreadable revision** remains available as a recovery action when an unreadable revision is the only live leaf. It requires confirmation because no other database branch remains.
+
+Every mutating action rechecks that the selected revision is still a current live leaf. If another operation resolved or replaced it, the action fails and the card is refreshed instead of extending an obsolete branch.
+
+The card uses compact, mobile-friendly diagnostic rows with an emoji and a text label. `🧩 Missing chunks: N` identifies an unreadable revision. In the database row, `Δsize` is decoded size minus recorded size; in the Vault row, `Δsize vs DB` is Vault size minus decoded database size. `Δtime` is Vault modification time minus database modification time. The ordinary two-second comparison window still labels which side is newer. These values help diagnose a mismatch; path, size, and modification time do not prove revision identity or decide which content should win.
+
+A shared ancestor is informational. An ancestor which is no longer a live revision cannot be discarded independently through this workflow. If its body is unavailable, conservative three-way merge remains disabled, although readable live revisions can still be selected manually.
 
 Logical deletion does not recreate missing bytes, purge the document history, or prove that the deleted version was unimportant. Another replica or backup may still contain the missing chunks. Recover from that source before discarding a revision whenever possible.
 

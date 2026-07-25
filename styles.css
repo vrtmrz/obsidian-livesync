@@ -612,6 +612,54 @@ body.is-mobile .livesync-compatibility-review-notice {
     background: var(--background-secondary);
 }
 
+.sls-repair-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+    min-width: 0;
+}
+
+.sls-repair-header > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sls-repair-header h6 {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.sls-repair-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    margin-top: var(--size-4-1);
+    font-size: var(--font-ui-smaller);
+}
+
+.sls-repair-status-ok {
+    color: var(--text-success);
+}
+
+.sls-repair-status-warning {
+    color: var(--text-warning);
+}
+
+.sls-repair-metric {
+    margin-top: var(--size-4-1);
+    font-size: var(--font-ui-smaller);
+    line-height: var(--line-height-tight);
+    overflow-wrap: anywhere;
+}
+
+.sls-repair-action-menu {
+    min-width: var(--clickable-icon-size);
+    width: var(--clickable-icon-size);
+    height: var(--clickable-icon-size);
+    padding: 0;
+}
+
 .sls-repair-revision {
     margin-top: var(--size-4-2);
     padding: var(--size-4-2);
@@ -634,13 +682,6 @@ body.is-mobile .livesync-compatibility-review-notice {
 .sls-repair-ancestor-warning {
     margin-top: var(--size-4-2);
     color: var(--text-warning);
-}
-
-.sls-repair-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-4-2);
-    margin-top: var(--size-4-2);
 }
 
 /* Diff navigation */
