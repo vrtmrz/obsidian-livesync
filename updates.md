@@ -16,23 +16,39 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 - **Verify and repair all files** now reports the database winner, every conflict revision, missing chunks, and unavailable shared ancestors separately. It can retry an exact revision without changing the tree, while discarding an unreadable live revision requires explicit confirmation.
 - Command-palette actions now use clearer names and appear only when their feature and current context make them usable. Renamed commands keep their identifiers, so hotkeys already assigned to them continue to work. The onboarding wizard can be reopened from **Self-hosted LiveSync settings** → **Setup**.
-- Enabling Hidden File Sync now opens one progress Notice before its setting is saved and reuses that Notice throughout the initial file scan, instead of stacking separate phase and restart Notices.
-- P2P is now presented only after it has been configured: its status pane no longer opens at start-up, its ribbon icon remains hidden for CouchDB-only Vaults, and the retired P2P pane command has been removed. The current pane distinguishes announcing changes, following a peer, and persistent per-device actions. Setup and guidance now distinguish the required signalling relay from optional TURN, and describe the public signalling relay's privacy and availability limits.
-- First-device P2P setup now accepts a successfully opened signalling room without requiring another peer to be online. Additional-device Fetch still requires selecting a source peer and completing `P2P Rebuild`.
-- Manual CouchDB setup now distinguishes creating a first database from connecting an additional device to an existing one. Settings mode can save an unverified profile explicitly, while onboarding requires a successful connection, and each proposed server-configuration fix requires separate confirmation.
-- Differences limited to the chunk hash algorithm, chunk size, or splitter version are now aligned automatically by default. Existing content remains readable, while an explicit opt-out and any difference which also involves an incompatible setting retain manual review.
 - Text in setup and review dialogues can now be selected for copying or translation.
 
 ### Fixed
 
 - An unreadable conflict revision is no longer deleted automatically merely because its chunks are unavailable on the current device.
 - Garbage Collection V3 now protects chunks required by every live conflict branch and the available revision ancestry needed to review and merge conflicts, instead of considering only the database winner. The action is offered only for CouchDB because P2P has no central database to compact and does not provide the device inventory required by the workflow. Collection now stops when device progress cannot be verified, and a compaction timeout is no longer followed by a contradictory success message.
+
+### Testing
+
+- Added regressions for revision repair, command availability, selectable dialogues, conflict-aware chunk reachability, device-progress safeguards, and compaction timeouts.
+- Added a real CouchDB integration test for logical chunk deletion, shared and conflict chunk retention, compaction completion, downstream replication, and content-addressed chunk recreation.
+- Added a real Obsidian encrypted reconnect scenario which replaces the remote Security Seed while one client retains the previous value, verifies that synchronisation refreshes it without restoring the old value, and proves a bidirectional encrypted round-trip.
+
+## 1.0.0-beta.3
+
+24th July, 2026
+
+### Improved
+
+- Enabling Hidden File Sync now opens one progress Notice before its setting is saved and reuses that Notice throughout the initial file scan, instead of stacking separate phase and restart Notices.
+- P2P is now presented only after it has been configured: its status pane no longer opens at start-up, its ribbon icon remains hidden for CouchDB-only Vaults, and the retired P2P pane command has been removed. The current pane distinguishes announcing changes, following a peer, and persistent per-device actions. Setup and guidance now distinguish the required signalling relay from optional TURN, and describe the public signalling relay's privacy and availability limits.
+- First-device P2P setup now accepts a successfully opened signalling room without requiring another peer to be online. Additional-device Fetch still requires selecting a source peer and completing `P2P Rebuild`.
+- Manual CouchDB setup now distinguishes creating a first database from connecting an additional device to an existing one. Settings mode can save an unverified profile explicitly, while onboarding requires a successful connection, and each proposed server-configuration fix requires separate confirmation.
+- Differences limited to the chunk hash algorithm, chunk size, or splitter version are now aligned automatically by default. Existing content remains readable, while an explicit opt-out and any difference which also involves an incompatible setting retain manual review.
+
+### Fixed
+
 - Choosing **Apply settings to this device, and fetch again** for a compatible configuration mismatch now applies the remote settings before Fetch, instead of updating the remote database with this device's settings.
 - Accepted settings which control how new chunks are created now take effect before synchronisation is retried, rather than leaving the previous hash or splitter active until restart.
 
 ### Testing
 
-- Added regressions for revision repair, P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, selectable and mobile dialogues, conflict-aware chunk reachability, device-progress safeguards, compaction timeouts, shared chunks, collection propagation, and content-addressed chunk recreation.
+- Added regressions for P2P configuration, the distinction between setting up the first device and using Fetch on an additional device, the P2P status pane, CouchDB setup policy, and mobile dialogues.
 
 ## 1.0.0-beta.2
 
