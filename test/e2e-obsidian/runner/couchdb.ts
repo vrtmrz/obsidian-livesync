@@ -42,6 +42,12 @@ export type CouchDbDatabaseInfo = {
     update_seq: number | string;
 };
 
+export type CouchDbPutResponse = {
+    ok: boolean;
+    id: string;
+    rev: string;
+};
+
 function parseEnvFile(content: string): Record<string, string> {
     const entries = content
         .split(/\r?\n/u)
@@ -77,6 +83,14 @@ function authHeader(config: Pick<CouchDbConfig, "username" | "password">): strin
 
 function databaseUrl(config: Pick<CouchDbConfig, "uri">, dbName: string, suffix = ""): string {
     return `${config.uri.replace(/\/+$/u, "")}/${encodeURIComponent(dbName)}${suffix}`;
+}
+
+function documentSuffix(documentId: string): string {
+    const localPrefix = "_local/";
+    if (documentId.startsWith(localPrefix)) {
+        return `/_local/${encodeURIComponent(documentId.slice(localPrefix.length))}`;
+    }
+    return `/${encodeURIComponent(documentId)}`;
 }
 
 async function couchDbRequest(
@@ -146,8 +160,8 @@ export async function putCouchDbDocument(
     config: CouchDbConfig,
     dbName: string,
     document: CouchDbDocument
-): Promise<void> {
-    const response = await fetch(databaseUrl(config, dbName, `/${encodeURIComponent(document._id)}`), {
+): Promise<CouchDbPutResponse> {
+    const response = await fetch(databaseUrl(config, dbName, documentSuffix(document._id)), {
         method: "PUT",
         headers: {
             authorization: authHeader(config),
@@ -160,6 +174,23 @@ export async function putCouchDbDocument(
             `Failed to write CouchDB document ${document._id}. HTTP ${response.status}: ${await response.text()}`
         );
     }
+    return (await response.json()) as CouchDbPutResponse;
+}
+
+export async function fetchCouchDbDocument(
+    config: CouchDbConfig,
+    dbName: string,
+    documentId: string
+): Promise<CouchDbDocument> {
+    const response = await fetch(databaseUrl(config, dbName, documentSuffix(documentId)), {
+        headers: { authorization: authHeader(config) },
+    });
+    if (!response.ok) {
+        throw new Error(
+            `Failed to read CouchDB document ${documentId}. HTTP ${response.status}: ${await response.text()}`
+        );
+    }
+    return (await response.json()) as CouchDbDocument;
 }
 
 export async function deleteCouchDbDatabase(config: CouchDbConfig, dbName: string): Promise<void> {
@@ -172,6 +203,19 @@ export async function deleteCouchDbDatabase(config: CouchDbConfig, dbName: strin
             `Failed to delete CouchDB database ${dbName}. HTTP ${response.status}: ${await response.text()}`
         );
     }
+}
+
+export async function couchDbDatabaseExists(config: CouchDbConfig, dbName: string): Promise<boolean> {
+    const response = await fetch(databaseUrl(config, dbName), {
+        headers: { authorization: authHeader(config) },
+    });
+    if (response.status === 404) {
+        return false;
+    }
+    if (!response.ok) {
+        throw new Error(`Failed to inspect CouchDB ${dbName}. HTTP ${response.status}: ${await response.text()}`);
+    }
+    return true;
 }
 
 export async function fetchAllCouchDbDocs(config: CouchDbConfig, dbName: string): Promise<CouchDbAllDocsResponse> {

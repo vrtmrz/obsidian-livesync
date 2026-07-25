@@ -353,31 +353,50 @@ export async function waitForLiveSyncCoreReady(
 ): Promise<CoreReadiness> {
     const deadline = Date.now() + timeoutMs;
     let lastReadiness: CoreReadiness | undefined;
+    let lastError: unknown;
     while (Date.now() < deadline) {
-        lastReadiness = await evalObsidianJson<CoreReadiness>(
-            cliBinary,
-            [
-                "(async()=>{",
-                "const core=app.plugins.plugins['obsidian-livesync'].core;",
-                "const settings=core.services.setting.currentSettings();",
-                "return JSON.stringify({",
-                "databaseReady:core.services.database.isDatabaseReady(),",
-                "appReady:core.services.appLifecycle.isReady(),",
-                "configured:settings?.isConfigured===true,",
-                "remoteType:settings?.remoteType??'',",
-                "settingVersion:settings?.settingVersion,",
-                "suspended:core.services.appLifecycle.isSuspended(),",
-                "});",
-                "})()",
-            ].join(""),
-            env
-        );
+        try {
+            lastReadiness = await evalObsidianJson<CoreReadiness>(
+                cliBinary,
+                [
+                    "(async()=>{",
+                    "const core=app.plugins.plugins['obsidian-livesync']?.core;",
+                    "if(!core) return JSON.stringify({databaseReady:false,appReady:false});",
+                    "const settings=core.services.setting.currentSettings();",
+                    "return JSON.stringify({",
+                    "databaseReady:core.services.database.isDatabaseReady(),",
+                    "appReady:core.services.appLifecycle.isReady(),",
+                    "configured:settings?.isConfigured===true,",
+                    "remoteType:settings?.remoteType??'',",
+                    "settingVersion:settings?.settingVersion,",
+                    "suspended:core.services.appLifecycle.isSuspended(),",
+                    "});",
+                    "})()",
+                ].join(""),
+                env
+            );
+            lastError = undefined;
+        } catch (error) {
+            // Obsidian reloads the renderer while enabling the plug-in. During
+            // that short window the CLI can reach the Vault before the plug-in
+            // catalogue has exposed its core. This is a readiness state, not a
+            // failed scenario, so retain the error for the eventual timeout.
+            lastError = error;
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+        }
         if (lastReadiness.databaseReady && lastReadiness.appReady) {
             return lastReadiness;
         }
         await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    throw new Error(`Timed out waiting for Self-hosted LiveSync core readiness: ${JSON.stringify(lastReadiness)}`);
+    const errorSuffix =
+        lastError === undefined
+            ? ""
+            : ` Last error: ${lastError instanceof Error ? lastError.message : String(lastError)}`;
+    throw new Error(
+        `Timed out waiting for Self-hosted LiveSync core readiness: ${JSON.stringify(lastReadiness)}${errorSuffix}`
+    );
 }
 
 /**

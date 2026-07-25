@@ -10,6 +10,7 @@ vi.mock("./cli.ts", () => ({ evalObsidianJson }));
 import {
     assertE2eCompatibilityMarker,
     createE2eCouchDbPluginData,
+    waitForLiveSyncCoreReady,
     type CompatibilityMarkerState,
 } from "./liveSyncWorkflow.ts";
 
@@ -52,5 +53,27 @@ describe("configured CouchDB fixture", () => {
         expect(remoteConfigurations).toBeDefined();
         expect(Object.keys(remoteConfigurations ?? {})).toHaveLength(1);
         expect(pluginData.activeConfigurationId).toBe(Object.keys(remoteConfigurations ?? {})[0]);
+    });
+});
+
+describe("Real Obsidian core readiness", () => {
+    it("retries while the plug-in core is temporarily unavailable during reload", async () => {
+        evalObsidianJson.mockReset();
+        evalObsidianJson
+            .mockRejectedValueOnce(new Error("Cannot read properties of undefined (reading 'core')"))
+            .mockResolvedValueOnce({
+                databaseReady: true,
+                appReady: true,
+                configured: true,
+                remoteType: "",
+                settingVersion: 10,
+                suspended: false,
+            });
+
+        await expect(waitForLiveSyncCoreReady("obsidian-cli", {}, 1000)).resolves.toMatchObject({
+            databaseReady: true,
+            appReady: true,
+        });
+        expect(evalObsidianJson).toHaveBeenCalledTimes(2);
     });
 });

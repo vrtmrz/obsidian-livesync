@@ -22,6 +22,7 @@ const focusedScenarios = new Set([
     "startup-scan",
     "setup-uri-workflow",
     "two-vault-sync",
+    "security-seed-reconnect",
     "hidden-file-snippet-sync",
     "customisation-sync",
     "setting-markdown-export",
