@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.0-beta.4
+
+25th July, 2026
+
 ### Improved
 
 - **Verify and repair all files** now reports the database winner, every conflict revision, missing chunks, and unavailable shared ancestors separately. It can retry an exact revision without changing the tree, while discarding an unreadable live revision requires explicit confirmation.
