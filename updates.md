@@ -17,6 +17,7 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 - **Verify and repair all files** now reports the database winner, every conflict revision, missing chunks, and unavailable shared ancestors separately. It can retry an exact revision without changing the tree, while discarding an unreadable live revision requires explicit confirmation.
 - Command-palette actions now use clearer names and appear only when their feature and current context make them usable. Renamed commands keep their identifiers, so hotkeys already assigned to them continue to work. The onboarding wizard can be reopened from **Self-hosted LiveSync settings** → **Setup**.
 - Text in setup and review dialogues can now be selected for copying or translation.
+- When LiveSync adopts an available interface translation on first start-up, it now continues initialisation and leaves a persistent Notice from which the translation details can be opened, instead of waiting for an unsolicited dialogue.
 
 ### Fixed
 

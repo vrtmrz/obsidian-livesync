@@ -30,6 +30,24 @@ On macOS, `@vrtmrz/obsidian-test-session` keeps the generated Vault and profile 
 
 Multi-session workflows must keep each started Obsidian session tracked until its stop operation completes. If a scenario throws, teardown stops every active session before disposing its temporary Vault and profile, so a failed CLI or synchronisation operation cannot leave Obsidian using directories which have already been removed.
 
+## Observing and diagnosing a scenario
+
+Use externally visible behaviour as the pass condition: Vault files, remote-service state, revision data, or visible Obsidian UI. A log line can explain a failure, but should not replace an assertion about the resulting behaviour.
+
+The maintained runner provides several complementary observation paths:
+
+- `evalObsidianJson()` and `obsidian-cli eval` can read a small, explicitly selected piece of LiveSync or Obsidian state.
+- `withObsidianPage()` can inspect the active renderer, invoke a registered command, or interact with visible UI through CDP. `captureObsidianPage()`, `captureObsidianDialogue()`, and `captureObsidianElement()` retain screenshots; the capture helpers also write a full-page `.failure.png` before rethrowing a UI assertion failure.
+- `session.app.output()` returns the standard output and standard error captured from the isolated Obsidian process. This is especially useful when the renderer or CLI becomes unreachable.
+- **Show log** (`obsidian-livesync:view-log`) exposes the recent LiveSync log, while **Copy full report to clipboard** (`obsidian-livesync:dump-debug-info`) opens the generated diagnostic report. `dialog-mounts.ts` verifies both surfaces, and focused scenarios may inspect the log pane and `appLifecycle.getUnresolvedMessages()` for a bounded set of expected errors.
+- Renderer `console` messages and uncaught page errors are not retained automatically. A focused investigation can attach `page.on("console", ...)` and `page.on("pageerror", ...)` while it owns a `withObsidianPage()` callback. That observer ends when the callback closes its CDP connection, so use it around the action under investigation rather than treating it as a session-wide audit trail.
+
+If a scenario times out or appears to do nothing, capture the visible page before teardown, then record a bounded state snapshot and the relevant tail of the LiveSync log, unresolved messages, and process output. If an unexplained Notice appears, retain a screenshot while it is still visible before opening or dismissing it, then use the log or full report to identify its source. A Notice alone is not enough evidence for its cause.
+
+Set `showVerboseLog: true` only in isolated plug-in data when a focused investigation needs it. Keep captured output short and redact it before retaining or sharing it: logs and reports can contain Vault paths, document names, endpoints, credentials, Setup URIs, passphrases, or Security Seed material. Do not collect verbose logs from an ordinary user Vault.
+
+Collect evidence before cleanup, and keep process, Vault, profile, and remote-fixture cleanup in `finally`. After `app.emulateMobile(true)`, use the active CDP renderer for fixture operations because Obsidian may remove desktop-only CLI commands. Visually inspect screenshots before copying selected images into user documentation; a passing locator assertion does not establish that a dialogue is readable or unobstructed.
+
 ## Local Setup
 
 Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location. Set `OBSIDIAN_CLI` as well when its companion executable is outside the built-in discovery paths.
