@@ -18,7 +18,8 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ### Improved
 
-- **Inspect conflicts and file/database differences** now compares the current Vault file with every live database revision. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflict branches remain. Each revision's wrench menu can compare readable text, reflect that exact revision to the Vault, record an exact byte match, store the Vault content as a child of that branch, or discard only that branch.
+- **Inspect conflicts and file/database differences** now compares the current Vault file with the database winner and every live conflict revision. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflict branches remain.
+- Each reported file and live revision now has a compact wrench menu. Its available actions can compare readable text, apply the selected revision to the Vault, record an exact byte match, store the Vault content as a child of the selected branch, retry retrieving missing chunks without changing the revision tree, or discard only the selected live branch after confirmation.
 
 ### Fixed
 
