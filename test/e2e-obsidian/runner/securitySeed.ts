@@ -1,3 +1,14 @@
+/**
+ * Supplies the runner-owned CouchDB fixture operations for the Security Seed
+ * reconnect scenario. Production code remains responsible for fetching,
+ * caching, and applying the Seed; this helper only validates the managed
+ * synchronisation-parameter document, replaces the one intended field, and
+ * compares document snapshots.
+ *
+ * Callers expose only short SHA-256 fingerprints. The original and replacement
+ * Seed values must stay inside the isolated test process and must not be
+ * written to diagnostics, screenshots, or machine-readable results.
+ */
 import { createHash, randomBytes } from "node:crypto";
 import type { CouchDbDocument } from "./couchdb.ts";
 

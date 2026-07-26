@@ -462,6 +462,7 @@ export function assertObsidianServiceContextContract(result: ObsidianServiceCont
 }
 
 export async function prepareRemote(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_REMOTE_PREPARE_TIMEOUT_MS ?? 20000);
     await evalObsidianJson<unknown>(
         cliBinary,
         [
@@ -471,8 +472,16 @@ export async function prepareRemote(cliBinary: string, env: NodeJS.ProcessEnv): 
             "const replicator=core.services.replicator.getActiveReplicator();",
             "await replicator.tryCreateRemoteDatabase(settings);",
             "await replicator.markRemoteResolved(settings);",
+            `const deadline=Date.now()+${JSON.stringify(timeoutMs)};`,
+            "let securitySeedReady=false;",
+            "do{",
+            "securitySeedReady=await replicator.ensurePBKDF2Salt(settings,false,false);",
+            "if(securitySeedReady) break;",
+            "await new Promise((resolve)=>setTimeout(resolve,250));",
+            "}while(Date.now()<deadline);",
+            "if(!securitySeedReady) throw new Error('Timed out preparing the remote Security Seed');",
             "const status=await replicator.getRemoteStatus(settings);",
-            "return JSON.stringify({status});",
+            "return JSON.stringify({status,securitySeedReady});",
             "})()",
         ].join(""),
         env

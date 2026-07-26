@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import {
     assertLocatorHasMinimumTouchTarget,
     assertLocatorWithinSafeArea,
@@ -6,11 +8,17 @@ import {
 import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { REVIEW_HARNESS_STATE_KEY } from "../../../src/features/ReviewHarness/reviewHarnessController.ts";
 import { REVIEW_HARNESS_FIXTURE_ROOT } from "../../../src/features/ReviewHarness/reviewHarnessVaultFixture.ts";
+import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
 import { iPhoneSafeArea, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { captureObsidianDialogue, obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
+import {
+    captureObsidianDialogue,
+    captureObsidianPage,
+    obsidianRemoteDebuggingPort,
+    withObsidianPage,
+} from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_REVIEW_HARNESS_TIMEOUT_MS ?? 15000);
@@ -25,6 +33,135 @@ type ReviewHarnessTestGlobal = typeof globalThis & {
     app?: ObsidianTestApp;
     reviewHarnessCopiedReport?: string;
 };
+
+type ReviewHarnessReadinessSnapshot = {
+    coreAvailable: boolean;
+    databaseReady?: boolean;
+    appReady?: boolean;
+    configured?: boolean;
+    remoteType?: string;
+    settingVersion?: number;
+    suspended?: boolean;
+    unresolvedMessages: string[];
+};
+
+const sensitiveDiagnosticLine =
+    /security seed|passphrase|password|credential|secret|access.?key|jwt.?key|authori[sz]ation|obsidian:\/\/setuplivesync|sls\+/iu;
+const interruptedStartupMessages = [
+    "No replicator has been activated or has not been initialised yet.",
+    "Self-hosted LiveSync cannot be initialised, exiting loading.",
+];
+
+function redactDiagnosticLine(line: string): string {
+    if (sensitiveDiagnosticLine.test(line)) return "[REDACTED SENSITIVE LOG LINE]";
+    return line.replace(/\bhttps?:\/\/[^/\s:@]+:[^@\s/]+@/giu, "https://[REDACTED]@");
+}
+
+async function assertNoInterruptedStartupNotice(stage: string): Promise<void> {
+    const notices = await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.waitForTimeout(1500);
+        return await page.locator(".notice").allTextContents();
+    });
+    const interrupted = notices.filter((notice) =>
+        interruptedStartupMessages.some((message) => notice.includes(message))
+    );
+    if (interrupted.length > 0) {
+        throw new Error(`LiveSync emitted an interrupted-startup Notice during ${stage}: ${interrupted.join(" | ")}`);
+    }
+    console.log(`No interrupted-startup Notice observed during ${stage}.`);
+}
+
+async function captureReadinessFailure(
+    cliBinary: string,
+    session: ObsidianLiveSyncSession,
+    readinessError: unknown
+): Promise<void> {
+    const outputDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+    await mkdir(outputDirectory, { recursive: true });
+
+    const captureErrors: string[] = [];
+    let screenshotPath: string | undefined;
+    try {
+        screenshotPath = await captureObsidianPage(
+            obsidianRemoteDebuggingPort(),
+            "review-harness-core-not-ready.png",
+            async () => undefined
+        );
+    } catch (error) {
+        captureErrors.push(`screenshot: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    let readiness: ReviewHarnessReadinessSnapshot | undefined;
+    try {
+        readiness = await evalObsidianJson<ReviewHarnessReadinessSnapshot>(
+            cliBinary,
+            [
+                "(async()=>{",
+                "const core=app.plugins.plugins['obsidian-livesync']?.core;",
+                "if(!core)return JSON.stringify({coreAvailable:false,unresolvedMessages:[]});",
+                "const settings=core.services.setting.currentSettings();",
+                "let unresolvedMessages=[];",
+                "try{",
+                "unresolvedMessages=(await core.services.appLifecycle.getUnresolvedMessages()).flat()",
+                ".filter((message)=>message!==undefined&&message!==null)",
+                ".map((message)=>String(message)).slice(-50);",
+                "}catch(error){unresolvedMessages=[`Could not inspect unresolved messages: ${String(error)}`];}",
+                "return JSON.stringify({",
+                "coreAvailable:true,",
+                "databaseReady:core.services.database.isDatabaseReady(),",
+                "appReady:core.services.appLifecycle.isReady(),",
+                "configured:settings?.isConfigured===true,",
+                "remoteType:settings?.remoteType??'',",
+                "settingVersion:settings?.settingVersion,",
+                "suspended:core.services.appLifecycle.isSuspended(),",
+                "unresolvedMessages,",
+                "});",
+                "})()",
+            ].join(""),
+            session.cliEnv
+        );
+        readiness.unresolvedMessages = readiness.unresolvedMessages.map(redactDiagnosticLine);
+    } catch (error) {
+        captureErrors.push(`readiness snapshot: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    let recentLog: string[] = [];
+    try {
+        recentLog = await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+            const opened = await page.evaluate(
+                (commandId) =>
+                    (globalThis as ReviewHarnessTestGlobal).app?.commands?.executeCommandById(commandId) === true,
+                "obsidian-livesync:view-log"
+            );
+            if (!opened) throw new Error("The Show log command was not registered.");
+            const logPane = page.locator(".logpane");
+            await logPane.waitFor({ state: "visible", timeout: 5000 });
+            return (await logPane.locator(".log pre").allTextContents()).slice(-80).map(redactDiagnosticLine);
+        });
+    } catch (error) {
+        captureErrors.push(`recent log: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    const resultPath = join(outputDirectory, "review-harness-core-not-ready.json");
+    await writeFile(
+        resultPath,
+        `${JSON.stringify(
+            {
+                capturedAt: new Date().toISOString(),
+                failure: readinessError instanceof Error ? readinessError.message : String(readinessError),
+                screenshotPath,
+                readiness,
+                recentLog,
+                captureErrors,
+            },
+            null,
+            2
+        )}\n`,
+        "utf8"
+    );
+    if (screenshotPath) console.error(`Review Harness core readiness screenshot: ${screenshotPath}`);
+    console.error(`Review Harness core readiness diagnostics: ${resultPath}`);
+}
 
 async function openHarness(): Promise<void> {
     const opened = await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
@@ -203,6 +340,8 @@ async function copyAndReadReport(): Promise<string> {
 async function verifyMobileHarness(): Promise<string> {
     await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), true, uiTimeoutMs);
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const harness = page.locator('[data-testid="review-harness"]');
+        if (await harness.isVisible()) return;
         await page.evaluate(async (viewType) => {
             const plugin = (globalThis as ReviewHarnessTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
             if (typeof plugin !== "object" || plugin === null || !("core" in plugin)) {
@@ -252,7 +391,7 @@ async function main(): Promise<void> {
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
             pluginData: {
-                doctorProcessedVersion: "0.25.27",
+                doctorProcessedVersion: "1.0.0",
                 settingVersion: CURRENT_SETTING_VERSION,
                 isConfigured: true,
                 additionalSuffixOfDatabaseName: "",
@@ -269,7 +408,20 @@ async function main(): Promise<void> {
                 periodicReplication: true,
             },
         });
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        await assertNoInterruptedStartupNotice("plug-in session start");
+        try {
+            await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        } catch (error) {
+            await captureReadinessFailure(cli.binary, session, error).catch((diagnosticError: unknown) => {
+                console.error(
+                    `Could not capture Review Harness readiness diagnostics: ${
+                        diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError)
+                    }`
+                );
+            });
+            throw error;
+        }
+        await assertNoInterruptedStartupNotice("core readiness");
         await keepCompatibilityPaused();
         await openHarness();
         await waitForHarness();

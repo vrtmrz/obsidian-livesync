@@ -1,3 +1,26 @@
+/**
+ * Provides release evidence for the Security Seed refresh behaviour shared by
+ * supported platforms in real Obsidian. It verifies that an already-open
+ * device keeps its deliberately stale cached Seed until replication, refreshes
+ * from the managed CouchDB fixture before encrypting, and never restores the
+ * old Seed to the remote synchronisation-parameter document.
+ *
+ * The scenario uses isolated Vaults, profiles, and a random database because
+ * settings, the local database, the renderer process, and CouchDB must all
+ * participate in the result. Device A is restarted with the same Vault and
+ * profile, while device B is fresh. The devices run sequentially after the
+ * same-process stale-cache assertion because desktop Obsidian may enforce a
+ * single application instance; running them concurrently would test launcher
+ * behaviour rather than LiveSync's shared plug-in implementation.
+ *
+ * Seed replacement, A-to-B decryption, B-to-A return synchronisation, final
+ * remote-document comparison, error-log inspection, screenshots, and strict
+ * teardown remain one scenario. Together they prove that the same replacement
+ * Seed was used across the complete encrypted round trip and was not later
+ * rolled back. Independent passing checks would not establish that continuity.
+ * The result records fingerprints only and does not claim to cover an
+ * iPadOS-specific background or reconnect lifecycle.
+ */
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";

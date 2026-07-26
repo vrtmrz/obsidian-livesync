@@ -10,6 +10,7 @@ vi.mock("./cli.ts", () => ({ evalObsidianJson }));
 import {
     assertE2eCompatibilityMarker,
     createE2eCouchDbPluginData,
+    prepareRemote,
     waitForLiveSyncCoreReady,
     type CompatibilityMarkerState,
 } from "./liveSyncWorkflow.ts";
@@ -75,5 +76,20 @@ describe("Real Obsidian core readiness", () => {
             appReady: true,
         });
         expect(evalObsidianJson).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("remote fixture preparation", () => {
+    it("waits for the remote Security Seed after resolving a new remote", async () => {
+        evalObsidianJson.mockReset();
+        evalObsidianJson.mockResolvedValueOnce({ status: "resolved", securitySeedReady: true });
+
+        await prepareRemote("obsidian-cli", {});
+
+        const evaluatedCode = String(evalObsidianJson.mock.calls[0]?.[1] ?? "");
+        expect(evaluatedCode.indexOf("markRemoteResolved")).toBeLessThan(
+            evaluatedCode.indexOf("ensurePBKDF2Salt")
+        );
+        expect(evaluatedCode).toContain("Timed out preparing the remote Security Seed");
     });
 });
