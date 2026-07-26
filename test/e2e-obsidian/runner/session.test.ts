@@ -52,4 +52,36 @@ describe("LiveSync real-Obsidian session", () => {
             })
         );
     });
+
+    it("forwards instance-scoped lifecycle hooks and the selected plug-in start mode", async () => {
+        const beforePluginStart = vi.fn(async () => undefined);
+        const vault = {
+            path: "/tmp/mobile-vault",
+            statePath: "/tmp/mobile-state",
+            name: "mobile-vault",
+            id: "mobile-vault-id",
+            homePath: "/tmp/mobile-state/home",
+            xdgConfigPath: "/tmp/mobile-state/xdg-config",
+            xdgCachePath: "/tmp/mobile-state/xdg-cache",
+            xdgDataPath: "/tmp/mobile-state/xdg-data",
+            userDataPath: "/tmp/mobile-state/user-data",
+            processMarker: "/tmp/mobile-state",
+            dispose: vi.fn(async () => undefined),
+        };
+
+        await startObsidianLiveSyncSession({
+            binary: "/Applications/Obsidian",
+            cliBinary: "obsidian-cli",
+            vault,
+            pluginStartup: "controlled",
+            lifecycle: { beforePluginStart },
+        });
+
+        expect(startObsidianPluginSession).toHaveBeenCalledWith(
+            expect.objectContaining({
+                lifecycle: { beforePluginStart },
+                pluginStartup: "controlled",
+            })
+        );
+    });
 });

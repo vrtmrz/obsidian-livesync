@@ -1,4 +1,9 @@
-import { startObsidianPluginSession, type ObsidianPluginSession } from "@vrtmrz/obsidian-test-session";
+import {
+    startObsidianPluginSession,
+    type ObsidianPluginSession,
+    type ObsidianPluginSessionLifecycle,
+    type ObsidianPluginStartupMode,
+} from "@vrtmrz/obsidian-test-session";
 import type { TemporaryVault } from "./vault.ts";
 
 export type ObsidianLiveSyncSession = ObsidianPluginSession;
@@ -11,6 +16,8 @@ export type StartObsidianLiveSyncSessionOptions = {
     startupGraceMs?: number;
     pluginData?: Record<string, unknown>;
     localStorageEntries?: Readonly<Record<string, string>>;
+    pluginStartup?: ObsidianPluginStartupMode;
+    lifecycle?: ObsidianPluginSessionLifecycle;
     env?: NodeJS.ProcessEnv;
 };
 
@@ -26,6 +33,8 @@ export async function startObsidianLiveSyncSession(
         startupGraceMs: options.startupGraceMs,
         pluginData: options.pluginData,
         localStorageEntries: options.localStorageEntries,
+        pluginStartup: options.pluginStartup,
+        lifecycle: options.lifecycle,
         env: options.env,
     });
 }
