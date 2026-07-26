@@ -14,7 +14,23 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ### Improved
 
-- **Inspect conflicts and file/database differences** now reports the database winner, every conflict revision, missing chunks, unavailable shared ancestors, and file-information differences separately. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, a Vault which matches the winner, and conflict branches which still remain. Each live revision has a wrench menu for read-only text comparison, exact revision-to-Vault reflection, recording an exact match, storing the Vault file as a child of that branch, or explicitly discarding only that branch while another live branch remains. A logical deletion which already matches an absent Vault file is no longer reported. Retrying a revision does not change the tree, and discarding the sole unreadable live revision remains an explicitly confirmed recovery action.
+- **Inspect conflicts and file/database differences** now compares the current Vault file with every live database revision. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflict branches remain. Each revision's wrench menu can compare readable text, reflect that exact revision to the Vault, record an exact byte match, store the Vault content as a child of that branch, or discard only that branch.
+
+### Fixed
+
+- A winning logical deletion is no longer reported as a missing Vault file when the file is already absent.
+
+### Testing
+
+- Strengthened Real Obsidian coverage for start-up with an existing configuration, Security Seed readiness, failure diagnostics, and P2P status pane placement in separate desktop and mobile sessions.
+
+## 1.0.0-beta.4
+
+25th July, 2026
+
+### Improved
+
+- **Verify and repair all files** now reports the database winner, every conflict revision, missing chunks, and unavailable shared ancestors separately. It can retry an exact revision without changing the tree, while discarding an unreadable live revision requires explicit confirmation.
 - Command-palette actions now use clearer names and appear only when their feature and current context make them usable. Renamed commands keep their identifiers, so hotkeys already assigned to them continue to work. The onboarding wizard can be reopened from **Self-hosted LiveSync settings** → **Setup**.
 - Text in setup and review dialogues can now be selected for copying or translation.
 - When LiveSync adopts an available interface translation on first start-up, it now continues initialisation and leaves a persistent Notice from which the translation details can be opened, instead of waiting for an unsolicited dialogue.
