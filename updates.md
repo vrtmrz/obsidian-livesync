@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.0-beta.5
+
+26th July, 2026
+
 ### Improved
 
 - **Inspect conflicts and file/database differences** now compares the current Vault file with every live database revision. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflict branches remain. Each revision's wrench menu can compare readable text, reflect that exact revision to the Vault, record an exact byte match, store the Vault content as a child of that branch, or discard only that branch.
