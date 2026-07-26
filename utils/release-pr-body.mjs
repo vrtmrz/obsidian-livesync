@@ -20,9 +20,10 @@ function inlineCode(value) {
 /**
  * Render the reader-facing checklist for a draft release pull request.
  *
- * The version decides whether publication is stable or pre-release. The base
- * branch is included explicitly because integration previews can target a
- * reviewed integration branch rather than `main`.
+ * The version decides whether the release commit is an immutable SemVer
+ * pre-release or a stable version staged through a GitHub pre-release. The
+ * base branch is included explicitly because integration previews can target
+ * a reviewed integration branch rather than `main`.
  *
  * @param {string} version
  * @param {string} baseBranch
@@ -39,13 +40,28 @@ export function renderReleasePrBody(version, baseBranch) {
     const isPrerelease = selectedVersion.includes("-");
     const purpose = isPrerelease
         ? `an immutable pre-release for BRAT validation without replacing the latest stable release`
-        : `the next stable release`;
+        : `a stable version which will first be staged as a GitHub pre-release for BRAT validation`;
     const finaliseInstruction = isPrerelease
         ? "Run the finalise release workflow with this PR's fixed head SHA and `prerelease=true`"
-        : "Run the finalise release workflow with this PR's fixed head SHA and `prerelease=false`";
+        : "Run the finalise release workflow with this PR's fixed head SHA, `prerelease=true`, and `publish_cli=false`";
     const publicationInstruction = isPrerelease
         ? "Publish the GitHub Release as a pre-release without replacing the latest stable release, while keeping this pull request in draft"
-        : "Publish the GitHub Release as the latest stable release while keeping this pull request in draft";
+        : "Publish the GitHub Release initially as a pre-release without replacing the latest stable release, while keeping this pull request in draft";
+    const assetInstruction = isPrerelease
+        ? "Confirm the draft GitHub Release assets and the published CLI image, if selected"
+        : "Confirm the draft GitHub Release assets; keep stable CLI publication deferred until BRAT validation passes";
+    const holdInstruction = isPrerelease
+        ? `Publishing and validating this pre-release does not unblock this pull request. Keep it in draft and unmerged, and leave ${baseBranchCode} unchanged.`
+        : `Publishing the GitHub pre-release does not unblock this pull request. Keep it in draft, and leave ${baseBranchCode} unchanged, until the exact published build has passed BRAT validation and has been promoted to the latest stable release.`;
+    const completionInstructions = isPrerelease
+        ? [
+              "- [ ] Keep this pre-release pull request unmerged; close it only through a separate maintainer action",
+          ]
+        : [
+              "- [ ] Remove the pre-release designation and make this exact release the latest stable release",
+              "- [ ] Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate",
+              `- [ ] Mark this pull request ready and merge it into ${baseBranchCode} with a merge commit`,
+          ];
 
     return [
         `This release pull request prepares Self-hosted LiveSync ${versionCode} from ${baseBranchCode} as ${purpose}.`,
@@ -53,7 +69,7 @@ export function renderReleasePrBody(version, baseBranch) {
         "> [!IMPORTANT]",
         "> **Merge intentionally on hold**",
         ">",
-        `> Publishing the GitHub Release does not unblock this pull request. Keep this pull request in draft, and leave ${baseBranchCode} unchanged, until the exact published build has passed BRAT validation.`,
+        `> ${holdInstruction}`,
         "",
         "## Release checklist",
         "",
@@ -62,10 +78,10 @@ export function renderReleasePrBody(version, baseBranch) {
         "- [ ] Confirm `manifest.json`, `versions.json`, workspace package versions, and the locked Commonlib package version",
         "- [ ] Confirm CI has passed",
         `- [ ] ${finaliseInstruction}`,
-        "- [ ] Confirm the draft GitHub Release assets and the published CLI image, if selected",
+        `- [ ] ${assetInstruction}`,
         `- [ ] ${publicationInstruction}`,
         "- [ ] Validate the exact published release with BRAT",
-        `- [ ] Mark this pull request ready and merge it into ${baseBranchCode} with a merge commit`,
+        ...completionInstructions,
         "",
     ].join("\n");
 }

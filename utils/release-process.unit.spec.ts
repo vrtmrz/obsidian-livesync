@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { renderReleasePrBody } from "./release-pr-body.mjs";
 import { ensureTags } from "./release-tags.mjs";
 
 const releaseNotesScript = fileURLToPath(new URL("./release-notes.mjs", import.meta.url));
-const releasePrBodyScript = fileURLToPath(new URL("./release-pr-body.mjs", import.meta.url));
 const versionBumpScript =
     process.env.VERSION_BUMP_SCRIPT || fileURLToPath(new URL("../version-bump.mjs", import.meta.url));
 const workspaceUpdateScript = fileURLToPath(new URL("../update-workspaces.mjs", import.meta.url));
@@ -160,13 +160,12 @@ describe("release notes", () => {
 describe("release workflow", () => {
     it("uses the locked Commonlib package instead of generated fallback declarations", () => {
         const workflow = readFileSync(prepareReleaseWorkflow, "utf8");
-        const body = runNode(releasePrBodyScript, ["1.0.0-beta.0", "integration"], makeTemporaryDirectory());
+        const body = renderReleasePrBody("1.0.0-beta.0", "integration");
 
         expect(workflow).not.toContain("npm run build:lib:types");
         expect(workflow).not.toMatch(/git add[^\n]*_types/);
         expect(workflow).toMatch(/git add[^\n]*package-lock\.json/);
-        expect(body.status, body.stderr).toBe(0);
-        expect(body.stdout).toContain("locked Commonlib package version");
+        expect(body).toContain("locked Commonlib package version");
     });
 
     it("reruns the version lifecycle when the integration branch already selects the release version", () => {
@@ -183,36 +182,56 @@ describe("release workflow", () => {
         expect(workflow).not.toContain("latest stable release");
     });
 
-    it("keeps the release PR in draft until BRAT validation", () => {
-        const prerelease = runNode(
-            releasePrBodyScript,
-            ["1.0.0-beta.0", "common-library-package-boundary"],
-            makeTemporaryDirectory()
-        );
+    it("keeps an immutable pre-release out of its base branch after BRAT validation", () => {
+        const prerelease = renderReleasePrBody("1.0.0-rc.0", "common-library-package-boundary");
 
-        expect(prerelease.status, prerelease.stderr).toBe(0);
-        expect(prerelease.stdout).toContain("Merge intentionally on hold");
-        expect(prerelease.stdout).toContain("Self-hosted LiveSync `1.0.0-beta.0`");
-        expect(prerelease.stdout).toContain("leave `common-library-package-boundary` unchanged");
-        expect(prerelease.stdout).toContain("prerelease=true");
-        expect(prerelease.stdout).toContain(
+        expect(prerelease).toContain("Merge intentionally on hold");
+        expect(prerelease).toContain("Self-hosted LiveSync `1.0.0-rc.0`");
+        expect(prerelease).toContain("leave `common-library-package-boundary` unchanged");
+        expect(prerelease).toContain("prerelease=true");
+        expect(prerelease).toContain(
             "Publish the GitHub Release as a pre-release without replacing the latest stable release"
         );
-        expect(prerelease.stdout).toContain("Validate the exact published release with BRAT");
-        expect(prerelease.stdout).toContain(
-            "Mark this pull request ready and merge it into `common-library-package-boundary` with a merge commit"
-        );
+        expect(prerelease).toContain("Validate the exact published release with BRAT");
+        expect(prerelease).toContain("Keep this pre-release pull request unmerged");
+        expect(prerelease).toContain("close it only through a separate maintainer action");
+        expect(prerelease).not.toContain("Mark this pull request ready and merge it");
     });
 
-    it("keeps stable release instructions distinct from pre-release instructions", () => {
-        const stable = runNode(releasePrBodyScript, ["1.0.0", "main"], makeTemporaryDirectory());
+    it("publishes a stable version initially as a GitHub pre-release for BRAT validation", () => {
+        const stable = renderReleasePrBody("1.0.0", "main");
 
-        expect(stable.status, stable.stderr).toBe(0);
-        expect(stable.stdout).toContain("prerelease=false");
-        expect(stable.stdout).toContain(
-            "Publish the GitHub Release as the latest stable release while keeping this pull request in draft"
+        expect(stable).toContain("prerelease=true");
+        expect(stable).toContain("publish_cli=false");
+        expect(stable).toContain(
+            "Publish the GitHub Release initially as a pre-release without replacing the latest stable release"
         );
-        expect(stable.stdout).not.toContain("as a pre-release without replacing");
+        expect(stable).toContain(
+            "Remove the pre-release designation and make this exact release the latest stable release"
+        );
+        expect(stable).toContain(
+            "Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate"
+        );
+        expect(stable).toContain("Mark this pull request ready and merge it into `main` with a merge commit");
+        expect(stable).not.toContain("prerelease=false");
+    });
+
+    it("summarises immutable pre-releases separately from stable versions awaiting promotion", () => {
+        const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
+
+        expect(workflow).toContain('if [[ "${VERSION}" == *-* ]]; then');
+        expect(workflow).toContain(
+            "Keep the release pull request in draft and unmerged after BRAT validation; close it only through a separate maintainer action."
+        );
+        expect(workflow).toContain(
+            "After BRAT validation, remove the pre-release designation and make this exact release the latest stable release before merging the release pull request."
+        );
+        expect(workflow).toContain(
+            'if [[ "${VERSION}" != *-* && "${PRERELEASE}" == "true" && "${PUBLISH_CLI}" == "true" ]]; then'
+        );
+        expect(workflow).toContain(
+            "A stable version staged as a pre-release must use publish_cli=false so that the CLI latest and major-minor image tags do not advance before BRAT validation."
+        );
     });
 
     it("dispatches the plug-in workflow and lets the CLI tag trigger its own workflow", () => {

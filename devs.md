@@ -244,7 +244,9 @@ export class ModuleExample extends AbstractObsidianModule {
 - Use SemVer beta identifiers such as `1.0.0-beta.0` for immutable integration previews. Increment the beta number when a published preview needs a correction. Reserve `1.0.0-rc.0` for the first feature- and contract-frozen release candidate. Historical `-patchedN` releases remain unchanged in the release history.
 - Publish a pre-release from an immutable reviewed tag, mark its GitHub Release as a pre-release, and do not replace the latest stable release.
 - A plug-in review release may omit the CLI image when the CLI artefact is not part of the required validation. When a pre-release CLI image is published, it receives immutable version and SHA-qualified tags only; it must not advance `latest` or a stable major-minor tag.
-- Keep the release pull request in draft until the exact published plug-in has passed BRAT validation. If validation fails, prepare the next pre-release version rather than moving the existing tag.
+- Keep a hyphenated pre-release's release pull request in draft and unmerged after BRAT validation. Reconcile the published version's metadata into its base branch through a reviewed metadata-only commit, then close the release pull request only through a separate maintainer action.
+- Stage a stable version for BRAT by publishing its exact `x.y.z` tag initially as a GitHub pre-release with `prerelease=true` and `publish_cli=false`. The stable manifest version would otherwise make the CLI workflow advance `latest` and the major-minor image tag before validation.
+- If validation fails, leave every published tag unchanged and prepare the next pre-release or patch version.
 
 ## Release Notes
 
@@ -264,13 +266,15 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
 - Do not tag the release branch when the PR is first created. Polish the release PR first, especially `updates.md`.
 - Once the release PR head is fixed, run the `Finalise Release Tags` workflow with its full head commit SHA. It validates the release branch, ensures that the plug-in tag points to that commit, optionally creates the corresponding CLI tag, and dispatches the plug-in release workflow. A CLI tag starts its own container workflow. The finalisation workflow can be retried when existing tags already point to the reviewed commit, but stops if a selected tag points elsewhere.
 - The plug-in publishing workflow is intentionally dispatch-only. Pushing a plug-in tag directly does not publish a GitHub Release; use `Finalise Release Tags`, or dispatch `Release Obsidian Plugin` explicitly for recovery or a pre-release. The CLI Docker workflow retains its documented branch, tag, and manual triggers.
-- Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. For a selected CLI publication, confirm the image tags appropriate to a stable or pre-release version.
-- Publish a stable draft as the latest release, or publish a pre-release draft without replacing the latest stable release. In either case, keep the release PR in draft and leave its base branch unchanged until BRAT validation succeeds. Record that state in the PR.
+- For a hyphenated pre-release, run finalisation with `prerelease=true`; CLI publication remains optional. For a stable version awaiting BRAT validation, use `prerelease=true` and `publish_cli=false`.
+- Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. When a hyphenated pre-release includes the CLI, confirm that it received only its immutable version and SHA-qualified image tags.
+- Publish the draft as a GitHub pre-release without replacing the latest stable release. Keep its release pull request in draft and leave its base branch unchanged throughout BRAT validation. Record that state in the pull request.
 - Validate the published release through BRAT. Confirm start-up, ordinary bidirectional synchronisation, and any regression scenario relevant to the release.
-- After BRAT validation succeeds, mark the release PR ready and merge it into the selected base branch with a merge commit. This keeps the tagged release commit in that branch's history.
+- After a hyphenated pre-release passes, keep its release pull request unmerged. Add a reviewed metadata-only commit to the selected base branch which records the published version in `versions.json` and moves its exact tagged release notes out of `## Unreleased`, then close the release pull request only through a separate maintainer action.
+- After a stable version passes, remove its GitHub pre-release designation and make that exact release the latest stable release. Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate. Only then mark the stable release pull request ready and merge it into the selected base branch with a merge commit.
 - If BRAT validation fails, keep the release PR in draft and do not move published tags. Before preparing the next version, add a reviewed metadata-only commit to the selected base branch which records the published version in `versions.json` and moves its exact tagged release notes out of `## Unreleased`. Keep only changes made after that tag under `## Unreleased`. Compare the historical section with `git show <tag>:updates.md`; do not merge the failed release PR or describe it as validated. The next release PR can then rotate only the correction notes while preserving the immutable release history.
 - Prepare and publish the next patch or pre-release version from that reconciled base. Leave the failed release PR draft until it is deliberately closed as superseded under a separate maintainer action.
-- For a pre-release, set `prerelease=true` in `Finalise Release Tags`. A hyphenated version is rejected unless that input is enabled.
+- A hyphenated version is rejected unless `prerelease=true`. A stable version staged with `prerelease=true` is rejected unless `publish_cli=false`.
 
 ### Release Cheat Sheet
 
@@ -290,15 +294,16 @@ The `Finalise Release Tags` and `Release Obsidian Plugin` workflows use the `rel
     - `version`: the same target version.
     - `release_branch`: leave blank unless the release branch used a custom name.
     - `expected_head_sha`: the full head commit SHA reviewed in the release PR.
-    - `prerelease`: enable for a version such as `1.0.0-rc.0`.
-    - `publish_cli`: disable when the reviewed release is plug-in-only.
+    - `prerelease`: enable for a version such as `1.0.0-rc.0`, and also when staging a stable version for BRAT.
+    - `publish_cli`: optional for a hyphenated pre-release, but disable it when staging a stable version.
 5. Approve the `Release Obsidian Plugin` workflow for the `release` environment, then check the generated draft GitHub Release.
-6. If CLI publication was selected, confirm that the CLI tag event published the expected image tags.
-7. Publish the draft as a stable release or pre-release as selected, but keep the release PR in draft and leave its base branch unchanged.
-8. Update the PR state message to describe the published release and state that merging remains on hold until BRAT validation is complete.
+6. If a hyphenated pre-release includes the CLI, confirm that the CLI tag event published only immutable version and SHA-qualified image tags.
+7. Publish the draft as a GitHub pre-release without replacing the latest stable release, but keep the release PR in draft and leave its base branch unchanged.
+8. Update the PR state message to describe the published pre-release and state that merging remains on hold.
 9. Validate the published release through BRAT, including start-up, ordinary bidirectional synchronisation, and any release-specific regression scenario.
-10. After BRAT validation succeeds, mark the release PR ready and merge it into the selected base branch with a merge commit.
-11. If validation fails, leave the PR in draft and do not move the published tags. Reconcile the published version's `updates.md` section and `versions.json` entry into the base branch as metadata only, then prepare the next patch or pre-release version from the remaining `## Unreleased` entries.
+10. After a hyphenated pre-release passes, keep its release PR unmerged, reconcile its `versions.json` entry and exact release-note section into the selected base branch as metadata only, then close the PR through a separate maintainer action.
+11. After a stable version passes, remove its pre-release designation, make the exact release the latest stable release, publish the stable CLI tags through a separate maintainer gate if selected, then mark the release PR ready and merge it into the selected base branch.
+12. If validation fails, leave the PR in draft and do not move the published tags. Reconcile the published version's `updates.md` section and `versions.json` entry into the base branch as metadata only, then prepare the next patch or pre-release version from the remaining `## Unreleased` entries.
 
 ## Contribution Guidelines
 
