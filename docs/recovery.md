@@ -41,7 +41,7 @@ The `Hatch` recovery controls are ordered by escalation. Running **Recreate chun
 1. Stop editing the affected file, pause replication on the participating devices, and keep a separate copy of every readable version.
 2. If another device or backup has the intended content, preserve that copy before changing any revision.
 3. If the current Vault file is readable, select **Recreate current chunks**. This can restore only chunks derived from the current Vault contents; it cannot reconstruct unique bytes from an unavailable historical or conflict revision.
-4. Select **Inspect conflicts and file/database differences** → **Scan all files**.
+4. Select **Inspect conflicts and file/database differences** → **Begin inspection**.
 5. Review the database winner, every conflict revision, and any unavailable shared ancestor separately. Revision identifiers, `Δsize`, `Δtime`, and chunk availability are diagnostic evidence; they do not decide which content is correct.
 6. Use the wrench menu on the exact revision:
    - **Compare with Vault** opens a read-only comparison for readable text.

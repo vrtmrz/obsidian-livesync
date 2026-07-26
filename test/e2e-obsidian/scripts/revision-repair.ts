@@ -373,7 +373,7 @@ async function main(): Promise<void> {
                     exact: true,
                 }),
             });
-            await verifySetting.getByRole("button", { name: "Scan all files", exact: true }).click({
+            await verifySetting.getByRole("button", { name: "Begin inspection", exact: true }).click({
                 timeout: uiTimeoutMs,
             });
             const card = repairCard(settings);

@@ -735,7 +735,7 @@ Recreate chunks from files currently present in the Vault. This can repair missi
 
 Compare each Vault file with every current live revision in the local database. Each winner and conflict revision is shown separately with its exact revision identifier, local chunk availability, and relationship to the current Vault file. Unavailable shared ancestors are reported separately because they prevent conservative three-way merging but are not live revisions which can be discarded.
 
-Select **Scan all files** to run the inspection. Each reported file and live revision has a wrench menu for read-only comparison, applying an exact database revision to the Vault, recording an exact byte match, preserving the Vault file as a child of a selected branch, retrying chunk retrieval, or explicitly discarding a branch. Destructive actions require confirmation. Follow [Recover a conflicted or mismatched file](recovery.md#recover-a-conflicted-or-mismatched-file) before changing revision history.
+Select **Begin inspection** to run the inspection. Each reported file and live revision has a wrench menu for read-only comparison, applying an exact database revision to the Vault, recording an exact byte match, preserving the Vault file as a child of a selected branch, retrying chunk retrieval, or explicitly discarding a branch. Destructive actions require confirmation. Follow [Recover a conflicted or mismatched file](recovery.md#recover-a-conflicted-or-mismatched-file) before changing revision history.
 
 #### Resolve All conflicted files by the newer one
 

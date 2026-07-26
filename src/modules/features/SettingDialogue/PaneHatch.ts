@@ -832,7 +832,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             )
             .addButton((button) =>
                 button
-                    .setButtonText($msg("Scan all files"))
+                    .setButtonText($msg("Begin inspection"))
                     .setDisabled(false)
                     .setCta()
                     .onClick(async () => {

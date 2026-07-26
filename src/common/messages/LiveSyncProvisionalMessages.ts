@@ -144,7 +144,7 @@ export const liveSyncProvisionalEnglishMessages = {
         "Inspect conflicts and file/database differences",
     "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision.":
         "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision.",
-    "Scan all files": "Scan all files",
+    "Begin inspection": "Begin inspection",
     "Connection settings": "Connection settings",
     "Saved connections": "Saved connections",
 } as const;

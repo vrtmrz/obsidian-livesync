@@ -797,7 +797,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
-            await liveSyncSettings.getByRole("button", { name: "Scan all files", exact: true }).waitFor({
+            await liveSyncSettings.getByRole("button", { name: "Begin inspection", exact: true }).waitFor({
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
@@ -918,7 +918,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
         await page
             .locator(".sls-setting:visible")
             .last()
-            .getByRole("button", { name: "Scan all files", exact: true })
+            .getByRole("button", { name: "Begin inspection", exact: true })
             .click({
                 timeout: uiTimeoutMs,
             });
