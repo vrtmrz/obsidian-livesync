@@ -101,8 +101,15 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   VERSION: ${{ inputs.version }}
                   PRERELEASE: ${{ inputs.prerelease }}
+                  PUBLISH_CLI: ${{ inputs.publish_cli }}
               run: |
                   set -euo pipefail
+                  if [[ "${PUBLISH_CLI}" == "true" ]]; then
+                    gh workflow run cli-docker.yml \
+                      --ref "${VERSION}-cli" \
+                      --field dry_run=false \
+                      --field force=false
+                  fi
                   gh workflow run release.yml \
                     --ref "${VERSION}" \
                     --field tag="${VERSION}" \
@@ -118,7 +125,7 @@ jobs:
                   {
                     echo "Ensured the plug-in tag \`${VERSION}\` points to the reviewed release commit."
                     if [[ "${PUBLISH_CLI}" == "true" ]]; then
-                      echo "The CLI tag \`${VERSION}-cli\` was also created; its tag event starts the container workflow."
+                      echo "The CLI tag \`${VERSION}-cli\` was also created, and finalisation explicitly dispatched the CLI container workflow."
                     else
                       echo "CLI publication was omitted."
                     fi

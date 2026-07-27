@@ -234,16 +234,21 @@ describe("release workflow", () => {
         );
     });
 
-    it("dispatches the plug-in workflow and lets the CLI tag trigger its own workflow", () => {
+    it("dispatches the selected plug-in and CLI workflows explicitly", () => {
         const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
 
         expect(workflow).toContain("actions: write");
         expect(workflow).toContain('node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}"');
         expect(workflow).toContain('git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"');
         expect(workflow).not.toContain("Tag already exists");
+        expect(workflow).toContain("PUBLISH_CLI: ${{ inputs.publish_cli }}");
+        expect(workflow).toContain('if [[ "${PUBLISH_CLI}" == "true" ]]; then');
+        expect(workflow).toContain("gh workflow run cli-docker.yml");
+        expect(workflow).toContain('--ref "${VERSION}-cli"');
+        expect(workflow).toContain("--field dry_run=false");
+        expect(workflow).toContain("--field force=false");
         expect(workflow).toContain("gh workflow run release.yml");
-        expect(workflow).not.toContain("gh workflow run cli-docker.yml");
-        expect(workflow).toContain("its tag event starts the container workflow");
+        expect(workflow).toContain("explicitly dispatched the CLI container workflow");
     });
 
     it("publishes only by explicit dispatch and validates the selected release", () => {

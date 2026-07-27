@@ -12,6 +12,30 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.0-rc.1
+
+27th July, 2026
+
+The work towards 1.0 has become so substantial that I have written [an article about it](https://fancy-syncing.vrtmrz.net/blog/0036-livesync-1_0_0-en.html) (linked again here).
+
+### Important
+
+- This candidate retains the plug-in behaviour prepared for rc.0. The version was advanced because release tags are immutable; rc.0 was stopped during CLI validation before a plug-in release was published.
+- This remains an opt-in pre-release for BRAT validation and does not replace the latest stable release. The exact rc.1 plug-in and CLI artefacts will be validated separately after publication.
+
+### CLI and release validation
+
+- CLI release validation now generates Setup URIs through the supported ESM package interface, allowing the Docker test to reach the CLI container instead of stopping during test preparation.
+- The CLI Docker image now assigns its entrypoint permissions explicitly, so non-root execution does not depend on permissions inherited from the source checkout.
+- Release finalisation now explicitly dispatches the CLI container workflow when CLI publication is selected, rather than relying on a workflow-created tag to start another workflow.
+- Focused regression tests guard the ESM execution mode and deterministic container entrypoint permissions, while the existing release-workflow tests now require explicit CLI dispatch with non-dry-run, immutable-tag inputs.
+
+### Testing
+
+- The native CLI setup, put, cat, list, information, deletion, conflict-resolution, and revision-retrieval scenario completed with the packaged Commonlib dependency.
+- The same scenario completed through the rebuilt non-root Docker image.
+- The focused CLI and release-workflow unit tests passed after first demonstrating all three regressions against the unmodified implementation.
+
 ## 1.0.0-rc.0
 
 27th July, 2026

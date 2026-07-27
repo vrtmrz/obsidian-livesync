@@ -27,7 +27,7 @@ cli_test_init_settings_file "$SETTINGS_FILE"
 
 echo "[INFO] creating setup URI from settings"
 SETUP_URI="$(
-    SETTINGS_FILE="$SETTINGS_FILE" SETUP_PASSPHRASE="$SETUP_PASSPHRASE" npx tsx -e '
+    SETTINGS_FILE="$SETTINGS_FILE" SETUP_PASSPHRASE="$SETUP_PASSPHRASE" node --input-type=module -e '
 import { fs } from "@vrtmrz/livesync-commonlib/node";
 import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 (async () => {

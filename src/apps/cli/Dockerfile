@@ -101,9 +101,9 @@ COPY --from=runtime-deps /deps/node_modules ./node_modules
 # Copy the built CLI bundle from builder stage
 COPY --from=builder /build/src/apps/cli/dist ./dist
 
-# Install entrypoint wrapper
-COPY src/apps/cli/docker-entrypoint.sh /usr/local/bin/livesync-cli
-RUN chmod +x /usr/local/bin/livesync-cli
+# Install the entrypoint wrapper with a deterministic mode, regardless of
+# source checkout permissions.
+COPY --chmod=755 src/apps/cli/docker-entrypoint.sh /usr/local/bin/livesync-cli
 
 # Mount your vault / local database directory here
 VOLUME ["/data"]
