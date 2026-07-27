@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.0-rc.0
+
+27th July, 2026
+
 ### Improved
 
 - The Hatch action for **Inspect conflicts and file/database differences** is now labelled **Begin inspection** so that its purpose is clear without repeating the scope already stated by the setting.
