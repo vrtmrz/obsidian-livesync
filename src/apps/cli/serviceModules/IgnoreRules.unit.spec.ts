@@ -1,6 +1,4 @@
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
+import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const minimatchStats = vi.hoisted(() => ({ constructions: 0 }));
@@ -140,11 +138,13 @@ describe("IgnoreRules", () => {
             const vaultPath = await createVault();
             // Typo: "import:.gitignore" instead of "import: .gitignore"
             await writeIgnoreFile(vaultPath, "*.tmp\nimport:.gitignore\n");
-            const rules = new IgnoreRules(vaultPath);
+            const reportDiagnostic = vi.fn();
+            const rules = new IgnoreRules(vaultPath, reportDiagnostic);
             await rules.load();
             // *.tmp still loaded; import:.gitignore is skipped (not treated as a literal pattern)
             expect(rules.shouldIgnore("scratch.tmp")).toBe(true);
             expect(rules.shouldIgnore("import:.gitignore")).toBe(false);
+            expect(reportDiagnostic).toHaveBeenCalledWith(expect.stringContaining("unrecognised directive"));
         });
     });
 

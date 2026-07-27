@@ -1,8 +1,27 @@
+/**
+ * Verifies one complete Object Storage upload from a real Obsidian Vault,
+ * through LiveSync's local database and Journal Sync, to an S3-compatible
+ * service observed independently through the AWS SDK.
+ *
+ * The isolated Vault starts with Object Storage settings and the device-local
+ * compatibility acknowledgement already in place. Unconfigured start-up is
+ * intentionally inert and belongs to the onboarding scenario; compatibility
+ * review and visible setup have their own dedicated workflows. Supplying those
+ * prerequisites here keeps this scenario focused on the upload boundary.
+ *
+ * Note creation, local-database observation, one-shot synchronisation, request
+ * accounting, remote-object inspection, and prefix cleanup remain in one
+ * scenario so that a pass proves the same payload crossed every boundary.
+ * Separate successes would not prove that those observations belonged to the
+ * same upload.
+ */
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
     configureObjectStorage,
+    createE2eObjectStoragePluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
@@ -100,6 +119,11 @@ async function main(): Promise<void> {
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+            pluginData: createE2eObjectStoragePluginData({
+                ...objectStorage,
+                bucketPrefix,
+            }),
+            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
 

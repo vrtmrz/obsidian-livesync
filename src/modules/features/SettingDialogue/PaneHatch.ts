@@ -3,15 +3,15 @@ import {
     type DocumentID,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
-    type LoadedEntry,
-    type MetaEntry,
     type FilePath,
     type EntryDoc,
-} from "@lib/common/types.ts";
-import { createBlob, getFileRegExp, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { addPrefix, shouldBeIgnored, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
-import { $msg } from "@lib/common/i18n.ts";
+    type diff_result,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { createBlob, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { shouldBeIgnored } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { Menu, diff_match_patch, setIcon } from "@/deps.ts";
+import { $msg } from "@/common/translation";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import {
@@ -21,12 +21,29 @@ import {
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
 } from "@/common/events.ts";
-import { ICHeader, ICXHeader, PSCHeader } from "@/common/types.ts";
 import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { isNotFoundError } from "@lib/common/utils.doc.ts";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import {
+    chooseAndCopyFileDatabaseInfo,
+    collectFileDatabaseInfoPaths,
+    copyFileDatabaseInfo,
+    retryReadFileDatabaseRevision,
+} from "@/serviceFeatures/fileDatabaseInfo.ts";
+import {
+    discardLiveBranch,
+    discardUnreadableLiveRevision,
+    inspectFileRepair,
+    type FileRepairInspection,
+    type FileRepairRevision,
+} from "@/serviceFeatures/fileRepair.ts";
+import {
+    getFileRepairRevisionActions,
+    getFileRepairRevisionComparison,
+} from "@/serviceFeatures/fileRepairPresentation.ts";
+import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
     // hatchWarn.addClass("op-warn-info");
@@ -68,6 +85,18 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                 })
         );
         new Setting(paneEl)
+            .setName($msg("Copy database information for a file"))
+            .setDesc(
+                $msg(
+                    "Copy revision, conflict, and local chunk availability information, including document and chunk identifiers but not file contents."
+                )
+            )
+            .addButton((button) =>
+                button.setButtonText($msg("Choose file")).onClick(async () => {
+                    await chooseAndCopyFileDatabaseInfo(this.core);
+                })
+            );
+        new Setting(paneEl)
             .setName($msg("Analyse database usage"))
             .setDesc(
                 $msg(
@@ -99,181 +128,718 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
     });
 
     void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
-        const addResult = async (path: string, file: FilePathWithPrefix | false, fileOnDB: LoadedEntry | false) => {
-            const storageFileStat = file ? await this.core.storageAccess.statHidden(file) : null;
-            resultArea.appendChild(
-                this.createEl(resultArea, "div", {}, (el) => {
-                    el.appendChild(this.createEl(el, "h6", { text: path }));
-                    el.appendChild(
-                        this.createEl(el, "div", {}, (infoGroupEl) => {
-                            infoGroupEl.appendChild(
-                                this.createEl(infoGroupEl, "div", {
-                                    text: `Storage : Modified: ${!storageFileStat ? `Missing:` : `${new Date(storageFileStat.mtime).toLocaleString()}, Size:${storageFileStat.size}`}`,
-                                })
-                            );
-                            infoGroupEl.appendChild(
-                                this.createEl(infoGroupEl, "div", {
-                                    text: `Database: Modified: ${!fileOnDB ? `Missing:` : `${new Date(fileOnDB.mtime).toLocaleString()}, Size:${fileOnDB.size} (actual size:${readAsBlob(fileOnDB).size})`}`,
-                                })
-                            );
-                        })
-                    );
-                    if (fileOnDB && file) {
-                        el.appendChild(
-                            this.createEl(el, "button", { text: "Show history" }, (buttonEl) => {
-                                buttonEl.onClickEvent(() => {
-                                    eventHub.emitEvent(EVENT_REQUEST_SHOW_HISTORY, {
-                                        file: file,
-                                        fileOnDB: fileOnDB,
+        const resultArea = paneEl.createDiv({ text: "", cls: "sls-repair-results" });
+        type RepairMenuAction = {
+            title: string;
+            run: () => Promise<void> | void;
+            warning?: boolean;
+        };
+        const addActionMenu = (
+            parent: HTMLElement,
+            label: string,
+            actions: RepairMenuAction[]
+        ) => {
+            if (actions.length === 0) {
+                return;
+            }
+            this.createEl(parent, "button", { cls: "sls-repair-action-menu" }, (button) => {
+                setIcon(button, "wrench");
+                button.setAttr("aria-label", label);
+                button.setAttr("title", label);
+                button.onClickEvent(() => {
+                    const menu = new Menu();
+                    for (const action of actions) {
+                        menu.addItem((item) => {
+                            item.setTitle(action.title);
+                            if (action.warning) {
+                                item.setWarning(true);
+                            }
+                            item.onClick(() => {
+                                button.disabled = true;
+                                void Promise.resolve()
+                                    .then(() => action.run())
+                                    .catch((error) => {
+                                        Logger(error, LOG_LEVEL_VERBOSE);
+                                        Logger(
+                                            `Repair action '${action.title}' failed`,
+                                            LOG_LEVEL_NOTICE
+                                        );
+                                    })
+                                    .finally(() => {
+                                        if (button.isConnected) {
+                                            button.disabled = false;
+                                        }
                                     });
-                                });
-                            })
-                        );
+                            });
+                        });
                     }
-                    if (file) {
-                        el.appendChild(
-                            this.createEl(el, "button", { text: "Storage -> Database" }, (buttonEl) => {
-                                buttonEl.onClickEvent(async () => {
-                                    if (file.startsWith(".")) {
-                                        const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
-                                        if (addOn) {
-                                            const file = (await addOn.scanInternalFiles()).find((e) => e.path == path);
-                                            if (!file) {
-                                                Logger(
-                                                    `Failed to find the file in the internal files: ${path}`,
-                                                    LOG_LEVEL_NOTICE
-                                                );
-                                                return;
+                    const rect = button.getBoundingClientRect();
+                    menu.showAtPosition({ x: rect.left, y: rect.bottom });
+                });
+            });
+        };
+        const findHiddenFile = async (path: string) => {
+            const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
+            if (!addOn) {
+                return false;
+            }
+            const file = (await addOn.scanInternalFiles()).find((entry) => entry.path === path);
+            if (!file) {
+                Logger(`Failed to find the file in the internal files: ${path}`, LOG_LEVEL_NOTICE);
+                return false;
+            }
+            return { addOn, file };
+        };
+        const storeStorageInDatabase = async (path: string): Promise<boolean> => {
+            if (path.startsWith(".")) {
+                const hidden = await findHiddenFile(path);
+                return hidden
+                    ? Boolean(await hidden.addOn.storeInternalFileToDatabase(hidden.file, true))
+                    : false;
+            }
+            return Boolean(await this.core.fileHandler.storeFileToDB(path as FilePath, true));
+        };
+        const storeStorageOnRevision = async (
+            path: string,
+            revision: string,
+            createIfDifferent = true
+        ): Promise<boolean> => {
+            if (path.startsWith(".")) {
+                const hidden = await findHiddenFile(path);
+                return hidden
+                    ? Boolean(
+                          await hidden.addOn.storeInternalFileToDatabaseWithBaseRevision(
+                              hidden.file,
+                              revision,
+                              createIfDifferent
+                          )
+                      )
+                    : false;
+            }
+            return Boolean(
+                await this.core.fileHandler.storeFileToDBWithBaseRevision(
+                    path as FilePath,
+                    revision,
+                    createIfDifferent
+                )
+            );
+        };
+        const applyRevisionToStorage = async (
+            path: string,
+            revision: string,
+            force: boolean
+        ): Promise<boolean> => {
+            if (path.startsWith(".")) {
+                const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
+                return addOn
+                    ? Boolean(
+                          await addOn.extractInternalFileRevisionFromDatabase(
+                              path as FilePath,
+                              revision,
+                              force
+                          )
+                      )
+                    : false;
+            }
+            return Boolean(
+                await this.core.fileHandler.dbToStorageWithSpecificRev(
+                    path as FilePath,
+                    revision,
+                    force
+                )
+            );
+        };
+        const openRevisionComparison = async (
+            path: string,
+            selectedRevision: string
+        ): Promise<boolean> => {
+            const latest = await inspectFileRepair(this.core, path);
+            const revision = latest.revisions.find(
+                ({ metadata }) => metadata.revision === selectedRevision
+            );
+            if (
+                !latest.information.storage.exists ||
+                !revision ||
+                revision.loadedEntry === false
+            ) {
+                Logger(
+                    `Could not compare ${path} revision ${selectedRevision}; the Vault file or selected live revision is no longer readable`,
+                    LOG_LEVEL_NOTICE
+                );
+                return false;
+            }
+            const vaultText = await createBlob(
+                await this.core.storageAccess.readHiddenFileBinary(path)
+            ).text();
+            const databaseText = await readAsBlob(revision.loadedEntry).text();
+            const dmp = new diff_match_patch();
+            const diff = dmp.diff_main(vaultText, databaseText);
+            dmp.diff_cleanupSemantic(diff);
+            const result: diff_result = {
+                left: {
+                    rev: "vault",
+                    data: vaultText,
+                    ctime: latest.information.storage.ctime ?? 0,
+                    mtime: latest.information.storage.mtime ?? 0,
+                },
+                right: {
+                    rev: selectedRevision,
+                    data: databaseText,
+                    ctime: revision.metadata.ctime,
+                    mtime: revision.metadata.mtime,
+                },
+                diff,
+            };
+            new ConflictResolveModal(
+                this.app,
+                path as FilePathWithPrefix,
+                result,
+                false,
+                undefined,
+                {
+                    readOnly: true,
+                    title: $msg("Vault and database revision"),
+                    localName: $msg("Vault file"),
+                    remoteName: $msg("Database revision"),
+                }
+            ).open();
+            return true;
+        };
+        const formatSigned = (value: number) => `${value >= 0 ? "+" : ""}${value}`;
+        const timestampRelationLabel = (
+            relation: ReturnType<typeof getFileRepairRevisionComparison>["timestampRelation"]
+        ) => {
+            switch (relation) {
+                case "vault-newer":
+                    return $msg("Vault file is newer");
+                case "database-newer":
+                    return $msg("Database revision is newer");
+                case "same-window":
+                    return $msg("Within the two-second comparison window");
+                default:
+                    return $msg("Timestamp comparison unavailable");
+            }
+        };
+        const addRepairResult = (inspection: FileRepairInspection) => {
+            const { information, revisions } = inspection;
+            const path = information.path;
+            const card = this.createEl(resultArea, "div", { cls: "sls-repair-result" });
+            const refresh = async () => {
+                card.remove();
+                const refreshed = await inspectFileRepair(this.core, path);
+                if (refreshed.requiresAttention) {
+                    addRepairResult(refreshed);
+                } else {
+                    Logger(`Verification no longer reports a problem for ${path}`, LOG_LEVEL_NOTICE);
+                }
+            };
+            const runMutation = async (
+                description: string,
+                mutation: () => Promise<boolean>
+            ) => {
+                try {
+                    const succeeded = await mutation();
+                    if (!succeeded) {
+                        Logger(`${description} failed: ${path}`, LOG_LEVEL_NOTICE);
+                    }
+                } finally {
+                    await refresh();
+                }
+            };
+            const discardLiveBranchAction = (revision: string): RepairMenuAction => ({
+                title: $msg("Discard this branch"),
+                warning: true,
+                run: async () => {
+                    const confirmed =
+                        (await this.core.confirm.askYesNoDialog(
+                            $msg(
+                                "Discard database branch ${REVISION} of ${FILE}? This creates a logical deletion for that exact live branch. The current Vault file will not be changed.",
+                                {
+                                    REVISION: revision,
+                                    FILE: path,
+                                }
+                            ),
+                            {
+                                title: $msg("Discard branch"),
+                                defaultOption: "No",
+                            }
+                        )) === "yes";
+                    if (!confirmed) {
+                        return;
+                    }
+                    const result = await discardLiveBranch(this.core, path, revision);
+                    Logger(
+                        `Discard database branch ${revision} of ${path}: ${result}`,
+                        result === "discarded" ? LOG_LEVEL_NOTICE : LOG_LEVEL_VERBOSE
+                    );
+                    await refresh();
+                },
+            });
+
+            const fileHeader = this.createEl(card, "div", { cls: "sls-repair-header" });
+            this.createEl(fileHeader, "h6", { text: path });
+            const fileMenuHost = this.createEl(fileHeader, "div");
+            if (information.storage.exists) {
+                this.createEl(card, "div", {
+                    text: $msg("📁 Vault: ${SIZE} B · ${TIME}", {
+                        TIME: new Date(information.storage.mtime ?? 0).toLocaleString(),
+                        SIZE: `${information.storage.size ?? 0}`,
+                    }),
+                    cls: "sls-repair-metric",
+                });
+            } else {
+                this.createEl(card, "div", {
+                    text: $msg("📁 Vault: missing"),
+                    cls: "sls-repair-metric",
+                });
+            }
+            if (!information.database.exists) {
+                this.createEl(card, "div", {
+                    text: $msg("🗄️ Local DB: missing"),
+                    cls: "sls-repair-metric",
+                });
+            }
+            if (information.database.conflictCount > 0) {
+                const winner = revisions.find(({ role }) => role === "winner");
+                const vaultMatchesWinner =
+                    winner !== undefined &&
+                    (winner.metadata.deleted
+                        ? !information.storage.exists
+                        : information.storage.exists &&
+                          winner.contentMatchesStorage === true);
+                const status = this.createEl(card, "div", { cls: "sls-repair-status" });
+                if (vaultMatchesWinner) {
+                    this.createEl(status, "span", {
+                        text: $msg("✅ Vault matches winner"),
+                        cls: "sls-repair-status-ok",
+                    });
+                }
+                this.createEl(status, "span", {
+                    text: $msg("⚠️ Conflicts: ${COUNT}", {
+                        COUNT: `${information.database.conflictCount}`,
+                    }),
+                    cls: "sls-repair-status-warning",
+                });
+            }
+
+            const addRevision = (revision: FileRepairRevision) => {
+                const { metadata } = revision;
+                const revisionEl = this.createEl(card, "div", { cls: "sls-repair-revision" });
+                const revisionHeader = this.createEl(revisionEl, "div", {
+                    cls: "sls-repair-header",
+                });
+                this.createEl(revisionHeader, "div", {
+                    text: $msg("${ROLE}: ${REVISION}", {
+                        ROLE: revision.role === "winner" ? $msg("Winner revision") : $msg("Conflict revision"),
+                        REVISION: metadata.revision ?? $msg("Unknown revision"),
+                    }),
+                    cls: "sls-repair-revision-title",
+                });
+                const revisionMenuHost = this.createEl(revisionHeader, "div");
+                const comparison = getFileRepairRevisionComparison(inspection, revision);
+                if (metadata.deleted) {
+                    this.createEl(revisionEl, "div", {
+                        text: $msg("🗑️ Logical deletion"),
+                        cls: "sls-repair-metric",
+                    });
+                } else if (revision.contentReadable) {
+                    this.createEl(revisionEl, "div", {
+                        text: $msg(
+                            "📦 DB: recorded ${RECORDED} B · decoded ${DECODED} B · Δsize ${DIFFERENCE} B",
+                            {
+                                RECORDED: `${comparison.recordedSize}`,
+                                DECODED: `${comparison.decodedSize ?? 0}`,
+                                DIFFERENCE: formatSigned(
+                                    comparison.recordedToDecodedSizeDifference ?? 0
+                                ),
+                            }
+                        ),
+                        cls: "sls-repair-metric",
+                    });
+                } else {
+                    const missing = metadata.chunks.filter(
+                        ({ embedded, localDatabaseState }) =>
+                            !embedded && localDatabaseState !== "available"
+                    );
+                    this.createEl(revisionEl, "div", {
+                        text: $msg("🧩 Missing chunks: ${COUNT}", {
+                            COUNT: `${missing.length}`,
+                        }),
+                        cls: "sls-repair-metric mod-warning",
+                    });
+                    this.createEl(revisionEl, "div", {
+                        text: $msg("📦 DB: recorded ${RECORDED} B · decoded unavailable", {
+                            RECORDED: `${comparison.recordedSize}`,
+                        }),
+                        cls: "sls-repair-metric",
+                    });
+                    if (missing.length > 0) {
+                        this.createEl(revisionEl, "code", {
+                            text: missing
+                                .slice(0, 3)
+                                .map(({ id }) => id)
+                                .join(", ") + (missing.length > 3 ? ", …" : ""),
+                        });
+                    }
+                }
+                if (
+                    comparison.vaultSize !== null &&
+                    comparison.databaseToVaultSizeDifference !== null
+                ) {
+                    this.createEl(revisionEl, "div", {
+                        text: $msg("📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B", {
+                            VAULT: `${comparison.vaultSize}`,
+                            DIFFERENCE: formatSigned(
+                                comparison.databaseToVaultSizeDifference
+                            ),
+                        }),
+                        cls: "sls-repair-metric",
+                    });
+                }
+                if (
+                    comparison.vaultMtime !== null &&
+                    comparison.timestampDifferenceMs !== null
+                ) {
+                    this.createEl(revisionEl, "div", {
+                        text: $msg(
+                            "🕒 DB ${DATABASE_TIME} · Vault ${VAULT_TIME} · Δtime ${DIFFERENCE} ms (${RELATION})",
+                            {
+                                DATABASE_TIME: new Date(
+                                    comparison.databaseMtime
+                                ).toLocaleString(),
+                                VAULT_TIME: new Date(
+                                    comparison.vaultMtime
+                                ).toLocaleString(),
+                                DIFFERENCE: formatSigned(
+                                    comparison.timestampDifferenceMs
+                                ),
+                                RELATION: timestampRelationLabel(
+                                    comparison.timestampRelation
+                                ),
+                            }
+                        ),
+                        cls: "sls-repair-metric",
+                    });
+                }
+                if (revision.contentMatchesStorage === true) {
+                    this.createEl(revisionEl, "div", {
+                        text: $msg("✅ Matches Vault"),
+                        cls: "sls-repair-metric",
+                    });
+                } else if (revision.contentMatchesStorage === false) {
+                    this.createEl(revisionEl, "div", {
+                        text: $msg("⚠️ Differs from Vault"),
+                        cls: "sls-repair-metric mod-warning",
+                    });
+                }
+
+                const policy = getFileRepairRevisionActions(inspection, revision);
+                const revisionActions: RepairMenuAction[] = [];
+                if (metadata.revision && policy.compareWithVault) {
+                    revisionActions.push({
+                        title: $msg("Compare with Vault"),
+                        run: async () => {
+                            await openRevisionComparison(path, metadata.revision!);
+                        },
+                    });
+                }
+                if (metadata.revision && policy.applyRevisionToVault) {
+                    revisionActions.push({
+                        title: $msg("Apply this revision to Vault"),
+                        run: async () => {
+                            if (await this.core.storageAccess.isExistsIncludeHidden(path)) {
+                                const confirmed =
+                                    (await this.core.confirm.askYesNoDialog(
+                                        $msg(
+                                            "Apply database revision ${REVISION} to ${FILE}? The current Vault file will be overwritten.",
+                                            {
+                                                REVISION: metadata.revision!,
+                                                FILE: path,
                                             }
-                                            if (!(await addOn.storeInternalFileToDatabase(file, true))) {
-                                                Logger(
-                                                    `Failed to store the file to the database (Hidden file): ${file.path}`,
-                                                    LOG_LEVEL_NOTICE
-                                                );
-                                                return;
+                                        ),
+                                        {
+                                            title: $msg("Apply database revision to Vault"),
+                                            defaultOption: "No",
+                                        }
+                                    )) === "yes";
+                                if (!confirmed) {
+                                    return;
+                                }
+                            }
+                            await runMutation(
+                                `Apply database revision ${metadata.revision} to the Vault`,
+                                () =>
+                                    applyRevisionToStorage(
+                                        path,
+                                        metadata.revision!,
+                                        true
+                                    )
+                            );
+                        },
+                    });
+                }
+                if (metadata.revision && policy.markAsVaultRevision) {
+                    revisionActions.push({
+                        title: $msg("Mark this revision as the Vault version"),
+                        run: async () => {
+                            await runMutation(
+                                `Mark database revision ${metadata.revision} as the Vault version`,
+                                () =>
+                                    storeStorageOnRevision(
+                                        path,
+                                        metadata.revision!,
+                                        false
+                                    )
+                            );
+                        },
+                    });
+                }
+                if (metadata.revision && policy.storeVaultOnBranch) {
+                    revisionActions.push({
+                        title: $msg("Store Vault file as a child of this revision"),
+                        run: async () => {
+                            await runMutation(
+                                `Store the Vault file on database revision ${metadata.revision}`,
+                                () =>
+                                    storeStorageOnRevision(
+                                        path,
+                                        metadata.revision!
+                                    )
+                            );
+                        },
+                    });
+                }
+                if (metadata.revision && policy.applyLogicalDeletionToVault) {
+                    revisionActions.push({
+                        title: $msg("Apply logical deletion to Vault"),
+                        warning: true,
+                        run: async () => {
+                            if (await this.core.storageAccess.isExistsIncludeHidden(path)) {
+                                const confirmed =
+                                    (await this.core.confirm.askYesNoDialog(
+                                        $msg(
+                                            "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.",
+                                            {
+                                                REVISION: metadata.revision!,
+                                                FILE: path,
                                             }
+                                        ),
+                                        {
+                                            title: $msg("Apply logical deletion to Vault"),
+                                            defaultOption: "No",
                                         }
-                                    } else {
-                                        if (!(await this.core.fileHandler.storeFileToDB(file, true))) {
-                                            Logger(
-                                                `Failed to store the file to the database: ${file}`,
-                                                LOG_LEVEL_NOTICE
-                                            );
-                                            return;
+                                    )) === "yes";
+                                if (!confirmed) {
+                                    return;
+                                }
+                            }
+                            await runMutation(
+                                `Apply logical deletion ${metadata.revision} to the Vault`,
+                                () =>
+                                    applyRevisionToStorage(
+                                        path,
+                                        metadata.revision!,
+                                        true
+                                    )
+                            );
+                        },
+                    });
+                }
+                if (metadata.revision && policy.retryRevision) {
+                    revisionActions.push({
+                        title: $msg("Retry reading revision"),
+                        run: async () => {
+                            const loaded = await retryReadFileDatabaseRevision(
+                                this.core,
+                                path,
+                                metadata.revision!
+                            );
+                            Logger(
+                                loaded
+                                    ? `Revision ${metadata.revision} of ${path} is readable after retry`
+                                    : `Revision ${metadata.revision} of ${path} remains unreadable`,
+                                LOG_LEVEL_NOTICE
+                            );
+                            await refresh();
+                        },
+                    });
+                }
+                if (metadata.revision && policy.discardBranch) {
+                    revisionActions.push(discardLiveBranchAction(metadata.revision));
+                }
+                if (metadata.revision && policy.discardRevision) {
+                    revisionActions.push({
+                        title: $msg("Discard unreadable revision"),
+                        warning: true,
+                        run: async () => {
+                            const confirmed =
+                                (await this.core.confirm.askYesNoDialog(
+                                    $msg(
+                                        "Discard database revision ${REVISION} of ${FILE}? This creates a logical deletion for that exact live revision. Missing content cannot be recovered by this action.",
+                                        {
+                                            REVISION: metadata.revision!,
+                                            FILE: path,
                                         }
+                                    ),
+                                    {
+                                        title: $msg("Discard unreadable revision"),
+                                        defaultOption: "No",
                                     }
-                                    el.remove();
-                                });
-                            })
+                                )) === "yes";
+                            if (!confirmed) {
+                                return;
+                            }
+                            const result = await discardUnreadableLiveRevision(
+                                this.core,
+                                path,
+                                metadata.revision!
+                            );
+                            Logger(
+                                `Discard unreadable revision ${metadata.revision} of ${path}: ${result}`,
+                                result === "discarded" ? LOG_LEVEL_NOTICE : LOG_LEVEL_VERBOSE
+                            );
+                            await refresh();
+                        },
+                    });
+                }
+                addActionMenu(
+                    revisionMenuHost,
+                    $msg("More actions for revision ${REVISION}", {
+                        REVISION: metadata.revision ?? $msg("Unknown revision"),
+                    }),
+                    revisionActions
+                );
+            };
+            revisions.forEach(addRevision);
+
+            for (const revision of information.database.unavailableConflictRevisions) {
+                const revisionEl = this.createEl(card, "div", { cls: "sls-repair-revision" });
+                const revisionHeader = this.createEl(revisionEl, "div", {
+                    cls: "sls-repair-header",
+                });
+                this.createEl(revisionHeader, "div", {
+                    text: $msg("${ROLE}: ${REVISION}", {
+                        ROLE: $msg("Conflict revision"),
+                        REVISION: revision,
+                    }),
+                    cls: "sls-repair-revision-title",
+                });
+                const revisionMenuHost = this.createEl(revisionHeader, "div");
+                this.createEl(revisionEl, "div", {
+                    text: $msg("Revision metadata is unavailable on this device"),
+                    cls: "mod-warning",
+                });
+                addActionMenu(
+                    revisionMenuHost,
+                    $msg("More actions for revision ${REVISION}", {
+                        REVISION: revision,
+                    }),
+                    [
+                        {
+                            title: $msg("Retry reading revision"),
+                            run: async () => {
+                                await retryReadFileDatabaseRevision(
+                                    this.core,
+                                    path,
+                                    revision
+                                );
+                                await refresh();
+                            },
+                        },
+                        discardLiveBranchAction(revision),
+                    ]
+                );
+            }
+
+            for (const base of information.database.mergeBases) {
+                if (base.contentAvailableLocally) {
+                    continue;
+                }
+                this.createEl(card, "div", {
+                    text: base.revision
+                        ? $msg(
+                              "Shared ancestor ${REVISION} is not readable on this device. Automatic three-way merging may be unavailable, but the live revisions remain available for explicit review.",
+                              {
+                                  REVISION: base.revision,
+                              }
+                          )
+                        : $msg(
+                              "No shared ancestor is available for this conflict. The live revisions remain available for explicit review."
+                          ),
+                    cls: "sls-repair-ancestor-warning",
+                });
+            }
+
+            const winner = revisions.find(({ role }) => role === "winner");
+            const fileActions: RepairMenuAction[] = [];
+            if (winner?.loadedEntry) {
+                const winnerEntry = winner.loadedEntry;
+                fileActions.push({
+                    title: $msg("Show revision history"),
+                    run: () => {
+                        eventHub.emitEvent(EVENT_REQUEST_SHOW_HISTORY, {
+                            file: path as FilePathWithPrefix,
+                            fileOnDB: winnerEntry,
+                        });
+                    },
+                });
+            }
+            if (information.storage.exists && !information.database.exists) {
+                fileActions.push({
+                    title: $msg("Store Vault file as a new local database document"),
+                    run: async () => {
+                        await runMutation(
+                            "Store the Vault file as a new local database document",
+                            () => storeStorageInDatabase(path)
                         );
-                    }
-                    if (fileOnDB) {
-                        el.appendChild(
-                            this.createEl(el, "button", { text: "Database -> Storage" }, (buttonEl) => {
-                                buttonEl.onClickEvent(async () => {
-                                    if (fileOnDB.path.startsWith(ICHeader)) {
-                                        const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
-                                        if (addOn) {
-                                            if (
-                                                !(await addOn.extractInternalFileFromDatabase(path as FilePath, true))
-                                            ) {
-                                                Logger(
-                                                    `Failed to store the file to the database (Hidden file): ${file}`,
-                                                    LOG_LEVEL_NOTICE
-                                                );
-                                                return;
-                                            }
-                                        }
-                                    } else {
-                                        if (
-                                            !(await this.core.fileHandler.dbToStorage(
-                                                fileOnDB as MetaEntry,
-                                                null,
-                                                true
-                                            ))
-                                        ) {
-                                            Logger(
-                                                `Failed to store the file to the storage: ${fileOnDB.path}`,
-                                                LOG_LEVEL_NOTICE
-                                            );
-                                            return;
-                                        }
-                                    }
-                                    el.remove();
-                                });
-                            })
-                        );
-                    }
-                    return el;
-                })
+                    },
+                });
+            }
+            fileActions.push({
+                title: $msg("Copy database information"),
+                run: async () => {
+                    await copyFileDatabaseInfo(this.core, path);
+                },
+            });
+            addActionMenu(
+                fileMenuHost,
+                $msg("More actions for ${FILE}", { FILE: path }),
+                fileActions
             );
         };
 
-        const checkBetweenStorageAndDatabase = async (file: FilePathWithPrefix, fileOnDB: LoadedEntry) => {
-            const dataContent = readAsBlob(fileOnDB);
-            const content = createBlob(await this.core.storageAccess.readHiddenFileBinary(file));
-            if (await isDocContentSame(content, dataContent)) {
-                Logger(`Compare: SAME: ${file}`);
-            } else {
-                Logger(`Compare: CONTENT IS NOT MATCHED! ${file}`, LOG_LEVEL_NOTICE);
-                void addResult(file, file, fileOnDB);
-            }
-        };
         new Setting(paneEl)
-            .setName("Recreate missing chunks for all files")
-            .setDesc("This will recreate chunks for all files. If there were missing chunks, this may fix the errors.")
+            .setName($msg("Recreate chunks for current Vault files"))
+            .setDesc(
+                $msg(
+                    "Recreate chunks from the files currently present in this Vault. This cannot reconstruct unavailable historical or conflict content."
+                )
+            )
             .addButton((button) =>
                 button
-                    .setButtonText("Recreate all")
+                    .setButtonText($msg("Recreate current chunks"))
                     .setCta()
                     .onClick(async () => {
                         await this.core.fileHandler.createAllChunks(true);
                     })
             );
         new Setting(paneEl)
-            .setName("Resolve All conflicted files by the newer one")
+            .setName($msg("Inspect conflicts and file/database differences"))
             .setDesc(
-                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                $msg(
+                    "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision."
+                )
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Resolve All")
-                    .setCta()
-                    .onClick(async () => {
-                        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
-                    })
-            );
-
-        new Setting(paneEl)
-            .setName("Verify and repair all files")
-            .setDesc(
-                "Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep."
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Verify all")
+                    .setButtonText($msg("Begin inspection"))
                     .setDisabled(false)
                     .setCta()
                     .onClick(async () => {
-                        Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                        const ignorePatterns = getFileRegExp(this.core.settings, "syncInternalFilesIgnorePatterns");
-                        const targetPatterns = getFileRegExp(this.core.settings, "syncInternalFilesTargetPatterns");
+                        resultArea.replaceChildren();
+                        Logger("Start inspecting file/database state", LOG_LEVEL_NOTICE, "verify");
                         this.core.localDatabase.clearCaches();
-                        Logger("Start verifying all files", LOG_LEVEL_NOTICE, "verify");
-                        const files = this.core.settings.syncInternalFiles
-                            ? await this.core.storageAccess.getFilesIncludeHidden("/", targetPatterns, ignorePatterns)
-                            : await this.core.storageAccess.getFileNames();
-                        const documents = [] as FilePath[];
-
-                        const adn = this.core.localDatabase.findAllDocs();
-                        for await (const i of adn) {
-                            const path = this.services.path.getPath(i);
-                            if (path.startsWith(ICXHeader)) continue;
-                            if (path.startsWith(PSCHeader)) continue;
-                            if (!this.core.settings.syncInternalFiles && path.startsWith(ICHeader)) continue;
-                            documents.push(stripAllPrefixes(path));
-                        }
-                        const allPaths = [...new Set([...documents, ...files])];
+                        const allPaths = await collectFileDatabaseInfoPaths(this.core);
                         let i = 0;
                         const incProc = () => {
                             i++;
@@ -295,28 +861,21 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                                     : false;
                                 const fileOnStorage = stat != null ? stat : false;
                                 if (!(await this.services.vault.isTargetFile(path))) return incProc();
-                                const releaser = await semaphore.acquire(1);
                                 if (fileOnStorage && this.services.vault.isFileSizeTooLarge(fileOnStorage.size))
                                     return incProc();
+                                const releaser = await semaphore.acquire(1);
                                 try {
-                                    const isHiddenFile = path.startsWith(".");
-                                    const dbPath = isHiddenFile ? addPrefix(path, ICHeader) : path;
-                                    const fileOnDB = await this.core.localDatabase.getDBEntry(dbPath);
-                                    if (fileOnDB && this.services.vault.isFileSizeTooLarge(fileOnDB.size))
+                                    const inspection = await inspectFileRepair(this.core, path);
+                                    const winner = inspection.revisions.find(({ role }) => role === "winner");
+                                    if (
+                                        winner &&
+                                        this.services.vault.isFileSizeTooLarge(winner.metadata.recordedSize)
+                                    )
                                         return incProc();
-
-                                    if (!fileOnDB && fileOnStorage) {
-                                        Logger(`Compare: Not found on the local database: ${path}`, LOG_LEVEL_NOTICE);
-                                        void addResult(path, path, false);
-                                        return incProc();
-                                    }
-                                    if (fileOnDB && !fileOnStorage) {
-                                        Logger(`Compare: Not found on the storage: ${path}`, LOG_LEVEL_NOTICE);
-                                        void addResult(path, false, fileOnDB);
-                                        return incProc();
-                                    }
-                                    if (fileOnStorage && fileOnDB) {
-                                        await checkBetweenStorageAndDatabase(path, fileOnDB);
+                                    if (inspection.requiresAttention) {
+                                        addRepairResult(inspection);
+                                    } else {
+                                        Logger(`Compare: SAME: ${path}`);
                                     }
                                 } catch (ex) {
                                     Logger(`Error while processing ${path}`, LOG_LEVEL_NOTICE);
@@ -335,7 +894,32 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         // Logger(`${i}/${files.length}\n`, LOG_LEVEL_NOTICE, "verify-processed");
                     })
             );
-        const resultArea = paneEl.createDiv({ text: "" });
+        new Setting(paneEl)
+            .setName("Resolve All conflicted files by the newer one")
+            .setDesc(
+                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText("Resolve All")
+                    .setCta()
+                    .onClick(async () => {
+                        const confirmed =
+                            (await this.core.confirm.askYesNoDialog(
+                                $msg(
+                                    "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable."
+                                ),
+                                {
+                                    title: $msg("Resolve all conflicts by the newest version"),
+                                    defaultOption: "No",
+                                }
+                            )) === "yes";
+                        if (!confirmed) {
+                            return;
+                        }
+                        await this.services.conflict.resolveAllConflictedFilesByNewerOnes();
+                    })
+            );
         new Setting(paneEl)
             .setName("Check and convert non-path-obfuscated files")
             .setDesc("")

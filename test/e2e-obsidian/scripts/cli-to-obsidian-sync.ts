@@ -13,7 +13,8 @@ import {
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
-    configureCouchDb,
+    createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
@@ -311,24 +312,22 @@ async function main(): Promise<void> {
             cliBinary: obsidianCli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+            pluginData: createE2eCouchDbPluginData(
+                {
+                    uri: couchDb.uri,
+                    username: couchDb.username,
+                    password: couchDb.password,
+                    dbName,
+                },
+                {
+                    encrypt: true,
+                    passphrase: e2eePassphrase,
+                    usePathObfuscation: true,
+                    E2EEAlgorithm: "v2",
+                }
+            ),
+            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
         });
-        await waitForLiveSyncCoreReady(obsidianCli.binary, session.cliEnv);
-        await configureCouchDb(
-            obsidianCli.binary,
-            session.cliEnv,
-            {
-                uri: couchDb.uri,
-                username: couchDb.username,
-                password: couchDb.password,
-                dbName,
-            },
-            {
-                encrypt: true,
-                passphrase: e2eePassphrase,
-                usePathObfuscation: true,
-                E2EEAlgorithm: "v2",
-            }
-        );
         await waitForLiveSyncCoreReady(obsidianCli.binary, session.cliEnv);
         await prepareRemote(obsidianCli.binary, session.cliEnv);
         await pushLocalChanges(obsidianCli.binary, session.cliEnv);

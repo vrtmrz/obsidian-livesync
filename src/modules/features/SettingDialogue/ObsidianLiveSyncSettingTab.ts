@@ -12,15 +12,14 @@ import {
     LEVEL_ADVANCED,
     LEVEL_EDGE_CASE,
     REMOTE_P2P,
-} from "@lib/common/types.ts";
-import { delay, isObjectDifferent, sizeToHumanReadable } from "@lib/common/utils.ts";
-import { versionNumberString2Number } from "@lib/string_and_binary/convert.ts";
-import { Logger } from "@lib/common/logger.ts";
-import { checkSyncInfo } from "@lib/pouchdb/negotiation.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { delay, isObjectDifferent, sizeToHumanReadable } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { checkSyncInfo } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
 import ObsidianLiveSyncPlugin from "@/main.ts";
 import { scheduleTask } from "@/common/utils.ts";
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator.ts";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import {
     type AllSettingItemKey,
     type AllStringItemKey,
@@ -31,10 +30,9 @@ import {
     type OnDialogSettings,
     getConfName,
 } from "./settingConstants.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
-import { confirmWithMessage } from "@/modules/coreObsidian/UILib/dialogs.ts";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
@@ -62,9 +60,10 @@ import { paneAdvanced } from "./PaneAdvanced.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { panePatches } from "./PanePatches.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { JournalSyncCore } from "@lib/replication/journal/JournalSyncCore.js";
-import { MinioStorageAdapter } from "@lib/replication/journal/objectstore/MinioStorageAdapter.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
+import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replication/journal/objectstore/MinioStorageAdapter";
+import { closeObsidianSettings } from "@/common/obsidianSettings.ts";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -101,6 +100,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     // Buffered Settings for comparing.
     initialSettings?: typeof this.editingSettings;
 
+    private copySettingValue(target: object | undefined, source: object, key: AllSettingItemKey): void {
+        if (!target) {
+            throw new Error("Initial settings have not been loaded");
+        }
+        const value: unknown = Reflect.get(source, key);
+        Reflect.set(target, key, value);
+    }
+
     /**
      * Apply editing setting to the plug-in.
      * @param keys setting keys for applying
@@ -113,10 +120,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 // this.initialSettings[k] = this.editingSettings[k];
                 continue;
             }
-            //@ts-ignore
-            this.core.settings[k] = this.editingSettings[k];
-            //@ts-ignore
-            this.initialSettings[k] = this.core.settings[k];
+            this.copySettingValue(this.core.settings, this.editingSettings, k);
+            this.copySettingValue(this.initialSettings, this.core.settings, k);
         }
         keys.forEach((e) => this.refreshSetting(e));
     }
@@ -151,14 +156,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             appliedKeys.push(k);
             if (k in OnDialogSettingsDefault) {
                 await this.saveLocalSetting(k as keyof OnDialogSettings);
-                //@ts-ignore
-                this.initialSettings[k] = this.editingSettings[k];
+                this.copySettingValue(this.initialSettings, this.editingSettings, k);
                 continue;
             }
-            //@ts-ignore
-            this.core.settings[k] = this.editingSettings[k];
-            //@ts-ignore
-            this.initialSettings[k] = this.core.settings[k];
+            this.copySettingValue(this.core.settings, this.editingSettings, k);
+            this.copySettingValue(this.initialSettings, this.core.settings, k);
             hasChanged = true;
         }
 
@@ -236,15 +238,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const localSetting = this.reloadAllLocalSettings();
         if (key in this.core.settings) {
             if (key in localSetting) {
-                //@ts-ignore
-                this.initialSettings[key] = localSetting[key];
-                //@ts-ignore
-                this.editingSettings[key] = localSetting[key];
+                this.copySettingValue(this.initialSettings, localSetting, key);
+                this.copySettingValue(this.editingSettings, localSetting, key);
             } else {
-                //@ts-ignore
-                this.initialSettings[key] = this.core.settings[key];
-                //@ts-ignore
-                this.editingSettings[key] = this.initialSettings[key];
+                this.copySettingValue(this.initialSettings, this.core.settings, key);
+                this.copySettingValue(this.editingSettings, this.initialSettings ?? {}, key);
             }
         }
         this.editingSettings = { ...this.editingSettings, ...this.computeAllLocalSettings() };
@@ -310,8 +308,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     closeSetting() {
-        //@ts-ignore :
-        this.plugin.app.setting.close();
+        closeObsidianSettings(this.plugin.app);
     }
 
     handleElement(element: HTMLElement, func: OnUpdateFunc) {
@@ -417,11 +414,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
-    //@ts-ignore
-    manifestVersion: string = MANIFEST_VERSION || "-";
-
-    lastVersion = ~~(versionNumberString2Number(this.manifestVersion) / 1000);
-
     screenElements: { [key: string]: HTMLElement[] } = {};
     changeDisplay(screen: string) {
         for (const k in this.screenElements) {
@@ -480,7 +472,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     isNeedRebuildLocal() {
         return this.isSomeDirty([
             "useIndexedDBAdapter",
-            "doNotUseFixedRevisionForChunks",
             "handleFilenameCaseSensitive",
             "passphrase",
             "useDynamicIterationCount",
@@ -491,7 +482,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
     isNeedRebuildRemote() {
         return this.isSomeDirty([
-            "doNotUseFixedRevisionForChunks",
             "handleFilenameCaseSensitive",
             "passphrase",
             "useDynamicIterationCount",
@@ -623,7 +613,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             OPTION_ONLY_SETTING,
             OPTION_CANCEL,
         ];
-        const result = await confirmWithMessage(this.plugin, title, note, buttons, OPTION_CANCEL, 0);
+        const result = await this.core.confirm.confirmWithMessage(title, note, buttons, OPTION_CANCEL);
         if (result == OPTION_CANCEL) return;
         if (result == OPTION_FETCH) {
             if (!(await this.checkWorkingPassphrase())) {
@@ -736,7 +726,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             value: `${order}`,
                             cls: "sls-setting-tab",
                         } as DomElementInfo);
-                        el.createEl("div", {
+                        el.createDiv({
                             cls: "sls-setting-menu-btn",
                             text: icon,
                             title: title,
@@ -829,18 +819,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         void yieldNextAnimationFrame().then(() => {
             if (this.selectedScreen == "") {
-                if (this.lastVersion != this.editingSettings.lastReadUpdates) {
-                    if (this.editingSettings.isConfigured) {
-                        changeDisplay("100");
-                    } else {
-                        changeDisplay("110");
-                    }
+                if (this.isAnySyncEnabled()) {
+                    changeDisplay("20");
                 } else {
-                    if (this.isAnySyncEnabled()) {
-                        changeDisplay("20");
-                    } else {
-                        changeDisplay("110");
-                    }
+                    changeDisplay("110");
                 }
             } else {
                 changeDisplay(this.selectedScreen);

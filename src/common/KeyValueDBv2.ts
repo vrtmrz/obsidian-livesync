@@ -1,5 +1,5 @@
-import { LOG_LEVEL_VERBOSE, Logger } from "@lib/common/logger";
-import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase";
+import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import { deleteDB, openDB, type IDBPDatabase } from "idb";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 

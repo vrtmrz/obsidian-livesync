@@ -20,7 +20,7 @@ export default mergeConfig(
             // maxConcurrency: 2,
             name: "unit-tests",
             include: ["**/*unit.test.ts", "**/*.unit.spec.ts"],
-            exclude: ["test/**", "src/apps/**/testdeno/**"],
+            exclude: ["node_modules/**", "test/**", "src/apps/**/testdeno/**"],
             coverage: {
                 include: ["src/**/*.ts"],
                 exclude: [
@@ -28,12 +28,8 @@ export default mergeConfig(
                     "**/*unit.test.ts",
                     "**/*.unit.spec.ts",
                     "test/**",
-                    "src/lib/**/*.test.ts",
                     "**/_*",
                     "src/apps/**/testdeno/**",
-                    // "src/apps/**",
-                    // "src/cli/**",
-                    "src/lib/src/cli/**",
                     "**/*_obsolete.ts",
                     ...importOnlyFiles,
                 ],

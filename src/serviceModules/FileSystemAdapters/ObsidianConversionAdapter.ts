@@ -1,5 +1,5 @@
-import type { UXFileInfoStub, UXFolderInfo } from "@lib/common/types";
-import type { IConversionAdapter } from "@lib/serviceModules/adapters";
+import type { UXFileInfoStub, UXFolderInfo } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IConversionAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import { TFileToUXFileInfoStub, TFolderToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian";
 import type { TFile, TFolder } from "obsidian";
 

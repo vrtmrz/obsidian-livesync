@@ -107,6 +107,7 @@ Deno.test("feature: behaviour", async () => {
 - Re-run sync operations where the protocol is eventually consistent.
 - For network-sensitive commands, use `LIVESYNC_CLI_RETRY` during debugging.
 - Keep Docker container reuse disabled by default unless debugging.
+- Use `npm run test:e2e:cli:p2p` for canonical P2P validation. It runs the Deno scenario in Compose because host networking and WebRTC candidate selection are not reproducible across environments. Individual `deno task test:p2p-*` tasks remain available when explicitly invoked for cross-platform diagnostics, but are not selected by the default suite or CI.
 
 ## Environment variables
 

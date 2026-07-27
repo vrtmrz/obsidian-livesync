@@ -23,8 +23,7 @@
         /* Path mapping */
         // "baseUrl": ".",
         "paths": {
-            "@/*": ["../../*"],
-            "@lib/*": ["../../lib/src/*", "../../../_types/src/lib/src/*"]
+            "@/*": ["../../*"]
         }
     },
     "include": ["*.ts", "**/*.ts", "**/*.tsx", "**/*.svelte"],

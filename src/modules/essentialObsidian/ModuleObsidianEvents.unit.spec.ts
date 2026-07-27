@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 import { ModuleObsidianEvents } from "./ModuleObsidianEvents";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@lib/common/types";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 
 type SetupOptions = {

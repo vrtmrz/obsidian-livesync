@@ -2,50 +2,54 @@
     import { onMount } from "svelte";
     import { eventHub } from "@/common/events";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
-    import type { P2PServerInfo } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import {
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
-    import { extractP2PRoomSuffix } from "@lib/common/utils";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
-        liveSyncReplicator: LiveSyncTrysteroReplicator;
+        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
         showBroadcastToggle?: boolean;
         core?: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
+    let { getLiveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
-    let roomSuffix = $state<string>(extractP2PRoomSuffix(core?.services.setting.currentSettings()?.P2P_roomID ?? ""));
-    let useDiagRTC = $state<boolean>(core?.services.setting.currentSettings()?.P2P_useDiagRTC ?? false);
+    // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
+    const readCurrentSettings = () => core?.services.setting.currentSettings();
+    const initialSettings = readCurrentSettings();
+    let roomSuffix = $state<string>(extractP2PRoomSuffix(initialSettings?.P2P_roomID ?? ""));
+    let useDiagRTC = $state<boolean>(initialSettings?.P2P_useDiagRTC ?? false);
 
     async function requestServerStatus() {
-        await Promise.resolve(liveSyncReplicator.requestStatus());
+        await Promise.resolve(getLiveSyncReplicator().requestStatus());
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
     async function onOpenConnection() {
-        await liveSyncReplicator.makeSureOpened();
+        await getLiveSyncReplicator().makeSureOpened();
         await requestServerStatus();
     }
 
     async function onDisconnect() {
-        await liveSyncReplicator.close();
+        await getLiveSyncReplicator().close();
         await requestServerStatus();
     }
 
     function toggleBroadcast() {
         if (replicatorStatus?.isBroadcasting) {
-            liveSyncReplicator.disableBroadcastChanges();
+            getLiveSyncReplicator().disableBroadcastChanges();
         } else {
-            liveSyncReplicator.enableBroadcastChanges();
+            getLiveSyncReplicator().enableBroadcastChanges();
         }
     }
 
@@ -104,7 +108,7 @@
         {#if !isConnected}
             <button onclick={onOpenConnection}>Open connection</button>
         {:else}
-            <button onclick={onDisconnect}>Close connection</button>
+            <button onclick={onDisconnect}>Disconnect</button>
         {/if}
     </div>
 
@@ -131,15 +135,16 @@
 
     {#if showBroadcastToggle}
     <div class="status-item status-action broadcast-row">
-        <!-- Live-push to peers: stream this device's changes to connected peers for LiveSync -->
         <label class="broadcast-label" for="broadcast-toggle">
-            Live-push to peers
+            {translateMessage("Announce changes")}
         </label>
         <button
             id="broadcast-toggle"
             class="broadcast-button {isBroadcasting ? 'is-on' : 'is-off'}"
             onclick={toggleBroadcast}
-            title={isBroadcasting ? 'Pushing changes to peers — click to stop' : 'Start pushing changes to peers'}
+            title={isBroadcasting
+                ? translateMessage("Stop announcing changes")
+                : translateMessage("Start announcing changes")}
         >
             {isBroadcasting ? '📡 On' : '📡 Off'}
         </button>

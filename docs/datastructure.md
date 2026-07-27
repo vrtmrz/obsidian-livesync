@@ -1,4 +1,5 @@
 # Data Structures of Self-Hosted LiveSync
+
 ## Overview
 
 Self-hosted LiveSync uses the following types of documents:
@@ -30,7 +31,7 @@ export interface DatabaseEntry {
 This document stores version information for Self-hosted LiveSync.
 The ID is fixed as `obsydian_livesync_version` [VERSIONING_DOCID]. Yes, the typo has become a curse.
 When Self-hosted LiveSync detects changes to this document via Replication, it reads the version information and checks compatibility.
-In that case, if there are major changes, synchronisation may be stopped.
+This internal database version is independent of the plug-in's SemVer version. The last version explicitly acknowledged on a device is stored through Commonlib's device-local configuration contract. When that version differs, or when a settings migration requires review, Self-hosted LiveSync presents a dedicated compatibility dialogue and blocks replication without changing the user's automatic synchronisation choices. A supported upgrade can resume only after explicit review. A downgrade from a newer acknowledged database version, or settings written by a future schema, remains blocked until a compatible plug-in is installed.
 Please refer to negotiation.ts.
 
 ### Synchronise Information Document

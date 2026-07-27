@@ -1,7 +1,7 @@
 import { App, Modal } from "@/deps.ts";
-import { type FilePath, type LoadedEntry } from "@lib/common/types.ts";
+import { type FilePath, type LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import JsonResolvePane from "./JsonResolvePane.svelte";
-import { waitForSignal } from "@lib/common/utils.ts";
+import { waitForSignal } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { mount, unmount } from "svelte";
 
 export class JsonResolveModal extends Modal {

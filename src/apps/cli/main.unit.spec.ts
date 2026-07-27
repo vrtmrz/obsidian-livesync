@@ -1,5 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseArgs } from "./main";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parseArgs as parseCliArgs } from "./main";
+
+function createStandardIoMock() {
+    return {
+        readStdin: vi.fn(async () => ""),
+        prompt: vi.fn(async () => ""),
+        writeStdout: vi.fn(),
+        writeStderr: vi.fn(),
+    };
+}
 
 function mockProcessExit() {
     const exitMock = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
@@ -10,6 +19,13 @@ function mockProcessExit() {
 
 describe("CLI parseArgs", () => {
     const originalArgv = process.argv.slice();
+    let standardIo: ReturnType<typeof createStandardIoMock>;
+
+    beforeEach(() => {
+        standardIo = createStandardIoMock();
+    });
+
+    const parseArgs = () => parseCliArgs(standardIo);
 
     afterEach(() => {
         process.argv = originalArgv.slice();
@@ -19,42 +35,38 @@ describe("CLI parseArgs", () => {
     it("exits 1 when --settings has no value", () => {
         process.argv = ["node", "livesync-cli", "./databasePath", "--settings"];
         const exitMock = mockProcessExit();
-        const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
         expect(exitMock).toHaveBeenCalledWith(1);
-        expect(stderr).toHaveBeenCalledWith("Error: Missing value for --settings");
+        expect(standardIo.writeStderr).toHaveBeenCalledWith("Error: Missing value for --settings\n");
     });
 
     it("exits 1 when database-path is missing", () => {
         process.argv = ["node", "livesync-cli", "sync"];
         const exitMock = mockProcessExit();
-        const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
         expect(exitMock).toHaveBeenCalledWith(1);
-        expect(stderr).toHaveBeenCalledWith("Error: database-path is required");
+        expect(standardIo.writeStderr).toHaveBeenCalledWith("Error: database-path is required\n");
     });
 
     it("exits 1 for unknown command after database-path", () => {
         process.argv = ["node", "livesync-cli", "./databasePath", "unknown-cmd"];
         const exitMock = mockProcessExit();
-        const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
 
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
         expect(exitMock).toHaveBeenCalledWith(1);
-        expect(stderr).toHaveBeenCalledWith("Error: Unknown command 'unknown-cmd'");
+        expect(standardIo.writeStderr).toHaveBeenCalledWith("Error: Unknown command 'unknown-cmd'\n");
     });
 
     it("exits 0 and prints help for --help", () => {
         process.argv = ["node", "livesync-cli", "--help"];
         const exitMock = mockProcessExit();
-        const stdout = vi.spyOn(console, "log").mockImplementation(() => {});
 
         expect(() => parseArgs()).toThrowError("__EXIT__:0");
         expect(exitMock).toHaveBeenCalledWith(0);
-        expect(stdout).toHaveBeenCalled();
-        const combined = stdout.mock.calls.flat().join("\n");
+        expect(standardIo.writeStdout).toHaveBeenCalled();
+        const combined = standardIo.writeStdout.mock.calls.flat().join("");
         expect(combined).toContain("Usage:");
         expect(combined).toContain("livesync-cli <database-path> [options] <command> [command-args]");
     });
@@ -152,7 +164,6 @@ describe("CLI parseArgs", () => {
     it("exits 1 when --interval has no value", () => {
         process.argv = ["node", "livesync-cli", "./vault", "--interval"];
         const exitMock = mockProcessExit();
-        vi.spyOn(console, "error").mockImplementation(() => {});
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
         expect(exitMock).toHaveBeenCalledWith(1);
     });
@@ -160,22 +171,19 @@ describe("CLI parseArgs", () => {
     it("exits 1 when --interval is not a positive integer", () => {
         process.argv = ["node", "livesync-cli", "./vault", "--interval", "0"];
         const exitMock = mockProcessExit();
-        vi.spyOn(console, "error").mockImplementation(() => {});
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
         expect(exitMock).toHaveBeenCalledWith(1);
     });
 
     it("exits 1 when --interval is negative", () => {
         process.argv = ["node", "livesync-cli", "./vault", "--interval", "-5"];
-        const exitMock = mockProcessExit();
-        vi.spyOn(console, "error").mockImplementation(() => {});
+        mockProcessExit();
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
     });
 
     it("exits 1 when --interval is not numeric", () => {
         process.argv = ["node", "livesync-cli", "./vault", "--interval", "abc"];
-        const exitMock = mockProcessExit();
-        vi.spyOn(console, "error").mockImplementation(() => {});
+        mockProcessExit();
         expect(() => parseArgs()).toThrowError("__EXIT__:1");
     });
 

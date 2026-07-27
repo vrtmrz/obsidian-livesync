@@ -1,5 +1,5 @@
 import { MarkdownRenderer } from "@/deps.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {
@@ -11,10 +11,13 @@ import {
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { DEFAULT_SETTINGS } from "@lib/common/types.ts";
 import { request } from "@/deps.ts";
-import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
-import { LiveSyncError } from "@lib/common/LSError.ts";
+import { SetupManager } from "@/modules/features/SetupManager.ts";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
+import {
+    createCoreSettingsAfterFullReset,
+    createEditingSettingsAfterFullReset,
+} from "@/serviceFeatures/setupObsidian/settingsReset.ts";
 export function paneSetup(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -37,8 +40,7 @@ export function paneSetup(
             .addButton((text) => {
                 text.setButtonText($msg("Rerun Wizard")).onClick(async () => {
                     const setupManager = this.core.getModule(SetupManager);
-                    await setupManager.onOnboard(UserMode.ExistingUser);
-                    // await this.plugin.moduleSetupObsidian.onBoardingWizard(true);
+                    await setupManager.startOnBoarding();
                 });
             });
 
@@ -92,9 +94,9 @@ export function paneSetup(
                                 { defaultOption: "No" }
                             )) == "yes"
                         ) {
-                            this.editingSettings = { ...this.editingSettings, ...DEFAULT_SETTINGS };
+                            this.editingSettings = createEditingSettingsAfterFullReset(this.editingSettings);
                             await this.saveAllDirtySettings();
-                            this.core.settings = { ...DEFAULT_SETTINGS };
+                            this.core.settings = createCoreSettingsAfterFullReset();
                             await this.services.setting.saveSettingData();
                             await this.services.database.resetDatabase();
                             // await this.plugin.initializeDatabase();

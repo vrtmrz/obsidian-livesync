@@ -1,13 +1,12 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import path from "node:path";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [svelte()],
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "../../"),
-            "@lib": path.resolve(__dirname, "../../lib/src"),
         },
     },
     base: "./",

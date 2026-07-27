@@ -29,7 +29,6 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        submodules: recursive
         ref: ${{ inputs.tag }}
     - name: Use Node.js
       uses: actions/setup-node@v4
@@ -61,17 +60,10 @@ jobs:
               main.js
               manifest.json
               styles.css
-    # Package the required files into a zip
-    - name: Package
-      run: |
-        mkdir ${{ github.event.repository.name }}
-        cp main.js manifest.json styles.css README.md ${{ github.event.repository.name }}
-        zip -r ${{ github.event.repository.name }}.zip ${{ github.event.repository.name }}
     - name: Create Release and Upload Assets
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          ${{ github.event.repository.name }}.zip
           main.js
           manifest.json
           styles.css
