@@ -207,12 +207,26 @@ describe("release workflow", () => {
             "Publish the GitHub Release initially as a pre-release without replacing the latest stable release"
         );
         expect(stable).toContain(
-            "Remove the pre-release designation and make this exact release the latest stable release"
+            "After BRAT validation passes, mark this pull request ready and merge it into `main` with a merge commit"
+        );
+        expect(stable).toContain(
+            "Integrate the exact release commit through the reviewed branch chain into the repository's default branch"
+        );
+        expect(stable).toContain(
+            "Confirm the default branch contains the exact release metadata, then remove the pre-release designation and make this exact release the latest stable release"
         );
         expect(stable).toContain(
             "Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate"
         );
-        expect(stable).toContain("Mark this pull request ready and merge it into `main` with a merge commit");
+        expect(stable.indexOf("After BRAT validation passes")).toBeLessThan(
+            stable.indexOf("Integrate the exact release commit")
+        );
+        expect(stable.indexOf("Integrate the exact release commit")).toBeLessThan(
+            stable.indexOf("Confirm the default branch contains the exact release metadata")
+        );
+        expect(stable.indexOf("Confirm the default branch contains the exact release metadata")).toBeLessThan(
+            stable.indexOf("Create the stable CLI tag")
+        );
         expect(stable).not.toContain("prerelease=false");
     });
 
@@ -224,7 +238,10 @@ describe("release workflow", () => {
             "Keep the release pull request in draft and unmerged after BRAT validation; close it only through a separate maintainer action."
         );
         expect(workflow).toContain(
-            "After BRAT validation, remove the pre-release designation and make this exact release the latest stable release before merging the release pull request."
+            "After BRAT validation, merge the release pull request into its reviewed base branch and integrate the exact release commit into the default branch."
+        );
+        expect(workflow).toContain(
+            "Only after the default branch contains the exact release metadata, remove the pre-release designation and make this exact release the latest stable release."
         );
         expect(workflow).toContain(
             'if [[ "${VERSION}" != *-* && "${PRERELEASE}" == "true" && "${PUBLISH_CLI}" == "true" ]]; then'
@@ -234,16 +251,21 @@ describe("release workflow", () => {
         );
     });
 
-    it("dispatches the plug-in workflow and lets the CLI tag trigger its own workflow", () => {
+    it("dispatches the selected plug-in and CLI workflows explicitly", () => {
         const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
 
         expect(workflow).toContain("actions: write");
         expect(workflow).toContain('node utils/release-tags.mjs ensure "${VERSION}" "${EXPECTED_HEAD_SHA}"');
         expect(workflow).toContain('git push --atomic origin "refs/tags/${VERSION}" "refs/tags/${VERSION}-cli"');
         expect(workflow).not.toContain("Tag already exists");
+        expect(workflow).toContain("PUBLISH_CLI: ${{ inputs.publish_cli }}");
+        expect(workflow).toContain('if [[ "${PUBLISH_CLI}" == "true" ]]; then');
+        expect(workflow).toContain("gh workflow run cli-docker.yml");
+        expect(workflow).toContain('--ref "${VERSION}-cli"');
+        expect(workflow).toContain("--field dry_run=false");
+        expect(workflow).toContain("--field force=false");
         expect(workflow).toContain("gh workflow run release.yml");
-        expect(workflow).not.toContain("gh workflow run cli-docker.yml");
-        expect(workflow).toContain("its tag event starts the container workflow");
+        expect(workflow).toContain("explicitly dispatched the CLI container workflow");
     });
 
     it("publishes only by explicit dispatch and validates the selected release", () => {

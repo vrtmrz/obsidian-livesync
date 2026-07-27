@@ -1,9 +1,8 @@
-import { writeFileSync } from "fs";
-
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "../src/common/rosetta";
 import { allMessages } from "../src/common/messages/combinedMessages.dev.ts";
 
-import path from "path";
+const { writeFileSync } = process.getBuiltinModule("node:fs");
+const path = process.getBuiltinModule("node:path");
 const thisFileDir = __dirname;
 const outDir = path.join(thisFileDir, "i18n");
 

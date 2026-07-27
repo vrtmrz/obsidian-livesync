@@ -52,15 +52,16 @@ export function renderReleasePrBody(version, baseBranch) {
         : "Confirm the draft GitHub Release assets; keep stable CLI publication deferred until BRAT validation passes";
     const holdInstruction = isPrerelease
         ? `Publishing and validating this pre-release does not unblock this pull request. Keep it in draft and unmerged, and leave ${baseBranchCode} unchanged.`
-        : `Publishing the GitHub pre-release does not unblock this pull request. Keep it in draft, and leave ${baseBranchCode} unchanged, until the exact published build has passed BRAT validation and has been promoted to the latest stable release.`;
+        : `Publishing the GitHub pre-release does not unblock this pull request. Keep it in draft, and leave ${baseBranchCode} unchanged, until the exact published build has passed BRAT validation. Promotion remains on hold until the exact release commit has been integrated into the repository's default branch.`;
     const completionInstructions = isPrerelease
         ? [
               "- [ ] Keep this pre-release pull request unmerged; close it only through a separate maintainer action",
           ]
         : [
-              "- [ ] Remove the pre-release designation and make this exact release the latest stable release",
+              `- [ ] After BRAT validation passes, mark this pull request ready and merge it into ${baseBranchCode} with a merge commit`,
+              "- [ ] Integrate the exact release commit through the reviewed branch chain into the repository's default branch",
+              "- [ ] Confirm the default branch contains the exact release metadata, then remove the pre-release designation and make this exact release the latest stable release",
               "- [ ] Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate",
-              `- [ ] Mark this pull request ready and merge it into ${baseBranchCode} with a merge commit`,
           ];
 
     return [

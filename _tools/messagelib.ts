@@ -1,38 +1,49 @@
-export function objectToDotted(obj: any, prefix = ""): Record<string, any> {
-    return Object.entries(obj).reduce(
-        (acc, [key, value]) => {
-            const newKey = prefix ? `${prefix}.${key}` : key;
-            if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-                Object.assign(acc, objectToDotted(value, newKey));
-            } else {
-                acc[newKey] = value;
-            }
-            return acc;
-        },
-        {} as Record<string, any>
-    );
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-export function dottedToObject(obj: Record<string, any>): Record<string, any> {
-    return Object.entries(obj).reduce(
-        (acc, [key, value]) => {
-            if (key.includes(" ")) {
-                // Return as is.
-                return { ...acc, [key]: value }; // Skip keys with spaces
+
+export function objectToDotted(obj: unknown, prefix = ""): Record<string, unknown> {
+    if (!isRecord(obj)) {
+        throw new TypeError("Expected a message catalogue object");
+    }
+    const flattened: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+        const newKey = prefix ? `${prefix}.${key}` : key;
+        if (isRecord(value)) {
+            Object.assign(flattened, objectToDotted(value, newKey));
+        } else {
+            flattened[newKey] = value;
+        }
+    }
+    return flattened;
+}
+
+export function dottedToObject(obj: unknown): Record<string, unknown> {
+    if (!isRecord(obj)) {
+        throw new TypeError("Expected a dotted message catalogue object");
+    }
+    const nestedResult: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (key.includes(" ")) {
+            nestedResult[key] = value;
+            continue;
+        }
+        const keys = key.split(".");
+        let nested = nestedResult;
+        for (const [index, currentKey] of keys.entries()) {
+            if (index === keys.length - 1) {
+                nested[currentKey] = value;
+                continue;
             }
-            const keys = key.split(".");
-            keys.reduce((nestedAcc, currKey, index) => {
-                if (currKey in nestedAcc && typeof nestedAcc[currKey] !== "object") {
-                    nestedAcc[currKey] = { _value: nestedAcc[currKey] }; // Convert to object if not already
-                }
-                if (index === keys.length - 1) {
-                    nestedAcc[currKey] = value;
-                } else {
-                    nestedAcc[currKey] = nestedAcc[currKey] || {};
-                }
-                return nestedAcc[currKey];
-            }, acc);
-            return acc;
-        },
-        {} as Record<string, any>
-    );
+            const currentValue = nested[currentKey];
+            if (isRecord(currentValue)) {
+                nested = currentValue;
+                continue;
+            }
+            const replacement = currentValue === undefined || currentValue === null ? {} : { _value: currentValue };
+            nested[currentKey] = replacement;
+            nested = replacement;
+        }
+    }
+    return nestedResult;
 }
