@@ -15,16 +15,30 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 ### Improved
 
 - The Hatch action for **Inspect conflicts and file/database differences** is now labelled **Begin inspection** so that its purpose is clear without repeating the scope already stated by the setting.
-- **Inspect conflicts and file/database differences** now compares the current Vault file with every live database revision. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflict branches remain. Each revision's wrench menu can compare readable text, reflect that exact revision to the Vault, record an exact byte match, store the Vault content as a child of that branch, or discard only that branch.
 
 ### Fixed
 
 - Start-up file scans now omit legacy LiveSync log files and flag files before comparing Vault and local-database state. Existing ignored database records remain untouched and no longer produce misleading restore or deletion warnings.
-- A winning logical deletion is no longer reported as a missing Vault file when the file is already absent.
 
 ### Testing
 
 - Added Commonlib collection regressions for built-in ignored files, and updated the Real Obsidian inspection and revision-repair scenarios for the clearer action label.
+
+## 1.0.0-beta.5
+
+26th July, 2026
+
+### Improved
+
+- **Inspect conflicts and file/database differences** now compares the current Vault file with the database winner and every live conflict revision. Compact, mobile-friendly indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflict branches remain.
+- Each reported file and live revision now has a compact wrench menu. Its available actions can compare readable text, apply the selected revision to the Vault, record an exact byte match, store the Vault content as a child of the selected branch, retry retrieving missing chunks without changing the revision tree, or discard only the selected live branch after confirmation.
+
+### Fixed
+
+- A winning logical deletion is no longer reported as a missing Vault file when the file is already absent.
+
+### Testing
+
 - Strengthened Real Obsidian coverage for start-up with an existing configuration, Security Seed readiness, failure diagnostics, and P2P status pane placement in separate desktop and mobile sessions.
 
 ## 1.0.0-beta.4
