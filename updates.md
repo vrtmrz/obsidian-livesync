@@ -16,17 +16,67 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 27th July, 2026
 
-### Improved
+The work towards 1.0 has become so substantial that I have written [an article about it](https://fancy-syncing.vrtmrz.net/blog/0036-livesync-1_0_0-en.html) (linked again here).
 
-- The Hatch action for **Inspect conflicts and file/database differences** is now labelled **Begin inspection** so that its purpose is clear without repeating the scope already stated by the setting.
+### Important
 
-### Fixed
+- This is the first 1.0 release candidate. It remains an opt-in pre-release for BRAT validation and does not replace the latest stable release. Update every participating device before resuming synchronisation, and continue to use a current backup while testing with an existing Vault.
+- An upgraded, copied, or restored Vault may pause replication for an explicit compatibility review. Existing automatic synchronisation choices are preserved and resume only after the decision has been saved.
 
-- Start-up file scans now omit legacy LiveSync log files and flag files before comparing Vault and local-database state. Existing ignored database records remain untouched and no longer produce misleading restore or deletion warnings.
+### Changes consolidated from beta.0 through beta.5
+
+#### Setup and compatibility
+
+- An unconfigured Vault now waits for the user to start setup. Onboarding is offered through a persistent Notice and remains available from **Self-hosted LiveSync settings** → **Setup**.
+- Setup now creates named CouchDB, Object Storage, and P2P connections. Setup URIs preserve their connection names and selections, and reserve Fetch or Rebuild before the ordinary start-up scan begins.
+- Existing Vaults retain their effective legacy settings, including the case-insensitive file-name fallback used when an older release had no explicit case setting.
+- Manual CouchDB setup distinguishes creating the first database from connecting another device. Onboarding requires a successful connection, while Settings can explicitly save an unverified connection and offers each server-setting correction separately.
+- Compatible differences limited to the chunk hash algorithm, chunk size, or splitter version are aligned automatically by default. Existing chunks remain readable, an explicit opt-out remains available, and differences involving incompatible settings still require review.
+
+#### Conflict handling and recovery
+
+- Automatic text and structured-data merge now uses the nearest revision actually shared by both branches. A resolution received from another device no longer recreates the same conflict merely because the Vault still contains the exact content of the removed branch.
+- Edits, logical deletions, and renames made while a file remains conflicted extend the revision displayed on that device. When the relationship cannot be proved, LiveSync preserves the branches for review.
+- **Not now** postpones repeated automatic merge dialogues while retaining the unresolved-conflict warning. Three or more live revisions are reviewed one reproducible pair at a time, completed pairs remain resolved across restart, and explicit commands can reopen a postponed conflict.
+- **Inspect conflicts and file/database differences** compares the Vault with the database winner and every live conflict revision. Compact indicators show missing chunks, `Δsize`, `Δtime`, whether the Vault matches the winner, and whether conflicts remain.
+- Each reported file and live revision has a compact wrench menu for comparison, applying an exact readable revision, recording an exact byte match, storing the Vault content as a child of a selected branch, retrying missing chunks without changing the tree, or explicitly discarding one selected live branch.
+- Unreadable live revisions are preserved during automatic handling. An absent Vault file and a winning logical deletion are treated as agreement unless another live branch still requires attention.
+- Garbage Collection V3 is limited to CouchDB and now protects every live conflict branch, required shared ancestry, and shared chunks. It stops when device progress cannot be verified and reports compaction failure without a contradictory success message.
+
+#### P2P and optional synchronisation features
+
+- P2P and Hidden File Sync remain supported opt-in features. Customisation Sync remains a supported Advanced workflow, while Data Compression remains available but disabled by default.
+- P2P controls remain outside the ordinary CouchDB experience until P2P is configured. The current status pane distinguishes announcing changes, following a peer, and persistent per-device actions.
+- First-device P2P setup can complete its signalling test without another peer online. Fetch on an additional device still requires an available source peer and a completed P2P Rebuild.
+- P2P setup and guidance now distinguish the required signalling relay from optional TURN, describe the replaceable public relay's privacy and availability limits, and reliably close and recreate relay connections across settings changes and database resets.
+- Enabling Hidden File Sync opens one progress Notice before saving the setting and reuses it until the initial scan has finished instead of stacking phase, reload, and restart messages.
+- Broadening selectors, ignore rules, size or modification-time limits, or file-name case handling now rechecks previously received files without requiring another remote update.
+
+#### Interface and operations
+
+- Command-palette actions now use clearer names and appear only when their feature and current context make them usable. Renamed commands retain their identifiers so that existing hotkeys continue to work.
+- Setup and review dialogue text can be selected for copying or translation. Applying an available interface translation no longer holds start-up behind an unsolicited dialogue; a persistent Notice opens the existing details on demand.
+- Action buttons are arranged for narrow mobile screens, long dialogues keep their controls reachable, and persistent Notices no longer cover close controls.
+- Remote-size warnings use persistent clickable Notices. Initial uploads and Rebuild no longer ask to send every chunk in advance; ordinary replication completes the transfer.
+- Obsolete controls for the plug-in trash setting and fixed chunk revisions were removed. The Change Log remains available but no longer opens automatically or tracks an unread count.
+
+#### Other fixes and security
+
+- The optional Custom HTTP Handler used by Object Storage sends the correct byte range from binary request bodies and reports unsupported body types instead of silently sending an empty request.
+- Fly.io setup generates CouchDB and Vault encryption secrets with cryptographically secure randomness. Dependency updates address excessive CPU use from crafted path patterns and `mailto:` links, and the CLI rejects detected path traversal and symbolic-link components before Vault operations.
+- Self-hosted LiveSync now owns its translation catalogue. Commonlib supplies canonical English to other consumers, while translation contributions can be made in the main Self-hosted LiveSync repository.
+
+### Changes since beta.5
+
+- The Hatch action for **Inspect conflicts and file/database differences** is now labelled **Begin inspection** so that its purpose is clear without repeating the setting name.
+- Start-up and full-inspection scans now omit built-in legacy LiveSync log files and recovery flag files before comparing Vault and local-database state. Existing ignored database records remain untouched, and user-configured ignore behaviour is unchanged.
 
 ### Testing
 
-- Added Commonlib collection regressions for built-in ignored files, and updated the Real Obsidian inspection and revision-repair scenarios for the clearer action label.
+- Expanded automated Real Obsidian coverage for upgrades, two-device synchronisation, CouchDB, Object Storage, P2P, Hidden File Sync, mobile dialogues, conflict and revision recovery, failure diagnostics, and strict clean-up.
+- Real CouchDB integration coverage verifies logical deletion, shared and conflict chunk retention, compaction, downstream replication, and recreation of content-addressed chunks.
+- An encrypted Real Obsidian reconnect scenario replaces the remote Security Seed while one client retains the previous value, verifies that synchronisation adopts the replacement without restoring the old value, and proves a bidirectional encrypted round-trip.
+- The beta series was exercised through BRAT on macOS, iOS, and Android, including upgrade from 0.25.83, bidirectional synchronisation, P2P setup, conflict handling, recovery controls, mobile layouts, and start-up with existing configurations. The exact RC artefact will be validated separately after publication.
 
 ## 1.0.0-beta.5
 
