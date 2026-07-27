@@ -1,6 +1,6 @@
-import { access, readFile } from "node:fs/promises";
-import { dirname, relative, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+const fsPromises = process.getBuiltinModule("node:fs/promises");
+const path = process.getBuiltinModule("node:path");
+const url = process.getBuiltinModule("node:url");
 
 type InspectionError = {
     check: "current-label" | "local-reference" | "retired-label";
@@ -20,7 +20,7 @@ const messageCataloguePath = "src/common/messagesJson/en.json";
 const markdownLinkPattern = /!?\[[^\]]*\]\(([^)\s]+)(?:\s+["'][^)]*["'])?\)/gu;
 
 function repositoryRootFromThisFile(): string {
-    return resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    return path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..");
 }
 
 function normaliseReferenceTarget(rawTarget: string): string {
@@ -48,14 +48,14 @@ async function inspectLocalReferences(
         const [pathPart] = target.split("#", 1);
         if (!pathPart) continue;
         checked++;
-        const referencedPath = resolve(repositoryRoot, dirname(documentPath), pathPart);
+        const referencedPath = path.resolve(repositoryRoot, path.dirname(documentPath), pathPart);
         try {
-            await access(referencedPath);
+            await fsPromises.access(referencedPath);
         } catch {
             errors.push({
                 check: "local-reference",
                 file: documentPath,
-                detail: `Missing local reference: ${relative(repositoryRoot, referencedPath)}`,
+                detail: `Missing local reference: ${path.relative(repositoryRoot, referencedPath)}`,
             });
         }
     }
@@ -68,14 +68,13 @@ export async function inspectTroubleshootingDocs(
     const errors: InspectionError[] = [];
     const documents = new Map<string, string>();
     for (const guidePath of guidePaths) {
-        documents.set(guidePath, await readFile(resolve(repositoryRoot, guidePath), "utf8"));
+        documents.set(guidePath, await fsPromises.readFile(path.resolve(repositoryRoot, guidePath), "utf8"));
     }
 
     const troubleshooting = documents.get("docs/troubleshooting.md")!;
-    const catalogue = JSON.parse(await readFile(resolve(repositoryRoot, messageCataloguePath), "utf8")) as Record<
-        string,
-        string
-    >;
+    const catalogue = JSON.parse(
+        await fsPromises.readFile(path.resolve(repositoryRoot, messageCataloguePath), "utf8")
+    ) as Record<string, string>;
     const requiredMessageKeys = [
         "TweakMismatchResolve.Action.UseConfigured",
         "TweakMismatchResolve.Action.UseMine",
@@ -132,7 +131,7 @@ async function runCli(): Promise<void> {
     if (!result.ok) process.exitCode = 1;
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
+const invokedPath = process.argv[1] ? url.pathToFileURL(path.resolve(process.argv[1])).href : undefined;
 if (invokedPath === import.meta.url) {
     await runCli();
 }

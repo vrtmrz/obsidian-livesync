@@ -1,26 +1,17 @@
-import { writeFileSync } from "fs";
-
 import { allMessages } from "../src/common/messages/combinedMessages.prod.ts";
 const __dirname = import.meta.dirname;
-import path from "path";
+
+const { writeFileSync } = process.getBuiltinModule("node:fs");
+const path = process.getBuiltinModule("node:path");
 const thisFileDir = __dirname;
 const outDir = path.resolve(thisFileDir, "../src/common/messagesJson");
 
 const out = {} as Record<string, { [key: string]: string | undefined }>;
 
 for (const [key, value] of Object.entries(allMessages)) {
-    //@ts-ignore
-    for (const [lang, langValue] of Object.entries(allMessages[key])) {
+    for (const [lang, langValue] of Object.entries(value)) {
         if (!out[lang]) out[lang] = {};
-        if (lang in value) {
-            out[lang][key] = langValue as string;
-        } else {
-            if (lang === "def") {
-                out[lang][key] = key;
-            } else {
-                out[lang][key] = undefined;
-            }
-        }
+        out[lang][key] = langValue;
     }
 }
 

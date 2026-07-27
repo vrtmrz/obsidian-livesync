@@ -1,14 +1,14 @@
-import { readFile } from "fs/promises";
-import { join, resolve } from "path";
 import { glob } from "tinyglobby";
 import { parse } from "yaml";
 import { objectToDotted } from "./messagelib.ts";
 
+const fsPromises = process.getBuiltinModule("node:fs/promises");
+const path = process.getBuiltinModule("node:path");
 const __dirname = import.meta.dirname;
-const targetDir = resolve(join(__dirname, "../src/common/messagesYAML/"));
+const targetDir = path.resolve(path.join(__dirname, "../src/common/messagesYAML/"));
 const files = (await glob(`*.yaml`, { expandDirectories: false, absolute: true, cwd: targetDir })).sort();
 
-function flattenMessages(src: Record<string, unknown>) {
+function flattenMessages(src: unknown) {
     return Object.fromEntries(
         Object.entries(objectToDotted(src))
             .map(([key, value]) => [key.endsWith("._value") ? key.slice(0, -7) : key, value] as const)
@@ -20,9 +20,14 @@ function flattenMessages(src: Record<string, unknown>) {
 const localeData = new Map<string, Record<string, string>>();
 for (const file of files) {
     const segments = file.split(/[/\\]/);
-    const locale = segments[segments.length - 1]!.replace(/\.yaml$/, "");
-    const content = await readFile(file, "utf-8");
-    localeData.set(locale, flattenMessages(parse(content) ?? {}));
+    const localeFilename = segments[segments.length - 1];
+    if (localeFilename === undefined) {
+        throw new Error(`Could not determine the locale name for ${file}`);
+    }
+    const locale = localeFilename.replace(/\.yaml$/, "");
+    const content = await fsPromises.readFile(file, "utf-8");
+    const parsed: unknown = parse(content);
+    localeData.set(locale, flattenMessages(parsed ?? {}));
 }
 
 const baseLocale = "en";
@@ -55,4 +60,4 @@ const report = Object.fromEntries(
     })
 );
 
-console.log(JSON.stringify(report, null, 2));
+process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
