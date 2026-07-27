@@ -32,7 +32,6 @@ function toPosixPath(filePath: string): string {
 
 const posixProjectRoot = toPosixPath(projectRoot);
 const posixSrc = `${posixProjectRoot}/src`;
-const posixLibSrc = `${posixProjectRoot}/src/lib`;
 
 function matchStyleAccess(node: Node): { element: Node; propertyName: string; isComputed: boolean } | undefined {
     if (Node.isPropertyAccessExpression(node)) {

@@ -1,4 +1,5 @@
-type HiddenFileSyncMode = "FETCH" | "OVERWRITE" | "MERGE" | "DISABLE" | "DISABLE_HIDDEN";
+import type { HiddenFileSyncMode, OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
+
 type HiddenFileSyncDirection = "pullForce" | "pushForce" | "safe";
 
 type ConfigureHiddenFileSyncHandlers = {
@@ -9,23 +10,25 @@ type ConfigureHiddenFileSyncHandlers = {
 
 export type ConfigureHiddenFileSyncResult = "ignored" | "disabled" | "enabled";
 
-function getInitialiseDirection(mode: keyof OPTIONAL_SYNC_FEATURES): HiddenFileSyncDirection | false {
+function getInitialiseDirection(mode: HiddenFileSyncMode): HiddenFileSyncDirection | false {
     if (mode == "FETCH") return "pullForce";
     if (mode == "OVERWRITE") return "pushForce";
     if (mode == "MERGE") return "safe";
     return false;
 }
 
-function isDisableMode(mode: keyof OPTIONAL_SYNC_FEATURES): boolean {
+function isDisableMode(
+    mode: OptionalSyncFeatureMode
+): mode is Extract<HiddenFileSyncMode, "DISABLE" | "DISABLE_HIDDEN"> {
     return mode == "DISABLE" || mode == "DISABLE_HIDDEN";
 }
 
-function isHiddenFileSyncMode(mode: keyof OPTIONAL_SYNC_FEATURES): mode is HiddenFileSyncMode {
+function isHiddenFileSyncMode(mode: OptionalSyncFeatureMode): mode is HiddenFileSyncMode {
     return mode == "FETCH" || mode == "OVERWRITE" || mode == "MERGE" || isDisableMode(mode);
 }
 
 export async function configureHiddenFileSyncMode(
-    mode: keyof OPTIONAL_SYNC_FEATURES,
+    mode: OptionalSyncFeatureMode,
     handlers: ConfigureHiddenFileSyncHandlers
 ): Promise<ConfigureHiddenFileSyncResult> {
     if (!isHiddenFileSyncMode(mode)) {

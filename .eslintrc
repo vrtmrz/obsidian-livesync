@@ -20,8 +20,6 @@
     "ignorePatterns": [
         "**/node_modules/*",
         "**/jest.config.js",
-        "src/lib/coverage",
-        "src/lib/browsertest",
         "**/test.ts",
         "**/tests.ts",
         "**/**test.ts",

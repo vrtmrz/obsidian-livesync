@@ -1,11 +1,11 @@
-import { InjectableAPIService } from "@lib/services/implements/injectable/InjectableAPIService";
-import type { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
+import { InjectableAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAPIService";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { Platform, type Command, type ViewCreator } from "@/deps.ts";
 import { ObsHttpHandler } from "@/modules/essentialObsidian/APILib/ObsHttpHandler";
 import { ObsidianConfirm } from "./ObsidianConfirm";
-import type { Confirm } from "@lib/interfaces/Confirm";
+import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";
-import { compatGlobal } from "@lib/common/coreEnvFunctions";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 

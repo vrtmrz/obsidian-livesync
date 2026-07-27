@@ -1,15 +1,21 @@
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { ServiceRebuilder } from "@lib/serviceModules/Rebuilder";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
 
-import { StorageAccessManager } from "@lib/managers/StorageProcessingManager";
+import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { FileAccessFSAPI } from "./FileAccessFSAPI";
 import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl";
 import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
 import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI";
-import type { ServiceModules } from "@lib/interfaces/ServiceModule";
+import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
+import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance";
+
+export interface FSAPIServiceModules extends ServiceModules {
+    vaultAccess: FileAccessFSAPI;
+    storageEventManager: StorageEventManagerFSAPI;
+}
 
 /**
  * Initialize service modules for FileSystem API webapp version
@@ -24,7 +30,7 @@ export function initialiseServiceModulesFSAPI(
     rootHandle: FileSystemDirectoryHandle,
     core: LiveSyncBaseCore<ServiceContext, never>,
     services: InjectableServiceHub<ServiceContext>
-): ServiceModules {
+): FSAPIServiceModules {
     const storageAccessManager = new StorageAccessManager();
 
     // FileSystem API-specific file access
@@ -59,6 +65,7 @@ export function initialiseServiceModulesFSAPI(
 
     // Database file access (platform-independent)
     const databaseFileAccess = new ServiceDatabaseFileAccessFSAPI({
+        events: services.context.events,
         API: services.API,
         database: services.database,
         path: services.path,
@@ -68,6 +75,7 @@ export function initialiseServiceModulesFSAPI(
 
     // File handler (platform-independent)
     const fileHandler = new ServiceFileHandler({
+        events: services.context.events,
         API: services.API,
         databaseFileAccess: databaseFileAccess,
         conflict: services.conflict,
@@ -77,10 +85,12 @@ export function initialiseServiceModulesFSAPI(
         path: services.path,
         replication: services.replication,
         storageAccess: storageAccess,
+        fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
     });
 
     // Rebuilder (platform-independent)
     const rebuilder = new ServiceRebuilder({
+        events: services.context.events,
         API: services.API,
         database: services.database,
         appLifecycle: services.appLifecycle,
@@ -101,5 +111,7 @@ export function initialiseServiceModulesFSAPI(
         fileHandler,
         databaseFileAccess,
         storageAccess,
+        vaultAccess,
+        storageEventManager,
     };
 }

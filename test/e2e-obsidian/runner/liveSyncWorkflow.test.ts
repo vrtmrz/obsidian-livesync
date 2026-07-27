@@ -1,0 +1,95 @@
+import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { describe, expect, it, vi } from "vitest";
+
+const { evalObsidianJson } = vi.hoisted(() => ({
+    evalObsidianJson: vi.fn(),
+}));
+
+vi.mock("./cli.ts", () => ({ evalObsidianJson }));
+
+import {
+    assertE2eCompatibilityMarker,
+    createE2eCouchDbPluginData,
+    prepareRemote,
+    waitForLiveSyncCoreReady,
+    type CompatibilityMarkerState,
+} from "./liveSyncWorkflow.ts";
+
+describe("compatibility marker persistence", () => {
+    it("waits for an accepted review to reach device-local storage", async () => {
+        const pending: CompatibilityMarkerState = {
+            vaultName: "fixture",
+            additionalSuffix: "-",
+            expectedStorageKey: "fixture--database-compatibility-version",
+            rawStorageValue: null,
+            serviceValue: "",
+            versionUpFlash: "",
+        };
+        const persisted: CompatibilityMarkerState = {
+            ...pending,
+            rawStorageValue: `${VER}`,
+            serviceValue: `${VER}`,
+        };
+        evalObsidianJson.mockResolvedValueOnce(pending).mockResolvedValueOnce(persisted);
+
+        await expect(
+            assertE2eCompatibilityMarker("obsidian-cli", {}, { timeoutMs: 100, intervalMs: 0 })
+        ).resolves.toEqual(persisted);
+        expect(evalObsidianJson).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("configured CouchDB fixture", () => {
+    it("uses a current remote profile for ordinary configured fixtures", () => {
+        const pluginData = createE2eCouchDbPluginData({
+            uri: "https://couch.example",
+            username: "alice",
+            password: "secret",
+            dbName: "notes",
+        });
+        const remoteConfigurations = pluginData.remoteConfigurations as
+            | Record<string, { id: string; uri: string }>
+            | undefined;
+
+        expect(remoteConfigurations).toBeDefined();
+        expect(Object.keys(remoteConfigurations ?? {})).toHaveLength(1);
+        expect(pluginData.activeConfigurationId).toBe(Object.keys(remoteConfigurations ?? {})[0]);
+    });
+});
+
+describe("Real Obsidian core readiness", () => {
+    it("retries while the plug-in core is temporarily unavailable during reload", async () => {
+        evalObsidianJson.mockReset();
+        evalObsidianJson
+            .mockRejectedValueOnce(new Error("Cannot read properties of undefined (reading 'core')"))
+            .mockResolvedValueOnce({
+                databaseReady: true,
+                appReady: true,
+                configured: true,
+                remoteType: "",
+                settingVersion: 10,
+                suspended: false,
+            });
+
+        await expect(waitForLiveSyncCoreReady("obsidian-cli", {}, 1000)).resolves.toMatchObject({
+            databaseReady: true,
+            appReady: true,
+        });
+        expect(evalObsidianJson).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("remote fixture preparation", () => {
+    it("waits for the remote Security Seed after resolving a new remote", async () => {
+        evalObsidianJson.mockReset();
+        evalObsidianJson.mockResolvedValueOnce({ status: "resolved", securitySeedReady: true });
+
+        await prepareRemote("obsidian-cli", {});
+
+        const evaluatedCode = String(evalObsidianJson.mock.calls[0]?.[1] ?? "");
+        expect(evaluatedCode.indexOf("markRemoteResolved")).toBeLessThan(
+            evaluatedCode.indexOf("ensurePBKDF2Salt")
+        );
+        expect(evaluatedCode).toContain("Timed out preparing the remote Security Seed");
+    });
+});

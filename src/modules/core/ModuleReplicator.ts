@@ -3,21 +3,25 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "@/modules/AbstractModule";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
-import { balanceChunkPurgedDBs } from "@lib/pouchdb/chunks";
-import { purgeUnreferencedChunks } from "@lib/pouchdb/chunks";
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import { type EntryDoc, type RemoteType } from "@lib/common/types";
+import { balanceChunkPurgedDBs } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
+import { purgeUnreferencedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import {
+    type EntryDoc,
+    type ObsidianLiveSyncSettings,
+    type RemoteType,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 
-import { $msg } from "@lib/common/i18n";
+import { $msg } from "@/common/translation";
 import type { LiveSyncCore } from "@/main";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
-import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
-import { clearHandlers } from "@lib/replication/SyncParamsHandler";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { MARK_LOG_NETWORK_ERROR } from "@lib/services/lib/logUtils";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
+import { clearHandlers } from "@vrtmrz/livesync-commonlib/compat/replication/SyncParamsHandler";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { MARK_LOG_NETWORK_ERROR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -64,24 +68,59 @@ export class ModuleReplicator extends AbstractModule {
 
     processor: ReplicateResultProcessor = new ReplicateResultProcessor(this);
     private _unresolvedErrorManager: UnresolvedErrorManager = new UnresolvedErrorManager(
-        this.core.services.appLifecycle
+        this.core.services.appLifecycle,
+        this.core.services.context.events
     );
 
     clearErrors() {
         this._unresolvedErrorManager.clearErrors();
     }
 
+    private _normalFileReflectionFilterSignature: string | undefined;
+
+    private getNormalFileReflectionFilterSignature(
+        settings: Pick<
+            ObsidianLiveSyncSettings,
+            | "handleFilenameCaseSensitive"
+            | "ignoreFiles"
+            | "maxMTimeForReflectEvents"
+            | "syncIgnoreRegEx"
+            | "syncInternalFiles"
+            | "syncMaxSizeInMB"
+            | "syncOnlyRegEx"
+            | "useIgnoreFiles"
+        >
+    ): string {
+        return JSON.stringify({
+            handleFilenameCaseSensitive: settings.handleFilenameCaseSensitive ?? false,
+            ignoreFiles: settings.ignoreFiles ?? "",
+            maxMTimeForReflectEvents: settings.maxMTimeForReflectEvents ?? 0,
+            syncIgnoreRegEx: settings.syncIgnoreRegEx ?? "",
+            syncInternalFiles: settings.syncInternalFiles ?? false,
+            syncMaxSizeInMB: settings.syncMaxSizeInMB ?? 0,
+            syncOnlyRegEx: settings.syncOnlyRegEx ?? "",
+            useIgnoreFiles: settings.useIgnoreFiles ?? false,
+        });
+    }
+
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
+        this._normalFileReflectionFilterSignature = this.getNormalFileReflectionFilterSignature(this.settings);
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
             if (this.settings.syncOnSave && !this.core.services.appLifecycle.isSuspended()) {
                 scheduleTask("perform-replicate-after-save", 250, () => this.services.replication.replicateByEvent());
             }
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
+            const previousReflectionFilter = this._normalFileReflectionFilterSignature;
+            const nextReflectionFilter = this.getNormalFileReflectionFilterSignature(setting);
+            this._normalFileReflectionFilterSignature = nextReflectionFilter;
             if (this.core.settings.suspendParseReplicationResult) {
                 this.processor.suspend();
             } else {
                 this.processor.resume();
+            }
+            if (previousReflectionFilter !== undefined && previousReflectionFilter !== nextReflectionFilter) {
+                fireAndForget(() => this.processor.reprocessStoredDocuments());
             }
         });
 
@@ -106,7 +145,8 @@ export class ModuleReplicator extends AbstractModule {
     }
 
     /**
-     * obsolete method. No longer maintained and will be removed in the future.
+     * Reconciles local chunks when an older IndexedDB client reports that the remote database was cleaned.
+     * This compatibility path remains reachable while those clients can still set `remoteCleaned`.
      * @deprecated v0.24.17
      * @param showMessage If true, show message to the user.
      */
@@ -284,12 +324,14 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         // --> These handlers can be separated.
         const isOnlineAndCanReplicateWithHost = isOnlineAndCanReplicate.bind(null, this._unresolvedErrorManager, {
             services: {
+                context: services.context,
                 API: services.API,
             },
             serviceModules: {},
         });
         const canReplicateWithPBKDF2WithHost = canReplicateWithPBKDF2.bind(null, this._unresolvedErrorManager, {
             services: {
+                context: services.context,
                 replicator: services.replicator,
                 setting: services.setting,
             },

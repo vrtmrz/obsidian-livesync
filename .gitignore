@@ -29,6 +29,8 @@ cov_profile/**
 
 coverage
 src/apps/cli/dist/*
+src/apps/webapp/playwright-report/
+src/apps/webapp/test-results/
 _testdata/**
 utils/bench/splitResults.csv
 .eslintcache

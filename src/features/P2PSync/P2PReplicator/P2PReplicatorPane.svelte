@@ -1,12 +1,12 @@
 <script lang="ts">
     import { onMount, setContext } from "svelte";
-    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@lib/common/types";
+    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import {
         AcceptedStatus,
         ConnectionStatus,
         type PeerStatus,
-    } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicatorPaneController } from "./P2PReplicatorPaneController";
     import PeerStatusRow from "@/features/P2PSync/P2PReplicator/PeerStatusRow.svelte";
     import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
     import {
@@ -15,21 +15,20 @@
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import { type P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
-    import { $msg as _msg } from "@lib/common/i18n";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
-    import { generateP2PRoomId } from "@lib/common/utils";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { $msg as _msg } from "@/common/translation";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        cmdSync: LiveSyncTrysteroReplicator;
-        core: LiveSyncBaseCore;
+        getCmdSync: () => P2PReplicatorPaneController;
+        core: Pick<LiveSyncBaseCore, "services">;
     }
 
-    let { cmdSync, core }: Props = $props();
-    // const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
-    setContext("getReplicator", () => cmdSync);
+    let { getCmdSync, core }: Props = $props();
+    setContext("getReplicator", () => getCmdSync());
     const currentSettings = () => core.services.setting.currentSettings() as P2PSyncSetting;
     const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
@@ -223,16 +222,16 @@
     }
 
     async function openServer() {
-        await cmdSync.open();
+        await getCmdSync().open();
     }
     async function closeServer() {
-        await cmdSync.close();
+        await getCmdSync().close();
     }
     function startBroadcasting() {
-        void cmdSync.enableBroadcastChanges();
+        void getCmdSync().enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        void cmdSync.disableBroadcastChanges();
+        void getCmdSync().disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;

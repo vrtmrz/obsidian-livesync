@@ -4,14 +4,14 @@ import {
     type HashAlgorithm,
     LOG_LEVEL_NOTICE,
     SuffixDatabaseName,
-} from "@lib/common/types.ts";
-import { Logger } from "@lib/common/logger.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { PouchDB } from "@lib/pouchdb/pouchdb-browser";
-import { ExtraSuffixIndexedDB } from "@lib/common/types.ts";
+import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
+import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
@@ -188,7 +188,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                     }
                     this.requestUpdate();
                 };
-                text.inputEl.before((dateEl = activeDocument.createElement("span")));
+                text.inputEl.before((dateEl = activeDocument.createSpan()));
                 text.inputEl.type = "datetime-local";
                 if (this.editingSettings.maxMTimeForReflectEvents > 0) {
                     const date = new Date(this.editingSettings.maxMTimeForReflectEvents);
@@ -230,16 +230,5 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 this.services.appLifecycle.performRestart();
             }
         });
-    });
-    void addPanel(paneEl, "Remote Database Tweak (In sunset)").then((paneEl) => {
-        // new Setting(paneEl).autoWireToggle("useEden").setClass("wizardHidden");
-        // const onlyUsingEden = visibleOnly(() => this.isConfiguredAs("useEden", true));
-        // new Setting(paneEl).autoWireNumeric("maxChunksInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-        // new Setting(paneEl)
-        //     .autoWireNumeric("maxTotalLengthInEden", { onUpdate: onlyUsingEden })
-        //     .setClass("wizardHidden");
-        // new Setting(paneEl).autoWireNumeric("maxAgeInEden", { onUpdate: onlyUsingEden }).setClass("wizardHidden");
-
-        new Setting(paneEl).autoWireToggle("enableCompression").setClass("wizardHidden");
     });
 }
