@@ -1,72 +1,84 @@
-import { chromium, type Page } from "playwright";
+import { mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { withObsidianPage } from "@vrtmrz/obsidian-test-session";
+import type { Locator, Page } from "playwright";
 
-export function obsidianRemoteDebuggingPort(): number {
-    const port = Number(process.env.E2E_OBSIDIAN_REMOTE_DEBUGGING_PORT ?? 9222);
-    process.env.E2E_OBSIDIAN_REMOTE_DEBUGGING_PORT = String(port);
-    return port;
-}
+export {
+    obsidianRemoteDebuggingPort,
+    preseedTrustedVaultState,
+    trustVaultIfPrompted,
+    withObsidianPage,
+} from "@vrtmrz/obsidian-test-session";
 
-async function waitForCdp(port: number): Promise<void> {
-    const deadline = Date.now() + Number(process.env.E2E_OBSIDIAN_CDP_TIMEOUT_MS ?? 30000);
-    while (Date.now() < deadline) {
+export async function captureObsidianPage(
+    port: number,
+    filename: string,
+    assertReady: (page: Page) => Promise<void>
+): Promise<string> {
+    const outputDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+    const screenshotPath = join(outputDirectory, filename);
+    await mkdir(dirname(screenshotPath), { recursive: true });
+
+    await withObsidianPage(port, async (page) => {
         try {
-            const response = await fetch(`http://127.0.0.1:${port}/json/version`);
-            if (response.ok) {
-                return;
-            }
-        } catch {
-            // Keep polling until Obsidian exposes the debugging endpoint.
+            await assertReady(page);
+        } catch (error) {
+            const failurePath = screenshotPath.replace(/\.png$/u, ".failure.png");
+            await page.screenshot({ path: failurePath, fullPage: true });
+            console.error(`UI failure screenshot: ${failurePath}`);
+            throw error;
         }
-        await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    throw new Error(`Timed out waiting for Obsidian DevTools endpoint on port ${port}`);
-}
-
-export async function withObsidianPage<T>(port: number, operation: (page: Page) => Promise<T>): Promise<T> {
-    await waitForCdp(port);
-    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
-    try {
-        const context = browser.contexts()[0];
-        const page = context.pages()[0] ?? (await context.waitForEvent("page", { timeout: 10000 }));
-        return await operation(page);
-    } finally {
-        await browser.close();
-    }
-}
-
-export async function preseedTrustedVaultState(port: number, vaultId: string): Promise<void> {
-    await withObsidianPage(port, async (page) => {
-        await page.evaluate((id) => {
-            localStorage.setItem(`enable-plugin-${id}`, "true");
-        }, vaultId);
-        await page.reload({ waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => undefined);
-        await page.waitForTimeout(1000);
+        await page.screenshot({ path: screenshotPath, fullPage: true });
     });
+
+    return screenshotPath;
 }
 
-export async function trustVaultIfPrompted(port: number): Promise<void> {
+export async function captureObsidianDialogue(
+    port: number,
+    filename: string,
+    assertReady: (page: Page) => Promise<void>
+): Promise<string> {
+    return await captureObsidianPage(port, filename, assertReady);
+}
+
+export async function captureObsidianElement(
+    port: number,
+    filename: string,
+    resolveElement: (page: Page) => Locator | Promise<Locator>
+): Promise<string> {
+    const outputDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+    const screenshotPath = join(outputDirectory, filename);
+    await mkdir(dirname(screenshotPath), { recursive: true });
+
     await withObsidianPage(port, async (page) => {
-        const deadline = Date.now() + Number(process.env.E2E_OBSIDIAN_TRUST_PROMPT_TIMEOUT_MS ?? 30000);
-        while (Date.now() < deadline) {
-            const yesButton = page.getByRole("button", { name: "Yes" });
-            if (await yesButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-                await yesButton.click();
-                await page.waitForTimeout(500);
-                continue;
-            }
-
-            const trustButton = page.getByText("Trust author and enable plugins");
-            if (await trustButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-                await trustButton.click();
-                await page.waitForTimeout(500);
-                continue;
-            }
-
-            const workspace = page.locator(".workspace");
-            if (await workspace.isVisible({ timeout: 1000 }).catch(() => false)) {
-                return;
-            }
+        try {
+            const element = await resolveElement(page);
+            await element.waitFor({ state: "visible", timeout: 10000 });
+            await element.screenshot({
+                path: screenshotPath,
+                animations: "disabled",
+                style: ".notice-container { visibility: hidden !important; }",
+            });
+        } catch (error) {
+            const failurePath = screenshotPath.replace(/\.png$/u, ".failure.png");
+            await page.screenshot({ path: failurePath, fullPage: true });
+            console.error(`UI element failure screenshot: ${failurePath}`);
+            throw error;
         }
+    });
+
+    return screenshotPath;
+}
+
+export async function captureJsonResolveDialogue(port: number): Promise<string> {
+    return await captureObsidianDialogue(port, "hidden-file-json-resolve-dialogue.png", async (page) => {
+        const optionAB = page.locator('label:has(input[name="disp"][value="AB"])');
+        const optionBA = page.locator('label:has(input[name="disp"][value="BA"])');
+        const applyButton = page.getByRole("button", { name: "Apply" });
+        await optionAB.waitFor({ state: "visible", timeout: 10000 });
+        await optionBA.waitFor({ state: "visible", timeout: 10000 });
+        await applyButton.waitFor({ state: "visible", timeout: 10000 });
     });
 }
 

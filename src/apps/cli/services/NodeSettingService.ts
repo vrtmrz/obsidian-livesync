@@ -1,10 +1,9 @@
-import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
+import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB } from "@/common/events";
-import { eventHub } from "@lib/hub/hub";
-import { handlers } from "@lib/services/lib/HandlerUtils";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import { SettingService, type SettingServiceDependencies } from "@lib/services/base/SettingService";
+import { handlers } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { SettingService, type SettingServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import {
     configureNodeLocalStorage,
     deleteNodeLocalStorageItem,
@@ -17,11 +16,11 @@ export class NodeSettingService<T extends ServiceContext> extends SettingService
         super(context, dependencies);
         configureNodeLocalStorage(storagePath);
         this.onSettingSaved.addHandler((settings) => {
-            eventHub.emitEvent(EVENT_SETTING_SAVED, settings);
+            this.context.events.emitEvent(EVENT_SETTING_SAVED, settings);
             return Promise.resolve(true);
         });
         this.onSettingLoaded.addHandler((settings) => {
-            eventHub.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
+            this.context.events.emitEvent(EVENT_REQUEST_RELOAD_SETTING_TAB);
             return Promise.resolve(true);
         });
     }

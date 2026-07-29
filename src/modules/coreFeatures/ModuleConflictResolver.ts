@@ -10,27 +10,22 @@ import {
     NOT_CONFLICTED,
     type diff_check_result,
     type FilePathWithPrefix,
-} from "@lib/common/types";
-import { isCustomisationSyncMetadata, isPluginMetadata } from "@lib/common/typeUtils.ts";
-import { TARGET_IS_NEW } from "@lib/common/models/shared.const.symbols.ts";
-import { compareMTime, displayRev } from "@lib/common/utils.ts";
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isCustomisationSyncMetadata, isPluginMetadata } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
+import { TARGET_IS_NEW } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.symbols";
+import { compareMTime, displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import diff_match_patch from "diff-match-patch";
-import { stripAllPrefixes, isPlainText } from "@lib/string_and_binary/path";
-import { eventHub } from "@/common/events.ts";
-import type { InjectableServiceHub } from "@lib/services/InjectableServices.ts";
+import { stripAllPrefixes, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-
-declare global {
-    interface LSEvents {
-        "conflict-cancelled": FilePathWithPrefix;
-    }
-}
 
 export class ModuleConflictResolver extends AbstractModule {
     private async _resolveConflictByDeletingRev(
         path: FilePathWithPrefix,
         deleteRevision: string,
-        subTitle = ""
+        subTitle = "",
+        showNotice = true
     ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> {
         const title = `Resolving ${subTitle ? `[${subTitle}]` : ""}:`;
         if (!(await this.core.fileHandler.deleteRevisionFromDB(path, deleteRevision))) {
@@ -40,7 +35,7 @@ export class ModuleConflictResolver extends AbstractModule {
             );
             return MISSING_OR_ERROR;
         }
-        eventHub.emitEvent("conflict-cancelled", path);
+        eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, path);
         this._log(
             `${title} Conflicted revision has been deleted ${displayRev(deleteRevision)} ${path}`,
             LOG_LEVEL_INFO
@@ -58,7 +53,7 @@ export class ModuleConflictResolver extends AbstractModule {
             this._log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }
-        const level = subTitle.indexOf("same") !== -1 ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
+        const level = subTitle.indexOf("same") !== -1 || !showNotice ? LOG_LEVEL_INFO : LOG_LEVEL_NOTICE;
         this._log(`${path} has been merged automatically`, level);
         return AUTO_MERGED;
     }
@@ -91,8 +86,11 @@ export class ModuleConflictResolver extends AbstractModule {
             return MISSING_OR_ERROR;
         }
         if (rightLeaf == false) {
-            // Conflicted item could not load, delete this.
-            return await this.services.conflict.resolveByDeletingRevision(path, rightRev, "MISSING OLD REV");
+            // A locally unreadable conflict leaf may still be recoverable from another
+            // replica or backup. Keep it visible for explicit repair instead of treating
+            // missing chunks as evidence that the branch is obsolete.
+            this._log(`could not read conflicted revision ${rightRev}:${path}`, LOG_LEVEL_NOTICE);
+            return MISSING_OR_ERROR;
         }
 
         const isSame = leftLeaf.data == rightLeaf.data && leftLeaf.deleted == rightLeaf.deleted;
@@ -130,11 +128,12 @@ export class ModuleConflictResolver extends AbstractModule {
         // const filename = filenames[0];
         return await serialized(`conflict-resolve:${filename}`, async () => {
             const conflictCheckResult = await this.checkConflictAndPerformAutoMerge(filename);
-            if (
-                conflictCheckResult === MISSING_OR_ERROR ||
-                conflictCheckResult === NOT_CONFLICTED ||
-                conflictCheckResult === CANCELLED
-            ) {
+            if (conflictCheckResult === NOT_CONFLICTED) {
+                eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+                this._log(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
+                return;
+            }
+            if (conflictCheckResult === MISSING_OR_ERROR || conflictCheckResult === CANCELLED) {
                 // nothing to do.
                 this._log(`[conflict] Not conflicted or cancelled: ${filename}`, LOG_LEVEL_VERBOSE);
                 return;
@@ -160,12 +159,12 @@ export class ModuleConflictResolver extends AbstractModule {
                 }
             }
             this._log("[conflict] Manual merge required!");
-            eventHub.emitEvent("conflict-cancelled", filename);
+            eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
             await this.services.conflict.resolveByUserInteraction(filename, conflictCheckResult);
         });
     }
 
-    private async _anyResolveConflictByNewest(filename: FilePathWithPrefix): Promise<boolean> {
+    private async _anyResolveConflictByNewest(filename: FilePathWithPrefix, showNotice = true): Promise<boolean> {
         const currentRev = await this.core.databaseFileAccess.fetchEntryMeta(filename, undefined, true);
         if (currentRev == false) {
             this._log(`Could not get current revision of ${filename}`);
@@ -203,7 +202,7 @@ export class ModuleConflictResolver extends AbstractModule {
             this._log(
                 `conflict: Deleting the older revision ${mTimeAndRev[i][1]} (${new Date(mTimeAndRev[i][0]).toLocaleString()}) of ${filename}`
             );
-            await this.services.conflict.resolveByDeletingRevision(filename, mTimeAndRev[i][1], "NEWEST");
+            await this._resolveConflictByDeletingRev(filename, mTimeAndRev[i][1], "NEWEST", showNotice);
         }
         return true;
     }
@@ -214,13 +213,14 @@ export class ModuleConflictResolver extends AbstractModule {
 
         let i = 0;
         for (const file of files) {
-            if (i++ % 10)
+            i++;
+            if (i % 10 === 0)
                 this._log(
                     `Check and Processing ${i} / ${files.length}`,
                     LOG_LEVEL_NOTICE,
                     "resolveAllConflictedFilesByNewerOnes"
                 );
-            await this.services.conflict.resolveByNewest(file);
+            await this._anyResolveConflictByNewest(file, false);
         }
         this._log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
     }

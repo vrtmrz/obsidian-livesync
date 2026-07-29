@@ -1,7 +1,7 @@
 import { App, Modal } from "@/deps.ts";
 import P2POpenReplicationPane from "./P2POpenReplicationPane.svelte";
 import { mount, unmount } from "svelte";
-import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
 
 export type P2POpenReplicationModalCallback = {
     onSync: (peerId: string) => Promise<void>;

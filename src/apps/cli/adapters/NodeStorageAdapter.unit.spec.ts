@@ -1,10 +1,8 @@
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { NodeStorageAdapter } from "./NodeStorageAdapter";
+import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
+import { fsPromises as fs, os, path, NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
 
-describe("NodeStorageAdapter binary I/O", () => {
+describe("NodeStorageAdapter", () => {
     const tempDirs: string[] = [];
 
     async function createAdapter() {
@@ -16,6 +14,12 @@ describe("NodeStorageAdapter binary I/O", () => {
     afterEach(async () => {
         await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
     });
+
+    for (const contractCase of storageAdapterContractCases) {
+        it(contractCase.name, async () => {
+            await contractCase.run(await createAdapter());
+        });
+    }
 
     it("writes and reads binary data without corruption", async () => {
         const adapter = await createAdapter();

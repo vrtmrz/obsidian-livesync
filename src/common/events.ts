@@ -1,4 +1,4 @@
-import { eventHub } from "@lib/hub/hub";
+import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 // import type ObsidianLiveSyncPlugin from "../main";
 
 export const EVENT_PLUGIN_LOADED = "plugin-loaded";
@@ -43,5 +43,12 @@ declare global {
     }
 }
 
-export * from "@lib/events/coreEvents.ts";
-export { eventHub };
+export * from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+
+/**
+ * Self-hosted LiveSync's host event channel.
+ *
+ * Commonlib does not own a process-global channel. Each LiveSync host context is
+ * composed with this channel while legacy host UI modules migrate to context.events.
+ */
+export const eventHub = createLiveSyncEventHub();

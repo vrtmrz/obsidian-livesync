@@ -1,4 +1,3 @@
-import { join } from "@std/path";
 import { CLI_DIR, runCliOrFail } from "./cli.ts";
 
 // ---------------------------------------------------------------------------
@@ -11,18 +10,14 @@ export async function initSettingsFile(settingsFile: string): Promise<void> {
 }
 
 /**
- * Generate a full setup URI from a settings file via src/lib API.
+ * Generate a full setup URI from a settings file via the Commonlib package API.
  * Mirrors the bash flow in test-setup-put-cat-linux.sh.
  */
 export async function generateSetupUriFromSettings(settingsFile: string, setupPassphrase: string): Promise<string> {
-    const repoRoot = join(CLI_DIR, "..", "..", "..");
     const script = [
-        "import fs from 'node:fs';",
-        "import { pathToFileURL } from 'node:url';",
+        "import { fs } from '@vrtmrz/livesync-commonlib/node';",
+        "import { encodeSettingsToSetupURI } from '@vrtmrz/livesync-commonlib/compat/API/processSetting';",
         "(async () => {",
-        "  const modulePath = process.env.REPO_ROOT + '/src/lib/src/API/processSetting.ts';",
-        "  const moduleUrl = pathToFileURL(modulePath).href;",
-        "  const { encodeSettingsToSetupURI } = await import(moduleUrl);",
         "  const settingsPath = process.env.SETTINGS_FILE;",
         "  const passphrase = process.env.SETUP_PASSPHRASE;",
         "  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));",
@@ -39,6 +34,7 @@ export async function generateSetupUriFromSettings(settingsFile: string, setupPa
     ].join("\n");
 
     const scriptPath = await Deno.makeTempFile({
+        dir: CLI_DIR,
         prefix: "livesync-setup-uri-",
         suffix: ".mts",
     });
@@ -49,7 +45,6 @@ export async function generateSetupUriFromSettings(settingsFile: string, setupPa
             args: ["tsx", scriptPath],
             cwd: CLI_DIR,
             env: {
-                REPO_ROOT: repoRoot,
                 SETTINGS_FILE: settingsFile,
                 SETUP_PASSPHRASE: setupPassphrase,
             },
@@ -128,6 +123,8 @@ export async function applyRemoteSyncSettings(
         minioSecretKey?: string;
         encrypt?: boolean;
         passphrase?: string;
+        enableCompression?: boolean;
+        usePathObfuscation?: boolean;
     }
 ): Promise<void> {
     const data = JSON.parse(await Deno.readTextFile(settingsFile));
@@ -154,6 +151,12 @@ export async function applyRemoteSyncSettings(
     data.usePluginSync = false;
     data.encrypt = options.encrypt === true;
     data.passphrase = options.encrypt ? (options.passphrase ?? "") : "";
+    if (options.enableCompression !== undefined) {
+        data.enableCompression = options.enableCompression;
+    }
+    if (options.usePathObfuscation !== undefined) {
+        data.usePathObfuscation = options.usePathObfuscation;
+    }
     data.isConfigured = true;
     await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));
 }
@@ -200,9 +203,8 @@ export async function applyP2pTestTweaks(settingsFile: string, deviceName: strin
     data.passphrase = passphrase;
     data.usePathObfuscation = true;
     data.handleFilenameCaseSensitive = false;
-    data.customChunkSize = 50;
+    data.customChunkSize = 60;
     data.usePluginSyncV2 = true;
-    data.doNotUseFixedRevisionForChunks = false;
     data.P2P_DevicePeerName = deviceName;
     data.isConfigured = true;
     await Deno.writeTextFile(settingsFile, JSON.stringify(data, null, 2));

@@ -1,5 +1,5 @@
-import type { FilePath, UXDataWriteOptions } from "@lib/common/types";
-import type { IVaultAdapter } from "@lib/serviceModules/adapters";
+import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
 
 /**
@@ -95,6 +95,70 @@ export class FSAPIVaultAdapter implements IVaultAdapter<FSAPIFile> {
             },
             handle: fileHandle,
         };
+    }
+
+    private async deletePathIfExists(path: string): Promise<void> {
+        const parts = path.split("/").filter((part) => part !== "");
+        const name = parts.pop();
+        if (!name) return;
+
+        try {
+            let currentHandle = this.rootHandle;
+            for (const part of parts) {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            }
+            await currentHandle.removeEntry(name);
+        } catch (error) {
+            if ((error as { name?: unknown })?.name === "NotFoundError") return;
+            throw error;
+        }
+    }
+
+    async rename(file: FSAPIFile, newPath: string): Promise<void> {
+        const source = await file.handle.getFile();
+        const data = await source.arrayBuffer();
+        const oldPath = file.path;
+        const oldPathParts = oldPath.split("/");
+        const oldName = oldPathParts.pop() ?? "file";
+        const temporaryName = `.${oldName}.livesync-rename-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+        const temporaryPath = [...oldPathParts, temporaryName].join("/");
+        const temporaryFile = await this.createBinary(temporaryPath, data);
+
+        try {
+            await this.delete(file);
+        } catch (error) {
+            await this.delete(temporaryFile, true);
+            throw error;
+        }
+
+        try {
+            const renamedFile = await this.createBinary(newPath, data);
+            file.path = renamedFile.path;
+            file.stat = renamedFile.stat;
+            file.handle = renamedFile.handle;
+        } catch (error) {
+            try {
+                await this.deletePathIfExists(newPath);
+            } catch (cleanupError) {
+                throw new Error(
+                    `Could not rename ${oldPath} to ${newPath}, or remove the incomplete target. A temporary copy remains at ${temporaryPath}. Rename error: ${String(error)}. Cleanup error: ${String(cleanupError)}`
+                );
+            }
+            try {
+                const restoredFile = await this.createBinary(oldPath, data);
+                file.path = restoredFile.path;
+                file.stat = restoredFile.stat;
+                file.handle = restoredFile.handle;
+                await this.delete(temporaryFile, true);
+            } catch (restoreError) {
+                throw new Error(
+                    `Could not rename ${oldPath} to ${newPath}, or restore it. A temporary copy remains at ${temporaryPath}. Rename error: ${String(error)}. Restore error: ${String(restoreError)}`
+                );
+            }
+            throw error;
+        }
+
+        await this.delete(temporaryFile, true);
     }
 
     async delete(file: FSAPIFile | FSAPIFolder, force = false): Promise<void> {

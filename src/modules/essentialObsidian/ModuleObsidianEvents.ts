@@ -4,16 +4,33 @@ import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/log
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import type { TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "@lib/common/types.ts";
+import { type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "@lib/mock_and_interop/stores.ts";
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import type { LiveSyncCore } from "@/main.ts";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+
+type MutableCommandDefinition = {
+    callback?: () => void;
+};
+
+type InternalCommandRegistry = {
+    commands?: Record<string, MutableCommandDefinition | undefined>;
+    executeCommandById(commandId: string): unknown;
+};
+
+type AppWithInternalCommands = {
+    commands?: InternalCommandRegistry;
+};
+
+type CodeMirrorAdapter = {
+    commands: { save: () => void };
+};
 
 export class ModuleObsidianEvents extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -40,10 +57,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
     swapSaveCommand() {
         this._log("Modifying callback of the save command", LOG_LEVEL_VERBOSE);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Editor Tweaking
-        const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
+        const commandRegistry = (this.app as unknown as AppWithInternalCommands).commands;
+        const saveCommandDefinition = commandRegistry?.commands?.["editor:save-file"];
         const save = saveCommandDefinition?.callback;
-        if (typeof save === "function") {
+        if (saveCommandDefinition && typeof save === "function") {
             this.initialCallback = save;
             saveCommandDefinition.callback = () => {
                 scheduleTask("syncOnEditorSave", 250, () => {
@@ -61,17 +78,14 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 save();
             };
         }
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const _this = this;
-        //@ts-ignore
-        if (!compatGlobal.CodeMirrorAdapter) {
+        const codeMirrorAdapter = (compatGlobal as typeof compatGlobal & { CodeMirrorAdapter?: CodeMirrorAdapter })
+            .CodeMirrorAdapter;
+        if (!codeMirrorAdapter) {
             this._log("CodeMirrorAdapter is not available");
             return;
         }
-        //@ts-ignore
-        compatGlobal.CodeMirrorAdapter.commands.save = () => {
-            //@ts-ignore
-            void _this.app.commands.executeCommandById("editor:save-file");
+        codeMirrorAdapter.commands.save = () => {
+            void commandRegistry?.executeCommandById("editor:save-file");
             // _this.app.performCommand('editor:save-file');
         };
     }
@@ -82,23 +96,71 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         this.watchWorkspaceOpen = this.watchWorkspaceOpen.bind(this);
         this.watchOnline = this.watchOnline.bind(this);
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerEvent(this.app.workspace.on("file-open", this.watchWorkspaceOpen));
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerDomEvent(activeDocument, "visibilitychange", this.watchWindowVisibility);
         this.plugin.registerDomEvent(compatGlobal, "focus", () => this.setHasFocus(true));
         this.plugin.registerDomEvent(compatGlobal, "blur", () => this.setHasFocus(false));
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerDomEvent(compatGlobal, "online", this.watchOnline);
         // Already bound
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- The handler is bound above before registration.
         this.plugin.registerDomEvent(compatGlobal, "offline", this.watchOnline);
     }
 
     hasFocus = true;
     isLastHidden = false;
+    private boundedRemoteActivityEndHandler?: (value: { readonly value: number }) => unknown;
+    private deferredBoundedLifecycle?: "suspend-if-hidden" | "restart-continuous-if-visible";
+
+    private keepReplicationActiveInBackground() {
+        return (
+            this.settings.keepReplicationActiveInBackground &&
+            (this.settings.liveSync || this.settings.periodicReplication) &&
+            !this.services.API.isMobile()
+        );
+    }
+
+    private async applyDeferredBoundedActivityLifecycle() {
+        const count = this.services.replicator.boundedRemoteActivityCount;
+        if (count.value !== 0) {
+            this.deferLifecycleUntilBoundedRemoteActivityEnds();
+            return;
+        }
+        const deferredLifecycle = this.deferredBoundedLifecycle;
+        this.deferredBoundedLifecycle = undefined;
+        const keepActiveInBackground = this.keepReplicationActiveInBackground();
+        if (deferredLifecycle === "suspend-if-hidden" && activeWindow.document.hidden) {
+            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
+            return;
+        }
+        if (
+            deferredLifecycle === "restart-continuous-if-visible" &&
+            !activeWindow.document.hidden &&
+            keepActiveInBackground &&
+            this.settings.liveSync
+        ) {
+            await this.services.appLifecycle.onSuspending();
+            await this.services.appLifecycle.onResuming();
+            await this.services.appLifecycle.onResumed();
+        }
+    }
+
+    private deferLifecycleUntilBoundedRemoteActivityEnds() {
+        if (this.boundedRemoteActivityEndHandler) return;
+        const count = this.services.replicator.boundedRemoteActivityCount;
+        const handler = (value: { readonly value: number }) => {
+            if (value.value !== 0) return;
+            count.offChanged(handler);
+            this.boundedRemoteActivityEndHandler = undefined;
+            fireAndForget(() => this.applyDeferredBoundedActivityLifecycle());
+        };
+        this.boundedRemoteActivityEndHandler = handler;
+        count.onChanged(handler);
+    }
 
     setHasFocus(hasFocus: boolean) {
         this.hasFocus = hasFocus;
@@ -122,7 +184,19 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     }
 
     async watchWindowVisibilityAsync() {
-        if (this.settings.suspendFileWatching) return;
+        if (this.settings.suspendFileWatching) {
+            if (
+                this.settings.isConfigured &&
+                this.services.appLifecycle.isReady() &&
+                this.services.replicator.boundedRemoteActivityCount.value > 0
+            ) {
+                const isHidden = activeWindow.document.hidden;
+                this.isLastHidden = isHidden;
+                this.deferredBoundedLifecycle = isHidden ? "suspend-if-hidden" : undefined;
+                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+            }
+            return;
+        }
         if (!this.settings.isConfigured) return;
         if (!this.services.appLifecycle.isReady()) return;
 
@@ -135,6 +209,13 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         if (this.isLastHidden === isHidden) {
             return;
         }
+
+        const boundedRemoteActivityInProgress = this.services.replicator.boundedRemoteActivityCount.value > 0;
+        if (!isHidden && boundedRemoteActivityInProgress && this.deferredBoundedLifecycle === "suspend-if-hidden") {
+            this.isLastHidden = false;
+            this.deferredBoundedLifecycle = undefined;
+            return;
+        }
         this.isLastHidden = isHidden;
 
         await this.services.fileProcessing.commitPendingFileEvents();
@@ -144,16 +225,23 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         // modes (LiveSync's continuous replication and Periodic's timer both stall otherwise);
         // becoming visible reopens normally, and for LiveSync additionally forces a teardown first
         // (see the resume branch) so a stalled continuous channel is always replaced.
-        const keepActiveInBackground =
-            this.settings.keepReplicationActiveInBackground &&
-            (this.settings.liveSync || this.settings.periodicReplication) &&
-            !this.services.API.isMobile();
+        const keepActiveInBackground = this.keepReplicationActiveInBackground();
 
         if (isHidden) {
-            if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
+            if (boundedRemoteActivityInProgress && !keepActiveInBackground) {
+                this.deferredBoundedLifecycle = "suspend-if-hidden";
+                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+            } else if (!keepActiveInBackground) {
+                await this.services.appLifecycle.onSuspending();
+            }
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
+            if (boundedRemoteActivityInProgress && keepActiveInBackground && this.settings.liveSync) {
+                this.deferredBoundedLifecycle = "restart-continuous-if-visible";
+                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+                return;
+            }
             // Only the continuous (LiveSync) channel can go stalled-but-not-terminated: PouchDB
             // emits paused/retry while the replicator keeps its AbortController set, so the reopen
             // below would no-op on exactly the channel that needs replacing. Force a teardown first
@@ -243,7 +331,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                 // const proc = this.core.processingFileEventCount.value;
                 const e = 0;
                 const proc = 0;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reading the tick establishes the reactive polling dependency.
                 const __ = __tick.value;
                 return (
                     dbCount +

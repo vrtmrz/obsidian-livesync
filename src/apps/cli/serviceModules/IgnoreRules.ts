@@ -1,5 +1,6 @@
-import { minimatch } from "minimatch";
-import { fsPromises as fs, path } from "@/apps/cli/node-compat";
+import { Minimatch } from "minimatch";
+import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 
 /**
  * Loads and evaluates ignore rules from `.livesync/ignore` inside the vault.
@@ -17,9 +18,12 @@ import { fsPromises as fs, path } from "@/apps/cli/node-compat";
  * Missing files (`.livesync/ignore` or `.gitignore`) are silently skipped.
  */
 export class IgnoreRules {
-    private patterns: string[] = [];
+    private patterns: Minimatch[] = [];
 
-    constructor(private vaultPath: string) {}
+    constructor(
+        private vaultPath: string,
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+    ) {}
 
     /**
      * Reads `.livesync/ignore` (and optionally `.gitignore`) and populates the
@@ -53,7 +57,7 @@ export class IgnoreRules {
                 continue;
             }
             if (trimmed.startsWith("import:")) {
-                console.error(
+                this.reportDiagnostic(
                     `[IgnoreRules] Warning: unrecognised directive '${trimmed}' — only 'import: .gitignore' is supported`
                 );
                 continue;
@@ -61,7 +65,7 @@ export class IgnoreRules {
             this._addPattern(trimmed);
         }
         if (this.patterns.length > 0) {
-            console.error(`[IgnoreRules] Loaded ${this.patterns.length} ignore patterns`);
+            this.reportDiagnostic(`[IgnoreRules] Loaded ${this.patterns.length} ignore patterns`);
         }
     }
 
@@ -108,7 +112,7 @@ export class IgnoreRules {
                     `Remove it from .livesync/ignore or use a separate include/exclude file.`
             );
         }
-        this.patterns.push(this._normalisePattern(raw));
+        this.patterns.push(new Minimatch(this._normalisePattern(raw), { dot: true }));
     }
 
     /**
@@ -124,6 +128,6 @@ export class IgnoreRules {
         }
         // Normalise to forward slashes for minimatch.
         const normalised = relativePath.replace(/\\/g, "/");
-        return this.patterns.some((p) => minimatch(normalised, p, { dot: true }));
+        return this.patterns.some((pattern) => pattern.match(normalised));
     }
 }

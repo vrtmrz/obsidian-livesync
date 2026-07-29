@@ -1,4 +1,4 @@
-import type { FilePath, UXStat } from "@lib/common/types";
+import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type {
     IFileSystemAdapter,
     IPathAdapter,
@@ -6,7 +6,7 @@ import type {
     IConversionAdapter,
     IStorageAdapter,
     IVaultAdapter,
-} from "@lib/serviceModules/adapters";
+} from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { TAbstractFile, TFile, TFolder, Stat, App } from "obsidian";
 import { ObsidianConversionAdapter } from "./ObsidianConversionAdapter";
 import { ObsidianPathAdapter } from "./ObsidianPathAdapter";
@@ -52,6 +52,11 @@ export class ObsidianFileSystemAdapter implements IFileSystemAdapter<TAbstractFi
 
     getFiles(): Promise<TFile[]> {
         return Promise.resolve(this.app.vault.getFiles());
+    }
+
+    async renameFile(file: TFile, newPath: string): Promise<TFile> {
+        await this.vault.rename(file, newPath);
+        return file;
     }
 
     statFromNative(file: TFile): Promise<UXStat> {

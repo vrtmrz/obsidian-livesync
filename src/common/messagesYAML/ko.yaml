@@ -1,0 +1,1211 @@
+(Active): (활성)
+(BETA) Always overwrite with a newer file: (베타) 항상 새로운 파일로 덮어쓰기
+(Beta) Use ignore files: (베타) 제외 규칙 파일 사용
+(Days passed, 0 to disable automatic-deletion): (지난 일수, 0으로 설정하면 자동 삭제 비활성화)
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.:
+  "(예: 청크를 원격에서 읽음) 이 옵션을 활성화하면, LiveSync는 청크를 로컬에 복제하지 않고 원격에서 직접 읽습니다. 커스텀 청크
+  크기를 키우는 것을 권장합니다."
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.: (MB) 이 값이 설정되면, 이보다 큰 로컬 및 원격 파일의 변경 사항은 건너뜁니다. 파일이 다시 작아지면 더 새로운 파일이 사용됩니다.
+(Mega chars): (메가 문자)
+(Not recommended) If set, credentials will be stored in the file.: (권장하지 않음) 설정한 경우 자격 증명이 파일에 저장됩니다.
+(Obsolete) Use an old adapter for compatibility: (사용 중단) 호환성을 위해 이전 어댑터 사용
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.: (정규식) 비워 두면 모든 파일을 동기화합니다. 정규식을 지정하면 동기화할 파일을 제한할 수 있습니다.
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.: (정규식) 설정하면 이 패턴과 일치하는 로컬 및 원격 파일 변경은 모두 건너뜁니다.
+Access Key: 액세스 키
+Activate: 활성화
+Add default patterns: 기본 패턴 추가
+Add new connection: 연결 추가
+Always prompt merge conflicts: 항상 병합 충돌 알림
+Apply Latest Change if Conflicting: 충돌 시 최신 변경 사항 적용
+Apply preset configuration: 프리셋 구성 적용
+Ask a passphrase at every launch: 시작할 때마다 암호문구 묻기
+Automatically Sync all files when opening Obsidian.: Obsidian을 열 때 모든 파일을 자동으로 동기화합니다.
+Back: 뒤로
+Back to non-configured: 미구성 상태로 되돌리기
+Batch database update: 일괄 데이터베이스 업데이트
+Batch limit: 일괄 제한
+Batch size: 일괄 크기
+Batch size of on-demand fetching: 필요 시 가져올 청크 묶음 크기
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.:
+  v0.17.16 이전에는 로컬 데이터베이스에 이전 어댑터를 사용했습니다. 이제는 새로운 어댑터를 권장합니다. 하지만 로컬 데이터베이스
+  재구축이 필요합니다. 충분한 시간이 있을 때 이 토글을 비활성화해 주세요. 활성화된 상태로 두면 원격 데이터베이스에서 가져올 때도 이를
+  비활성화하라는 메시지가 나타납니다.
+Bucket Name: 버킷 이름
+Cancel: 취소
+Check and convert non-path-obfuscated files: 경로 난독화되지 않은 파일 검사 및 변환
+Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.: 아직 경로 난독화 ID로 변환되지 않은 문서를 확인하고 필요하면 변환합니다.
+cmdConfigSync:
+  showCustomizationSync: 사용자 설정 동기화 표시
+Comma separated `.gitignore, .dockerignore`: 쉼표로 구분된 `.gitignore, .dockerignore`
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.: 로컬 데이터베이스와 저장소 간의 파일 내용을 비교합니다. 일치하지 않으면 어떤 쪽을 유지할지 묻게 됩니다.
+Compatibility (Conflict Behaviour): 호환성 (충돌 동작)
+Compatibility (Database structure): 호환성 (데이터베이스 구조)
+Compatibility (Internal API Usage): 호환성 (내부 API 사용)
+Compatibility (Metadata): 호환성 (메타데이터)
+Compatibility (Remote Database): 호환성 (원격 데이터베이스)
+Compatibility (Trouble addressed): 호환성 (문제 대응)
+Compute revisions for chunks: 청크에 대한 리비전 계산
+Configuration Encryption: 구성 암호화
+Configure: 설정
+Configure And Change Remote: 원격 구성 및 변경
+Configure E2EE: E2EE 구성
+Configure Remote: 원격 구성
+Copy: 복사
+CouchDB Connection Tweak: CouchDB 연결 조정
+Cross-platform: 크로스 플랫폼
+"Current adapter: {adapter}": "현재 어댑터: {adapter}"
+Customization Sync: 사용자 지정 동기화
+Customization Sync (Beta3): 사용자 지정 동기화 (Beta3)
+Data Compression: 데이터 압축
+Database Adapter: 데이터베이스 어댑터
+Database Name: 데이터베이스 이름
+Database suffix: 데이터베이스 접미사
+Default: 기본값
+Delay conflict resolution of inactive files: 비활성 파일의 충돌 해결 지연
+Delay merge conflict prompt for inactive files.: 비활성 파일의 병합 충돌 프롬프트 지연.
+Delete: 삭제
+Delete all customization sync data: 모든 사용자 정의 동기화 데이터 삭제
+Delete all data on the remote server.: 원격 서버의 모든 데이터를 삭제합니다.
+Delete local database to reset or uninstall Self-hosted LiveSync: Self-hosted LiveSync를 초기화하거나 제거하기 위해 로컬 데이터베이스를 삭제
+Delete old metadata of deleted files on start-up: 시작 시 삭제된 파일의 오래된 메타데이터 삭제
+Delete Remote Configuration: 원격 구성 삭제
+Delete remote configuration '{name}'?: "'{name}' 원격 구성을 삭제할까요?"
+desktop: 데스크톱
+Developer: 개발자
+Device name: 기기 이름
+dialog:
+  yourLanguageAvailable:
+    _value: >-
+      Self-hosted LiveSync에서 귀하의 언어로 번역을 제공하므로 %{Display language} 설정이 활성화되었습니다.
+
+
+      참고: 모든 메시지가 번역되지는 않습니다. 귀하의 기여를 기다리고 있습니다!
+
+      참고 2: 이슈를 생성하는 경우 **%{lang-def}로 되돌린 후** 스크린샷, 메시지, 로그를 가져와 주세요. 이는 설정 대화
+      상자에서 할 수 있습니다.
+
+      간편하게 사용하실 수 있었으면 좋겠습니다!
+    btnRevertToDefault: "%{lang-def} 유지"
+    Title: " 번역을 사용할 수 있습니다!"
+Disables all synchronization and restart.: 모든 동기화를 비활성화하고 재시작합니다.
+Disables logging, only shows notifications. Please disable if you report an issue.: 로깅을 비활성화하고 알림만 표시합니다. 문제를 신고하는 경우 비활성화해 주세요.
+Display Language: 표시 언어
+Display name: 표시 이름
+Do not check configuration mismatch before replication: 복제 전 구성 불일치 확인 안 함
+Do not keep metadata of deleted files.: 삭제된 파일의 메타데이터를 보관하지 않습니다.
+Do not split chunks in the background: 백그라운드에서 청크 분할 안 함
+Do not use internal API: 내부 API 사용 안 함
+Doctor:
+  Button:
+    DismissThisVersion: 아니요, 다음 릴리스까지 다시 묻지 않음
+    Fix: 수정
+    FixButNoRebuild: 수정하지만 재구축하지 않음
+    No: 아니요
+    Skip: 그대로 두기
+    Yes: 예
+  Dialogue:
+    Main: |-
+      안녕하세요! ${activateReason} 로 인해 구성 진단 마법사가 활성화되었습니다!
+      그리고 일부 구성이 잠재적인 문제로 감지되었습니다.
+      안심하세요. 하나씩 해결해 봅시다.
+
+      대상 항목은 다음과 같습니다.
+
+      ${issues}
+
+      시작하시겠습니까?
+    MainFix: |-
+      **구성 이름:** `${name}`
+      **현재 값:** `${current}`, **이상적인 값:** `${ideal}`
+      **권장 수준:** ${level}
+      **왜 이것이 감지되었나요?**
+      ${reason}
+
+
+      ${note}
+
+      이상적인 값으로 수정하시겠습니까?
+    Title: Self-hosted LiveSync 구성 진단 마법사
+    TitleAlmostDone: 거의 완료되었습니다!
+    TitleFix: 문제 해결 ${current}/${total}
+  Level:
+    Must: 필수
+    Necessary: 필수
+    Optional: 선택사항
+    Recommended: 권장
+  Message:
+    NoIssues: 문제가 감지되지 않았습니다!
+    RebuildLocalRequired: 주의! 이를 적용하려면 로컬 데이터베이스 재구축이 필요합니다!
+    RebuildRequired: 주의! 이를 적용하려면 재구축이 필요합니다!
+    SomeSkipped: 일부 문제를 그대로 두었습니다. 다음 시작 시 다시 질문할까요?
+Duplicate: 복제
+Duplicate remote: 원격 구성 복제
+E2EE Configuration: E2EE 구성
+Edge case addressing (Behaviour): 특수 상황 처리 (동작)
+Edge case addressing (Database): 특수 상황 처리 (데이터베이스)
+Edge case addressing (Processing): 특수 상황 처리 (처리)
+Emergency restart: 긴급 재시작
+Enable advanced features: 고급 기능 활성화
+Enable customization sync: 사용자 설정 동기화 활성화
+Enable Developers' Debug Tools.: 개발자 디버그 도구 활성화
+Enable edge case treatment features: 특수 사례 처리 기능 활성화
+Enable poweruser features: 파워 유저 기능 활성화
+Enable this if your Object Storage doesn't support CORS: 객체 스토리지가 CORS를 지원하지 않는 경우 활성화하세요
+Enable this option to automatically apply the most recent change to documents even when it conflicts: 이 옵션을 활성화하면 충돌이 있어도 문서에 가장 최근 변경 사항을 자동으로 적용합니다
+Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.: 원격 데이터베이스의 내용을 암호화합니다. 플러그인의 동기화 기능을 사용하는 경우 활성화를 권장합니다.
+Encrypting sensitive configuration items: 민감한 구성 항목 암호화
+Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.: 패스프레이즈는 암호화에 사용되는 긴 암호 문구입니다. 변경한 경우, 암호화된 새 파일로 서버의 데이터베이스를 덮어써야 합니다.
+End-to-End Encryption: 종단간 암호화
+Endpoint URL: 엔드포인트 URL
+Enhance chunk size: 청크 크기 향상
+Export: 내보내기
+Fetch: 가져오기
+Fetch chunks on demand: 필요 시 청크 원격 가져오기
+Fetch database with previous behaviour: 이전 동작으로 데이터베이스 가져오기
+Fetch remote settings: 원격 설정 가져오기
+File to resolve conflict: 충돌을 해결할 파일
+Filename: 파일명
+Flag and restart: 표시 후 재시작
+Forces the file to be synced when opened.: 파일을 열 때 강제로 동기화합니다.
+Fresh Start Wipe: 새로 시작 지우기
+Garbage Collection V3 (Beta): 가비지 컬렉션 V3 (Beta)
+Handle files as Case-Sensitive: 파일을 대소문자 구분으로 처리
+Hidden Files: 숨김 파일
+How to display network errors when the sync server is unreachable.: 동기화 서버에 연결할 수 없을 때 네트워크 오류를 어떻게 표시할지 설정합니다.
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: 비활성화(토글)되면 청크는 UI 스레드에서 분할됩니다 (이전 동작).
+If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.:
+  활성화하면 파일별 효율적인 사용자 설정 동기화가 사용됩니다. 이를 활성화할 때 소규모 데이터 구조 전환이 필요합니다. 모든 기기를
+  v0.23.18로 업데이트해야 합니다. 이를 활성화하면 이전 버전과의 호환성이 사라집니다.
+If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.: 활성화하면 청크는 최대 100개 항목으로 분할됩니다. 하지만 중복 제거 기능이 약간 약해집니다.
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: 활성화하면 새로 생성된 변경 기록(청크)은 문서 안에 임시로 보관되며, 일정 조건을 만족하면 자동으로 문서 밖으로 분리되어 저장됩니다.
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.: 활성화하면 파일 경고 배너 대신 상태 영역에 ⛔ 아이콘만 표시됩니다. 자세한 내용은 표시되지 않습니다.
+If enabled, the file under 1kb will be processed in the UI thread.: 활성화하면 1kb 미만의 파일은 UI 스레드에서 처리됩니다.
+If enabled, the notification of hidden files change will be suppressed.: 활성화하면 숨겨진 파일 변경 알림이 억제됩니다.
+If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour): 이 옵션이 활성화되면 모든 청크는 콘텐츠에서 생성된 리비전과 함께 저장됩니다. (이전 동작)
+If this enabled, All files are handled as case-Sensitive (Previous behaviour).: 이 옵션이 활성화되면 모든 파일이 대소문자를 구분하여 처리됩니다 (이전 동작).
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: 이 옵션을 활성화하면 청크가 문단이나 의미 단위로 나뉘어 저장됩니다. 단, 이 기능은 일부 플랫폼에서는 지원되지 않을 수 있습니다.
+If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.:
+  이 옵션을 활성화하면, 제외 규칙 파일에 일치하는 로컬 파일의 변경 사항은 건너뜁니다. 원격 변경 여부 또한 로컬의 제외 규칙 파일에 따라
+  판단됩니다.
+If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.:
+  이 옵션이 활성화되면 PouchDB는 연결을 더이상 무한히 열어두지 않고 60초 동안 유지합니다. 그 시간 내에 변경 사항이 없으면 소켓을
+  닫고 다시 엽니다. 프록시가 요청 지속 시간을 제한할 때 유용하지만 리소스 사용량이 증가할 수 있습니다.
+Ignore files: 제외 규칙 파일
+Ignore patterns: 무시 패턴
+Import connection: 연결 가져오기
+Incubate Chunks in Document: 문서 내 변경 기록 임시 보관
+Initialise all journal history, On the next sync, every item will be received and sent.: 모든 저널 기록을 초기화합니다. 다음 동기화 때 모든 항목을 다시 받고 다시 보냅니다.
+Interval (sec): 간격 (초)
+K:
+  exp: 실험 기능
+  long_p2p_sync: "%{title_p2p_sync} (%{exp})"
+  P2P: "%{Peer}-to-%{Peer}"
+  Peer: 피어
+  ScanCustomization: 사용자 설정 검색
+  short_p2p_sync: P2P 동기화 (%{exp})
+  title_p2p_sync: 피어 투 피어(P2P) 동기화
+Keep empty folder: 빈 폴더 유지
+lang_def: Default
+lang-de: Deutsche
+lang-def: "%{lang_def}"
+lang-es: Español
+lang-fr: Français
+lang-ja: 日本語
+lang-ko: 한국어
+lang-ru: Русский
+lang-zh: 简体中文
+lang-zh-tw: 繁體中文
+Later: 나중에
+"Limit: {datetime} ({timestamp})": "제한: {datetime} ({timestamp})"
+LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.: LiveSync는 서로 다른 접두사 없이 동일한 이름을 가진 여러 볼트를 처리할 수 없습니다. 이는 자동으로 구성되어야 합니다.
+liveSyncReplicator:
+  beforeLiveSync: LiveSync 전에 OneShot을 먼저 시작합니다...
+  cantReplicateLowerValue: 더 낮은 값으로 복제할 수 없습니다.
+  checkingLastSyncPoint: 마지막으로 동기화된 지점을 찾고 있습니다.
+  couldNotConnectTo: |-
+    ${uri}에 연결할 수 없습니다: ${name}
+    (${db})
+  couldNotConnectToRemoteDb: "원격 데이터베이스에 연결할 수 없습니다: ${d}"
+  couldNotConnectToServer: 서버에 연결할 수 없습니다.
+  couldNotConnectToURI: "${uri}에 연결할 수 없습니다: ${dbRet}"
+  couldNotMarkResolveRemoteDb: 원격 데이터베이스를 해결됨으로 표시할 수 없습니다.
+  liveSyncBegin: LiveSync 시작...
+  lockRemoteDb: 데이터 손상을 방지하기 위해 원격 데이터베이스를 잠급니다
+  markDeviceResolved: 이 기기를 '해결됨'으로 표시합니다.
+  oneShotSyncBegin: OneShot 동기화 시작... (${syncMode})
+  remoteDbCorrupted: 원격 데이터베이스가 더 최신이거나 손상되었습니다. 최신 버전의 self-hosted-livesync가 설치되어 있는지 확인하세요
+  remoteDbCreatedOrConnected: 원격 데이터베이스가 생성되거나 연결되었습니다
+  remoteDbDestroyed: 원격 데이터베이스가 삭제되었습니다
+  remoteDbDestroyError: "원격 데이터베이스 삭제 중 오류가 발생했습니다:"
+  remoteDbMarkedResolved: 원격 데이터베이스가 해결됨으로 표시되었습니다.
+  replicationClosed: 복제가 종료되었습니다
+  replicationInProgress: 복제가 이미 진행 중입니다
+  retryLowerBatchSize: "더 낮은 일괄 크기로 재시도: ${batch_size}/${batches_limit}"
+  unlockRemoteDb: 데이터 손상을 방지하기 위해 원격 데이터베이스를 잠금 해제합니다
+liveSyncSetting:
+  errorNoSuchSettingItem: "해당 설정 항목이 없습니다: ${key}"
+  originalValue: "원본: ${value}"
+  valueShouldBeInRange: 값은 ${min} < 값 < ${max} 범위에 있어야 합니다
+liveSyncSettings:
+  btnApply: 적용
+Local Database Tweak: 로컬 데이터베이스 조정
+Lock: 잠금
+Lock Server: 서버 잠금
+Lock the remote server to prevent synchronization with other devices.: 다른 기기와의 동기화를 방지하기 위해 원격 서버를 잠급니다.
+logPane:
+  autoScroll: 자동 스크롤
+  logWindowOpened: 로그 창이 열렸습니다
+  pause: 일시 중단
+  title: Self-hosted LiveSync 로그
+  wrap: 줄 바꿈
+Maximum delay for batch database updating: 일괄 데이터베이스 업데이트 최대 지연
+Maximum file size: 최대 파일 크기
+Maximum Incubating Chunk Size: 임시 보관 변경 기록의 최대 크기
+Maximum Incubating Chunks: 임시 보관 중인 변경 기록 최대 수
+Maximum Incubation Period: 변경 기록 임시 보관 최대 시간
+MB (0 to disable).: MB (0으로 설정하면 비활성화).
+Memory cache: 메모리 캐시
+Memory cache size (by total characters): 메모리 캐시 크기 (총 문자 수)
+Memory cache size (by total items): 메모리 캐시 크기 (총 항목 수)
+Merge: 병합
+Minimum delay for batch database updating: 일괄 데이터베이스 업데이트 최소 지연
+moduleCheckRemoteSize:
+  logCheckingStorageSizes: 스토리지 크기 확인 중
+  logCurrentStorageSize: "원격 스토리지 크기: ${measuredSize}"
+  logExceededWarning: "원격 스토리지 크기: ${measuredSize}가 ${notifySize}를 초과했습니다"
+  logThresholdEnlarged: 임계값이 ${size}MB로 증가되었습니다
+  msgConfirmRebuild: 시간이 꽤 오래 걸릴 수 있습니다. 정말 지금 모든 것을 재구축하시겠습니까?
+  msgDatabaseGrowing: |-
+    **데이터베이스 용량이 점점 커지고 있습니다!** 하지만 걱정하지 마세요. 아직 원격 스토리지 공간이 완전히 부족해진 건 아닙니다.
+
+    | 측정된 크기 | 설정된 한도 |
+    | --- | --- |
+    | ${estimatedSize} | ${maxSize} |
+
+    > [!MORE]-
+    > 오랜 기간 사용했다면 참조되지 않는 청크, 즉 '쓰레기 데이터'가 쌓였을 수 있습니다. 이 경우 전체 재구성을 권장합니다. 용량이 훨씬 줄어들 수 있습니다.
+    >
+    > 단순히 볼트 자체 용량이 커지고 있는 것이라면, 먼저 파일을 정리한 후 전체를 재구성하는 것이 좋습니다. Self-hosted LiveSync는 처리 속도를 위해 삭제해도 실제 데이터를 바로 지우지 않습니다. 이 내용은 [기술 문서](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)에 간략히 정리되어 있습니다.
+    >
+    > 용량 증가가 괜찮다면 알림 임계치를 100MB 단위로 높일 수 있습니다. 직접 서버를 운영하는 경우에 적합한 방법입니다. 다만, 가끔은 전체 재구성을 해주는 것이 바람직합니다.
+
+    > [!WARNING]
+    > 전체 재구성을 실행할 경우, 모든 기기가 반드시 동기화되어 있어야 합니다. 플러그인이 최대한 병합하려고 시도하긴 하지만 완전하지 않을 수 있습니다.
+  msgSetDBCapacity: |
+    **원격 스토리지 공간이 부족해지기 전에 미리 조치할 수 있도록** 데이터베이스 용량 경고를 설정할 수 있습니다.
+    이 기능을 활성화하시겠습니까?
+
+    > [!MORE]-
+    > - 0: 스토리지 용량에 대한 경고 없음
+    >   자체 서버를 사용하는 등 여유 공간이 충분한 경우에 권장됩니다. 스토리지 용량을 직접 확인하고 수동으로 재구성할 수 있습니다.
+    > - 800: 원격 스토리지 용량이 800MB를 초과하면 경고
+    >   1GB 제한이 있는 fly.io나 IBM Cloudant 사용 시 권장됩니다.
+    > - 2000: 원격 스토리지 용량이 2GB를 초과하면 경고
+
+    설정한 용량 한도에 도달하면, 단계적으로 경고 한도를 늘릴지 여부를 묻게 됩니다.
+  option2GB: 2GB (표준)
+  option800MB: 800MB (Cloudant, fly.io)
+  optionAskMeLater: 나중에 물어보기
+  optionDismiss: 무시
+  optionIncreaseLimit: ${newMax}MB로 증가
+  optionNoWarn: 아니요, 경고하지 마세요
+  optionRebuildAll: 지금 모든 것 재구축
+  titleDatabaseSizeLimitExceeded: 원격 스토리지 크기가 제한을 초과했습니다
+  titleDatabaseSizeNotify: 데이터베이스 크기 알림 설정
+moduleInputUIObsidian:
+  defaultTitleConfirmation: 확인
+  defaultTitleSelect: 선택
+  optionNo: 아니요
+  optionYes: 예
+moduleLiveSyncMain:
+  logAdditionalSafetyScan: 추가 안전 검사 중...
+  logLoadingPlugin: 플러그인 로딩 중...
+  logPluginInitCancelled: 모듈에 의해 플러그인 초기화가 취소되었습니다
+  logPluginVersion: Self-hosted LiveSync v${manifestVersion} ${packageVersion}
+  logReadChangelog: LiveSync가 업데이트되었습니다. 변경사항을 읽어보세요!
+  logSafetyScanCompleted: 추가 안전 검사가 완료되었습니다
+  logSafetyScanFailed: 모듈에서 추가 안전 검사가 실패했습니다
+  logUnloadingPlugin: 플러그인 언로딩 중...
+  logVersionUpdate: LiveSync가 업데이트되었습니다. 호환성 문제가 있는 업데이트의 경우 모든 자동 동기화가 일시적으로
+    비활성화되었습니다. 활성화하기 전에 모든 기기가 최신 상태인지 확인하세요.
+  msgScramEnabled: >-
+    Self-hosted LiveSync가 일부 이벤트를 무시하도록 설정되어 있습니다. 이 설정이 맞습니까?
+
+
+    | 유형 | 상태 | 설명 |
+
+    |:---:|:---:|---|
+
+    | 스토리지 이벤트 | ${fileWatchingStatus} | 모든 수정 사항이 무시됩니다 |
+
+    | 데이터베이스 이벤트 | ${parseReplicationStatus} | 모든 동기화 변경이 지연됩니다 |
+
+
+    이벤트 감지를 다시 활성화하고 Obsidian을 재시작하시겠습니까?
+
+
+    > [!DETAILS]-
+
+    > 이러한 설정은 플러그인이 재구성 또는 데이터 가져오기 중에 자동으로 설정한 것입니다. 프로세스가 비정상적으로 종료되면 이 상태가
+    의도치 않게 유지될 수 있습니다.
+
+    > 상태가 확실하지 않다면 이 과정을 다시 실행해 보세요. 재시작 전에 반드시 볼트를 백업해 주세요.
+  optionKeepLiveSyncDisabled: LiveSync 비활성화 유지
+  optionResumeAndRestart: 재개 후 Obsidian 재시작
+  titleScramEnabled: Scram 활성화됨
+moduleLocalDatabase:
+  logWaitingForReady: 준비 대기 중...
+moduleLog:
+  showLog: 로그 표시
+moduleMigration:
+  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
+  logBulkSendCorrupted: 청크 일괄 전송이 활성화되었지만, 이 기능에 문제가 있었습니다. 불편을 드려 죄송합니다. 자동으로 비활성화되었습니다.
+  logFetchRemoteTweakFailed: 원격 조정 값을 가져오는데 실패했습니다
+  logLocalDatabaseNotReady: 문제가 발생했습니다! 로컬 데이터베이스가 준비되지 않았습니다
+  logMigratedSameBehaviour: 이전과 같은 방식으로 동작하도록 db:${current}로 데이터 구조 전환이 완료되었습니다
+  logMigrationFailed: ${old}에서 ${current}로의 데이터 구조 전환이 실패했거나 중단되었습니다
+  logRedflag2CreationFail: redflag2 생성에 실패했습니다
+  logRemoteTweakUnavailable: 원격 조정 값을 가져올 수 없습니다
+  logSetupCancelled: 설정이 취소되었습니다. Self-hosted LiveSync가 설정을 기다리고 있습니다!
+  msgFetchRemoteAgain: >-
+    이미 알고 계시겠지만, Self-hosted LiveSync의 기본 동작 방식과 데이터베이스 구조가 변경되었습니다.
+
+
+    다행히도 여러분의 노력 덕분에 원격 데이터베이스는 이미 성공적으로 데이터 구조 전환이 완료된 것으로 보입니다. 축하드립니다!
+
+
+    하지만 아직 일부 추가 작업이 필요합니다. 이 기기의 설정이 원격 데이터베이스와 호환되지 않으므로, 원격 데이터를 다시 가져와야 합니다.
+    지금 원격 데이터베이스를 다시 가져오시겠습니까?
+
+
+    ___참고: 설정이 변경되고 데이터베이스를 다시 불러오기 전까지는 동기화가 불가능합니다.___
+
+    ___참고2: 청크는 변경이 불가능한 구조이므로, 메타데이터와 차이점만 가져올 수 있습니다.___
+  msgInitialSetup: >-
+    이 기기는 **아직 초기 설정이 완료되지 않았습니다**. 지금부터 설정 과정을 안내해 드리겠습니다.
+
+
+    모든 대화 내용은 클립보드에 복사할 수 있습니다. 나중에 참고하려면 Obsidian 노트에 붙여넣거나 번역 도구를 활용해 번역하셔도
+    됩니다.
+
+
+    먼저, **Setup URI**를 가지고 계신가요?
+
+
+    참고: Setup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요.
+  msgRecommendSetupUri: |-
+    Setup URI를 생성해 사용하는 것을 강력히 권장합니다.
+    Setup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요. 중요한 내용이니 꼭 확인하시기 바랍니다.
+
+    직접 수동 설정을 진행하시겠습니까?
+  msgSinceV02321: >-
+    v0.23.21부터 Self-hosted LiveSync의 기본 동작 방식과 데이터베이스 구조가 변경되었습니다. 주요 변경사항은 다음과
+    같습니다:
+
+
+    1. **파일명 대소문자 구분 처리**
+       이제 파일명은 대소문자를 구분하지 않고 처리됩니다. 이는 파일명 구분을 제대로 지원하지 않는 Linux 및 iOS를 제외한 대부분의 플랫폼에서 유리한 변화입니다.
+       (Linux나 iOS에서는 대소문자만 다른 파일이 존재할 경우 경고가 표시됩니다)
+
+    2. **청크 리비전 관리 방식 개선**
+       청크는 변경 불가능한(immutable) 구조로 고정되며, 이를 통해 리비전 처리가 안정화되고 파일 저장 성능이 향상됩니다.
+
+    ___단, 위 기능을 활성화하려면 원격 및 로컬 데이터베이스를 모두 재구성해야 합니다. 이 과정은 수 분이 소요되므로 여유가 있을 때
+    실행하시는 것을 권장합니다.___
+
+
+    - 기존 방식대로 유지하려면 `${KEEP}`을 선택해 이 과정을 건너뛸 수 있습니다.
+
+    - 시간이 부족하다면 `${DISMISS}`를 눌러주시면 나중에 다시 안내드리겠습니다.
+
+    - 이미 다른 기기에서 데이터베이스를 재구성하셨다면 `${DISMISS}`를 선택한 뒤 다시 동기화해 보세요. 차이점이 감지되면 다시
+    안내드리겠습니다.
+  optionAdjustRemote: 원격에 맞추기
+  optionDecideLater: 나중에 결정하기
+  optionEnableBoth: 둘 다 활성화
+  optionEnableFilenameCaseInsensitive: "#1만 활성화"
+  optionEnableFixedRevisionForChunks: "#2만 활성화"
+  optionHaveSetupUri: 예, 있습니다
+  optionKeepPreviousBehaviour: 이전 동작 유지
+  optionManualSetup: 모든 것을 수동으로 설정
+  optionNoAskAgain: 아니요 (나중에 다시 물어보기)
+  optionNoSetupUri: 아니요, 없습니다
+  optionRemindNextLaunch: 다음 시작 시 알림
+  optionSetupViaP2P: "%{short_p2p_sync}를 사용하여 설정"
+  optionSetupWizard: 설정 마법사로 안내
+  optionYesFetchAgain: 예 (다시 가져오기)
+  titleCaseSensitivity: 대소문자 구분
+  titleRecommendSetupUri: Setup URI 사용 권장
+  titleWelcome: Self-hosted LiveSync에 오신 것을 환영합니다
+moduleObsidianMenu:
+  replicate: 복제
+More actions: 추가 작업
+Move remotely deleted files to the trash, instead of deleting.: 원격에서 삭제된 파일을 삭제하는 대신 휴지통으로 이동합니다.
+Network warning style: 네트워크 경고 표시 방식
+New Remote: 새 원격
+No limit configured: 제한이 설정되지 않음
+Non-Synchronising files: 동기화하지 않는 파일
+Normal Files: 일반 파일
+Not all messages have been translated. And, please revert to "Default" when reporting errors.: 모든 메시지가 번역되지 않았습니다. 오류 신고 시 "기본값"으로 되돌려 주세요.
+Notify all setting files: 모든 설정 파일 알림
+Notify customized: 사용자 설정 알림
+Notify when other device has newly customized.: 다른 기기에서 새로운 사용자 설정이 있을 때 알림을 받습니다.
+Notify when the estimated remote storage size exceeds on start up: 시작 시 예상 원격 스토리지 크기가 초과되면 알림
+Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.: 한 번에 처리할 일괄 처리 수입니다. 기본값은 40입니다. 최소값은 2입니다. 이는 일괄 크기와 함께 메모리에 보관되는 문서 수를 제어합니다.
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.: 한 번에 동기화할 변경 사항의 수입니다. 기본값은 50입니다. 최소값은 2입니다.
+obsidianLiveSyncSettingTab:
+  btnApply: 적용
+  btnCheck: 확인
+  btnCopy: 복사
+  btnDisable: 비활성화
+  btnDiscard: 삭제
+  btnEnable: 활성화
+  btnFix: 수정
+  btnGotItAndUpdated: 알겠습니다. 업데이트했습니다.
+  btnNext: 다음
+  btnStart: 시작
+  btnTest: 테스트
+  btnUse: 사용
+  buttonFetch: 가져오기
+  buttonNext: 다음
+  defaultLanguage: 기본값
+  descConnectSetupURI: 이것은 Setup URI로 Self-hosted LiveSync를 설정하는 권장 방법입니다.
+  descCopySetupURI: 새 기기 설정에 완벽합니다!
+  descEnableLiveSync: 위의 두 옵션 중 하나를 구성하거나 모든 구성을 수동으로 완료한 후에만 활성화하세요.
+  descFetchConfigFromRemote: 이미 구성된 원격 서버에서 필요한 설정을 가져옵니다.
+  descManualSetup: 권장하지 않지만 Setup URI가 없는 경우에 유용합니다
+  descTestDatabaseConnection: 데이터베이스 연결을 엽니다. 원격 데이터베이스를 찾을 수 없고 데이터베이스 생성 권한이 있는 경우, 데이터베이스가 생성됩니다.
+  descValidateDatabaseConfig: 데이터베이스 구성의 잠재적 문제를 확인하고 수정합니다.
+  errAccessForbidden: ❗ 액세스가 금지되었습니다.
+  errCannotContinueTest: 테스트를 계속할 수 없습니다.
+  errCorsCredentials: ❗ cors.credentials가 잘못되었습니다
+  errCorsNotAllowingCredentials: ❗ CORS에서 자격 증명을 허용하지 않습니다
+  errCorsOrigins: ❗ cors.origins가 잘못되었습니다
+  errEnableCors: ❗ httpd.enable_cors가 잘못되었습니다
+  errMaxDocumentSize: ❗ couchdb.max_document_size가 낮습니다)
+  errMaxRequestSize: ❗ chttpd.max_http_request_size가 낮습니다)
+  errMissingWwwAuth: ❗ httpd.WWW-Authenticate가 누락되었습니다
+  errRequireValidUser: ❗ chttpd.require_valid_user가 잘못되었습니다.
+  errRequireValidUserAuth: ❗ chttpd_auth.require_valid_user가 잘못되었습니다.
+  labelDisabled: "⏹️ : 비활성화됨"
+  labelEnabled: "🔁 : 활성화됨"
+  levelAdvanced: " (고급)"
+  levelEdgeCase: " (특수 사례)"
+  levelPowerUser: " (파워 유저)"
+  linkOpenInBrowser: 브라우저에서 열기
+  linkPageTop: 페이지 상단
+  linkTipsAndTroubleshooting: 팁 및 문제 해결
+  linkTroubleshooting: /docs/troubleshooting.md
+  logCannotUseCloudant: 이 기능은 IBM Cloudant와 함께 사용할 수 없습니다.
+  logCheckingConfigDone: 구성 확인 완료
+  logCheckingConfigFailed: 구성 확인 실패
+  logCheckingDbConfig: 데이터베이스 구성 확인 중
+  logCheckPassphraseFailed: |-
+    오류: 원격 서버와 패스프레이즈 확인에 실패했습니다:
+    ${db}.
+  logConfiguredDisabled: "구성된 동기화 모드: 비활성화됨"
+  logConfiguredLiveSync: "구성된 동기화 모드: LiveSync"
+  logConfiguredPeriodic: "구성된 동기화 모드: 주기적"
+  logCouchDbConfigFail: "CouchDB 구성: ${title} 실패"
+  logCouchDbConfigSet: "CouchDB 구성: ${title} -> ${key}를 ${value}로 설정"
+  logCouchDbConfigUpdated: "CouchDB 구성: ${title} 성공적으로 업데이트됨"
+  logDatabaseConnected: 데이터베이스 연결됨
+  logEncryptionNoPassphrase: 패스프레이즈 없이는 암호화를 활성화할 수 없습니다
+  logEncryptionNoSupport: 기기가 암호화를 지원하지 않습니다.
+  logErrorOccurred: 오류가 발생했습니다!
+  logEstimatedSize: "예상 크기: ${size}"
+  logPassphraseInvalid: 패스프레이즈가 유효하지 않습니다. 수정해 주세요.
+  logPassphraseNotCompatible: "오류: 패스프레이즈가 원격 서버와 호환되지 않습니다! 다시 확인해 주세요!"
+  logRebuildNote: 동기화가 비활성화되었습니다. 원하는 경우 가져오기 후 다시 활성화하세요.
+  logSelectAnyPreset: 프리셋을 선택하세요.
+  msgAreYouSureProceed: 정말로 진행하시겠습니까?
+  msgChangesNeedToBeApplied: 변경사항을 적용해야 합니다!
+  msgConfigCheck: --구성 확인--
+  msgConfigCheckFailed: 구성 확인에 실패했습니다. 그래도 계속하시겠습니까?
+  msgConnectionCheck: --연결 확인--
+  msgConnectionProxyNote: 구성 확인 후에도 연결 확인에 문제가 있는 경우, 리버스 프록시 구성을 확인해 주세요.
+  msgCurrentOrigin: "현재 원점: {origin}"
+  msgDiscardConfirmation: 정말로 기존 설정과 데이터베이스를 삭제하시겠습니까?
+  msgDone: --완료--
+  msgEnableCors: httpd.enable_cors 설정
+  msgEnableEncryptionRecommendation: 종단간 암호화와 경로 난독화를 활성화하는 것을 권장합니다. 정말로 암호화 없이 계속하시겠습니까?
+  msgFetchConfigFromRemote: 원격 서버에서 구성을 가져오시겠습니까?
+  msgGenerateSetupURI: 모든 작업이 완료되었습니다! 다른 기기를 설정하기 위해 Setup URI를 생성하시겠습니까?
+  msgIfConfigNotPersistent: "서버 설정이 영구적으로 저장되지 않는 환경(예: Docker에서 실행 중)에서는 이곳의 값들이
+    변경될 수 있습니다. 연결이 가능해지면 서버의 local.ini 파일에서 설정을 수동으로 업데이트해 주세요."
+  msgInvalidPassphrase: 암호화 패스프레이즈가 유효하지 않을 수 있습니다. 정말로 계속하시겠습니까?
+  msgNewVersionNote: 업그레이드 알림으로 여기에 오셨나요? 버전 기록을 검토해 주세요. 만족하신다면 버튼을 클릭하세요. 새로운 업데이트 시 다시 안내됩니다.
+  msgNonHTTPSInfo: 비 HTTPS URI로 구성되었습니다. 모바일 기기에서는 작동하지 않을 수 있으니 주의하세요.
+  msgNonHTTPSWarning: 비 HTTPS URI에 연결할 수 없습니다. 구성을 업데이트하고 다시 시도해 주세요.
+  msgNotice: ---공지사항---
+  msgObjectStorageWarning: |-
+    ⚠️ 주의: 이 기능은 아직 개발 중(WIP)입니다. 다음 사항을 유의해 주세요:
+    - 추가 전용 구조(append-only)로 동작합니다. 저장 용량을 줄이려면 데이터 재구성이 필요합니다.
+    - 기능이 다소 불안정할 수 있습니다.
+    - 최초 동기화 시, 전체 히스토리가 원격 서버에서 전송됩니다. 데이터 용량 제한 및 느린 속도에 유의해 주세요.
+    - 실시간 동기화는 변경된 부분만 처리됩니다.
+
+    문제가 발생했거나 개선 아이디어가 있으시면 GitHub에 이슈를 등록해 주세요.
+    기여에 깊이 감사드립니다.
+  msgOriginCheck: "원점 확인: {org}"
+  msgRebuildRequired: |-
+    변경사항을 적용하려면 데이터베이스를 재구축해야 합니다. 아래 중 한 가지 방법을 선택해 주세요.
+
+    <details>
+    <summary>범례</summary>
+
+    | 기호 | 의미 |
+    |: ------ :| ------- |
+    | ⇔ | 최신 상태 |
+    | ⇄ | 동기화 균형 유지 |
+    | ⇐,⇒ | 덮어쓰기 방식의 전송 |
+    | ⇠,⇢ | 상대편에서 가져와 덮어쓰기 |
+
+    </details>
+
+    ## ${OPTION_REBUILD_BOTH}
+    개요: 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
+    이 기기의 기존 파일을 기반으로 로컬과 원격 데이터베이스를 모두 재구축합니다.
+    이 과정에서 다른 기기는 일시적으로 접근이 제한되며, 가져오기 작업을 별도로 수행해야 합니다.
+
+    ## ${OPTION_FETCH}
+    개요: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
+    로컬 데이터베이스를 초기화한 후, 원격 데이터베이스에서 데이터를 가져와 재구축합니다.
+    이는 원격 측에서 데이터베이스를 먼저 재구축한 경우에도 해당됩니다.
+
+    ## ${OPTION_ONLY_SETTING}
+    설정만 저장합니다. **⚠️ 주의: 이 방법은 데이터 손상을 일으킬 수 있습니다.** 일반적으로는 전체 데이터베이스 재구축이 필요합니다.
+  msgSelectAndApplyPreset: 마법사를 완료하려면 프리셋 항목을 선택하고 적용해 주세요.
+  msgSetCorsCredentials: cors.credentials 설정
+  msgSetCorsOrigins: cors.origins 설정
+  msgSetMaxDocSize: couchdb.max_document_size 설정
+  msgSetMaxRequestSize: chttpd.max_http_request_size 설정
+  msgSetRequireValidUser: chttpd.require_valid_user = true로 설정
+  msgSetRequireValidUserAuth: chttpd_auth.require_valid_user = true로 설정
+  msgSettingModified: '"${setting}" 설정이 다른 기기에서 수정되었습니다. 설정을 다시 로드하려면 {HERE}를
+    클릭하세요. 변경사항을 무시하려면 다른 곳을 클릭하세요.'
+  msgSettingsUnchangeableDuringSync: 동기화 중에는 이 설정들을 변경할 수 없습니다. 잠금을 해제하려면 "동기화 설정"에서 모든 동기화를 비활성화해 주세요.
+  msgSetWwwAuth: httpd.WWW-Authenticate 설정
+  nameApplySettings: 설정 적용
+  nameConnectSetupURI: Setup URI로 연결
+  nameCopySetupURI: 현재 설정을 Setup URI로 복사
+  nameDisableHiddenFileSync: 숨김 파일 동기화 비활성화
+  nameDiscardSettings: 기존 설정 및 데이터베이스 삭제
+  nameEnableHiddenFileSync: 숨김 파일 동기화 활성화
+  nameEnableLiveSync: LiveSync 활성화
+  nameHiddenFileSynchronization: 숨김 파일 동기화
+  nameManualSetup: 수동 설정
+  nameTestConnection: 연결 테스트
+  nameTestDatabaseConnection: 데이터베이스 연결 테스트
+  nameValidateDatabaseConfig: 데이터베이스 구성 검증
+  okAdminPrivileges: ✔ 관리자 권한이 있습니다.
+  okCorsCredentials: ✔ cors.credentials가 정상입니다.
+  okCorsCredentialsForOrigin: CORS 자격 증명 정상
+  okCorsOriginMatched: ✔ CORS 원점 정상
+  okCorsOrigins: ✔ cors.origins가 정상입니다.
+  okEnableCors: ✔ httpd.enable_cors가 정상입니다.
+  okMaxDocumentSize: ✔ couchdb.max_document_size가 정상입니다.
+  okMaxRequestSize: ✔ chttpd.max_http_request_size가 정상입니다.
+  okRequireValidUser: ✔ chttpd.require_valid_user가 정상입니다.
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user가 정상입니다.
+  okWwwAuth: ✔ httpd.WWW-Authenticate가 정상입니다.
+  optionApply: 적용
+  optionCancel: 취소
+  optionCouchDB: CouchDB
+  optionDisableAllAutomatic: 모든 자동 비활성화
+  optionFetchFromRemote: 원격에서 가져오기
+  optionHere: 여기
+  optionLiveSync: LiveSync 동기화
+  optionMinioS3R2: Minio,S3,R2
+  optionOkReadEverything: 네, 모든 것을 읽었습니다.
+  optionOnEvents: 이벤트 시
+  optionPeriodicAndEvents: 주기적 및 이벤트 시
+  optionPeriodicWithBatch: 주기적 w/ 일괄
+  optionRebuildBoth: 이 기기에서 둘 다 재구축
+  optionSaveOnlySettings: (위험) 설정만 저장
+  panelChangeLog: 변경 로그
+  panelGeneralSettings: 일반 설정
+  panelPrivacyEncryption: 개인정보 보호 및 암호화
+  panelRemoteConfiguration: 원격 구성
+  panelSetup: 설정
+  titleAppearance: 외관
+  titleConflictResolution: 충돌 해결
+  titleCongratulations: 축하합니다!
+  titleCouchDB: CouchDB 서버
+  titleDeletionPropagation: 삭제 전파
+  titleEncryptionNotEnabled: 암호화가 활성화되지 않음
+  titleEncryptionPassphraseInvalid: 암호화 패스프레이즈 유효하지 않음
+  titleExtraFeatures: 추가 및 고급 기능 활성화
+  titleFetchConfig: 구성 가져오기
+  titleFetchConfigFromRemote: 원격 서버에서 구성 가져오기
+  titleFetchSettings: 설정 가져오기
+  titleHiddenFiles: 숨김 파일
+  titleLogging: 로깅
+  titleMinioS3R2: MinIO, S3, R2
+  titleNotification: 알림
+  titleOnlineTips: 온라인 팁
+  titleQuickSetup: 빠른 설정
+  titleRebuildRequired: 재구축 필요
+  titleRemoteConfigCheckFailed: 원격 구성 확인 실패
+  titleRemoteServer: 원격 서버
+  titleReset: 리셋
+  titleSetupOtherDevices: 다른 기기 설정
+  titleSynchronizationMethod: 동기화 방법
+  titleSynchronizationPreset: 동기화 프리셋
+  titleSyncSettings: 동기화 설정
+  titleSyncSettingsViaMarkdown: 마크다운을 통한 동기화 설정
+  titleUpdateThinning: 업데이트 솎아내기
+  warnCorsOriginUnmatched: ⚠ CORS 원점이 일치하지 않습니다 {from}->{to}
+  warnNoAdmin: ⚠ 관리자 권한이 없습니다.
+Ok: 확인
+Old Algorithm: 이전 알고리즘
+Older fallback (Slow, W/O WebAssembly): 이전 대체 방식 (느림, WebAssembly 없음)
+Open: 열기
+Open the dialog: 대화상자 열기
+Overwrite: 덮어쓰기
+Overwrite patterns: 덮어쓰기 패턴
+Overwrite remote: 원격 덮어쓰기
+Overwrite remote with local DB and passphrase.: 로컬 DB와 암호문구로 원격을 덮어씁니다.
+Overwrite Server Data with This Device's Files: 이 기기의 파일로 서버 데이터를 덮어쓰기
+P2P:
+  AskPassphraseForDecrypt: 원격 피어가 구성을 공유했습니다. 구성을 복호화하려면 패스프레이즈를 입력해 주세요.
+  AskPassphraseForShare: 원격 피어가 이 기기의 구성을 요청했습니다. 구성을 공유하려면 패스프레이즈를 입력해 주세요. 이
+    대화상자를 취소하여 요청을 무시할 수 있습니다.
+  DisabledButNeed: "%{title_p2p_sync}가 비활성화되어 있습니다. 정말로 활성화하시겠습니까?"
+  FailedToOpen: 시그널링 서버에 P2P 연결을 열 수 없습니다.
+  NoAutoSyncPeers: 자동 동기화 피어를 찾을 수 없습니다. %{long_p2p_sync} 창에서 피어를 설정해 주세요.
+  NoKnownPeers: 피어가 감지되지 않았습니다. 다른 피어의 접속을 기다리고 있습니다...
+  Note:
+    description: >-
+      이 복제기는 피어 투 피어(P2P) 연결을 통해 다른 기기들과 볼트를 동기화할 수 있도록 합니다. 클라우드 서비스를 거치지 않고도
+      기기간 동기화를 구현할 수 있습니다.
+
+
+      이 복제기는 Trystero를 기반으로 하며, 기기 간 연결을 설정하기 위해 시그널링 서버를 사용합니다. 시그널링 서버는 단순히 연결
+      정보를 교환하는 용도로만 사용되며, 사용자 데이터를 저장하거나 접근하지 않습니다 (또는 그래야만 합니다).
+
+
+      시그널링 서버는 누구나 운영할 수 있으며, 이는 단순한 Nostr 릴레이입니다. 편의성과 복제기의 작동 확인을 위해 `vrtmrz`가
+      자체적으로 시그널링 서버 인스턴스를 운영 중입니다. 사용자는 `vrtmrz`가 제공하는 실험용 서버를 사용할 수도 있고, 별도로
+      자신만의 서버를 설정할 수도 있습니다.
+
+
+      참고로, 시그널링 서버는 사용자 데이터를 저장하지 않더라도 일부 기기의 연결 정보는 볼 수 있습니다. 이 점을 유의해 주세요. 특히
+      타인이 운영하는 서버를 사용할 경우 주의가 필요합니다.
+    important_note: 피어 투 피어(P2P) 복제기의 실험적 구현입니다.
+    important_note_sub: 이 기능은 아직 실험 단계에 있습니다. 이 기능이 예상대로 작동하지 않을 수 있음을 알아주세요. 또한 버그,
+      보안 문제 및 기타 문제가 있을 수 있습니다. 이 기능을 사용할 때는 본인의 책임 하에 사용하세요. 이 기능의 개발에 기여해 주세요.
+    Summary: 이 기능은 무엇인가요? (설명과 참고사항이 적혀있습니다. 한 번 읽어보세요!)
+  NotEnabled: "%{title_p2p_sync}가 활성화되지 않았습니다. 새로운 연결을 열 수 없습니다."
+  P2PReplication: "%{P2P} 복제"
+  PaneTitle: "%{long_p2p_sync}"
+  ReplicatorInstanceMissing: P2P 동기화 복제기를 찾을 수 없습니다. 구성되지 않았거나 활성화되지 않았을 수 있습니다.
+  SeemsOffline: 피어 ${name}이(가) 오프라인인 것 같습니다. 건너뜁니다.
+  SyncAlreadyRunning: P2P 동기화가 이미 실행 중입니다.
+  SyncCompleted: P2P 동기화가 완료되었습니다.
+  SyncStartedWith: ${name}과의 P2P 동기화가 시작되었습니다.
+paneMaintenance:
+  markDeviceResolvedAfterBackup: 백업 후 장치를 해결됨으로 표시
+  remoteLockedAndDeviceNotAccepted: 원격 데이터베이스가 잠겨 있으며 이 장치는 아직 승인되지 않았습니다.
+  remoteLockedResolvedDevice: 원격 데이터베이스가 잠겨 있지만 이 장치는 이미 승인되었습니다.
+  unlockDatabaseReady: 데이터베이스 잠금 해제
+Passphrase: 패스프레이즈
+Passphrase of sensitive configuration items: 민감한 구성 항목의 패스프레이즈
+password: 비밀번호
+Password: 비밀번호
+Paste a connection string: 연결 문자열 붙여넣기
+Path Obfuscation: 경로 난독화
+Patterns to match files for overwriting instead of merging: 병합 대신 덮어쓸 파일을 판별하는 패턴
+Patterns to match files for syncing: 동기화할 파일을 판별하는 패턴
+Peer-to-Peer Synchronisation: 피어 투 피어 동기화
+Per-file-saved customization sync: 파일별 저장 사용자 설정 동기화
+Perform: 실행
+Perform cleanup: 정리 실행
+Perform Garbage Collection: 가비지 컬렉션 실행
+Perform Garbage Collection to remove unused chunks and reduce database size.: 사용하지 않는 청크를 제거하고 데이터베이스 크기를 줄이기 위해 가비지 컬렉션을 실행합니다.
+Periodic Sync interval: 주기적 동기화 간격
+Pick a file to resolve conflict: 충돌을 해결할 파일 선택
+Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.: 이 장치를 식별할 장치 이름을 설정해 주세요. 이 이름은 장치 간에 고유해야 합니다. 설정되기 전까지는 이 기능을 활성화할 수 없습니다.
+Please set this device name: 이 장치 이름을 설정해 주세요
+Presets: 프리셋
+Process small files in the foreground: 포그라운드에서 작은 파일 처리
+PureJS fallback  (Fast, W/O WebAssembly): PureJS 대체 방식 (빠름, WebAssembly 없음)
+Purge all download/upload cache.: 모든 다운로드/업로드 캐시를 제거합니다.
+Purge all journal counter: 모든 저널 카운터 삭제
+Rebuild local and remote database with local files.: 로컬 파일로 로컬 및 원격 데이터베이스를 다시 구축합니다.
+Rebuilding Operations (Remote Only): 재구축 작업 (원격 전용)
+Recreate all: 모두 다시 생성
+Recreate missing chunks for all files: 모든 파일의 누락된 청크 다시 생성
+RedFlag:
+  Fetch:
+    Method:
+      Desc: >-
+        어떻게 가져오시겠습니까?
+
+        - %{RedFlag.Fetch.Method.FetchSafer}. (권장)
+          **낮은 트래픽**, **높은 CPU**, **낮은 위험**
+        - %{RedFlag.Fetch.Method.FetchSmoother}.
+          **낮은 트래픽**, **보통 CPU**, **낮음에서 보통 위험**
+        - %{RedFlag.Fetch.Method.FetchTraditional}.
+          **높은 트래픽**, **낮은 CPU**, **낮음에서 보통 위험**
+
+        >[!INFO]- 세부 사항
+
+        > ## %{RedFlag.Fetch.Method.FetchSafer}. (권장)
+
+        > **낮은 트래픽**, **높은 CPU**, **낮은 위험**
+
+        > 이 옵션은 원격 소스에서 데이터를 가져오기 전에 기존 로컬 파일을 사용하여 로컬 데이터베이스를 먼저 생성합니다.
+
+        > 로컬과 원격 모두에 일치하는 파일이 있으면 둘 사이의 차이점만 전송됩니다.
+
+        > 하지만 두 위치 모두에 있는 파일은 초기에 충돌 파일로 처리됩니다. 실제로 충돌하지 않는다면 자동으로 해결되지만 이 과정은
+        시간이 걸릴 수 있습니다.
+
+        > 이는 일반적으로 가장 안전한 방법으로 데이터 손실 위험을 최소화합니다.
+
+        > ## %{RedFlag.Fetch.Method.FetchSmoother}.
+
+        > **낮은 트래픽**, **보통 CPU**, **낮음에서 보통 위험** (작업에 따라)
+
+        > 이 옵션은 먼저 로컬 파일에서 데이터베이스용 청크를 생성한 다음 데이터를 가져옵니다. 따라서 로컬에 없는 청크만 전송됩니다.
+        하지만 모든 메타데이터는 원격 소스에서 가져옵니다.
+
+        > 그런 다음 로컬 파일이 시작 시 이 메타데이터와 비교됩니다. 더 새로운 것으로 간주되는 콘텐츠가 오래된 것을 덮어씁니다(수정
+        시간 기준). 이 결과는 원격 데이터베이스에 다시 동기화됩니다.
+
+        > 로컬 파일이 실제로 최신 타임스탬프라면 일반적으로 안전합니다. 하지만 파일이 더 새로운 타임스탬프를 가지고 있지만 더 오래된
+        콘텐츠를 가지고 있다면(초기 `welcome.md`처럼) 문제가 발생할 수 있습니다.
+
+        > 이는 "%{RedFlag.Fetch.Method.FetchSafer}"보다 CPU를 덜 사용하고 더 빠르지만 주의 깊게
+        사용하지 않으면 데이터 손실로 이어질 수 있습니다.
+
+        > ## %{RedFlag.Fetch.Method.FetchTraditional}.
+
+        > **높은 트래픽**, **낮은 CPU**, **낮음에서 보통 위험** (작업에 따라)
+
+        > 모든 것이 원격에서 가져와집니다.
+
+        > %{RedFlag.Fetch.Method.FetchSmoother}와 유사하지만 모든 청크가 원격 소스에서 가져와집니다.
+
+        > 이는 가장 전통적인 가져오기 방법으로 일반적으로 가장 많은 네트워크 트래픽과 시간을 소모합니다. 또한
+        '%{RedFlag.Fetch.Method.FetchSmoother}' 옵션과 유사하게 원격 파일을 덮어쓸 위험이 있습니다.
+
+        > 하지만 가장 오래되고 가장 직접적인 접근 방식이기 때문에 종종 가장 안정적인 방법으로 간주됩니다.
+      FetchSafer: 가져오기 전에 로컬 데이터베이스를 한 번 생성
+      FetchSmoother: 가져오기 전에 로컬 파일 청크 생성
+      FetchTraditional: 원격에서 모든 것 가져오기
+      Title: 어떻게 가져오시겠습니까?
+Reducing the frequency with which on-disk changes are reflected into the DB: 디스크 변경 사항이 데이터베이스에 반영되는 빈도를 줄입니다
+Region: 지역
+Remediation: 복구 조치
+Remediation Setting Changed: 복구 설정이 변경됨
+Remote Database Tweak (In sunset): 원격 데이터베이스 조정 (폐기 예정)
+Remote Databases: 원격 데이터베이스
+Remote name: 원격 이름
+Remote server type: 원격 서버 유형
+Remote Type: 원격 유형
+Rename: 이름 바꾸기
+Replicator:
+  Dialogue:
+    Locked:
+      Action:
+        Dismiss: 재확인을 위해 취소
+        Fetch: 원격 데이터베이스에서 모든 것을 다시 가져오기
+        Unlock: 원격 데이터베이스 잠금 해제
+      Message:
+        _value: >
+          원격 데이터베이스가 잠겨 있습니다. 이는 일부 터미널에서 데이터베이스를 재구축했기 때문입니다.
+
+          따라서 현재 기기는 데이터베이스 손상을 방지하기 위해 연결을 일시적으로 보류해야 합니다.
+
+
+          선택할 수 있는 세 가지 방법이 있습니다:
+
+
+          - %{Replicator.Dialogue.Locked.Action.Fetch}
+            가장 권장되고 신뢰할 수 있는 방법입니다. 로컬 데이터베이스를 초기화한 뒤, 원격 데이터베이스의 전체 데이터를 다시 가져옵니다. 대부분의 경우 안전하게 수행할 수 있으나, 시간이 다소 걸리며 안정적인 네트워크 환경에서 진행해야 합니다.
+          - %{Replicator.Dialogue.Locked.Action.Unlock}
+            이 방법은 다른 동기화 방식으로 이미 완전하고 안정적으로 동기화된 경우에만 사용할 수 있습니다. 단순히 파일이 같다는 의미가 아니므로, 확신이 없다면 사용을 피하는 것이 좋습니다.
+          - %{Replicator.Dialogue.Locked.Action.Dismiss}
+            이번 작업을 취소하고, 다음 요청 시 다시 안내받습니다.
+        Fetch: 모든 것 가져오기가 예약되었습니다. 이를 수행하기 위해 플러그인이 재시작됩니다.
+        Unlocked: 원격 데이터베이스 잠금이 해제되었습니다. 작업을 다시 시도해 주세요.
+      Title: 잠김
+  Message:
+    Cleaned: 데이터베이스 정리가 진행 중입니다. 복제가 취소되었습니다
+    InitialiseFatalError: 사용 가능한 복제기가 없습니다. 치명적인 오류입니다.
+    Pending: 일부 파일 이벤트가 대기 중입니다. 복제가 취소되었습니다.
+    SomeModuleFailed: 일부 모듈 실패로 복제가 취소되었습니다
+    VersionUpFlash: 설정을 열고 메시지를 확인해 주세요. 복제가 취소되었습니다.
+Requires restart of Obsidian: Obsidian 재시작 필요
+Requires restart of Obsidian.: Obsidian 재시작이 필요합니다.
+Resend: 다시 보내기
+Resend all chunks to the remote.: 모든 청크를 원격으로 다시 보냅니다.
+Reset: 재설정
+Reset all: 모두 재설정
+Reset all journal counter: 모든 저널 카운터 재설정
+Reset journal received history: 저널 수신 기록 재설정
+Reset journal sent history: 저널 송신 기록 재설정
+Reset received: 수신 기록 재설정
+Reset sent history: 송신 기록 재설정
+Reset Synchronisation information: 동기화 정보 재설정
+Reset Synchronisation on This Device: 이 장치의 동기화 상태 재설정
+Resolve All: 모두 해결
+Resolve all conflicted files: 충돌한 모든 파일 해결
+Resolve All conflicted files by the newer one: 충돌한 모든 파일을 최신 버전으로 해결
+"Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.": "충돌한 모든 파일을 더 최신 버전으로 해결합니다. 주의: 이전 버전은 덮어써지며 복원할 수 없습니다."
+Restart Now: 지금 재시작
+Restore or reconstruct local database from remote.: 원격에서 로컬 데이터베이스를 복원하거나 재구축합니다.
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.: 설정을 마크다운 파일에 저장합니다. 새로운 설정이 도착하면 알림을 받게 됩니다. 플랫폼별로 다른 파일을 설정할 수 있습니다.
+Saving will be performed forcefully after this number of seconds.: 이 시간(초) 후에 강제로 저장이 수행됩니다.
+Scan changes on customization sync: 사용자 설정 동기화 시 변경 사항 검색
+Scan customization automatically: 사용자 설정 자동 검색
+Scan customization before replicating.: 복제하기 전에 사용자 설정을 검색합니다.
+Scan customization every 1 minute.: 1분마다 사용자 설정을 검색합니다.
+Scan customization periodically: 주기적으로 사용자 설정 검색
+Scan for hidden files before replication: 복제 전 숨겨진 파일 검색
+Scan hidden files periodically: 주기적으로 숨겨진 파일 검색
+Schedule and Restart: 예약 후 재시작
+Scram!: 긴급 조치
+Seconds, 0 to disable: 초 단위, 0으로 설정하면 비활성화
+Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.: 초 단위입니다. 타이핑이나 저장을 중단한 후 이 시간동안 로컬 데이터베이스 저장이 지연됩니다.
+Secret Key: 시크릿 키
+Select the database adapter to use.: 사용할 데이터베이스 어댑터를 선택합니다.
+Send: 보내기
+Send chunks: 청크 보내기
+Server URI: 서버 URI
+Setting:
+  GenerateKeyPair:
+    Desc: |+
+      키 페어를 생성했습니다!
+
+      참고: 이 키 페어는 다시 표시되지 않습니다. 안전한 곳에 저장해 주세요. 분실하면 새 키 페어를 생성해야 합니다.
+      참고 2: 공개 키는 spki 형식이고, 개인 키는 pkcs8 형식입니다. 편의상 공개 키의 줄 바꿈은 `\n`으로 변환됩니다.
+      참고 3: 공개 키는 원격 데이터베이스에서 구성되어야 하고, 개인 키는 로컬 기기에서 구성되어야 합니다.
+
+      >[!FOR YOUR EYES ONLY]-
+      > <div class="sls-keypair">
+      >
+      > ### 공개 키
+      > ```
+      ${public_key}
+      > ```
+      >
+      > ### 개인 키
+      > ```
+      ${private_key}
+      > ```
+      >
+      > </div>
+
+      >[!Both for copying]-
+      >
+      > <div class="sls-keypair">
+      >
+      > ```
+      ${public_key}
+      ${private_key}
+      > ```
+      >
+      > </div>
+
+
+    Title: 새 키 페어가 생성되었습니다!
+  TroubleShooting:
+    _value: 문제 해결
+    Doctor:
+      _value: 설정 진단 마법사
+      Desc: 최적화되지 않은 설정을 감지합니다. (데이터 구조 전환 시와 동일)
+    ScanBrokenFiles:
+      _value: 손상된 파일 검사
+      Desc: 데이터베이스에 올바르게 저장되지 않은 파일을 검사합니다.
+SettingTab:
+  Message:
+    AskRebuild: 변경 사항을 적용하려면 원격 데이터베이스에서 가져와야 합니다. 계속 진행하시겠습니까?
+Setup:
+  QRCode: |-
+    설정을 전송하기 위한 QR 코드를 생성했습니다. 휴대폰이나 다른 기기로 QR 코드를 스캔해 주세요.
+    참고: QR 코드는 암호화되지 않았으므로 열 때 주의하세요.
+
+    >[!FOR YOUR EYES ONLY]-
+    > <div class="sls-qr">${qr_image}</div>
+  ShowQRCode:
+    _value: QR 코드 표시
+    Desc: 설정을 전송하기 위한 QR 코드를 표시합니다.
+  RemoteE2EE:
+    Title: 엔드투엔드 암호화
+    Guidance: 엔드투엔드 암호화 설정을 구성해 주세요.
+    LabelEncrypt: 엔드투엔드 암호화
+    PlaceholderPassphrase: 패스프레이즈를 입력하세요
+    StronglyRecommendedTitle: 강력 권장
+    StronglyRecommendedLine1: 엔드투엔드 암호화를 활성화하면 데이터가 원격 서버로 전송되기 전에 이 기기에서 암호화됩니다. 즉, 누군가 서버에 접근하더라도 패스프레이즈 없이는 데이터를 읽을 수 없습니다. 다른 기기에서 데이터를 복호화할 때도 필요하므로 패스프레이즈를 반드시 기억해 두세요.
+    StronglyRecommendedLine2: 또한 Peer-to-Peer 동기화를 사용 중이더라도, 나중에 다른 방식으로 전환하여 원격 서버에 연결하면 이 설정이 그대로 사용됩니다.
+    MultiDestinationWarning: 여러 동기화 대상에 연결하는 경우에도 이 설정은 동일해야 합니다.
+    LabelObfuscateProperties: 속성 난독화
+    ObfuscatePropertiesDesc: >-
+      속성(예: 파일 경로, 크기, 생성일 및 수정일)을 난독화하면 원격 서버에서 파일과 폴더의 구조 및 이름을 식별하기 어렵게 만들어 보안을 한층 강화할 수 있습니다. 이는 개인 정보를 보호하고 권한 없는 사용자가 데이터에 관한 정보를 추론하기 어렵게 만듭니다.
+    AdvancedTitle: 고급
+    LabelEncryptionAlgorithm: 암호화 알고리즘
+    DefaultAlgorithmDesc: 대부분의 경우 기본 알고리즘(${algorithm})을 그대로 사용하는 것이 좋습니다. 이 설정은 기존 Vault가 다른 형식으로 암호화되어 있는 경우에만 필요합니다.
+    AlgorithmWarning: 암호화 알고리즘을 변경하면 다른 알고리즘으로 암호화된 기존 데이터에 접근할 수 없게 됩니다. 모든 기기에서 동일한 알고리즘을 사용하도록 설정해 데이터 접근성을 유지하세요.
+    PassphraseValidationLine1: 엔드투엔드 암호화 패스프레이즈는 실제 동기화가 시작되기 전까지 검증되지 않는다는 점에 유의하세요. 이것은 데이터를 보호하기 위한 보안 조치입니다.
+    PassphraseValidationLine2: 따라서 서버 정보를 수동으로 구성할 때는 각별히 주의해 주세요. 잘못된 패스프레이즈를 입력하면 서버의 데이터가 손상됩니다. 이는 의도된 동작이니 반드시 이해하고 진행해 주세요.
+    ButtonProceed: 진행
+    ButtonCancel: 취소
+  UseSetupURI:
+    Title: Setup URI 입력
+    GuidanceLine1: 서버 설치 중 또는 다른 기기에서 생성된 Setup URI와 Vault 패스프레이즈를 입력해 주세요.
+    GuidanceLine2: 명령 팔레트에서 "설정을 새 Setup URI로 복사" 명령을 실행하면 새 Setup URI를 생성할 수 있습니다.
+    LabelSetupURI: Setup URI
+    ValidInfo: Setup URI가 유효하며 사용할 준비가 되었습니다.
+    InvalidInfo: Setup URI가 올바르지 않습니다. 확인한 뒤 다시 시도해 주세요.
+    LabelPassphrase: Vault 패스프레이즈
+    PlaceholderPassphrase: Vault 패스프레이즈를 입력하세요
+    ErrorPassphraseRequired: Vault 패스프레이즈를 입력해 주세요.
+    ErrorFailedToParse: Setup URI를 해석하지 못했습니다. URI와 패스프레이즈를 확인해 주세요.
+    ButtonProceed: 설정 테스트 후 계속
+    ButtonCancel: 취소
+  ScanQRCode:
+    Title: QR 코드 스캔
+    Guidance: 기존 기기에서 설정을 가져오려면 아래 단계를 따라 주세요.
+    Step1: 이 기기에서는 이 Vault를 계속 열어 두세요.
+    Step2: 원본 기기에서 Obsidian을 엽니다.
+    Step3: 원본 기기에서 명령 팔레트를 열고 "설정을 QR 코드로 표시" 명령을 실행합니다.
+    Step4: 이 기기에서 카메라 앱으로 전환하거나 QR 코드 스캐너를 사용해 표시된 QR 코드를 스캔하세요.
+    ButtonClose: 이 대화 상자 닫기
+"Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": Garbage Collection을 사용하려면 설정에서 "Compute revisions for chunks"를 활성화해 주세요.
+"Please disable 'Read chunks online' in settings to use Garbage Collection.": Garbage Collection을 사용하려면 설정에서 "Read chunks online"을 비활성화해 주세요.
+"Setup URI dialog cancelled.": Setup URI 대화 상자가 취소되었습니다.
+"Please select 'Cancel' explicitly to cancel this operation.": 이 작업을 취소하려면 반드시 "취소"를 명시적으로 선택해 주세요.
+"Failed to connect to remote for compaction.": 압축을 위해 원격 데이터베이스에 연결하지 못했습니다.
+"Failed to connect to remote for compaction. ${reason}": 압축을 위해 원격 데이터베이스에 연결하지 못했습니다. ${reason}
+"Compaction in progress on remote database...": 원격 데이터베이스에서 압축을 진행 중입니다...
+"Compaction on remote database timed out.": 원격 데이터베이스 압축 시간이 초과되었습니다.
+"Compaction on remote database completed successfully.": 원격 데이터베이스 압축이 성공적으로 완료되었습니다.
+"Compaction on remote database failed.": 원격 데이터베이스 압축에 실패했습니다.
+"Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": Garbage Collection 전에 일회성 복제를 시작하지 못했습니다. Garbage Collection을 취소합니다.
+"Cancel Garbage Collection": Garbage Collection 취소
+"No connected device information found. Cancelling Garbage Collection.": 연결된 기기 정보를 찾을 수 없습니다. Garbage Collection을 취소합니다.
+"The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": |-
+  다음 승인된 노드에는 노드 정보가 없습니다:
+  - ${missingNodes}
+
+  이는 해당 노드가 한동안 연결되지 않았거나 이전 버전에 머물러 있음을 의미합니다.
+  가능하다면 먼저 모든 기기를 업데이트하는 것이 좋습니다. 더 이상 사용하지 않는 기기가 있다면 원격을 한 번 잠가 승인된 노드를 모두 정리할 수 있습니다.
+"Ignore and Proceed": 무시하고 계속
+"Node Information Missing": 노드 정보 누락
+"Garbage Collection cancelled by user.": 사용자가 Garbage Collection을 취소했습니다.
+"Proceeding with Garbage Collection, ignoring missing nodes.": 누락된 노드를 무시하고 Garbage Collection을 계속 진행합니다.
+"Proceed Garbage Collection": Garbage Collection 계속
+"> [!INFO]- The connected devices have been detected as follows:\n${devices}": |-
+  > [!INFO]- 다음 연결된 기기가 감지되었습니다:
+  ${devices}
+"Device": 기기
+"Node ID": 노드 ID
+"Obsidian version": Obsidian 버전
+"Plug-in version": 플러그인 버전
+"Progress": 진행 상태
+"Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.": |-
+  일부 기기의 진행 값이 다릅니다(최대: ${maxProgress}, 최소: ${minProgress}).
+  이는 일부 기기가 동기화를 완료하지 않았음을 의미할 수 있으며, 충돌로 이어질 수 있습니다. 계속 진행하기 전에 모든 기기가 동기화되었는지 반드시 확인하는 것을 강력히 권장합니다.
+"All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.": 모든 기기의 진행 값이 동일합니다(${progress}). 기기들이 동기화된 것으로 보이므로 Garbage Collection을 진행할 수 있습니다.
+"Garbage Collection Confirmation": Garbage Collection 확인
+"Proceeding with Garbage Collection.": Garbage Collection을 진행합니다.
+"Garbage Collection: Scanned ${scanned} / ~${docCount}": |-
+  Garbage Collection: ${scanned} / ~${docCount} 스캔됨
+"Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}": |-
+  Garbage Collection: 스캔 완료. 전체 청크 수: ${totalChunks}, 사용 중인 청크 수: ${usedChunks}
+"Garbage Collection: Found ${unusedChunks} unused chunks to delete.": |-
+  Garbage Collection: 삭제할 미사용 청크 ${unusedChunks}개를 찾았습니다.
+"Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
+  Garbage Collection이 완료되었습니다. 삭제된 청크: ${deletedChunks} / ${totalChunks}. 소요 시간: ${seconds}초.
+"Failed to start replication after Garbage Collection.": Garbage Collection 후 복제를 시작하지 못했습니다.
+Should we keep folders that don't have any files inside?: 내부에 파일이 없는 폴더를 유지하시겠습니까?
+Should we only check for conflicts when a file is opened?: 파일을 열 때만 충돌을 확인하시겠습니까?
+Should we prompt you about conflicting files when a file is opened?: 파일을 열 때 충돌하는 파일에 대해 알림을 표시하시겠습니까?
+Should we prompt you for every single merge, even if we can safely merge automatcially?: 안전하게 자동 병합할 수 있는 경우에도 모든 병합에 대해 알림을 받으시겠습니까?
+Show full banner: 전체 배너 표시
+Show only notifications: 알림만 표시
+Show status as icons only: 아이콘으로만 상태 표시
+Show status icon instead of file warnings banner: 파일 경고 배너 대신 상태 아이콘 표시
+Show status inside the editor: 편집기 내부에 상태 표시
+Show status on the status bar: 상태 바에 상태 표시
+Show verbose log. Please enable if you report an issue.: 자세한 로그를 표시합니다. 문제를 신고하는 경우 활성화해 주세요.
+Starts synchronisation when a file is saved.: 파일이 저장될 때 동기화를 시작합니다.
+Stop reflecting database changes to storage files.: 데이터베이스 변경 사항을 스토리지 파일에 반영하는 것을 중단합니다.
+Stop watching for file changes.: 파일 변경 사항 감시를 중단합니다.
+Suppress notification of hidden files change: 숨겨진 파일 변경 알림 억제
+Suspend database reflecting: 데이터베이스 반영 일시 중단
+Suspend file watching: 파일 감시 일시 중단
+Switch to IDB: IDB로 전환
+Switch to IndexedDB: IndexedDB로 전환
+Sync after merging file: 파일 병합 후 동기화
+Sync automatically after merging files: 파일 병합 후 자동으로 동기화
+Sync Mode: 동기화 모드
+Sync on Editor Save: 편집기 저장 시 동기화
+Sync on File Open: 파일 열기 시 동기화
+Sync on Save: 저장 시 동기화
+Sync on Startup: 시작 시 동기화
+Synchronising files: 동기화할 파일
+Syncing: 동기화
+Target patterns: 대상 패턴
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.: 테스트 전용 - 파일의 새로운 사본을 동기화하여 파일 충돌을 해결하며, 수정된 파일을 덮어쓸 수 있습니다. 주의하세요.
+The delay for consecutive on-demand fetches: 연속 청크 요청 간 대기 시간
+The Hash algorithm for chunk IDs: 청크 ID용 해시 알고리즘
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: 변경 기록이 문서에 함께 보관될 수 있는 최대 시간입니다. 초과 시 문서에서 분리되어 개별로 저장됩니다.
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: 문서 안에 임시로 보관할 수 있는 변경 기록의 최대 개수입니다. 이 수를 초과하면 즉시 독립된 청크로 분리되어 저장됩니다.
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: 문서 안에 임시로 보관할 수 있는 변경 기록의 전체 크기 제한입니다. 초과 시 자동으로 분리됩니다.
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: 이 패스프레이즈는 다른 기기로 복사되지 않습니다. 다시 구성할 때까지 `기본값`으로 설정됩니다.
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: 모든 파일의 청크를 다시 생성합니다. 누락된 청크가 있었다면 이 작업으로 오류가 해결될 수 있습니다.
+Transfer Tweak: 전송 조정
+TweakMismatchResolve:
+  Action:
+    Dismiss: 무시
+    UseConfigured: 구성된 설정 사용
+    UseMine: 원격 데이터베이스 설정 업데이트
+    UseMineAcceptIncompatible: 원격 데이터베이스 설정 업데이트하지만 그대로 유지
+    UseMineWithRebuild: 원격 데이터베이스 설정 업데이트하고 다시 재구축
+    UseRemote: 이 기기에 설정 적용
+    UseRemoteAcceptIncompatible: 이 기기에 설정 적용하지만 호환성 문제 무시
+    UseRemoteWithRebuild: 이 기기에 설정 적용하고 다시 가져오기
+  Message:
+    Main: |-
+
+      원격 데이터베이스의 설정은 다음과 같습니다. 이 값들은 이 기기와 최소 한 번 동기화된 다른 기기에서 구성된 것입니다.
+
+      이 설정을 사용하려면 %{TweakMismatchResolve.Action.UseConfigured}를 선택해 주세요.
+      이 기기의 설정을 유지하려면 %{TweakMismatchResolve.Action.Dismiss}를 선택해 주세요.
+
+      ${table}
+
+      >[!TIP]
+      > 모든 설정을 동기화하려면 이 기능으로 최소 구성을 적용한 후 `마크다운을 통한 설정 동기화`를 사용해 주세요.
+
+      ${additionalMessage}
+    MainTweakResolving: |-
+      구성이 원격 서버의 것과 일치하지 않습니다.
+
+      다음 구성이 일치해야 합니다:
+
+      ${table}
+
+      결정을 알려주세요.
+
+      ${additionalMessage}
+    UseRemote:
+      WarningRebuildRecommended: >-
+
+        >[!NOTICE]
+
+        > 일부 변경사항은 호환 가능하지만 추가 스토리지 및 전송량을 소모할 수 있습니다. 재구축을 권장합니다. 하지만 현재 재구축을
+        수행하지 않더라도 향후 유지보수에서 구현될 수 있습니다.
+
+        > ***시간적 여유가 있고 안정적인 네트워크에 연결된 상태에서 적용해 주세요!***
+      WarningRebuildRequired: |-
+
+        >[!WARNING]
+        > 일부 원격 구성이 이 기기의 로컬 데이터베이스와 호환되지 않습니다. 로컬 데이터베이스 재구축이 필요합니다.
+        > ***시간적 여유가 있고 안정적인 네트워크에 연결된 상태에서 적용해 주세요!***
+    WarningIncompatibleRebuildRecommended: >-
+
+      >[!NOTICE]
+
+      > 로컬 데이터베이스와 원격 데이터베이스가 호환되지 않도록 만드는 값들이 다른 것을 감지했습니다.
+
+      > 일부 변경사항은 호환 가능하지만 추가 스토리지 및 전송량을 소모할 수 있습니다. 재구축을 권장합니다. 하지만 현재 재구축을
+      수행하지 않더라도 향후 유지보수에서 구현될 수 있습니다.
+
+      > 재구축을 원한다면 몇 분 이상 소요됩니다. **지금 수행해도 안전한지 확인해 주세요.**
+    WarningIncompatibleRebuildRequired: |-
+
+      >[!WARNING]
+      > 로컬 데이터베이스와 원격 데이터베이스가 호환되지 않도록 만드는 값들이 다른 것을 감지했습니다.
+      > 로컬 또는 원격 재구축이 필요합니다. 둘 다 몇 분 이상 소요됩니다. **지금 수행해도 안전한지 확인해 주세요.**
+  Table:
+    _value: |+
+      | 값 이름 | 이 기기 | 원격 |
+      |: --- |: ---- :|: ---- :|
+      ${rows}
+
+    Row: "| ${name} | ${self} | ${remote} |"
+  Title:
+    _value: 구성 불일치 감지
+    TweakResolving: 구성 불일치 감지
+    UseRemoteConfig: 원격 구성 사용
+Unique name between all synchronized devices. To edit this setting, please disable customization sync once.: 모든 동기화된 기기 간 고유 이름입니다. 이 설정을 편집하려면 사용자 설정 동기화를 한 번 비활성화해 주세요.
+Use a custom passphrase: 사용자 지정 암호문구 사용
+Use Custom HTTP Handler: 커스텀 HTTP 핸들러 사용
+Use dynamic iteration count: 동적 반복 횟수 사용
+Use Segmented-splitter: 의미 기반 분할 사용
+Use splitting-limit-capped chunk splitter: 분할 제한 상한 청크 분할기 사용
+Use the trash bin: 휴지통 사용
+Use timeouts instead of heartbeats: 하트비트 대신 타임아웃 사용
+username: 사용자명
+Username: 사용자명
+Verbose Log: 자세한 로그
+Verify all: 모두 검증
+Verify and repair all files: 모든 파일 검증 및 복구
+Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.:
+  경고! 이는 성능에 심각한 영향을 미칩니다. 로그는 기본 이름으로 동기화되지 않습니다. 로그에는 종종 기밀 정보가 포함되어 있으므로 주의해
+  주세요.
+We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.: 이 기능이 활성화되어 있는 동안에는 장치 이름을 변경할 수 없습니다. 장치 이름을 변경하려면 이 기능을 비활성화하세요.
+When you save a file in the editor, start a sync automatically: 편집기에서 파일을 저장할 때 자동으로 동기화를 시작합니다
+Write credentials in the file: 파일에 자격 증명 저장
+Write logs into the file: 파일에 로그 기록
+xxhash32 (Fast but less collision resistance): xxhash32 (빠르지만 충돌 저항성은 낮음)
+xxhash64 (Fastest): xxhash64 (가장 빠름)
+Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
+  최신 버전이 아닌 모든 리비전을 제거하여 저장 공간을 줄입니다. 이 작업을 수행하려면 원격 서버와 로컬 클라이언트에 동일한 양의 여유 공간이 필요합니다.
+Rerun Onboarding Wizard: 온보딩 마법사 다시 실행
+Rerun the onboarding wizard to set up Self-hosted LiveSync again.: 온보딩 마법사를 다시 실행하여 Self-hosted LiveSync를 다시 설정합니다.
+Rerun Wizard: 마법사 다시 실행
+Run Doctor: 진단 실행
+Scan for Broken files: 손상된 파일 검사
+Prepare the 'report' to create an issue: 이슈 생성을 위한 '보고서' 준비
+Copy Report to clipboard: 보고서를 클립보드에 복사
+Analyse database usage: 데이터베이스 사용량 분석
+Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like.:
+  데이터베이스 사용량을 분석하고 직접 진단할 수 있도록 TSV 보고서를 생성합니다. 생성된 보고서는 원하는 스프레드시트에 붙여 넣어 확인할 수 있습니다.
+Reset notification threshold and check the remote database usage: 알림 임계값을 초기화하고 원격 데이터베이스 사용량 확인
+Reset the remote storage size threshold and check the remote storage size again.: 원격 저장소 크기 임계값을 초기화하고 원격 저장소 크기를 다시 확인합니다.
+Scram Switches: 긴급 전환 스위치
+Minimum interval for syncing: 동기화 최소 간격
+The minimum interval for automatic synchronisation on event.: 이벤트 발생 시 자동 동기화의 최소 간격입니다.
+"Welcome to Self-hosted LiveSync": "Self-hosted LiveSync에 오신 것을 환영합니다"
+"We will now guide you through a few questions to simplify the synchronisation setup.": "동기화 설정을 더 쉽게 진행할 수 있도록 몇 가지 질문으로 안내해 드리겠습니다。"
+"First, please select the option that best describes your current situation.": "먼저 현재 상황에 가장 잘 맞는 항목을 선택해 주세요。"
+"I am setting this up for the first time": "처음으로 설정합니다"
+"(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(이 장치를 첫 번째 동기화 장치로 설정하는 경우 선택하세요.) LiveSync를 처음 사용하며 처음부터 설정하려는 경우에 적합합니다。"
+"I am adding a device to an existing synchronisation setup": "기존 동기화 구성에 장치를 추가합니다"
+"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중인 경우 선택하세요.) 이 장치를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다。"
+"Yes, I want to set up a new synchronisation": "예, 새 동기화를 설정하겠습니다"
+"Yes, I want to add this device to my existing synchronisation": "예, 이 장치를 기존 동기화에 추가하겠습니다"
+"No, please take me back": "아니요, 이전으로 돌아가겠습니다"
+"Device Setup Method": "장치 설정 방법"
+"You are adding this device to an existing synchronisation setup.": "이 장치를 기존 동기화 구성에 추가하려고 합니다。"
+"Please select a method to import the settings from another device.": "다른 장치에서 설정을 가져올 방법을 선택해 주세요。"
+"Use a Setup URI (Recommended)": "설정 URI 사용(권장)"
+"Paste the Setup URI generated from one of your active devices.": "현재 사용 중인 장치 중 하나에서 생성한 설정 URI를 붙여 넣으세요。"
+"Scan a QR Code (Recommended for mobile)": "QR 코드 스캔(모바일 권장)"
+"Scan the QR code displayed on an active device using this device's camera.": "이 장치의 카메라로 활성 장치에 표시된 QR 코드를 스캔하세요。"
+"Enter the server information manually": "서버 정보를 수동으로 입력"
+"Configure the same server information as your other devices again, manually, very advanced users only.": "다른 장치와 동일한 서버 정보를 다시 수동으로 입력합니다. 고급 사용자 전용입니다。"
+"Proceed with Setup URI": "설정 URI로 계속"
+"I know my server details, let me enter them": "서버 정보를 알고 있으니 직접 입력하겠습니다"
+"Please select an option to proceed": "계속하려면 항목을 선택해 주세요"
+"Connection Method": "연결 방법"
+"We will now proceed with the server configuration.": "이제 서버 구성을 진행하겠습니다。"
+"How would you like to configure the connection to your server?": "서버 연결을 어떻게 구성하시겠습니까?"
+"A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.": "설정 URI는 서버 주소와 인증 정보를 포함한 단일 문자열입니다. 서버 설치 스크립트가 URI를 생성했다면 이를 사용하면 간단하고 안전하게 구성할 수 있습니다。"
+"This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": "URI가 없거나 세부 설정을 직접 구성하려는 사용자를 위한 고급 옵션입니다。"
+"Enter Server Information": "서버 정보 입력"
+"Please select the type of server to which you are connecting.": "연결할 서버 유형을 선택해 주세요。"
+"Continue to CouchDB setup": "CouchDB 설정으로 계속"
+"Continue to S3/MinIO/R2 setup": "S3/MinIO/R2 설정으로 계속"
+"Continue to Peer-to-Peer only setup": "Peer-to-Peer 전용 설정으로 계속"
+"This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.": "이 설계에 가장 적합한 동기화 방식입니다. 모든 기능을 사용할 수 있습니다. CouchDB 인스턴스를 미리 구성해야 합니다。"
+"S3/MinIO/R2 Object Storage": "S3/MinIO/R2 객체 스토리지"
+"Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": "저널 파일을 활용하는 동기화 방식입니다. S3/MinIO/R2 호환 객체 스토리지를 미리 구성해야 합니다。"
+"Peer-to-Peer only": "Peer-to-Peer 전용"
+"This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "이 기능은 장치 간 직접 동기화를 제공합니다. 서버는 필요 없지만 동기화가 이루어지려면 두 장치가 동시에 온라인 상태여야 하며 일부 기능은 제한될 수 있습니다. 인터넷 연결은 시그널링(피어 감지)에만 필요하며 데이터 전송 자체에는 필요하지 않습니다。"

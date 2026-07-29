@@ -2,9 +2,9 @@
 
 import { TFile, type TAbstractFile, type TFolder } from "@/deps.ts";
 import { ICHeader } from "@/common/types.ts";
-import { addPrefix, isPlainText } from "@lib/string_and_binary/path.ts";
+import { addPrefix, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import { createBlob } from "@lib/common/utils.ts";
+import { createBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type {
     FilePath,
     FilePathWithPrefix,
@@ -12,9 +12,21 @@ import type {
     UXFileInfoStub,
     UXFolderInfo,
     UXInternalFileInfoStub,
-} from "@lib/common/types.ts";
+    UXStat,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncCore } from "@/main.ts";
 import type { FileAccessObsidian } from "@/serviceModules/FileAccessObsidian.ts";
+
+function isUXStat(value: unknown): value is UXStat {
+    if (typeof value !== "object" || value === null) return false;
+    const stat = value as Partial<UXStat>;
+    return (
+        typeof stat.size === "number" &&
+        typeof stat.ctime === "number" &&
+        typeof stat.mtime === "number" &&
+        (stat.type === "file" || stat.type === "folder")
+    );
+}
 
 export async function TFileToUXFileInfo(
     core: LiveSyncCore,
@@ -55,8 +67,8 @@ export async function InternalFileToUXFileInfo(
     prefix: string = ICHeader
 ): Promise<UXFileInfo> {
     const name = fullPath.split("/").pop() as string;
-    const stat = await vaultAccess.tryAdapterStat(fullPath);
-    if (stat == null) throw new Error(`File not found: ${fullPath}`);
+    const stat: unknown = await vaultAccess.tryAdapterStat(fullPath);
+    if (!isUXStat(stat)) throw new Error(`File not found: ${fullPath}`);
     if (stat.type == "folder") throw new Error(`File not found: ${fullPath}`);
     const file = await vaultAccess.adapterReadAuto(fullPath);
 

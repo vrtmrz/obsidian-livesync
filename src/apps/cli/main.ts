@@ -2,9 +2,13 @@ import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
-import { DEFAULT_SETTINGS, LOG_LEVEL_VERBOSE, type LOG_LEVEL, type ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
+import {
+    LOG_LEVEL_VERBOSE,
+    type LOG_LEVEL,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
 import {
     LOG_LEVEL_DEBUG,
     setGlobalLogFunction,
@@ -14,20 +18,29 @@ import {
     LOG_LEVEL_NOTICE,
 } from "octagonal-wheels/common/logger";
 import { runCommand } from "./commands/runCommand";
-import { VALID_COMMANDS } from "./commands/types";
-import type { CLICommand, CLIOptions } from "./commands/types";
-import { getPathFromUXFileInfo } from "@lib/common/typeUtils";
-import { stripAllPrefixes } from "@lib/string_and_binary/path";
+import { isCLICommand } from "./commands/types";
+import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types";
+import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
-import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
-import { fsPromises as fs, path, fs as fsSync } from "./node-compat";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import { createNodeStandardIo, fsPromises as fs, path, fs as fsSync } from "@vrtmrz/livesync-commonlib/node";
+import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
+import { writeStderrLine, writeStdoutLine } from "./cliOutput";
+import { createDefaultCliSettings } from "./cliSettingsDefaults";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 
-function printHelp(): void {
-    console.log(`
+/** Injectable command boundary used by CLI integration probes. */
+export type CliCommandRunner = (options: CLIOptions, context: CLICommandContext) => Promise<boolean>;
+
+function printHelp(standardIo: StandardIo): void {
+    writeStdoutLine(
+        standardIo,
+        `
 Self-hosted LiveSync CLI
 
 Usage:
@@ -110,14 +123,15 @@ Examples:
     livesync-cli ./my-database remote-status remote-abc123
     livesync-cli init-settings ./data.json
     livesync-cli ./my-database --verbose
-        `);
+        `
+    );
 }
 
-export function parseArgs(): CLIOptions {
+export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIOptions {
     const args = process.argv.slice(2);
 
     if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
-        printHelp();
+        printHelp(standardIo);
         process.exit(0);
     }
 
@@ -138,7 +152,7 @@ export function parseArgs(): CLIOptions {
             case "-V": {
                 i++;
                 if (!args[i]) {
-                    console.error(`Error: Missing value for ${token}`);
+                    writeStderrLine(standardIo, `Error: Missing value for ${token}`);
                     process.exit(1);
                 }
                 vaultPath = args[i];
@@ -148,7 +162,7 @@ export function parseArgs(): CLIOptions {
             case "-s": {
                 i++;
                 if (!args[i]) {
-                    console.error(`Error: Missing value for ${token}`);
+                    writeStderrLine(standardIo, `Error: Missing value for ${token}`);
                     process.exit(1);
                 }
                 settingsPath = args[i];
@@ -158,12 +172,12 @@ export function parseArgs(): CLIOptions {
             case "-i": {
                 i++;
                 if (!args[i]) {
-                    console.error(`Error: Missing value for ${token}`);
+                    writeStderrLine(standardIo, `Error: Missing value for ${token}`);
                     process.exit(1);
                 }
                 const n = parseInt(args[i], 10);
                 if (!Number.isInteger(n) || n <= 0) {
-                    console.error(`Error: --interval requires a positive integer, got '${args[i]}'`);
+                    writeStderrLine(standardIo, `Error: --interval requires a positive integer, got '${args[i]}'`);
                     process.exit(1);
                 }
                 interval = n;
@@ -173,7 +187,8 @@ export function parseArgs(): CLIOptions {
             case "-d":
                 // debugging automatically enables verbose logging, as it is intended for debugging issues.
                 debug = true;
-            // falls through
+                verbose = true;
+                break;
             case "--verbose":
             case "-v":
                 verbose = true;
@@ -184,9 +199,8 @@ export function parseArgs(): CLIOptions {
                 break;
             default: {
                 if (!databasePath) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
-                    if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
-                        command = token as CLICommand;
+                    if (command === "daemon" && isCLICommand(token)) {
+                        command = token;
                         break;
                     }
                     if (command === "init-settings") {
@@ -196,9 +210,8 @@ export function parseArgs(): CLIOptions {
                     databasePath = token;
                     break;
                 }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Set checking
-                if (command === "daemon" && VALID_COMMANDS.has(token as any)) {
-                    command = token as CLICommand;
+                if (command === "daemon" && isCLICommand(token)) {
+                    command = token;
                     break;
                 }
                 commandArgs.push(token);
@@ -208,12 +221,12 @@ export function parseArgs(): CLIOptions {
     }
 
     if (!databasePath && command !== "init-settings") {
-        console.error("Error: database-path is required");
+        writeStderrLine(standardIo, "Error: database-path is required");
         process.exit(1);
     }
 
     if (command === "daemon" && commandArgs.length > 0) {
-        console.error(`Error: Unknown command '${commandArgs[0]}'`);
+        writeStderrLine(standardIo, `Error: Unknown command '${commandArgs[0]}'`);
         process.exit(1);
     }
 
@@ -230,7 +243,7 @@ export function parseArgs(): CLIOptions {
     };
 }
 
-async function createDefaultSettingsFile(options: CLIOptions) {
+async function createDefaultSettingsFile(options: CLIOptions, standardIo: StandardIo) {
     const targetPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : options.commandArgs[0]
@@ -248,20 +261,20 @@ async function createDefaultSettingsFile(options: CLIOptions) {
         }
     }
 
-    const settings = {
-        ...DEFAULT_SETTINGS,
-        useIndexedDBAdapter: false,
-    } as ObsidianLiveSyncSettings;
+    const settings = createDefaultCliSettings();
 
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, JSON.stringify(settings, null, 2), "utf-8");
-    console.log(`[Done] Created settings file: ${targetPath}`);
+    writeStdoutLine(standardIo, `[Done] Created settings file: ${targetPath}`);
 }
 
-export async function main() {
-    const options = parseArgs();
+export async function main(
+    standardIo: StandardIo = createNodeStandardIo(),
+    commandRunner: CliCommandRunner = runCommand
+) {
+    const options = parseArgs(standardIo);
     if (options.interval && options.command !== "daemon") {
-        console.error(`Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
+        writeStderrLine(standardIo, `Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
     }
     const avoidStdoutNoise =
         options.command === "cat" ||
@@ -278,13 +291,13 @@ export async function main() {
         options.command === "unlock-remote" ||
         options.command === "lock-remote" ||
         options.command === "remote-status";
-    const infoLog = avoidStdoutNoise ? console.error : console.log;
+    const infoLog = (...values: readonly unknown[]) => {
+        const writeLine = avoidStdoutNoise ? writeStderrLine : writeStdoutLine;
+        writeLine(standardIo, ...values);
+    };
     if (options.debug) {
         setGlobalLogFunction((msg, level) => {
-            console.error(`[${level}] ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
-            if (msg instanceof Error) {
-                console.error(msg);
-            }
+            writeStderrLine(standardIo, `[${level}]`, msg);
         });
     } else {
         setGlobalLogFunction((msg, level) => {
@@ -292,7 +305,7 @@ export async function main() {
         });
     }
     if (options.command === "init-settings") {
-        await createDefaultSettingsFile(options);
+        await createDefaultSettingsFile(options, standardIo);
         return;
     }
 
@@ -302,11 +315,11 @@ export async function main() {
     try {
         const stat = await fs.stat(databasePath);
         if (!stat.isDirectory()) {
-            console.error(`Error: ${databasePath} is not a directory`);
+            writeStderrLine(standardIo, `Error: ${databasePath} is not a directory`);
             process.exit(1);
         }
     } catch {
-        console.error(`Error: Database directory ${databasePath} does not exist`);
+        writeStderrLine(standardIo, `Error: Database directory ${databasePath} does not exist`);
         process.exit(1);
     }
 
@@ -332,11 +345,11 @@ export async function main() {
     try {
         const stat = await fs.stat(vaultPath);
         if (!stat.isDirectory()) {
-            console.error(`Error: Vault path ${vaultPath} is not a directory`);
+            writeStderrLine(standardIo, `Error: Vault path ${vaultPath} is not a directory`);
             process.exit(1);
         }
     } catch {
-        console.error(`Error: Vault directory ${vaultPath} does not exist`);
+        writeStderrLine(standardIo, `Error: Vault directory ${vaultPath} does not exist`);
         process.exit(1);
     }
 
@@ -347,14 +360,20 @@ export async function main() {
     infoLog("");
     let ignoreRules: IgnoreRules | undefined;
     if (options.command === "daemon" || options.command === "mirror") {
-        ignoreRules = new IgnoreRules(vaultPath);
+        ignoreRules = new IgnoreRules(vaultPath, (message, detail) => {
+            if (detail === undefined) {
+                writeStderrLine(standardIo, message);
+            } else {
+                writeStderrLine(standardIo, message, detail);
+            }
+        });
         await ignoreRules.load();
     }
 
     // Create service context and hub
-    const context = new NodeServiceContext(databasePath);
+    const context = new NodeServiceContext(databasePath, standardIo);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
-    serviceHubInstance.API.addLog.setHandler((message: string, level: LOG_LEVEL) => {
+    serviceHubInstance.API.addLog.setHandler((message: unknown, level: LOG_LEVEL) => {
         let levelStr = "";
         switch (level) {
             case LOG_LEVEL_DEBUG:
@@ -373,19 +392,19 @@ export async function main() {
                 levelStr = "Urgent";
                 break;
             default:
-                levelStr = `${level}`;
+                levelStr = String(level);
         }
         const prefix = `(${levelStr})`;
         if (level <= LOG_LEVEL_INFO) {
             if (!options.verbose) return;
         }
-        console.error(`${prefix} ${message}`);
+        writeStderrLine(standardIo, prefix, message);
     });
     // Prevent replication result from being processed automatically in non-daemon commands.
     // In daemon mode the default handler must run so changes are applied to the filesystem.
     if (options.command !== "daemon") {
         serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
-            console.error(`[Info] Replication result received, but not processed automatically in CLI mode.`);
+            writeStderrLine(standardIo, `[Info] Replication result received, but not processed automatically in CLI mode.`);
             return await Promise.resolve(true);
         }, -100);
     }
@@ -398,10 +417,10 @@ export async function main() {
             try {
                 await fs.writeFile(settingsPath, JSON.stringify(data, null, 2), "utf-8");
                 if (options.verbose) {
-                    console.error(`[Settings] Saved to ${settingsPath}`);
+                    writeStderrLine(standardIo, `[Settings] Saved to ${settingsPath}`);
                 }
             } catch (error) {
-                console.error(`[Settings] Failed to save:`, error);
+                writeStderrLine(standardIo, `[Settings] Failed to save:`, error);
             }
         }
     );
@@ -410,16 +429,15 @@ export async function main() {
         async (): Promise<ObsidianLiveSyncSettings | undefined> => {
             try {
                 const content = await fs.readFile(settingsPath, "utf-8");
-                const data = JSON.parse(content);
+                const data = JSON.parse(content) as ObsidianLiveSyncSettings;
                 if (options.verbose) {
-                    console.error(`[Settings] Loaded from ${settingsPath}`);
+                    writeStderrLine(standardIo, `[Settings] Loaded from ${settingsPath}`);
                 }
-                // Force disable IndexedDB adapter in CLI environment
-                data.useIndexedDBAdapter = false;
-                return data;
+                // Force disable IndexedDB adapter in CLI environment without mutating the loaded settings object.
+                return { ...data, useIndexedDBAdapter: false };
             } catch {
                 if (options.verbose) {
-                    console.error(`[Settings] File not found, using defaults`);
+                    writeStderrLine(standardIo, `[Settings] File not found, using defaults`);
                 }
                 return undefined;
             }
@@ -427,6 +445,7 @@ export async function main() {
     );
 
     // Create LiveSync core
+    let p2pReplicator: UseP2PReplicatorResult | undefined;
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
@@ -436,7 +455,7 @@ export async function main() {
         () => [], // No add-ons
         (core) => {
             // Register P2P replicator feature.
-            useP2PReplicatorFeature(core);
+            p2pReplicator = useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
@@ -469,14 +488,14 @@ export async function main() {
 
     // Setup signal handlers for graceful shutdown
     const shutdown = async (signal: string) => {
-        console.log();
-        console.log(`[Shutdown] Received ${signal}, shutting down gracefully...`);
+        writeStdoutLine(standardIo);
+        writeStdoutLine(standardIo, `[Shutdown] Received ${signal}, shutting down gracefully...`);
         try {
             await core.services.control.onUnload();
-            console.log(`[Shutdown] Complete`);
+            writeStdoutLine(standardIo, `[Shutdown] Complete`);
             process.exit(0);
         } catch (error) {
-            console.error(`[Shutdown] Error:`, error);
+            writeStderrLine(standardIo, `[Shutdown] Error:`, error);
             process.exit(1);
         }
     };
@@ -498,7 +517,7 @@ export async function main() {
                 fsSync.writeFileSync(tmpPath, settingsBackup, "utf-8");
                 fsSync.renameSync(tmpPath, settingsPath);
             } catch (err) {
-                console.error("[Settings] Failed to restore settings on exit:", err);
+                writeStderrLine(standardIo, "[Settings] Failed to restore settings on exit:", err);
             }
         }
     });
@@ -509,7 +528,7 @@ export async function main() {
 
         const loadResult = await core.services.control.onLoad();
         if (!loadResult) {
-            console.error(`[Error] Failed to initialize LiveSync`);
+            writeStderrLine(standardIo, `[Error] Failed to initialize LiveSync`);
             process.exit(1);
         }
         // Capture sync settings before suspendAllSync() clobbers them.
@@ -534,24 +553,31 @@ export async function main() {
         // Check if configured
         const settings = core.services.setting.currentSettings();
         if (!settings.isConfigured) {
-            console.warn(`[Warning] LiveSync is not configured yet`);
-            console.warn(`[Warning] Please edit ${settingsPath} to configure CouchDB connection`);
-            console.warn();
-            console.warn(`Required settings:`);
-            console.warn(`  - couchDB_URI: CouchDB server URL`);
-            console.warn(`  - couchDB_USER: CouchDB username`);
-            console.warn(`  - couchDB_PASSWORD: CouchDB password`);
-            console.warn(`  - couchDB_DBNAME: Database name`);
-            console.warn();
+            writeStderrLine(standardIo, `[Warning] LiveSync is not configured yet`);
+            writeStderrLine(standardIo, `[Warning] Please edit ${settingsPath} to configure CouchDB connection`);
+            writeStderrLine(standardIo);
+            writeStderrLine(standardIo, `Required settings:`);
+            writeStderrLine(standardIo, `  - couchDB_URI: CouchDB server URL`);
+            writeStderrLine(standardIo, `  - couchDB_USER: CouchDB username`);
+            writeStderrLine(standardIo, `  - couchDB_PASSWORD: CouchDB password`);
+            writeStderrLine(standardIo, `  - couchDB_DBNAME: Database name`);
+            writeStderrLine(standardIo);
         } else {
             infoLog(`[Info] LiveSync is configured and ready`);
             infoLog(`[Info] Database: ${settings.couchDB_URI}/${settings.couchDB_DBNAME}`);
             infoLog("");
         }
 
-        const result = await runCommand(options, { databasePath, vaultPath, core, settingsPath, originalSyncSettings });
+        const result = await commandRunner(options, {
+            databasePath,
+            vaultPath,
+            core,
+            p2pReplicator,
+            settingsPath,
+            originalSyncSettings,
+        });
         if (!result) {
-            console.error(`[Error] Command '${options.command}' failed`);
+            writeStderrLine(standardIo, `[Error] Command '${options.command}' failed`);
             process.exitCode = 1;
         } else if (options.command !== "daemon") {
             infoLog(`[Done] Command '${options.command}' completed`);
@@ -564,7 +590,7 @@ export async function main() {
             await core.services.control.onUnload();
         }
     } catch (error) {
-        console.error(`[Error] Failed to start:`, error);
+        writeStderrLine(standardIo, `[Error] Failed to start:`, error);
         process.exit(1);
     }
     // To prevent unexpected hanging in webRTC connections.

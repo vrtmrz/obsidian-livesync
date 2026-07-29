@@ -5,11 +5,11 @@
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         type P2PServerInfo,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    // import type { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
-    import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
-    import { Logger } from "@lib/common/logger";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    // import type { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
 
@@ -23,11 +23,12 @@
     }
 
     let { onSync, onSyncAndClose, onClose, showResult, liveSyncReplicator, rebuildMode = false }: Props = $props();
+    const getLiveSyncReplicator = () => liveSyncReplicator;
 
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let syncingPeerId = $state<string | null>(null);
 
-    const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+    const logLevel = $derived(showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
     async function requestServerStatus() {
         await liveSyncReplicator.requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
@@ -69,18 +70,6 @@
         }
     }
 
-    async function handleSyncAndClose(peerId: string) {
-        fireAndForget(async () => {
-            try {
-                Logger(`Starting sync with ${peerId}`, logLevel);
-                await onSync(peerId);
-                Logger(`Sync completed with ${peerId}`, logLevel);
-            } catch (e) {
-                Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
-            }
-        });
-        onClose();
-    }
     async function disconnect() {
         try {
             await liveSyncReplicator.close();
@@ -110,7 +99,7 @@
 </script>
 
 <div class="p2p-container">
-    <P2PServerStatusCard {liveSyncReplicator} showBroadcastToggle={false} />
+    <P2PServerStatusCard {getLiveSyncReplicator} showBroadcastToggle={false} />
 
     <div class="peers-section">
         <h3>Available Peers</h3>
@@ -142,7 +131,7 @@
                                 <button
                                     class="btn {rebuildMode ? 'btn-primary' : 'btn-secondary'}"
                                     disabled={syncingPeerId !== null}
-                                    onclick={() => handleSyncAndClose(peer.peerId)}
+                                    onclick={() => handleSyncThenClose(peer.peerId)}
                                 >
                                     {syncingPeerId === peer.peerId ? "Syncing..." : "Start Sync & Close"}
                                 </button>

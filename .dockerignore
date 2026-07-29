@@ -17,6 +17,9 @@ production/
 
 # Test coverage and reports
 coverage/
+_testdata/
+test/bench-network/bench-results/
+src/apps/cli/testdeno/bench-results/
 
 # Local environment / secrets
 .env

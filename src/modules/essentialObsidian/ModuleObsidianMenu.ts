@@ -1,7 +1,5 @@
-import { type Editor, type MarkdownFileInfo, type MarkdownView } from "@/deps.ts";
 import { addIcon } from "@/deps.ts";
-import { type FilePathWithPrefix } from "@lib/common/types.ts";
-import { $msg } from "@lib/common/i18n.ts";
+import { $msg } from "@/common/translation";
 import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 // Obsidian specific menu commands.
@@ -21,16 +19,6 @@ export class ModuleObsidianMenu extends AbstractModule {
         this.addRibbonIcon("replicate", $msg("moduleObsidianMenu.replicate"), async () => {
             await this.services.replication.replicate(true);
         }).addClass("livesync-ribbon-replicate");
-
-        this.addCommand({
-            id: "livesync-checkdoc-conflicted",
-            name: "Resolve if conflicted.",
-            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo) => {
-                const file = view.file;
-                if (!file) return;
-                void this.services.conflict.queueCheckForIfOpen(file.path as FilePathWithPrefix);
-            },
-        });
 
         return Promise.resolve(true);
     }

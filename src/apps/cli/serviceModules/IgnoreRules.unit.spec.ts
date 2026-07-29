@@ -1,7 +1,26 @@
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const minimatchStats = vi.hoisted(() => ({ constructions: 0 }));
+
+vi.mock("minimatch", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("minimatch")>();
+
+    class CountingMinimatch extends actual.Minimatch {
+        constructor(pattern: string, options?: import("minimatch").MinimatchOptions) {
+            super(pattern, options);
+            minimatchStats.constructions++;
+        }
+    }
+
+    return {
+        ...actual,
+        Minimatch: CountingMinimatch,
+        minimatch: (path: string, pattern: string, options?: import("minimatch").MinimatchOptions) =>
+            new CountingMinimatch(pattern, options).match(path),
+    };
+});
+
 import { IgnoreRules } from "./IgnoreRules";
 
 describe("IgnoreRules", () => {
@@ -18,6 +37,10 @@ describe("IgnoreRules", () => {
         await fs.mkdir(ignoreDir, { recursive: true });
         await fs.writeFile(path.join(ignoreDir, "ignore"), content, "utf-8");
     }
+
+    beforeEach(() => {
+        minimatchStats.constructions = 0;
+    });
 
     afterEach(async () => {
         await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
@@ -55,6 +78,20 @@ describe("IgnoreRules", () => {
     });
 
     describe("shouldIgnore", () => {
+        it("compiles loaded patterns once", async () => {
+            const vaultPath = await createVault();
+            await writeIgnoreFile(vaultPath, "*.tmp\nbuild/\n");
+            const rules = new IgnoreRules(vaultPath);
+            await rules.load();
+
+            expect(rules.shouldIgnore("notes/readme.md")).toBe(false);
+            expect(rules.shouldIgnore("notes/scratch.tmp")).toBe(true);
+            expect(rules.shouldIgnore("build/output.js")).toBe(true);
+            expect(rules.shouldIgnore("other.md")).toBe(false);
+
+            expect(minimatchStats.constructions).toBe(2);
+        });
+
         it("matches **/*.tmp against notes/scratch.tmp", async () => {
             const vaultPath = await createVault();
             await writeIgnoreFile(vaultPath, "*.tmp\n");
@@ -101,11 +138,13 @@ describe("IgnoreRules", () => {
             const vaultPath = await createVault();
             // Typo: "import:.gitignore" instead of "import: .gitignore"
             await writeIgnoreFile(vaultPath, "*.tmp\nimport:.gitignore\n");
-            const rules = new IgnoreRules(vaultPath);
+            const reportDiagnostic = vi.fn();
+            const rules = new IgnoreRules(vaultPath, reportDiagnostic);
             await rules.load();
             // *.tmp still loaded; import:.gitignore is skipped (not treated as a literal pattern)
             expect(rules.shouldIgnore("scratch.tmp")).toBe(true);
             expect(rules.shouldIgnore("import:.gitignore")).toBe(false);
+            expect(reportDiagnostic).toHaveBeenCalledWith(expect.stringContaining("unrecognised directive"));
         });
     });
 

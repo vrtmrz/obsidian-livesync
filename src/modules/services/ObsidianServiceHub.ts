@@ -1,6 +1,6 @@
-import { InjectableServiceHub } from "@lib/services/implements/injectable/InjectableServiceHub";
-import { ObsidianServiceContext } from "@lib/services/implements/obsidian/ObsidianServiceContext";
-import type { ServiceInstances } from "@lib/services/ServiceHub";
+import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
 import type ObsidianLiveSyncPlugin from "@/main";
 import {
     ObsidianConflictService,
@@ -22,12 +22,18 @@ import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService";
 import { ObsidianPathService } from "./ObsidianPathService";
 import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";
+import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
+import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
+import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
+import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups";
+import { setLang } from "@/common/translation";
 
 // InjectableServiceHub
 
 export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceContext> {
     constructor(plugin: ObsidianLiveSyncPlugin) {
-        const context = new ObsidianServiceContext(plugin.app, plugin, plugin);
+        const noticeGroups = new ObsidianNoticeGroupManager();
+        const context = new ObsidianServiceContext(plugin.app, plugin, plugin, noticeGroups);
 
         const API = new ObsidianAPIService(context);
         const conflict = new ObsidianConflictService(context);
@@ -37,11 +43,13 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
 
         const setting = new ObsidianSettingService(context, {
             APIService: API,
+            onDisplayLanguageChanged: setLang,
         });
         const appLifecycle = new ObsidianAppLifecycleService(context, {
             settingService: setting,
         });
         const remote = new ObsidianRemoteService(context, {
+            pouchDB: PouchDB,
             APIService: API,
             appLifecycle: appLifecycle,
             setting: setting,
@@ -55,13 +63,21 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const path = new ObsidianPathService(context, {
             settingService: setting,
         });
+        const screenWakeLock = createScreenWakeLockManager();
+        appLifecycle.onUnload.addHandler(async () => {
+            await screenWakeLock.dispose();
+            noticeGroups.dispose();
+            return true;
+        });
         const database = new ObsidianDatabaseService(context, {
+            pouchDB: PouchDB,
             path: path,
             vault: vault,
             setting: setting,
             API: API,
         });
         const keyValueDB = new ObsidianKeyValueDBService(context, {
+            openKeyValueDatabase: OpenKeyValueDatabase,
             appLifecycle: appLifecycle,
             databaseEvents: databaseEvents,
             vault: vault,
@@ -74,6 +90,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             settingService: setting,
             appLifecycleService: appLifecycle,
             databaseEventService: databaseEvents,
+            activityRunner: screenWakeLock,
         });
         const replication = new ObsidianReplicationService(context, {
             APIService: API,

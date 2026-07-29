@@ -1,0 +1,12 @@
+services:
+  p2p-relay:
+    image: ghcr.io/hoytech/strfry:latest
+    container_name: livesync-e2e-p2p-relay
+    entrypoint: ["/app/strfry"]
+    command: ["--config", "/etc/strfry/strfry.conf", "relay"]
+    ports:
+      - "${E2E_P2P_RELAY_PORT:-4010}:7777"
+    volumes:
+      - ./strfry.conf:/etc/strfry/strfry.conf:ro
+    tmpfs:
+      - /app/strfry-db:rw,size=256m,mode=1777

@@ -27,7 +27,7 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 - Boot-up sequence (boot-sequence)
     - The initialisation process of the plug-in when Obsidian starts. It starts with the loading of the plug-in, setting up core services, loading saved settings, and opening the local database. Once the layout is ready, the plug-in checks for the presence of flag files, runs configuration diagnostics, connects to the remote database, and begins file watching. The sequence finishes once the plug-in is fully ready and operational.
 - Broken files (Size mismatch)
-    - A state where a file's metadata and the actual content stored in its chunks do not match, causing file retrieval or synchronisation failures. These mismatches can be detected and resolved by running validation tools such as `Verify and repair all files` on the Hatch pane.
+    - A state where a file's metadata and the actual content stored in its chunks do not match, causing file retrieval or synchronisation failures. These mismatches can be inspected with `Inspect conflicts and file/database differences` on the Hatch pane, then handled one exact revision at a time.
 - Chunk / Chunks
     - Divided units of data stored in the database or object storage to facilitate efficient synchronisation.
 - Compaction
@@ -65,7 +65,7 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 - livesync-serverpeer / webpeer
     - Pseudo-clients that assist in WebRTC peer-to-peer communication.
 - Metadata (File metadata)
-    - A database document that stores properties of a file, including its filename, path, size, modification time, conflict history, and references (hashes) of the chunks that comprise the file's content. In Self-hosted LiveSync, metadata is stored separately from the actual file content to enable efficient synchronisation and versioning.
+    - A database document that stores properties of a file, including its filename, path, size, modification time, and references (hashes) of the chunks that comprise the file's content. Conflict state is carried by the surrounding PouchDB/CouchDB revision metadata rather than by a separate history field inside the file metadata document. In Self-hosted LiveSync, file metadata is stored separately from the actual file content to enable efficient synchronisation and versioning.
 - OneShot Sync
     - A single, immediate bidirectional synchronisation (pull then push) triggered on demand or on specific events, as opposed to continuous (live) replication.
 - Overwrite Server Data with This Device's Files
@@ -74,8 +74,8 @@ All guidelines and conventions listed below are disclosed and maintained solely 
     - A privacy option that encrypts file paths and folder names on the remote server.
 - plug-in
     - We use the hyphenated form `plug-in` in user-facing messages and general documentation, while `plugin` may appear in codebase files, configuration settings, or technical contexts.
-- Relay Server (P2P relays)
-    - A WebSocket-based coordination server used to establish direct WebRTC peer-to-peer connections. The default relay is provided by the plug-in author.
+- Signalling relay (P2P)
+    - A Nostr-compatible WebSocket relay used for peer discovery and WebRTC connection negotiation. It does not store or transfer Vault contents. The project author operates a public relay as a best-effort convenience, and users can provide another compatible relay.
 - Remediation (maxMTimeForReflectEvents)
     - A recovery setting that restricts the propagation of changes from the database to local storage, ignoring any file events (such as accidental mass deletions) that occurred after a specified date and time.
 - Reset Synchronisation on This Device
@@ -95,9 +95,8 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 - Sync Mode
     - The replication trigger mechanism. Users can select from `On Events` (synchronising on local file changes), `Periodic and Events` (synchronising at fixed intervals as well as on events), or `LiveSync` (continuous, real-time synchronisation).
 - TURN Server (WebRTC P2P)
-    - A server type (Traversal Using Relays around NAT) used as a fallback to relay traffic when direct WebRTC peer-to-peer connection is blocked by strict NAT or firewalls.
+    - A Traversal Using Relays around NAT server used as an optional fallback to relay encrypted WebRTC traffic when strict NAT or firewall rules block a direct peer connection. It is distinct from the signalling relay.
 - Update Thinning (Batch database update)
     - An optimisation that groups multiple local file edits together over a short delay before committing them to the local database, reducing the number of database write operations.
 - WebRTC P2P (Peer-to-Peer)
     - A synchronisation method enabling direct communication between devices without a central server database.
-

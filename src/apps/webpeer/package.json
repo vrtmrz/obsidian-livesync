@@ -1,7 +1,7 @@
 {
     "name": "webpeer",
     "private": true,
-    "version": "0.25.80-webpeer",
+    "version": "1.0.0-webpeer",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -12,7 +12,7 @@
         "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.47"
+        "octagonal-wheels": "^0.1.51"
     },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.19.0",
@@ -22,9 +22,5 @@
         "svelte-check": "^4.6.0",
         "typescript": "5.9.3",
         "vite": "^8.0.16"
-    },
-    "imports": {
-        "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
-        "@lib/worker/bgWorker.ts": "@lib/worker/bgWorker.mock.ts"
     }
 }

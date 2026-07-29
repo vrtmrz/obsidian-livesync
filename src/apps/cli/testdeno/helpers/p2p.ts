@@ -76,8 +76,10 @@ export async function discoverPeer(
 }
 
 export async function maybeStartLocalRelay(relay: string): Promise<boolean> {
-    if (!isLocalP2pRelay(relay)) return false;
-    await startP2pRelay();
+    const shouldStart = isLocalP2pRelay(relay);
+    if (shouldStart) {
+        await startP2pRelay();
+    }
     const endpoint = parseRelayEndpoint(relay);
     await waitForPort(endpoint.hostname, endpoint.port, {
         timeoutMs: Number(Deno.env.get("LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS") ?? "15000"),
@@ -86,8 +88,10 @@ export async function maybeStartLocalRelay(relay: string): Promise<boolean> {
     });
     // Docker proxy accepts TCP connections instantly before the container's internal process is fully ready.
     // Wait an additional few seconds to ensure strfry is actually accepting WebSockets.
-    await sleep(3000);
-    return true;
+    if (shouldStart) {
+        await sleep(3000);
+    }
+    return shouldStart;
 }
 
 export async function stopLocalRelayIfStarted(started: boolean): Promise<void> {

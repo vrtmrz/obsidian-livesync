@@ -1,7 +1,7 @@
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { type LogFunction } from "@lib/services/lib/logUtils";
-import { UnresolvedErrorManager } from "@lib/services/base/UnresolvedErrorManager";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import {
     ExtraOnLocal,
     ExtraOnRemote,
@@ -9,12 +9,12 @@ import {
     normaliseFullScanOptions,
     synchroniseAllFilesBetweenDBandStorage,
     type FullScanOptions,
-} from "@lib/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { adjustSettingToRemoteIfNeeded, processVaultInitialisation } from "./redFlag";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
 export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";
-export const SIMPLE_FETCH_STAGE1_LEGACY = "Use the detailed flow";
+export const SIMPLE_FETCH_STAGE1_DETAILED = "Use the detailed flow";
 export const SIMPLE_FETCH_STAGE1_CANCEL = "Cancel";
 
 export const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE = "Keep local files even if not on remote";
@@ -27,8 +27,8 @@ export const STAGE2_ABORT = "Cancel all and reboot";
 const SIMPLE_FETCH_MODE_KEY = "simple-fetch-mode";
 
 function buildSimpleFetchResult(stage1: string, stage2?: string) {
-    if (stage1 === SIMPLE_FETCH_STAGE1_LEGACY) {
-        return { mode: "legacy", options: {} };
+    if (stage1 === SIMPLE_FETCH_STAGE1_DETAILED) {
+        return { mode: "detailed", options: {} };
     }
     if (stage1 === SIMPLE_FETCH_STAGE1_REMOTE_WINS && stage2) {
         if (![SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL, SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE].includes(stage2)) {
@@ -93,14 +93,14 @@ export async function askSimpleFetchMode(
 
     const msg = `We are about to retrieve the remote data.
 
-Firstly, how shall we handle the data retrieved from this remote server?
+Firstly, how shall we handle the data retrieved from this remote source?
 
 - **${SIMPLE_FETCH_STAGE1_NEWER_WINS}**: Compares the modified time of files and takes the newer one.
   If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.
 - **${SIMPLE_FETCH_STAGE1_REMOTE_WINS}**: Remote data is the source of truth.
   If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.
   It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.
-- **${SIMPLE_FETCH_STAGE1_LEGACY}**: Opens the detailed setup wizard.
+- **${SIMPLE_FETCH_STAGE1_DETAILED}**: Opens the detailed setup wizard.
   If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.
     `;
     const stage1 = await host.services.UI.confirm.confirmWithMessage(
@@ -109,7 +109,7 @@ Firstly, how shall we handle the data retrieved from this remote server?
         [
             SIMPLE_FETCH_STAGE1_NEWER_WINS,
             SIMPLE_FETCH_STAGE1_REMOTE_WINS,
-            SIMPLE_FETCH_STAGE1_LEGACY,
+            SIMPLE_FETCH_STAGE1_DETAILED,
             SIMPLE_FETCH_STAGE1_CANCEL,
         ],
         SIMPLE_FETCH_STAGE1_NEWER_WINS,
@@ -118,7 +118,7 @@ Firstly, how shall we handle the data retrieved from this remote server?
 
     if (!stage1 || stage1 === SIMPLE_FETCH_STAGE1_CANCEL) return "cancelled";
 
-    if (stage1 === SIMPLE_FETCH_STAGE1_LEGACY) {
+    if (stage1 === SIMPLE_FETCH_STAGE1_DETAILED) {
         return buildSimpleFetchResult(stage1)!;
     }
 
@@ -204,8 +204,8 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         host.services.appLifecycle.performRestart();
         return false;
     }
-    if (result.mode === "legacy") {
-        return undefined; // Let the legacy flow handle it.
+    if (result.mode === "detailed") {
+        return undefined; // Let the detailed setup flow handle it.
     }
 
     return await processVaultInitialisation(host, log, async () => {
@@ -215,7 +215,7 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         await host.serviceModules.rebuilder.$fetchLocalDBFast(false);
 
         // 2. Call the extended synchroniseAllFilesBetweenDBandStorage to reflect changes in storage
-        const errorManager = new UnresolvedErrorManager(host.services.appLifecycle);
+        const errorManager = new UnresolvedErrorManager(host.services.appLifecycle, host.services.context.events);
         const syncResult = await synchroniseAllFilesBetweenDBandStorage(
             host,
             log,

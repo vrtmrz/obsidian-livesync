@@ -1,4 +1,4 @@
-import { ChunkAlgorithmNames } from "@lib/common/types.ts";
+import { ChunkAlgorithmNames } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -35,7 +35,9 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             clampMin: 10,
             onUpdate: this.onlyOnCouchDB,
         });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("autoAcceptCompatibleTweak");
+        new Setting(paneEl)
+            .setClass("wizardHidden")
+            .autoWireToggle("autoAcceptCompatibleTweak", { defaultToggleValue: true });
         // new Setting(paneEl)
         //     .setClass("wizardHidden")
         //     .autoWireToggle("sendChunksBulk", { onUpdate: onlyOnCouchDB })
@@ -44,5 +46,8 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         //     .autoWireNumeric("sendChunksBulkMaxSize", {
         //         clampMax: 100, clampMin: 1, onUpdate: onlyOnCouchDB
         //     })
+    });
+    void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
+        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("enableCompression");
     });
 }
