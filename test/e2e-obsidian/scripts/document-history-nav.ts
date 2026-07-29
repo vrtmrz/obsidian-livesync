@@ -2,9 +2,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
-import { waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
+import { createE2eObsidianDeviceLocalState, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
+import { withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "60000";
@@ -44,28 +44,6 @@ async function dismissWelcomeWizard(port: number): Promise<void> {
             await page.waitForTimeout(500);
         }
     });
-}
-
-async function configureMinimalLocalMode(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
-    await evalObsidianJson<{ isConfigured: boolean }>(
-        cliBinary,
-        [
-            "(async()=>{",
-            "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "await core.services.setting.applyExternalSettings({",
-            "liveSync:false,",
-            "syncOnStart:false,",
-            "syncOnSave:false,",
-            "isConfigured:true,",
-            "doctorProcessedVersion:'0.25.27',",
-            "},true);",
-            "await core.services.control.applySettings();",
-            "const current=core.services.setting.currentSettings();",
-            "return JSON.stringify({isConfigured:current.isConfigured});",
-            "})()",
-        ].join(""),
-        env
-    );
 }
 
 async function seedRevisions(cliBinary: string, env: NodeJS.ProcessEnv): Promise<RevisionInfo> {
@@ -142,9 +120,10 @@ async function main(): Promise<void> {
 
     const vault = await createTemporaryVault();
     let session: ObsidianLiveSyncSession | undefined;
-    const port = obsidianRemoteDebuggingPort();
 
-    const screenshotDir = process.env.E2E_OBSIDIAN_HISTORY_SCREENSHOT_DIR ?? "/opt/cursor/artifacts/screenshots/document-history-nav";
+    const screenshotDir =
+        process.env.E2E_OBSIDIAN_HISTORY_SCREENSHOT_DIR ??
+        join(process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e", "document-history-nav");
     const reportPath = process.env.E2E_OBSIDIAN_HISTORY_REPORT ?? join(screenshotDir, "report.txt");
 
     async function captureStep(page: import("playwright").Page, step: string): Promise<string> {
@@ -164,22 +143,40 @@ async function main(): Promise<void> {
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+            pluginData: {
+                doctorProcessedVersion: "1.0.0",
+                isConfigured: true,
+                liveSync: false,
+                remoteType: "",
+                couchDB_URI: "",
+                couchDB_DBNAME: "",
+                couchDB_USER: "",
+                couchDB_PASSWORD: "",
+                remoteConfigurations: {},
+                activeConfigurationId: "",
+                notifyThresholdOfRemoteStorageSize: -1,
+                periodicReplication: false,
+                syncAfterMerge: false,
+                syncOnEditorSave: false,
+                syncOnFileOpen: false,
+                syncOnSave: false,
+                syncOnStart: false,
+            },
+            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
 
-        await dismissWelcomeWizard(port);
-        await configureMinimalLocalMode(cli.binary, session.cliEnv);
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        await dismissWelcomeWizard(session.remoteDebuggingPort);
 
         const revisionInfo = await seedRevisions(cli.binary, session.cliEnv);
         console.log(`Seeded local history: ${revisionInfo.revCount} revisions for ${revisionInfo.id}`);
-        assertTrue(revisionInfo.revCount >= 2, `Expected at least 2 revisions, got ${revisionInfo.revCount}`);
+        assertEqual(revisionInfo.revCount, revisions.length, "Unexpected number of seeded revisions.");
 
         const opened = await openDocumentHistory(cli.binary, session.cliEnv);
         assertEqual(opened.opened, true, "Document History modal did not open.");
         assertEqual(opened.modalTitle, "Document History", "Unexpected modal title.");
 
-        const report = await withObsidianPage(port, async (page) => {
+        const report = await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const modal = page.locator(".modal-container").filter({ hasText: "Document History" });
             await modal.waitFor({ state: "visible", timeout: 10000 });
 
@@ -199,6 +196,13 @@ async function main(): Promise<void> {
 
             const screenshotPaths: string[] = [];
             screenshotPaths.push(await captureStep(page, "01-initial-latest-rev"));
+            assertEqual(initialIndicator, "Rev 3/3", "History did not open at the latest revision.");
+            assertEqual(initialRange, "2", "History slider did not open at the latest revision.");
+            assertTrue(
+                !(await prevBtn.isDisabled()),
+                "Older revision button should be enabled at the latest revision."
+            );
+            assertTrue(await nextBtn.isDisabled(), "Newer revision button should be disabled at the latest revision.");
 
             await prevBtn.click();
             await page.waitForTimeout(1000);
@@ -209,15 +213,33 @@ async function main(): Promise<void> {
                 `◀ did not move to an older revision. before=${initialRange}, after=${afterPrevRange}`
             );
             assertTrue(afterPrevIndicator !== initialIndicator, "◀ did not update Rev indicator.");
+            assertTrue(!(await prevBtn.isDisabled()), "Older revision button was disabled before the oldest revision.");
+            assertTrue(!(await nextBtn.isDisabled()), "Newer revision button was not enabled after moving backwards.");
             screenshotPaths.push(await captureStep(page, "02-after-click-older-rev"));
 
+            await prevBtn.click();
+            await page.waitForTimeout(1000);
+            assertEqual(await range.inputValue(), "0", "◀ did not reach the oldest revision.");
+            assertTrue(await prevBtn.isDisabled(), "Older revision button should be disabled at the oldest revision.");
+            assertTrue(
+                !(await nextBtn.isDisabled()),
+                "Newer revision button should be enabled at the oldest revision."
+            );
+            screenshotPaths.push(await captureStep(page, "03-at-oldest-rev"));
+
+            await nextBtn.click();
+            await page.waitForTimeout(1000);
             await nextBtn.click();
             await page.waitForTimeout(1000);
             const afterNextIndicator = (await indicator.innerText()).trim();
             const afterNextRange = await range.inputValue();
             assertEqual(afterNextRange, initialRange, "▶ did not return to the original revision.");
             assertEqual(afterNextIndicator, initialIndicator, "▶ did not restore the Rev indicator.");
-            screenshotPaths.push(await captureStep(page, "03-after-click-newer-rev"));
+            assertTrue(
+                await nextBtn.isDisabled(),
+                "Newer revision button should be disabled after returning to latest."
+            );
+            screenshotPaths.push(await captureStep(page, "04-after-click-newer-rev"));
 
             const searchInput = modal.locator(".history-search-input");
             await searchInput.fill("keyword");
@@ -226,7 +248,7 @@ async function main(): Promise<void> {
             const searchIndicator = modal.locator(".history-search-result-indicator");
             const searchText = (await searchIndicator.innerText()).trim();
             assertTrue(/matches/.test(searchText), `Search indicator did not report matches: ${searchText}`);
-            screenshotPaths.push(await captureStep(page, "04-after-search-keyword"));
+            screenshotPaths.push(await captureStep(page, "05-after-search-keyword"));
 
             const searchPrev = modal.locator(".history-search-row button").nth(0);
             const searchNext = modal.locator(".history-search-row button").nth(1);
@@ -237,8 +259,11 @@ async function main(): Promise<void> {
             await page.waitForTimeout(1000);
 
             const afterSearchIndicator = (await searchIndicator.innerText()).trim();
-            assertTrue(/1\/\d+ matches/.test(afterSearchIndicator), `Search navigation failed: ${afterSearchIndicator}`);
-            screenshotPaths.push(await captureStep(page, "05-after-search-next-match"));
+            assertTrue(
+                /1\/\d+ matches/.test(afterSearchIndicator),
+                `Search navigation failed: ${afterSearchIndicator}`
+            );
+            screenshotPaths.push(await captureStep(page, "06-after-search-next-match"));
 
             return [
                 `initialIndicator: ${initialIndicator}`,
@@ -266,4 +291,3 @@ main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.stack : error);
     process.exit(1);
 });
-

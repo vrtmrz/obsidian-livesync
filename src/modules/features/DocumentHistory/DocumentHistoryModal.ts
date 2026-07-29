@@ -605,7 +605,7 @@ export class DocumentHistoryModal extends Modal {
             e.addEventListener("click", () => this.navigateVersion("newer"));
         });
 
-        this.revNavIndicator = revNavRow.createEl("span", { text: "\u2014" }, (e) => {
+        this.revNavIndicator = revNavRow.createSpan({ text: "\u2014" }, (e) => {
             e.addClass("history-rev-indicator");
         });
         const diffOptionsRow = contentEl.createDiv("");
