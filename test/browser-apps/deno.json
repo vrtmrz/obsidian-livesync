@@ -1,0 +1,7 @@
+{
+    "imports": {
+        "@std/assert": "jsr:@std/assert@^1.0.13",
+        "@std/path": "jsr:@std/path@^1.0.9",
+        "playwright": "npm:playwright@1.62.0"
+    }
+}

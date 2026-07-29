@@ -38,6 +38,8 @@ npm run buildDev     # Development build (one-time)
 npm run test:integration                 # Run CouchDB-backed integration tests
 npm run test:setup-tools                 # Check provisioning and Setup URI package contracts
 npm run test:e2e:cli:p2p                 # Run canonical P2P validation in Compose
+npm run test:browser-apps                # Build and run the WebApp and WebPeer app-owned Chromium tests
+npm run test:e2e:browser-apps:interop    # Run WebApp → WebPeer → CLI in Compose
 npm run test:e2e:obsidian:local-suite    # Run the real Obsidian local suite
 ```
 
@@ -66,7 +68,7 @@ To facilitate development and testing, the build process can automatically copy 
         - If you add a feature that interacts with the remote database (e.g., replication changes, custom changes feed parameters, or custom HTTP queries), you are strongly expected to write an integration test to verify the behaviour against a real CouchDB server.
     - **Commonlib Tests**: Commonlib owns unit and package tests for shared RPC, storage, replication, and platform contracts. LiveSync CI verifies the exact packed dependency as a downstream consumer.
 
-Regression tests remain beside the implementation which owns their contract. Prefix a case or group with `compatibility:` when it protects a persisted input or state which current releases still accept, and with `retirement guard:` when it prevents a removed setting, control, or notification from returning. Remove or replace a compatibility case only when the corresponding input is no longer accepted or an equivalent maintained case preserves the contract. Remove a retirement guard only when another current contract makes the old behaviour unreachable. Do not preserve a disconnected historical test as an executable specification when no maintained runner invokes it; Git history is the reference for retired test infrastructure.
+Regression tests remain in the suite owned by the implementation under test. Plug-in tests may be co-located with their source, while independent application tests remain under `test/apps/` or `test/browser-apps/` so that they stay outside the Community Review source boundary. Prefix a case or group with `compatibility:` when it protects a persisted input or state which current releases still accept, and with `retirement guard:` when it prevents a removed setting, control, or notification from returning. Remove or replace a compatibility case only when the corresponding input is no longer accepted or an equivalent maintained case preserves the contract. Remove a retirement guard only when another current contract makes the old behaviour unreachable. Do not preserve a disconnected historical test as an executable specification when no maintained runner invokes it; Git history is the reference for retired test infrastructure.
 
 - **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Self-hosted setup tools** (`utils/couchdb/`, `utils/setup/`, and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current CouchDB, Object Storage, and random-room P2P Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
@@ -85,9 +87,11 @@ Regression tests remain beside the implementation which owns their contract. Pre
 
 - **Test Structure**:
     - `test/e2e-obsidian/` - Real Obsidian E2E scripts for local verification
+    - `test/apps/webapp/` and `test/apps/webpeer/` - app-owned unit tests outside the Community Review source boundary
+    - `test/browser-apps/webapp/` and `test/browser-apps/webpeer/` - app-owned Deno and Chromium tests outside the Community Review source boundary
+    - `test/browser-apps/` - Compose-owned WebApp → WebPeer → CLI P2P interoperability and shared browser-test support
     - co-located `*.unit.spec.ts` files - Node-based unit tests
     - co-located `*.integration.spec.ts` files - service-backed integration tests
-    - `src/apps/webapp/obsidianMock.ts` - Webapp-only Obsidian compatibility adapter; it is not an E2E Harness
 
 ### Import Path Normalisation
 
@@ -144,7 +148,7 @@ Hence, the new feature should be implemented as follows:
 - **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper
 - **Replicators** (`@vrtmrz/livesync-commonlib/compat/replication/*`): CouchDB, Journal, and P2P synchronisation engines
 - **Service Hub** (`src/modules/services/`): Central service registry using dependency injection
-- **Common Library** (`@vrtmrz/livesync-commonlib`): Platform-independent synchronisation logic, shared with the CLI, Webapp, WebPeer, and external tools
+- **Common Library** (`@vrtmrz/livesync-commonlib`): Platform-independent synchronisation logic, shared with the CLI, WebApp, WebPeer, and external tools
 
 Commonlib owns the P2P replicator and Trystero transport lifecycle. Host commands, event handlers, and views must retain the Commonlib service-feature result and resolve its current `replicator` at the point of use. They must not snapshot an instance which can be replaced when settings or the local database change, close Trystero-owned raw peers, or install another Trystero transport generation at the application root.
 

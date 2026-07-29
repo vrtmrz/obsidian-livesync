@@ -1,37 +1,26 @@
-# A pseudo client for Self-hosted LiveSync Peer-to-Peer Sync mode
+# Self-hosted LiveSync WebPeer
 
-## What is it for?
+WebPeer is a browser-hosted, P2P-only Self-hosted LiveSync peer. It can receive database changes from one peer and provide them to another without materialising ordinary Vault files.
 
-This is a pseudo client for the Self-hosted LiveSync Peer-to-Peer Sync mode. It is a simple pure-client-side web-application that can be connected to the Self-hosted LiveSync in peer-to-peer.
-
-As long as you have a browser, it starts up, so if you leave it opened some device, it can replace your existing remote servers such as CouchDB.
-
-> [!IMPORTANT]
-> Of course, it has not been fully tested. Rather, it was created to be tested.
-
-This pseudo client actually receives the data from other devices, and sends if some device requests it. However, it does not store **files** in the local storage. If you want to purge the data, please purge the browser's cache and indexedDB, local storage, etc.
-
-## How to use it?
-
-We can build the application from the repository root by running the following command:
+Build it from the repository root:
 
 ```bash
-npm run build -w webpeer
+npm run build --workspace webpeer
 ```
 
-Or from the package directory:
+Serve `src/apps/webpeer/dist/` over HTTPS, or from `localhost`, open `index.html`, and configure the same Group ID, passphrase, signalling relay, and optional TURN settings as the other peers. Keep the page open while it is expected to announce or transfer changes.
+
+WebPeer stores its settings, metadata, and chunks in origin-scoped browser storage. Clearing site data removes this state. Browser suspension, storage eviction, tab lifecycle, and network policy mean that WebPeer is not an always-on server.
+
+The app-owned unit and Chromium tests can be run with:
 
 ```bash
-cd src/apps/webpeer
-npm run build
+npm run test:unit --workspace webpeer
+npm run test:browser --workspace webpeer
 ```
 
-Then, open `dist/index.html` in the browser. It can be configured in the same way as Self-hosted LiveSync (the same components are used[^1]).
+The unit tests are stored in `test/apps/webpeer/`, outside the Community Review source boundary.
 
-## Some notes
+## Licence
 
-I will launch this application in the github pages later, so will be able to use it without building it. However, that shares the origin. Hence, the application that your have built and deployed would be more secure.
-
-
-[^1]: Congrats! I made it modular. Finally...
-
+The same licence as the main Self-hosted LiveSync project applies.

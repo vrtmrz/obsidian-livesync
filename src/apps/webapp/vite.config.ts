@@ -20,7 +20,6 @@ export default defineConfig({
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "../../"),
-            obsidian: path.resolve(__dirname, "./obsidianMock.ts"),
         },
     },
     base: "./",
@@ -39,7 +38,6 @@ export default defineConfig({
         MANIFEST_VERSION: JSON.stringify(process.env.MANIFEST_VERSION || manifestVersion || "0.0.0"),
         PACKAGE_VERSION: JSON.stringify(process.env.PACKAGE_VERSION || packageVersion || "0.0.0"),
         global: "globalThis",
-        hostPlatform: JSON.stringify(process.platform || "linux"),
     },
     server: {
         port: 3000,

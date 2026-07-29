@@ -68,7 +68,8 @@ export class VaultHistoryStore {
     private async openHandleDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(HANDLE_DB_NAME, 1);
-            request.onerror = () => reject(request.error);
+            request.onerror = () =>
+                reject(request.error ?? new Error("Could not open the WebApp Vault history database"));
             request.onsuccess = () => resolve(request.result);
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
@@ -93,7 +94,7 @@ export class VaultHistoryStore {
     private async requestAsPromise<T>(request: IDBRequest<T>): Promise<T> {
         return new Promise((resolve, reject) => {
             request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            request.onerror = () => reject(request.error ?? new Error("The WebApp Vault history request failed"));
         });
     }
 

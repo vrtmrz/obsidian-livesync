@@ -7,10 +7,18 @@ on:
       - main
     paths:
       - 'aggregator.html'
+      - 'src/**'
+      - 'test/browser-apps/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/deploy-pages.yml'
   pull_request:
     paths:
       - 'aggregator.html'
+      - 'src/**'
+      - 'test/browser-apps/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/deploy-pages.yml'
 
 permissions:
@@ -30,6 +38,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright@1.62.0 install --with-deps chromium
+
+      - name: Validate browser applications
+        run: npm run test:browser-apps
+
+      - name: Validate browser application interoperability
+        run: npm run test:e2e:browser-apps:interop
+
       - name: Validate aggregator
         run: |
           test -s aggregator.html
@@ -41,8 +72,13 @@ jobs:
 
       - name: Prepare Pages site
         run: |
-          mkdir -p _site
+          mkdir -p _site/webapp _site/webpeer
           cp aggregator.html _site/aggregator.html
+          cp -R src/apps/webapp/dist/. _site/webapp/
+          cp -R src/apps/webpeer/dist/. _site/webpeer/
+          test -s _site/webapp/index.html
+          test -s _site/webapp/webapp.html
+          test -s _site/webpeer/index.html
           touch _site/.nojekyll
 
       - name: Configure GitHub Pages

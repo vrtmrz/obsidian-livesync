@@ -19,16 +19,16 @@
 
     async function testMenu(event: MouseEvent) {
         const m = new Menu()
-            .addItem((item) => item.setTitle("📥 Only Fetch").onClick(() => {}))
-            .addItem((item) => item.setTitle("📤 Only Send").onClick(() => {}))
+            .addItem((item) => item.setTitle("📥 Only fetch").onClick(() => {}))
+            .addItem((item) => item.setTitle("📤 Only send").onClick(() => {}))
             .addSeparator()
             .addItem((item) => {
-                item.setTitle("🔧 Get Configuration").onClick(async () => {});
+                item.setTitle("🔧 Get configuration").onClick(async () => {});
             })
             .addSeparator()
             .addItem((item) => {
                 const mark = "checkmark";
-                item.setTitle("Toggle Sync on connect")
+                item.setTitle("Toggle sync on connect")
                     .onClick(async () => {
                         // await this.toggleProp(peer, "syncOnConnect");
                     })
@@ -36,7 +36,7 @@
             })
             .addItem((item) => {
                 const mark = null;
-                item.setTitle("Toggle Watch on connect")
+                item.setTitle("Toggle watch on connect")
                     .onClick(async () => {
                         // await this.toggleProp(peer, "watchOnConnect");
                     })
@@ -44,7 +44,7 @@
             })
             .addItem((item) => {
                 const mark = null;
-                item.setTitle("Toggle Sync on `Replicate now` command")
+                item.setTitle("Toggle sync on `Replicate now` command")
                     .onClick(async () => {})
                     .setIcon(mark);
             });

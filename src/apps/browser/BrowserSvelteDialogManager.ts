@@ -1,15 +1,15 @@
 import {
     type ComponentHasResult,
     SvelteDialogManagerBase,
-    SvelteDialogMixIn,
 } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
 import { createNativeElement } from "@/apps/browserDom";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { SvelteDialogManagerDependencies } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import DialogHost from "@/modules/services/LiveSyncUI/DialogHost.svelte";
+import { SvelteDialogSession } from "@/modules/services/SvelteDialogSession";
 
-export class ShimModal {
+export class BrowserModal {
     contentEl: HTMLElement;
     titleEl: HTMLElement;
     modalEl: HTMLElement;
@@ -45,19 +45,14 @@ export class ShimModal {
     }
     onOpen() {}
     onClose() {}
-    setPlaceholder(p: string) {}
     setTitle(t: string) {
         this.titleEl.textContent = t;
     }
 }
 
-const BrowserSvelteDialogBase = SvelteDialogMixIn(ShimModal, DialogHost);
+export class LiveSyncBrowserDialog<T, U, C extends ServiceContext = ServiceContext> extends BrowserModal {
+    private readonly session: SvelteDialogSession<T, U, C>;
 
-export class LiveSyncBrowserDialog<T, U, C extends ServiceContext = ServiceContext> extends BrowserSvelteDialogBase<
-    T,
-    U,
-    C
-> {
     constructor(
         context: C,
         dependents: SvelteDialogManagerDependencies<C>,
@@ -65,7 +60,26 @@ export class LiveSyncBrowserDialog<T, U, C extends ServiceContext = ServiceConte
         initialData?: U
     ) {
         super();
-        this.initDialog(context, dependents, component, initialData);
+        this.session = new SvelteDialogSession({
+            surface: this,
+            context,
+            dependencies: dependents,
+            dialogHost: DialogHost,
+            component,
+            initialData,
+        });
+    }
+
+    override onOpen(): void {
+        this.session.onOpen();
+    }
+
+    override onClose(): void {
+        this.session.onClose();
+    }
+
+    waitForClose(): Promise<T | undefined> {
+        return this.session.waitForClose();
     }
 }
 export class BrowserSvelteDialogManager<T extends ServiceContext> extends SvelteDialogManagerBase<T> {

@@ -2,8 +2,8 @@
  * Native DOM creation for browser applications which run outside Obsidian.
  *
  * Obsidian adds creation helpers to its own DOM environment. The standalone
- * Webapp and WebPeer hosts do not own those prototype extensions, and the
- * Webapp compatibility layer implements them on top of this native boundary.
+ * WebApp and WebPeer hosts use this native boundary instead of installing
+ * Obsidian-shaped prototype extensions.
  */
 type NativeDocumentCreation = Pick<Document, "createElement" | "createDocumentFragment">;
 

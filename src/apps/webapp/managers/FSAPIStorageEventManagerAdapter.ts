@@ -74,7 +74,8 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, 1);
 
-            request.onerror = () => reject(request.error);
+            request.onerror = () =>
+                reject(request.error ?? new Error("Failed to open the WebApp snapshot database"));
             request.onsuccess = () => resolve(request.result);
 
             request.onupgradeneeded = (event) => {
@@ -95,7 +96,8 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
             await new Promise<void>((resolve, reject) => {
                 const request = store.put(snapshot, this.snapshotKey);
                 request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
+                request.onerror = () =>
+                    reject(request.error ?? new Error("Failed to save the WebApp storage-event snapshot"));
             });
 
             db.close();
@@ -114,7 +116,8 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
                 const request = store.get(this.snapshotKey);
                 request.onsuccess = () =>
                     resolve((request.result as (FileEventItem | FileEventItemSentinel)[] | undefined) ?? null);
-                request.onerror = () => reject(request.error);
+                request.onerror = () =>
+                    reject(request.error ?? new Error("Failed to load the WebApp storage-event snapshot"));
             });
 
             db.close();

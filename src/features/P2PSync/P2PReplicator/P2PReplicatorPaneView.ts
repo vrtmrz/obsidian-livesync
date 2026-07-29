@@ -2,12 +2,11 @@ import { Menu, WorkspaceLeaf } from "@/deps.ts";
 import ReplicatorPaneComponent from "./P2PReplicatorPane.svelte";
 import { mount } from "svelte";
 import { SvelteItemView } from "@/common/SvelteItemView.ts";
-import { eventHub } from "@/common/events.ts";
 
 import { unique } from "octagonal-wheels/collection";
 import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { EVENT_P2P_PEER_SHOW_EXTRA_MENU, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+import type { PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
 import type { P2PPaneParams } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 export const VIEW_TYPE_P2P = "p2p-replicator";
@@ -127,46 +126,45 @@ And you can also drop the local database to rebuild from the remote device.`,
         super(leaf);
         this.core = core;
         this._p2pResult = p2pResult;
-        eventHub.onEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, ({ peer, event }) => {
-            if (this.m) {
-                this.m.hide();
-            }
-            this.m = new Menu()
-                .addItem((item) => item.setTitle("📥 Only Fetch").onClick(() => this.replicateFrom(peer)))
-                .addItem((item) => item.setTitle("📤 Only Send").onClick(() => this.replicateTo(peer)))
-                .addSeparator()
-                .addItem((item) => {
-                    item.setTitle("🔧 Get Configuration").onClick(async () => {
-                        await this.getRemoteConfig(peer);
-                    });
-                })
-                .addSeparator()
-                .addItem((item) => {
-                    const mark = peer.syncOnConnect ? "checkmark" : null;
-                    item.setTitle("Toggle Sync on connect")
-                        .onClick(async () => {
-                            await this.toggleProp(peer, "syncOnConnect");
-                        })
-                        .setIcon(mark);
-                })
-                .addItem((item) => {
-                    const mark = peer.watchOnConnect ? "checkmark" : null;
-                    item.setTitle("Toggle Watch on connect")
-                        .onClick(async () => {
-                            await this.toggleProp(peer, "watchOnConnect");
-                        })
-                        .setIcon(mark);
-                })
-                .addItem((item) => {
-                    const mark = peer.syncOnReplicationCommand ? "checkmark" : null;
-                    item.setTitle("Toggle Sync on `Replicate now` command")
-                        .onClick(async () => {
-                            await this.toggleProp(peer, "syncOnReplicationCommand");
-                        })
-                        .setIcon(mark);
+    }
+
+    private showPeerMenu(peer: PeerStatus, event: MouseEvent): void {
+        this.m?.hide();
+        this.m = new Menu()
+            .addItem((item) => item.setTitle("📥 Only Fetch").onClick(() => this.replicateFrom(peer)))
+            .addItem((item) => item.setTitle("📤 Only Send").onClick(() => this.replicateTo(peer)))
+            .addSeparator()
+            .addItem((item) => {
+                item.setTitle("🔧 Get Configuration").onClick(async () => {
+                    await this.getRemoteConfig(peer);
                 });
-            this.m.showAtPosition({ x: event.x, y: event.y });
-        });
+            })
+            .addSeparator()
+            .addItem((item) => {
+                const mark = peer.syncOnConnect ? "checkmark" : null;
+                item.setTitle("Toggle Sync on connect")
+                    .onClick(async () => {
+                        await this.toggleProp(peer, "syncOnConnect");
+                    })
+                    .setIcon(mark);
+            })
+            .addItem((item) => {
+                const mark = peer.watchOnConnect ? "checkmark" : null;
+                item.setTitle("Toggle Watch on connect")
+                    .onClick(async () => {
+                        await this.toggleProp(peer, "watchOnConnect");
+                    })
+                    .setIcon(mark);
+            })
+            .addItem((item) => {
+                const mark = peer.syncOnReplicationCommand ? "checkmark" : null;
+                item.setTitle("Toggle Sync on `Replicate now` command")
+                    .onClick(async () => {
+                        await this.toggleProp(peer, "syncOnReplicationCommand");
+                    })
+                    .setIcon(mark);
+            });
+        void this.m.showAtPosition({ x: event.x, y: event.y });
     }
 
     getViewType() {
@@ -187,8 +185,11 @@ And you can also drop the local database to rebuild from the remote device.`,
         return mount(ReplicatorPaneComponent, {
             target: target,
             props: {
-                getCmdSync: () => this._p2pResult.replicator,
-                core: this.core,
+                host: {
+                    services: this.core.services,
+                    p2p: this._p2pResult,
+                    showPeerMenu: (peer: PeerStatus, event: MouseEvent) => this.showPeerMenu(peer, event),
+                },
             },
         });
     }

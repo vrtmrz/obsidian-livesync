@@ -9,7 +9,10 @@
         "build:docker": "docker build -f Dockerfile -t livesync-webpeer ../../..",
         "run:docker": "docker run -p 8001:80 livesync-webpeer",
         "preview": "vite preview",
-        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+        "test:unit": "npm --prefix ../../.. run test:unit -- test/apps/webpeer",
+        "pretest:browser": "npm run build",
+        "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webpeer/browser-smoke.test.ts"
     },
     "dependencies": {
         "octagonal-wheels": "^0.1.51"
