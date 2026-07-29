@@ -8,6 +8,7 @@ Each application has its own production-bundle smoke-test directory outside `src
 
 - `test/browser-apps/webapp/` covers Vault selection, OPFS start-up, and isolation between optional P2P settings and the main remote.
 - `test/browser-apps/webpeer/` covers start-up, settings persistence, and reload.
+- `test/browser-apps/pages/` covers the final GitHub Pages layout, application subpaths, and relative assets.
 
 Run both app-owned tests with:
 
@@ -22,5 +23,13 @@ Run the isolated relay and TURN scenario in Compose with:
 ```bash
 npm run test:e2e:browser-apps:interop
 ```
+
+After assembling the GitHub Pages files in `_site`, run the package smoke test with:
+
+```bash
+npm run test:browser-apps:pages
+```
+
+Set `PAGES_SITE_ROOT` to test an assembled site in another directory.
 
 The Deno dependency lock is shared only by these browser application tests.

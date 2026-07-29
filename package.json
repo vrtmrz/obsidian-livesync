@@ -32,6 +32,7 @@
         "test:unit": "vitest run --config vitest.config.unit.ts",
         "build:browser-apps": "npm run build --workspace livesync-webapp --workspace webpeer",
         "test:browser-apps": "npm run test:browser --workspace livesync-webapp && npm run test:browser --workspace webpeer",
+        "test:browser-apps:pages": "deno test -A --no-check --frozen --config test/browser-apps/deno.json --lock test/browser-apps/deno.lock test/browser-apps/pages/browser-smoke.test.ts",
         "test:e2e:browser-apps": "npm run test:browser-apps",
         "pretest:e2e:browser-apps:interop": "npm run build:browser-apps && npm run build --workspace self-hosted-livesync-cli",
         "test:e2e:browser-apps:interop": "deno run -A --no-check --frozen --config test/browser-apps/deno.json --lock test/browser-apps/deno.lock test/browser-apps/run-compose-interop.ts",

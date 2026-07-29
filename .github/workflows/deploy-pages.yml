@@ -81,6 +81,9 @@ jobs:
           test -s _site/webpeer/index.html
           touch _site/.nojekyll
 
+      - name: Validate packaged Pages site
+        run: npm run test:browser-apps:pages
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
