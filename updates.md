@@ -12,7 +12,17 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
-### Improved
+## 1.0.1
+
+29th July, 2026
+
+I am taking this opportunity to update the experimental features as well.
+
+This is a review-only maintenance release. It improves the robustness and maintainability of the experimental WebApp, WebPeer, and shared dialogue composition, but offers no particular benefit to plug-in users and may be skipped. I have reviewed the changes through CI and a real Obsidian instance, and I will validate the exact published build before merging the release commit.
+
+### Interface
+
+#### Improved
 
 - Removed a custom positioning workaround from the onboarding Notice so that it follows Obsidian's standard placement and dismissal behaviour.
 
