@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Improved
+
+- Removed a custom positioning workaround from the onboarding Notice so that it follows Obsidian's standard placement and dismissal behaviour.
+
 ## 1.0.0
 
 27th July, 2026
