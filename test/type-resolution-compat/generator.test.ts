@@ -122,6 +122,17 @@ function validSyntheticExports(): Record<string, unknown> {
     };
 }
 
+Deno.test("root postbuild generates the type-resolution compatibility mirror", async () => {
+    const repositoryRoot = await Deno.realPath(new URL("../../", import.meta.url));
+    const packageJson = JSON.parse(await Deno.readTextFile(`${repositoryRoot}/package.json`)) as {
+        scripts?: Record<string, string>;
+    };
+    assert(
+        packageJson.scripts?.postbuild === "npm run generate:type-resolution-compat",
+        "root postbuild does not invoke the compatibility generator"
+    );
+});
+
 Deno.test("generator covers the installed package export maps deterministically", async () => {
     const repositoryRoot = await Deno.realPath(new URL("../../", import.meta.url));
     const temporaryDirectory = await Deno.makeTempDir({ prefix: "livesync-type-generator-" });

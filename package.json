@@ -23,6 +23,7 @@
         "prettyCheck": "npm run prettyNoWrite -- --check",
         "prettyNoWrite": "prettier --config ./.prettierrc.mjs \"**/*.js\" \"**/*.ts\" \"**/*.json\" ",
         "postinstall": "npm run generate:type-resolution-compat",
+        "postbuild": "npm run generate:type-resolution-compat",
         "precheck:compatibility": "npm run build",
         "check:compatibility": "node utils/check-compatibility.js --file main.js --ios 15",
         "check": "npm run tsc-check && npm run tsc-check:apps && npm run lint && npm run lint:community -- --quiet && npm run lint:community:tools && npm run svelte-check && npm run check:compatibility",
