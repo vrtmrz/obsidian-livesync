@@ -14,6 +14,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const COMMONLIB_PACKAGE_NAME = "@vrtmrz/livesync-commonlib";
 const PACKAGE_DEFINITIONS = [
@@ -30,10 +31,7 @@ const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const DEFAULT_OUTPUT_ROOT = path.join(PROJECT_ROOT, "dist", "type-resolution-compat");
 const DECLARATION_PATTERN = /\.d\.(?:c|m)?ts$/u;
 const DECLARATION_MAP_PATTERN = /\.d\.(?:c|m)?ts\.map$/u;
-const DIRECT_DEFAULT_EXPORT_PATTERN = /\bexport\s+(?:default\b|=)/u;
-const DEFAULT_NAMESPACE_EXPORT_PATTERN = /\bexport\s*\*\s*as\s+default\b/u;
 const EXACT_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u;
-const EXPORT_CLAUSE_PATTERN = /\bexport\s*\{([^}]*)\}/gu;
 const SUPPRESSION_PATTERN = /@ts-(?:expect-error|ignore|nocheck)|eslint-(?:disable|enable)/u;
 
 function fail(message) {
@@ -285,21 +283,14 @@ async function collectDeclarationFiles(packageRoot) {
 }
 
 function hasDefaultExport(source) {
-    if (DIRECT_DEFAULT_EXPORT_PATTERN.test(source) || DEFAULT_NAMESPACE_EXPORT_PATTERN.test(source)) return true;
-    for (const match of source.matchAll(EXPORT_CLAUSE_PATTERN)) {
-        for (const rawSpecifier of match[1].split(",")) {
-            const specifier = rawSpecifier.trim().replace(/^type\s+/u, "");
-            if (
-                specifier === "default" ||
-                specifier === '"default"' ||
-                specifier === "'default'" ||
-                /\bas\s+(?:default|"default"|'default')$/u.test(specifier)
-            ) {
-                return true;
-            }
-        }
-    }
-    return false;
+    const sourceFile = ts.createSourceFile("types.d.ts", source, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+    return sourceFile.statements.some((statement) => {
+        if (ts.isExportAssignment(statement)) return true;
+        if (statement.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) return true;
+        if (!ts.isExportDeclaration(statement) || statement.exportClause === undefined) return false;
+        if (ts.isNamespaceExport(statement.exportClause)) return statement.exportClause.name.text === "default";
+        return statement.exportClause.elements.some((specifier) => specifier.name.text === "default");
+    });
 }
 
 async function validateWrapperExports(packageRoot, typedExports) {

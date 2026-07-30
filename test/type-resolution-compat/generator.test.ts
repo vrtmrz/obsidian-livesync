@@ -367,6 +367,18 @@ Deno.test("generator rejects invalid package boundaries and preserves the previo
             );
         }
 
+        await writeSyntheticPackage(packageRoot, validSyntheticExports(), {
+            "dist/common/types.d.ts": "export type FilePath = string;\n",
+            "dist/index.d.ts":
+                "/** This package does not `export default`; the phrase is documentation only. */\n" +
+                'export type { FilePath } from "./common/types.js";\n',
+        });
+        const documentedDefaultExport = await runGenerator(repositoryRoot, commonArguments);
+        assert(
+            documentedDefaultExport.success,
+            `default-export text in a comment was rejected:\n${documentedDefaultExport.stderr}`
+        );
+
         await writeSyntheticPackage(
             packageRoot,
             validSyntheticExports(),
