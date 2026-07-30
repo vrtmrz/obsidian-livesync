@@ -51,6 +51,8 @@ Always adhere to the following stylistic and spelling rules:
      - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](src/apps/cli) using its local `package.json` scripts.
      - `webapp`: A Web-based application.
      - `webpeer`: A Web-based peer utility.
+   - Community Review scans source throughout `src`, including these independent applications. Separate build configurations and application entry points do not remove `src/apps` from that review boundary.
+   - Place new tests owned by independent applications under `test/apps` or `test/browser-apps`, outside `src`. Production code under `src/apps` must pass Community Review without lint-disable comments or other suppression directives.
 
 ---
 
@@ -67,3 +69,7 @@ Before submitting code, you should run verification scripts locally to ensure co
 3. **Build**:
    - Run `npm run build` to compile the production bundle (`main.js`).
    - Run `npm run dev` for the development watch/build task.
+
+## Release Ordering
+
+- After a stable plug-in manifest version reaches the default branch, prioritise verification and completion of that exact plug-in release before optional stable CLI publication. Community Review may inspect the default branch immediately, so CLI release work must not delay correction or confirmation of the plug-in artefact.
