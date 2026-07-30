@@ -18,13 +18,14 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 I am taking this opportunity to update the experimental features as well.
 
-This is a review-only maintenance release. It improves the robustness and maintainability of the experimental WebApp, WebPeer, and shared dialogue composition, but offers no particular benefit to plug-in users and may be skipped. I have reviewed the changes through CI and a real Obsidian instance, and I will validate the exact published build before merging the release commit.
+This maintenance release mainly improves the robustness and maintainability of the experimental WebApp, WebPeer, and shared dialogue composition. Most plug-in users can skip it. I have reviewed the changes through CI and a real Obsidian instance, and I will validate the exact published build before merging the release commit.
 
 ### Interface
 
 #### Improved
 
 - Removed a custom positioning workaround from the onboarding Notice so that it follows Obsidian's standard placement and dismissal behaviour.
+- WebApp now points users to **Scan local files** when automatic file observation is unavailable, instead of relying on a fixed browser-version recommendation.
 
 ## 1.0.0
 
