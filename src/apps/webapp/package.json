@@ -1,7 +1,7 @@
 {
     "name": "livesync-webapp",
     "private": true,
-    "version": "1.0.0-webapp",
+    "version": "1.0.1-webapp",
     "type": "module",
     "description": "Browser-based Self-hosted LiveSync using FileSystem API",
     "scripts": {
@@ -9,7 +9,10 @@
         "build": "vite build",
         "build:docker": "docker build -f Dockerfile -t livesync-webapp ../../..",
         "run:docker": "docker run -p 8002:80 livesync-webapp",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test:unit": "npm --prefix ../../.. run test:unit -- test/apps/webapp",
+        "pretest:browser": "npm run build",
+        "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webapp/browser-smoke.test.ts"
     },
     "dependencies": {
         "octagonal-wheels": "^0.1.51"

@@ -1,14 +1,14 @@
 <script lang="ts">
-    import { onMount, setContext } from "svelte";
+    import { onMount } from "svelte";
     import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import {
         AcceptedStatus,
         ConnectionStatus,
         type PeerStatus,
     } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
-    import type { P2PReplicatorPaneController } from "./P2PReplicatorPaneController";
+    import type { P2PReplicatorPaneHost } from "./P2PReplicatorPaneHost";
     import PeerStatusRow from "@/features/P2PSync/P2PReplicator/PeerStatusRow.svelte";
-    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
+    import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
     import {
         type PeerInfo,
         type P2PServerInfo,
@@ -20,16 +20,16 @@
     import { $msg as _msg } from "@/common/translation";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
     interface Props {
-        getCmdSync: () => P2PReplicatorPaneController;
-        core: Pick<LiveSyncBaseCore, "services">;
+        host: P2PReplicatorPaneHost;
     }
 
-    let { getCmdSync, core }: Props = $props();
-    setContext("getReplicator", () => getCmdSync());
-    const currentSettings = () => core.services.setting.currentSettings() as P2PSyncSetting;
+    let { host }: Props = $props();
+    let services = $derived(host.services);
+    let events = $derived(services.context.events);
+    const currentSettings = () => services.setting.currentSettings() as P2PSyncSetting;
+    const currentReplicator = () => host.p2p.replicator;
     const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
     let settings = $state<P2PSyncSetting>(initialSettings);
@@ -81,7 +81,7 @@
         //     P2P_AutoStart: eAutoStart,
         //     P2P_AutoBroadcast: eAutoBroadcast,
         // };
-        await core.services.setting.applyPartial(
+        await services.setting.applyPartial(
             {
                 P2P_Enabled: eP2PEnabled,
                 P2P_relays: eRelay,
@@ -94,7 +94,7 @@
             },
             true
         );
-        core.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
+        services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
         deviceName = eDeviceName;
     }
     async function revert() {
@@ -113,7 +113,7 @@
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
         if (force) {
             const initDeviceName =
-                core.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? core.services.vault.getVaultName();
+                services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? services.vault.getVaultName();
             deviceName = initDeviceName;
             eDeviceName = initDeviceName;
         }
@@ -131,21 +131,22 @@
         settings = d;
     };
     onMount(() => {
-        const r = eventHub.onEvent("setting-saved", async (d) => {
+        const r = events.onEvent("setting-saved", async (d) => {
             applyLoadSettings(d, false);
             closeServer();
         });
-        const rx = eventHub.onEvent(EVENT_LAYOUT_READY, () => {
+        const rx = events.onEvent(EVENT_LAYOUT_READY, () => {
             applyLoadSettings(currentSettings(), true);
         });
-        const r2 = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
+        const r2 = events.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
             advertisements = status?.knownAdvertisements ?? [];
         });
-        const r3 = eventHub.onEvent(EVENT_P2P_REPLICATOR_STATUS, (status) => {
+        const r3 = events.onEvent(EVENT_P2P_REPLICATOR_STATUS, (status) => {
             replicatorInfo = status;
         });
-        eventHub.emitEvent(EVENT_REQUEST_STATUS);
+        applyLoadSettings(currentSettings(), true);
+        events.emitEvent(EVENT_REQUEST_STATUS);
         return () => {
             r();
             rx();
@@ -222,22 +223,22 @@
     }
 
     async function openServer() {
-        await getCmdSync().open();
+        await currentReplicator().open();
     }
     async function closeServer() {
-        await getCmdSync().close();
+        await currentReplicator().close();
     }
     function startBroadcasting() {
-        void getCmdSync().enableBroadcastChanges();
+        currentReplicator().enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        void getCmdSync().disableBroadcastChanges();
+        currentReplicator().disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;
     const getDialogStatus = () => {
         try {
-            const initialDialogStatus = JSON.parse(core.services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
+            const initialDialogStatus = JSON.parse(services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
                 notice?: boolean;
                 setting?: boolean;
             };
@@ -254,10 +255,10 @@
             notice: isNoticeOpened,
             setting: isSettingOpened,
         };
-        core.services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
+        services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
     });
     let isObsidian = $derived.by(() => {
-        return core.services.API.getPlatform() === "obsidian";
+        return services.API.getPlatform() === "obsidian";
     });
 </script>
 
@@ -434,7 +435,7 @@
             </thead>
             <tbody>
                 {#each peers as peer}
-                    <PeerStatusRow peerStatus={peer}></PeerStatusRow>
+                    <PeerStatusRow peerStatus={peer} p2p={host.p2p} showPeerMenu={host.showPeerMenu}></PeerStatusRow>
                 {/each}
             </tbody>
         </table>

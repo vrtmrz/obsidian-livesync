@@ -1,34 +1,38 @@
 <script lang="ts">
-    import { storeP2PStatusLine, logs } from "./CommandsShim";
+    import { logs } from "./WebPeerLogs";
+    import BrowserP2PTransportSettings from "@/apps/browser/BrowserP2PTransportSettings.svelte";
     import P2PReplicatorPane from "@/features/P2PSync/P2PReplicator/P2PReplicatorPane.svelte";
     import { onMount, tick } from "svelte";
-    import { cmdSyncShim } from "./P2PReplicatorShim";
-    import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+    import { WebPeerRuntime } from "./WebPeerRuntime";
 
-    let synchronised = $state(cmdSyncShim.init());
+    const runtime = new WebPeerRuntime();
+    const synchronised = runtime.start();
+    let elP: HTMLDivElement;
+    let statusLine = $state(runtime.statusLine.value);
 
     onMount(() => {
-        void synchronised.then((shim) => shim.services.context.events.emitEvent(EVENT_LAYOUT_READY));
-        return () => {
-            synchronised.then((e) => e.close());
+        const onStatusLineChanged = (line: { readonly value: string }) => {
+            statusLine = line.value;
         };
-    });
-    let elP: HTMLDivElement;
-    logs.subscribe((log) => {
-        tick().then(() => elP?.scrollTo({ top: elP.scrollHeight }));
-    });
-    let statusLine = $state("");
-    storeP2PStatusLine.subscribe((status) => {
-        statusLine = status;
+        runtime.statusLine.onChanged(onStatusLineChanged);
+        const unsubscribeLogs = logs.subscribe(() => {
+            void tick().then(() => elP?.scrollTo({ top: elP.scrollHeight }));
+        });
+        return () => {
+            runtime.statusLine.offChanged(onStatusLineChanged);
+            unsubscribeLogs();
+            void runtime.shutdown();
+        };
     });
 </script>
 
 <main>
     <div class="control">
-        {#await synchronised then cmdSync}
-            <P2PReplicatorPane {cmdSync} core={cmdSync.plugin.core}></P2PReplicatorPane>
+        {#await synchronised then activeRuntime}
+            <BrowserP2PTransportSettings host={activeRuntime.paneHost} />
+            <P2PReplicatorPane host={activeRuntime.paneHost}></P2PReplicatorPane>
         {:catch error}
-            <p>{error.message}</p>
+            <p>{error instanceof Error ? error.message : String(error)}</p>
         {/await}
     </div>
     <div class="log">

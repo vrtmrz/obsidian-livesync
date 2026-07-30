@@ -127,7 +127,9 @@ async function captureAndSelectMobileInvitation(): Promise<string> {
         });
     });
     await withObsidianPage(port, async (page) => {
-        await onboardingNotice(page).locator(".sls-onboarding-invitation-action").click({ timeout: uiTimeoutMs });
+        const invitation = onboardingNotice(page);
+        await invitation.locator(".sls-onboarding-invitation-action").click({ timeout: uiTimeoutMs });
+        await invitation.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
     return screenshot;
 }
@@ -178,6 +180,21 @@ async function openOnboardingFromSettings(): Promise<void> {
     });
 }
 
+async function dismissVisibleNotices(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const notices = page.locator(".notice:visible");
+        while ((await notices.count()) > 0) {
+            const noticeCount = await page.locator(".notice").count();
+            await notices.first().click({ position: { x: 8, y: 8 }, timeout: uiTimeoutMs });
+            await page.waitForFunction(
+                (previousCount) => document.querySelectorAll(".notice").length < previousCount,
+                noticeCount,
+                { timeout: uiTimeoutMs }
+            );
+        }
+    });
+}
+
 async function closeSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const settingsContainer = page.locator(".modal-container").filter({
@@ -217,11 +234,13 @@ async function main(): Promise<void> {
         console.log(`Fresh Vault startup evidence: ${JSON.stringify(evidence)}`);
 
         const desktopInvitation = await captureDesktopInvitation();
-        await openOnboardingFromSettings();
-        const settingsIntro = await captureAndCloseIntro("onboarding-intro-settings-desktop.png", false);
-        await closeSettings();
         const mobileInvitation = await captureAndSelectMobileInvitation();
         const mobileIntro = await captureAndCloseIntro("onboarding-intro-mobile.png", true);
+        await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), false, uiTimeoutMs);
+        await openOnboardingFromSettings();
+        const settingsIntro = await captureAndCloseIntro("onboarding-intro-settings-desktop.png", false);
+        await dismissVisibleNotices();
+        await closeSettings();
 
         console.log(
             `Onboarding remained opt-in and kept unconfigured startup inert. Screenshots: ${[

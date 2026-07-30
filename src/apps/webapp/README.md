@@ -1,198 +1,112 @@
-# LiveSync WebApp
-Browser-based implementation of Self-hosted LiveSync using the FileSystem API.
-Note: (I vrtmrz have not tested this so much yet).
+# Self-hosted LiveSync WebApp
 
-## Features
+WebApp is an experimental proof of concept for running Self-hosted LiveSync against a browser-authorised local Vault. It is not a replacement for the Obsidian plug-in, and it does not provide the plug-in's settings screen, command palette, or setup wizard.
 
-- 🌐 Runs entirely in the browser
-- 📁 Uses FileSystem API to access your local vault
-- 🔄 Syncs with CouchDB, Object Storage server (compatible with Self-hosted LiveSync plug-in)
-- 🚫 No server-side code required!!
-- 💾 Settings stored in `.livesync/settings.json` within your vault
-- 👁️ Real-time file watching (Chrome 124+ with FileSystemObserver)
+## Capabilities
+
+- Runs as a static application in the browser.
+- Reads and writes a user-selected Vault through the File System Access API.
+- Keeps previously selected directory handles in origin-scoped IndexedDB.
+- Loads and saves LiveSync settings in `.livesync/settings.json` inside the selected Vault.
+- Uses CouchDB as its primary continuous remote.
+- Provides optional P2P controls as a secondary connection.
+- Scans the Vault on start-up and when **Scan local files** is selected.
+- Watches external file changes automatically when `FileSystemObserver` is available.
+
+The WebApp itself does not require an application server, but synchronisation still requires a compatible remote or P2P peer.
 
 ## Requirements
 
-- **FileSystem API support**:
-    - Chrome/Edge 86+ (required)
-    - Opera 72+ (required)
-    - Safari 15.2+ (experimental, limited support)
-    - Firefox: Not supported yet
+WebApp requires:
 
-- **FileSystemObserver support** (optional, for real-time file watching):
-    - Chrome 124+ (recommended)
-    - Without this, files are only scanned on startup
+- a secure context, such as HTTPS or `localhost`;
+- `showDirectoryPicker()` and read-write access to the selected directory;
+- IndexedDB for saved directory handles and the local database; and
+- a CouchDB server which permits requests from the WebApp origin when CouchDB is used.
 
-## Getting Started
+Automated browser coverage uses Chromium. Other browsers, background execution, and remote types other than CouchDB remain experimental. Use feature detection rather than relying on a fixed browser-version list.
 
-### Installation
+## Use
 
-```bash
-# Install dependencies (ensure you are in repository root directory, not src/apps/cli)
-# due to shared dependencies with webapp and main library
-npm install
-```
+Serve the built files over HTTPS, or from `localhost`, then open `webapp.html`.
 
-### Development
+1. Select the local Vault root.
+2. Create or edit `.livesync/settings.json` in that Vault.
+3. Reload WebApp to apply the settings.
 
-From the repository root:
-
-```bash
-npm run dev -w livesync-webapp
-```
-
-Or from the package directory:
-
-```bash
-cd src/apps/webapp
-npm run dev
-```
-
-This will start a development server at `http://localhost:3000`.
-
-### Build
-
-From the repository root:
-
-```bash
-npm run build -w livesync-webapp
-```
-
-Or from the package directory:
-
-```bash
-cd src/apps/webapp
-npm run build
-```
-
-The built files will be in the `dist` directory.
-
-### Usage
-
-1. Open the webapp in your browser (`webapp.html`)
-2. Select a vault from history or grant access to a new directory
-3. Configure CouchDB connection by editing `.livesync/settings.json` in your vault
-    - You can also copy data.json from Obsidian's plug-in folder.
-
-Example `.livesync/settings.json`:
+For example, a minimal manually configured CouchDB connection includes:
 
 ```json
 {
-    "couchDB_URI": "https://your-couchdb-server.com",
-    "couchDB_USER": "your-username",
-    "couchDB_PASSWORD": "your-password",
-    "couchDB_DBNAME": "your-database",
+    "couchDB_URI": "https://couchdb.example.com",
+    "couchDB_USER": "username",
+    "couchDB_PASSWORD": "password",
+    "couchDB_DBNAME": "vault",
     "isConfigured": true,
     "liveSync": true,
     "syncOnSave": true
 }
 ```
 
-After editing, reload the page.
+The settings must match the remote database, including any encryption and compatibility settings which are already in use. The file may contain credentials and passphrases, so protect it accordingly. Review individual values instead of copying an Obsidian `data.json` file wholesale.
 
-## Architecture
+### Optional P2P
 
-### Directory Structure
-
-```
-webapp/
-├── adapters/             # FileSystem API adapters
-│   ├── FSAPITypes.ts
-│   ├── FSAPIPathAdapter.ts
-│   ├── FSAPITypeGuardAdapter.ts
-│   ├── FSAPIConversionAdapter.ts
-│   ├── FSAPIStorageAdapter.ts
-│   ├── FSAPIVaultAdapter.ts
-│   └── FSAPIFileSystemAdapter.ts
-├── managers/             # Event managers
-│   ├── FSAPIStorageEventManagerAdapter.ts
-│   └── StorageEventManagerFSAPI.ts
-├── serviceModules/       # Service implementations
-│   ├── FileAccessFSAPI.ts
-│   ├── ServiceFileAccessImpl.ts
-│   ├── DatabaseFileAccess.ts
-│   └── FSAPIServiceModules.ts
-├── bootstrap.ts         # Vault picker + startup orchestration
-├── main.ts              # LiveSync core bootstrap (after vault selected)
-├── vaultSelector.ts     # FileSystem handle history and permission flow
-├── webapp.html          # Main HTML entry
-├── index.html           # Redirect entry for compatibility
-├── package.json
-├── vite.config.ts
-└── README.md
-```
-
-### Key Components
-
-1. **Adapters**: Implement `IFileSystemAdapter` interface using FileSystem API
-2. **Managers**: Handle storage events and file watching
-3. **Service Modules**: Integrate with LiveSyncBaseCore
-4. **Main**: Application initialisation and lifecycle management
-
-### Service Hub
-
-Uses `BrowserServiceHub` which provides:
-
-- Database service (IndexedDB via PouchDB)
-- Settings service (file-based in `.livesync/settings.json`)
-- Replication service
-- File processing service
-- And more...
+The visible P2P controls are optional. Saving them does not select P2P as the main remote or mark an otherwise unconfigured Vault as configured. Use **Scan local files** before offering existing Vault content to a peer when automatic file observation is unavailable.
 
 ## Limitations
 
-- **Real-time file watching**: Requires Chrome 124+ with FileSystemObserver
-    - Without it, changes are only detected on manual refresh
-- **Performance**: Slower than native file system access
-- **Permissions**: Requires user to grant directory access (cached via IndexedDB)
-- **Browser support**: Limited to browsers with FileSystem API support
-
-## Differences from CLI Version
-
-- Uses `BrowserServiceHub` instead of `HeadlessServiceHub`
-- Uses FileSystem API instead of Node.js `fs`
-- Settings stored in `.livesync/settings.json` in vault
-- Real-time file watching only with FileSystemObserver (Chrome 124+)
-
-## Differences from Obsidian Plug-in
-
-- No Obsidian-specific modules (UI, settings dialogue, etc.)
-- Simplified configuration
-- No plug-in/theme sync features
-- No internal file handling (`.obsidian` folder)
-
-## Development Notes
-
-- TypeScript configuration: Uses project's tsconfig.json
-- Module resolution: Aliased paths via Vite config
-- External dependencies: Bundled by Vite
+- There is no general settings screen, setup wizard, or command palette.
+- Object Storage and other main-remote configurations remain experimental and are not covered by the current WebApp browser tests.
+- Without `FileSystemObserver`, external changes are detected only by a start-up or manual scan.
+- A browser may suspend the page, discard permissions, or evict origin-scoped storage.
+- The File System Access API is not available in every browser.
+- Customisation Sync and Obsidian-specific Vault features are unavailable.
 
 ## Troubleshooting
 
-### "Failed to get directory access"
+### A Vault cannot be opened
 
-- Make sure you're using a supported browser
-- Try refreshing the page
-- Clear browser cache and IndexedDB
+- Confirm that WebApp is served over HTTPS or from `localhost`.
+- Grant read-write access when the browser prompts.
+- If a saved handle no longer has permission, select **Choose new vault folder** and choose the same directory again.
 
-### "Settings not found"
+### Settings are not loaded
 
-- Check that `.livesync/settings.json` exists in your vault directory
-- Verify the JSON format is valid
-- Create the file manually if needed
+- Confirm that `.livesync/settings.json` exists under the selected Vault root.
+- Confirm that the file contains one valid JSON object.
+- Reload WebApp after editing the file.
+- Check the status line and browser console for the first reported error.
 
-### "File watching not working"
+### External file changes are not detected
 
-- Make sure you're using Chrome 124 or later
-- Check browser console for FileSystemObserver messages
-- Try manually triggering sync if automatic watching isn't available
+- Select **Scan local files** after making changes outside WebApp.
+- Check whether the browser provides `FileSystemObserver`.
+- Keep the page open while automatic watching or synchronisation is expected.
 
-### "Sync not working"
+### CouchDB does not synchronise
 
-- Verify CouchDB credentials
-- Check browser console for errors
-- Ensure CouchDB server is accessible (CORS enabled)
+- Confirm the URL, credentials, database name, encryption settings, and compatibility settings.
+- Confirm that CouchDB permits requests from the WebApp origin.
+- Check the browser network inspector and console for the rejected request.
 
-## License
+## Development
 
-Same as the main Self-hosted LiveSync project.
+From the repository root:
+
+```bash
+npm run dev --workspace livesync-webapp
+npm run build --workspace livesync-webapp
+npm run test:unit --workspace livesync-webapp
+npm run test:browser --workspace livesync-webapp
+```
+
+The production files are written to `src/apps/webapp/dist/`. App-owned unit tests are stored in `test/apps/webapp/`, outside the Community Review source boundary. The browser test builds the production artefact, selects an OPFS-backed test Vault in Chromium, and verifies start-up and P2P setting isolation.
+
+## Composition
+
+`WebAppRuntime.ts` owns the LiveSync service composition and lifecycle. `main.ts` owns Vault selection and the small browser shell, while `adapters/`, `managers/`, and `serviceModules/` provide the File System Access API boundary.
+
+## Licence
+
+The same licence as the main Self-hosted LiveSync project applies.

@@ -31,7 +31,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     padding: 40px;
-    max-width: 700px;
+    max-width: 1100px;
     width: 100%;
 }
 
@@ -161,8 +161,17 @@ button:disabled {
 }
 
 .empty-note.is-hidden,
-.vault-selector.is-hidden {
+.vault-selector.is-hidden,
+.p2p-control.is-hidden {
     display: none;
+}
+
+.p2p-control {
+    margin-bottom: 22px;
+    padding: 16px;
+    border: 1px solid #e6e9f2;
+    border-radius: 8px;
+    background: #fbfcff;
 }
 
 .info-section {

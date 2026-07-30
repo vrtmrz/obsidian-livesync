@@ -41,8 +41,7 @@
     <Question>{translateMessage("Ui.SetupWizard.SetupRemote.Guidance")}</Question>
     <Options>
         <Option selectedValue={TYPE_COUCHDB} title="CouchDB" bind:value={userType}>
-            This is the most suitable synchronisation method for the design. All functions are available. You must have
-            set up a CouchDB instance.
+            {translateMessage("Ui.SetupWizard.SetupRemote.CouchDbOptionDesc")}
         </Option>
         <Option
             selectedValue={TYPE_BUCKET}

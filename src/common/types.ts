@@ -1,4 +1,4 @@
-import { type PluginManifest, TFile } from "@/deps.ts";
+import type { PluginManifest, TFile } from "@/deps.ts";
 import { type DatabaseEntry, type EntryBody, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 export type { CacheData, FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 

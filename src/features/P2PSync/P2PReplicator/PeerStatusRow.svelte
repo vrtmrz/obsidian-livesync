@@ -1,20 +1,22 @@
 <script lang="ts">
-    import { getContext } from "svelte";
     import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
-    import type { P2PReplicatorPaneController } from "./P2PReplicatorPaneController";
-    import { eventHub } from "@/common/events";
-    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicatorHandle } from "./P2PReplicatorPaneHost";
 
     interface Props {
         peerStatus: PeerStatus;
+        p2p: P2PReplicatorHandle;
+        showPeerMenu?: (peer: PeerStatus, event: MouseEvent) => void;
     }
 
-    let { peerStatus }: Props = $props();
+    let { peerStatus, p2p, showPeerMenu }: Props = $props();
     let peer = $derived(peerStatus);
+    const currentReplicator = () => p2p.replicator;
 
-    function select<T extends string | number | symbol, U>(d: T, cond: Record<T, U>): U;
-    function select<T extends string | number | symbol, U, V>(d: T, cond: Record<T, U>, def: V): U | V;
-    function select<T extends string | number | symbol, U>(d: T, cond: Record<T, U>, def?: U): U | undefined {
+    function select<T extends PropertyKey, U, V = undefined>(
+        d: T,
+        cond: Partial<Record<T, U>>,
+        def: V | undefined = undefined
+    ): U | V | undefined {
         return d in cond ? cond[d] : def;
     }
 
@@ -36,7 +38,7 @@
                 [AcceptedStatus.UNKNOWN]: "NEW",
             },
             ""
-        )
+        ) ?? ""
     );
     const classList = {
         ["SENDING"]: "connected",
@@ -57,7 +59,7 @@
     let isNew = $derived.by(() => peer.accepted === AcceptedStatus.UNKNOWN);
 
     function makeDecision(isAccepted: boolean, isTemporary: boolean) {
-        getReplicator().makeDecision({
+        currentReplicator().makeDecision({
             peerId: peer.peerId,
             name: peer.name,
             decision: isAccepted,
@@ -65,13 +67,11 @@
         });
     }
     function revokeDecision() {
-        getReplicator().revokeDecision({
+        currentReplicator().revokeDecision({
             peerId: peer.peerId,
             name: peer.name,
         });
     }
-    const getReplicator = getContext<() => P2PReplicatorPaneController>("getReplicator");
-
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
         if (peer.syncOnConnect) {
@@ -86,18 +86,18 @@
         return attrs;
     });
     function startWatching() {
-        getReplicator().watchPeer(peer.peerId);
+        currentReplicator().watchPeer(peer.peerId);
     }
     function stopWatching() {
-        getReplicator().unwatchPeer(peer.peerId);
+        currentReplicator().unwatchPeer(peer.peerId);
     }
 
     function sync() {
-        void getReplicator().sync(peer.peerId, false);
+        void currentReplicator().sync(peer.peerId, false);
     }
 
     function moreMenu(evt: MouseEvent) {
-        eventHub.emitEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, { peer, event: evt });
+        showPeerMenu?.(peer, evt);
     }
 </script>
 
@@ -159,7 +159,9 @@
                     {:else}
                         <button class="button" onclick={startWatching} title="live">⚡</button>
                     {/if}
-                    <button class="button" onclick={moreMenu}>...</button>
+                    {#if showPeerMenu}
+                        <button class="button" onclick={moreMenu}>...</button>
+                    {/if}
                 </div>
             </div>
         {/if}
