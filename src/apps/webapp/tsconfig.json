@@ -25,7 +25,9 @@
         "paths": {
             "@/*": ["../../*"],
             "@vrtmrz/livesync-commonlib": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/index"],
-            "@vrtmrz/livesync-commonlib/*": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"]
+            "@vrtmrz/livesync-commonlib/*": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"],
+            "octagonal-wheels": ["../../../dist/type-resolution-compat/octagonal-wheels/index"],
+            "octagonal-wheels/*": ["../../../dist/type-resolution-compat/octagonal-wheels/*"]
         }
     },
     "include": ["*.ts", "**/*.ts", "**/*.tsx", "**/*.svelte"],

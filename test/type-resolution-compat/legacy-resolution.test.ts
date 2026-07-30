@@ -3,6 +3,12 @@ const COMMONLIB_PATHS = {
     "@vrtmrz/livesync-commonlib/*": ["./dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"],
 };
 
+const COMPATIBILITY_PATHS = {
+    ...COMMONLIB_PATHS,
+    "octagonal-wheels": ["./dist/type-resolution-compat/octagonal-wheels/index"],
+    "octagonal-wheels/*": ["./dist/type-resolution-compat/octagonal-wheels/*"],
+};
+
 function assert(condition: unknown, message: string): asserts condition {
     if (!condition) {
         throw new Error(message);
@@ -25,7 +31,7 @@ async function writeProject(
     fixturePath: string,
     options: {
         moduleResolution: "Bundler" | "Node10";
-        paths?: typeof COMMONLIB_PATHS;
+        paths?: Record<string, string[]>;
         skipLibCheck: boolean;
     }
 ): Promise<void> {
@@ -34,6 +40,7 @@ async function writeProject(
         JSON.stringify(
             {
                 compilerOptions: {
+                    allowImportingTsExtensions: true,
                     baseUrl: repositoryRoot,
                     lib: ["ES2022", "DOM"],
                     module: "ESNext",
@@ -110,10 +117,14 @@ Deno.test("compatibility mirror preserves representative bundler type facts", as
                 'import type { FilePath, ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";',
                 'import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";',
                 'import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";',
+                'import type { TaggedType } from "octagonal-wheels/common/types";',
+                'import type { ReactiveValue } from "octagonal-wheels/dataobject/reactive";',
+                'import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";',
                 "",
                 "type IsAny<T> = 0 extends 1 & T ? true : false;",
                 "type ExpectFalse<T extends false> = T;",
                 "type ExpectTrue<T extends true> = T;",
+                'type TaggedPath = TaggedType<string, "path">;',
                 "type FilePathIsTyped = ExpectFalse<IsAny<FilePath>>;",
                 "type FilePathIsString = ExpectTrue<FilePath extends string ? true : false>;",
                 "type SettingsAreTyped = ExpectFalse<IsAny<ObsidianLiveSyncSettings>>;",
@@ -122,6 +133,13 @@ Deno.test("compatibility mirror preserves representative bundler type facts", as
                 'type ServiceHubRetainsSetting = ExpectTrue<"setting" extends keyof InjectableServiceHub ? true : false>;',
                 "type P2PResultIsTyped = ExpectFalse<IsAny<UseP2PReplicatorResult>>;",
                 'type P2PResultRetainsReplicator = ExpectTrue<"replicator" extends keyof UseP2PReplicatorResult ? true : false>;',
+                "type TaggedPathIsTyped = ExpectFalse<IsAny<TaggedPath>>;",
+                "type TaggedPathIsString = ExpectTrue<TaggedPath extends string ? true : false>;",
+                "type StringIsNotTaggedPath = ExpectFalse<string extends TaggedPath ? true : false>;",
+                "type SimpleStoreIsTyped = ExpectFalse<IsAny<SimpleStore<string>>>;",
+                'type SimpleStoreRetainsGet = ExpectTrue<"get" extends keyof SimpleStore<string> ? true : false>;',
+                "type ReactiveValueIsTyped = ExpectFalse<IsAny<ReactiveValue<string>>>;",
+                'type ReactiveValueRetainsValue = ExpectTrue<"value" extends keyof ReactiveValue<string> ? true : false>;',
                 "",
                 "export type Proof = [",
                 "    FilePathIsTyped,",
@@ -132,13 +150,20 @@ Deno.test("compatibility mirror preserves representative bundler type facts", as
                 "    ServiceHubRetainsSetting,",
                 "    P2PResultIsTyped,",
                 "    P2PResultRetainsReplicator,",
+                "    TaggedPathIsTyped,",
+                "    TaggedPathIsString,",
+                "    StringIsNotTaggedPath,",
+                "    SimpleStoreIsTyped,",
+                "    SimpleStoreRetainsGet,",
+                "    ReactiveValueIsTyped,",
+                "    ReactiveValueRetainsValue,",
                 "];",
                 "",
             ].join("\n")
         );
         const projects = [
             { name: "published package", paths: undefined },
-            { name: "compatibility mirror", paths: COMMONLIB_PATHS },
+            { name: "compatibility mirror", paths: COMPATIBILITY_PATHS },
         ] as const;
         for (const [index, project] of projects.entries()) {
             const projectPath = `${temporaryDirectory}/tsconfig-${index}.json`;
@@ -155,7 +180,7 @@ Deno.test("compatibility mirror preserves representative bundler type facts", as
     }
 });
 
-Deno.test("legacy Commonlib mirror exposes its unresolved Octagonal Wheels boundary", async () => {
+Deno.test("legacy compatibility mirrors preserve Commonlib and Octagonal Wheels type facts", async () => {
     const repositoryRoot = await Deno.realPath(new URL("../../", import.meta.url));
     const temporaryDirectory = await makeTemporaryDirectory(repositoryRoot);
     const fixturePath = `${temporaryDirectory}/consumer.ts`;
@@ -165,25 +190,86 @@ Deno.test("legacy Commonlib mirror exposes its unresolved Octagonal Wheels bound
             fixturePath,
             [
                 'import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";',
+                'import type { TaggedType } from "octagonal-wheels/common/types";',
+                'import type { ReactiveValue } from "octagonal-wheels/dataobject/reactive";',
+                'import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";',
                 "",
+                "type IsAny<T> = 0 extends 1 & T ? true : false;",
+                "type ExpectFalse<T extends false> = T;",
                 "type ExpectTrue<T extends true> = T;",
-                "export type FilePathIsString = ExpectTrue<FilePath extends string ? true : false>;",
+                'type TaggedPath = TaggedType<string, "path">;',
+                "type FilePathIsTyped = ExpectFalse<IsAny<FilePath>>;",
+                "type FilePathIsString = ExpectTrue<FilePath extends string ? true : false>;",
+                "type TaggedPathIsTyped = ExpectFalse<IsAny<TaggedPath>>;",
+                "type TaggedPathIsString = ExpectTrue<TaggedPath extends string ? true : false>;",
+                "type StringIsNotTaggedPath = ExpectFalse<string extends TaggedPath ? true : false>;",
+                "type SimpleStoreIsTyped = ExpectFalse<IsAny<SimpleStore<string>>>;",
+                'type SimpleStoreRetainsGet = ExpectTrue<"get" extends keyof SimpleStore<string> ? true : false>;',
+                "type ReactiveValueIsTyped = ExpectFalse<IsAny<ReactiveValue<string>>>;",
+                'type ReactiveValueRetainsValue = ExpectTrue<"value" extends keyof ReactiveValue<string> ? true : false>;',
+                "",
+                "export type Proof = [",
+                "    FilePathIsTyped,",
+                "    FilePathIsString,",
+                "    TaggedPathIsTyped,",
+                "    TaggedPathIsString,",
+                "    StringIsNotTaggedPath,",
+                "    SimpleStoreIsTyped,",
+                "    SimpleStoreRetainsGet,",
+                "    ReactiveValueIsTyped,",
+                "    ReactiveValueRetainsValue,",
+                "];",
                 "",
             ].join("\n")
         );
         await writeProject(projectPath, repositoryRoot, fixturePath, {
             moduleResolution: "Node10",
-            paths: COMMONLIB_PATHS,
-            skipLibCheck: false,
+            paths: COMPATIBILITY_PATHS,
+            skipLibCheck: true,
         });
 
         const result = await runTypeScript(projectPath, repositoryRoot);
-        const output = commandOutput(result);
-        assert(!result.success, "legacy resolution unexpectedly preserved every transitive package type");
-        assert(
-            output.includes("Cannot find module 'octagonal-wheels/common/types'"),
-            `the expected transitive Octagonal Wheels boundary was not reported:\n${output}`
+        assert(result.success, `legacy compatibility resolution lost package type facts:\n${commandOutput(result)}`);
+    } finally {
+        await Deno.remove(temporaryDirectory, { recursive: true });
+    }
+});
+
+Deno.test("legacy compatibility mirror exposes every Octagonal Wheels typed export entry point", async () => {
+    const repositoryRoot = await Deno.realPath(new URL("../../", import.meta.url));
+    const temporaryDirectory = await makeTemporaryDirectory(repositoryRoot);
+    const fixturePath = `${temporaryDirectory}/consumer.ts`;
+    const projectPath = `${temporaryDirectory}/tsconfig.json`;
+    try {
+        const packageJson = JSON.parse(
+            await Deno.readTextFile(`${repositoryRoot}/node_modules/octagonal-wheels/package.json`)
+        ) as { exports: Record<string, unknown> };
+        const typedExportSubpaths = Object.entries(packageJson.exports)
+            .filter(
+                ([, definition]) =>
+                    typeof definition === "object" &&
+                    definition !== null &&
+                    "types" in definition &&
+                    typeof definition.types === "string"
+            )
+            .map(([subpath]) => subpath);
+        const imports = typedExportSubpaths.map((subpath, index) => {
+            const specifier = subpath === "." ? "octagonal-wheels" : `octagonal-wheels/${subpath.slice(2)}`;
+            return `import type * as PackageExport${index} from ${JSON.stringify(specifier)};`;
+        });
+        const proofTypes = typedExportSubpaths.map((_, index) => `typeof PackageExport${index}`);
+        await Deno.writeTextFile(
+            fixturePath,
+            [...imports, "", `export type Proof = [${proofTypes.join(", ")}];`, ""].join("\n")
         );
+        await writeProject(projectPath, repositoryRoot, fixturePath, {
+            moduleResolution: "Node10",
+            paths: COMPATIBILITY_PATHS,
+            skipLibCheck: true,
+        });
+
+        const result = await runTypeScript(projectPath, repositoryRoot);
+        assert(result.success, `legacy resolution failed for an Octagonal Wheels export:\n${commandOutput(result)}`);
     } finally {
         await Deno.remove(temporaryDirectory, { recursive: true });
     }

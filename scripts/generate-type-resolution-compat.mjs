@@ -1,13 +1,39 @@
 import { createRequire } from "node:module";
-import { copyFile, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+    copyFile,
+    lstat,
+    mkdir,
+    mkdtemp,
+    readFile,
+    readdir,
+    realpath,
+    rename,
+    rm,
+    stat,
+    writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PACKAGE_NAME = "@vrtmrz/livesync-commonlib";
+const COMMONLIB_PACKAGE_NAME = "@vrtmrz/livesync-commonlib";
+const PACKAGE_DEFINITIONS = [
+    {
+        name: COMMONLIB_PACKAGE_NAME,
+        versionSource: "exact-dependency",
+    },
+    {
+        name: "octagonal-wheels",
+        versionSource: "lockfile",
+    },
+];
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_OUTPUT_ROOT = path.join(PROJECT_ROOT, "dist", "type-resolution-compat");
 const DECLARATION_PATTERN = /\.d\.(?:c|m)?ts$/u;
 const DECLARATION_MAP_PATTERN = /\.d\.(?:c|m)?ts\.map$/u;
+const DIRECT_DEFAULT_EXPORT_PATTERN = /\bexport\s+(?:default\b|=)/u;
+const DEFAULT_NAMESPACE_EXPORT_PATTERN = /\bexport\s*\*\s*as\s+default\b/u;
+const EXACT_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u;
+const EXPORT_CLAUSE_PATTERN = /\bexport\s*\{([^}]*)\}/gu;
 const SUPPRESSION_PATTERN = /@ts-(?:expect-error|ignore|nocheck)|eslint-(?:disable|enable)/u;
 
 function fail(message) {
@@ -22,6 +48,7 @@ function parseArguments(argv) {
     const options = {
         expectedVersion: undefined,
         outputRoot: DEFAULT_OUTPUT_ROOT,
+        packageName: undefined,
         packageRoot: undefined,
     };
     for (let index = 0; index < argv.length; index += 1) {
@@ -39,9 +66,19 @@ function parseArguments(argv) {
             if (value === undefined) fail("--package-root requires a value");
             options.packageRoot = path.resolve(value);
             index += 1;
+        } else if (argument === "--package-name") {
+            if (value === undefined) fail("--package-name requires a value");
+            options.packageName = value;
+            index += 1;
         } else {
             fail(`Unknown argument: ${argument}`);
         }
+    }
+    if (
+        options.packageRoot === undefined &&
+        (options.packageName !== undefined || options.expectedVersion !== undefined)
+    ) {
+        fail("--package-name and --expected-version require --package-root");
     }
     return options;
 }
@@ -108,39 +145,101 @@ async function pathExists(filePath) {
     }
 }
 
-async function validateOutputRoot(outputRoot, packageRoot) {
-    const filesystemRoot = path.parse(outputRoot).root;
-    if (
-        outputRoot === filesystemRoot ||
-        outputRoot === PROJECT_ROOT ||
-        outputRoot === packageRoot ||
-        isWithin(outputRoot, PROJECT_ROOT) ||
-        isWithin(outputRoot, packageRoot)
-    ) {
-        fail(`Refusing unsafe output directory: ${outputRoot}`);
+async function canonicaliseProspectivePath(filePath) {
+    let existingAncestor = filePath;
+    const missingSegments = [];
+    while (!(await pathExists(existingAncestor))) {
+        const parent = path.dirname(existingAncestor);
+        if (parent === existingAncestor) fail(`Cannot resolve output directory: ${filePath}`);
+        missingSegments.unshift(path.basename(existingAncestor));
+        existingAncestor = parent;
     }
+    return path.resolve(await realpath(existingAncestor), ...missingSegments);
+}
+
+async function validateOutputRoot(outputRoot, packageRoots) {
     if (await pathExists(outputRoot)) {
         const outputStat = await lstat(outputRoot);
         if (outputStat.isSymbolicLink() || !outputStat.isDirectory()) {
             fail(`Output path must be a real directory when it already exists: ${outputRoot}`);
         }
     }
+    const canonicalOutputRoot = await canonicaliseProspectivePath(outputRoot);
+    const canonicalProjectRoot = await realpath(PROJECT_ROOT);
+    const canonicalPackageRoots = await Promise.all(
+        packageRoots.map(async (packageRoot) => await realpath(packageRoot))
+    );
+    const filesystemRoot = path.parse(canonicalOutputRoot).root;
+    const conflictsWithPackage = canonicalPackageRoots.some(
+        (packageRoot) =>
+            canonicalOutputRoot === packageRoot ||
+            isWithin(canonicalOutputRoot, packageRoot) ||
+            isWithin(packageRoot, canonicalOutputRoot)
+    );
+    if (
+        canonicalOutputRoot === filesystemRoot ||
+        canonicalOutputRoot === canonicalProjectRoot ||
+        isWithin(canonicalOutputRoot, canonicalProjectRoot) ||
+        conflictsWithPackage
+    ) {
+        fail(`Refusing unsafe output directory: ${outputRoot}`);
+    }
 }
 
-async function findInstalledPackageRoot() {
+function findInstalledPackageRoot(packageName) {
     const require = createRequire(import.meta.url);
-    const packageJsonPath = require.resolve(`${PACKAGE_NAME}/package.json`, { paths: [PROJECT_ROOT] });
+    const packageJsonPath = require.resolve(`${packageName}/package.json`, { paths: [PROJECT_ROOT] });
     return path.dirname(packageJsonPath);
 }
 
-async function determineExpectedVersion(argumentVersion) {
+async function determineExpectedVersion(packageName, versionSource, argumentVersion) {
     if (argumentVersion !== undefined) return argumentVersion;
     const projectPackage = await readJson(path.join(PROJECT_ROOT, "package.json"), "project package.json");
-    const dependencyVersion = projectPackage.dependencies?.[PACKAGE_NAME];
-    if (typeof dependencyVersion !== "string" || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u.test(dependencyVersion)) {
-        fail(`${PACKAGE_NAME} must be selected by one exact version in project dependencies`);
+    const dependencyVersion = projectPackage.dependencies?.[packageName];
+    if (typeof dependencyVersion !== "string") {
+        fail(`${packageName} must be selected in project dependencies`);
     }
-    return dependencyVersion;
+    if (versionSource === "exact-dependency") {
+        if (!EXACT_VERSION_PATTERN.test(dependencyVersion)) {
+            fail(`${packageName} must be selected by one exact version in project dependencies`);
+        }
+        return dependencyVersion;
+    }
+    if (versionSource !== "lockfile") {
+        fail(`Unsupported version source for ${packageName}: ${String(versionSource)}`);
+    }
+    const packageLock = await readJson(path.join(PROJECT_ROOT, "package-lock.json"), "project package-lock.json");
+    const lockVersion = packageLock.packages?.[`node_modules/${packageName}`]?.version;
+    if (typeof lockVersion !== "string" || !EXACT_VERSION_PATTERN.test(lockVersion)) {
+        fail(`${packageName} must have one exact installed version in project package-lock.json`);
+    }
+    return lockVersion;
+}
+
+async function resolvePackageInputs(options) {
+    if (options.packageRoot !== undefined) {
+        const packageName = options.packageName ?? COMMONLIB_PACKAGE_NAME;
+        const definition = PACKAGE_DEFINITIONS.find((candidate) => candidate.name === packageName);
+        if (definition === undefined) fail(`Unsupported package name: ${packageName}`);
+        return [
+            {
+                expectedVersion: await determineExpectedVersion(
+                    packageName,
+                    definition.versionSource,
+                    options.expectedVersion
+                ),
+                packageName,
+                packageRoot: options.packageRoot,
+            },
+        ];
+    }
+    return await Promise.all(
+        PACKAGE_DEFINITIONS.map(async (definition) => ({
+            expectedVersion: await determineExpectedVersion(definition.name, definition.versionSource, undefined),
+            packageName: definition.name,
+            packageRoot: findInstalledPackageRoot(definition.name),
+        }))
+    );
 }
 
 function declarationRuntimeSpecifier(declarationPath) {
@@ -185,9 +284,40 @@ async function collectDeclarationFiles(packageRoot) {
     return files;
 }
 
-async function validateAndCollectExports(packageRoot, packageJson) {
-    if (packageJson.name !== PACKAGE_NAME) {
-        fail(`Expected package name ${PACKAGE_NAME}, received ${String(packageJson.name)}`);
+function hasDefaultExport(source) {
+    if (DIRECT_DEFAULT_EXPORT_PATTERN.test(source) || DEFAULT_NAMESPACE_EXPORT_PATTERN.test(source)) return true;
+    for (const match of source.matchAll(EXPORT_CLAUSE_PATTERN)) {
+        for (const rawSpecifier of match[1].split(",")) {
+            const specifier = rawSpecifier.trim().replace(/^type\s+/u, "");
+            if (
+                specifier === "default" ||
+                specifier === '"default"' ||
+                specifier === "'default'" ||
+                /\bas\s+(?:default|"default"|'default')$/u.test(specifier)
+            ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+async function validateWrapperExports(packageRoot, typedExports) {
+    const checkedTargets = new Set();
+    for (const { exportSubpath, typesTarget } of typedExports) {
+        if (checkedTargets.has(typesTarget)) continue;
+        checkedTargets.add(typesTarget);
+        const targetPath = resolveInsidePackage(packageRoot, typesTarget, `types target for export '${exportSubpath}'`);
+        const source = await readFile(targetPath, "utf8");
+        if (hasDefaultExport(source)) {
+            fail(`Types target for export '${exportSubpath}' contains an unsupported default export: ${typesTarget}`);
+        }
+    }
+}
+
+async function validateAndCollectExports(packageName, packageRoot, packageJson) {
+    if (packageJson.name !== packageName) {
+        fail(`Expected package name ${packageName}, received ${String(packageJson.name)}`);
     }
     if (packageJson.exports === null || typeof packageJson.exports !== "object" || Array.isArray(packageJson.exports)) {
         fail("Package exports must be an object");
@@ -303,16 +433,13 @@ async function replaceOutputDirectory(temporaryRoot, outputRoot) {
     if (backupRoot !== undefined) await rm(backupRoot, { recursive: true });
 }
 
-async function generate(options) {
-    const packageRoot = options.packageRoot ?? (await findInstalledPackageRoot());
-    const packageJson = await readJson(path.join(packageRoot, "package.json"), `${PACKAGE_NAME} package.json`);
-    const expectedVersion = await determineExpectedVersion(options.expectedVersion);
+async function preparePackage({ expectedVersion, packageName, packageRoot }) {
+    const packageJson = await readJson(path.join(packageRoot, "package.json"), `${packageName} package.json`);
     if (packageJson.version !== expectedVersion) {
-        fail(`Expected ${PACKAGE_NAME}@${expectedVersion}, received ${String(packageJson.version)}`);
+        fail(`Expected ${packageName}@${expectedVersion}, received ${String(packageJson.version)}`);
     }
-    await validateOutputRoot(options.outputRoot, packageRoot);
-
     const { exportCount, metadataExportCount, typedExports } = await validateAndCollectExports(
+        packageName,
         packageRoot,
         packageJson
     );
@@ -323,15 +450,56 @@ async function generate(options) {
             fail(`Types target for export '${exportSubpath}' is outside the copied declaration tree: ${typesTarget}`);
         }
     }
+    await validateWrapperExports(packageRoot, typedExports);
+    return {
+        declarationFiles,
+        exportCount,
+        metadataExportCount,
+        packageJson,
+        packageName,
+        packageRoot,
+        typedExports,
+    };
+}
 
+async function writePreparedPackage(temporaryRoot, preparedPackage) {
+    const { declarationFiles, packageName, packageRoot, typedExports } = preparedPackage;
+    const publicPackageRoot = path.join(temporaryRoot, ...packageName.split("/"));
+    const internalRoot = path.join(publicPackageRoot, "__package__");
+    await copyDeclarationTree(packageRoot, internalRoot, declarationFiles);
+    await writeWrappers(publicPackageRoot, typedExports);
+}
+
+function packageSummary(preparedPackage) {
+    const { declarationFiles, exportCount, metadataExportCount, packageJson, packageName, typedExports } =
+        preparedPackage;
+    return {
+        declarationCount: declarationFiles.filter((filePath) => DECLARATION_PATTERN.test(filePath)).length,
+        exportCount,
+        metadataExportCount,
+        packageName,
+        packageVersion: packageJson.version,
+        typedExportCount: typedExports.length,
+    };
+}
+
+async function generate(options) {
+    const packageInputs = await resolvePackageInputs(options);
+    await validateOutputRoot(
+        options.outputRoot,
+        packageInputs.map(({ packageRoot }) => packageRoot)
+    );
+    const preparedPackages = [];
+    for (const packageInput of packageInputs) {
+        preparedPackages.push(await preparePackage(packageInput));
+    }
     const outputParent = path.dirname(options.outputRoot);
     await mkdir(outputParent, { recursive: true });
     const temporaryRoot = await mkdtemp(path.join(outputParent, `.${path.basename(options.outputRoot)}.tmp-`));
     try {
-        const publicPackageRoot = path.join(temporaryRoot, ...PACKAGE_NAME.split("/"));
-        const internalRoot = path.join(publicPackageRoot, "__package__");
-        await copyDeclarationTree(packageRoot, internalRoot, declarationFiles);
-        await writeWrappers(publicPackageRoot, typedExports);
+        for (const preparedPackage of preparedPackages) {
+            await writePreparedPackage(temporaryRoot, preparedPackage);
+        }
         await replaceOutputDirectory(temporaryRoot, options.outputRoot);
     } catch (error) {
         if (await pathExists(temporaryRoot)) await rm(temporaryRoot, { recursive: true });
@@ -339,13 +507,8 @@ async function generate(options) {
     }
 
     return {
-        declarationCount: declarationFiles.filter((filePath) => DECLARATION_PATTERN.test(filePath)).length,
-        exportCount,
-        metadataExportCount,
         outputDirectory: options.outputRoot,
-        packageName: PACKAGE_NAME,
-        packageVersion: packageJson.version,
-        typedExportCount: typedExports.length,
+        packages: preparedPackages.map(packageSummary),
     };
 }
 

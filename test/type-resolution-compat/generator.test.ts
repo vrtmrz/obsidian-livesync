@@ -65,6 +65,16 @@ async function directoryDigest(root: string): Promise<string> {
     return [...digest].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+async function pathExists(path: string): Promise<boolean> {
+    try {
+        await Deno.lstat(path);
+        return true;
+    } catch (error) {
+        if (error instanceof Deno.errors.NotFound) return false;
+        throw error;
+    }
+}
+
 async function writeSyntheticPackage(
     packageRoot: string,
     exports: Record<string, unknown>,
@@ -112,35 +122,65 @@ function validSyntheticExports(): Record<string, unknown> {
     };
 }
 
-Deno.test("generator covers the installed Commonlib export map deterministically", async () => {
+Deno.test("generator covers the installed package export maps deterministically", async () => {
     const repositoryRoot = await Deno.realPath(new URL("../../", import.meta.url));
     const temporaryDirectory = await Deno.makeTempDir({ prefix: "livesync-type-generator-" });
     const outputRoot = `${temporaryDirectory}/output`;
     try {
-        const packageJson = JSON.parse(
-            await Deno.readTextFile(`${repositoryRoot}/node_modules/@vrtmrz/livesync-commonlib/package.json`)
-        ) as { exports: Record<string, unknown> };
-        const exportDefinitions = Object.values(packageJson.exports);
-        const expectedTypedExports = exportDefinitions.filter(
-            (definition) =>
-                typeof definition === "object" &&
-                definition !== null &&
-                "types" in definition &&
-                typeof definition.types === "string"
-        ).length;
+        const installedPackages = await Promise.all(
+            ["@vrtmrz/livesync-commonlib", "octagonal-wheels"].map(async (packageName) => {
+                const packageJson = JSON.parse(
+                    await Deno.readTextFile(`${repositoryRoot}/node_modules/${packageName}/package.json`)
+                ) as { exports: Record<string, unknown> };
+                const typedExportCount = Object.values(packageJson.exports).filter(
+                    (definition) =>
+                        typeof definition === "object" &&
+                        definition !== null &&
+                        "types" in definition &&
+                        typeof definition.types === "string"
+                ).length;
+                return { packageJson, packageName, typedExportCount };
+            })
+        );
 
         const first = await runGenerator(repositoryRoot, ["--output", outputRoot]);
         assert(first.success, `first generation failed:\n${first.stderr}`);
         const firstSummary = JSON.parse(first.stdout) as {
-            declarationCount: number;
-            exportCount: number;
-            metadataExportCount: number;
-            typedExportCount: number;
+            packages: {
+                declarationCount: number;
+                exportCount: number;
+                metadataExportCount: number;
+                packageName: string;
+                typedExportCount: number;
+            }[];
         };
-        assert(firstSummary.exportCount === Object.keys(packageJson.exports).length, "not every export was covered");
-        assert(firstSummary.typedExportCount === expectedTypedExports, "typed export coverage is incomplete");
-        assert(firstSummary.metadataExportCount === 1, "the package metadata export was not accounted for");
-        assert(firstSummary.declarationCount === 244, "the installed Commonlib declaration count changed unexpectedly");
+        assert(firstSummary.packages.length === installedPackages.length, "not every package was generated");
+        const expectedDeclarationCounts = new Map([
+            ["@vrtmrz/livesync-commonlib", 244],
+            ["octagonal-wheels", 109],
+        ]);
+        for (const installedPackage of installedPackages) {
+            const summary = firstSummary.packages.find(
+                (candidate) => candidate.packageName === installedPackage.packageName
+            );
+            assert(summary !== undefined, `${installedPackage.packageName} is missing from the generation summary`);
+            assert(
+                summary.exportCount === Object.keys(installedPackage.packageJson.exports).length,
+                `${installedPackage.packageName} export coverage is incomplete`
+            );
+            assert(
+                summary.typedExportCount === installedPackage.typedExportCount,
+                `${installedPackage.packageName} typed export coverage is incomplete`
+            );
+            assert(
+                summary.metadataExportCount === 1,
+                `${installedPackage.packageName} metadata export was not accounted for`
+            );
+            assert(
+                summary.declarationCount === expectedDeclarationCounts.get(installedPackage.packageName),
+                `${installedPackage.packageName} declaration count changed unexpectedly`
+            );
+        }
 
         const firstDigest = await directoryDigest(outputRoot);
         const second = await runGenerator(repositoryRoot, ["--output", outputRoot]);
@@ -151,7 +191,11 @@ Deno.test("generator covers the installed Commonlib export map deterministically
         const publicWrappers = generatedFiles.filter(
             (filePath) => filePath.endsWith(".d.ts") && !filePath.includes("/__package__/")
         );
-        assert(publicWrappers.length === expectedTypedExports, "generated wrapper count does not match typed exports");
+        const expectedWrapperCount = installedPackages.reduce(
+            (total, installedPackage) => total + installedPackage.typedExportCount,
+            0
+        );
+        assert(publicWrappers.length === expectedWrapperCount, "generated wrapper count does not match typed exports");
         for (const filePath of generatedFiles.filter((candidate) => candidate.endsWith(".d.ts"))) {
             const source = await Deno.readTextFile(`${outputRoot}/${filePath}`);
             assert(
@@ -164,6 +208,23 @@ Deno.test("generator covers the installed Commonlib export map deterministically
                 'export * from "../../__package__/dist/common/types.js";\n',
             "representative wrapper does not re-export the copied declaration"
         );
+        const octagonalWheelsWrappers = new Map([
+            ["octagonal-wheels/common/types.d.ts", 'export * from "../__package__/dist/common/types.js";\n'],
+            [
+                "octagonal-wheels/databases/SimpleStoreBase.d.ts",
+                'export * from "../__package__/dist/databases/SimpleStoreBase.js";\n',
+            ],
+            [
+                "octagonal-wheels/dataobject/reactive.d.ts",
+                'export * from "../__package__/dist/dataobject/reactive.js";\n',
+            ],
+        ]);
+        for (const [relativePath, expectedSource] of octagonalWheelsWrappers) {
+            assert(
+                (await Deno.readTextFile(`${outputRoot}/${relativePath}`)) === expectedSource,
+                `Octagonal Wheels wrapper does not re-export its copied declaration: ${relativePath}`
+            );
+        }
 
         const ignored = await new Deno.Command("git", {
             args: ["check-ignore", "--quiet", "dist/type-resolution-compat"],
@@ -189,6 +250,30 @@ Deno.test("generator rejects invalid package boundaries and preserves the previo
         const initial = await runGenerator(repositoryRoot, commonArguments);
         assert(initial.success, `valid synthetic generation failed:\n${initial.stderr}`);
         const initialDigest = await directoryDigest(outputRoot);
+
+        const nestedOutput = `${packageRoot}/generated`;
+        const nestedOutputResult = await runGenerator(repositoryRoot, [...commonArguments, "--output", nestedOutput]);
+        assert(!nestedOutputResult.success, "an output inside the input package was accepted");
+        assert(nestedOutputResult.stderr.includes("unsafe output"), "unsafe nested output failure was not explained");
+        assert(!(await pathExists(nestedOutput)), "unsafe nested output was created");
+
+        if (Deno.build.os !== "windows") {
+            const linkedPackageRoot = `${temporaryDirectory}/linked-package`;
+            await Deno.symlink(packageRoot, linkedPackageRoot);
+            const linkedOutput = `${linkedPackageRoot}/generated`;
+            const linkedOutputResult = await runGenerator(repositoryRoot, [
+                ...commonArguments,
+                "--output",
+                linkedOutput,
+            ]);
+            assert(!linkedOutputResult.success, "a symlinked output inside the input package was accepted");
+            assert(
+                linkedOutputResult.stderr.includes("unsafe output"),
+                "unsafe symlinked-output failure was not explained"
+            );
+            assert(!(await pathExists(linkedOutput)), "unsafe symlinked output was created");
+        }
+        assert((await directoryDigest(outputRoot)) === initialDigest, "unsafe output validation replaced prior output");
 
         await writeSyntheticPackage(
             packageRoot,
@@ -259,6 +344,28 @@ Deno.test("generator rejects invalid package boundaries and preserves the previo
         const suppression = await runGenerator(repositoryRoot, commonArguments);
         assert(!suppression.success, "a declaration suppression directive was copied");
         assert(suppression.stderr.includes("suppression directive"), "suppression failure was not explained");
+
+        const unsupportedDefaultExports = [
+            "export default interface UnsupportedDefault {}\n",
+            'export * as default from "./common/types.js";\n',
+            'declare const value: string;\nexport { value as "default" };\n',
+        ];
+        for (const defaultExportSource of unsupportedDefaultExports) {
+            await writeSyntheticPackage(packageRoot, validSyntheticExports(), {
+                "dist/common/types.d.ts": "export type FilePath = string;\n",
+                "dist/index.d.ts": defaultExportSource,
+            });
+            const defaultExport = await runGenerator(repositoryRoot, commonArguments);
+            assert(!defaultExport.success, "a default export unsupported by the wrapper was accepted");
+            assert(
+                defaultExport.stderr.includes("unsupported default export"),
+                "default-export failure was not explained"
+            );
+            assert(
+                (await directoryDigest(outputRoot)) === initialDigest,
+                "default-export failure replaced prior output"
+            );
+        }
 
         await writeSyntheticPackage(
             packageRoot,
