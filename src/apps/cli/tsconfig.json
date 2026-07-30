@@ -23,7 +23,9 @@
         // "rootDir": "../../../",
         /* Path mapping */
         "paths": {
-            "@/*": ["../../*"]
+            "@/*": ["../../*"],
+            "@vrtmrz/livesync-commonlib": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/index"],
+            "@vrtmrz/livesync-commonlib/*": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"]
         }
     },
     "include": ["*.ts", "**/*.ts", "**/*.tsx"],

@@ -28,6 +28,7 @@ data.json
 cov_profile/**
 
 coverage
+/dist/type-resolution-compat/
 src/apps/cli/dist/*
 src/apps/webapp/playwright-report/
 src/apps/webapp/test-results/

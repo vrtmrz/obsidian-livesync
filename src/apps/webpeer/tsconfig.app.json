@@ -18,7 +18,9 @@
         "allowImportingTsExtensions": true,
         "moduleDetection": "force",
         "paths": {
-            "@/*": ["../../*"]
+            "@/*": ["../../*"],
+            "@vrtmrz/livesync-commonlib": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/index"],
+            "@vrtmrz/livesync-commonlib/*": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"]
         }
     },
     "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"],

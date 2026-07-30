@@ -1,0 +1,10 @@
+{
+    "extends": "./tsconfig.legacy.json",
+    "compilerOptions": {
+        "paths": {
+            "@/*": ["./src/*"],
+            "@vrtmrz/livesync-commonlib": ["./dist/type-resolution-compat/@vrtmrz/livesync-commonlib/index"],
+            "@vrtmrz/livesync-commonlib/*": ["./dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"]
+        }
+    }
+}

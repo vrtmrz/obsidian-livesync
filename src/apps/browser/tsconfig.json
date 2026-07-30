@@ -8,7 +8,9 @@
         "isolatedModules": true,
         "noEmit": true,
         "paths": {
-            "@/*": ["../../*"]
+            "@/*": ["../../*"],
+            "@vrtmrz/livesync-commonlib": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/index"],
+            "@vrtmrz/livesync-commonlib/*": ["../../../dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"]
         }
     },
     "include": ["**/*.ts", "**/*.svelte"],

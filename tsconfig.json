@@ -19,7 +19,9 @@
         "strictBindCallApply": true,
         "strictFunctionTypes": true,
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["./src/*"],
+            "@vrtmrz/livesync-commonlib": ["./dist/type-resolution-compat/@vrtmrz/livesync-commonlib/index"],
+            "@vrtmrz/livesync-commonlib/*": ["./dist/type-resolution-compat/@vrtmrz/livesync-commonlib/*"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts", "**/*.svelte"],
@@ -31,6 +33,7 @@
         "**/_test/**",
         "test/browser-apps",
         "test/styles/*.deno.ts",
+        "test/type-resolution-compat",
         "utilsdeno"
     ]
 }

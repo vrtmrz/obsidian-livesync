@@ -1,0 +1,17 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "baseUrl": "../..",
+        "moduleResolution": "Node10",
+        "paths": {
+            "@/*": ["./src/*"]
+        }
+    },
+    "include": ["../../src/**/*.ts"],
+    "exclude": [
+        "../../src/**/*.unit.spec.ts",
+        "../../src/**/*.test.ts",
+        "../../src/**/_test/**",
+        "../../src/apps/cli/testdeno/**"
+    ]
+}
