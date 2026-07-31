@@ -176,8 +176,9 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
     });
     void addPanel(paneEl, "Remediation").then((paneEl) => {
-        let dateEl: HTMLSpanElement;
-        new Setting(paneEl)
+        const setting = new Setting(paneEl);
+        const dateEl = setting.controlEl.createSpan();
+        setting
             .addText((text) => {
                 const updateDateText = () => {
                     if (this.editingSettings.maxMTimeForReflectEvents == 0) {
@@ -188,7 +189,6 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                     }
                     this.requestUpdate();
                 };
-                text.inputEl.before((dateEl = activeDocument.createSpan()));
                 text.inputEl.type = "datetime-local";
                 if (this.editingSettings.maxMTimeForReflectEvents > 0) {
                     const date = new Date(this.editingSettings.maxMTimeForReflectEvents);

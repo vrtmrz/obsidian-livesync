@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Interface
+
+#### Fixed
+
+- The Remediation setting now displays its configured modification-time limit without raising a `HierarchyRequestError`.
+
 ## 1.0.2
 
 31st July, 2026

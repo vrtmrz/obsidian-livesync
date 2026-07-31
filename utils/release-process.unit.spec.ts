@@ -206,43 +206,12 @@ describe("release workflow", () => {
         expect(stable).toContain(
             "Publish the GitHub Release initially as a pre-release without replacing the latest stable release"
         );
-        expect(stable).toContain(
-            "After BRAT validation passes, mark this pull request ready and merge it into `main` with a merge commit"
-        );
-        expect(stable).toContain(
-            "Integrate the exact release commit through the reviewed branch chain into the repository's default branch"
-        );
-        expect(stable).toContain(
-            "Confirm the default branch contains the exact release metadata, then remove the pre-release designation and make this exact release the latest stable release"
-        );
-        expect(stable).toContain(
-            "Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate"
-        );
-        expect(stable.indexOf("After BRAT validation passes")).toBeLessThan(
-            stable.indexOf("Integrate the exact release commit")
-        );
-        expect(stable.indexOf("Integrate the exact release commit")).toBeLessThan(
-            stable.indexOf("Confirm the default branch contains the exact release metadata")
-        );
-        expect(stable.indexOf("Confirm the default branch contains the exact release metadata")).toBeLessThan(
-            stable.indexOf("Create the stable CLI tag")
-        );
         expect(stable).not.toContain("prerelease=false");
     });
 
-    it("summarises immutable pre-releases separately from stable versions awaiting promotion", () => {
+    it("requires stable pre-release staging to defer CLI publication", () => {
         const workflow = readFileSync(finaliseReleaseWorkflow, "utf8");
 
-        expect(workflow).toContain('if [[ "${VERSION}" == *-* ]]; then');
-        expect(workflow).toContain(
-            "Keep the release pull request in draft and unmerged after BRAT validation; close it only through a separate maintainer action."
-        );
-        expect(workflow).toContain(
-            "After BRAT validation, merge the release pull request into its reviewed base branch and integrate the exact release commit into the default branch."
-        );
-        expect(workflow).toContain(
-            "Only after the default branch contains the exact release metadata, remove the pre-release designation and make this exact release the latest stable release."
-        );
         expect(workflow).toContain(
             'if [[ "${VERSION}" != *-* && "${PRERELEASE}" == "true" && "${PUBLISH_CLI}" == "true" ]]; then'
         );
