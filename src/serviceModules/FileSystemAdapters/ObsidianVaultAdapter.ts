@@ -10,7 +10,8 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
     constructor(private app: App) {}
 
     async read(file: TFile): Promise<string> {
-        return await this.app.vault.read(file);
+        // Vault.read strips a leading UTF-8 BOM, leaving the content size inconsistent with TFile.stat.
+        return await this.app.vault.adapter.read(file.path);
     }
 
     async cachedRead(file: TFile): Promise<string> {

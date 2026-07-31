@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Improved
+
+- Downloaded document batches retain best-effort screen-awake and lifecycle protection until every queued file has been applied to local storage, without extending the remote-activity indicator.
+
 ## 1.0.1
 
 29th July, 2026

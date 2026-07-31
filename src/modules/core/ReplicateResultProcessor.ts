@@ -24,9 +24,16 @@ import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import type PouchDB from "pouchdb-core";
+import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 const REPROCESS_BATCH_SIZE = 100;
+type LocalApplicationActivityOwner = {
+    runBoundedLocalApplicationActivity<T>(
+        task: () => T | PromiseLike<T>,
+        options?: { label?: string }
+    ): Promise<T>;
+};
 type ReplicateResultProcessorState = {
     queued: PouchDB.Core.ExistingDocument<EntryDoc>[];
     processing: PouchDB.Core.ExistingDocument<EntryDoc>[];
@@ -67,9 +74,11 @@ export class ReplicateResultProcessor {
 
     public suspend() {
         this._suspended = true;
+        this.updateProcessingActivity();
     }
     public resume() {
         this._suspended = false;
+        this.updateProcessingActivity();
         fireAndForget(() => this.runProcessQueue());
     }
 
@@ -251,6 +260,40 @@ export class ReplicateResultProcessor {
      */
     private _processingChanges: PouchDB.Core.ExistingDocument<EntryDoc>[] = [];
 
+    private _processingActivity?: Promise<void>;
+    private _processingActivityDone?: PromiseWithResolvers<void>;
+
+    private updateProcessingActivity() {
+        if (this.isSuspended) {
+            this._processingActivityDone?.resolve();
+            return;
+        }
+        const hasPendingDocuments = this._queuedChanges.length > 0 || this._processingChanges.length > 0;
+        if (!hasPendingDocuments) {
+            this._processingActivityDone?.resolve();
+            return;
+        }
+        if (this._processingActivity) return;
+
+        const activityDone = promiseWithResolvers<void>();
+        this._processingActivityDone = activityDone;
+        const activityOwner = this.services.replicator as typeof this.services.replicator &
+            Partial<LocalApplicationActivityOwner>;
+        this._processingActivity = (
+            activityOwner.runBoundedLocalApplicationActivity
+                ? activityOwner.runBoundedLocalApplicationActivity(() => activityDone.promise, {
+                      label: "replicated-document-application",
+                  })
+                : activityDone.promise
+        )
+            .catch((error) => this.logError(error))
+            .finally(() => {
+                if (this._processingActivityDone === activityDone) this._processingActivityDone = undefined;
+                this._processingActivity = undefined;
+                this.updateProcessingActivity();
+            });
+    }
+
     /**
      * Enqueue the given document change for processing.
      * @param doc Document change to enqueue
@@ -278,6 +321,7 @@ export class ReplicateResultProcessor {
         }
         // Enqueue the change
         this._queuedChanges.push(doc);
+        this.updateProcessingActivity();
         this.triggerTakeSnapshot();
         this.triggerProcessQueue();
     }
@@ -385,7 +429,19 @@ export class ReplicateResultProcessor {
         } finally {
             // Remove from processing queue
             this._processingChanges = this._processingChanges.filter((e) => e !== change);
-            this.triggerTakeSnapshot();
+            try {
+                if (this._queuedChanges.length === 0 && this._processingChanges.length === 0) {
+                    try {
+                        await this._takeSnapshot();
+                    } catch (error) {
+                        this.logError(error);
+                    }
+                } else {
+                    this.triggerTakeSnapshot();
+                }
+            } finally {
+                this.updateProcessingActivity();
+            }
         }
     }
 
