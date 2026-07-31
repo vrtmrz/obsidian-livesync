@@ -15,7 +15,7 @@
         "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webpeer/browser-smoke.test.ts"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.51"
+        "octagonal-wheels": "^0.1.52"
     },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.19.0",
