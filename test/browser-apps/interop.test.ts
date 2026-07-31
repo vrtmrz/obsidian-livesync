@@ -392,15 +392,18 @@ Deno.test({
         screenshotDirectory,
         "webpeer-initial.png",
       );
-      await configureP2PPane(webPeerPage.locator(".control"), {
-        deviceName: webPeerDeviceName,
-        passphrase: p2pPassphrase,
-        relay,
-        room,
-        turnCredential,
-        turnServers,
-        turnUsername,
-      });
+      await configureP2PPane(
+        webPeerPage.getByRole("region", { name: "WebPeer controls" }),
+        {
+          deviceName: webPeerDeviceName,
+          passphrase: p2pPassphrase,
+          relay,
+          room,
+          turnCredential,
+          turnServers,
+          turnUsername,
+        },
+      );
       await webPeerPage.getByRole("button", { name: "Connect", exact: true })
         .click();
       await webPeerPage.getByText("Connected to Signaling Server", {
