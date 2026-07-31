@@ -23,6 +23,7 @@ Additionally, it supports peer-to-peer synchronisation using WebRTC, enabling de
   - No central data-storage server is required, but a signalling relay is still required for peer discovery.
   - At least one device containing the required data must be online while another device synchronises.
   - Follow the [Peer-to-Peer Setup](docs/setup_p2p.md) after reviewing the [P2P communication model](docs/p2p.md).
+  - If you would like to see how P2P setup and connectivity behave on your devices, try the guided connection check in the experimental [WebPeer browser utility](https://vrtmrz.github.io/obsidian-livesync/webpeer/). It uses an empty Vault and does not test note synchronisation. See the [WebPeer documentation](src/apps/webpeer/README.md) for its scope and limitations.
 
 This plug-in may be particularly useful for researchers, engineers, and developers who need to keep their notes fully self-hosted for security reasons. It is also suitable for anyone seeking the peace of mind that comes with knowing their notes remain entirely private.
 
