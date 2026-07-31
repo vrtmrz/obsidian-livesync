@@ -22,6 +22,8 @@ import { WEBPEER_STORE_NAME, createWebPeerPersistence } from "./WebPeerPersisten
 export interface WebPeerRuntimeOptions {
     context?: ServiceContext;
     store?: SimpleStore<unknown>;
+    deviceName?: string;
+    systemVaultName?: string;
 }
 
 function addToList(item: string, list: string): string {
@@ -55,12 +57,12 @@ export class WebPeerRuntime {
     private startPromise?: Promise<this>;
     private shutdownPromise?: Promise<void>;
 
-    constructor(options: WebPeerRuntimeOptions = {}) {
+    constructor(private readonly options: WebPeerRuntimeOptions = {}) {
         const persistence = createWebPeerPersistence(options.store);
         this.context = options.context ?? new ServiceContext({ translate: translateLiveSyncMessage });
         this.services = createLiveSyncBrowserServiceHub<ServiceContext>({
             context: this.context,
-            getSystemVaultName: () => WEBPEER_STORE_NAME,
+            getSystemVaultName: () => options.systemVaultName ?? WEBPEER_STORE_NAME,
             settings: persistence.settings,
             restart: {
                 schedule: () => this.scheduleRestart(),
@@ -104,6 +106,10 @@ export class WebPeerRuntime {
 
     private async startRuntime(): Promise<this> {
         await this.services.setting.loadSettings();
+        const deviceName = this.options.deviceName?.trim();
+        if (deviceName) {
+            this.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, deviceName);
+        }
         const opened = await this.services.database.openDatabase({
             replicator: this.services.replicator,
             databaseEvents: this.services.databaseEvents,

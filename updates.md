@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### P2P and experimental browser applications
+
+#### Improved
+
+- WebPeer now includes a separate P2P connection check which prepares a disposable encrypted Setup URI and QR code locally, tests desktop and mobile devices in separate random rooms, can reuse the unchanged QR and a recorded baseline for an optional second device in the same room, and displays browser-side WebRTC diagnostic totals without presenting them as note-synchronisation results.
+
 ### Interface
 
 #### Fixed

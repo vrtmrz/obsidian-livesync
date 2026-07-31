@@ -28,6 +28,9 @@
 
 <main>
     <div class="control">
+        <div class="connection-check-link">
+            <a href="./check.html">Try the P2P connection check</a>
+        </div>
         {#await synchronised then activeRuntime}
             <BrowserP2PTransportSettings host={activeRuntime.paneHost} />
             <P2PReplicatorPane host={activeRuntime.paneHost}></P2PReplicatorPane>
@@ -87,6 +90,22 @@
         padding: 1em 1em;
         overflow-y: scroll;
         flex-grow: 1;
+    }
+    .connection-check-link {
+        margin-bottom: 0.75em;
+        text-align: left;
+    }
+    .connection-check-link a {
+        display: inline-block;
+        padding: 0.45em 0.75em;
+        border: 1px solid var(--interactive-accent);
+        border-radius: 0.5em;
+        color: var(--interactive-accent);
+        text-decoration: none;
+    }
+    .connection-check-link a:hover {
+        color: var(--interactive-accent-hover);
+        border-color: var(--interactive-accent-hover);
     }
     .status {
         flex-grow: 0;
