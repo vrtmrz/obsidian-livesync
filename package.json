@@ -58,6 +58,7 @@
         "test:e2e:obsidian:dialog-mounts": "tsx test/e2e-obsidian/scripts/dialog-mounts.ts",
         "test:e2e:obsidian:conflict-dialog-policy": "tsx test/e2e-obsidian/scripts/conflict-dialog-policy.ts",
         "test:e2e:obsidian:revision-repair": "tsx test/e2e-obsidian/scripts/revision-repair.ts",
+        "test:e2e:obsidian:document-history-nav": "tsx test/e2e-obsidian/scripts/document-history-nav.ts",
         "test:e2e:obsidian:settings-ui": "tsx test/e2e-obsidian/scripts/settings-ui.ts",
         "test:e2e:obsidian:review-harness": "tsx test/e2e-obsidian/scripts/review-harness.ts",
         "test:e2e:obsidian:p2p-pane": "tsx test/e2e-obsidian/scripts/p2p-pane.ts",
@@ -182,7 +183,7 @@
         "markdown-it": "^14.2.0",
         "minimatch": "^10.2.5",
         "obsidian": "^1.13.1",
-        "octagonal-wheels": "^0.1.51",
+        "octagonal-wheels": "^0.1.52",
         "qrcode-generator": "^1.4.4",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     },

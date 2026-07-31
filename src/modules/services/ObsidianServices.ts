@@ -10,11 +10,32 @@ import { ConfigServiceBrowserCompat } from "@vrtmrz/livesync-commonlib/compat/se
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
+import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
+
+type ActivityOptions = {
+    label?: string;
+};
 
 export class ObsidianDatabaseEventService extends InjectableDatabaseEventService<ObsidianServiceContext> {}
 
 // InjectableReplicatorService
-export class ObsidianReplicatorService extends InjectableReplicatorService<ObsidianServiceContext> {}
+export class ObsidianReplicatorService extends InjectableReplicatorService<ObsidianServiceContext> {
+    readonly boundedLocalApplicationActivityCount = reactiveSource(0);
+
+    async runBoundedLocalApplicationActivity<T>(
+        task: () => T | PromiseLike<T>,
+        options?: ActivityOptions
+    ): Promise<T> {
+        this.boundedLocalApplicationActivityCount.value++;
+        try {
+            return this.dependencies.activityRunner
+                ? await this.dependencies.activityRunner.run(task, options)
+                : await task();
+        } finally {
+            this.boundedLocalApplicationActivityCount.value--;
+        }
+    }
+}
 // InjectableFileProcessingService
 export class ObsidianFileProcessingService extends InjectableFileProcessingService<ObsidianServiceContext> {}
 // InjectableReplicationService

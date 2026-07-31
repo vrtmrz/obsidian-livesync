@@ -113,8 +113,19 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
     hasFocus = true;
     isLastHidden = false;
-    private boundedRemoteActivityEndHandler?: (value: { readonly value: number }) => unknown;
+    private boundedActivityEndHandler?: (value: { readonly value: number }) => unknown;
     private deferredBoundedLifecycle?: "suspend-if-hidden" | "restart-continuous-if-visible";
+
+    private get boundedActivityCounts(): ReactiveSource<number>[] {
+        const replicator = this.services.replicator as typeof this.services.replicator & {
+            boundedLocalApplicationActivityCount: ReactiveSource<number>;
+        };
+        return [replicator.boundedRemoteActivityCount, replicator.boundedLocalApplicationActivityCount];
+    }
+
+    private hasBoundedActivity() {
+        return this.boundedActivityCounts.some((count) => count.value > 0);
+    }
 
     private keepReplicationActiveInBackground() {
         return (
@@ -125,9 +136,8 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     }
 
     private async applyDeferredBoundedActivityLifecycle() {
-        const count = this.services.replicator.boundedRemoteActivityCount;
-        if (count.value !== 0) {
-            this.deferLifecycleUntilBoundedRemoteActivityEnds();
+        if (this.hasBoundedActivity()) {
+            this.deferLifecycleUntilBoundedActivityEnds();
             return;
         }
         const deferredLifecycle = this.deferredBoundedLifecycle;
@@ -149,17 +159,17 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         }
     }
 
-    private deferLifecycleUntilBoundedRemoteActivityEnds() {
-        if (this.boundedRemoteActivityEndHandler) return;
-        const count = this.services.replicator.boundedRemoteActivityCount;
-        const handler = (value: { readonly value: number }) => {
-            if (value.value !== 0) return;
-            count.offChanged(handler);
-            this.boundedRemoteActivityEndHandler = undefined;
+    private deferLifecycleUntilBoundedActivityEnds() {
+        if (this.boundedActivityEndHandler) return;
+        const counts = this.boundedActivityCounts;
+        const handler = () => {
+            if (this.hasBoundedActivity()) return;
+            for (const count of counts) count.offChanged(handler);
+            this.boundedActivityEndHandler = undefined;
             fireAndForget(() => this.applyDeferredBoundedActivityLifecycle());
         };
-        this.boundedRemoteActivityEndHandler = handler;
-        count.onChanged(handler);
+        this.boundedActivityEndHandler = handler;
+        for (const count of counts) count.onChanged(handler);
     }
 
     setHasFocus(hasFocus: boolean) {
@@ -188,12 +198,12 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             if (
                 this.settings.isConfigured &&
                 this.services.appLifecycle.isReady() &&
-                this.services.replicator.boundedRemoteActivityCount.value > 0
+                this.hasBoundedActivity()
             ) {
                 const isHidden = activeWindow.document.hidden;
                 this.isLastHidden = isHidden;
                 this.deferredBoundedLifecycle = isHidden ? "suspend-if-hidden" : undefined;
-                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+                this.deferLifecycleUntilBoundedActivityEnds();
             }
             return;
         }
@@ -210,8 +220,8 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             return;
         }
 
-        const boundedRemoteActivityInProgress = this.services.replicator.boundedRemoteActivityCount.value > 0;
-        if (!isHidden && boundedRemoteActivityInProgress && this.deferredBoundedLifecycle === "suspend-if-hidden") {
+        const boundedActivityInProgress = this.hasBoundedActivity();
+        if (!isHidden && boundedActivityInProgress && this.deferredBoundedLifecycle === "suspend-if-hidden") {
             this.isLastHidden = false;
             this.deferredBoundedLifecycle = undefined;
             return;
@@ -228,18 +238,18 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         const keepActiveInBackground = this.keepReplicationActiveInBackground();
 
         if (isHidden) {
-            if (boundedRemoteActivityInProgress && !keepActiveInBackground) {
+            if (boundedActivityInProgress && !keepActiveInBackground) {
                 this.deferredBoundedLifecycle = "suspend-if-hidden";
-                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+                this.deferLifecycleUntilBoundedActivityEnds();
             } else if (!keepActiveInBackground) {
                 await this.services.appLifecycle.onSuspending();
             }
         } else {
             // suspend all temporary.
             if (this.services.appLifecycle.isSuspended()) return;
-            if (boundedRemoteActivityInProgress && keepActiveInBackground && this.settings.liveSync) {
+            if (boundedActivityInProgress && keepActiveInBackground && this.settings.liveSync) {
                 this.deferredBoundedLifecycle = "restart-continuous-if-visible";
-                this.deferLifecycleUntilBoundedRemoteActivityEnds();
+                this.deferLifecycleUntilBoundedActivityEnds();
                 return;
             }
             // Only the continuous (LiveSync) channel can go stalled-but-not-terminated: PouchDB
