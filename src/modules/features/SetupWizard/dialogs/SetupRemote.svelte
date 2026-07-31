@@ -22,13 +22,13 @@
     let userType = $state<SetupRemoteResultType>(TYPE_CANCELLED);
     let proceedTitle = $derived.by(() => {
         if (userType === TYPE_COUCHDB) {
-            return "Continue to CouchDB setup";
+            return translateMessage("Continue to CouchDB setup");
         } else if (userType === TYPE_BUCKET) {
             return translateMessage("Ui.SetupWizard.SetupRemote.ProceedBucket");
         } else if (userType === TYPE_P2P) {
             return translateMessage("Ui.SetupWizard.SetupRemote.ProceedP2P");
         } else {
-            return "Please select an option to proceed";
+            return translateMessage("Please select an option to proceed");
         }
     });
     const canProceed = $derived.by(() => {
@@ -63,5 +63,5 @@
 </Instruction>
 <UserDecisions>
     <Decision title={proceedTitle} important={canProceed} disabled={!canProceed} commit={() => setResult(userType)} />
-    <Decision title="No, please take me back" commit={() => setResult(TYPE_CANCELLED)} />
+    <Decision title={translateMessage("No, please take me back")} commit={() => setResult(TYPE_CANCELLED)} />
 </UserDecisions>

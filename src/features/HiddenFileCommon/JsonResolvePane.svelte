@@ -3,6 +3,7 @@
     import type { FilePath, LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { decodeBinary, readString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
     import { getDocData, isObjectDifferent, mergeObject } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
         docs?: LoadedEntry[];
@@ -115,7 +116,7 @@
         let newModes = [] as typeof modesSrc;
 
         if (!hideLocal) {
-            newModes.push(["", "Not now"]);
+            newModes.push(["", translateMessage("Not now")]);
             newModes.push(["A", nameA || "A"]);
         }
         newModes.push(["B", nameB || "B"]);
@@ -127,9 +128,9 @@
 
 <h2>{filename}</h2>
 {#if !docA || !docB}
-    <div class="message">Just for a minute, please!</div>
+    <div class="message">{translateMessage("Just for a minute, please!")}</div>
     <div class="buttons">
-        <button onclick={apply}>Dismiss</button>
+        <button onclick={apply}>{translateMessage("Dismiss")}</button>
     </div>
 {:else}
     <div class="options">
@@ -152,7 +153,7 @@
             {/each}
         </div>
     {:else}
-        NO PREVIEW
+        {translateMessage("NO PREVIEW")}
     {/if}
 
     <div class="infos">

@@ -7,6 +7,7 @@
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import { $msg as translateMessage } from "@/common/translation";
     const TYPE_OK = "ok";
     type ResultType = typeof TYPE_OK;
     type Options = {
@@ -38,7 +39,7 @@
 
 <DialogHeader title="Your {title || 'Data'} is ready to be copied" />
 <Instruction>
-    <InputRow label={title || "Data to Copy"}>
+    <InputRow label={title || translateMessage("Data to Copy")}>
         <textarea readonly rows="4">{dataToCopy}</textarea>
         <button onclick={() => copyToClipboard()}
             >{#if !copied}📋{:else}✔️{/if}

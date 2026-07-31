@@ -1,4 +1,9 @@
 export const allMessages: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+    ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.":
+        {
+            def: ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.",
+            es: ", selecciona la opción que mejor describa el estado actual de tu Vault. La aplicación comprobará entonces tus archivos de la forma más adecuada según tu elección.",
+        },
     "(Active)": {
         def: "(Active)",
         es: "(Activo)",
@@ -38,6 +43,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "(Дней прошло, 0 для отключения автоматического удаления)",
         zh: "(已过天数,0为禁用自动删除)",
     },
+    "(e.g., after editing many files whilst offline)": {
+        def: "(e.g., after editing many files whilst offline)",
+        es: "(p. ej., tras editar muchos archivos sin conexión)",
+    },
+    "(e.g., immediately after restoring on another computer, or having recovered from a backup)": {
+        def: "(e.g., immediately after restoring on another computer, or having recovered from a backup)",
+        es: "(p. ej., justo después de restaurar en otro ordenador o de recuperar una copia de seguridad)",
+    },
+    "(e.g., setting up for the first time on a new smartphone, starting from a clean slate)": {
+        def: "(e.g., setting up for the first time on a new smartphone, starting from a clean slate)",
+        es: "(p. ej., configurando por primera vez un móvil nuevo, empezando de cero)",
+    },
     "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.":
         {
             def: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.",
@@ -69,6 +86,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(백만 자 단위)",
         ru: "(Мега символов)",
         zh: "(百万字符)",
+    },
+    "(Missing)": {
+        def: "(Missing)",
+        es: "(Falta)",
     },
     "(Not recommended) If set, credentials will be stored in the file.": {
         def: "(Not recommended) If set, credentials will be stored in the file.",
@@ -130,6 +151,22 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "（如果你正在將此裝置設定為第一台同步裝置，請選擇此項。）此選項適合初次使用 LiveSync，並希望從頭開始設定的使用者。",
         },
+    "↑: Overwrite Remote": {
+        def: "↑: Overwrite Remote",
+        es: "↑: Sobrescribir remoto",
+    },
+    "↓: Overwrite Local": {
+        def: "↓: Overwrite Local",
+        es: "↓: Sobrescribir local",
+    },
+    "⇅: Use newer": {
+        def: "⇅: Use newer",
+        es: "⇅: Usar el más nuevo",
+    },
+    "+1 week": {
+        def: "+1 week",
+        es: "+1 semana",
+    },
     "> [!INFO]- The connected devices have been detected as follows:\n${devices}": {
         def: "> [!INFO]- The connected devices have been detected as follows:\n${devices}",
         es: "> [!INFO]- Se han detectado los siguientes dispositivos conectados:\n${devices}",
@@ -138,6 +175,54 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "> [!INFO]- Обнаружены следующие подключённые устройства:\n${devices}",
         zh: "> [!INFO]- 已检测到以下已连接设备：\n${devices}",
         "zh-tw": "> [!INFO]- 已偵測到以下已連線裝置：\n${devices}",
+    },
+    "⚠️ Important Notice": {
+        def: "⚠️ Important Notice",
+        es: "⚠️ Aviso importante",
+    },
+    "⚠️ Please Confirm the Following": {
+        def: "⚠️ Please Confirm the Following",
+        es: "⚠️ Confirma lo siguiente",
+    },
+    "✔ SELECT": {
+        def: "✔ SELECT",
+        es: "✔ SELECCIONAR",
+    },
+    "✔ SYNC": {
+        def: "✔ SYNC",
+        es: "✔ SINCRONIZAR",
+    },
+    "✔ WATCH": {
+        def: "✔ WATCH",
+        es: "✔ OBSERVAR",
+    },
+    "📡 Off": {
+        def: "📡 Off",
+        es: "📡 Desactivado",
+    },
+    "📡 On": {
+        def: "📡 On",
+        es: "📡 Activado",
+    },
+    "🔴 Disconnected": {
+        def: "🔴 Disconnected",
+        es: "🔴 Desconectado",
+    },
+    "🕵️ Diag": {
+        def: "🕵️ Diag",
+        es: "🕵️ Diagnóstico",
+    },
+    "🗑 Delete": {
+        def: "🗑 Delete",
+        es: "🗑 Eliminar",
+    },
+    "🟢 Connected": {
+        def: "🟢 Connected",
+        es: "🟢 Conectado",
+    },
+    "${count} issue(s) detected!": {
+        def: "${count} issue(s) detected!",
+        es: "¡${count} problema(s) detectado(s)!",
     },
     "A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.":
         {
@@ -150,6 +235,22 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "Setup URI 是一段包含伺服器位址與驗證資訊的文字。如果伺服器安裝腳本已經產生 URI，使用它可以更簡單且更安全地完成設定。",
         },
+    Accept: {
+        def: "Accept",
+        es: "Aceptar",
+    },
+    "Accept in session": {
+        def: "Accept in session",
+        es: "Aceptar en esta sesión",
+    },
+    ACCEPTED: {
+        def: "ACCEPTED",
+        es: "ACEPTADO",
+    },
+    "ACCEPTED (in session)": {
+        def: "ACCEPTED (in session)",
+        es: "ACEPTADO (en esta sesión)",
+    },
     "Access Key": {
         def: "Access Key",
         es: "Clave de acceso",
@@ -159,6 +260,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "액세스 키",
         ru: "Ключ доступа",
         zh: "访问密钥",
+    },
+    "Access Key ID": {
+        def: "Access Key ID",
+        es: "ID de clave de acceso",
+    },
+    Action: {
+        def: "Action",
+        es: "Acción",
     },
     Activate: {
         def: "Activate",
@@ -197,6 +306,40 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "新增连接",
         "zh-tw": "新增連線",
     },
+    "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
+        def: "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.",
+        es: "El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
+    },
+    "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
+        def: "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.",
+        es: "El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
+    },
+    Advanced: {
+        def: "Advanced",
+        es: "Avanzado",
+    },
+    "Advanced Settings": {
+        def: "Advanced Settings",
+        es: "Ajustes avanzados",
+    },
+    "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.":
+        {
+            def: "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.",
+            es: "Tras reiniciar, los datos de este dispositivo se subirán al servidor como «copia maestra». Ten en cuenta que cualquier dato no deseado que haya ahora en el servidor se sobrescribirá por completo.",
+        },
+    "After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.":
+        {
+            def: "After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.",
+            es: "Tras reiniciar, la base de datos de este dispositivo se reconstruirá con los datos del servidor. Si hay archivos sin sincronizar en este vault, pueden producirse conflictos con los datos del servidor.",
+        },
+    "After that, synchronise to a brand new vault on each other device with the new remote one by one.": {
+        def: "After that, synchronise to a brand new vault on each other device with the new remote one by one.",
+        es: "Después, sincroniza con un vault totalmente nuevo en cada uno de los demás dispositivos, uno por uno, usando el nuevo remoto.",
+    },
+    "All checks passed successfully!": {
+        def: "All checks passed successfully!",
+        es: "¡Todas las comprobaciones se han superado correctamente!",
+    },
     "All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.":
         {
             def: "All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.",
@@ -206,6 +349,23 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "У всех устройств одинаковое значение прогресса (${progress}). Похоже, ваши устройства синхронизированы, и можно продолжать Garbage Collection.",
             zh: "所有设备的进度值均相同（${progress}）。看起来你的设备已经同步，可以继续执行垃圾回收。",
             "zh-tw": "所有裝置的進度值均相同（${progress}）。看起來你的裝置已同步，可以繼續執行垃圾回收。",
+        },
+    "All the same or non-existent": {
+        def: "All the same or non-existent",
+        es: "Todo igual o inexistente",
+    },
+    "Allow in session": {
+        def: "Allow in session",
+        es: "Permitir en esta sesión",
+    },
+    "Allow permanently": {
+        def: "Allow permanently",
+        es: "Permitir permanentemente",
+    },
+    "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.":
+        {
+            def: "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.",
+            es: "Además, si usas sincronización punto a punto, esta configuración se aplicará cuando en el futuro cambies a otros métodos y te conectes a un servidor remoto.",
         },
     "Always prompt merge conflicts": {
         def: "Always prompt merge conflicts",
@@ -252,6 +412,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "分析資料庫使用情況並產生 TSV 報告，方便你自行診斷。你可以將產生的報告貼到任何慣用的試算表中查看。",
         },
+    "Apply All Selected": {
+        def: "Apply All Selected",
+        es: "Aplicar todo lo seleccionado",
+    },
     "Apply Latest Change if Conflicting": {
         def: "Apply Latest Change if Conflicting",
         es: "Aplicar último cambio en conflictos",
@@ -274,6 +438,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "应用预设配置",
         "zh-tw": "套用預設配置",
     },
+    "Apply the settings": {
+        def: "Apply the settings",
+        es: "Aplicar los ajustes",
+    },
     "Ask a passphrase at every launch": {
         def: "Ask a passphrase at every launch",
         es: "Solicitar la frase de contraseña en cada inicio",
@@ -282,6 +450,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Запрашивать парольную фразу при каждом запуске",
         zh: "每次启动时询问密码短语",
         "zh-tw": "每次啟動時都詢問密語",
+    },
+    "Auto Connect": {
+        def: "Auto Connect",
+        es: "Conexión automática",
+    },
+    "Auto Start P2P Connection": {
+        def: "Auto Start P2P Connection",
+        es: "Iniciar la conexión P2P automáticamente",
+    },
+    Automatic: {
+        def: "Automatic",
+        es: "Automático",
     },
     "Automatically Sync all files when opening Obsidian.": {
         def: "Automatically Sync all files when opening Obsidian.",
@@ -293,6 +473,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Автоматически синхронизировать все файлы при открытии Obsidian.",
         zh: "打开 Obsidian 时自动同步所有文件",
         "zh-tw": "開啟 Obsidian 時自動同步所有檔案。",
+    },
+    "Available Peers": {
+        def: "Available Peers",
+        es: "Pares disponibles",
     },
     Back: {
         def: "Back",
@@ -367,6 +551,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
             zh: "在 v0.17.16 之前,我们使用旧适配器作为本地数据库。现在首选新适配器。但是,它需要重建本地数据库。请在有足够时间时禁用此开关。如果保持启用状态,并且在从远程数据库获取时,系统将要求您禁用此开关。",
         },
+    "Broadcasting?": {
+        def: "Broadcasting?",
+        es: "¿Difusión?",
+    },
     "Bucket Name": {
         def: "Bucket Name",
         es: "Nombre del bucket",
@@ -377,6 +565,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Имя бакета",
         zh: "存储桶名称",
         "zh-tw": "儲存桶名稱",
+    },
+    "by resetting the remote, you will be informed on other devices.": {
+        def: "by resetting the remote, you will be informed on other devices.",
+        es: "al restablecer el remoto, se te avisará en los demás dispositivos.",
     },
     Cancel: {
         def: "Cancel",
@@ -396,6 +588,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "取消垃圾回收",
         "zh-tw": "取消垃圾回收",
     },
+    "Changing the encryption algorithm will prevent access to any data previously encrypted with a different algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your data.":
+        {
+            def: "Changing the encryption algorithm will prevent access to any data previously encrypted with a different algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your data.",
+            es: "Cambiar el algoritmo de cifrado impedirá acceder a los datos cifrados previamente con otro algoritmo. Asegúrate de que todos tus dispositivos usen el mismo algoritmo para no perder el acceso a tus datos.",
+        },
     "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.":
         {
             def: "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.",
@@ -430,6 +627,30 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "检查尚未转换为路径混淆 ID 的文档，并在需要时将其转换。",
         "zh-tw": "檢查尚未轉換為路徑混淆 ID 的文件，並在需要時進行轉換。",
     },
+    "Checking connection... Please wait.": {
+        def: "Checking connection... Please wait.",
+        es: "Comprobando la conexión... Espera un momento.",
+    },
+    Chunks: {
+        def: "Chunks",
+        es: "Fragmentos (chunks)",
+    },
+    Close: {
+        def: "Close",
+        es: "Cerrar",
+    },
+    "Close & Disconnect": {
+        def: "Close & Disconnect",
+        es: "Cerrar y desconectar",
+    },
+    "Close this dialog": {
+        def: "Close this dialog",
+        es: "Cerrar este diálogo",
+    },
+    "Closed:": {
+        def: "Closed:",
+        es: "Cerradas:",
+    },
     "cmdConfigSync.showCustomizationSync": {
         def: "Show Customization sync",
         es: "Mostrar sincronización de personalización",
@@ -450,6 +671,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "쉼표로 구분된 `.gitignore, .dockerignore`",
         ru: "Через запятую `.gitignore, .dockerignore`",
         zh: "用逗号分隔,例如 `.gitignore, .dockerignore`",
+    },
+    Command: {
+        def: "Command",
+        es: "Comando",
+    },
+    Communicating: {
+        def: "Communicating",
+        es: "Comunicando",
     },
     "Compaction in progress on remote database...": {
         def: "Compaction in progress on remote database...",
@@ -486,6 +715,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Время ожидания компакции удалённой базы данных истекло.",
         zh: "远程数据库压缩超时。",
         "zh-tw": "遠端資料庫壓縮逾時。",
+    },
+    "Compare file": {
+        def: "Compare file",
+        es: "Comparar archivo",
     },
     "Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.":
         {
@@ -561,6 +794,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Вычислять ревизии для чанков",
         zh: "为 chunks 计算修订版本(以前的行为)",
     },
+    Configuration: {
+        def: "Configuration",
+        es: "Configuración",
+    },
     "Configuration Encryption": {
         def: "Configuration Encryption",
         es: "Cifrado de configuración",
@@ -615,6 +852,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "手动重新输入与你其他设备相同的服务器信息。仅适合高级用户。",
         "zh-tw": "手動重新輸入與其他裝置相同的伺服器資訊。僅適合進階使用者。",
     },
+    Connect: {
+        def: "Connect",
+        es: "Conectar",
+    },
+    "Connected to Signaling Server (as Peer ID: ${peerId})": {
+        def: "Connected to Signaling Server (as Peer ID: ${peerId})",
+        es: "Conectado al servidor de señalización (como ID de par: ${peerId})",
+    },
+    "Connected:": {
+        def: "Connected:",
+        es: "Conectadas:",
+    },
     "Connection Method": {
         def: "Connection Method",
         es: "Método de conexión",
@@ -623,6 +872,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Способ подключения",
         zh: "连接方式",
         "zh-tw": "連線方式",
+    },
+    "Connection Settings": {
+        def: "Connection Settings",
+        es: "Ajustes de conexión",
+    },
+    "Connection:": {
+        def: "Connection:",
+        es: "Conexión:",
+    },
+    "Continue anyway": {
+        def: "Continue anyway",
+        es: "Continuar de todos modos",
     },
     "Continue to CouchDB setup": {
         def: "Continue to CouchDB setup",
@@ -671,6 +932,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "将报告复制到剪贴板",
         "zh-tw": "將報告複製到剪貼簿",
     },
+    "CouchDB Configuration": {
+        def: "CouchDB Configuration",
+        es: "Configuración de CouchDB",
+    },
     "CouchDB Connection Tweak": {
         def: "CouchDB Connection Tweak",
         es: "Ajustes de conexión de CouchDB",
@@ -679,6 +944,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Настройки подключения CouchDB",
         zh: "CouchDB 连接调优",
         "zh-tw": "CouchDB 連線調校",
+    },
+    "Create P2P remote": {
+        def: "Create P2P remote",
+        es: "Crear remoto P2P",
     },
     "Cross-platform": {
         def: "Cross-platform",
@@ -697,6 +966,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Текущий адаптер: {adapter}",
         zh: "当前适配器：{adapter}",
         "zh-tw": "目前的適配器：{adapter}",
+    },
+    "Custom Headers": {
+        def: "Custom Headers",
+        es: "Encabezados personalizados",
     },
     "Customization Sync": {
         def: "Customization Sync",
@@ -726,6 +999,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Сжатие данных",
         zh: "数据压缩",
         "zh-tw": "資料壓縮",
+    },
+    "Data to Copy": {
+        def: "Data to Copy",
+        es: "Datos a copiar",
     },
     "Database -> Storage": {
         def: "Database -> Storage",
@@ -763,6 +1040,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Суффикс базы данных",
         zh: "数据库后缀",
         "zh-tw": "資料庫後綴",
+    },
+    Date: {
+        def: "Date",
+        es: "Fecha",
     },
     Default: {
         def: "Default",
@@ -822,6 +1103,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "删除远端服务器上的所有数据。",
         "zh-tw": "刪除遠端伺服器上的所有資料。",
     },
+    "Delete All of": {
+        def: "Delete All of",
+        es: "Eliminar todo de",
+    },
     "Delete local database to reset or uninstall Self-hosted LiveSync": {
         def: "Delete local database to reset or uninstall Self-hosted LiveSync",
         es: "Eliminar la base de datos local para restablecer o desinstalar Self-hosted LiveSync",
@@ -860,6 +1145,34 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "要删除远端配置“{name}”吗？",
         "zh-tw": "要刪除遠端設定「{name}」嗎？",
     },
+    "Delete remote configuration '${name}'?": {
+        def: "Delete remote configuration '${name}'?",
+        es: "¿Eliminar la configuración remota «${name}»?",
+    },
+    DENIED: {
+        def: "DENIED",
+        es: "DENEGADO",
+    },
+    "DENIED (in session)": {
+        def: "DENIED (in session)",
+        es: "DENEGADO (en esta sesión)",
+    },
+    Deny: {
+        def: "Deny",
+        es: "Denegar",
+    },
+    "Deny in session": {
+        def: "Deny in session",
+        es: "Denegar en esta sesión",
+    },
+    "Deny permanently": {
+        def: "Deny permanently",
+        es: "Denegar permanentemente",
+    },
+    "Deselect all": {
+        def: "Deselect all",
+        es: "Deseleccionar todo",
+    },
     desktop: {
         def: "desktop",
         es: "equipo de escritorio",
@@ -868,6 +1181,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "рабочий стол",
         zh: "桌面设备",
         "zh-tw": "桌面裝置",
+    },
+    "Detected Peers": {
+        def: "Detected Peers",
+        es: "Pares detectados",
     },
     Developer: {
         def: "Developer",
@@ -887,6 +1204,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "设备",
         "zh-tw": "裝置",
     },
+    "device name": {
+        def: "device name",
+        es: "nombre del dispositivo",
+    },
     "Device name": {
         def: "Device name",
         es: "Nombre del dispositivo",
@@ -898,6 +1219,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "设备名称",
         "zh-tw": "裝置名稱",
     },
+    'Device name to identify the device. Please use shorter one for the stable peer detection, i.e., "iphone-16" or "macbook-2021".':
+        {
+            def: 'Device name to identify the device. Please use shorter one for the stable peer detection, i.e., "iphone-16" or "macbook-2021".',
+            es: "Nombre para identificar el dispositivo. Usa uno corto para que la detección de pares sea estable, por ejemplo «iphone-16» o «macbook-2021».",
+        },
+    "Device Peer ID": {
+        def: "Device Peer ID",
+        es: "ID de par del dispositivo",
+    },
     "Device Setup Method": {
         def: "Device Setup Method",
         es: "Método de configuración del dispositivo",
@@ -906,6 +1236,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Способ настройки устройства",
         zh: "设备设置方式",
         "zh-tw": "裝置設定方式",
+    },
+    "Devices:": {
+        def: "Devices:",
+        es: "Dispositivos:",
+    },
+    "Diagnostic RTCPeerConnection is enabled": {
+        def: "Diagnostic RTCPeerConnection is enabled",
+        es: "El RTCPeerConnection de diagnóstico está habilitado",
     },
     "dialog.yourLanguageAvailable": {
         def: "Self-hosted LiveSync had translations for your language, so the %{Display language} setting was enabled.\n\nNote: Not all messages are translated. We are waiting for your contributions!\nNote 2: If you create an Issue, **please revert to Default** and then take screenshots, messages and logs. This can be done in the setting dialogue.\nMay you find it easy to use!",
@@ -941,6 +1279,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: " 翻译可用!",
         "zh-tw": "已提供你的語言翻譯！",
     },
+    Diff: {
+        def: "Diff",
+        es: "Diferencias",
+    },
+    Different: {
+        def: "Different",
+        es: "Distinto",
+    },
     "Disables all synchronization and restart.": {
         def: "Disables all synchronization and restart.",
         es: "Desactiva toda la sincronización y reinicia la aplicación.",
@@ -960,6 +1306,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Отключает логирование, показывает только уведомления. Пожалуйста, отключите при сообщении о проблеме.",
         zh: "禁用日志记录,仅显示通知。如果您报告问题,请禁用此选项",
         "zh-tw": "停用日誌記錄，只顯示通知。如果你要回報問題，請關閉此選項。",
+    },
+    Disconnect: {
+        def: "Disconnect",
+        es: "Desconectar",
+    },
+    Dismiss: {
+        def: "Dismiss",
+        es: "Descartar",
     },
     "Display Language": {
         def: "Display Language",
@@ -1338,6 +1692,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "启用边缘情况处理功能",
         "zh-tw": "啟用邊緣情況處理功能",
     },
+    "Enable P2P Replicator": {
+        def: "Enable P2P Replicator",
+        es: "Habilitar el replicador P2P",
+    },
     "Enable poweruser features": {
         def: "Enable poweruser features",
         es: "Habilitar funciones para usuarios avanzados",
@@ -1371,6 +1729,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "启用此选项可在文档冲突时自动应用最新的更改",
         "zh-tw": "啟用此選項後，即使發生衝突也會自動套用文件的最新變更",
     },
+    Enabled: {
+        def: "Enabled",
+        es: "Habilitado",
+    },
+    "Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.":
+        {
+            def: "Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.",
+            es: "Activar el cifrado de extremo a extremo garantiza que tus datos se cifren en tu dispositivo antes de enviarse al servidor remoto. Así, aunque alguien acceda al servidor, no podrá leer tus datos sin la frase de contraseña. Recuérdala bien, porque será necesaria para descifrar tus datos en los demás dispositivos.",
+        },
     "Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.":
         {
             def: "Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.",
@@ -1393,6 +1760,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Шифрование конфиденциальных настроек",
         zh: "加密敏感配置项",
         "zh-tw": "加密敏感設定項目",
+    },
+    "Encryption Algorithm": {
+        def: "Encryption Algorithm",
+        es: "Algoritmo de cifrado",
     },
     "Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.": {
         def: "Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.",
@@ -1438,6 +1809,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "增大块大小",
         "zh-tw": "擴大 chunk 大小",
     },
+    "Enter a folder prefix (optional)": {
+        def: "Enter a folder prefix (optional)",
+        es: "Introduce un prefijo de carpeta (opcional)",
+    },
     "Enter Server Information": {
         def: "Enter Server Information",
         es: "Introducir información del servidor",
@@ -1447,6 +1822,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "输入服务器信息",
         "zh-tw": "輸入伺服器資訊",
     },
+    "Enter Setup URI": {
+        def: "Enter Setup URI",
+        es: "Introducir el Setup URI",
+    },
     "Enter the server information manually": {
         def: "Enter the server information manually",
         es: "Introducir manualmente la información del servidor",
@@ -1455,6 +1834,70 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Ввести данные сервера вручную",
         zh: "手动输入服务器信息",
         "zh-tw": "手動輸入伺服器資訊",
+    },
+    "Enter TURN credential": {
+        def: "Enter TURN credential",
+        es: "Introduce la credencial de TURN",
+    },
+    "Enter TURN username": {
+        def: "Enter TURN username",
+        es: "Introduce el usuario de TURN",
+    },
+    "Enter your Access Key ID": {
+        def: "Enter your Access Key ID",
+        es: "Introduce tu ID de clave de acceso",
+    },
+    "Enter your Bucket Name": {
+        def: "Enter your Bucket Name",
+        es: "Introduce el nombre de tu bucket",
+    },
+    "Enter your database name": {
+        def: "Enter your database name",
+        es: "Introduce el nombre de tu base de datos",
+    },
+    "Enter your JWT Key ID": {
+        def: "Enter your JWT Key ID",
+        es: "Introduce el ID de tu clave JWT",
+    },
+    "Enter your JWT secret or private key": {
+        def: "Enter your JWT secret or private key",
+        es: "Introduce tu secreto JWT o tu clave privada",
+    },
+    "Enter your JWT Subject (CouchDB Username)": {
+        def: "Enter your JWT Subject (CouchDB Username)",
+        es: "Introduce el sujeto JWT (usuario de CouchDB)",
+    },
+    "Enter your passphrase": {
+        def: "Enter your passphrase",
+        es: "Introduce tu frase de contraseña",
+    },
+    "Enter your password": {
+        def: "Enter your password",
+        es: "Introduce tu contraseña",
+    },
+    "Enter your Region (e.g., us-east-1, auto for R2)": {
+        def: "Enter your Region (e.g., us-east-1, auto for R2)",
+        es: "Introduce tu región (p. ej., us-east-1, o auto para R2)",
+    },
+    "Enter your Secret Access Key": {
+        def: "Enter your Secret Access Key",
+        es: "Introduce tu clave de acceso secreta",
+    },
+    "Enter your username": {
+        def: "Enter your username",
+        es: "Introduce tu usuario",
+    },
+    "Error during connection test: ${reason}": {
+        def: "Error during connection test: ${reason}",
+        es: "Error durante la prueba de conexión: ${reason}",
+    },
+    "Error during testAndFixSettings: ${reason}": {
+        def: "Error during testAndFixSettings: ${reason}",
+        es: "Error durante testAndFixSettings: ${reason}",
+    },
+    "Experimental Settings": {
+        def: "Experimental Settings",
+        es: "Ajustes experimentales",
     },
     Export: {
         def: "Export",
@@ -1483,6 +1926,26 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "无法连接到远程数据库以执行压缩。${reason}",
         "zh-tw": "無法連線到遠端資料庫以執行壓縮。${reason}",
     },
+    "Failed to connect to the server: ${reason}": {
+        def: "Failed to connect to the server: ${reason}",
+        es: "No se pudo conectar al servidor: ${reason}",
+    },
+    "Failed to connect to the server. Please check your settings.": {
+        def: "Failed to connect to the server. Please check your settings.",
+        es: "No se pudo conectar al servidor. Revisa tus ajustes.",
+    },
+    "Failed to connect to the signalling relay: ${reason}": {
+        def: "Failed to connect to the signalling relay: ${reason}",
+        es: "No se pudo conectar al relé de señalización: ${reason}",
+    },
+    "Failed to create replicator instance.": {
+        def: "Failed to create replicator instance.",
+        es: "No se pudo crear la instancia del replicador.",
+    },
+    "Failed to parse Setup-URI.": {
+        def: "Failed to parse Setup-URI.",
+        es: "No se pudo interpretar el Setup-URI.",
+    },
     "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": {
         def: "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.",
         es: "No se pudo iniciar la replicación puntual previa a la recolección de basura. Recolección de basura cancelada.",
@@ -1500,6 +1963,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Не удалось запустить репликацию после Garbage Collection.",
         zh: "垃圾回收后无法启动复制。",
         "zh-tw": "垃圾回收後無法啟動複寫。",
+    },
+    "Failed:": {
+        def: "Failed:",
+        es: "Fallidas:",
     },
     Fetch: {
         def: "Fetch",
@@ -1541,6 +2008,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "获取远端设置",
         "zh-tw": "抓取遠端設定",
     },
+    FETCHING: {
+        def: "FETCHING",
+        es: "OBTENIENDO",
+    },
+    "Fetching status...": {
+        def: "Fetching status...",
+        es: "Obteniendo el estado...",
+    },
+    "File integrity": {
+        def: "File integrity",
+        es: "Integridad de archivos",
+    },
     "File to resolve conflict": {
         def: "File to resolve conflict",
         es: "Archivo para resolver el conflicto",
@@ -1567,6 +2046,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "文件名",
         "zh-tw": "檔名",
     },
+    "Final Confirmation: Overwrite Server Data with This Device's Files": {
+        def: "Final Confirmation: Overwrite Server Data with This Device's Files",
+        es: "Confirmación final: sobrescribir los datos del servidor con los archivos de este dispositivo",
+    },
     "First, please select the option that best describes your current situation.": {
         def: "First, please select the option that best describes your current situation.",
         es: "Primero, seleccione la opción que describa mejor su situación actual。",
@@ -1575,6 +2058,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Сначала выберите вариант, который лучше всего описывает вашу текущую ситуацию。",
         zh: "首先，请选择最符合你当前情况的选项。",
         "zh-tw": "首先，請選擇最符合你目前情況的選項。",
+    },
+    Fix: {
+        def: "Fix",
+        es: "Corregir",
     },
     "Flag and restart": {
         def: "Flag and restart",
@@ -1585,6 +2072,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "标记后重启",
         "zh-tw": "標記後重新啟動",
     },
+    "Flagged Selective": {
+        def: "Flagged Selective",
+        es: "Selectivo marcado",
+    },
+    "Folder Prefix": {
+        def: "Folder Prefix",
+        es: "Prefijo de carpeta",
+    },
+    "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.":
+        {
+            def: "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.",
+            es: "Para los algoritmos HS256/HS512, indica la clave secreta compartida. Para ES256/ES512, indica la clave privada en formato PEM pkcs8.",
+        },
     "Forces the file to be synced when opened.": {
         def: "Forces the file to be synced when opened.",
         es: "Forzar sincronización al abrir archivo",
@@ -1605,6 +2105,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "全新开始清除",
         "zh-tw": "全新開始清除",
     },
+    "Furthermore, if conflicts are already present in the server data, they will be synchronised to this device as they are, and you will need to resolve them locally.":
+        {
+            def: "Furthermore, if conflicts are already present in the server data, they will be synchronised to this device as they are, and you will need to resolve them locally.",
+            es: "Además, si ya hay conflictos en los datos del servidor, se sincronizarán tal cual a este dispositivo y tendrás que resolverlos localmente.",
+        },
     "Garbage Collection cancelled by user.": {
         def: "Garbage Collection cancelled by user.",
         es: "Recolección de basura cancelada por el usuario.",
@@ -1669,6 +2174,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "垃圾回收：扫描完成。总 chunks：${totalChunks}，已使用 chunks：${usedChunks}",
         "zh-tw": "垃圾回收：掃描完成。總 chunks：${totalChunks}，已使用 chunks：${usedChunks}",
     },
+    "Gathering information...": {
+        def: "Gathering information...",
+        es: "Recopilando información...",
+    },
+    "Generate Random ID": {
+        def: "Generate Random ID",
+        es: "Generar un ID aleatorio",
+    },
+    "Group ID": {
+        def: "Group ID",
+        es: "ID de grupo",
+    },
     "Handle files as Case-Sensitive": {
         def: "Handle files as Case-Sensitive",
         es: "Manejar archivos como sensibles a mayúsculas",
@@ -1680,6 +2197,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "将文件视为区分大小写",
         "zh-tw": "將檔案視為區分大小寫",
     },
+    "Have you created a backup before proceeding?": {
+        def: "Have you created a backup before proceeding?",
+        es: "¿Has creado una copia de seguridad antes de continuar?",
+    },
+    "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.":
+        {
+            def: "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.",
+            es: "La sincronización de archivos ocultos se ha desactivado temporalmente. Vuelve a activarla después de la obtención si la necesitas.",
+        },
     "Hidden Files": {
         def: "Hidden Files",
         es: "Archivos ocultos",
@@ -1695,6 +2221,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "완전히 숨기기",
         zh: "完全隐藏",
         "zh-tw": "完全隱藏",
+    },
+    "Hide not applicable items": {
+        def: "Hide not applicable items",
+        es: "Ocultar elementos no aplicables",
+    },
+    "Higher (${local} > ${remote})": {
+        def: "Higher (${local} > ${remote})",
+        es: "Superior (${local} > ${remote})",
     },
     "Highlight diff": {
         def: "Highlight diff",
@@ -1720,6 +2254,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "你希望如何配置与服务器的连接？",
         "zh-tw": "你希望如何設定與伺服器的連線？",
     },
+    "However, This should not be enabled if you want to increase your secrecy more.": {
+        def: "However, This should not be enabled if you want to increase your secrecy more.",
+        es: "Sin embargo, esto no debería habilitarse si quieres aumentar aún más tu privacidad.",
+    },
     "I am adding a device to an existing synchronisation setup": {
         def: "I am adding a device to an existing synchronisation setup",
         es: "Estoy agregando un dispositivo a una configuración de sincronización existente",
@@ -1738,6 +2276,22 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "我是第一次进行设置",
         "zh-tw": "我是第一次進行設定",
     },
+    "I am setting up a new server for the first time / I want to reset my existing server.": {
+        def: "I am setting up a new server for the first time / I want to reset my existing server.",
+        es: "Estoy configurando un servidor nuevo por primera vez / quiero restablecer mi servidor actual.",
+    },
+    "I am unable to create a backup of my Vault.": {
+        def: "I am unable to create a backup of my Vault.",
+        es: "No puedo crear una copia de seguridad de mi Vault.",
+    },
+    "I am unable to create a backup of my Vaults.": {
+        def: "I am unable to create a backup of my Vaults.",
+        es: "No puedo crear una copia de seguridad de mis Vaults.",
+    },
+    "I have created a backup of my Vault.": {
+        def: "I have created a backup of my Vault.",
+        es: "He creado una copia de seguridad de mi Vault.",
+    },
     "I know my server details, let me enter them": {
         def: "I know my server details, let me enter them",
         es: "Conozco los datos de mi servidor; permítame introducirlos",
@@ -1747,6 +2301,32 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "我知道服务器详情，让我手动输入",
         "zh-tw": "我知道伺服器資訊，讓我手動輸入",
     },
+    "I understand that all changes made on other smartphones or computers possibly could be lost.": {
+        def: "I understand that all changes made on other smartphones or computers possibly could be lost.",
+        es: "Entiendo que todos los cambios hechos en otros móviles u ordenadores podrían perderse.",
+    },
+    "I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information.":
+        {
+            def: "I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information.",
+            es: "Entiendo que los demás dispositivos ya no podrán sincronizar y que habrá que restablecer su información de sincronización.",
+        },
+    "I understand that this action is irreversible once performed.": {
+        def: "I understand that this action is irreversible once performed.",
+        es: "Entiendo que esta acción es irreversible una vez realizada.",
+    },
+    "I understand the risks and will proceed without a backup.": {
+        def: "I understand the risks and will proceed without a backup.",
+        es: "Entiendo los riesgos y continuaré sin copia de seguridad.",
+    },
+    "I Understand, Overwrite Server": {
+        def: "I Understand, Overwrite Server",
+        es: "Lo entiendo, sobrescribir el servidor",
+    },
+    'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.':
+        {
+            def: 'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.',
+            es: "Si «Iniciar la conexión P2P automáticamente» está activado, la conexión P2P se iniciará al arrancar el complemento.",
+        },
     "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).": {
         def: "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).",
         es: "Si se desactiva, chunks se dividen en hilo UI (comportamiento anterior)",
@@ -1884,6 +2464,21 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.",
             zh: "如果启用此选项,PouchDB 将保持连接打开 60 秒,如果在此时间内没有更改到达,则关闭并重新打开套接字,而不是无限期保持打开。当代理限制请求持续时间时有用,但可能会增加资源使用ß",
         },
+    "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.":
+        {
+            def: "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.",
+            es: "Si no puedes evitar problemas de CORS, prueba esta opción. Usa la API interna de Obsidian para comunicarse con el servidor CouchDB. No cumple los estándares web, pero funciona. Ten en cuenta que podría dejar de funcionar en versiones futuras de Obsidian.",
+        },
+    "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.":
+        {
+            def: "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.",
+            es: "Si no puedes evitar problemas de CORS, prueba esta opción. Usa la API interna de Obsidian para comunicarse con el servidor S3. No cumple los estándares web, pero funciona. Ten en cuenta que podría dejar de funcionar en versiones futuras de Obsidian.",
+        },
+    "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.":
+        {
+            def: "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.",
+            es: "Si tienes cambios sin sincronizar en el Vault de este dispositivo, es probable que divergan de las versiones del servidor tras el restablecimiento. Esto puede provocar un gran número de conflictos de archivos.",
+        },
     "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.":
         {
             def: "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.",
@@ -1891,6 +2486,24 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "IBM Cloudant를 사용하다가 페이로드 크기 제한에 도달했다면, 배치 크기와 배치 개수 제한을 더 낮은 값으로 줄여 주세요.",
             "zh-tw": "如果你在使用 IBM Cloudant 時遇到負載大小上限，請調低批次大小與批次上限。",
         },
+    "If you understand the risks and still wish to proceed, select so.": {
+        def: "If you understand the risks and still wish to proceed, select so.",
+        es: "Si entiendes los riesgos y aun así quieres continuar, indícalo.",
+    },
+    "If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket.":
+        {
+            def: "If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket.",
+            es: "Si quieres guardar los datos en una carpeta concreta del bucket, indica aquí un prefijo de carpeta. Si no, déjalo vacío para guardarlos en la raíz del bucket.",
+        },
+    "If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching.":
+        {
+            def: "If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching.",
+            es: "Si quieres usar `LiveSync`, debes difundir los cambios. Todos los pares que estén `observando` y lo detecten iniciarán la replicación para obtenerlos.",
+        },
+    Ignore: {
+        def: "Ignore",
+        es: "Ignorar",
+    },
     "Ignore and Proceed": {
         def: "Ignore and Proceed",
         es: "Ignorar y continuar",
@@ -1928,6 +2541,24 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "导入连接",
         "zh-tw": "匯入連線",
     },
+    IMPORTANT: {
+        def: "IMPORTANT",
+        es: "IMPORTANTE",
+    },
+    "In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.":
+        {
+            def: "In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.",
+            es: "En la mayoría de los casos deberías mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes un Vault cifrado en otro formato.",
+        },
+    "In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically.":
+        {
+            def: "In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically.",
+            es: "En este caso, Self-hosted LiveSync recreará los metadatos de todos los archivos y generará conflictos a propósito. Cuando el contenido del archivo sea idéntico, esos conflictos se resolverán automáticamente.",
+        },
+    "Incoming:": {
+        def: "Incoming:",
+        es: "Entrantes:",
+    },
     "Incubate Chunks in Document": {
         def: "Incubate Chunks in Document",
         es: "Incubar chunks en documento",
@@ -1937,6 +2568,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문서 내 청크 임시 보관",
         ru: "Инкубировать чанки в документе",
         zh: "在文档中孵化块",
+    },
+    "Initial Action": {
+        def: "Initial Action",
+        es: "Acción inicial",
     },
     "Initialise all journal history, On the next sync, every item will be received and sent.": {
         def: "Initialise all journal history, On the next sync, every item will be received and sent.",
@@ -1969,6 +2604,47 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "간격 (초)",
         ru: "Интервал (сек)",
         zh: "间隔(秒)",
+    },
+    INVERTED: {
+        def: "INVERTED",
+        es: "INVERTIDO",
+    },
+    "Issue detection log:": {
+        def: "Issue detection log:",
+        es: "Registro de detección de problemas:",
+    },
+    "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.": {
+        def: "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.",
+        es: "Se recomienda encarecidamente crear una copia de seguridad antes de continuar. Continuar sin copia de seguridad puede provocar pérdida de datos.",
+    },
+    "Just for a minute, please!": {
+        def: "Just for a minute, please!",
+        es: "¡Solo un momento, por favor!",
+    },
+    "JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly.":
+        {
+            def: "JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly.",
+            es: "La autenticación JWT (JSON Web Token) permite autenticarse de forma segura con el servidor CouchDB mediante tokens. Asegúrate de que tu servidor CouchDB esté configurado para aceptar JWT y de que la clave y los ajustes indicados coincidan con la configuración del servidor. Por cierto, no lo he verificado a fondo.",
+        },
+    "JWT Algorithm": {
+        def: "JWT Algorithm",
+        es: "Algoritmo JWT",
+    },
+    "JWT Expiration Duration (minutes)": {
+        def: "JWT Expiration Duration (minutes)",
+        es: "Duración de caducidad del JWT (minutos)",
+    },
+    "JWT Key": {
+        def: "JWT Key",
+        es: "Clave JWT",
+    },
+    "JWT Key ID (kid)": {
+        def: "JWT Key ID (kid)",
+        es: "ID de clave JWT (kid)",
+    },
+    "JWT Subject (sub)": {
+        def: "JWT Subject (sub)",
+        es: "Sujeto JWT (sub)",
     },
     "K.exp": {
         def: "Experimental",
@@ -2173,6 +2849,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Лимит: {datetime} ({timestamp})",
         zh: "限制：{datetime}（{timestamp}）",
         "zh-tw": "限制：{datetime}（{timestamp}）",
+    },
+    live: {
+        def: "live",
+        es: "en vivo",
     },
     "LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.":
         {
@@ -2447,6 +3127,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "로컬 데이터베이스 조정",
         ru: "Настройки локальной базы данных",
     },
+    "Local only": {
+        def: "Local only",
+        es: "Solo local",
+    },
     Lock: {
         def: "Lock",
         es: "Bloquear",
@@ -2523,6 +3207,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "줄 바꿈",
         ru: "Перенос",
         zh: "自动换行",
+    },
+    "Lower (${local} < ${remote})": {
+        def: "Lower (${local} < ${remote})",
+        es: "Inferior (${local} < ${remote})",
+    },
+    "Maintenance Commands": {
+        def: "Maintenance Commands",
+        es: "Comandos de mantenimiento",
+    },
+    "Maintenance mode": {
+        def: "Maintenance mode",
+        es: "Modo de mantenimiento",
     },
     "Maximum delay for batch database updating": {
         def: "Maximum delay for batch database updating",
@@ -2639,6 +3335,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Минимальный интервал синхронизации",
         zh: "同步最小间隔",
         "zh-tw": "同步最小間隔",
+    },
+    Mixed: {
+        def: "Mixed",
+        es: "Mixto",
     },
     "moduleCheckRemoteSize.logCheckingStorageSizes": {
         def: "Checking storage sizes",
@@ -3444,6 +4144,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "更多操作",
         "zh-tw": "更多操作",
     },
+    "Mostly Complete: Decision Required": {
+        def: "Mostly Complete: Decision Required",
+        es: "Casi terminado: se requiere una decisión",
+    },
     "Move remotely deleted files to the trash, instead of deleting.": {
         def: "Move remotely deleted files to the trash, instead of deleting.",
         es: "Mover archivos borrados remotos a papelera en lugar de eliminarlos",
@@ -3454,6 +4158,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Перемещать удалённые на удалённом сервере файлы в корзину вместо удаления.",
         zh: "将远程删除的文件移至回收站,而不是直接删除",
     },
+    "My remote server is already set up. I want to join this device.": {
+        def: "My remote server is already set up. I want to join this device.",
+        es: "Mi servidor remoto ya está configurado. Quiero añadir este dispositivo.",
+    },
+    Name: {
+        def: "Name",
+        es: "Nombre",
+    },
     "Network warning style": {
         def: "Network warning style",
         es: "Estilo de advertencia de red",
@@ -3462,6 +4174,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Стиль сетевого предупреждения",
         zh: "网络警告样式",
         "zh-tw": "網路警告樣式",
+    },
+    NEW: {
+        def: "NEW",
+        es: "NUEVO",
     },
     "New Remote": {
         def: "New Remote",
@@ -3472,6 +4188,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "新建远端",
         "zh-tw": "新增遠端",
     },
+    "Newer (${diff})": {
+        def: "Newer (${diff})",
+        es: "Más nuevo (${diff})",
+    },
+    "No checks have been performed yet.": {
+        def: "No checks have been performed yet.",
+        es: "Todavía no se ha realizado ninguna comprobación.",
+    },
     "No connected device information found. Cancelling Garbage Collection.": {
         def: "No connected device information found. Cancelling Garbage Collection.",
         es: "No se ha encontrado información de dispositivos conectados. Se cancela la recolección de basura.",
@@ -3481,6 +4205,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "未找到已连接设备的信息。正在取消垃圾回收。",
         "zh-tw": "找不到已連線裝置的資訊。正在取消垃圾回收。",
     },
+    "No Connection": {
+        def: "No Connection",
+        es: "Sin conexión",
+    },
+    "No devices available. Waiting for other devices to connect...": {
+        def: "No devices available. Waiting for other devices to connect...",
+        es: "No hay dispositivos disponibles. Esperando a que se conecten otros dispositivos...",
+    },
+    "No Items.": {
+        def: "No Items.",
+        es: "Sin elementos.",
+    },
     "No limit configured": {
         def: "No limit configured",
         es: "Sin límite configurado",
@@ -3489,6 +4225,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Лимит не задан",
         zh: "未配置限制",
         "zh-tw": "尚未設定限制",
+    },
+    "NO PREVIEW": {
+        def: "NO PREVIEW",
+        es: "SIN VISTA PREVIA",
     },
     "No, please take me back": {
         def: "No, please take me back",
@@ -3545,6 +4285,23 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Не все сообщения переведены. И, пожалуйста, вернитесь к «По умолчанию» при сообщении об ошибках.",
         zh: '并非所有消息都已翻译。请在报告错误时恢复为"默认"',
     },
+    "Not configured": {
+        def: "Not configured",
+        es: "Sin configurar",
+    },
+    "Not now": {
+        def: "Not now",
+        es: "Ahora no",
+    },
+    "Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.": {
+        def: "Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.",
+        es: "El ID de grupo no está limitado al formato generado: puedes usar cualquier cadena de texto.",
+    },
+    'Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.':
+        {
+            def: 'Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.',
+            es: "Puedes generar un Setup URI nuevo ejecutando el comando «Copy settings as a new Setup URI» en la paleta de comandos.",
+        },
     "Notify all setting files": {
         def: "Notify all setting files",
         es: "Notificar todos los archivos de configuración",
@@ -3606,6 +4363,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Количество изменений для синхронизации за раз. По умолчанию 50. Минимум 2.",
         zh: "一次同步的更改数量。默认为 50。最小为 2。",
     },
+    "Obfuscate Properties": {
+        def: "Obfuscate Properties",
+        es: "Ofuscar propiedades",
+    },
+    "Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data.":
+        {
+            def: "Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data.",
+            es: "Ofuscar las propiedades (p. ej., la ruta del archivo, el tamaño y las fechas de creación y modificación) añade una capa extra de seguridad, ya que dificulta identificar la estructura y los nombres de tus archivos y carpetas en el servidor remoto. Esto ayuda a proteger tu privacidad y hace más difícil que usuarios no autorizados deduzcan información sobre tus datos.",
+        },
     "Obsidian version": {
         def: "Obsidian version",
         es: "Versión de Obsidian",
@@ -5362,6 +6128,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "⚠ У вас нет прав администратора.",
         zh: "⚠ 您没有管理员权限",
     },
+    "Of course, we can back up the data before proceeding.": {
+        def: "Of course, we can back up the data before proceeding.",
+        es: "Por supuesto, se puede hacer una copia de seguridad de los datos antes de continuar.",
+    },
+    Off: {
+        def: "Off",
+        es: "Desactivado",
+    },
     Ok: {
         def: "Ok",
         es: "Aceptar",
@@ -5380,6 +6154,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "旧算法",
         "zh-tw": "舊演算法",
     },
+    "Older (${diff})": {
+        def: "Older (${diff})",
+        es: "Más antiguo (${diff})",
+    },
     "Older fallback (Slow, W/O WebAssembly)": {
         def: "Older fallback (Slow, W/O WebAssembly)",
         es: "Alternativa anterior (lenta, sin WebAssembly)",
@@ -5389,6 +6167,26 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "旧版回退（较慢，无 WebAssembly）",
         "zh-tw": "舊版回退（較慢，無 WebAssembly）",
     },
+    On: {
+        def: "On",
+        es: "Activado",
+    },
+    "On the source device, from the command palette, run the 'Show settings as a QR code' command.": {
+        def: "On the source device, from the command palette, run the 'Show settings as a QR code' command.",
+        es: "En el dispositivo de origen, ejecuta desde la paleta de comandos «Show settings as a QR code».",
+    },
+    "On the source device, open Obsidian.": {
+        def: "On the source device, open Obsidian.",
+        es: "En el dispositivo de origen, abre Obsidian.",
+    },
+    "On this device, please keep this Vault open.": {
+        def: "On this device, please keep this Vault open.",
+        es: "En este dispositivo, mantén este Vault abierto.",
+    },
+    "On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.": {
+        def: "On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.",
+        es: "En este dispositivo, cambia a la aplicación de cámara o usa un lector de QR para escanear el código mostrado.",
+    },
     Open: {
         def: "Open",
         es: "Abrir",
@@ -5397,6 +6195,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Открыть",
         zh: "打开",
     },
+    "Open connection": {
+        def: "Open connection",
+        es: "Abrir conexión",
+    },
+    "Open P2P Setup...": {
+        def: "Open P2P Setup...",
+        es: "Abrir la configuración P2P...",
+    },
     "Open the dialog": {
         def: "Open the dialog",
         es: "Abrir el diálogo",
@@ -5404,6 +6210,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "대화상자 열기",
         ru: "Открыть диалог",
         zh: "打开对话框",
+    },
+    "Other files": {
+        def: "Other files",
+        es: "Otros archivos",
     },
     Overwrite: {
         def: "Overwrite",
@@ -5448,6 +6258,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Перезаписать данные сервера файлами с этого устройства",
         zh: "用本设备文件覆盖服务器数据",
         "zh-tw": "以此裝置的檔案覆寫伺服器資料",
+    },
+    "P2P Configuration": {
+        def: "P2P Configuration",
+        es: "Configuración P2P",
+    },
+    "P2P Status": {
+        def: "P2P Status",
+        es: "Estado P2P",
     },
     "P2P.AskPassphraseForDecrypt": {
         def: "The remote peer shared the configuration. Please input the passphrase to decrypt the configuration.",
@@ -5675,6 +6493,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Парольная фраза",
         zh: "密码",
     },
+    "Passphrase is required.": {
+        def: "Passphrase is required.",
+        es: "Se requiere la frase de contraseña.",
+    },
     "Passphrase of sensitive configuration items": {
         def: "Passphrase of sensitive configuration items",
         es: "Frase para elementos sensibles",
@@ -5723,6 +6545,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "粘贴从一台已在使用的设备上生成的 Setup URI。",
         "zh-tw": "貼上從一台已在使用裝置上產生的 Setup URI。",
     },
+    Path: {
+        def: "Path",
+        es: "Ruta",
+    },
     "Path Obfuscation": {
         def: "Path Obfuscation",
         es: "Ofuscación de rutas",
@@ -5751,6 +6577,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "用于匹配同步文件的模式",
         "zh-tw": "用於匹配同步檔案的模式",
     },
+    "Peer ID:": {
+        def: "Peer ID:",
+        es: "ID de par:",
+    },
+    "Peer to Peer Replicator": {
+        def: "Peer to Peer Replicator",
+        es: "Replicador Punto a Punto",
+    },
     "Peer-to-Peer only": {
         def: "Peer-to-Peer only",
         es: "Solo Peer-to-Peer",
@@ -5768,6 +6602,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Одноранговая синхронизация",
         zh: "点对点同步",
         "zh-tw": "點對點同步",
+    },
+    Peers: {
+        def: "Peers",
+        es: "Pares",
     },
     "Per-file-saved customization sync": {
         def: "Per-file-saved customization sync",
@@ -5825,6 +6663,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Интервал периодической синхронизации",
         zh: "定期同步间隔",
     },
+    PERMANENT: {
+        def: "PERMANENT",
+        es: "PERMANENTE",
+    },
     "Pick a file to resolve conflict": {
         def: "Pick a file to resolve conflict",
         es: "Elegir un archivo para resolver el conflicto",
@@ -5839,6 +6681,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Elige un archivo para ver su historial",
         ko: "기록을 표시할 파일 선택",
         "zh-tw": "選擇要顯示歷程的檔案",
+    },
+    "Please be aware that the End-to-End Encryption passphrase is not validated until the synchronisation process actually commences. This is a security measure designed to protect your data.":
+        {
+            def: "Please be aware that the End-to-End Encryption passphrase is not validated until the synchronisation process actually commences. This is a security measure designed to protect your data.",
+            es: "Ten en cuenta que la frase de contraseña del cifrado de extremo a extremo no se valida hasta que comienza realmente la sincronización. Es una medida de seguridad para proteger tus datos.",
+        },
+    "Please configure your end-to-end encryption settings.": {
+        def: "Please configure your end-to-end encryption settings.",
+        es: "Configura los ajustes de cifrado de extremo a extremo.",
     },
     "Please disable 'Read chunks online' in settings to use Garbage Collection.": {
         def: "Please disable 'Read chunks online' in settings to use Garbage Collection.",
@@ -5858,6 +6709,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "要使用垃圾回收，请在设置中启用“Compute revisions for chunks”。",
         "zh-tw": "若要使用垃圾回收，請在設定中啟用「Compute revisions for chunks」。",
     },
+    "Please enter the CouchDB server information below.": {
+        def: "Please enter the CouchDB server information below.",
+        es: "Introduce a continuación los datos del servidor CouchDB.",
+    },
+    "Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.": {
+        def: "Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.",
+        es: "Introduce los datos necesarios para conectarte a tu servicio de almacenamiento de objetos compatible con S3/MinIO/R2.",
+    },
+    "Please enter the Peer-to-Peer Synchronisation information below.": {
+        def: "Please enter the Peer-to-Peer Synchronisation information below.",
+        es: "Introduce a continuación los datos de la sincronización punto a punto.",
+    },
+    "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.":
+        {
+            def: "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.",
+            es: "Introduce el Setup URI generado durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña del vault.",
+        },
+    "Please follow the steps below to import settings from your existing device.": {
+        def: "Please follow the steps below to import settings from your existing device.",
+        es: "Sigue los pasos siguientes para importar los ajustes desde tu dispositivo actual.",
+    },
+    "PLEASE NOTE": {
+        def: "PLEASE NOTE",
+        es: "TEN EN CUENTA",
+    },
     "Please select 'Cancel' explicitly to cancel this operation.": {
         def: "Please select 'Cancel' explicitly to cancel this operation.",
         es: "Selecciona «Cancelar» de forma explícita para cancelar esta operación.",
@@ -5876,6 +6752,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "请选择一种从其他设备导入设置的方法。",
         "zh-tw": "請選擇一種從其他裝置匯入設定的方法。",
     },
+    "Please select an active P2P remote configuration to change P2P sync targets.": {
+        def: "Please select an active P2P remote configuration to change P2P sync targets.",
+        es: "Selecciona una configuración remota P2P activa para cambiar los destinos de sincronización P2P.",
+    },
     "Please select an option to proceed": {
         def: "Please select an option to proceed",
         es: "Seleccione una opción para continuar",
@@ -5885,6 +6765,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "请选择一个选项以继续",
         "zh-tw": "請選擇一個選項以繼續",
     },
+    "Please select the button below to restart and proceed to the data fetching confirmation.": {
+        def: "Please select the button below to restart and proceed to the data fetching confirmation.",
+        es: "Pulsa el botón de abajo para reiniciar y pasar a la confirmación de la obtención de datos.",
+    },
+    "Please select the button below to restart and proceed to the final confirmation.": {
+        def: "Please select the button below to restart and proceed to the final confirmation.",
+        es: "Pulsa el botón de abajo para reiniciar y pasar a la confirmación final.",
+    },
     "Please select the type of server to which you are connecting.": {
         def: "Please select the type of server to which you are connecting.",
         es: "Seleccione el tipo de servidor al que se está conectando。",
@@ -5893,6 +6781,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Выберите тип сервера, к которому вы подключаетесь。",
         zh: "请选择你要连接的服务器类型。",
         "zh-tw": "請選擇你要連線的伺服器類型。",
+    },
+    "Please select your situation.": {
+        def: "Please select your situation.",
+        es: "Selecciona tu situación.",
     },
     "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.":
         {
@@ -5912,6 +6804,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "请设置此设备名称",
         "zh-tw": "請設定此裝置名稱",
     },
+    "Please understand that this is intended behaviour.": {
+        def: "Please understand that this is intended behaviour.",
+        es: "Comprende que este es el comportamiento previsto.",
+    },
     "Plug-in version": {
         def: "Plug-in version",
         es: "Versión del complemento",
@@ -5920,6 +6816,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Версия плагина",
         zh: "插件版本",
         "zh-tw": "外掛版本",
+    },
+    Plugins: {
+        def: "Plugins",
+        es: "Complementos",
     },
     "Prepare the 'report' to create an issue": {
         def: "Prepare the 'report' to create an issue",
@@ -5942,6 +6842,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Пресеты",
         zh: "预设",
     },
+    "Prevent fetching configuration from server": {
+        def: "Prevent fetching configuration from server",
+        es: "Impedir la obtención de la configuración desde el servidor",
+    },
+    Proceed: {
+        def: "Proceed",
+        es: "Continuar",
+    },
     "Proceed Garbage Collection": {
         def: "Proceed Garbage Collection",
         es: "Continuar con la recolección de basura",
@@ -5950,6 +6858,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Продолжить Garbage Collection",
         zh: "继续执行垃圾回收",
         "zh-tw": "繼續執行垃圾回收",
+    },
+    "Proceed to the next step.": {
+        def: "Proceed to the next step.",
+        es: "Continuar al paso siguiente.",
     },
     "Proceed with Setup URI": {
         def: "Proceed with Setup URI",
@@ -6185,6 +7097,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Уменьшение частоты отражения изменений с диска в БД",
         zh: "降低将磁盘上的更改反映到数据库中的频率",
     },
+    Refresh: {
+        def: "Refresh",
+        es: "Actualizar",
+    },
     Region: {
         def: "Region",
         es: "Región",
@@ -6194,6 +7110,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "지역",
         ru: "Регион",
         zh: "区域",
+    },
+    "Relay settings": {
+        def: "Relay settings",
+        es: "Ajustes del relé",
+    },
+    Reload: {
+        def: "Reload",
+        es: "Recargar",
     },
     Remediation: {
         def: "Remediation",
@@ -6240,6 +7164,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "远端名称",
         "zh-tw": "遠端名稱",
     },
+    "Remote only": {
+        def: "Remote only",
+        es: "Solo remoto",
+    },
     "Remote server type": {
         def: "Remote server type",
         es: "Tipo de servidor remoto",
@@ -6268,6 +7196,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Переименовать",
         zh: "重命名",
         "zh-tw": "重新命名",
+    },
+    "Replicate now": {
+        def: "Replicate now",
+        es: "Replicar ahora",
+    },
+    Replicating: {
+        def: "Replicating",
+        es: "Replicando",
+    },
+    "Replicating...": {
+        def: "Replicating...",
+        es: "Replicando...",
     },
     "Replicator.Dialogue.Locked.Action.Dismiss": {
         def: "Cancel for reconfirmation",
@@ -6487,6 +7427,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "重置所有日志计数器",
         "zh-tw": "重設所有日誌計數器",
     },
+    "Reset and Resume Synchronisation": {
+        def: "Reset and Resume Synchronisation",
+        es: "Restablecer y reanudar la sincronización",
+    },
     "Reset journal received history": {
         def: "Reset journal received history",
         es: "Restablecer historial de recepción del diario",
@@ -6600,6 +7544,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             zh: "将所有冲突文件统一保留较新的版本。注意：这会覆盖较旧的版本，且被覆盖的内容无法恢复。",
             "zh-tw": "將所有衝突檔案統一保留較新的版本。注意：這會覆寫較舊的版本，且被覆寫的內容無法復原。",
         },
+    "Restart and Fetch Data": {
+        def: "Restart and Fetch Data",
+        es: "Reiniciar y obtener los datos",
+    },
+    "Restart and Initialise Server": {
+        def: "Restart and Initialise Server",
+        es: "Reiniciar e inicializar el servidor",
+    },
     "Restart Now": {
         def: "Restart Now",
         es: "Reiniciar ahora",
@@ -6626,6 +7578,26 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "从远端恢复或重建本地数据库。",
         "zh-tw": "從遠端還原或重建本機資料庫。",
     },
+    Rev: {
+        def: "Rev",
+        es: "Rev",
+    },
+    "Revert changes": {
+        def: "Revert changes",
+        es: "Revertir cambios",
+    },
+    Revoke: {
+        def: "Revoke",
+        es: "Revocar",
+    },
+    "Room ID": {
+        def: "Room ID",
+        es: "ID de sala",
+    },
+    "Room ID suffix:": {
+        def: "Room ID suffix:",
+        es: "Sufijo del ID de sala:",
+    },
     "Run Doctor": {
         def: "Run Doctor",
         es: "Ejecutar el Doctor",
@@ -6637,6 +7609,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "立即诊断",
         "zh-tw": "執行診斷",
     },
+    "S3/MinIO/R2 Configuration": {
+        def: "S3/MinIO/R2 Configuration",
+        es: "Configuración de S3/MinIO/R2",
+    },
     "S3/MinIO/R2 Object Storage": {
         def: "S3/MinIO/R2 Object Storage",
         es: "Almacenamiento de objetos S3/MinIO/R2",
@@ -6645,6 +7621,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Объектное хранилище S3/MinIO/R2",
         zh: "S3/MinIO/R2 对象存储",
         "zh-tw": "S3/MinIO/R2 物件儲存",
+    },
+    Same: {
+        def: "Same",
+        es: "Igual",
+    },
+    "Same or local only": {
+        def: "Same or local only",
+        es: "Igual o solo local",
+    },
+    "Save and Apply": {
+        def: "Save and Apply",
+        es: "Guardar y aplicar",
     },
     "Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.":
         {
@@ -6675,6 +7663,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Сканировать QR-код (рекомендуется для мобильных устройств)",
         zh: "扫描二维码（移动端推荐）",
         "zh-tw": "掃描 QR Code（行動裝置推薦）",
+    },
+    "Scan changes": {
+        def: "Scan changes",
+        es: "Buscar cambios",
     },
     "Scan changes on customization sync": {
         def: "Scan changes on customization sync",
@@ -6754,6 +7746,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Сканировать скрытые файлы периодически",
         zh: "定期扫描隐藏文件",
     },
+    "Scan QR Code": {
+        def: "Scan QR Code",
+        es: "Escanear código QR",
+    },
     "Scan the QR code displayed on an active device using this device's camera.": {
         def: "Scan the QR code displayed on an active device using this device's camera.",
         es: "Escanee con la cámara de este dispositivo el código QR mostrado en un dispositivo activo。",
@@ -6809,6 +7805,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Секунды. Сохранение в локальную базу данных будет отложено.",
         zh: "秒。在我们停止输入或保存后,保存到本地数据库将延迟此值 ",
     },
+    "Secret Access Key": {
+        def: "Secret Access Key",
+        es: "Clave de acceso secreta",
+    },
     "Secret Key": {
         def: "Secret Key",
         es: "Clave secreta",
@@ -6819,6 +7819,22 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Секретный ключ",
         zh: "Secret Key",
     },
+    "Select active P2P remote": {
+        def: "Select active P2P remote",
+        es: "Seleccionar el remoto P2P activo",
+    },
+    "Select All Shiny": {
+        def: "Select All Shiny",
+        es: "Seleccionar todo lo nuevo",
+    },
+    "Select Flagged Shiny": {
+        def: "Select Flagged Shiny",
+        es: "Seleccionar lo nuevo marcado",
+    },
+    "Select P2P remote...": {
+        def: "Select P2P remote...",
+        es: "Seleccionar remoto P2P...",
+    },
     "Select the database adapter to use.": {
         def: "Select the database adapter to use.",
         es: "Selecciona el adaptador de base de datos que se usará.",
@@ -6827,6 +7843,20 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Выберите используемый адаптер базы данных.",
         zh: "选择要使用的数据库适配器。",
         "zh-tw": "選擇要使用的資料庫適配器。",
+    },
+    "Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten.":
+        {
+            def: "Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten.",
+            es: "Al elegir esta opción, los datos actuales de este dispositivo se usarán para inicializar el servidor. Cualquier dato existente en el servidor se sobrescribirá por completo.",
+        },
+    "Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.":
+        {
+            def: "Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.",
+            es: "Al elegir esta opción, este dispositivo se unirá al servidor existente. Tendrás que obtener del servidor los datos de sincronización ya existentes.",
+        },
+    Selective: {
+        def: "Selective",
+        es: "Selectivo",
     },
     Send: {
         def: "Send",
@@ -6846,6 +7876,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "发送 chunks",
         "zh-tw": "傳送 chunks",
     },
+    SENDING: {
+        def: "SENDING",
+        es: "ENVIANDO",
+    },
     "Server URI": {
         def: "Server URI",
         es: "URI del servidor",
@@ -6855,6 +7889,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "서버 URI",
         ru: "URI сервера",
         zh: "服务器 URI",
+    },
+    SESSION: {
+        def: "SESSION",
+        es: "SESIÓN",
     },
     "Setting.GenerateKeyPair.Desc": {
         def: 'We have generated a key pair!\n\nNote: This key pair will never be shown again. Please save it in a safe place. If you have lost it, you need to generate a new key pair.\nNote 2: The public key is in spki format, and the Private key is in pkcs8 format. For the sake of convenience, newlines are converted to `\\n` in public key.\nNote 3: The public key should be configured in the remote database, and the private key should be configured in local devices.\n\n>[!FOR YOUR EYES ONLY]-\n> <div class="sls-keypair">\n>\n> ### Public Key\n> ```\n${public_key}\n> ```\n>\n> ### Private Key\n> ```\n${private_key}\n> ```\n>\n> </div>\n\n>[!Both for copying]-\n>\n> <div class="sls-keypair">\n>\n> ```\n${public_key}\n${private_key}\n> ```\n>\n> </div>\n\n',
@@ -6939,6 +7977,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Ваши изменения требуют загрузки из удалённой базы данных. Хотите продолжить?",
         zh: "Your changes require fetching from the remote database. Do you want to proceed?",
     },
+    "Setup Complete: Preparing to Fetch Synchronisation Data": {
+        def: "Setup Complete: Preparing to Fetch Synchronisation Data",
+        es: "Configuración completada: preparando la obtención de los datos de sincronización",
+    },
+    "Setup Complete: Preparing to Initialise Server": {
+        def: "Setup Complete: Preparing to Initialise Server",
+        es: "Configuración completada: preparando la inicialización del servidor",
+    },
     "Setup URI dialog cancelled.": {
         def: "Setup URI dialog cancelled.",
         es: "Se ha cancelado el diálogo del Setup URI.",
@@ -6947,6 +7993,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Диалог Setup URI был отменён.",
         zh: "Setup URI 对话框已取消。",
         "zh-tw": "Setup URI 對話框已取消。",
+    },
+    "Setup-URI": {
+        def: "Setup-URI",
+        es: "Setup-URI",
     },
     "Setup.Apply.Buttons.ApplyAndFetch": {
         def: "Apply and Fetch",
@@ -7600,6 +8650,22 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Показывать подробный лог. Пожалуйста, включите при сообщении о проблеме.",
         zh: "显示详细日志。如果您报告问题,请启用此选项 ",
     },
+    "Signaling Server Connection": {
+        def: "Signaling Server Connection",
+        es: "Conexión al servidor de señalización",
+    },
+    "Signalling Status": {
+        def: "Signalling Status",
+        es: "Estado de la señalización",
+    },
+    "Skip and close": {
+        def: "Skip and close",
+        es: "Omitir y cerrar",
+    },
+    Snippets: {
+        def: "Snippets",
+        es: "Fragmentos",
+    },
     "Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.":
         {
             def: "Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.",
@@ -7611,6 +8677,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "某些裝置的進度值不同（最大：${maxProgress}，最小：${minProgress}）。\n這可能表示某些裝置尚未完成同步，進而可能導致衝突。強烈建議在繼續之前先確認所有裝置都已同步。",
         },
+    "Start Broadcasting": {
+        def: "Start Broadcasting",
+        es: "Iniciar difusión",
+    },
+    "Start change-broadcasting on Connect": {
+        def: "Start change-broadcasting on Connect",
+        es: "Iniciar la difusión de cambios al conectar",
+    },
+    "Start Sync & Close": {
+        def: "Start Sync & Close",
+        es: "Iniciar sincronización y cerrar",
+    },
     "Starts synchronisation when a file is saved.": {
         def: "Starts synchronisation when a file is saved.",
         es: "Inicia sincronización al guardar un archivo",
@@ -7620,6 +8698,22 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일이 저장될 때 동기화를 시작합니다.",
         ru: "Запускать синхронизацию при сохранении файла.",
         zh: "当文件保存时启动同步 ",
+    },
+    Stat: {
+        def: "Stat",
+        es: "Estado",
+    },
+    Stats: {
+        def: "Stats",
+        es: "Estadísticas",
+    },
+    "Stop ⚡": {
+        def: "Stop ⚡",
+        es: "Detener ⚡",
+    },
+    "Stop Broadcasting": {
+        def: "Stop Broadcasting",
+        es: "Detener difusión",
     },
     "Stop reflecting database changes to storage files.": {
         def: "Stop reflecting database changes to storage files.",
@@ -7646,6 +8740,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Almacenamiento -> Base de datos",
         ko: "스토리지 -> 데이터베이스",
         "zh-tw": "儲存空間 -> 資料庫",
+    },
+    "Strongly Recommended": {
+        def: "Strongly Recommended",
+        es: "Muy recomendado",
     },
     "Suppress notification of hidden files change": {
         def: "Suppress notification of hidden files change",
@@ -7694,6 +8792,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Переключиться на IndexedDB",
         zh: "切换到 IndexedDB",
         "zh-tw": "切換至 IndexedDB",
+    },
+    Sync: {
+        def: "Sync",
+        es: "Sincronizar",
     },
     "Sync after merging file": {
         def: "Sync after merging file",
@@ -7765,6 +8867,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Синхронизация при запуске",
         zh: "启动时同步",
     },
+    "Sync once": {
+        def: "Sync once",
+        es: "Sincronizar una vez",
+    },
     "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": {
         def: "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.",
         es: "Sincronización mediante archivos de registro. Debe haber configurado un almacenamiento de objetos compatible con S3/MinIO/R2。",
@@ -7792,6 +8898,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "同步中",
         "zh-tw": "同步中",
     },
+    "Syncing...": {
+        def: "Syncing...",
+        es: "Sincronizando...",
+    },
     "Target patterns": {
         def: "Target patterns",
         es: "Patrones objetivo",
@@ -7800,6 +8910,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Целевые шаблоны",
         zh: "目标模式",
         "zh-tw": "目標模式",
+    },
+    "Test Settings and Continue": {
+        def: "Test Settings and Continue",
+        es: "Probar los ajustes y continuar",
     },
     "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.":
         {
@@ -7812,6 +8926,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Только для тестирования - разрешать конфликты файлов синхронизацией новых копий.",
             zh: "仅供测试 - 通过同步文件的较新副本来解决文件冲突,这可能会覆盖修改过的文件。请注意 ",
         },
+    "The connection to the server has been configured successfully. As the next step,": {
+        def: "The connection to the server has been configured successfully. As the next step,",
+        es: "La conexión con el servidor se ha configurado correctamente. Como paso siguiente,",
+    },
     "The delay for consecutive on-demand fetches": {
         def: "The delay for consecutive on-demand fetches",
         es: "Retraso entre obtenciones consecutivas",
@@ -7821,6 +8939,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "연속 청크 요청 간 대기 시간",
         ru: "Задержка для последовательных запросов по требованию",
         zh: "连续按需获取的延迟",
+    },
+    "The files in this Vault are almost identical to the server's.": {
+        def: "The files in this Vault are almost identical to the server's.",
+        es: "Los archivos de este Vault son casi idénticos a los del servidor.",
     },
     "The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.":
         {
@@ -7832,6 +8954,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             zh: "以下已接受节点缺少节点信息：\n- ${missingNodes}\n\n这表示它们已有一段时间未连接，或仍停留在较旧版本。\n如有可能，建议先更新所有设备。如果有已不再使用的设备，可以先锁定一次远程端以清除全部已接受节点。",
             "zh-tw":
                 "以下已接受節點缺少節點資訊：\n- ${missingNodes}\n\n這表示它們已有一段時間未連線，或仍停留在較舊版本。\n如有可能，建議先更新所有裝置。如果有已不再使用的裝置，可以先鎖定一次遠端端以清除全部已接受節點。",
+        },
+    "The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and passphrase on all devices you want to synchronise.":
+        {
+            def: "The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and passphrase on all devices you want to synchronise.",
+            es: "El ID de grupo y la frase de contraseña identifican tu grupo de dispositivos. Usa el mismo ID de grupo y la misma frase de contraseña en todos los dispositivos que quieras sincronizar.",
         },
     "The Hash algorithm for chunk IDs": {
         def: "The Hash algorithm for chunk IDs",
@@ -7851,6 +8978,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。",
         },
+    "the latest synchronisation data will be downloaded from the server to this device.": {
+        def: "the latest synchronisation data will be downloaded from the server to this device.",
+        es: "se descargarán a este dispositivo los datos de sincronización más recientes del servidor.",
+    },
+    "the local database, that is to say the synchronisation information, must be reconstituted.": {
+        def: "the local database, that is to say the synchronisation information, must be reconstituted.",
+        es: "hay que reconstruir la base de datos local, es decir, la información de sincronización.",
+    },
     "The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.":
         {
             def: "The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.",
@@ -7895,6 +9030,55 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "基于事件自动同步的最小间隔。",
         "zh-tw": "事件觸發自動同步的最小間隔。",
     },
+    "The remote is already set up, and the configuration is compatible (or got compatible by this operation).": {
+        def: "The remote is already set up, and the configuration is compatible (or got compatible by this operation).",
+        es: "El remoto ya está configurado y la configuración es compatible (o pasa a serlo con esta operación).",
+    },
+    "The Setup-URI does not appear to be valid. Please check that you have copied it correctly.": {
+        def: "The Setup-URI does not appear to be valid. Please check that you have copied it correctly.",
+        es: "El Setup-URI no parece válido. Comprueba que lo hayas copiado correctamente.",
+    },
+    "The Setup-URI is valid and ready to use.": {
+        def: "The Setup-URI is valid and ready to use.",
+        es: "El Setup-URI es válido y está listo para usarse.",
+    },
+    "the single, authoritative master copy": {
+        def: "the single, authoritative master copy",
+        es: "la única copia maestra de referencia",
+    },
+    "the synchronisation data on the server will be built based on the current data on this device.": {
+        def: "the synchronisation data on the server will be built based on the current data on this device.",
+        es: "los datos de sincronización del servidor se construirán a partir de los datos actuales de este dispositivo.",
+    },
+    Themes: {
+        def: "Themes",
+        es: "Temas",
+    },
+    "There is a way to resolve this on other devices.": {
+        def: "There is a way to resolve this on other devices.",
+        es: "Hay una forma de resolver esto en los demás dispositivos.",
+    },
+    "There may be differences between the files in this Vault and the server.": {
+        def: "There may be differences between the files in this Vault and the server.",
+        es: "Puede haber diferencias entre los archivos de este Vault y los del servidor.",
+    },
+    "Therefore, we ask that you exercise extreme caution when configuring server information manually. If an incorrect passphrase is entered, the data on the server will become corrupted.":
+        {
+            def: "Therefore, we ask that you exercise extreme caution when configuring server information manually. If an incorrect passphrase is entered, the data on the server will become corrupted.",
+            es: "Por tanto, extrema la precaución al configurar manualmente los datos del servidor. Si introduces una frase de contraseña incorrecta, los datos del servidor se corromperán.",
+        },
+    "This can isolate your connections between devices. Use the same Room ID for the same devices.": {
+        def: "This can isolate your connections between devices. Use the same Room ID for the same devices.",
+        es: "Esto permite aislar tus conexiones entre dispositivos. Usa el mismo ID de sala para los mismos dispositivos.",
+    },
+    "This device": {
+        def: "This device",
+        es: "Este dispositivo",
+    },
+    "This device name": {
+        def: "This device name",
+        es: "Nombre de este dispositivo",
+    },
     "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.":
         {
             def: "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.",
@@ -7915,6 +9099,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "这是面向没有 URI 或希望手动配置详细参数的高级选项。",
         "zh-tw": "這是面向沒有 URI 或希望手動設定詳細參數的進階選項。",
     },
+    "This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.":
+        {
+            def: "This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.",
+            es: "Esta es una operación extremadamente potente. Te recomendamos encarecidamente copiar la carpeta de tu Vault a un lugar seguro.",
+        },
     "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.":
         {
             def: "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.",
@@ -7935,6 +9124,28 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.",
         zh: "此密码不会复制到另一台设备。在您再次配置之前,它将设置为 `Default` ",
     },
+    "This password is used to encrypt the connection. Use something long enough.": {
+        def: "This password is used to encrypt the connection. Use something long enough.",
+        es: "Esta contraseña se usa para cifrar la conexión. Usa algo suficientemente largo.",
+    },
+    "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as":
+        {
+            def: "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as",
+            es: "Este procedimiento eliminará primero todos los datos de sincronización existentes en el servidor. A continuación, los datos del servidor se reconstruirán por completo usando el estado actual del Vault de este dispositivo (incluida su base de datos local) como",
+        },
+    "This setting must be the same even when connecting to multiple synchronisation destinations.": {
+        def: "This setting must be the same even when connecting to multiple synchronisation destinations.",
+        es: "Este ajuste debe ser el mismo incluso si te conectas a varios destinos de sincronización.",
+    },
+    "This Vault is empty, or contains only new files that are not on the server.": {
+        def: "This Vault is empty, or contains only new files that are not on the server.",
+        es: "Este Vault está vacío o solo contiene archivos nuevos que no están en el servidor.",
+    },
+    "This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.":
+        {
+            def: "This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.",
+            es: "Esto reconstruirá la base de datos local de este dispositivo con los datos más recientes del servidor. La acción está pensada para resolver inconsistencias de sincronización y restaurar el funcionamiento correcto.",
+        },
     "This will recreate chunks for all files. If there were missing chunks, this may fix the errors.": {
         def: "This will recreate chunks for all files. If there were missing chunks, this may fix the errors.",
         es: "Esto recreará los fragmentos de todos los archivos. Si faltaban fragmentos, esto puede corregir los errores.",
@@ -7944,12 +9155,33 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "这会为所有文件重新生成 chunks。如果之前存在缺失的 chunks，这可能修复相关错误。",
         "zh-tw": "這會為所有檔案重新建立 chunks。若先前有遺失的 chunks，這可能修復相關錯誤。",
     },
+    "To minimise the creation of new conflicts": {
+        def: "To minimise the creation of new conflicts",
+        es: "Para minimizar la creación de nuevos conflictos",
+    },
     "Transfer Tweak": {
         def: "Transfer Tweak",
         es: "Ajustes de transferencia",
         ja: "転送の調整",
         ko: "전송 조정",
         ru: "Настройки передачи",
+    },
+    "TURN Credential": {
+        def: "TURN Credential",
+        es: "Credencial de TURN",
+    },
+    "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank.":
+        {
+            def: "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank.",
+            es: "Los ajustes del servidor TURN solo son necesarios si estás detrás de un NAT estricto o de un cortafuegos que impide las conexiones P2P directas. En la mayoría de los casos puedes dejar estos campos vacíos.",
+        },
+    "TURN Server URLs (comma-separated)": {
+        def: "TURN Server URLs (comma-separated)",
+        es: "URL de servidores TURN (separadas por comas)",
+    },
+    "TURN Username": {
+        def: "TURN Username",
+        es: "Usuario de TURN",
     },
     "TweakMismatchResolve.Action.DisableAutoAcceptCompatible": {
         def: "Disable auto-accept",
@@ -9763,6 +10995,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Уникальное имя между всеми синхронизируемыми устройствами.",
         zh: "所有同步设备之间的唯一名称。要编辑此设置,请首先禁用自定义同步",
     },
+    "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing.":
+        {
+            def: "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing.",
+            es: "Si no estás seguro, elegir esta opción es algo arriesgado. Da por supuesto que la configuración del servidor es compatible con este dispositivo. Si no lo es, puede haber pérdida de datos. Asegúrate de saber lo que haces.",
+        },
+    "Updating list...": {
+        def: "Updating list...",
+        es: "Actualizando lista...",
+    },
+    URL: {
+        def: "URL",
+        es: "URL",
+    },
     "Use a custom passphrase": {
         def: "Use a custom passphrase",
         es: "Usar una frase de contraseña personalizada",
@@ -9790,6 +11035,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Использовать пользовательский HTTP обработчик",
         zh: "使用自定义 HTTP 处理程序",
     },
+    "Use Diagnostic RTCPeerConnection for statistics": {
+        def: "Use Diagnostic RTCPeerConnection for statistics",
+        es: "Usar el RTCPeerConnection de diagnóstico para las estadísticas",
+    },
     "Use dynamic iteration count": {
         def: "Use dynamic iteration count",
         es: "Usar conteo de iteraciones dinámico",
@@ -9799,6 +11048,26 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동적 반복 횟수 사용",
         ru: "Использовать динамическое количество итераций",
         zh: "使用动态迭代次数",
+    },
+    "Use internal API": {
+        def: "Use internal API",
+        es: "Usar la API interna",
+    },
+    "Use Internal API": {
+        def: "Use Internal API",
+        es: "Usar la API interna",
+    },
+    "Use JWT Authentication": {
+        def: "Use JWT Authentication",
+        es: "Usar autenticación JWT",
+    },
+    "Use Path-Style Access": {
+        def: "Use Path-Style Access",
+        es: "Usar acceso de tipo ruta (path-style)",
+    },
+    "Use Random Number": {
+        def: "Use Random Number",
+        es: "Usar número aleatorio",
     },
     "Use Segmented-splitter": {
         def: "Use Segmented-splitter",
@@ -9839,6 +11108,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "하트비트 대신 타임아웃 사용",
         ru: "Использовать таймауты вместо пульса",
         zh: "使用超时而不是心跳",
+    },
+    "Use vrtmrz's relay": {
+        def: "Use vrtmrz's relay",
+        es: "Usar el relé de vrtmrz",
     },
     username: {
         def: "username",
@@ -9899,6 +11172,18 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.",
             zh: "警告！这将严重影响性能。并且日志不会以默认名称同步。请小心处理日志；它们通常包含您的敏感信息 ",
         },
+    WATCHING: {
+        def: "WATCHING",
+        es: "OBSERVANDO",
+    },
+    'We can not use "/" to the device name': {
+        def: 'We can not use "/" to the device name',
+        es: 'No se puede usar "/" en el nombre del dispositivo',
+    },
+    "We can use only Secure (HTTPS) connections on Obsidian Mobile.": {
+        def: "We can use only Secure (HTTPS) connections on Obsidian Mobile.",
+        es: "En Obsidian Mobile solo se pueden usar conexiones seguras (HTTPS).",
+    },
     "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.":
         {
             def: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
@@ -9907,6 +11192,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "이 기능이 활성화되어 있는 동안에는 기기 이름을 변경할 수 없습니다. 기기 이름을 변경하려면 이 기능을 비활성화하세요.",
             ru: "Невозможно изменить имя устройства, пока эта функция включена. Отключите её, чтобы изменить имя устройства.",
             zh: "启用此功能时无法更改设备名称。如需修改设备名称，请先禁用此功能。",
+        },
+    "We have to configure the device name": {
+        def: "We have to configure the device name",
+        es: "Hay que configurar el nombre del dispositivo",
+    },
+    "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.":
+        {
+            def: "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.",
+            es: "Te recomendamos copiar la carpeta de tu Vault a un lugar seguro. Así tendrás una salvaguarda en caso de que surjan muchos conflictos o de que sincronices por error con un destino incorrecto.",
         },
     "We will now guide you through a few questions to simplify the synchronisation setup.": {
         def: "We will now guide you through a few questions to simplify the synchronisation setup.",
@@ -10010,6 +11304,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "你正在将此设备加入到现有同步配置中。",
         "zh-tw": "你正在將此裝置加入既有同步設定中。",
     },
+    "You can configure in the Obsidian Plugin Settings.": {
+        def: "You can configure in the Obsidian Plugin Settings.",
+        es: "Puedes configurarlo en los ajustes del complemento de Obsidian.",
+    },
+    "You should create a new synchronisation destination and rebuild your data there.": {
+        def: "You should create a new synchronisation destination and rebuild your data there.",
+        es: "Deberías crear un nuevo destino de sincronización y reconstruir allí tus datos.",
+    },
+    "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.":
+        {
+            def: "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.",
+            es: "Solo deberías realizar esta operación en circunstancias excepcionales: cuando los datos del servidor estén completamente corruptos, cuando ya no necesites los cambios de los demás dispositivos o cuando el tamaño de la base de datos sea inusualmente grande respecto al del Vault.",
+        },
     "Compute revisions for chunks (Previous behaviour)": {
         es: "Calcular revisiones para chunks (comportamiento anterior)",
     },

@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { CustomRegExpSource } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { isInvertedRegExp, isValidRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { $msg as translateMessage } from "@/common/translation";
 
     export let patterns = [] as CustomRegExpSource[];
     export let originals = [] as CustomRegExpSource[];
@@ -31,7 +32,7 @@
         <!-- svelte-ignore a11y-label-has-associated-control -->
         <li>
             <label>{modified[idx]}{statusName[idx]}</label>
-            <span class="chip">{isInvertedExp[idx] ? "INVERTED" : ""}</span>
+            <span class="chip">{isInvertedExp[idx] ? translateMessage("INVERTED") : ""}</span>
             <input type="text" bind:value={pattern} class={modified[idx]} />
             <button class="iconbutton" on:click={() => remove(idx)}>🗑</button>
         </li>

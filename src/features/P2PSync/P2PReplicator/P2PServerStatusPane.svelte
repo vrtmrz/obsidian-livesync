@@ -170,11 +170,11 @@
     });
 
     function getAcceptanceStatus(peer: P2PServerInfo["knownAdvertisements"][number]) {
-        if (peer.isTemporaryAccepted === true) return "ACCEPTED (in session)";
-        if (peer.isAccepted === true) return "ACCEPTED";
-        if (peer.isTemporaryAccepted === false) return "DENIED (in session)";
-        if (peer.isAccepted === false) return "DENIED";
-        return "NEW";
+        if (peer.isTemporaryAccepted === true) return translateMessage("ACCEPTED (in session)");
+        if (peer.isAccepted === true) return translateMessage("ACCEPTED");
+        if (peer.isTemporaryAccepted === false) return translateMessage("DENIED (in session)");
+        if (peer.isAccepted === false) return translateMessage("DENIED");
+        return translateMessage("NEW");
     }
 
     function getAcceptanceStatusClass(peer: P2PServerInfo["knownAdvertisements"][number]) {
@@ -409,7 +409,7 @@
 
 <div class="p2p-container">
     <div class="pane-header">
-        <h2>P2P Status</h2>
+        <h2>{translateMessage("P2P Status")}</h2>
         <div class="pane-header-actions">
             <div class="remote-picker-wrap">
                 <select
@@ -417,11 +417,11 @@
                     value={selectedP2PRemoteConfigurationId}
                     onchange={onP2PRemoteSelected}
                     disabled={selectingP2PRemote}
-                    aria-label="Select active P2P remote"
-                    title="Select active P2P remote"
+                    aria-label={translateMessage("Select active P2P remote")}
+                    title={translateMessage("Select active P2P remote")}
                 >
                     {#if p2pRemoteOptions.length === 0}
-                        <option value="">Select P2P remote...</option>
+                        <option value="">{translateMessage("Select P2P remote...")}</option>
                     {/if}
                     {#each p2pRemoteOptions as option}
                         <option value={option.id}>
@@ -432,8 +432,8 @@
                 <button
                     class="icon-button"
                     onclick={() => createAndSelectP2PRemote()}
-                    title="Create P2P remote"
-                    aria-label="Create P2P remote"
+                    title={translateMessage("Create P2P remote")}
+                    aria-label={translateMessage("Create P2P remote")}
                 >
                     +
                 </button>
@@ -441,8 +441,8 @@
             <button
                 class="icon-button"
                 onclick={openConnectionSettings}
-                title="Open P2P Setup..."
-                aria-label="Open P2P Setup..."
+                title={translateMessage("Open P2P Setup...")}
+                aria-label={translateMessage("Open P2P Setup...")}
             >
                 ⚙
             </button>
@@ -450,15 +450,17 @@
     </div>
 
     {#if !canEditP2PSettings()}
-        <p class="warning-line">Please select an active P2P remote configuration to change P2P sync targets.</p>
+        <p class="warning-line">
+            {translateMessage("Please select an active P2P remote configuration to change P2P sync targets.")}
+        </p>
     {/if}
 
     <P2PServerStatusCard {getLiveSyncReplicator} {core} />
 
     <div class="peers-section">
         <div class="peers-header">
-            <h3>Detected Peers</h3>
-            <button class="refresh" onclick={requestServerStatus}>Refresh</button>
+            <h3>{translateMessage("Detected Peers")}</h3>
+            <button class="refresh" onclick={requestServerStatus}>{translateMessage("Refresh")}</button>
         </div>
 
         {#if serverInfo && serverInfo.knownAdvertisements.length > 0}
@@ -470,7 +472,11 @@
                                 {peer.name} :
                                 <span class="peer-id-mini" title={peer.peerId}>({peer.peerId.slice(0, 8)})</span>
                                 {#if isCommunicating(peer.peerId)}
-                                    <span class="comm-icon" title="Communicating" aria-label="Communicating">📡</span>
+                                    <span
+                                        class="comm-icon"
+                                        title={translateMessage("Communicating")}
+                                        aria-label={translateMessage("Communicating")}>📡</span
+                                    >
                                 {/if}
                             </div>
                             <div class="peer-meta">
@@ -486,8 +492,12 @@
                                     <button
                                         class="emoji-button"
                                         disabled={replicatingPeerId !== null}
-                                        title={replicatingPeerId === peer.peerId ? "Replicating..." : "Replicate now"}
-                                        aria-label={replicatingPeerId === peer.peerId ? "Replicating" : "Replicate now"}
+                                        title={replicatingPeerId === peer.peerId
+                                            ? translateMessage("Replicating...")
+                                            : translateMessage("Replicate now")}
+                                        aria-label={replicatingPeerId === peer.peerId
+                                            ? translateMessage("Replicating")
+                                            : translateMessage("Replicate now")}
                                         onclick={() => startReplication(peer)}
                                     >
                                         {replicatingPeerId === peer.peerId ? "⏳" : "🔄"}
@@ -497,7 +507,7 @@
                                         disabled={decidingPeerId !== null}
                                         onclick={() => revokeDecision(peer)}
                                     >
-                                        Revoke
+                                        {translateMessage("Revoke")}
                                     </button>
                                     <button
                                         class="emoji-button"
@@ -534,11 +544,11 @@
                                     </span>
                                 </div>
                                 <div class="decision-row">
-                                    <span class="decision-label">PERMANENT</span>
+                                    <span class="decision-label">{translateMessage("PERMANENT")}</span>
                                     <button
                                         class="emoji-button"
-                                        title="Allow permanently"
-                                        aria-label="Allow permanently"
+                                        title={translateMessage("Allow permanently")}
+                                        aria-label={translateMessage("Allow permanently")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, true, false)}
                                     >
@@ -546,8 +556,8 @@
                                     </button>
                                     <button
                                         class="emoji-button mod-warning"
-                                        title="Deny permanently"
-                                        aria-label="Deny permanently"
+                                        title={translateMessage("Deny permanently")}
+                                        aria-label={translateMessage("Deny permanently")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, false, false)}
                                     >
@@ -555,11 +565,11 @@
                                     </button>
                                 </div>
                                 <div class="decision-row">
-                                    <span class="decision-label">SESSION</span>
+                                    <span class="decision-label">{translateMessage("SESSION")}</span>
                                     <button
                                         class="emoji-button"
-                                        title="Allow in session"
-                                        aria-label="Allow in session"
+                                        title={translateMessage("Allow in session")}
+                                        aria-label={translateMessage("Allow in session")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, true, true)}
                                     >
@@ -567,8 +577,8 @@
                                     </button>
                                     <button
                                         class="emoji-button mod-warning"
-                                        title="Deny in session"
-                                        aria-label="Deny in session"
+                                        title={translateMessage("Deny in session")}
+                                        aria-label={translateMessage("Deny in session")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, false, true)}
                                     >
@@ -582,7 +592,7 @@
                                     disabled={decidingPeerId !== null}
                                     onclick={() => revokeDecision(peer)}
                                 >
-                                    Revoke
+                                    {translateMessage("Revoke")}
                                 </button>
                             {/if}
                         </div>
@@ -590,9 +600,11 @@
                 {/each}
             </div>
         {:else if serverInfo}
-            <p class="no-peers">No devices available. Waiting for other devices to connect...</p>
+            <p class="no-peers">
+                {translateMessage("No devices available. Waiting for other devices to connect...")}
+            </p>
         {:else}
-            <p class="no-peers">Fetching status...</p>
+            <p class="no-peers">{translateMessage("Fetching status...")}</p>
         {/if}
     </div>
 </div>

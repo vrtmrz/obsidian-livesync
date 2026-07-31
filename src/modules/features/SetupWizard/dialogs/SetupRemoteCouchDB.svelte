@@ -75,7 +75,7 @@
             const trialRemoteSetting = generateSetting();
             const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
             if (!replicator) {
-                return "Failed to create replicator instance.";
+                return translateMessage("Failed to create replicator instance.");
             }
             try {
                 const result = await probeCouchDBConnection(
@@ -86,10 +86,12 @@
                 if (result.ok) {
                     return "";
                 } else {
-                    return `Failed to connect to the server: ${result.reason}`;
+                    return translateMessage("Failed to connect to the server: ${reason}", {
+                        reason: `${result.reason}`,
+                    });
                 }
             } catch (e) {
-                return `Failed to connect to the server: ${e}`;
+                return translateMessage("Failed to connect to the server: ${reason}", { reason: `${e}` });
             }
         } finally {
             processing = false;
@@ -106,7 +108,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = translateMessage("Error during connection test: ${reason}", { reason: `${e}` });
             return;
         }
     }
@@ -159,9 +161,9 @@
     });
 </script>
 
-<DialogHeader title="CouchDB Configuration" />
-<Guidance>Please enter the CouchDB server information below.</Guidance>
-<InputRow label="URL">
+<DialogHeader title={translateMessage("CouchDB Configuration")} />
+<Guidance>{translateMessage("Please enter the CouchDB server information below.")}</Guidance>
+<InputRow label={translateMessage("URL")}>
     <input
         type="text"
         name="couchdb-url"
@@ -174,13 +176,15 @@
         pattern="^https?://.+"
     />
 </InputRow>
-<InfoNote warning visible={isURIInsecure}>We can use only Secure (HTTPS) connections on Obsidian Mobile.</InfoNote>
+<InfoNote warning visible={isURIInsecure}
+    >{translateMessage("We can use only Secure (HTTPS) connections on Obsidian Mobile.")}</InfoNote
+>
 <InfoNote warning visible={isURLInvalid}>{translateMessage("Enter a complete HTTP or HTTPS URL.")}</InfoNote>
-<InputRow label="Username">
+<InputRow label={translateMessage("Username")}>
     <input
         type="text"
         name="couchdb-username"
-        placeholder="Enter your username"
+        placeholder={translateMessage("Enter your username")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -188,20 +192,20 @@
         bind:value={syncSetting.couchDB_USER}
     />
 </InputRow>
-<InputRow label="Password">
+<InputRow label={translateMessage("Password")}>
     <Password
         name="couchdb-password"
-        placeholder="Enter your password"
+        placeholder={translateMessage("Enter your password")}
         bind:value={syncSetting.couchDB_PASSWORD}
         required
     />
 </InputRow>
 
-<InputRow label="Database Name">
+<InputRow label={translateMessage("Database Name")}>
     <input
         type="text"
         name="couchdb-database"
-        placeholder="Enter your database name"
+        placeholder={translateMessage("Enter your database name")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -212,17 +216,17 @@
 <InfoNote>
     {translateMessage("CouchDB validates the database name when you connect. The name must not be empty.")}
 </InfoNote>
-<InputRow label="Use Internal API">
+<InputRow label={translateMessage("Use Internal API")}>
     <input type="checkbox" name="couchdb-use-internal-api" bind:checked={syncSetting.useRequestAPI} />
 </InputRow>
 <InfoNote>
-    If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate
-    with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian
-    versions.
+    {translateMessage(
+        "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions."
+    )}
 </InfoNote>
 
-<ExtraItems title="Advanced Settings">
-    <InputRow label="Custom Headers">
+<ExtraItems title={translateMessage("Advanced Settings")}>
+    <InputRow label={translateMessage("Custom Headers")}>
         <textarea
             name="couchdb-custom-headers"
             placeholder="e.g., x-example-header: value\n another-header: value2"
@@ -233,11 +237,11 @@
         ></textarea>
     </InputRow>
 </ExtraItems>
-<ExtraItems title="Experimental Settings">
-    <InputRow label="Use JWT Authentication">
+<ExtraItems title={translateMessage("Experimental Settings")}>
+    <InputRow label={translateMessage("Use JWT Authentication")}>
         <input type="checkbox" name="couchdb-use-jwt" bind:checked={syncSetting.useJWT} />
     </InputRow>
-    <InputRow label="JWT Algorithm">
+    <InputRow label={translateMessage("JWT Algorithm")}>
         <select bind:value={syncSetting.jwtAlgorithm} disabled={!isUseJWT}>
             <option value="HS256">HS256</option>
             <option value="HS512">HS512</option>
@@ -245,7 +249,7 @@
             <option value="ES512">ES512</option>
         </select>
     </InputRow>
-    <InputRow label="JWT Expiration Duration (minutes)">
+    <InputRow label={translateMessage("JWT Expiration Duration (minutes)")}>
         <input
             type="text"
             name="couchdb-jwt-exp-duration"
@@ -254,43 +258,44 @@
             disabled={!isUseJWT}
         />
     </InputRow>
-    <InputRow label="JWT Key">
+    <InputRow label={translateMessage("JWT Key")}>
         <textarea
             name="couchdb-jwt-key"
             rows="5"
             autocapitalize="off"
             spellcheck="false"
-            placeholder="Enter your JWT secret or private key"
+            placeholder={translateMessage("Enter your JWT secret or private key")}
             bind:value={syncSetting.jwtKey}
             disabled={!isUseJWT}
         ></textarea>
     </InputRow>
     <InfoNote>
-        For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8
-        PEM-formatted private key.
+        {translateMessage(
+            "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key."
+        )}
     </InfoNote>
-    <InputRow label="JWT Key ID (kid)">
+    <InputRow label={translateMessage("JWT Key ID (kid)")}>
         <input
             type="text"
             name="couchdb-jwt-kid"
-            placeholder="Enter your JWT Key ID"
+            placeholder={translateMessage("Enter your JWT Key ID")}
             bind:value={syncSetting.jwtKid}
             disabled={!isUseJWT}
         />
     </InputRow>
-    <InputRow label="JWT Subject (sub)">
+    <InputRow label={translateMessage("JWT Subject (sub)")}>
         <input
             type="text"
             name="couchdb-jwt-sub"
-            placeholder="Enter your JWT Subject (CouchDB Username)"
+            placeholder={translateMessage("Enter your JWT Subject (CouchDB Username)")}
             bind:value={syncSetting.jwtSub}
             disabled={!isUseJWT}
         />
     </InputRow>
     <InfoNote warning>
-        JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens.
-        Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the
-        server's configuration. Incidentally, I have not verified it very thoroughly.
+        {translateMessage(
+            "JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly."
+        )}
     </InfoNote>
 </ExtraItems>
 
@@ -307,7 +312,7 @@
 </InfoNote>
 
 {#if processing}
-    Checking connection... Please wait.
+    {translateMessage("Checking connection... Please wait.")}
 {:else}
     <UserDecisions>
         <Decision title={primaryActionTitle} important disabled={!canProceed} commit={() => checkAndCommit()} />
@@ -323,6 +328,6 @@
                 commit={() => commit()}
             />
         {/if}
-        <Decision title="Cancel" commit={() => cancel()} />
+        <Decision title={translateMessage("Cancel")} commit={() => cancel()} />
     </UserDecisions>
 {/if}
