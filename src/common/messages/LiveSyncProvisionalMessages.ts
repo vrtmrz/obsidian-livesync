@@ -94,10 +94,8 @@ export const liveSyncProvisionalEnglishMessages = {
     "🧩 Missing chunks: ${COUNT}": "🧩 Missing chunks: ${COUNT}",
     "📦 DB: recorded ${RECORDED} B · decoded ${DECODED} B · Δsize ${DIFFERENCE} B":
         "📦 DB: recorded ${RECORDED} B · decoded ${DECODED} B · Δsize ${DIFFERENCE} B",
-    "📦 DB: recorded ${RECORDED} B · decoded unavailable":
-        "📦 DB: recorded ${RECORDED} B · decoded unavailable",
-    "📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B":
-        "📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B",
+    "📦 DB: recorded ${RECORDED} B · decoded unavailable": "📦 DB: recorded ${RECORDED} B · decoded unavailable",
+    "📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B": "📁 Vault: ${VAULT} B · Δsize vs DB ${DIFFERENCE} B",
     "🕒 DB ${DATABASE_TIME} · Vault ${VAULT_TIME} · Δtime ${DIFFERENCE} ms (${RELATION})":
         "🕒 DB ${DATABASE_TIME} · Vault ${VAULT_TIME} · Δtime ${DIFFERENCE} ms (${RELATION})",
     "✅ Matches Vault": "✅ Matches Vault",
@@ -130,8 +128,7 @@ export const liveSyncProvisionalEnglishMessages = {
     "More actions for revision ${REVISION}": "More actions for revision ${REVISION}",
     "More actions for ${FILE}": "More actions for ${FILE}",
     "Show revision history": "Show revision history",
-    "Store Vault file as a new local database document":
-        "Store Vault file as a new local database document",
+    "Store Vault file as a new local database document": "Store Vault file as a new local database document",
     "Copy database information": "Copy database information",
     "Recreate chunks for current Vault files": "Recreate chunks for current Vault files",
     "Recreate chunks from the files currently present in this Vault. This cannot reconstruct unavailable historical or conflict content.":
@@ -140,8 +137,7 @@ export const liveSyncProvisionalEnglishMessages = {
     "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable.":
         "Resolve every conflict by modification time? This logically deletes every version except the newest one and cannot recover content which is already unavailable.",
     "Resolve all conflicts by the newest version": "Resolve all conflicts by the newest version",
-    "Inspect conflicts and file/database differences":
-        "Inspect conflicts and file/database differences",
+    "Inspect conflicts and file/database differences": "Inspect conflicts and file/database differences",
     "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision.":
         "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision.",
     "Begin inspection": "Begin inspection",
