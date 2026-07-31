@@ -1,0 +1,170 @@
+:root {
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    color: #17253b;
+    background: #f3f6fa;
+    line-height: 1.5;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    --ink: #17253b;
+    --muted: #5d6c80;
+    --line: #d8e0ea;
+    --navy: #12233f;
+    --blue: #2a66dc;
+    --blue-dark: #1e4fae;
+    --blue-soft: #eaf1ff;
+    --green: #14795c;
+    --green-soft: #e5f6ef;
+    --amber: #9c6510;
+    --amber-soft: #fff4d6;
+    --red: #a33a3a;
+    --red-soft: #ffeded;
+    --surface: #ffffff;
+    --surface-subtle: #f8fafc;
+    --shadow: 0 18px 55px rgba(24, 42, 72, 0.08);
+
+    /* Browser-hosted aliases required by the shared Obsidian P2P controls. */
+    --background-primary: var(--surface);
+    --background-primary-alt: #edf1f6;
+    --background-secondary: #f2f5f9;
+    --background-modifier-border: var(--line);
+    --background-modifier-success: var(--green-soft);
+    --background-modifier-error: var(--red-soft);
+    --background-modifier-error-hover: #f8dada;
+    --interactive-accent: var(--blue);
+    --interactive-accent-hover: var(--blue-dark);
+    --text-normal: var(--ink);
+    --text-muted: var(--muted);
+    --text-error: var(--red);
+    --text-warning: var(--amber);
+    --input-height: 2.75rem;
+    --size-4-1: 0.25rem;
+    --tag-background: #f0f3f7;
+    --tag-border-width: 1px;
+    --tag-border-color: var(--line);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    min-height: 100%;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 12% 8%, rgba(66, 117, 222, 0.11), transparent 26rem),
+        #f3f6fa;
+}
+
+body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button,
+.button-link {
+    min-height: 2.75rem;
+    border-radius: 0.7rem;
+    font-weight: 700;
+}
+
+button {
+    border: 1px solid #bdc9d8;
+    padding: 0.68rem 1rem;
+    color: #26405e;
+    background: var(--surface);
+    cursor: pointer;
+    transition:
+        border-color 140ms ease,
+        color 140ms ease,
+        background 140ms ease,
+        transform 140ms ease;
+}
+
+button:hover:not(:disabled) {
+    border-color: var(--blue);
+    color: var(--blue-dark);
+}
+
+button.mod-cta {
+    color: #ffffff;
+    border-color: var(--blue);
+    background: var(--blue);
+    box-shadow: 0 8px 20px rgba(42, 102, 220, 0.18);
+}
+
+button.mod-cta:hover:not(:disabled) {
+    color: #ffffff;
+    border-color: var(--blue-dark);
+    background: var(--blue-dark);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid rgba(42, 102, 220, 0.38);
+    outline-offset: 2px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+    border: 1px solid #bdc9d8;
+    border-radius: 0.65rem;
+    padding: 0.68rem 0.8rem;
+    color: var(--ink);
+    background: var(--surface);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: var(--blue);
+}
+
+a {
+    color: var(--blue);
+}
+
+summary {
+    color: var(--navy);
+    cursor: pointer;
+    font-weight: 750;
+}
+
+::selection {
+    color: var(--navy);
+    background: #cddcff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #app *,
+    #app *::before,
+    #app *::after {
+        scroll-behavior: auto;
+        transition: none;
+    }
+}

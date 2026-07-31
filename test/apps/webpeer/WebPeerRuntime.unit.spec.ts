@@ -1,5 +1,5 @@
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { DEFAULT_SETTINGS, SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { describe, expect, it, vi } from "vitest";
@@ -72,5 +72,29 @@ describe("WebPeer runtime composition", () => {
         vi.spyOn(runtime.services.database, "openDatabase").mockResolvedValue(false);
 
         await expect(runtime.start()).rejects.toThrow("WebPeer local database could not be opened");
+    });
+
+    it("isolates a specialised runtime and applies its device name before opening the database", async () => {
+        const runtime = new WebPeerRuntime({
+            store: createMemoryStore(),
+            deviceName: "  p2p-check-browser-desktop-abc  ",
+            systemVaultName: "p2p-check-vault",
+        });
+        vi.spyOn(runtime.services.setting, "loadSettings").mockResolvedValue(undefined);
+        vi.spyOn(runtime.services.setting, "currentSettings").mockReturnValue({
+            ...DEFAULT_SETTINGS,
+            P2P_AutoStart: false,
+            P2P_Enabled: false,
+        });
+        const setSmallConfig = vi.spyOn(runtime.services.config, "setSmallConfig").mockImplementation(() => undefined);
+        const openDatabase = vi.spyOn(runtime.services.database, "openDatabase").mockImplementation(async () => {
+            expect(setSmallConfig).toHaveBeenCalledWith(SETTING_KEY_P2P_DEVICE_NAME, "p2p-check-browser-desktop-abc");
+            return true;
+        });
+
+        await runtime.start();
+
+        expect(runtime.services.API.getSystemVaultName()).toBe("p2p-check-vault");
+        expect(openDatabase).toHaveBeenCalledOnce();
     });
 });

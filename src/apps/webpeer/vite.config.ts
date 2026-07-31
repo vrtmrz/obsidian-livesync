@@ -16,6 +16,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 index: "index.html",
+                check: "check.html",
                 // uitest: "uitest.html",
             },
         },
