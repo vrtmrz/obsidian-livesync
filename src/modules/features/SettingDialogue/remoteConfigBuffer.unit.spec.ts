@@ -28,6 +28,9 @@ describe("syncActivatedRemoteSettings", () => {
             useCustomRequestHandler: false,
             forcePathStyle: true,
             bucketCustomHeaders: "",
+            expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            journalFormat: "adaptive-v1" as const,
+            packReadPolicy: "range" as const,
         };
 
         syncActivatedRemoteSettings(target, source);
@@ -40,6 +43,9 @@ describe("syncActivatedRemoteSettings", () => {
         expect(target.bucket).toBe("vault");
         expect(target.region).toBe("sz-hq");
         expect(target.bucketPrefix).toBe("folder/");
+        expect(target.expectedRepositoryId).toBe("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        expect(target.journalFormat).toBe("adaptive-v1");
+        expect(target.packReadPolicy).toBe("range");
         expect(target.encrypt).toBe(true);
     });
 

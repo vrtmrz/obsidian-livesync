@@ -288,6 +288,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "生效中的远程配置",
         "zh-tw": "目前啟用的遠端設定",
     },
+    "Adaptive Journal (experimental)": {
+        def: "Adaptive Journal (experimental)",
+    },
+    "Adaptive Journal uses immutable objects and a separate remote format. Existing Opaque Journal data is not migrated or read. Rebuild the remote when changing formats.":
+        {
+            def: "Adaptive Journal uses immutable objects and a separate remote format. Existing Opaque Journal data is not migrated or read. Rebuild the remote when changing formats.",
+        },
     "Add default patterns": {
         def: "Add default patterns",
         es: "Añadir patrones predeterminados",
@@ -784,6 +791,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "兼容性（问题修复）",
         "zh-tw": "相容性（問題修復）",
     },
+    "Complete Pack reads favour throughput. Range reads can reduce transferred bytes. The connection test verifies exact Range support on this endpoint, and synchronisation refuses an unsupported selection before writing.":
+        {
+            def: "Complete Pack reads favour throughput. Range reads can reduce transferred bytes. The connection test verifies exact Range support on this endpoint, and synchronisation refuses an unsupported selection before writing.",
+        },
     "Compute revisions for chunks": {
         def: "Compute revisions for chunks",
         es: "Calcular revisiones para los chunks",
@@ -1584,6 +1595,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Historial del documento",
         ko: "문서 기록",
         "zh-tw": "文件歷程",
+    },
+    "Download complete Packs": {
+        def: "Download complete Packs",
     },
     Duplicate: {
         def: "Duplicate",
@@ -2605,6 +2619,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Интервал (сек)",
         zh: "间隔(秒)",
     },
+    "Invalid Object Storage settings: ${reason}": {
+        def: "Invalid Object Storage settings: ${reason}",
+    },
     INVERTED: {
         def: "INVERTED",
         es: "INVERTIDO",
@@ -2616,6 +2633,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.": {
         def: "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.",
         es: "Se recomienda encarecidamente crear una copia de seguridad antes de continuar. Continuar sin copia de seguridad puede provocar pérdida de datos.",
+    },
+    "Journal data format": {
+        def: "Journal data format",
     },
     "Just for a minute, please!": {
         def: "Just for a minute, please!",
@@ -6187,6 +6207,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.",
         es: "En este dispositivo, cambia a la aplicación de cámara o usa un lector de QR para escanear el código mostrado.",
     },
+    "Opaque Journal (current format)": {
+        def: "Opaque Journal (current format)",
+    },
     Open: {
         def: "Open",
         es: "Abrir",
@@ -6446,6 +6469,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${name}과의 P2P 동기화가 시작되었습니다.",
         ru: "P2P Sync с name начат.",
         zh: "P2P Sync with ${name} have been started.",
+    },
+    "Pack retrieval": {
+        def: "Pack retrieval",
     },
     "paneMaintenance.markDeviceResolvedAfterBackup": {
         def: "paneMaintenance.markDeviceResolvedAfterBackup",
@@ -11068,6 +11094,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "Use Random Number": {
         def: "Use Random Number",
         es: "Usar número aleatorio",
+    },
+    "Use S3 Range requests": {
+        def: "Use S3 Range requests",
     },
     "Use Segmented-splitter": {
         def: "Use Segmented-splitter",

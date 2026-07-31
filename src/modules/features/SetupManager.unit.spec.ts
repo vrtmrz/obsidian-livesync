@@ -408,6 +408,9 @@ describe("SetupManager", () => {
                 useCustomRequestHandler: false,
                 bucketCustomHeaders: "",
                 forcePathStyle: true,
+                expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "range",
             })
             .mockResolvedValueOnce(true);
 
@@ -420,6 +423,9 @@ describe("SetupManager", () => {
         const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
         expect(activeProfile?.name).toBe("S3 notes");
         expect(activeProfile?.uri).toContain("sls+s3://key:secret@storage.example");
+        expect(activeProfile?.uri).toContain("journalFormat=adaptive-v1");
+        expect(activeProfile?.uri).toContain("packReadPolicy=range");
+        expect(activeProfile?.uri).toContain("expectedRepositoryId=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     });
 
     it("uses the registered provider choices when configuring a Settings edit buffer", async () => {

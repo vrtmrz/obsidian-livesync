@@ -20,10 +20,16 @@
     import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
     import { $msg as translateMessage } from "@/common/translation";
+    import { normaliseS3JournalSettings } from "./s3JournalSettings";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);
 
-    let syncSetting = $state<BucketSyncSetting>({ ...default_setting });
+    let syncSetting = $state<BucketSyncSetting>({
+        ...default_setting,
+        expectedRepositoryId: default_setting.expectedRepositoryId ?? "",
+        journalFormat: default_setting.journalFormat ?? "opaque-v1",
+        packReadPolicy: default_setting.packReadPolicy ?? "whole-pack",
+    });
 
     type Props = GuestDialogProps<SetupRemoteBucketResultType, BucketSyncSetting>;
 
@@ -58,11 +64,10 @@
             isEndpointSupplied
         );
     });
+    const isAdaptive = $derived(syncSetting.journalFormat === "adaptive-v1");
 
     function generateSetting() {
-        const connSetting: BucketSyncSetting = {
-            ...syncSetting,
-        };
+        const connSetting = normaliseS3JournalSettings(syncSetting);
         const trialSettings: BucketSyncSetting = {
             ...connSetting,
         };
@@ -115,8 +120,13 @@
         }
     }
     function commit() {
-        const setting = pickBucketSyncSettings(generateSetting());
-        setResult(setting);
+        error = "";
+        try {
+            const setting = pickBucketSyncSettings(generateSetting());
+            setResult(setting);
+        } catch (e) {
+            error = translateMessage("Invalid Object Storage settings: ${reason}", { reason: `${e}` });
+        }
     }
     function cancel() {
         setResult(TYPE_CANCELLED);
@@ -220,6 +230,30 @@
 </InfoNote>
 
 <ExtraItems title={translateMessage("Advanced Settings")}>
+    <InputRow label={translateMessage("Journal data format")}>
+        <select name="s3-journal-format" bind:value={syncSetting.journalFormat}>
+            <option value="opaque-v1">{translateMessage("Opaque Journal (current format)")}</option>
+            <option value="adaptive-v1">{translateMessage("Adaptive Journal (experimental)")}</option>
+        </select>
+    </InputRow>
+    <InfoNote warning visible={isAdaptive}>
+        {translateMessage(
+            "Adaptive Journal uses immutable objects and a separate remote format. Existing Opaque Journal data is not migrated or read. Rebuild the remote when changing formats."
+        )}
+    </InfoNote>
+    {#if isAdaptive}
+        <InputRow label={translateMessage("Pack retrieval")}>
+            <select name="s3-pack-read-policy" bind:value={syncSetting.packReadPolicy}>
+                <option value="whole-pack">{translateMessage("Download complete Packs")}</option>
+                <option value="range">{translateMessage("Use S3 Range requests")}</option>
+            </select>
+        </InputRow>
+        <InfoNote>
+            {translateMessage(
+                "Complete Pack reads favour throughput. Range reads can reduce transferred bytes. The connection test verifies exact Range support on this endpoint, and synchronisation refuses an unsupported selection before writing."
+            )}
+        </InfoNote>
+    {/if}
     <InputRow label={translateMessage("Custom Headers")}>
         <textarea
             name="bucket-custom-headers"

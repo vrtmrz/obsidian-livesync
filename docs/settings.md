@@ -301,6 +301,18 @@ Setting key: bucketCustomHeaders
 
 Custom HTTP headers to include in every request sent to the Object Storage bucket. Specify them in the format `Header-Name: Value`, with each header on a new line.
 
+#### Journal data format
+
+Setting key: journalFormat
+
+Existing Object Storage profiles use `opaque-v1` unless Adaptive Journal is selected explicitly. `adaptive-v1` uses an authenticated manifest and immutable Commit Bundles under a separate namespace, with larger Packs stored separately. Changing between formats requires an explicit remote Rebuild; LiveSync does not migrate or read both representations.
+
+#### Pack retrieval
+
+Setting key: packReadPolicy
+
+Adaptive Journal can download a complete immutable Pack (`whole-pack`) or request only the required byte ranges (`range`). Complete Pack retrieval is the portable, throughput-oriented default. Selecting Range requires exact byte-range support from the configured S3-compatible endpoint. The connection test verifies that capability, and synchronisation refuses an unsupported selection before writing.
+
 #### Test Connection
 
 #### Apply Settings

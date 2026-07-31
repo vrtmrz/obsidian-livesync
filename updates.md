@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Improved
+
+- Object Storage setup can select the experimental Adaptive Journal format and choose complete Pack or verified Range retrieval. Existing Opaque Journal repositories remain the default and require an explicit remote Rebuild before changing formats.
+
 ### P2P and experimental browser applications
 
 #### Improved

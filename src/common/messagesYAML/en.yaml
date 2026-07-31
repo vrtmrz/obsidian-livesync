@@ -66,6 +66,21 @@ AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situa
     situation. Please report this issue.
 Advanced: Advanced
 Advanced Settings: Advanced Settings
+Adaptive Journal (experimental): Adaptive Journal (experimental)
+Adaptive Journal uses immutable objects and a separate remote format. Existing Opaque Journal data is not migrated or read. Rebuild the remote when changing formats.:
+    Adaptive Journal uses immutable objects and a separate remote format.
+    Existing Opaque Journal data is not migrated or read. Rebuild the remote when
+    changing formats.
+Complete Pack reads favour throughput. Range reads can reduce transferred bytes. The connection test verifies exact Range support on this endpoint, and synchronisation refuses an unsupported selection before writing.:
+    Complete Pack reads favour throughput. Range reads can reduce transferred
+    bytes. The connection test verifies exact Range support on this endpoint, and
+    synchronisation refuses an unsupported selection before writing.
+Download complete Packs: Download complete Packs
+"Invalid Object Storage settings: ${reason}": "Invalid Object Storage settings: ${reason}"
+Journal data format: Journal data format
+Opaque Journal (current format): Opaque Journal (current format)
+Pack retrieval: Pack retrieval
+Use S3 Range requests: Use S3 Range requests
 After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.:
     After restarting, the data on this device will be uploaded to the server as
     the 'master copy'. Please be aware that any unintended data currently on the
