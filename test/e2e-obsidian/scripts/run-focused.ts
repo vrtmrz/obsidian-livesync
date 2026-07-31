@@ -9,6 +9,7 @@ const focusedScenarios = new Set([
     "onboarding-invitation",
     "dialog-mounts",
     "revision-repair",
+    "document-history-nav",
     "settings-ui",
     "review-harness",
     "p2p-pane",
