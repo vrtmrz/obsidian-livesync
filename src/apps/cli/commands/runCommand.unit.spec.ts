@@ -748,7 +748,27 @@ describe("runCommand abnormal cases", () => {
                     locked: false,
                     accepted_nodes: ["test-node-id"],
                 }));
-                core.services.setting.currentSettings().remoteType = remoteType;
+                const settings = core.services.setting.currentSettings();
+                settings.remoteType = remoteType;
+                if (remoteType === REMOTE_WEBDAV) {
+                    settings.webDAVactiveConnectionURI = serialiseWebDAVConnectionURI({
+                        customHeaders: "",
+                        endpoint: "https://dav.example/vault",
+                        password: "webdav-pass",
+                        prefix: "journal/",
+                        useCustomRequestHandler: false,
+                        username: "webdav-user",
+                    });
+                } else {
+                    settings.postgrestActiveConnectionURI = serialisePostgRESTConnectionURI({
+                        bearerToken: "signed-token",
+                        customHeaders: "",
+                        endpoint: "https://journal.example",
+                        schema: "livesync_api",
+                        useCustomRequestHandler: false,
+                        vaultId: "vault-1",
+                    });
+                }
                 core.services.replicator.getActiveReplicator.mockReturnValue({
                     nodeid: "test-node-id",
                     initializeDatabaseForReplication: vi.fn(async () => {}),
@@ -764,6 +784,40 @@ describe("runCommand abnormal cases", () => {
                 expect(downloadJson).toHaveBeenCalledWith("_00000000-milestone.json");
             }
         );
+
+        it("verifies an Adaptive Journal repository without a legacy milestone", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteType = REMOTE_WEBDAV;
+            settings.webDAVactiveConnectionURI = serialiseWebDAVConnectionURI({
+                customHeaders: "",
+                endpoint: "https://dav.example/vault",
+                journalFormat: "adaptive-v1",
+                password: "webdav-pass",
+                prefix: "journal/",
+                useCustomRequestHandler: false,
+                username: "webdav-user",
+            });
+            const inspectRemoteFormat = vi.fn(async () => "adaptive-v1" as const);
+            const tryConnectRemote = vi.fn(async () => true);
+            core.services.replicator.getActiveReplicator.mockReturnValue({
+                client: {
+                    storage: { inspectRemoteFormat },
+                },
+                initializeDatabaseForReplication: vi.fn(async () => {}),
+                nodeid: "test-node-id",
+                tryConnectRemote,
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(true);
+            expect(tryConnectRemote).toHaveBeenCalledWith(settings, false);
+            expect(inspectRemoteFormat).toHaveBeenCalledOnce();
+        });
 
         it("mark-resolved without args runs on active database", async () => {
             const core = createCoreMock();

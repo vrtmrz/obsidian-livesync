@@ -26,6 +26,9 @@
         schema: "livesync_api",
         useCustomRequestHandler: false,
         customHeaders: "",
+        journalFormat: "opaque-v1",
+        expectedRepositoryId: "",
+        packReadPolicy: "whole-pack",
     });
 
     type Props = GuestDialogProps<SetupRemotePostgRESTResultType, PostgRESTSyncSetting>;
@@ -46,12 +49,17 @@
     let processing = $state(false);
 
     function normalisedConnection(): PostgRESTConnection {
+        const journalFormat = connection.journalFormat ?? "opaque-v1";
         return {
             ...connection,
             endpoint: connection.endpoint.trim(),
             bearerToken: connection.bearerToken.trim(),
             vaultId: connection.vaultId.trim(),
             schema: connection.schema.trim(),
+            journalFormat,
+            expectedRepositoryId:
+                journalFormat === "adaptive-v1" ? (connection.expectedRepositoryId ?? "").trim() : "",
+            packReadPolicy: "whole-pack",
         };
     }
 
@@ -69,6 +77,7 @@
     }
 
     const canProceed = $derived.by(isConnectionValid);
+    const isAdaptive = $derived(connection.journalFormat === "adaptive-v1");
     const isEndpointInsecure = $derived.by(() => connection.endpoint.trim().toLowerCase().startsWith("http://"));
     const hasInvalidInput = $derived.by(
         () =>
@@ -124,8 +133,9 @@
 
 <DialogHeader title="PostgREST Journal Configuration" />
 <Guidance>
-    Configure the LiveSync Journal RPC schema exposed by PostgREST. This is a Journal object transport, not a CouchDB
-    replacement or direct table editor.
+    Configure the LiveSync Journal RPC schema exposed by PostgREST. Opaque Journal stores complete Journal objects;
+    Adaptive Journal uses native immutable Metadata, Chunk, and Commit records. Neither mode is a CouchDB replacement
+    or direct table editor.
 </Guidance>
 
 <InputRow label="PostgREST Endpoint URL">
@@ -194,6 +204,16 @@
 </InfoNote>
 
 <ExtraItems title="Advanced Settings">
+    <InputRow label="Journal Data Format">
+        <select name="postgrest-journal-format" bind:value={connection.journalFormat}>
+            <option value="opaque-v1">Opaque Journal (current format)</option>
+            <option value="adaptive-v1">Adaptive Journal (experimental)</option>
+        </select>
+    </InputRow>
+    <InfoNote warning visible={isAdaptive}>
+        Adaptive Journal requires `002_adaptive_journal.sql` and uses a different remote data format. Existing Opaque
+        data is not migrated or read; rebuild the remote when changing formats.
+    </InfoNote>
     <InputRow label="Custom Headers">
         <textarea
             name="postgrest-custom-headers"

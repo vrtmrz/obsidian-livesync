@@ -26,6 +26,9 @@
         prefix: "",
         useCustomRequestHandler: false,
         customHeaders: "",
+        journalFormat: "opaque-v1",
+        expectedRepositoryId: "",
+        packReadPolicy: "whole-pack",
     });
 
     type Props = GuestDialogProps<SetupRemoteWebDAVResultType, WebDAVSyncSetting>;
@@ -46,11 +49,17 @@
     let processing = $state(false);
 
     function normalisedConnection(): WebDAVConnection {
+        const journalFormat = connection.journalFormat ?? "opaque-v1";
         return {
             ...connection,
             endpoint: connection.endpoint.trim(),
             prefix: connection.prefix.trim(),
             username: connection.username.trim(),
+            journalFormat,
+            expectedRepositoryId:
+                journalFormat === "adaptive-v1" ? (connection.expectedRepositoryId ?? "").trim() : "",
+            packReadPolicy:
+                journalFormat === "adaptive-v1" ? (connection.packReadPolicy ?? "whole-pack") : "whole-pack",
         };
     }
 
@@ -64,6 +73,7 @@
     }
 
     const canProceed = $derived.by(isConnectionValid);
+    const isAdaptive = $derived(connection.journalFormat === "adaptive-v1");
     const isEndpointInsecure = $derived.by(() => connection.endpoint.trim().toLowerCase().startsWith("http://"));
     const isEndpointInvalid = $derived.by(() => connection.endpoint.trim() !== "" && !canProceed);
 
@@ -174,6 +184,28 @@
 </InfoNote>
 
 <ExtraItems title="Advanced Settings">
+    <InputRow label="Journal Data Format">
+        <select name="webdav-journal-format" bind:value={connection.journalFormat}>
+            <option value="opaque-v1">Opaque Journal (current format)</option>
+            <option value="adaptive-v1">Adaptive Journal (experimental)</option>
+        </select>
+    </InputRow>
+    <InfoNote warning visible={isAdaptive}>
+        Adaptive Journal uses a different remote data format. Existing Opaque data is not migrated or read; rebuild the
+        remote when changing formats.
+    </InfoNote>
+    {#if isAdaptive}
+        <InputRow label="Pack Retrieval">
+            <select name="webdav-pack-read-policy" bind:value={connection.packReadPolicy}>
+                <option value="whole-pack">Download complete packs</option>
+                <option value="range">Use HTTP Range requests</option>
+            </select>
+        </InputRow>
+        <InfoNote>
+            Complete-pack reads favour throughput. Range reads can reduce transferred bytes, but require correct HTTP
+            byte-range support; the connection test checks that capability when selected.
+        </InfoNote>
+    {/if}
     <InputRow label="Custom Headers">
         <textarea
             name="webdav-custom-headers"

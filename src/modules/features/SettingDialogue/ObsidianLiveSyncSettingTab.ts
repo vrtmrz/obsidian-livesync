@@ -838,6 +838,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         return this.core.replicator.client;
     }
     async resetRemoteBucket() {
-        await this.getJournalSyncClient().resetBucket();
+        if (!(await this.getJournalSyncClient().resetBucket())) {
+            throw new Error("Remote Journal storage reset did not complete");
+        }
     }
 }

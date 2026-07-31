@@ -155,11 +155,7 @@ export function paneMaintenance(
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.getJournalSyncClient().updateCheckPointInfo((info) => ({
-                            ...info,
-                            receivedFiles: new Set(),
-                            knownIDs: new Set(),
-                        }));
+                        await this.getJournalSyncClient().resetReceivedHistory();
                         Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
@@ -176,12 +172,7 @@ export function paneMaintenance(
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.getJournalSyncClient().updateCheckPointInfo((info) => ({
-                            ...info,
-                            lastLocalSeq: 0,
-                            sentIDs: new Set(),
-                            sentFiles: new Set(),
-                        }));
+                        await this.getJournalSyncClient().resetSentHistory();
                         Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
@@ -363,14 +354,6 @@ export function paneMaintenance(
                         .setWarning()
                         .setDisabled(false)
                         .onClick(async () => {
-                            await this.getJournalSyncClient().updateCheckPointInfo((info) => ({
-                                ...info,
-                                receivedFiles: new Set(),
-                                knownIDs: new Set(),
-                                lastLocalSeq: 0,
-                                sentIDs: new Set(),
-                                sentFiles: new Set(),
-                            }));
                             await this.resetRemoteBucket();
                             Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
                         })

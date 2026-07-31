@@ -9,7 +9,10 @@ import {
     type EntryMilestoneInfo,
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { isJournalRemoteType } from "@vrtmrz/livesync-commonlib/journal-storage";
+import {
+    isJournalRemoteType,
+    journalProtocolConfigurationForSettings,
+} from "@vrtmrz/livesync-commonlib/journal-storage";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import {
     activateRemoteConfiguration,
@@ -60,7 +63,29 @@ async function verifyRemoteState(
             }
             milestone = await dbRet.db.get(MILESTONE_DOCID);
         } else if (isJournalRemoteType(settings.remoteType)) {
-            milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
+            const journal = replicator as LiveSyncJournalReplicator;
+            if (journalProtocolConfigurationForSettings(settings).journalFormat === "adaptive-v1") {
+                if (!(await journal.tryConnectRemote(settings, false))) {
+                    standardIo.writeStderr("[Verification] Adaptive Journal connection or capabilities failed.\n");
+                    return false;
+                }
+                const remoteFormat = await journal.client.storage.inspectRemoteFormat?.();
+                if (remoteFormat !== "adaptive-v1") {
+                    standardIo.writeStderr(
+                        `[Verification] Adaptive Journal repository: ${remoteFormat === "empty" ? "NOT INITIALISED" : "FORMAT MISMATCH"}\n`
+                    );
+                    return false;
+                }
+                standardIo.writeStderr("[Verification] Adaptive Journal repository: READY\n");
+                standardIo.writeStderr("[Verification] Legacy remote lock milestone: NOT USED\n");
+                return true;
+            }
+            const client = journal.client;
+            if (!("downloadJson" in client) || typeof client.downloadJson !== "function") {
+                standardIo.writeStderr("[Verification] Journal data format changed during verification.\n");
+                return false;
+            }
+            milestone = await client.downloadJson("_00000000-milestone.json");
         }
 
         if (milestone) {

@@ -1293,15 +1293,19 @@ Protocol mismatch is a repository-safety failure, not an ordinary tweak mismatch
 checks must not bypass it. Provider credentials may rotate without changing the format, repository identity, or
 checkpoint; changing provider, storage location, repository ID, or protocol creates a distinct binding.
 
-The compatibility plan must define:
+The experimental v1 policy does not negotiate or migrate between the two representations. Before an ordinary read or
+write, the client classifies the remote as empty, `opaque-v1`, `adaptive-v1`, or mixed. An empty remote may initialise
+the selected format. A non-empty remote must match the connection profile exactly; the client refuses a different or
+mixed format before reading or writing its records.
 
-- negotiation between old and adaptive clients;
-- rollback before and after the first adaptive commit;
-- coexistence or exclusion rules for mixed client versions;
-- checkpoint identity and epoch changes;
-- remote reset behaviour;
-- encryption-key and Chunk-identity-key migration; and
-- exact conditions which require Fetch, Rebuild, or a new remote profile.
+Changing format therefore requires an explicit remote Rebuild. Rebuild deletes the remote representation, creates a
+new repository identity and Security Seed when Adaptive is selected, clears the corresponding local Journal
+checkpoints, and republishes from the local database. It does not translate the previous remote representation, and
+there is no path which reads both formats. Returning to Opaque follows the same remote-only Rebuild rule.
+
+This policy deliberately excludes mixed-version operation. A device which does not implement the selected format must
+remain disconnected until the remote has been rebuilt into a format it supports. Credential rotation remains
+independent because it does not change the storage identity or selected Journal format.
 
 ### Initial provider capability matrix
 
