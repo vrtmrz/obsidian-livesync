@@ -1957,7 +1957,13 @@ Ui:
             Guidance: Select the remote type for this synchronisation setup.
             P2POption: Peer-to-Peer (P2P)
             P2POptionDesc: This enables direct synchronisation between devices. No server is required, but both devices must be online at the same time and some features may be limited. Internet connectivity is required only for signalling, not for data transfer.
+            PostgRESTOption: PostgREST Journal Storage
+            PostgRESTOptionDesc: Synchronisation using Journal objects stored in PostgreSQL through the packaged PostgREST RPC schema. The server SQL and a Vault-scoped JWT must already be configured.
             ProceedBucket: Continue to Object Storage setup
             ProceedCouchDb: Continue to CouchDB setup
             ProceedP2P: Continue to P2P setup
+            ProceedPostgREST: Continue to PostgREST setup
+            ProceedWebDAV: Continue to WebDAV setup
             Title: Choose a synchronisation remote
+            WebDAVOption: WebDAV Journal Storage
+            WebDAVOptionDesc: Synchronisation using Journal files in a dedicated WebDAV collection. Listing cost grows with the number of retained Journal files.

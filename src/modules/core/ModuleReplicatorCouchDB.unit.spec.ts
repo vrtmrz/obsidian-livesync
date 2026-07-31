@@ -1,4 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { REMOTE_POSTGREST, REMOTE_WEBDAV } from "@vrtmrz/livesync-commonlib/journal-storage";
+
+vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
+    LiveSyncCouchDBReplicator: class {},
+}));
+
 import { ModuleReplicatorCouchDB } from "./ModuleReplicatorCouchDB.ts";
 
 function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isReplicationReady = true) {
@@ -43,6 +49,15 @@ function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isR
 }
 
 describe("ModuleReplicatorCouchDB resume replication activity", () => {
+    it.each([REMOTE_WEBDAV, REMOTE_POSTGREST])("does not claim the %s Journal provider", async (remoteType) => {
+        const { module } = createModule({
+            liveSync: false,
+            syncOnStart: false,
+        });
+
+        expect(await module._anyNewReplicator({ remoteType })).toBe(false);
+    });
+
     it("exposes start-up one-shot replication as finite replication activity", async () => {
         const { module, openReplication, runFiniteReplicationActivity } = createModule({
             liveSync: false,

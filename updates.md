@@ -12,6 +12,21 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Experimental Journal Storage
+
+#### Added
+
+- Added WebDAV Journal Storage to the 1.0 remote-profile, setup, maintenance, CLI, and diagnostic flows, including migration of the earlier experimental checkpoint identity when the endpoint and prefix are unchanged.
+- Added a PostgREST Journal Storage option backed by the packaged PostgreSQL schema, Vault-scoped JWT access, row-level security, indexed keyset listing, binary object RPCs, and setup guidance.
+
+#### Security
+
+- WebDAV passwords, PostgREST bearer tokens, and custom headers are redacted from generated diagnostic reports and remote display names.
+
+#### Testing
+
+- Added disposable WebDAV and PostgREST integration coverage for binary object operations and two-device Journal synchronisation, together with plug-in routing, setup, CLI, native-request, and secret-redaction tests.
+
 ## 1.0.1
 
 29th July, 2026

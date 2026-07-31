@@ -4,6 +4,8 @@ import type {
     EncryptionSettings,
     ObsidianLiveSyncSettings,
     P2PConnectionInfo,
+    PostgRESTSyncSetting,
+    WebDAVSyncSetting,
 } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 
 export const TYPE_IDENTICAL = "identical";
@@ -40,6 +42,8 @@ export const TYPE_CLOSE = "close";
 export const TYPE_COUCHDB = "couchdb";
 export const TYPE_BUCKET = "bucket";
 export const TYPE_P2P = "p2p";
+export const TYPE_WEBDAV = "webdav";
+export const TYPE_POSTGREST = "postgrest";
 
 export type ResultTypeVault =
     | typeof TYPE_IDENTICAL
@@ -93,7 +97,13 @@ export type SelectMethodExistingResultType =
     | typeof TYPE_CONFIGURE_MANUALLY
     | typeof TYPE_CANCELLED;
 
-export type SetupRemoteResultType = typeof TYPE_COUCHDB | typeof TYPE_BUCKET | typeof TYPE_P2P | typeof TYPE_CANCELLED;
+export type SetupRemoteResultType =
+    | typeof TYPE_COUCHDB
+    | typeof TYPE_BUCKET
+    | typeof TYPE_P2P
+    | typeof TYPE_WEBDAV
+    | typeof TYPE_POSTGREST
+    | typeof TYPE_CANCELLED;
 
 export type UseSetupURIResultType = typeof TYPE_CANCELLED | ObsidianLiveSyncSettings;
 
@@ -109,5 +119,9 @@ export type SetupRemoteCouchDBInitialData = {
 };
 
 export type SetupRemoteP2PResultType = typeof TYPE_CANCELLED | P2PConnectionInfo;
+
+export type SetupRemoteWebDAVResultType = typeof TYPE_CANCELLED | WebDAVSyncSetting;
+
+export type SetupRemotePostgRESTResultType = typeof TYPE_CANCELLED | PostgRESTSyncSetting;
 
 export type ScanQRCodeResultType = typeof TYPE_CLOSE;

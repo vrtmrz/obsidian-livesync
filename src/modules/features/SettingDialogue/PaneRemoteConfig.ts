@@ -6,7 +6,9 @@ import {
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
+    type RemoteType,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_POSTGREST, REMOTE_WEBDAV } from "@vrtmrz/livesync-commonlib/journal-storage";
 import { Menu, type ButtonComponent } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -21,6 +23,7 @@ import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
 import {
     activateRemoteConfiguration,
+    suggestRemoteConfigurationName,
     type RemoteConfiguration,
 } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
@@ -29,6 +32,8 @@ import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svel
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import SetupRemotePostgREST from "@/modules/features/SetupWizard/dialogs/SetupRemotePostgREST.svelte";
+import SetupRemoteWebDAV from "@/modules/features/SetupWizard/dialogs/SetupRemoteWebDAV.svelte";
 import type {
     SetupRemoteCouchDBInitialData,
     SetupRemoteCouchDBResultType,
@@ -60,7 +65,36 @@ function serializeRemoteConfiguration(settings: ObsidianLiveSyncSettings): strin
     if (settings.remoteType === REMOTE_P2P) {
         return ConnectionStringParser.serialize({ type: "p2p", settings });
     }
+    if (settings.remoteType === REMOTE_WEBDAV) {
+        return ConnectionStringParser.serialize({ type: "webdav", settings });
+    }
+    if (settings.remoteType === REMOTE_POSTGREST) {
+        return ConnectionStringParser.serialize({ type: "postgrest", settings });
+    }
     return ConnectionStringParser.serialize({ type: "couchdb", settings });
+}
+
+function remoteTypeFromConfiguration(parsed: RemoteConfigurationResult): RemoteType {
+    switch (parsed.type) {
+        case "s3":
+            return REMOTE_MINIO;
+        case "p2p":
+            return REMOTE_P2P;
+        case "webdav":
+            return REMOTE_WEBDAV;
+        case "postgrest":
+            return REMOTE_POSTGREST;
+        case "couchdb":
+            return REMOTE_COUCHDB;
+    }
+}
+
+function describeRemoteConfiguration(uri: string): string {
+    try {
+        return suggestRemoteConfigurationName(ConnectionStringParser.parse(uri));
+    } catch {
+        return "Connection details unavailable";
+    }
 }
 
 function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string) {
@@ -69,21 +103,6 @@ function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string)
     // button.buttonEl.addClass("clickable-icon");
     button.buttonEl.addClass("mod-muted");
     return button;
-}
-
-function suggestRemoteConfigurationName(parsed: RemoteConfigurationResult): string {
-    if (parsed.type === "couchdb") {
-        try {
-            const url = new URL(parsed.settings.couchDB_URI);
-            return `CouchDB ${url.host}`;
-        } catch {
-            return "Imported CouchDB";
-        }
-    }
-    if (parsed.type === "s3") {
-        return `S3 ${parsed.settings.bucket || parsed.settings.endpoint}`;
-    }
-    return `P2P ${parsed.settings.P2P_roomID || "Remote"}`;
 }
 
 export function paneRemoteConfig(
@@ -189,7 +208,7 @@ export function paneRemoteConfig(
             };
             const runRemoteSetup = async (
                 baseSettings: ObsidianLiveSyncSettings,
-                remoteType?: typeof REMOTE_COUCHDB | typeof REMOTE_MINIO | typeof REMOTE_P2P
+                remoteType?: RemoteType
             ): Promise<ObsidianLiveSyncSettings | false> => {
                 const setupManager = this.core.getModule(SetupManager);
                 const dialogManager = setupManager.dialogManager;
@@ -201,7 +220,15 @@ export function paneRemoteConfig(
                         return false;
                     }
                     targetRemoteType =
-                        method === "bucket" ? REMOTE_MINIO : method === "p2p" ? REMOTE_P2P : REMOTE_COUCHDB;
+                        method === "bucket"
+                            ? REMOTE_MINIO
+                            : method === "p2p"
+                              ? REMOTE_P2P
+                              : method === "webdav"
+                                ? REMOTE_WEBDAV
+                                : method === "postgrest"
+                                  ? REMOTE_POSTGREST
+                                  : REMOTE_COUCHDB;
                 }
 
                 if (targetRemoteType === REMOTE_MINIO) {
@@ -218,6 +245,25 @@ export function paneRemoteConfig(
                         return false;
                     }
                     return { ...baseSettings, ...p2pConf, remoteType: REMOTE_P2P };
+                }
+
+                if (targetRemoteType === REMOTE_WEBDAV) {
+                    const webDAVConf = await dialogManager.openWithExplicitCancel(SetupRemoteWebDAV, baseSettings);
+                    if (webDAVConf === "cancelled" || typeof webDAVConf !== "object") {
+                        return false;
+                    }
+                    return { ...baseSettings, ...webDAVConf, remoteType: REMOTE_WEBDAV };
+                }
+
+                if (targetRemoteType === REMOTE_POSTGREST) {
+                    const postgrestConf = await dialogManager.openWithExplicitCancel(
+                        SetupRemotePostgREST,
+                        baseSettings
+                    );
+                    if (postgrestConf === "cancelled" || typeof postgrestConf !== "object") {
+                        return false;
+                    }
+                    return { ...baseSettings, ...postgrestConf, remoteType: REMOTE_POSTGREST };
                 }
 
                 const couchConf = await dialogManager.openWithExplicitCancel<
@@ -328,7 +374,7 @@ export function paneRemoteConfig(
                 for (const config of Object.values(configs)) {
                     const row = new Setting(listContainer)
                         .setName(config.name)
-                        .setDesc(config.uri.split("@").pop() || ""); // Show host part for privacy
+                        .setDesc(describeRemoteConfiguration(config.uri));
 
                     if (config.id === this.editingSettings.activeConfigurationId) {
                         row.nameEl.addClass("sls-active-remote-name");
@@ -349,13 +395,7 @@ export function paneRemoteConfig(
                                 return;
                             }
                             const workSettings = createBaseRemoteSettings();
-                            if (parsed.type === "couchdb") {
-                                workSettings.remoteType = REMOTE_COUCHDB;
-                            } else if (parsed.type === "s3") {
-                                workSettings.remoteType = REMOTE_MINIO;
-                            } else {
-                                workSettings.remoteType = REMOTE_P2P;
-                            }
+                            workSettings.remoteType = remoteTypeFromConfiguration(parsed);
                             Object.assign(workSettings, parsed.settings);
 
                             const nextSettings = await runRemoteSetup(workSettings, workSettings.remoteType);
@@ -459,13 +499,7 @@ export function paneRemoteConfig(
                                             return;
                                         }
                                         const workSettings = createBaseRemoteSettings();
-                                        if (parsed.type === "couchdb") {
-                                            workSettings.remoteType = REMOTE_COUCHDB;
-                                        } else if (parsed.type === "s3") {
-                                            workSettings.remoteType = REMOTE_MINIO;
-                                        } else {
-                                            workSettings.remoteType = REMOTE_P2P;
-                                        }
+                                        workSettings.remoteType = remoteTypeFromConfiguration(parsed);
                                         Object.assign(workSettings, parsed.settings);
                                         const newTweaks =
                                             await this.services.tweakValue.checkAndAskUseRemoteConfiguration(

@@ -2,7 +2,18 @@ import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    DEFAULT_SETTINGS,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+    REMOTE_P2P,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    REMOTE_POSTGREST,
+    REMOTE_WEBDAV,
+    serialisePostgRESTConnectionURI,
+    serialiseWebDAVConnectionURI,
+} from "@vrtmrz/livesync-commonlib/journal-storage";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
@@ -188,6 +199,36 @@ const protocolFixtures: ProtocolFixture[] = [
             expect(settings.endpoint).toBe("https://s3.example.com");
             expect(settings.bucket).toBe("bucket-1");
             expect(settings.region).toBe("ap-northeast-1");
+        },
+    },
+    {
+        protocol: "webdav",
+        connectionString: serialiseWebDAVConnectionURI({
+            endpoint: "https://dav.example/vault",
+            username: "webdav-user",
+            password: "webdav-pass",
+            prefix: "journal/",
+            useCustomRequestHandler: true,
+            customHeaders: "x-test: 1",
+        }),
+        assertProjectedFields: (settings) => {
+            expect(settings.remoteType).toBe(REMOTE_WEBDAV);
+            expect(settings.webDAVactiveConnectionURI).toContain("sls+webdav://");
+        },
+    },
+    {
+        protocol: "postgrest",
+        connectionString: serialisePostgRESTConnectionURI({
+            endpoint: "https://journal.example",
+            bearerToken: "signed-token",
+            vaultId: "vault-1",
+            schema: "livesync_api",
+            useCustomRequestHandler: true,
+            customHeaders: "x-test: 1",
+        }),
+        assertProjectedFields: (settings) => {
+            expect(settings.remoteType).toBe(REMOTE_POSTGREST);
+            expect(settings.postgrestActiveConnectionURI).toContain("sls+postgrest://");
         },
     },
     {
@@ -616,55 +657,48 @@ describe("runCommand abnormal cases", () => {
         }
     );
 
-    it.each([
-        ["couchdb", "sls+https://user:pass@example.com:5984/?db=vault"] as const,
-        [
-            "s3",
-            "sls+s3://ak:sk@example.com/?endpoint=https%3A%2F%2Fs3.example.com&bucket=my-bucket&region=ap-northeast-1",
-        ] as const,
-        [
-            "p2p",
-            "sls+p2p://room-abc?passphrase=pass-123&relays=wss%3A%2F%2Frelay.example&appId=self-hosted-livesync",
-        ] as const,
-    ])("remote command round-trip works for %s", async (_protocol, initialConnStr) => {
-        const core = createCoreMock();
+    it.each(protocolFixtures.map(({ protocol, connectionString }) => [protocol, connectionString] as const))(
+        "remote command round-trip works for %s",
+        async (_protocol, initialConnStr) => {
+            const core = createCoreMock();
 
-        const addOut = captureStdout(core);
-        const addResult = await runCommand(makeOptions("remote-add", ["rt", initialConnStr]), {
-            ...context,
-            core,
-        });
-        expect(addResult).toBe(true);
-        const remoteId = parseAddedRemoteIdFromLines(addOut.lines());
-        expect(remoteId).not.toBe("");
+            const addOut = captureStdout(core);
+            const addResult = await runCommand(makeOptions("remote-add", ["rt", initialConnStr]), {
+                ...context,
+                core,
+            });
+            expect(addResult).toBe(true);
+            const remoteId = parseAddedRemoteIdFromLines(addOut.lines());
+            expect(remoteId).not.toBe("");
 
-        const export1Out = captureStdout(core);
-        const export1Result = await runCommand(makeOptions("remote-export", [remoteId]), {
-            ...context,
-            core,
-        });
-        expect(export1Result).toBe(true);
-        const export1Lines = export1Out.lines();
-        const exported1 = export1Lines.length > 0 ? export1Lines[export1Lines.length - 1] : "";
-        expect(exported1).toBe(ConnectionStringParser.serialize(ConnectionStringParser.parse(initialConnStr)));
+            const export1Out = captureStdout(core);
+            const export1Result = await runCommand(makeOptions("remote-export", [remoteId]), {
+                ...context,
+                core,
+            });
+            expect(export1Result).toBe(true);
+            const export1Lines = export1Out.lines();
+            const exported1 = export1Lines.length > 0 ? export1Lines[export1Lines.length - 1] : "";
+            expect(exported1).toBe(ConnectionStringParser.serialize(ConnectionStringParser.parse(initialConnStr)));
 
-        const roundTripInput = ConnectionStringParser.serialize(ConnectionStringParser.parse(exported1));
-        const setResult = await runCommand(makeOptions("remote-set", [remoteId, roundTripInput]), {
-            ...context,
-            core,
-        });
-        expect(setResult).toBe(true);
+            const roundTripInput = ConnectionStringParser.serialize(ConnectionStringParser.parse(exported1));
+            const setResult = await runCommand(makeOptions("remote-set", [remoteId, roundTripInput]), {
+                ...context,
+                core,
+            });
+            expect(setResult).toBe(true);
 
-        const export2Out = captureStdout(core);
-        const export2Result = await runCommand(makeOptions("remote-export", [remoteId]), {
-            ...context,
-            core,
-        });
-        expect(export2Result).toBe(true);
-        const export2Lines = export2Out.lines();
-        const exported2 = export2Lines.length > 0 ? export2Lines[export2Lines.length - 1] : "";
-        expect(exported2).toBe(roundTripInput);
-    });
+            const export2Out = captureStdout(core);
+            const export2Result = await runCommand(makeOptions("remote-export", [remoteId]), {
+                ...context,
+                core,
+            });
+            expect(export2Result).toBe(true);
+            const export2Lines = export2Out.lines();
+            const exported2 = export2Lines.length > 0 ? export2Lines[export2Lines.length - 1] : "";
+            expect(exported2).toBe(roundTripInput);
+        }
+    );
 
     describe("runCommand with decoupled vault path", () => {
         it("push resolves target path relative to vaultPath, not databasePath", async () => {
@@ -706,6 +740,31 @@ describe("runCommand abnormal cases", () => {
     });
 
     describe("mark-resolved and unlock-remote commands", () => {
+        it.each([REMOTE_WEBDAV, REMOTE_POSTGREST])(
+            "verifies the Journal milestone after mark-resolved for %s",
+            async (remoteType) => {
+                const core = createCoreMock();
+                const downloadJson = vi.fn(async () => ({
+                    locked: false,
+                    accepted_nodes: ["test-node-id"],
+                }));
+                core.services.setting.currentSettings().remoteType = remoteType;
+                core.services.replicator.getActiveReplicator.mockReturnValue({
+                    nodeid: "test-node-id",
+                    initializeDatabaseForReplication: vi.fn(async () => {}),
+                    client: { downloadJson },
+                });
+
+                const result = await runCommand(makeOptions("mark-resolved", []), {
+                    ...context,
+                    core,
+                });
+
+                expect(result).toBe(true);
+                expect(downloadJson).toHaveBeenCalledWith("_00000000-milestone.json");
+            }
+        );
+
         it("mark-resolved without args runs on active database", async () => {
             const core = createCoreMock();
             const result = await runCommand(makeOptions("mark-resolved", []), {

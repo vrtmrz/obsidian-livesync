@@ -2,7 +2,7 @@
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
 
-Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It leverages robust server solutions such as CouchDB or object storage systems (e.g., MinIO, S3, R2, etc.) to ensure reliable data synchronisation.
+Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It supports CouchDB and S3-compatible Object Storage for established server-backed synchronisation, together with experimental WebDAV and PostgREST Journal Storage transports.
 
 Additionally, it supports peer-to-peer synchronisation using WebRTC, enabling devices to exchange notes without a central data-storage server. A signalling relay is still required for peer discovery. See [How peer-to-peer synchronisation works](./docs/p2p.md).
 
@@ -17,6 +17,8 @@ Additionally, it supports peer-to-peer synchronisation using WebRTC, enabling de
   - Automatically merge simple conflicts.
 - Use open-source solutions for the server.
   - Compatible solutions are supported.
+- Experiment with WebDAV or PostgREST backed by PostgreSQL as alternative Journal Storage transports.
+  - Review their server, security, and performance constraints in [Remote Configuration](docs/settings.md#3-remote-configuration).
 - Support end-to-end encryption.
 - Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](docs/settings.md#6-customisation-sync-advanced) or [Hidden File Sync](docs/tips/hidden-file-sync.md).
 - Enable supported, opt-in WebRTC peer-to-peer synchronisation.
@@ -54,7 +56,13 @@ Choose a synchronisation method, prepare its server where required, then follow 
 2. Object Storage
    1. Prepare the server. A maintained MinIO server installation guide is not currently available here, so set up an S3-compatible service or server of your choice.
    2. Configure the clients by following [Object Storage Setup](docs/setup_object_storage.md).
-3. Peer-to-Peer
+3. WebDAV Journal Storage (experimental)
+   1. Prepare a dedicated WebDAV collection whose account can use `MKCOL`, `PUT`, `GET`, `PROPFIND`, and `DELETE`.
+   2. Configure the clients by following [WebDAV Journal Storage](docs/settings.md#6-webdav-journal-storage).
+4. PostgREST Journal Storage (experimental)
+   1. Apply the packaged PostgreSQL contract and configure PostgREST and a Vault-scoped JWT as described in [PostgREST Journal Storage](docs/settings.md#7-postgrest-journal-storage).
+   2. Configure each client with the same stable Vault ID.
+5. Peer-to-Peer
    1. No central data-storage server is required. The project's public signalling relay requires no server provisioning; controlled deployments can provide another compatible relay.
    2. Configure the clients by following [Peer-to-Peer Setup](docs/setup_p2p.md).
 

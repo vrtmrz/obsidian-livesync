@@ -41,6 +41,11 @@ import {
     askSimpleFetchMode,
 } from "./redFlag.simpleFetch";
 import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import {
+    REMOTE_POSTGREST,
+    REMOTE_WEBDAV,
+    serialiseWebDAVConnectionURI,
+} from "@vrtmrz/livesync-commonlib/journal-storage";
 //Mock synchroniseAllFilesBetweenDBandStorage
 vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", async (importOriginal) => {
     const originalModule = (await importOriginal()) as any;
@@ -50,8 +55,10 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", asyn
     };
 });
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig", () => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig", async (importOriginal) => {
+    const originalModule = (await importOriginal()) as any;
     return {
+        ...originalModule,
         activateRemoteConfiguration: vi.fn((settings: any, configurationId: string) => {
             if (!settings?.remoteConfigurations?.[configurationId]) return false;
             return {
@@ -577,6 +584,40 @@ describe("Red Flag Feature", () => {
 
             expect(result).toBe(false);
             expect(host.mocks.ui.confirm.confirmWithMessage).not.toHaveBeenCalled();
+        });
+
+        it("does not expose unauthenticated WebDAV headers in the remote selection", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const privateHeader = "x-private-header: private-value";
+
+            host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
+            Object.assign(host.mocks.setting.settings, {
+                remoteConfigurations: {
+                    alpha: {
+                        name: "Alpha",
+                        uri: serialiseWebDAVConnectionURI({
+                            endpoint: "https://dav.example/alpha",
+                            username: "",
+                            password: "",
+                            prefix: "",
+                            useCustomRequestHandler: false,
+                            customHeaders: privateHeader,
+                        }),
+                    },
+                    beta: {
+                        name: "Beta",
+                        uri: "sls+https://user:pass@example.com/db2",
+                    },
+                },
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Cancel");
+
+            await createFetchAllFlagHandler(host as any, log).handle();
+
+            const selections = host.mocks.ui.confirm.askSelectStringDialogue.mock.calls[0]?.[1] as string[];
+            expect(selections.join("\n")).not.toContain("private-value");
+            expect(selections).toContain("Alpha - webdav (WebDAV dav.example)");
         });
 
         it("should activate selected remote configuration", async () => {
@@ -1140,25 +1181,44 @@ describe("Red Flag Feature", () => {
         });
     });
 
-    describe("MinIO configuration handling", () => {
-        it("should not enable makeLocalChunkBeforeSync when remote is MinIO", () => {
+    describe("Journal Storage configuration handling", () => {
+        it.each([REMOTE_MINIO, REMOTE_WEBDAV, REMOTE_POSTGREST])(
+            "does not prepare deduplicated local chunks for %s",
+            async (remoteType) => {
+                const host = createHostMock();
+                const log = createLoggerMock();
+                host.mocks.setting.settings.remoteType = remoteType;
+                host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
+                host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
+                host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
+                    vault: "identical",
+                    backup: "backup_skipped",
+                    extra: { preventFetchingConfig: true },
+                });
+
+                const result = await createFetchAllFlagHandler(host as any, log).handle();
+
+                expect(result).toBe(true);
+                expect(host.mocks.rebuilder.$fetchLocal).toHaveBeenCalledWith(false, true);
+            }
+        );
+
+        it("prepares deduplicated local chunks for CouchDB", async () => {
             const host = createHostMock();
-            host.mocks.setting.settings.remoteType = REMOTE_MINIO;
-
-            const settings = host.mocks.setting.currentSettings();
-            const isMinIO = settings.remoteType === REMOTE_MINIO;
-
-            expect(isMinIO).toBe(true);
-        });
-
-        it("should enable makeLocalChunkBeforeSync for non-MinIO remotes", () => {
-            const host = createHostMock();
+            const log = createLoggerMock();
             host.mocks.setting.settings.remoteType = "CouchDB";
+            host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
+            host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
+                vault: "identical",
+                backup: "backup_skipped",
+                extra: { preventFetchingConfig: true },
+            });
 
-            const settings = host.mocks.setting.currentSettings();
-            const isMinIO = settings.remoteType === REMOTE_MINIO;
+            const result = await createFetchAllFlagHandler(host as any, log).handle();
 
-            expect(isMinIO).toBe(false);
+            expect(result).toBe(true);
+            expect(host.mocks.rebuilder.$fetchLocal).toHaveBeenCalledWith(true, true);
         });
     });
 

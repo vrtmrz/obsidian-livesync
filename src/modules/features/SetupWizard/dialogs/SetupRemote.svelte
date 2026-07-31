@@ -11,6 +11,8 @@
         TYPE_COUCHDB,
         TYPE_BUCKET,
         TYPE_P2P,
+        TYPE_POSTGREST,
+        TYPE_WEBDAV,
         TYPE_CANCELLED,
         type SetupRemoteResultType,
     } from "./setupDialogTypes";
@@ -27,12 +29,22 @@
             return translateMessage("Ui.SetupWizard.SetupRemote.ProceedBucket");
         } else if (userType === TYPE_P2P) {
             return translateMessage("Ui.SetupWizard.SetupRemote.ProceedP2P");
+        } else if (userType === TYPE_WEBDAV) {
+            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedWebDAV");
+        } else if (userType === TYPE_POSTGREST) {
+            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedPostgREST");
         } else {
             return "Please select an option to proceed";
         }
     });
     const canProceed = $derived.by(() => {
-        return userType === TYPE_COUCHDB || userType === TYPE_BUCKET || userType === TYPE_P2P;
+        return (
+            userType === TYPE_COUCHDB ||
+            userType === TYPE_BUCKET ||
+            userType === TYPE_P2P ||
+            userType === TYPE_WEBDAV ||
+            userType === TYPE_POSTGREST
+        );
     });
 </script>
 
@@ -58,6 +70,20 @@
             {translateMessage(
                 "No central data-storage server is required, but a signalling relay is required for peer discovery. Both devices must be online at the same time. Vault data travels through the encrypted P2P connection, not through the signalling relay. Some features may be limited."
             )}
+        </Option>
+        <Option
+            selectedValue={TYPE_WEBDAV}
+            title={translateMessage("Ui.SetupWizard.SetupRemote.WebDAVOption")}
+            bind:value={userType}
+        >
+            {translateMessage("Ui.SetupWizard.SetupRemote.WebDAVOptionDesc")}
+        </Option>
+        <Option
+            selectedValue={TYPE_POSTGREST}
+            title={translateMessage("Ui.SetupWizard.SetupRemote.PostgRESTOption")}
+            bind:value={userType}
+        >
+            {translateMessage("Ui.SetupWizard.SetupRemote.PostgRESTOptionDesc")}
         </Option>
     </Options>
 </Instruction>

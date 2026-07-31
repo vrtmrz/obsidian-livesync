@@ -8,6 +8,12 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    REMOTE_POSTGREST,
+    REMOTE_WEBDAV,
+    type PostgRESTSyncSetting,
+    type WebDAVSyncSetting,
+} from "@vrtmrz/livesync-commonlib/journal-storage";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -23,6 +29,8 @@ import SetupRemote from "./SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "./SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "./SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
+import SetupRemotePostgREST from "./SetupWizard/dialogs/SetupRemotePostgREST.svelte";
+import SetupRemoteWebDAV from "./SetupWizard/dialogs/SetupRemoteWebDAV.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
@@ -36,7 +44,9 @@ import type {
     SetupRemoteCouchDBInitialData,
     SetupRemoteE2EEResultType,
     SetupRemoteP2PResultType,
+    SetupRemotePostgRESTResultType,
     SetupRemoteResultType,
+    SetupRemoteWebDAVResultType,
     UseSetupURIResultType,
 } from "./SetupWizard/dialogs/setupDialogTypes.ts";
 import {
@@ -228,6 +238,68 @@ export class SetupManager extends AbstractModule {
     }
 
     /**
+     * Handles manual setup for WebDAV Journal storage.
+     * @param userMode
+     * @param currentSetting
+     * @param activate Whether to activate WebDAV as the main remote
+     * @returns Promise that resolves to true if setup completed successfully, false otherwise
+     */
+    async onWebDAVManualSetup(
+        userMode: UserMode,
+        currentSetting: ObsidianLiveSyncSettings,
+        activate = true
+    ): Promise<boolean> {
+        const webDAVConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemoteWebDAVResultType,
+            WebDAVSyncSetting
+        >(SetupRemoteWebDAV, currentSetting);
+        if (webDAVConf === "cancelled") {
+            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            return await this.onOnboard(userMode);
+        }
+        const newSetting = {
+            ...copySettingsForRemoteProfileUpdate(currentSetting),
+            ...webDAVConf,
+        } as ObsidianLiveSyncSettings;
+        if (activate) {
+            newSetting.remoteType = REMOTE_WEBDAV;
+        }
+        upsertRemoteConfigurationInPlace(newSetting, "webdav", { activate });
+        return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
+    }
+
+    /**
+     * Handles manual setup for PostgREST Journal storage.
+     * @param userMode
+     * @param currentSetting
+     * @param activate Whether to activate PostgREST as the main remote
+     * @returns Promise that resolves to true if setup completed successfully, false otherwise
+     */
+    async onPostgRESTManualSetup(
+        userMode: UserMode,
+        currentSetting: ObsidianLiveSyncSettings,
+        activate = true
+    ): Promise<boolean> {
+        const postgrestConf = await this.dialogManager.openWithExplicitCancel<
+            SetupRemotePostgRESTResultType,
+            PostgRESTSyncSetting
+        >(SetupRemotePostgREST, currentSetting);
+        if (postgrestConf === "cancelled") {
+            this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
+            return await this.onOnboard(userMode);
+        }
+        const newSetting = {
+            ...copySettingsForRemoteProfileUpdate(currentSetting),
+            ...postgrestConf,
+        } as ObsidianLiveSyncSettings;
+        if (activate) {
+            newSetting.remoteType = REMOTE_POSTGREST;
+        }
+        upsertRemoteConfigurationInPlace(newSetting, "postgrest", { activate });
+        return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
+    }
+
+    /**
      * Handles manual setup for P2P
      * @param userMode
      * @param currentSetting
@@ -317,6 +389,10 @@ export class SetupManager extends AbstractModule {
             return await this.onBucketManualSetup(userMode, currentSetting, true);
         } else if (method === "p2p") {
             return await this.onP2PManualSetup(userMode, currentSetting, true);
+        } else if (method === "webdav") {
+            return await this.onWebDAVManualSetup(userMode, currentSetting, true);
+        } else if (method === "postgrest") {
+            return await this.onPostgRESTManualSetup(userMode, currentSetting, true);
         } else if (method === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             if (userMode !== UserMode.Unknown) {

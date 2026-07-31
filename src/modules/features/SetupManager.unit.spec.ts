@@ -8,6 +8,12 @@ import {
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import {
+    REMOTE_POSTGREST,
+    REMOTE_WEBDAV,
+    serialisePostgRESTConnectionURI,
+    serialiseWebDAVConnectionURI,
+} from "@vrtmrz/livesync-commonlib/journal-storage";
 
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
@@ -21,6 +27,8 @@ vi.mock("./SetupWizard/dialogs/SetupRemote.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteCouchDB.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
+vi.mock("./SetupWizard/dialogs/SetupRemotePostgREST.svelte", () => ({ default: {} }));
+vi.mock("./SetupWizard/dialogs/SetupRemoteWebDAV.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => ({
@@ -145,6 +153,50 @@ describe("SetupManager", () => {
         await manager.onOnboard(UserMode.NewUser);
 
         expect(configureManually).toHaveBeenCalledWith(createNewVaultSettings(), UserMode.NewUser);
+    });
+
+    it("registers WebDAV and PostgREST manual settings as named remote profiles", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const confirmApply = vi.spyOn(manager, "onConfirmApplySettingsFromWizard").mockResolvedValue(true);
+        const webDAVactiveConnectionURI = serialiseWebDAVConnectionURI({
+            endpoint: "https://dav.example/vault",
+            username: "alice",
+            password: "secret",
+            prefix: "journal/",
+            useCustomRequestHandler: false,
+            customHeaders: "",
+        });
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce({ webDAVactiveConnectionURI });
+
+        await manager.onWebDAVManualSetup(UserMode.Update, setting.currentSettings(), true);
+
+        const webDAVSettings = confirmApply.mock.calls[0][0];
+        expect(webDAVSettings.remoteType).toBe(REMOTE_WEBDAV);
+        expect(Object.values(webDAVSettings.remoteConfigurations)).toEqual([
+            expect.objectContaining({
+                uri: expect.stringMatching(/^sls\+webdav:/u),
+            }),
+        ]);
+
+        const postgrestActiveConnectionURI = serialisePostgRESTConnectionURI({
+            endpoint: "https://journal.example",
+            bearerToken: "token",
+            vaultId: "vault-a",
+            schema: "livesync_api",
+            useCustomRequestHandler: false,
+            customHeaders: "",
+        });
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce({ postgrestActiveConnectionURI });
+
+        await manager.onPostgRESTManualSetup(UserMode.Update, setting.currentSettings(), true);
+
+        const postgrestSettings = confirmApply.mock.calls[1][0];
+        expect(postgrestSettings.remoteType).toBe(REMOTE_POSTGREST);
+        expect(Object.values(postgrestSettings.remoteConfigurations)).toEqual([
+            expect.objectContaining({
+                uri: expect.stringMatching(/^sls\+postgrest:/u),
+            }),
+        ]);
     });
 
     it("compatibility: normalises imported flat remote settings from a Setup URI before applying", async () => {

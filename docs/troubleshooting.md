@@ -10,7 +10,7 @@ Before changing settings:
 1. Back up the affected Vaults and, where possible, the remote database or bucket.
 2. Stop editing on other devices.
 3. Confirm that every participating device uses the intended plug-in version.
-4. Identify whether the active main remote is CouchDB, Object Storage, or P2P.
+4. Identify whether the active main remote is CouchDB, S3-compatible Object Storage, WebDAV, PostgREST, or P2P.
 5. Open `Show log` and note the first error, rather than only the final summary.
 
 For a report, run `Generate full report for opening the issue with debug info`, remove credentials and private server details, and include the steps which caused the symptom.
@@ -33,6 +33,29 @@ Configure CouchDB CORS first. Reverse-proxy examples belong in [Set up your own 
 A Cloudflare `524` response means that Cloudflare timed out while waiting for the origin. The response may also lack the CORS headers which would have been present on an ordinary CouchDB response. Correct the long-running server or proxy request first. The advanced CouchDB option `Use timeouts instead of heartbeats` may help only when the underlying operation is otherwise healthy.
 
 For JWT-specific setup and key-format errors, see [JWT Authentication on CouchDB](tips/jwt-on-couchdb.md).
+
+## WebDAV Journal Storage does not connect
+
+Check that the endpoint identifies the intended dedicated collection and that the account can use `MKCOL`, `PUT`, `GET`, `PROPFIND`, and `DELETE`. Confirm that a depth-one `PROPFIND` response includes resource paths and content lengths, and that a binary `PUT` body is returned unchanged by `GET`.
+
+On mobile, use HTTPS with a certificate trusted by the operating system. For a browser CORS error, correct the WebDAV or reverse-proxy CORS policy where possible. `Use internal API` is a compatibility option for a trusted endpoint, not evidence that the standard server configuration is correct.
+
+A large or slow `PROPFIND` response is different from a failed connection. Use a dedicated collection prefix and remove unrelated files. Listing work normally grows with retained Journal history.
+
+## PostgREST Journal Storage does not connect
+
+Confirm all of the following:
+
+1. the packaged Commonlib PostgREST SQL has been applied to the target database;
+2. PostgREST exposes the configured schema, normally `livesync_api`;
+3. the JWT contains `role: livesync_journal_client` and a non-empty signed `vault_id`;
+4. the dialogue's Vault ID exactly matches that signed claim;
+5. the authenticator can switch to `livesync_journal_client`; and
+6. the reverse proxy preserves `Authorization`, content type, binary request bodies, and the custom object headers.
+
+An HTTP `401` normally means that PostgREST could not authenticate the token. An HTTP `403` commonly indicates a role, claim, row-level-security, or Vault-ID mismatch. An HTTP `404`, `406`, or media-type error can indicate that the configured schema or packaged binary RPC contract is not exposed. Check the PostgREST and PostgreSQL logs before rotating credentials or resetting a Vault.
+
+PostgREST may make large Journal listings faster through its `(vault_id, object_key)` index. A slow upload or download is a separate network, proxy, or server-resource problem and does not demonstrate an indexing fault.
 
 ## CouchDB was working but synchronisation stopped
 

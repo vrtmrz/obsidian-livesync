@@ -12,7 +12,7 @@ The following status applies to optional and compatibility features in the 1.0 l
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Supported, opt-in    | Peer-to-Peer Synchronisation, Hidden File Sync, and Customisation Sync                                                                                | Maintained and covered by focused real-runtime tests. Enable them only where their separate setup and operational constraints are acceptable.                                   |
 | Maintained, advanced | Data Compression                                                                                                                                      | Available as an explicit storage and bandwidth trade-off. It remains disabled by default because the measured processing and memory costs outweigh the mixed-dataset saving.    |
-| Beta or experimental | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 for CouchDB                                     | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
+| Beta or experimental | JWT authentication, WebDAV and PostgREST Journal Storage, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 for CouchDB                     | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
 | Compatibility only   | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
 
 | Icon | Description                                                        |
@@ -58,7 +58,7 @@ A current Setup URI retains its remote profiles, display names, and separate mai
 
 Step-by-step setup for Self-hosted LiveSync. You can setup Self-hosted LiveSync manually with Minimal setting items.
 
-Completing manual CouchDB, Object Storage, or P2P setup creates the corresponding remote profile without replacing profiles which are already saved. CouchDB and Object Storage setup select the new profile as the main remote. P2P setup selects it for P2P use and, when the wizard is enabling LiveSync, also selects it as the main remote. A descriptive display name is generated and can be changed later.
+Completing manual CouchDB, Object Storage, WebDAV, PostgREST, or P2P setup creates the corresponding remote profile without replacing profiles which are already saved. CouchDB and each Journal Storage setup select the new profile as the main remote. P2P setup selects it for P2P use and, when the wizard is enabling LiveSync, also selects it as the main remote. A descriptive display name is generated and can be changed later.
 
 #### Enable LiveSync
 
@@ -171,12 +171,12 @@ Show verbose log. Please enable when you report the logs
 
 ### 1. Connection settings
 
-Self-hosted LiveSync stores multiple remote connection profiles under **Connection settings** → **Saved connections**. Each profile represents a CouchDB database, an Object Storage connection, or a P2P configuration, and several profiles can be kept in one Vault.
+Self-hosted LiveSync stores multiple remote connection profiles under **Connection settings** → **Saved connections**. Each profile represents a CouchDB database, an S3-compatible Object Storage connection, a WebDAV collection, a PostgREST Journal endpoint, or a P2P configuration, and several profiles can be kept in one Vault.
 
 Each profile has an opaque identifier and a presentation name. The name does not need to be unique and is not used to select the profile. The main remote and the P2P remote are selected independently, so code and settings imports must preserve both selections rather than relying on a special identifier such as `default`.
 
 - **➕ Add new connection**: Create a new connection profile by launching the setup dialogue.
-- **📥 Import connection**: Paste a connection string (e.g., `sls+https://...`, `sls+s3://...`, `sls+p2p://...`) to import a remote configuration profile.
+- **📥 Import connection**: Paste a connection string (e.g., `sls+https://...`, `sls+s3://...`, `sls+webdav://...`, `sls+postgrest://...`, or `sls+p2p://...`) to import a remote configuration profile.
 - **🔧 Configure**: Open the setup dialogue to edit settings for the selected connection profile.
 - **✅ Activate**: Select and activate this profile as the current active remote.
 - **🗑️ Delete**: Remove this connection profile from the list.
@@ -305,7 +305,73 @@ Custom HTTP headers to include in every request sent to the Object Storage bucke
 
 #### Apply Settings
 
-### 6. CouchDB
+### 6. WebDAV Journal Storage
+
+These settings are configured within the WebDAV Journal Configuration dialogue when adding (`➕`) or editing (`🔧`) a WebDAV connection profile. WebDAV is an experimental Journal Storage transport.
+
+#### Connection URI
+
+Setting key: webDAVactiveConnectionURI
+
+This opaque value stores the fields from the dialogue, including credentials and custom headers. Use the dialogue or an encrypted Setup URI instead of editing or sharing it as plain text.
+
+#### Endpoint URL
+
+The HTTP or HTTPS URL of the dedicated WebDAV collection. Only secure HTTPS connections can be used on Obsidian Mobile. The server must support `MKCOL`, `PUT`, `GET`, `PROPFIND`, and `DELETE`, and must preserve binary request bodies.
+
+#### Username and password
+
+Optional Basic authentication credentials. Whether anonymous access is allowed is determined by the WebDAV server.
+
+#### Collection Prefix
+
+A prefix under the configured collection. Use a dedicated prefix so unrelated files are not included in Journal listing.
+
+#### Use internal API
+
+Enable this compatibility option when standard browser requests are blocked by CORS. It sends the configured credentials through Obsidian's internal request API, so use it only with a server you trust.
+
+#### Custom Headers
+
+Custom HTTP headers to include in every WebDAV request. Specify them in the format `Header-Name: Value`, with each header on a new line.
+
+WebDAV normally performs a depth-one listing of the complete collection before filtering Journal keys. Its listing work therefore grows with retained Journal history. Changing only credentials or custom headers retains the stable Journal checkpoint. The first run after the earlier experimental WebDAV implementation also migrates its credential-dependent checkpoint when the endpoint and prefix are unchanged.
+
+### 7. PostgREST Journal Storage
+
+PostgREST is an experimental Journal Storage transport backed by PostgreSQL. It stores one opaque binary Journal object per row; it does not translate LiveSync metadata and chunks into a relational file model.
+
+Before connecting a client, install the packaged [`sql/postgrest/001_journal_storage.sql`](https://github.com/vrtmrz/livesync-commonlib/blob/main/sql/postgrest/001_journal_storage.sql) contract and follow its [deployment notes](https://github.com/vrtmrz/livesync-commonlib/blob/main/sql/postgrest/README.md). Expose the `livesync_api` schema through PostgREST, and issue a JWT whose `role` is `livesync_journal_client` and whose non-empty `vault_id` claim identifies exactly one Vault.
+
+#### Connection URI
+
+Setting key: postgrestActiveConnectionURI
+
+This opaque value stores the endpoint, bearer token, Vault ID, schema, internal-API choice, and custom headers. Treat it as a credential and use an encrypted Setup URI when transferring it to another device.
+
+#### PostgREST Endpoint URL
+
+The HTTP or HTTPS base URL of the PostgREST service. Only secure HTTPS connections can be used on Obsidian Mobile.
+
+#### Bearer Token
+
+A JWT authorised for `livesync_journal_client`. A long-lived token grants access to every Journal object for its signed Vault, so protect it like the Vault encryption passphrase. Prefer a short-lived token only where token refresh can be managed safely.
+
+#### Vault ID
+
+The stable identifier for this Vault. It must exactly match the signed `vault_id` claim. Changing the token while retaining the claim preserves the Journal checkpoint; changing the Vault ID selects a different row namespace and checkpoint.
+
+#### API Schema
+
+The PostgreSQL identifier exposed by PostgREST. The packaged contract uses `livesync_api`.
+
+#### Use internal API and Custom Headers
+
+The internal API can bypass browser CORS restrictions for a trusted endpoint. Custom headers use one `Header-Name: Value` entry per line. Both are stored in the opaque connection URI.
+
+PostgREST uses an indexed, bytewise keyset query over `(vault_id, object_key)`. It can therefore reduce listing work compared with a full WebDAV collection scan when many Journal objects are retained. It does not inherently make compression, encryption, upload bandwidth, or download bandwidth faster, and network latency, PostgreSQL resources, and reverse proxies can remove the listing advantage.
+
+### 8. CouchDB
 
 These settings are configured within the CouchDB Setup dialogue when adding (`➕`) or editing (`🔧`) a CouchDB connection profile.
 
@@ -399,7 +465,7 @@ This optional check reads the CouchDB server configuration through Obsidian's in
 
 #### Apply Settings
 
-### 7. Peer-to-Peer (P2P) Synchronisation
+### 9. Peer-to-Peer (P2P) Synchronisation
 
 #### Enable P2P Synchronisation
 

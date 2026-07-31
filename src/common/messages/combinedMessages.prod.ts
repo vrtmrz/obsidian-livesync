@@ -8913,6 +8913,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "This enables direct synchronisation between devices. No server is required, but both devices must be online at the same time and some features may be limited. Internet connectivity is required only for signalling, not for data transfer.",
         zh: "启用设备之间的直接同步。无需服务器，但两台设备必须同时在线，且部分功能可能受限。互联网连接仅用于信令，不用于传输数据。",
     },
+    "Ui.SetupWizard.SetupRemote.PostgRESTOption": {
+        def: "PostgREST Journal Storage",
+    },
+    "Ui.SetupWizard.SetupRemote.PostgRESTOptionDesc": {
+        def: "Synchronisation using Journal objects stored in PostgreSQL through the packaged PostgREST RPC schema. The server SQL and a Vault-scoped JWT must already be configured.",
+    },
     "Ui.SetupWizard.SetupRemote.ProceedBucket": {
         def: "Continue to Object Storage setup",
         zh: "继续配置 S3/MinIO/R2",
@@ -8925,9 +8931,21 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Continue to P2P setup",
         zh: "继续配置仅点对点模式",
     },
+    "Ui.SetupWizard.SetupRemote.ProceedPostgREST": {
+        def: "Continue to PostgREST setup",
+    },
+    "Ui.SetupWizard.SetupRemote.ProceedWebDAV": {
+        def: "Continue to WebDAV setup",
+    },
     "Ui.SetupWizard.SetupRemote.Title": {
         def: "Choose a synchronisation remote",
         zh: "输入服务器信息",
+    },
+    "Ui.SetupWizard.SetupRemote.WebDAVOption": {
+        def: "WebDAV Journal Storage",
+    },
+    "Ui.SetupWizard.SetupRemote.WebDAVOptionDesc": {
+        def: "Synchronisation using Journal files in a dedicated WebDAV collection. Listing cost grows with the number of retained Journal files.",
     },
     "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.": {
         def: "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.",

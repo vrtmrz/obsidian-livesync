@@ -81,7 +81,7 @@ export function paneMaintenance(
                         await this.services.replication.markLocked();
                     })
             )
-            .addOnUpdate(this.onlyOnCouchDBOrMinIO);
+            .addOnUpdate(this.onlyOnCouchDBOrJournal);
 
         new Setting(paneEl)
             .setName("Emergency restart")
@@ -127,7 +127,7 @@ export function paneMaintenance(
             );
     });
 
-    void addPanel(paneEl, "Syncing", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
+    void addPanel(paneEl, "Syncing", () => {}, this.onlyOnCouchDBOrJournal).then((paneEl) => {
         new Setting(paneEl)
             .setName("Resend")
             .setDesc("Resend all chunks to the remote.")
@@ -155,7 +155,7 @@ export function paneMaintenance(
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                        await this.getJournalSyncClient().updateCheckPointInfo((info) => ({
                             ...info,
                             receivedFiles: new Set(),
                             knownIDs: new Set(),
@@ -163,7 +163,7 @@ export function paneMaintenance(
                         Logger(`Journal received history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournal);
 
         new Setting(paneEl)
             .setName("Reset journal sent history")
@@ -176,7 +176,7 @@ export function paneMaintenance(
                     .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                        await this.getJournalSyncClient().updateCheckPointInfo((info) => ({
                             ...info,
                             lastLocalSeq: 0,
                             sentIDs: new Set(),
@@ -185,7 +185,7 @@ export function paneMaintenance(
                         Logger(`Journal sent history has been cleared.`, LOG_LEVEL_NOTICE);
                     })
             )
-            .addOnUpdate(this.onlyOnMinIO);
+            .addOnUpdate(this.onlyOnJournal);
     });
     void addPanel(paneEl, "Garbage Collection V3 (Beta)", (e) => e, this.onlyOnCouchDB).then((paneEl) => {
         new Setting(paneEl)
@@ -288,94 +288,96 @@ export function paneMaintenance(
     //     }
     // );
 
-    void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
-        new Setting(paneEl)
-            .setName("Perform cleanup")
-            .setDesc(
-                "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText("Perform")
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
-                        Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
-                        if (await replicator.compactRemote(this.editingSettings)) {
-                            Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
-                        } else {
-                            Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
-                        }
-                    })
-            )
-            .addOnUpdate(this.onlyOnCouchDB);
+    void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, this.onlyOnCouchDBOrJournal).then(
+        (paneEl) => {
+            new Setting(paneEl)
+                .setName("Perform cleanup")
+                .setDesc(
+                    "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
+                )
+                .addButton((button) =>
+                    button
+                        .setButtonText("Perform")
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
+                            Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
+                            if (await replicator.compactRemote(this.editingSettings)) {
+                                Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
+                            } else {
+                                Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
+                            }
+                        })
+                )
+                .addOnUpdate(this.onlyOnCouchDB);
 
-        new Setting(paneEl)
-            .setName("Overwrite remote")
-            .setDesc("Overwrite remote with local DB and passphrase.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Send")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.rebuildDB("remoteOnly");
-                    })
-            );
+            new Setting(paneEl)
+                .setName("Overwrite remote")
+                .setDesc("Overwrite remote with local DB and passphrase.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Send")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.rebuildDB("remoteOnly");
+                        })
+                );
 
-        new Setting(paneEl)
-            .setName("Reset all journal counter")
-            .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset all")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.getMinioJournalSyncClient().resetCheckpointInfo();
-                        Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
-                    })
-            )
-            .addOnUpdate(this.onlyOnMinIO);
+            new Setting(paneEl)
+                .setName("Reset all journal counter")
+                .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Reset all")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.getJournalSyncClient().resetCheckpointInfo();
+                            Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+                .addOnUpdate(this.onlyOnJournal);
 
-        new Setting(paneEl)
-            .setName("Purge all journal counter")
-            .setDesc("Purge all download/upload cache.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Reset all")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(() => {
-                        this.getMinioJournalSyncClient().resetAllCaches();
-                        Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
-                    })
-            )
-            .addOnUpdate(this.onlyOnMinIO);
+            new Setting(paneEl)
+                .setName("Purge all journal counter")
+                .setDesc("Purge all download/upload cache.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Reset all")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(() => {
+                            this.getJournalSyncClient().resetAllCaches();
+                            Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+                .addOnUpdate(this.onlyOnJournal);
 
-        new Setting(paneEl)
-            .setName("Fresh Start Wipe")
-            .setDesc("Delete all data on the remote server.")
-            .addButton((button) =>
-                button
-                    .setButtonText("Delete")
-                    .setWarning()
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
-                            ...info,
-                            receivedFiles: new Set(),
-                            knownIDs: new Set(),
-                            lastLocalSeq: 0,
-                            sentIDs: new Set(),
-                            sentFiles: new Set(),
-                        }));
-                        await this.resetRemoteBucket();
-                        Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
-                    })
-            )
-            .addOnUpdate(this.onlyOnMinIO);
-    });
+            new Setting(paneEl)
+                .setName("Fresh Start Wipe")
+                .setDesc("Delete all data on the remote server.")
+                .addButton((button) =>
+                    button
+                        .setButtonText("Delete")
+                        .setWarning()
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.getJournalSyncClient().updateCheckPointInfo((info) => ({
+                                ...info,
+                                receivedFiles: new Set(),
+                                knownIDs: new Set(),
+                                lastLocalSeq: 0,
+                                sentIDs: new Set(),
+                                sentFiles: new Set(),
+                            }));
+                            await this.resetRemoteBucket();
+                            Logger(`Deleted all data on remote server`, LOG_LEVEL_NOTICE);
+                        })
+                )
+                .addOnUpdate(this.onlyOnJournal);
+        }
+    );
 
     void addPanel(paneEl, "Reset").then((paneEl) => {
         new Setting(paneEl)

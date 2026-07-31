@@ -6,10 +6,10 @@ import {
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
     REMOTE_COUCHDB,
-    REMOTE_MINIO,
     type EntryMilestoneInfo,
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isJournalRemoteType } from "@vrtmrz/livesync-commonlib/journal-storage";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import {
     activateRemoteConfiguration,
@@ -59,7 +59,7 @@ async function verifyRemoteState(
                 return false;
             }
             milestone = await dbRet.db.get(MILESTONE_DOCID);
-        } else if (settings.remoteType === REMOTE_MINIO) {
+        } else if (isJournalRemoteType(settings.remoteType)) {
             milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
         }
 

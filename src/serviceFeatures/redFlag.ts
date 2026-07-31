@@ -8,7 +8,7 @@ import {
 import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { TweakValuesShouldMatchedTemplate } from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
 import type {
@@ -17,7 +17,11 @@ import type {
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
 import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import {
+    activateRemoteConfiguration,
+    suggestRemoteConfigurationName,
+} from "@vrtmrz/livesync-commonlib/remote-configurations";
+import { isJournalRemoteType } from "@vrtmrz/livesync-commonlib/journal-storage";
 import { isP2PMainRemote } from "@/common/remoteConfiguration";
 
 /**
@@ -61,7 +65,7 @@ async function askAndActivateRemoteDatabase(host: NecessaryServices<"UI" | "sett
             "Multiple remote configurations detected. Please select the remote configuration you want to fetch from.";
         const options = Object.entries(settings.remoteConfigurations).map(([id, config]) => {
             const parsed = ConnectionStringParser.parse(config.uri);
-            const displayURI = (config.uri.split("@").pop() || "").substring(0, 20) + "..."; // Show only the last part of URI for better readability and privacy.
+            const displayURI = suggestRemoteConfigurationName(parsed);
             return {
                 name: `${config.name} - ${parsed.type} (${displayURI})`,
                 id: id,
@@ -164,8 +168,8 @@ export function createFetchAllFlagHandler(
         }
         const { vault, extra } = method;
         const settings = await Promise.resolve(host.services.setting.currentSettings());
-        // If remote is MinIO, makeLocalChunkBeforeSync is not available. (because no-deduplication on sending).
-        const makeLocalChunkBeforeSyncAvailable = settings.remoteType !== REMOTE_MINIO;
+        // Journal Storage remotes do not deduplicate chunks while sending.
+        const makeLocalChunkBeforeSyncAvailable = !isJournalRemoteType(settings.remoteType);
         const mapVaultStateToAction = {
             identical: {
                 makeLocalChunkBeforeSync: makeLocalChunkBeforeSyncAvailable,

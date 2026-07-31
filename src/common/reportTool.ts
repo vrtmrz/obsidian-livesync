@@ -1,4 +1,5 @@
-import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { isJournalRemoteType } from "@vrtmrz/livesync-commonlib/journal-storage";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -55,8 +56,8 @@ export async function generateReport(settings: ObsidianLiveSyncSettings, core: L
                 error: "Requesting information from the remote CouchDB has failed. If you are using IBM Cloudant, this is normal behaviour.",
             };
         }
-    } else if (settings.remoteType == REMOTE_MINIO) {
-        responseConfig = { error: "Object Storage Synchronisation" };
+    } else if (isJournalRemoteType(settings.remoteType)) {
+        responseConfig = { error: "Journal Storage Synchronisation" };
         //
     }
     const defaultKeys = Object.keys(DEFAULT_SETTINGS) as (keyof ObsidianLiveSyncSettings)[];
@@ -81,6 +82,8 @@ export async function generateReport(settings: ObsidianLiveSyncSettings, core: L
     pluginConfig.encryptedCouchDBConnection = REDACTED;
     pluginConfig.accessKey = REDACTED;
     pluginConfig.secretKey = REDACTED;
+    pluginConfig.webDAVactiveConnectionURI = REDACTED;
+    pluginConfig.postgrestActiveConnectionURI = REDACTED;
     const redact = (source: string) => `${REDACTED}(${source.length} letters)`;
     const toSchemeOnly = (uri: string) => {
         try {
