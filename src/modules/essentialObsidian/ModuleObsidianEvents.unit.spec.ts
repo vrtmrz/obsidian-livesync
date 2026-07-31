@@ -24,6 +24,7 @@ function setup(opts: SetupOptions) {
     };
     const fileProcessing = { commitPendingFileEvents: vi.fn(async () => true) };
     const boundedRemoteActivityCount = reactiveSource(0);
+    const boundedLocalApplicationActivityCount = reactiveSource(0);
 
     const core = {
         _services: {
@@ -38,7 +39,7 @@ function setup(opts: SetupOptions) {
             setting: { saveSettingData: vi.fn(async () => undefined) },
             appLifecycle,
             fileProcessing,
-            replicator: { boundedRemoteActivityCount },
+            replicator: { boundedRemoteActivityCount, boundedLocalApplicationActivityCount },
         },
         settings: {
             ...DEFAULT_SETTINGS,
@@ -56,7 +57,13 @@ function setup(opts: SetupOptions) {
     // The handler reads `activeWindow.document.hidden`.
     (globalThis as any).activeWindow = { document: { hidden: opts.hidden } };
 
-    return { module, appLifecycle, fileProcessing, boundedRemoteActivityCount };
+    return {
+        module,
+        appLifecycle,
+        fileProcessing,
+        boundedRemoteActivityCount,
+        boundedLocalApplicationActivityCount,
+    };
 }
 
 describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () => {
@@ -106,6 +113,21 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
 
         boundedRemoteActivityCount.value = 0;
 
+        await vi.waitFor(() => expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1));
+    });
+
+    it("defers suspension while local document application is active", async () => {
+        const { module, appLifecycle, boundedLocalApplicationActivityCount } = setup({
+            settings: { keepReplicationActiveInBackground: false, liveSync: false },
+            hidden: true,
+        });
+        boundedLocalApplicationActivityCount.value = 1;
+
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).not.toHaveBeenCalled();
+
+        boundedLocalApplicationActivityCount.value = 0;
         await vi.waitFor(() => expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1));
     });
 
