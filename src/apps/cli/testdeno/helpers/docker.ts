@@ -466,6 +466,43 @@ export async function stopMinio(): Promise<void> {
     untrackContainer(MINIO_CONTAINER);
 }
 
+export async function listMinioObjectKeys(
+    minioEndpoint: string,
+    accessKey: string,
+    secretKey: string,
+    bucket: string
+): Promise<string[]> {
+    const cmd =
+        `mc alias set myminio ${shQuote(minioEndpoint)} ${shQuote(accessKey)} ${shQuote(secretKey)} >/dev/null 2>&1 && ` +
+        `mc ls --recursive --json myminio/${shQuote(bucket)}`;
+    const result = await docker(
+        "run",
+        "--rm",
+        "--network",
+        "host",
+        "--entrypoint",
+        "/bin/sh",
+        MINIO_MC_IMAGE,
+        "-c",
+        cmd
+    );
+    if (result.code !== 0) {
+        throw new Error(`Could not list MinIO objects: ${result.stderr.trim()}`);
+    }
+
+    return result.stdout
+        .split(/\r?\n/u)
+        .filter((line) => line.trim().length > 0)
+        .map((line) => JSON.parse(line) as { key?: unknown })
+        .map(({ key }) => {
+            if (typeof key !== "string") {
+                throw new Error("MinIO returned an object without a string key");
+            }
+            return key;
+        })
+        .sort();
+}
+
 async function initMinioBucket(
     minioEndpoint: string,
     accessKey: string,

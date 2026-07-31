@@ -22,6 +22,8 @@
         "pretest:e2e:ci": "npm run build",
         "test:e2e:ci": "deno task --cwd testdeno test:ci",
         "test:e2e:p2p": "deno task --cwd testdeno test:p2p:compose",
+        "pretest:e2e:adaptive-s3": "npm run build",
+        "test:e2e:adaptive-s3": "deno task --cwd testdeno test:adaptive-journal-s3",
         "test:e2e:mirror": "bash test/test-mirror-linux.sh",
         "test:e2e:remote-commands": "bash test/test-remote-commands-linux.sh",
         "pretest:e2e:all": "npm run build",

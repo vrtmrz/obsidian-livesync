@@ -11,6 +11,7 @@ const TASKS = [
     "test:e2e-matrix:couchdb-enc1",
     "test:e2e-matrix:minio-enc0",
     "test:e2e-matrix:minio-enc1",
+    "test:adaptive-journal-s3",
 ] as const;
 
 for (const [index, task] of TASKS.entries()) {

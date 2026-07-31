@@ -44,6 +44,7 @@
         "test:contract:context:obsidian": "npm run build && npm run test:e2e:obsidian:smoke",
         "test:e2e:cli": "npm run test:e2e:ci --workspace self-hosted-livesync-cli",
         "test:e2e:cli:p2p": "npm run test:e2e:p2p --workspace self-hosted-livesync-cli",
+        "test:e2e:cli:adaptive-s3": "npm run test:e2e:adaptive-s3 --workspace self-hosted-livesync-cli",
         "test:e2e:cli:all": "npm run test:e2e:all --workspace self-hosted-livesync-cli",
         "test:integration": "npx dotenv-cli -e .env -e .test.env -- vitest run --config vitest.config.integration.ts",
         "test:unit:coverage": "vitest run --config vitest.config.unit.ts --coverage",

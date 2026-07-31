@@ -125,6 +125,9 @@ export async function applyRemoteSyncSettings(
         passphrase?: string;
         enableCompression?: boolean;
         usePathObfuscation?: boolean;
+        journalFormat?: "adaptive-v1" | "opaque-v1";
+        expectedRepositoryId?: string;
+        packReadPolicy?: "range" | "whole-pack";
     }
 ): Promise<void> {
     const data = JSON.parse(await Deno.readTextFile(settingsFile));
@@ -143,6 +146,15 @@ export async function applyRemoteSyncSettings(
         data.secretKey = options.minioSecretKey;
         data.region = "auto";
         data.forcePathStyle = true;
+        if (options.journalFormat !== undefined) {
+            data.journalFormat = options.journalFormat;
+        }
+        if (options.expectedRepositoryId !== undefined) {
+            data.expectedRepositoryId = options.expectedRepositoryId;
+        }
+        if (options.packReadPolicy !== undefined) {
+            data.packReadPolicy = options.packReadPolicy;
+        }
     }
 
     data.liveSync = true;
