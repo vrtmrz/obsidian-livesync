@@ -25,6 +25,8 @@ import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFu
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import type { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
+import { journalProtocolConfigurationForSettings } from "@vrtmrz/livesync-commonlib/journal-storage";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
 
 function redactConnectionString(uri: string): string {
@@ -60,7 +62,19 @@ async function verifyRemoteState(
             }
             milestone = await dbRet.db.get(MILESTONE_DOCID);
         } else if (settings.remoteType === REMOTE_MINIO) {
-            milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
+            const journalReplicator = replicator as LiveSyncJournalReplicator;
+            if (journalProtocolConfigurationForSettings(settings).journalFormat === "adaptive-v1") {
+                try {
+                    await journalReplicator.client.ensureCheckpointCachesAreFresh();
+                    standardIo.writeStderr("[Verification] Adaptive Journal repository is available.\n");
+                    return true;
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    standardIo.writeStderr(`[Verification] Failed to verify Adaptive Journal repository: ${message}\n`);
+                    return false;
+                }
+            }
+            milestone = await (journalReplicator.client as JournalSyncCore).downloadJson("_00000000-milestone.json");
         }
 
         if (milestone) {

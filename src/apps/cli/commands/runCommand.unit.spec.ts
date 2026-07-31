@@ -2,7 +2,12 @@ import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    DEFAULT_SETTINGS,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+    REMOTE_P2P,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
@@ -715,6 +720,34 @@ describe("runCommand abnormal cases", () => {
             expect(result).toBe(true);
             expect(core.services.replication.markResolved).toHaveBeenCalledTimes(1);
             expect(core.services.control.applySettings).not.toHaveBeenCalled();
+        });
+
+        it("verifies an Adaptive Journal repository without reading the legacy milestone", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteType = REMOTE_MINIO;
+            settings.journalFormat = "adaptive-v1";
+            settings.packReadPolicy = "whole-pack";
+
+            const ensureCheckpointCachesAreFresh = vi.fn(async () => {});
+            core.services.replicator.getActiveReplicator.mockReturnValue({
+                nodeid: "test-node-id",
+                initializeDatabaseForReplication: vi.fn(async () => {}),
+                client: {
+                    ensureCheckpointCachesAreFresh,
+                },
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(true);
+            expect(ensureCheckpointCachesAreFresh).toHaveBeenCalledTimes(1);
+            expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+                "[Verification] Adaptive Journal repository is available.\n"
+            );
         });
 
         it("mark-resolved with remote-id temporarily activates it and runs markResolved", async () => {
