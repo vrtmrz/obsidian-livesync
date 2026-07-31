@@ -25,6 +25,10 @@ type SerializableContainer =
     | {
           [NODE_KV_TYPED_KEY]: "ArrayBuffer";
           [NODE_KV_VALUES_KEY]: number[];
+      }
+    | {
+          [NODE_KV_TYPED_KEY]: "BigInt";
+          [NODE_KV_VALUES_KEY]: string;
       };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -32,6 +36,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function serializeForNodeKV(value: unknown): unknown {
+    if (typeof value === "bigint") {
+        return {
+            [NODE_KV_TYPED_KEY]: "BigInt",
+            [NODE_KV_VALUES_KEY]: value.toString(10),
+        } satisfies SerializableContainer;
+    }
     if (value instanceof Set) {
         return {
             [NODE_KV_TYPED_KEY]: "Set",
@@ -77,6 +87,9 @@ function deserializeFromNodeKV(value: unknown): unknown {
     }
     if (taggedType === "ArrayBuffer" && Array.isArray(taggedValues)) {
         return Uint8Array.from(taggedValues).buffer;
+    }
+    if (taggedType === "BigInt" && typeof taggedValues === "string" && /^-?(?:0|[1-9]\d*)$/u.test(taggedValues)) {
+        return BigInt(taggedValues);
     }
 
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deserializeFromNodeKV(v)]));
