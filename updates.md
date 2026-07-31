@@ -12,9 +12,36 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
-### Improved
+## 1.0.2
 
-- Downloaded document batches retain best-effort screen-awake and lifecycle protection until every queued file has been applied to local storage, without extending the remote-activity indicator.
+31st July, 2026
+
+I am aware that some of the Community Directory review checks have become a little more sensitive again. I will watch them for a little longer, then consider the most appropriate way to adapt.
+
+### Synchronisation and storage
+
+#### Improved
+
+- Downloaded document batches retain best-effort screen-awake and lifecycle protection until every queued file has been applied to local storage, without extending the remote-activity indicator (#1031, PR #1032). Thank you to @apple-ouyang for the improvement!
+
+#### Fixed
+
+- Leading UTF-8 byte order marks are preserved during Vault ingestion, keeping stored content sizes consistent with file metadata and preventing persistent three-byte integrity mismatches (#1056, PR #1058).
+
+### Interface and translation
+
+#### Improved
+
+- Document History now provides previous and next revision controls, reports the current revision position, and disables navigation at the oldest and newest boundaries without changing search-result navigation (#990, PR #1009). Thank you to @SeleiXi for the improvement!
+- Remaining user-visible text in Setup, P2P, Customisation Sync, Global History, JSON conflict handling, and remote configuration now uses the translation catalogue (PR #1015). Thank you to @zeedif for the improvement!
+- Korean translations have broader coverage and corrections for placeholders, punctuation, and established terminology (PR #1055). Thank you to @motolies for the improvement!
+- Spanish translation coverage has been expanded across settings, Setup, P2P, maintenance, and newly catalogued interface text (PR #1059). Thank you to @zeedif for the improvement!
+
+### Command-line tool
+
+#### Fixed
+
+- Large-buffer base64 encoding under Node.js now uses the published `octagonal-wheels` fallback when `FileReader` is unavailable, including correctly handling sliced binary views (#1036, PR #1060; [Fancy Kit PR #44](https://github.com/vrtmrz/fancy-kit/pull/44)).
 
 ## 1.0.1
 
