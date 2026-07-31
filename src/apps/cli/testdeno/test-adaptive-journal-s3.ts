@@ -2,7 +2,21 @@ import { assert, assertEquals } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
 import { assertFilesEqual, runCli, runCliOrFail, runCliWithInputOrFail, sanitiseCatStdout } from "./helpers/cli.ts";
 import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts";
-import { listMinioObjectKeys, startMinio, stopMinio } from "./helpers/docker.ts";
+import { listMinioObjectKeys, readMinioObjectText, startMinio, stopMinio } from "./helpers/docker.ts";
+
+const EXTERNAL_PACK_TEST_BYTES = 9 * 1024 * 1024;
+
+function deterministicBytes(length: number, seed: number): Uint8Array {
+    const bytes = new Uint8Array(length);
+    let state = seed;
+    for (let index = 0; index < bytes.byteLength; index += 1) {
+        state ^= state << 13;
+        state ^= state >>> 17;
+        state ^= state << 5;
+        bytes[index] = state & 0xff;
+    }
+    return bytes;
+}
 
 function requireEnv(...keys: string[]): string {
     for (const key of keys) {
@@ -25,8 +39,10 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
     const vaultB = workDir.join("vault-b");
     const settingsA = workDir.join("settings-a.json");
     const settingsB = workDir.join("settings-b.json");
-    const binarySource = workDir.join("source.bin");
-    const binaryDestination = workDir.join("destination.bin");
+    const binarySourceA = workDir.join("source-a.bin");
+    const binarySourceB = workDir.join("source-b.bin");
+    const binaryDestinationA = workDir.join("destination-a.bin");
+    const binaryDestinationB = workDir.join("destination-b.bin");
     await Deno.mkdir(vaultA, { recursive: true });
     await Deno.mkdir(vaultB, { recursive: true });
 
@@ -44,6 +60,7 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
             minioSecretKey: secretKey,
             encrypt: true,
             passphrase,
+            enableCompression: false,
             journalFormat: "adaptive-v1",
             packReadPolicy: "whole-pack",
         });
@@ -55,6 +72,7 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
             minioSecretKey: secretKey,
             encrypt: true,
             passphrase,
+            enableCompression: false,
             journalFormat: "adaptive-v1",
             packReadPolicy: "range",
         });
@@ -62,9 +80,8 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
         const textPath = "adaptive/text.md";
         const binaryPath = "adaptive/data.bin";
         await runCliWithInputOrFail(`created-by-a-${suffix}\n`, vaultA, "--settings", settingsA, "put", textPath);
-        const binary = Uint8Array.from({ length: 8192 }, (_, index) => (index * 31 + 17) % 256);
-        await Deno.writeFile(binarySource, binary);
-        await runCliOrFail(vaultA, "--settings", settingsA, "push", binarySource, binaryPath);
+        await Deno.writeFile(binarySourceA, deterministicBytes(EXTERNAL_PACK_TEST_BYTES, 0x1a2b3c4d));
+        await runCliOrFail(vaultA, "--settings", settingsA, "push", binarySourceA, binaryPath);
 
         await runCliOrFail(vaultA, "--settings", settingsA, "sync");
         await runCliOrFail(vaultB, "--settings", settingsB, "sync");
@@ -72,16 +89,20 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
             sanitiseCatStdout(await runCliOrFail(vaultB, "--settings", settingsB, "cat", textPath)).trimEnd(),
             `created-by-a-${suffix}`
         );
-        await runCliOrFail(vaultB, "--settings", settingsB, "pull", binaryPath, binaryDestination);
-        await assertFilesEqual(binarySource, binaryDestination, "Adaptive Journal binary transfer differs");
+        await runCliOrFail(vaultB, "--settings", settingsB, "pull", binaryPath, binaryDestinationB);
+        await assertFilesEqual(binarySourceA, binaryDestinationB, "Adaptive Journal Range transfer differs");
 
         await runCliWithInputOrFail(`updated-by-b-${suffix}\n`, vaultB, "--settings", settingsB, "put", textPath);
+        await Deno.writeFile(binarySourceB, deterministicBytes(EXTERNAL_PACK_TEST_BYTES, 0x5e6f7788));
+        await runCliOrFail(vaultB, "--settings", settingsB, "push", binarySourceB, binaryPath);
         await runCliOrFail(vaultB, "--settings", settingsB, "sync");
         await runCliOrFail(vaultA, "--settings", settingsA, "sync");
         assertEquals(
             sanitiseCatStdout(await runCliOrFail(vaultA, "--settings", settingsA, "cat", textPath)).trimEnd(),
             `updated-by-b-${suffix}`
         );
+        await runCliOrFail(vaultA, "--settings", settingsA, "pull", binaryPath, binaryDestinationA);
+        await assertFilesEqual(binarySourceB, binaryDestinationA, "Adaptive Journal whole-Pack transfer differs");
 
         await runCliOrFail(vaultA, "--settings", settingsA, "rm", binaryPath);
         await runCliOrFail(vaultA, "--settings", settingsA, "sync");
@@ -91,12 +112,24 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
 
         const objectKeys = await listMinioObjectKeys(endpoint, accessKey, secretKey, bucket);
         assert(objectKeys.includes("a1~manifest.json"), `Adaptive manifest is missing:\n${objectKeys.join("\n")}`);
-        for (const prefix of ["a1~writer~", "a1~pack~", "a1~index~", "a1~delta~", "a1~metadata~", "a1~commit~"]) {
+        for (const prefix of ["a1~writer~", "a1~pack~", "a1~commit~"]) {
             assert(
                 objectKeys.some((key) => key.startsWith(prefix)),
                 `Adaptive object with prefix ${prefix} is missing:\n${objectKeys.join("\n")}`
             );
         }
+        const packKeys = objectKeys.filter((key) => key.startsWith("a1~pack~"));
+        assert(packKeys.length >= 2, `Expected external Packs from both CLI writers:\n${objectKeys.join("\n")}`);
+        for (const legacyPrefix of ["a1~index~", "a1~delta~", "a1~metadata~"]) {
+            assert(
+                !objectKeys.some((key) => key.startsWith(legacyPrefix)),
+                `Legacy Adaptive object with prefix ${legacyPrefix} was written:\n${objectKeys.join("\n")}`
+            );
+        }
+        const manifest = JSON.parse(
+            await readMinioObjectText(endpoint, accessKey, secretKey, bucket, "a1~manifest.json")
+        ) as { objectLayout?: unknown };
+        assertEquals(manifest.objectLayout, "commit-bundle-v1");
         assert(
             !objectKeys.some((key) => key.startsWith("a1~probe~")),
             `Adaptive capability probe objects were not removed:\n${objectKeys.join("\n")}`

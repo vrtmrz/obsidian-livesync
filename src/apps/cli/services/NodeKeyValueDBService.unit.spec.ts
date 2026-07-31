@@ -76,12 +76,13 @@ describe("NodeKeyValueDBService.openSimpleStore", () => {
         await expect(store.get("key")).rejects.toThrow("KeyValueDB is not initialized yet");
     });
 
-    it("preserves bigint values used by Adaptive Journal writer state", async () => {
+    it("preserves bigint values used by Adaptive Journal state", async () => {
         const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "livesync-node-kv-bigint-"));
         const filePath = path.join(tempDir, "keyvalue-db.json");
         const writerState = {
-            writerEpoch: 9007199254740993n,
-            nested: [0n, { sequence: 18446744073709551615n }],
+            lastCommittedSequence: 9007199254740993n,
+            pendingCommit: { sequence: 18446744073709551615n },
+            writerEpoch: "test-writer-epoch",
         };
 
         try {

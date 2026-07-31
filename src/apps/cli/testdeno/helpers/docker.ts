@@ -503,6 +503,33 @@ export async function listMinioObjectKeys(
         .sort();
 }
 
+export async function readMinioObjectText(
+    minioEndpoint: string,
+    accessKey: string,
+    secretKey: string,
+    bucket: string,
+    key: string
+): Promise<string> {
+    const cmd =
+        `mc alias set myminio ${shQuote(minioEndpoint)} ${shQuote(accessKey)} ${shQuote(secretKey)} >/dev/null 2>&1 && ` +
+        `mc cat myminio/${shQuote(bucket)}/${shQuote(key)}`;
+    const result = await docker(
+        "run",
+        "--rm",
+        "--network",
+        "host",
+        "--entrypoint",
+        "/bin/sh",
+        MINIO_MC_IMAGE,
+        "-c",
+        cmd
+    );
+    if (result.code !== 0) {
+        throw new Error(`Could not read MinIO object ${key}: ${result.stderr.trim()}`);
+    }
+    return result.stdout;
+}
+
 async function initMinioBucket(
     minioEndpoint: string,
     accessKey: string,
