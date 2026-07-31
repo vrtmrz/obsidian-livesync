@@ -396,7 +396,7 @@
     margin: 0;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-family: "SFMono-Regular", Consolas, monospace;
     font-size: 0.72rem;
     line-height: 1.8rem;
     text-align: left;

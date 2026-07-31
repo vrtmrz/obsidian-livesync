@@ -275,7 +275,7 @@ footer {
     padding: 0.75rem 0.85rem;
     color: #213048;
     background: #ffffff;
-    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-family: "SFMono-Regular", Consolas, monospace;
     font-size: 0.86rem;
 }
 
@@ -371,7 +371,7 @@ footer {
     margin: 0.25rem 0 0;
     overflow-wrap: anywhere;
     color: var(--navy);
-    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-family: "SFMono-Regular", Consolas, monospace;
     font-size: 0.8rem;
 }
 
