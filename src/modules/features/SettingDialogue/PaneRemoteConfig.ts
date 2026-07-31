@@ -479,10 +479,10 @@ export function paneRemoteConfig(
                                 })
                                 .addSeparator()
                                 .addItem((item) => {
-                                    item.setTitle("🗑 Delete").onClick(async () => {
+                                    item.setTitle($msg("🗑 Delete")).onClick(async () => {
                                         const confirmed = await this.services.UI.confirm.askYesNoDialog(
-                                            `Delete remote configuration '${config.name}'?`,
-                                            { title: "Delete Remote Configuration", defaultOption: "No" }
+                                            $msg("Delete remote configuration '${name}'?", { name: config.name }),
+                                            { title: $msg("Delete Remote Configuration"), defaultOption: "No" }
                                         );
                                         if (confirmed !== "yes") {
                                             return;

@@ -10,6 +10,7 @@
     import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
     import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
     import Check from "@/modules/services/LiveSyncUI/components/Check.svelte";
+    import { $msg as translateMessage } from "@/common/translation";
     import {
         TYPE_BACKUP_DONE,
         TYPE_BACKUP_SKIPPED,
@@ -48,90 +49,110 @@
     }
 </script>
 
-<DialogHeader title="Reset Synchronisation on This Device" />
+<DialogHeader title={translateMessage("Reset Synchronisation on This Device")} />
 <Guidance
-    >This will rebuild the local database on this device using the most recent data from the server. This action is
-    designed to resolve synchronisation inconsistencies and restore correct functionality.</Guidance
+    >{translateMessage(
+        "This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality."
+    )}</Guidance
 >
-<Guidance important title="⚠️ Important Notice">
+<Guidance important title={translateMessage("⚠️ Important Notice")}>
     <strong
-        >If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's
-        versions after the reset. This may result in a large number of file conflicts.</strong
+        >{translateMessage(
+            "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts."
+        )}</strong
     ><br />
-    Furthermore, if conflicts are already present in the server data, they will be synchronised to this device as they are,
-    and you will need to resolve them locally.
+    {translateMessage(
+        "Furthermore, if conflicts are already present in the server data, they will be synchronised to this device as they are, and you will need to resolve them locally."
+    )}
 </Guidance>
 <hr />
 <Instruction>
     <Question
-        ><strong>To minimise the creation of new conflicts</strong>, please select the option that best describes the
-        current state of your Vault. The application will then check your files in the most appropriate way based on
-        your selection.</Question
+        ><strong>{translateMessage("To minimise the creation of new conflicts")}</strong>{translateMessage(
+            ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection."
+        )}</Question
     >
     <Options>
         <Option
             selectedValue={TYPE_IDENTICAL}
-            title="The files in this Vault are almost identical to the server's."
+            title={translateMessage("The files in this Vault are almost identical to the server's.")}
             bind:value={vaultType}
         >
-            (e.g., immediately after restoring on another computer, or having recovered from a backup)
+            {translateMessage(
+                "(e.g., immediately after restoring on another computer, or having recovered from a backup)"
+            )}
         </Option>
         <Option
             selectedValue={TYPE_INDEPENDENT}
-            title="This Vault is empty, or contains only new files that are not on the server."
+            title={translateMessage("This Vault is empty, or contains only new files that are not on the server.")}
             bind:value={vaultType}
         >
-            (e.g., setting up for the first time on a new smartphone, starting from a clean slate)
+            {translateMessage("(e.g., setting up for the first time on a new smartphone, starting from a clean slate)")}
         </Option>
         <Option
             selectedValue={TYPE_UNBALANCED}
-            title="There may be differences between the files in this Vault and the server."
+            title={translateMessage("There may be differences between the files in this Vault and the server.")}
             bind:value={vaultType}
         >
-            (e.g., after editing many files whilst offline)
+            {translateMessage("(e.g., after editing many files whilst offline)")}
             <InfoNote info>
-                In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate
-                conflicts. Where the file content is identical, these conflicts will be resolved automatically.
+                {translateMessage(
+                    "In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically."
+                )}
             </InfoNote>
         </Option>
     </Options>
 </Instruction>
 <hr />
 <Instruction>
-    <Question>Have you created a backup before proceeding?</Question>
+    <Question>{translateMessage("Have you created a backup before proceeding?")}</Question>
     <InfoNote>
-        We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large
-        number of conflicts arise, or if you accidentally synchronise with an incorrect destination.
+        {translateMessage(
+            "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination."
+        )}
     </InfoNote>
     <Options>
-        <Option selectedValue={TYPE_BACKUP_DONE} title="I have created a backup of my Vault." bind:value={backupType} />
+        <Option
+            selectedValue={TYPE_BACKUP_DONE}
+            title={translateMessage("I have created a backup of my Vault.")}
+            bind:value={backupType}
+        />
         <Option
             selectedValue={TYPE_BACKUP_SKIPPED}
-            title="I understand the risks and will proceed without a backup."
+            title={translateMessage("I understand the risks and will proceed without a backup.")}
             bind:value={backupType}
         />
         <Option
             selectedValue={TYPE_UNABLE_TO_BACKUP}
-            title="I am unable to create a backup of my Vault."
+            title={translateMessage("I am unable to create a backup of my Vault.")}
             bind:value={backupType}
         >
             <InfoNote error visible={backupType === TYPE_UNABLE_TO_BACKUP}>
                 <strong
-                    >It is strongly advised to create a backup before proceeding. Continuing without a backup may lead
-                    to data loss.
+                    >{translateMessage(
+                        "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss."
+                    )}
                 </strong>
                 <br />
-                If you understand the risks and still wish to proceed, select so.
+                {translateMessage("If you understand the risks and still wish to proceed, select so.")}
             </InfoNote>
         </Option>
     </Options>
 </Instruction>
 <Instruction>
-    <ExtraItems title="Advanced">
-        <Check title="Prevent fetching configuration from server" bind:value={preventFetchingConfig} />
+    <ExtraItems title={translateMessage("Advanced")}>
+        <Check
+            title={translateMessage("Prevent fetching configuration from server")}
+            bind:value={preventFetchingConfig}
+        />
     </ExtraItems>
 </Instruction>
 <UserDecisions>
-    <Decision title="Reset and Resume Synchronisation" important disabled={!canProceed} commit={() => commit()} />
-    <Decision title="Cancel" commit={() => setResult(TYPE_CANCEL)} />
+    <Decision
+        title={translateMessage("Reset and Resume Synchronisation")}
+        important
+        disabled={!canProceed}
+        commit={() => commit()}
+    />
+    <Decision title={translateMessage("Cancel")} commit={() => setResult(TYPE_CANCEL)} />
 </UserDecisions>

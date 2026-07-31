@@ -123,7 +123,9 @@
             try {
                 const result = await probeP2PSetupConnection(replicator);
                 if (!result.ok) {
-                    return `Failed to connect to the signalling relay: ${result.reason}`;
+                    return translateMessage("Failed to connect to the signalling relay: ${reason}", {
+                        reason: `${result.reason}`,
+                    });
                 }
                 return "";
             } finally {
@@ -157,7 +159,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = translateMessage("Error during connection test: ${reason}", { reason: `${e}` });
             return;
         }
     }
@@ -178,9 +180,9 @@
     });
 </script>
 
-<DialogHeader title="P2P Configuration" />
-<Guidance>Please enter the Peer-to-Peer Synchronisation information below.</Guidance>
-<InputRow label="Enabled">
+<DialogHeader title={translateMessage("P2P Configuration")} />
+<Guidance>{translateMessage("Please enter the Peer-to-Peer Synchronisation information below.")}</Guidance>
+<InputRow label={translateMessage("Enabled")}>
     <input type="checkbox" name="p2p-enabled" bind:checked={syncSetting.P2P_Enabled} />
 </InputRow>
 <InputRow label={translateMessage("Signalling relay URLs")}>
@@ -208,7 +210,7 @@
         rel="noopener noreferrer">{translateMessage("Learn more about P2P connections")}</a
     >.
 </InfoNote>
-<InputRow label="Group ID">
+<InputRow label={translateMessage("Group ID")}>
     <input
         type="text"
         name="p2p-room-id"
@@ -218,17 +220,24 @@
         spellcheck="false"
         bind:value={syncSetting.P2P_roomID}
     />
-    <button class="button" onclick={() => generateDefaultGroupId()}>Generate Random ID</button>
+    <button class="button" onclick={() => generateDefaultGroupId()}>{translateMessage("Generate Random ID")}</button>
 </InputRow>
-<InputRow label="Passphrase">
-    <Password name="p2p-password" placeholder="Enter your passphrase" bind:value={syncSetting.P2P_passphrase} />
+<InputRow label={translateMessage("Passphrase")}>
+    <Password
+        name="p2p-password"
+        placeholder={translateMessage("Enter your passphrase")}
+        bind:value={syncSetting.P2P_passphrase}
+    />
 </InputRow>
 <InfoNote>
-    The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and
-    passphrase on all devices you want to synchronise.<br />
-    Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.
+    {translateMessage(
+        "The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and passphrase on all devices you want to synchronise."
+    )}<br />
+    {translateMessage(
+        "Note that the Group ID is not limited to the generated format; you can use any string as the Group ID."
+    )}
 </InfoNote>
-<InputRow label="Device Peer ID">
+<InputRow label={translateMessage("Device Peer ID")}>
     <input
         type="text"
         name="p2p-device-peer-id"
@@ -239,12 +248,13 @@
         bind:value={syncSetting.P2P_DevicePeerName}
     />
 </InputRow>
-<InputRow label="Auto Start P2P Connection">
+<InputRow label={translateMessage("Auto Start P2P Connection")}>
     <input type="checkbox" name="p2p-auto-start" bind:checked={syncSetting.P2P_AutoStart} />
 </InputRow>
 <InfoNote>
-    If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in
-    launches.
+    {translateMessage(
+        'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.'
+    )}
 </InfoNote>
 <InputRow label={translateMessage("Announce changes automatically after connecting")}>
     <input type="checkbox" name="p2p-auto-broadcast" bind:checked={syncSetting.P2P_AutoBroadcast} />
@@ -254,10 +264,11 @@
         "When enabled, this device notifies connected peers after a local change. The notification contains no Vault data; a peer which follows this device then fetches the change through the encrypted P2P connection."
     )}
 </InfoNote>
-<ExtraItems title="Advanced Settings">
+<ExtraItems title={translateMessage("Advanced Settings")}>
     <InfoNote>
-        TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P
-        connections. In most cases, you can leave these fields blank.
+        {translateMessage(
+            "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank."
+        )}
     </InfoNote>
     <InfoNote warning>
         {translateMessage(
@@ -269,7 +280,7 @@
             rel="noopener noreferrer">{translateMessage("Learn more about signalling and TURN")}</a
         >.
     </InfoNote>
-    <InputRow label="TURN Server URLs (comma-separated)">
+    <InputRow label={translateMessage("TURN Server URLs (comma-separated)")}>
         <textarea
             name="p2p-turn-servers"
             placeholder="turn:turn.example.com:3478,turn:turn.example.com:443"
@@ -279,21 +290,21 @@
             rows="5"
         ></textarea>
     </InputRow>
-    <InputRow label="TURN Username">
+    <InputRow label={translateMessage("TURN Username")}>
         <input
             type="text"
             name="p2p-turn-username"
-            placeholder="Enter TURN username"
+            placeholder={translateMessage("Enter TURN username")}
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
             bind:value={syncSetting.P2P_turnUsername}
         />
     </InputRow>
-    <InputRow label="TURN Credential">
+    <InputRow label={translateMessage("TURN Credential")}>
         <Password
             name="p2p-turn-credential"
-            placeholder="Enter TURN credential"
+            placeholder={translateMessage("Enter TURN credential")}
             bind:value={syncSetting.P2P_turnCredential}
         />
     </InputRow>
@@ -302,11 +313,16 @@
     {error}
 </InfoNote>
 {#if processing}
-    Checking connection... Please wait.
+    {translateMessage("Checking connection... Please wait.")}
 {:else}
     <UserDecisions>
-        <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />
-        <Decision title="Continue anyway" commit={() => commit()} />
-        <Decision title="Cancel" commit={() => cancel()} />
+        <Decision
+            title={translateMessage("Test Settings and Continue")}
+            important
+            disabled={!canProceed}
+            commit={() => checkAndCommit()}
+        />
+        <Decision title={translateMessage("Continue anyway")} commit={() => commit()} />
+        <Decision title={translateMessage("Cancel")} commit={() => cancel()} />
     </UserDecisions>
 {/if}

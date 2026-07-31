@@ -1,6 +1,7 @@
 <script lang="ts">
     import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
     import type { P2PReplicatorHandle } from "./P2PReplicatorPaneHost";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
         peerStatus: PeerStatus;
@@ -27,6 +28,11 @@
             peer.isSending ? ["SENDING"] : [],
         ].flat()
     );
+    const chipLabels: Record<string, string> = {
+        WATCHING: translateMessage("WATCHING"),
+        FETCHING: translateMessage("FETCHING"),
+        SENDING: translateMessage("SENDING"),
+    };
     let acceptedStatusChip = $derived.by(() =>
         select(
             peer.accepted.toString(),
@@ -40,6 +46,13 @@
             ""
         ) ?? ""
     );
+    const acceptedStatusLabels: Record<string, string> = {
+        ACCEPTED: translateMessage("ACCEPTED"),
+        "ACCEPTED (in session)": translateMessage("ACCEPTED (in session)"),
+        "DENIED (in session)": translateMessage("DENIED (in session)"),
+        DENIED: translateMessage("DENIED"),
+        NEW: translateMessage("NEW"),
+    };
     const classList = {
         ["SENDING"]: "connected",
         ["FETCHING"]: "connected",
@@ -75,13 +88,13 @@
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
         if (peer.syncOnConnect) {
-            attrs.push("✔ SYNC");
+            attrs.push(translateMessage("✔ SYNC"));
         }
         if (peer.watchOnConnect) {
-            attrs.push("✔ WATCH");
+            attrs.push(translateMessage("✔ WATCH"));
         }
         if (peer.syncOnReplicationCommand) {
-            attrs.push("✔ SELECT");
+            attrs.push(translateMessage("✔ SELECT"));
         }
         return attrs;
     });
@@ -113,12 +126,14 @@
         </div>
         <div class="status-chips">
             <div class="row">
-                <span class="chip {select(acceptedStatusChip, classList)}">{acceptedStatusChip}</span>
+                <span class="chip {select(acceptedStatusChip, classList)}"
+                    >{acceptedStatusLabels[acceptedStatusChip] ?? acceptedStatusChip}</span
+                >
             </div>
             {#if isAccepted}
                 <div class="row">
                     {#each statusChips as chip}
-                        <span class="chip {select(chip, classList)}">{chip}</span>
+                        <span class="chip {select(chip, classList)}">{chipLabels[chip] ?? chip}</span>
                     {/each}
                 </div>
             {/if}
@@ -134,15 +149,25 @@
             <div class="row">
                 {#if isNew}
                     {#if !isAccepted}
-                        <button class="button" onclick={() => makeDecision(true, true)}>Accept in session</button>
-                        <button class="button mod-cta" onclick={() => makeDecision(true, false)}>Accept</button>
+                        <button class="button" onclick={() => makeDecision(true, true)}
+                            >{translateMessage("Accept in session")}</button
+                        >
+                        <button class="button mod-cta" onclick={() => makeDecision(true, false)}
+                            >{translateMessage("Accept")}</button
+                        >
                     {/if}
                     {#if !isDenied}
-                        <button class="button" onclick={() => makeDecision(false, true)}>Deny in session</button>
-                        <button class="button mod-warning" onclick={() => makeDecision(false, false)}>Deny</button>
+                        <button class="button" onclick={() => makeDecision(false, true)}
+                            >{translateMessage("Deny in session")}</button
+                        >
+                        <button class="button mod-warning" onclick={() => makeDecision(false, false)}
+                            >{translateMessage("Deny")}</button
+                        >
                     {/if}
                 {:else}
-                    <button class="button mod-warning" onclick={() => revokeDecision()}>Revoke</button>
+                    <button class="button mod-warning" onclick={() => revokeDecision()}
+                        >{translateMessage("Revoke")}</button
+                    >
                 {/if}
             </div>
         </div>
@@ -155,9 +180,9 @@
                     <!-- <button class="button" onclick={replicateFrom} disabled={peer.isFetching}>📥</button>
                     <button class="button" onclick={replicateTo} disabled={peer.isSending}>📤</button> -->
                     {#if peer.isWatching}
-                        <button class="button" onclick={stopWatching}>Stop ⚡</button>
+                        <button class="button" onclick={stopWatching}>{translateMessage("Stop ⚡")}</button>
                     {:else}
-                        <button class="button" onclick={startWatching} title="live">⚡</button>
+                        <button class="button" onclick={startWatching} title={translateMessage("live")}>⚡</button>
                     {/if}
                     {#if showPeerMenu}
                         <button class="button" onclick={moreMenu}>...</button>

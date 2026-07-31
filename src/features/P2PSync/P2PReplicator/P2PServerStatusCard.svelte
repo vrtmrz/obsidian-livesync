@@ -95,40 +95,40 @@
 </script>
 
 <div class="server-status">
-    <h3>Signalling Status</h3>
+    <h3>{translateMessage("Signalling Status")}</h3>
 
     <div class="status-item">
-        <span>Connection:</span>
+        <span>{translateMessage("Connection:")}</span>
         <span class="status-value {isConnected ? 'connected' : 'disconnected'}">
-            {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+            {isConnected ? translateMessage("🟢 Connected") : translateMessage("🔴 Disconnected")}
         </span>
     </div>
 
     <div class="status-item status-action">
         {#if !isConnected}
-            <button onclick={onOpenConnection}>Open connection</button>
+            <button onclick={onOpenConnection}>{translateMessage("Open connection")}</button>
         {:else}
-            <button onclick={onDisconnect}>Disconnect</button>
+            <button onclick={onDisconnect}>{translateMessage("Disconnect")}</button>
         {/if}
     </div>
 
     {#if serverInfo}
         <div class="status-item">
-            <span>Room ID suffix:</span>
-            <span class="room-suffix-display" title={roomSuffix || "Not configured"}>
+            <span>{translateMessage("Room ID suffix:")}</span>
+            <span class="room-suffix-display" title={roomSuffix || translateMessage("Not configured")}>
                 {roomSuffix || "-"}
             </span>
         </div>
 
         <div class="status-item">
-            <span>Peer ID:</span>
+            <span>{translateMessage("Peer ID:")}</span>
             <span class="peer-id-display" title={serverInfo.serverPeerId}>
                 {serverInfo.serverPeerId.slice(0, 12)}...
             </span>
         </div>
 
         <div class="status-item">
-            <span>Devices:</span>
+            <span>{translateMessage("Devices:")}</span>
             <span>{serverInfo.knownAdvertisements.length}</span>
         </div>
     {/if}
@@ -146,7 +146,7 @@
                 ? translateMessage("Stop announcing changes")
                 : translateMessage("Start announcing changes")}
         >
-            {isBroadcasting ? '📡 On' : '📡 Off'}
+            {isBroadcasting ? translateMessage("📡 On") : translateMessage("📡 Off")}
         </button>
     </div>
     {/if}
@@ -154,39 +154,39 @@
     {#if core}
     <div class="status-item status-action diag-toggle-row">
         <label class="broadcast-label" for="diag-toggle">
-            🕵️ Diag
+            {translateMessage("🕵️ Diag")}
         </label>
         <button
             id="diag-toggle"
             class="broadcast-button {useDiagRTC ? 'is-on' : 'is-off'}"
             onclick={toggleDiagRTC}
             title={useDiagRTC
-                ? 'Diagnostic RTCPeerConnection is enabled'
-                : 'Use Diagnostic RTCPeerConnection for statistics'}
+                ? translateMessage("Diagnostic RTCPeerConnection is enabled")
+                : translateMessage("Use Diagnostic RTCPeerConnection for statistics")}
         >
-            {useDiagRTC ? 'On' : 'Off'}
+            {useDiagRTC ? translateMessage("On") : translateMessage("Off")}
         </button>
     </div>
     {/if}
 
     {#if serverInfo}
         <div class="diag-section">
-            <h4>Stats</h4>
+            <h4>{translateMessage("Stats")}</h4>
             <div class="diag-grid">
                 <div class="diag-item">
-                    <span>Incoming:</span>
+                    <span>{translateMessage("Incoming:")}</span>
                     <span>{serverInfo.diag.totalNewConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Connected:</span>
+                    <span>{translateMessage("Connected:")}</span>
                     <span>{serverInfo.diag.totalSuccessfulConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Failed:</span>
+                    <span>{translateMessage("Failed:")}</span>
                     <span>{serverInfo.diag.totalFailedConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Closed:</span>
+                    <span>{translateMessage("Closed:")}</span>
                     <span>{serverInfo.diag.totalClosedConnections}</span>
                 </div>
             </div>

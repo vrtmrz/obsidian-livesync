@@ -57,6 +57,7 @@ import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.d
 import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
+import { $msg } from "@/common/translation";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 type HiddenFileInitialisationProgress = {
@@ -1539,10 +1540,7 @@ Offline Changed files: ${files.length}`;
             this.core.databaseFileAccess.fetchEntryMeta(prefixedFileName, undefined, true),
             this.core.databaseFileAccess.getConflictedRevs(prefixedFileName),
         ]);
-        const liveRevisions = new Set([
-            ...(current && current._rev ? [current._rev] : []),
-            ...conflicts,
-        ]);
+        const liveRevisions = new Set([...(current && current._rev ? [current._rev] : []), ...conflicts]);
         if (!selected || selected._rev !== revision || !liveRevisions.has(revision)) {
             this._log(
                 `Could not use hidden-file revision ${revision} of ${stripAllPrefixes(prefixedFileName)}; the selected revision is no longer live`,
@@ -1834,15 +1832,7 @@ Offline Changed files: ${files.length}`;
         force = false
     ): Promise<boolean> {
         return Boolean(
-            await this.extractInternalFileFromDatabase(
-                storageFilePath,
-                force,
-                undefined,
-                true,
-                false,
-                true,
-                revision
-            )
+            await this.extractInternalFileFromDatabase(storageFilePath, force, undefined, true, false, true, revision)
         );
     }
 
@@ -1917,7 +1907,9 @@ Offline Changed files: ${files.length}`;
     private _allSuspendExtraSync(): Promise<boolean> {
         if (this.core.settings.syncInternalFiles) {
             this._log(
-                "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.",
+                $msg(
+                    "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them."
+                ),
                 LOG_LEVEL_NOTICE
             );
             this.core.settings.syncInternalFiles = false;
