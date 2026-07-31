@@ -26,109 +26,84 @@
     });
 </script>
 
-<main>
-    <div class="control">
-        <div class="connection-check-link">
-            <a href="./check.html">Try the P2P connection check</a>
-        </div>
-        {#await synchronised then activeRuntime}
-            <BrowserP2PTransportSettings host={activeRuntime.paneHost} />
-            <P2PReplicatorPane host={activeRuntime.paneHost}></P2PReplicatorPane>
-        {:catch error}
-            <p>{error instanceof Error ? error.message : String(error)}</p>
-        {/await}
-    </div>
-    <div class="log">
-        <div class="status">
-            {statusLine}
-        </div>
-        <div class="logslist" bind:this={elP}>
-            {#each $logs as log}
-                <p>{log}</p>
-            {/each}
-        </div>
-    </div>
-</main>
+<svelte:head>
+    <meta name="theme-color" content="#12233f" />
+</svelte:head>
 
-<style>
-    main {
-        display: flex;
-        flex-direction: row;
-        flex-grow: 1;
-        max-height: 100vh;
-        box-sizing: border-box;
-    }
-    @media (max-width: 900px) {
-        main {
-            flex-direction: column;
-        }
-    }
-    @media (device-orientation: portrait) {
-        main {
-            flex-direction: column;
-        }
-    }
-    .log {
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: flex-start;
-        padding: 1em;
-        min-width: 50%;
-    }
-    @media (max-width: 900px) {
-        .log {
-            max-height: 50vh;
-        }
-    }
-    @media (device-orientation: portrait) {
-        .log {
-            max-height: 50vh;
-        }
-    }
-    .control {
-        padding: 1em 1em;
-        overflow-y: scroll;
-        flex-grow: 1;
-    }
-    .connection-check-link {
-        margin-bottom: 0.75em;
-        text-align: left;
-    }
-    .connection-check-link a {
-        display: inline-block;
-        padding: 0.45em 0.75em;
-        border: 1px solid var(--interactive-accent);
-        border-radius: 0.5em;
-        color: var(--interactive-accent);
-        text-decoration: none;
-    }
-    .connection-check-link a:hover {
-        color: var(--interactive-accent-hover);
-        border-color: var(--interactive-accent-hover);
-    }
-    .status {
-        flex-grow: 0;
-        /* max-height: 40px; */
-        /* height: 40px; */
-        flex-shrink: 0;
-    }
-    .logslist {
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: flex-start;
-        /* padding: 1em; */
-        width: 100%;
-        overflow-y: scroll;
-        flex-grow: 1;
-        flex-shrink: 1;
-        /* max-height: calc(100% - 40px); */
-    }
-    p {
-        margin: 0;
-        white-space: pre-wrap;
-        text-align: left;
-        word-break: break-all;
-    }
-</style>
+<main class="webpeer-shell">
+    <header class="webpeer-header">
+        <div class="brand-lockup">
+            <span class="brand-mark" aria-hidden="true"><span></span></span>
+            <span>
+                <small>Self-hosted LiveSync</small>
+                <strong>WebPeer</strong>
+                <span class="brand-description">A browser-hosted peer for temporary P2P transfers.</span>
+            </span>
+        </div>
+
+        <a
+            class="connection-check-link"
+            href="./check.html"
+            aria-label="Try the P2P connection check"
+        >
+            <span class="check-mark" aria-hidden="true">◇</span>
+            <span>
+                <small>Disposable connectivity check</small>
+                <strong>Try the P2P connection check</strong>
+            </span>
+            <span class="check-arrow" aria-hidden="true">→</span>
+        </a>
+    </header>
+
+    <div class="workspace-grid">
+        <section class="workspace-card control-card" aria-label="WebPeer controls">
+            <div class="panel-meta">
+                <p>Browser peer controls</p>
+                <span>Stored in this browser</span>
+            </div>
+
+            {#await synchronised then activeRuntime}
+                <P2PReplicatorPane host={activeRuntime.paneHost}></P2PReplicatorPane>
+                <BrowserP2PTransportSettings host={activeRuntime.paneHost} />
+            {:catch error}
+                <div class="runtime-error" role="alert">
+                    <strong>WebPeer could not start</strong>
+                    <p>{error instanceof Error ? error.message : String(error)}</p>
+                </div>
+            {/await}
+        </section>
+
+        <aside class="workspace-card log-card" aria-labelledby="activity-heading">
+            <header class="log-header">
+                <div>
+                    <p class="section-kicker">Live diagnostics</p>
+                    <h2 id="activity-heading">Activity log</h2>
+                </div>
+                <div class="status-pill" aria-live="polite">
+                    <span aria-hidden="true"></span>
+                    {statusLine || "Initialising"}
+                </div>
+            </header>
+
+            <div
+                class="logslist"
+                bind:this={elP}
+                role="log"
+                aria-label="WebPeer activity log"
+            >
+                {#if $logs.length === 0}
+                    <p class="empty-log">Waiting for peer activity.</p>
+                {:else}
+                    {#each $logs as log}
+                        <p class="log-entry">{log}</p>
+                    {/each}
+                {/if}
+            </div>
+        </aside>
+    </div>
+
+    <footer class="webpeer-footer">
+        WebPeer is experimental browser software. Keep this page open while it is connected or
+        transferring changes.
+    </footer>
+</main>

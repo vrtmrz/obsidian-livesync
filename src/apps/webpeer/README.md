@@ -113,7 +113,9 @@ The unit tests are stored in `test/apps/webpeer/`, outside the Community Review 
 
 ## Composition
 
-`WebPeerRuntime.ts` owns the browser service composition, local database lifecycle, P2P replicator, and peer actions. `WebPeerPersistence.ts` owns origin-scoped settings persistence, while the shared P2P pane supplies the connection and peer controls. The connection-check modules create an isolated runtime with in-memory test settings and derive user-visible results from Commonlib's browser-side diagnostic events.
+The WebPeer production bundle has two HTML entry points. `index.html` loads `src/main.ts` and the ordinary browser peer, while `check.html` loads `src/check.ts` and the isolated P2P connection check. The ordinary page links to the check, so it is a WebPeer feature without sharing its saved settings or runtime session.
+
+`WebPeerRuntime.ts` owns the browser service composition, local database lifecycle, P2P replicator, and peer actions. `WebPeerPersistence.ts` owns origin-scoped settings persistence, while the shared P2P pane supplies the connection and peer controls. The connection-check modules create an isolated runtime with in-memory test settings and derive user-visible results from Commonlib's browser-side diagnostic events. Both entry points use the same WebPeer visual foundation.
 
 ## Licence
 

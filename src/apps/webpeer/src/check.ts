@@ -2,6 +2,7 @@ import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEn
 import { mount } from "svelte";
 
 import P2PCheck from "./P2PCheck.svelte";
+import "./theme.css";
 import "./check.css";
 
 const app = mount(P2PCheck, {
