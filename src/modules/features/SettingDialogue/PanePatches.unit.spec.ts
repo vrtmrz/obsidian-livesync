@@ -3,11 +3,8 @@ import { panePatches } from "./PanePatches.ts";
 
 const remediationHarness = vi.hoisted(() => {
     const dateElement = { textContent: "" };
-    const createElement = vi.fn(() => dateElement);
-    const before = vi.fn();
+    const createSpan = vi.fn(() => dateElement);
     const inputEl = {
-        before,
-        ownerDocument: { createElement },
         type: "",
     };
     const textComponent = {
@@ -17,8 +14,7 @@ const remediationHarness = vi.hoisted(() => {
     };
 
     return {
-        before,
-        createElement,
+        createSpan,
         dateElement,
         inputEl,
         textComponent,
@@ -27,6 +23,10 @@ const remediationHarness = vi.hoisted(() => {
 
 vi.mock("./LiveSyncSetting.ts", () => ({
     LiveSyncSetting: class LiveSyncSetting {
+        controlEl = {
+            createSpan: remediationHarness.createSpan,
+        };
+
         addText(callback: (text: typeof remediationHarness.textComponent) => void): this {
             callback(remediationHarness.textComponent);
             return this;
@@ -54,7 +54,7 @@ afterEach(() => {
 });
 
 describe("panePatches remediation setting", () => {
-    it("creates the status element without appending it to the document", () => {
+    it("creates the status element in the setting control instead of the document", () => {
         const hierarchyError = new DOMException(
             "Failed to execute 'appendChild' on 'Node': Only one element on document allowed.",
             "HierarchyRequestError"
@@ -91,8 +91,7 @@ describe("panePatches remediation setting", () => {
             } as never
         );
         expect(createSpan).not.toHaveBeenCalled();
-        expect(remediationHarness.createElement).toHaveBeenCalledWith("span");
-        expect(remediationHarness.before).toHaveBeenCalledWith(remediationHarness.dateElement);
+        expect(remediationHarness.createSpan).toHaveBeenCalledOnce();
         expect(remediationHarness.dateElement.textContent).toBe("No limit configured");
     });
 });
