@@ -37,6 +37,14 @@ defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 /** Injectable command boundary used by CLI integration probes. */
 export type CliCommandRunner = (options: CLIOptions, context: CLICommandContext) => Promise<boolean>;
 
+const SETTINGS_MANAGEMENT_COMMANDS: ReadonlySet<CLICommand> = new Set([
+    "setup",
+    "remote-add",
+    "remote-rm",
+    "remote-set",
+    "remote-activate",
+]);
+
 function printHelp(standardIo: StandardIo): void {
     writeStdoutLine(
         standardIo,
@@ -274,7 +282,10 @@ export async function main(
 ) {
     const options = parseArgs(standardIo);
     if (options.interval && options.command !== "daemon") {
-        writeStderrLine(standardIo, `Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
+        writeStderrLine(
+            standardIo,
+            `Warning: --interval is only used in daemon mode, ignored for '${options.command}'`
+        );
     }
     const avoidStdoutNoise =
         options.command === "cat" ||
@@ -404,7 +415,10 @@ export async function main(
     // In daemon mode the default handler must run so changes are applied to the filesystem.
     if (options.command !== "daemon") {
         serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
-            writeStderrLine(standardIo, `[Info] Replication result received, but not processed automatically in CLI mode.`);
+            writeStderrLine(
+                standardIo,
+                `[Info] Replication result received, but not processed automatically in CLI mode.`
+            );
             return await Promise.resolve(true);
         }, -100);
     }
@@ -506,7 +520,7 @@ export async function main(
     // Save the settings file before any lifecycle events can mutate and persist them.
     // suspendAllSync and other lifecycle hooks clobber sync settings in memory, and
     // various code paths persist the clobbered state to disk. We restore on shutdown.
-    const settingsBackup = await fs.readFile(settingsPath, "utf-8").catch(() => null!);
+    let settingsBackup: string | null = await fs.readFile(settingsPath, "utf-8").catch(() => null);
 
     // Restore settings file on any exit to undo lifecycle mutations.
     // Write to a temp path first so a crash mid-write doesn't leave a truncated file.
@@ -576,6 +590,15 @@ export async function main(
             settingsPath,
             originalSyncSettings,
         });
+        if (result && SETTINGS_MANAGEMENT_COMMANDS.has(options.command)) {
+            // Settings management is intentional, unlike the temporary changes made by suspendAllSync().
+            // setup replaces the complete configuration, while remote profile commands must retain the
+            // synchronisation mode which was active before the command lifecycle suspended it.
+            if (options.command !== "setup") {
+                await core.services.setting.applyPartial(originalSyncSettings, true);
+            }
+            settingsBackup = await fs.readFile(settingsPath, "utf-8");
+        }
         if (!result) {
             writeStderrLine(standardIo, `[Error] Command '${options.command}' failed`);
             process.exitCode = 1;

@@ -23,6 +23,7 @@ export interface CliResult {
 export const TEE_ENABLED = Deno.env.get("LIVESYNC_TEST_TEE") === "1";
 const VERBOSE_ENABLED = Deno.env.get("LIVESYNC_CLI_VERBOSE") === "1";
 const DEBUG_ENABLED = Deno.env.get("LIVESYNC_CLI_DEBUG") === "1";
+const SETUP_URI_PREFIX = "obsidian://setuplivesync?settings=";
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,7 +41,13 @@ function concatChunks(chunks: Uint8Array[]): Uint8Array {
 }
 
 export function formatTeeCommand(args: string[]): string {
-    return ["node", CLI_DIST, ...args].map((part) => JSON.stringify(part)).join(" ");
+    const redactArgument = (argument: string): string => {
+        if (argument.startsWith(SETUP_URI_PREFIX)) {
+            return `${SETUP_URI_PREFIX}<redacted>`;
+        }
+        return argument.replace(/^(sls\+[^:]+:\/\/)[^/?#@]*@/u, "$1<redacted>@");
+    };
+    return ["node", CLI_DIST, ...args.map(redactArgument)].map((part) => JSON.stringify(part)).join(" ");
 }
 
 export function createLineTeeWriter(

@@ -35,7 +35,8 @@
         "test:e2e-matrix:couchdb-enc1": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: COUCHDB-enc1' test-e2e-two-vaults-matrix.ts",
         "test:e2e-matrix:minio-enc0": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: MINIO-enc0' test-e2e-two-vaults-matrix.ts",
         "test:e2e-matrix:minio-enc1": "deno test --env-file=.test.env -A --no-check --filter='e2e matrix: MINIO-enc1' test-e2e-two-vaults-matrix.ts",
-        "test:adaptive-journal-s3": "deno test --env-file=.test.env -A --no-check test-adaptive-journal-s3.ts"
+        "test:adaptive-journal-s3": "deno test --env-file=.test.env -A --no-check test-adaptive-journal-s3.ts",
+        "test:adaptive-journal-webdav": "deno test --env-file=.test.env -A --no-check test-adaptive-journal-webdav.ts"
     },
     "imports": {
         "@std/assert": "jsr:@std/assert@^1.0.13",

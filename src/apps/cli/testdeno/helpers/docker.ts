@@ -330,6 +330,39 @@ const MINIO_CONTAINER = "minio-test";
 const MINIO_IMAGE = "minio/minio:RELEASE.2025-04-22T22-12-26Z";
 const MINIO_MC_IMAGE = "minio/mc:RELEASE.2025-04-16T18-13-26Z";
 
+const WEBDAV_CONTAINER = "webdav-test";
+const WEBDAV_IMAGE = "httpd:2.4.68";
+const WEBDAV_HTTPD_CONFIG = `ServerRoot "/usr/local/apache2"
+Listen 80
+
+LoadModule mpm_event_module modules/mod_mpm_event.so
+LoadModule authn_core_module modules/mod_authn_core.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule dav_module modules/mod_dav.so
+LoadModule dav_fs_module modules/mod_dav_fs.so
+LoadModule unixd_module modules/mod_unixd.so
+
+User www-data
+Group www-data
+ServerName localhost
+DocumentRoot "/usr/local/apache2/htdocs"
+PidFile "/tmp/httpd.pid"
+ErrorLog "/proc/self/fd/2"
+LogLevel warn
+
+DavLockDB "/usr/local/apache2/var/DavLock"
+DavLockDiscovery Off
+
+<Directory "/usr/local/apache2/htdocs">
+    AllowOverride None
+    Require all granted
+</Directory>
+
+<Directory "/usr/local/apache2/htdocs/dav">
+    Dav On
+</Directory>
+`;
+
 export async function stopCouchdb(): Promise<void> {
     await stopAndRemoveContainer(COUCHDB_CONTAINER);
     untrackContainer(COUCHDB_CONTAINER);
@@ -623,6 +656,113 @@ export async function startMinio(
     }
 
     await waitForMinioBucket(minioEndpoint, accessKey, secretKey, bucket);
+}
+
+// ---------------------------------------------------------------------------
+// WebDAV
+// ---------------------------------------------------------------------------
+
+export async function stopWebDAV(): Promise<void> {
+    await stopAndRemoveContainer(WEBDAV_CONTAINER);
+    untrackContainer(WEBDAV_CONTAINER);
+}
+
+async function waitForWebDAV(endpoint: string): Promise<void> {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+        try {
+            const response = await fetch(endpoint, {
+                method: "PROPFIND",
+                headers: { Depth: "0" },
+                signal: AbortSignal.timeout(3000),
+            });
+            await response.body?.cancel().catch(() => {});
+            if (response.status === 207) return;
+        } catch {
+            // The container is still starting.
+        }
+        await sleep(500);
+    }
+    throw new Error(`WebDAV collection did not become ready: ${endpoint}`);
+}
+
+export async function startWebDAV(endpoint: string): Promise<void> {
+    const url = new URL(endpoint);
+    if (url.protocol !== "http:" || (url.hostname !== "127.0.0.1" && url.hostname !== "localhost")) {
+        throw new Error(`Managed WebDAV requires a local HTTP endpoint, received: ${endpoint}`);
+    }
+    if (url.pathname.replace(/\/+$/u, "") !== "/dav") {
+        throw new Error(`Managed WebDAV requires the /dav collection, received: ${endpoint}`);
+    }
+    const hostPort = url.port || "80";
+    const encodedConfig = btoa(WEBDAV_HTTPD_CONFIG);
+    const startCommand = `printf '%s' '${encodedConfig}' | base64 -d > /tmp/httpd.conf && exec httpd -DFOREGROUND -f /tmp/httpd.conf`;
+
+    console.log("[INFO] stopping leftover WebDAV container if present");
+    await stopWebDAV().catch(() => {});
+
+    console.log("[INFO] starting Apache WebDAV test container");
+    await dockerOrFail(
+        "run",
+        "-d",
+        "--name",
+        WEBDAV_CONTAINER,
+        "-p",
+        `${hostPort}:80`,
+        "--tmpfs",
+        "/usr/local/apache2/htdocs/dav:mode=0777",
+        "--tmpfs",
+        "/usr/local/apache2/var:mode=0777",
+        "--entrypoint",
+        "/bin/sh",
+        WEBDAV_IMAGE,
+        "-c",
+        startCommand
+    );
+    trackContainer(WEBDAV_CONTAINER);
+    await waitForWebDAV(endpoint);
+}
+
+function directWebDAVObjectUrl(collectionEndpoint: string, key: string): string {
+    return `${collectionEndpoint.replace(/\/+$/u, "")}/${encodeURIComponent(key)}`;
+}
+
+function webDAVRequestHeaders(): HeadersInit {
+    const username = Deno.env.get("WEBDAV_USERNAME") ?? "";
+    const password = Deno.env.get("WEBDAV_PASSWORD") ?? "";
+    if (!username && !password) return {};
+    return { Authorization: `Basic ${btoa(`${username}:${password}`)}` };
+}
+
+export async function listWebDAVObjectKeys(collectionEndpoint: string): Promise<string[]> {
+    const collectionUrl = new URL(`${collectionEndpoint.replace(/\/+$/u, "")}/`);
+    const response = await fetch(collectionUrl, {
+        method: "PROPFIND",
+        headers: { ...webDAVRequestHeaders(), Depth: "1" },
+    });
+    if (response.status !== 207) {
+        throw new Error(`Could not list WebDAV objects: HTTP ${response.status}`);
+    }
+    const xml = await response.text();
+    const hrefs = [
+        ...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?href\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?href>/giu),
+    ].map((match) => match[1].trim());
+    const basePath = decodeURIComponent(collectionUrl.pathname);
+    const keys = new Set<string>();
+    for (const href of hrefs) {
+        const path = decodeURIComponent(new URL(href, collectionUrl).pathname);
+        if (!path.startsWith(basePath)) continue;
+        const key = path.slice(basePath.length).replace(/\/$/u, "");
+        if (key && !key.includes("/")) keys.add(key);
+    }
+    return [...keys].sort();
+}
+
+export async function readWebDAVObjectText(collectionEndpoint: string, key: string): Promise<string> {
+    const response = await fetch(directWebDAVObjectUrl(collectionEndpoint, key), { headers: webDAVRequestHeaders() });
+    if (!response.ok) {
+        throw new Error(`Could not read WebDAV object ${key}: HTTP ${response.status}`);
+    }
+    return await response.text();
 }
 
 // ---------------------------------------------------------------------------

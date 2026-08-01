@@ -13,7 +13,12 @@ export async function initSettingsFile(settingsFile: string): Promise<void> {
  * Generate a full setup URI from a settings file via the Commonlib package API.
  * Mirrors the bash flow in test-setup-put-cat-linux.sh.
  */
-export async function generateSetupUriFromSettings(settingsFile: string, setupPassphrase: string): Promise<string> {
+export async function generateSetupUriFromSettings(
+    settingsFile: string,
+    setupPassphrase: string,
+    preserveSettings = false,
+    runtimeVaultPassphrase?: string
+): Promise<string> {
     const script = [
         "import { fs } from '@vrtmrz/livesync-commonlib/node';",
         "import { encodeSettingsToSetupURI } from '@vrtmrz/livesync-commonlib/compat/API/processSetting';",
@@ -21,13 +26,18 @@ export async function generateSetupUriFromSettings(settingsFile: string, setupPa
         "  const settingsPath = process.env.SETTINGS_FILE;",
         "  const passphrase = process.env.SETUP_PASSPHRASE;",
         "  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));",
-        "  settings.couchDB_DBNAME = 'setup-put-cat-db';",
-        "  settings.couchDB_URI = 'http://127.0.0.1:5999';",
-        "  settings.couchDB_USER = 'dummy';",
-        "  settings.couchDB_PASSWORD = 'dummy';",
-        "  settings.liveSync = false;",
-        "  settings.syncOnStart = false;",
-        "  settings.syncOnSave = false;",
+        "  if (process.env.RUNTIME_VAULT_PASSPHRASE !== undefined) {",
+        "    settings.passphrase = process.env.RUNTIME_VAULT_PASSPHRASE;",
+        "  }",
+        "  if (process.env.PRESERVE_SETTINGS !== 'true') {",
+        "    settings.couchDB_DBNAME = 'setup-put-cat-db';",
+        "    settings.couchDB_URI = 'http://127.0.0.1:5999';",
+        "    settings.couchDB_USER = 'dummy';",
+        "    settings.couchDB_PASSWORD = 'dummy';",
+        "    settings.liveSync = false;",
+        "    settings.syncOnStart = false;",
+        "    settings.syncOnSave = false;",
+        "  }",
         "  const uri = await encodeSettingsToSetupURI(settings, passphrase);",
         "  process.stdout.write(uri.trim());",
         "})();",
@@ -41,13 +51,18 @@ export async function generateSetupUriFromSettings(settingsFile: string, setupPa
     await Deno.writeTextFile(scriptPath, script);
 
     try {
+        const env: Record<string, string> = {
+            SETTINGS_FILE: settingsFile,
+            SETUP_PASSPHRASE: setupPassphrase,
+            PRESERVE_SETTINGS: preserveSettings ? "true" : "false",
+        };
+        if (runtimeVaultPassphrase !== undefined) {
+            env.RUNTIME_VAULT_PASSPHRASE = runtimeVaultPassphrase;
+        }
         const cmd = new Deno.Command("npx", {
             args: ["tsx", scriptPath],
             cwd: CLI_DIR,
-            env: {
-                SETTINGS_FILE: settingsFile,
-                SETUP_PASSPHRASE: setupPassphrase,
-            },
+            env,
             stdin: "null",
             stdout: "piped",
             stderr: "piped",
@@ -112,7 +127,7 @@ export async function applyCouchdbSettings(
 export async function applyRemoteSyncSettings(
     settingsFile: string,
     options: {
-        remoteType: "COUCHDB" | "MINIO";
+        remoteType: "COUCHDB" | "MINIO" | "WEBDAV";
         couchdbUri?: string;
         couchdbUser?: string;
         couchdbPassword?: string;
@@ -121,6 +136,7 @@ export async function applyRemoteSyncSettings(
         minioEndpoint?: string;
         minioAccessKey?: string;
         minioSecretKey?: string;
+        webDAVConnectionURI?: string;
         encrypt?: boolean;
         passphrase?: string;
         enableCompression?: boolean;
@@ -138,7 +154,7 @@ export async function applyRemoteSyncSettings(
         data.couchDB_USER = options.couchdbUser;
         data.couchDB_PASSWORD = options.couchdbPassword;
         data.couchDB_DBNAME = options.couchdbDbname;
-    } else {
+    } else if (options.remoteType === "MINIO") {
         data.remoteType = "MINIO";
         data.bucket = options.minioBucket;
         data.endpoint = options.minioEndpoint;
@@ -146,15 +162,18 @@ export async function applyRemoteSyncSettings(
         data.secretKey = options.minioSecretKey;
         data.region = "auto";
         data.forcePathStyle = true;
-        if (options.journalFormat !== undefined) {
-            data.journalFormat = options.journalFormat;
-        }
-        if (options.expectedRepositoryId !== undefined) {
-            data.expectedRepositoryId = options.expectedRepositoryId;
-        }
-        if (options.packReadPolicy !== undefined) {
-            data.packReadPolicy = options.packReadPolicy;
-        }
+    } else {
+        data.remoteType = "WEBDAV";
+        data.webDAVactiveConnectionURI = options.webDAVConnectionURI;
+    }
+    if (options.journalFormat !== undefined) {
+        data.journalFormat = options.journalFormat;
+    }
+    if (options.expectedRepositoryId !== undefined) {
+        data.expectedRepositoryId = options.expectedRepositoryId;
+    }
+    if (options.packReadPolicy !== undefined) {
+        data.packReadPolicy = options.packReadPolicy;
     }
 
     data.liveSync = true;
