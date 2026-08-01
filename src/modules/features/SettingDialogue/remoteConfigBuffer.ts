@@ -2,6 +2,7 @@ import {
     pickBucketSyncSettings,
     pickCouchDBSyncSettings,
     pickP2PSyncSettings,
+    pickPostgRESTSyncSettings,
     pickWebDAVSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -17,6 +18,7 @@ export function syncActivatedRemoteSettings(
         activeConfigurationId: source.activeConfigurationId,
         ...pickBucketSyncSettings(source),
         ...pickWebDAVSyncSettings(source),
+        ...pickPostgRESTSyncSettings(source),
         ...pickCouchDBSyncSettings(source),
         ...pickP2PSyncSettings(source),
     });

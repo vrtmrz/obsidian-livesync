@@ -88,6 +88,43 @@ export const liveSyncProvisionalEnglishMessages = {
     "Store Journal data in a dedicated WebDAV collection. Adaptive mode is experimental and requires an endpoint safety check.":
         "Store Journal data in a dedicated WebDAV collection. Adaptive mode is experimental and requires an endpoint safety check.",
     "Continue to WebDAV setup": "Continue to WebDAV setup",
+    "PostgREST Journal Configuration": "PostgREST Journal Configuration",
+    "Connect to the packaged, Adaptive-only PostgREST RPC contract. This experimental provider is not a CouchDB endpoint and does not expose synchronisation tables directly.":
+        "Connect to the packaged, Adaptive-only PostgREST RPC contract. This experimental provider is not a CouchDB endpoint and does not expose synchronisation tables directly.",
+    "Enter a complete HTTP or HTTPS PostgREST endpoint without database credentials, a query string, or a fragment.":
+        "Enter a complete HTTP or HTTPS PostgREST endpoint without database credentials, a query string, or a fragment.",
+    "Vault ID": "Vault ID",
+    "Vault credential": "Vault credential",
+    "Enter the provisioned Vault credential": "Enter the provisioned Vault credential",
+    "A trusted database administrator obtains both values once from livesync_private.provision_adaptive_vault(). PostgreSQL retains only a verifier for the credential.":
+        "A trusted database administrator obtains both values once from livesync_private.provision_adaptive_vault(). PostgreSQL retains only a verifier for the credential.",
+    "Exposed schema": "Exposed schema",
+    "Client API key (optional)": "Client API key (optional)",
+    "Supabase publishable key, if required": "Supabase publishable key, if required",
+    "Use only a publishable or equivalent client-safe API key. Never enter a Supabase secret key, service_role JWT, or database credential.":
+        "Use only a publishable or equivalent client-safe API key. Never enter a Supabase secret key, service_role JWT, or database credential.",
+    "Supply a valid endpoint, PostgreSQL schema identifier, provisioned Vault ID, and Vault credential.":
+        "Supply a valid endpoint, PostgreSQL schema identifier, provisioned Vault ID, and Vault credential.",
+    "PostgREST stores only Adaptive Journal records. It cannot read Opaque Journal data, and format changes require a remote Rebuild rather than an in-place migration.":
+        "PostgREST stores only Adaptive Journal records. It cannot read Opaque Journal data, and format changes require a remote Rebuild rather than an in-place migration.",
+    "The required PostgREST RPC operations and binary semantics were verified.":
+        "The required PostgREST RPC operations and binary semantics were verified.",
+    "The PostgREST SQL contract is missing required operations: ${CAPABILITIES}.":
+        "The PostgREST SQL contract is missing required operations: ${CAPABILITIES}.",
+    "The PostgREST SQL contract is unavailable or incompatible with this build.":
+        "The PostgREST SQL contract is unavailable or incompatible with this build.",
+    "This build cannot inspect PostgREST Journal capabilities.":
+        "This build cannot inspect PostgREST Journal capabilities.",
+    "Invalid PostgREST settings: ${REASON}": "Invalid PostgREST settings: ${REASON}",
+    "The saved connection contains the Vault credential and optional API key. Configuration encryption protects exported Setup data when it is enabled; do not share a plain connection string.":
+        "The saved connection contains the Vault credential and optional API key. Configuration encryption protects exported Setup data when it is enabled; do not share a plain connection string.",
+    "PostgREST Journal": "PostgREST Journal",
+    "Store Adaptive Journal records through the packaged PostgREST SQL contract. This experimental provider requires a provisioned Vault credential, and onboarding requires a successful server capability check.":
+        "Store Adaptive Journal records through the packaged PostgREST SQL contract. This experimental provider requires a provisioned Vault credential, and onboarding requires a successful server capability check.",
+    "Continue to PostgREST setup": "Continue to PostgREST setup",
+    "Check PostgREST server": "Check PostgREST server",
+    "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection or server SQL is corrected.":
+        "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection or server SQL is corrected.",
     "Expected repository ID": "Expected repository ID",
     "This optional identity pins a trusted Adaptive repository. A Setup URI can supply it; leave it blank only when creating a repository or intentionally trusting the first compatible repository reached.":
         "This optional identity pins a trusted Adaptive repository. A Setup URI can supply it; leave it blank only when creating a repository or intentionally trusting the first compatible repository reached.",

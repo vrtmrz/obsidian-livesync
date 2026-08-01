@@ -300,6 +300,21 @@ export class SetupManager extends AbstractModule {
     }
 
     /**
+     * Handles manual setup for Adaptive Journal storage through PostgREST.
+     * @param userMode
+     * @param currentSetting
+     * @param activate Whether to activate PostgREST as the main remote type
+     * @returns Promise that resolves to true if setup completed successfully, false otherwise
+     */
+    async onPostgRESTManualSetup(
+        userMode: UserMode,
+        currentSetting: ObsidianLiveSyncSettings,
+        activate = true
+    ): Promise<boolean> {
+        return await this.onRemoteManualSetup("postgrest", userMode, currentSetting, activate);
+    }
+
+    /**
      * Handles manual setup for P2P
      * @param userMode
      * @param currentSetting

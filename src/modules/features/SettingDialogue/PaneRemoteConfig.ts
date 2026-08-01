@@ -46,6 +46,16 @@ function serializeRemoteConfiguration(settings: ObsidianLiveSyncSettings): strin
     const configuration = defaultRemoteProviderRegistry.configurationFromSettings(type, settings);
     return defaultRemoteProviderRegistry.serialise(configuration);
 }
+
+function describeRemoteConfiguration(uri: string): string {
+    try {
+        const configuration = defaultRemoteProviderRegistry.parse(uri);
+        return defaultRemoteProviderRegistry.suggestName(configuration);
+    } catch {
+        return "";
+    }
+}
+
 function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string) {
     button.setButtonText(emoji);
     button.setTooltip(tooltip, { delay: 10, placement: "top" });

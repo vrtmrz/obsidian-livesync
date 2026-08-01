@@ -4,6 +4,7 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     REMOTE_P2P,
+    REMOTE_POSTGREST,
     REMOTE_WEBDAV,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -24,6 +25,7 @@ vi.mock("./SetupWizard/dialogs/SetupRemote.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteCouchDB.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteWebDAV.svelte", () => ({ default: {} }));
+vi.mock("./SetupWizard/dialogs/SetupRemotePostgREST.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 
@@ -651,6 +653,87 @@ describe("SetupManager", () => {
             settings: setting.currentSettings(),
             mode,
         });
+    });
+
+    it("adds and activates a manually configured PostgREST profile without replacing existing profiles", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                existing: {
+                    id: "existing",
+                    name: "Existing remote",
+                    uri: "sls+http://old:secret@old.example/?db=old",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "existing",
+        };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                postgrestActiveConnectionURI:
+                    "sls+postgrest://vault-id-00000001:vault-credential@project.example/rest/v1?apiKey=publishable",
+                expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onPostgRESTManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.remoteType).toBe(REMOTE_POSTGREST);
+        expect(current.remoteConfigurations.existing).toBeDefined();
+        expect(Object.keys(current.remoteConfigurations)).toHaveLength(2);
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.name).toBe("PostgREST project.example");
+        expect(activeProfile?.uri).toContain("sls+postgrest://vault-id-00000001:vault-credential@project.example");
+        expect(activeProfile?.uri).toContain("journalFormat=adaptive-v1");
+        expect(activeProfile?.uri).toContain("expectedRepositoryId=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        expect(ConnectionStringParser.parse(activeProfile?.uri ?? "")).toMatchObject({
+            type: "postgrest",
+            settings: { packReadPolicy: "whole-pack" },
+        });
+    });
+
+    it.each([
+        [UserMode.NewUser, "onboarding"],
+        [UserMode.ExistingUser, "onboarding"],
+        [UserMode.Update, "settings"],
+    ] as const)("passes the %s PostgREST verification policy to the manual setup dialogue", async (userMode, mode) => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
+        vi.spyOn(manager, "onOnboard").mockResolvedValue(false);
+
+        await manager.onPostgRESTManualSetup(userMode, setting.currentSettings());
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenCalledWith(expect.anything(), {
+            settings: setting.currentSettings(),
+            mode,
+        });
+    });
+
+    it("routes a manual PostgREST selection through the registered setup provider", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce("postgrest")
+            .mockResolvedValueOnce({
+                postgrestActiveConnectionURI:
+                    "sls+postgrest://vault-id-00000001:vault-credential@project.example/rest/v1?apiKey=publishable",
+                expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onSelectServer(setting.currentSettings(), UserMode.NewUser);
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenNthCalledWith(2, expect.anything(), {
+            settings: expect.anything(),
+            mode: "onboarding",
+        });
+        expect(setting.currentSettings().remoteType).toBe(REMOTE_POSTGREST);
     });
 
     it("creates and selects a P2P profile during fresh manual onboarding", async () => {

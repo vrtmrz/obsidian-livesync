@@ -4,6 +4,7 @@ import type {
     EncryptionSettings,
     ObsidianLiveSyncSettings,
     P2PConnectionInfo,
+    PostgRESTSyncSetting,
     WebDAVSyncSetting,
 } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import type { BuiltInRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
@@ -110,6 +111,13 @@ export type WebDAVSetupMode = "onboarding" | "settings";
 export type SetupRemoteWebDAVInitialData = {
     settings: WebDAVSyncSetting;
     mode: WebDAVSetupMode;
+};
+
+export type SetupRemotePostgRESTResultType = typeof TYPE_CANCELLED | PostgRESTSyncSetting;
+export type PostgRESTSetupMode = "onboarding" | "settings";
+export type SetupRemotePostgRESTInitialData = {
+    settings: PostgRESTSyncSetting;
+    mode: PostgRESTSetupMode;
 };
 
 export type SetupRemoteCouchDBResultType = typeof TYPE_CANCELLED | CouchDBConnection;

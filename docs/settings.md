@@ -58,7 +58,7 @@ A current Setup URI retains its remote profiles, display names, and separate mai
 
 Step-by-step setup for Self-hosted LiveSync. You can setup Self-hosted LiveSync manually with Minimal setting items.
 
-Completing manual CouchDB, Object Storage, or P2P setup creates the corresponding remote profile without replacing profiles which are already saved. CouchDB and Object Storage setup select the new profile as the main remote. P2P setup selects it for P2P use and, when the wizard is enabling LiveSync, also selects it as the main remote. A descriptive display name is generated and can be changed later.
+Completing manual CouchDB, Object Storage, WebDAV, PostgREST, or P2P setup creates the corresponding remote profile without replacing profiles which are already saved. CouchDB, Object Storage, WebDAV, and PostgREST setup select the new profile as the main remote. P2P setup selects it for P2P use and, when the wizard is enabling LiveSync, also selects it as the main remote. A descriptive display name is generated and can be changed later.
 
 #### Enable LiveSync
 
@@ -171,7 +171,7 @@ Show verbose log. Please enable when you report the logs
 
 ### 1. Connection settings
 
-Self-hosted LiveSync stores multiple remote connection profiles under **Connection settings** → **Saved connections**. Each profile represents a CouchDB database, an Object Storage connection, or a P2P configuration, and several profiles can be kept in one Vault.
+Self-hosted LiveSync stores multiple remote connection profiles under **Connection settings** → **Saved connections**. Each profile represents a CouchDB database, a Journal storage connection, or a P2P configuration, and several profiles can be kept in one Vault.
 
 Each profile has an opaque identifier and a presentation name. The name does not need to be unique and is not used to select the profile. The main remote and the P2P remote are selected independently, so code and settings imports must preserve both selections rather than relying on a special identifier such as `default`.
 
@@ -355,7 +355,31 @@ The dialogue reports required operations and Range support independently. Authen
 
 Onboarding accepts the profile only after the selected policy passes. Adding or editing a profile in Settings also offers **Save without connecting**, which preserves a locally valid but unverified profile.
 
-### 7. CouchDB
+### 7. PostgREST Journal
+
+PostgREST Journal is an experimental, Adaptive-only provider. It uses the packaged PostgREST RPC schema rather than exposing synchronisation tables or acting as a CouchDB replication endpoint.
+
+#### PostgREST connection
+
+Setting key: postgrestActiveConnectionURI
+
+The saved `sls+postgrest` value contains the HTTP or HTTPS endpoint, exposed schema, Vault ID, Vault credential, optional client-safe API key, and internal-API preference. A trusted database administrator provisions the Vault ID and credential by following the SQL package instructions. Do not enter a database credential, Supabase secret key, or `service_role` JWT in a client profile.
+
+Only HTTPS endpoints work on Obsidian Mobile. **Use internal API** routes requests through Obsidian when browser-compatible requests are blocked by CORS.
+
+#### Adaptive format and repository identity
+
+PostgREST always uses `adaptive-v1` with native Chunk rows and does not expose Opaque Journal, object Pack, Catalogue, Delta, or Range-retrieval options. Existing data in another Journal format is not read or migrated. Changing the wire or SQL format requires detection and a remote Rebuild.
+
+Setting key: expectedRepositoryId
+
+The optional expected repository ID pins a trusted Adaptive repository in the same way as other Adaptive Journal providers.
+
+#### Server capability check
+
+The setup dialogue verifies the installed RPC operations, Vault authentication, and exact binary behaviour through the provider-neutral Journal inspection boundary. Onboarding accepts the profile only after this check succeeds. Settings can preserve a locally valid profile without connecting so that an unavailable endpoint can be corrected later.
+
+### 8. CouchDB
 
 These settings are configured within the CouchDB Setup dialogue when adding (`➕`) or editing (`🔧`) a CouchDB connection profile.
 

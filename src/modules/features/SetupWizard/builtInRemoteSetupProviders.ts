@@ -5,12 +5,15 @@ import { $msg as translateMessage } from "@/common/translation";
 import SetupRemoteBucket from "./dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteCouchDB from "./dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteP2P from "./dialogs/SetupRemoteP2P.svelte";
+import SetupRemotePostgREST from "./dialogs/SetupRemotePostgREST.svelte";
 import SetupRemoteWebDAV from "./dialogs/SetupRemoteWebDAV.svelte";
 import type {
     SetupRemoteBucketResultType,
     SetupRemoteCouchDBInitialData,
     SetupRemoteCouchDBResultType,
     SetupRemoteP2PResultType,
+    SetupRemotePostgRESTInitialData,
+    SetupRemotePostgRESTResultType,
     SetupRemoteWebDAVInitialData,
     SetupRemoteWebDAVResultType,
 } from "./dialogs/setupDialogTypes";
@@ -121,11 +124,39 @@ export function useWebDAVRemoteSetup(
     return registry.register(descriptor);
 }
 
+export function usePostgRESTRemoteSetup(
+    registry: RemoteSetupRegistry<BuiltInRemoteConfiguration>
+): RemoteSetupRegistry<BuiltInRemoteConfiguration> {
+    const descriptor: RemoteSetupProviderDescriptor<ConfigurationOf<"postgrest">> = {
+        type: "postgrest",
+        choice: () => ({
+            title: translateMessage("PostgREST Journal"),
+            description: translateMessage(
+                "Store Adaptive Journal records through the packaged PostgREST SQL contract. This experimental provider requires a provisioned Vault credential, and onboarding requires a successful server capability check."
+            ),
+            proceedTitle: translateMessage("Continue to PostgREST setup"),
+        }),
+        open: async ({ dialogManager, intent, settings }) => {
+            const result = await dialogManager.openWithExplicitCancel<
+                SetupRemotePostgRESTResultType,
+                SetupRemotePostgRESTInitialData
+            >(SetupRemotePostgREST, {
+                settings,
+                mode: intent === "settings" ? "settings" : "onboarding",
+            });
+            return result === "cancelled" ? result : { type: "postgrest", settings: result };
+        },
+    };
+    assertSemanticProvider(descriptor.type);
+    return registry.register(descriptor);
+}
+
 export function createBuiltInRemoteSetupRegistry(): RemoteSetupRegistry<BuiltInRemoteConfiguration> {
     const registry = new RemoteSetupRegistry<BuiltInRemoteConfiguration>();
     useCouchDBRemoteSetup(registry);
     useS3RemoteSetup(registry);
     useWebDAVRemoteSetup(registry);
+    usePostgRESTRemoteSetup(registry);
     useP2PRemoteSetup(registry);
     return registry;
 }

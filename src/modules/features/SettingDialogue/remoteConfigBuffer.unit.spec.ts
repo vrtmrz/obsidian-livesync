@@ -3,6 +3,7 @@ import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
+    REMOTE_POSTGREST,
     REMOTE_WEBDAV,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer";
@@ -120,5 +121,36 @@ describe("syncActivatedRemoteSettings", () => {
         expect(target.expectedRepositoryId).toBe(source.expectedRepositoryId);
         expect(target.journalFormat).toBe("adaptive-v1");
         expect(target.packReadPolicy).toBe("range");
+    });
+
+    it("should copy the active PostgREST connection and fixed Adaptive protocol into the editing buffer", () => {
+        const target = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_COUCHDB,
+            activeConfigurationId: "old-remote",
+            postgrestActiveConnectionURI: "",
+            expectedRepositoryId: "",
+            journalFormat: "opaque-v1" as const,
+            packReadPolicy: "range" as const,
+        };
+        const source = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_POSTGREST,
+            activeConfigurationId: "remote-postgrest",
+            postgrestActiveConnectionURI:
+                "sls+postgrest://vault-id-00000001:vault-credential@project.example/rest/v1?apiKey=publishable",
+            expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            journalFormat: "adaptive-v1" as const,
+            packReadPolicy: "whole-pack" as const,
+        };
+
+        syncActivatedRemoteSettings(target, source);
+
+        expect(target.remoteType).toBe(REMOTE_POSTGREST);
+        expect(target.activeConfigurationId).toBe("remote-postgrest");
+        expect(target.postgrestActiveConnectionURI).toBe(source.postgrestActiveConnectionURI);
+        expect(target.expectedRepositoryId).toBe(source.expectedRepositoryId);
+        expect(target.journalFormat).toBe("adaptive-v1");
+        expect(target.packReadPolicy).toBe("whole-pack");
     });
 });
