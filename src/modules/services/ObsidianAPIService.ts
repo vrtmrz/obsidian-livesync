@@ -147,14 +147,9 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
                 : req instanceof Request && typeof req.method === "string"
                   ? req.method
                   : "GET";
-        if (typeof req !== "string") {
-            if (opts?.body) {
-                body = typeof opts.body === "string" ? opts.body : await new Response(opts.body).arrayBuffer();
-            } else if (req.body) {
-                body = await new Response(req.body).arrayBuffer();
-            }
-        } else {
-            body = opts?.body as string;
+        const suppliedBody = opts?.body ?? (req instanceof Request ? req.body : undefined);
+        if (suppliedBody !== undefined && suppliedBody !== null) {
+            body = typeof suppliedBody === "string" ? suppliedBody : await new Response(suppliedBody).arrayBuffer();
         }
         const reqHeaders = new Headers(req instanceof Request ? req.headers : {});
 
@@ -192,7 +187,9 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
             contentType: contentType,
         };
         const r = await requestUrl({ ...requestParam, throw: false });
-        return new Response(r.arrayBuffer, {
+        const responseHasNoBody =
+            method.toUpperCase() === "HEAD" || r.status === 204 || r.status === 205 || r.status === 304;
+        return new Response(responseHasNoBody ? null : r.arrayBuffer, {
             headers: r.headers,
             status: r.status,
             statusText: `${r.status}`,
