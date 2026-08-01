@@ -327,8 +327,8 @@ const COUCHDB_CONTAINER = "couchdb-test";
 const COUCHDB_IMAGE = "couchdb:3.5.0";
 
 const MINIO_CONTAINER = "minio-test";
-const MINIO_IMAGE = "minio/minio";
-const MINIO_MC_IMAGE = "minio/mc";
+const MINIO_IMAGE = "minio/minio:RELEASE.2025-04-22T22-12-26Z";
+const MINIO_MC_IMAGE = "minio/mc:RELEASE.2025-04-16T18-13-26Z";
 
 export async function stopCouchdb(): Promise<void> {
     await stopAndRemoveContainer(COUCHDB_CONTAINER);
