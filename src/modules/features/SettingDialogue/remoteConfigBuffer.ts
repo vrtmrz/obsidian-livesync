@@ -21,5 +21,11 @@ export function syncActivatedRemoteSettings(
         ...pickPostgRESTSyncSettings(source),
         ...pickCouchDBSyncSettings(source),
         ...pickP2PSyncSettings(source),
+        // Provider pickers share these fields. Keep the active profile's protocol after
+        // collecting provider-specific connection fields so that one provider cannot
+        // normalise another provider's Journal policy.
+        expectedRepositoryId: source.expectedRepositoryId ?? "",
+        journalFormat: source.journalFormat ?? "opaque-v1",
+        packReadPolicy: source.packReadPolicy ?? "whole-pack",
     });
 }
