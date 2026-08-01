@@ -200,6 +200,7 @@ Start the local fixtures first when they are not already running:
 ```bash
 npm run test:docker-couchdb:start
 npm run test:docker-s3:start
+npm run test:docker-postgrest:start
 npm run test:docker-p2p:start
 npm run test:e2e:obsidian:local-suite
 ```
@@ -248,6 +249,7 @@ Useful environment variables:
 - `E2E_OBSIDIAN_REMOTE_ACTIVITY_TIMEOUT_MS`: timeout for an observed remote activity to enter or leave its status boundary; default is 30 seconds.
 - `E2E_OBSIDIAN_DIAGNOSTICS_DIR`: directory for screenshots and status snapshots, including the Security Seed reconnect stages; default is `/tmp/obsidian-livesync-e2e`.
 - `E2E_OBSIDIAN_OBJECT_STORAGE_TIMEOUT_MS`: timeout for waiting until Object Storage contains uploaded E2E objects.
+- `POSTGREST_ENDPOINT`, `POSTGREST_SCHEMA`, `POSTGREST_VAULT_ID`, `POSTGREST_VAULT_CREDENTIAL`, and `POSTGREST_API_KEY`: external PostgREST fixture settings. The API key must be publishable or otherwise client-safe. The managed fixture supplies disposable defaults.
 - `E2E_OBSIDIAN_KEEP_COUCHDB=true`: keep the temporary CouchDB database for inspection.
 - `E2E_OBSIDIAN_KEEP_OBJECT_STORAGE=true`: keep the temporary Object Storage prefix for inspection.
 - `E2E_OBSIDIAN_STARTUP_GRACE_MS`: early process-exit detection window in milliseconds.
