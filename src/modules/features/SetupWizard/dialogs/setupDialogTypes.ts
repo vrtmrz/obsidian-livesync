@@ -4,6 +4,7 @@ import type {
     EncryptionSettings,
     ObsidianLiveSyncSettings,
     P2PConnectionInfo,
+    WebDAVSyncSetting,
 } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import type { BuiltInRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import type { RemoteSetupChoice } from "@/modules/features/SetupWizard/RemoteSetupRegistry";
@@ -103,6 +104,13 @@ export type UseSetupURIResultType = typeof TYPE_CANCELLED | ObsidianLiveSyncSett
 export type SetupRemoteE2EEResultType = typeof TYPE_CANCELLED | EncryptionSettings;
 
 export type SetupRemoteBucketResultType = typeof TYPE_CANCELLED | BucketSyncSetting;
+
+export type SetupRemoteWebDAVResultType = typeof TYPE_CANCELLED | WebDAVSyncSetting;
+export type WebDAVSetupMode = "onboarding" | "settings";
+export type SetupRemoteWebDAVInitialData = {
+    settings: WebDAVSyncSetting;
+    mode: WebDAVSetupMode;
+};
 
 export type SetupRemoteCouchDBResultType = typeof TYPE_CANCELLED | CouchDBConnection;
 export type CouchDBSetupMode = "create-or-connect" | "connect-existing" | "settings";

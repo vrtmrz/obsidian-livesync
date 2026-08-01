@@ -17,6 +17,7 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 #### Improved
 
 - Object Storage setup can select the experimental Adaptive Journal format and choose complete Pack or verified Range retrieval. Existing Opaque Journal repositories remain the default and require an explicit remote Rebuild before changing formats.
+- Saved connections and Setup now support experimental WebDAV Journal profiles. Adaptive WebDAV runs an endpoint safety check, reports required immutable-object behaviour separately from optional Range support, and permits an unverified save only from Settings.
 
 ### P2P and experimental browser applications
 

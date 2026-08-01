@@ -285,6 +285,21 @@ export class SetupManager extends AbstractModule {
     }
 
     /**
+     * Handles manual setup for WebDAV Journal storage.
+     * @param userMode
+     * @param currentSetting
+     * @param activate Whether to activate WebDAV as the main remote type
+     * @returns Promise that resolves to true if setup completed successfully, false otherwise
+     */
+    async onWebDAVManualSetup(
+        userMode: UserMode,
+        currentSetting: ObsidianLiveSyncSettings,
+        activate = true
+    ): Promise<boolean> {
+        return await this.onRemoteManualSetup("webdav", userMode, currentSetting, activate);
+    }
+
+    /**
      * Handles manual setup for P2P
      * @param userMode
      * @param currentSetting

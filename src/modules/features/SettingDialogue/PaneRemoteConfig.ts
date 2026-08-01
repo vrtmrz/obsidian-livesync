@@ -46,7 +46,6 @@ function serializeRemoteConfiguration(settings: ObsidianLiveSyncSettings): strin
     const configuration = defaultRemoteProviderRegistry.configurationFromSettings(type, settings);
     return defaultRemoteProviderRegistry.serialise(configuration);
 }
-
 function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string) {
     button.setButtonText(emoji);
     button.setTooltip(tooltip, { delay: 10, placement: "top" });
@@ -259,7 +258,7 @@ export function paneRemoteConfig(
                 for (const config of Object.values(configs)) {
                     const row = new Setting(listContainer)
                         .setName(config.name)
-                        .setDesc(config.uri.split("@").pop() || ""); // Show host part for privacy
+                        .setDesc(describeRemoteConfiguration(config.uri));
 
                     if (config.id === this.editingSettings.activeConfigurationId) {
                         row.nameEl.addClass("sls-active-remote-name");

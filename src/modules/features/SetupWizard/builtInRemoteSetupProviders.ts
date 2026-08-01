@@ -5,11 +5,14 @@ import { $msg as translateMessage } from "@/common/translation";
 import SetupRemoteBucket from "./dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteCouchDB from "./dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteP2P from "./dialogs/SetupRemoteP2P.svelte";
+import SetupRemoteWebDAV from "./dialogs/SetupRemoteWebDAV.svelte";
 import type {
     SetupRemoteBucketResultType,
     SetupRemoteCouchDBInitialData,
     SetupRemoteCouchDBResultType,
     SetupRemoteP2PResultType,
+    SetupRemoteWebDAVInitialData,
+    SetupRemoteWebDAVResultType,
 } from "./dialogs/setupDialogTypes";
 import { RemoteSetupRegistry, type RemoteSetupProviderDescriptor } from "./RemoteSetupRegistry";
 
@@ -91,10 +94,38 @@ export function useP2PRemoteSetup(
     return registry.register(descriptor);
 }
 
+export function useWebDAVRemoteSetup(
+    registry: RemoteSetupRegistry<BuiltInRemoteConfiguration>
+): RemoteSetupRegistry<BuiltInRemoteConfiguration> {
+    const descriptor: RemoteSetupProviderDescriptor<ConfigurationOf<"webdav">> = {
+        type: "webdav",
+        choice: () => ({
+            title: translateMessage("WebDAV Journal"),
+            description: translateMessage(
+                "Store Journal data in a dedicated WebDAV collection. Adaptive mode is experimental and requires an endpoint safety check."
+            ),
+            proceedTitle: translateMessage("Continue to WebDAV setup"),
+        }),
+        open: async ({ dialogManager, intent, settings }) => {
+            const result = await dialogManager.openWithExplicitCancel<
+                SetupRemoteWebDAVResultType,
+                SetupRemoteWebDAVInitialData
+            >(SetupRemoteWebDAV, {
+                settings,
+                mode: intent === "settings" ? "settings" : "onboarding",
+            });
+            return result === "cancelled" ? result : { type: "webdav", settings: result };
+        },
+    };
+    assertSemanticProvider(descriptor.type);
+    return registry.register(descriptor);
+}
+
 export function createBuiltInRemoteSetupRegistry(): RemoteSetupRegistry<BuiltInRemoteConfiguration> {
     const registry = new RemoteSetupRegistry<BuiltInRemoteConfiguration>();
     useCouchDBRemoteSetup(registry);
     useS3RemoteSetup(registry);
+    useWebDAVRemoteSetup(registry);
     useP2PRemoteSetup(registry);
     return registry;
 }

@@ -317,7 +317,45 @@ Adaptive Journal can download a complete immutable Pack (`whole-pack`) or reques
 
 #### Apply Settings
 
-### 6. CouchDB
+### 6. WebDAV Journal
+
+WebDAV Journal is an experimental remote provider configured when adding (`➕`) or editing (`🔧`) a saved connection profile. Use a dedicated WebDAV collection or prefix rather than mixing Journal objects with unrelated files.
+
+#### WebDAV connection
+
+Setting key: webDAVactiveConnectionURI
+
+The saved `sls+webdav` value contains the HTTP or HTTPS endpoint, optional username and password, collection prefix, custom headers, and internal-API preference. The setup dialogue parses and serialises this value; do not edit it manually or share it as plain text. Only HTTPS endpoints work on Obsidian Mobile.
+
+**Use internal API** routes requests through Obsidian when browser-compatible requests are blocked by CORS. It is a compatibility option with different behaviour from standard browser fetch.
+
+#### Journal data format
+
+Setting key: journalFormat
+
+`opaque-v1` is the compatible default. `adaptive-v1` uses authenticated immutable Commit Bundles and Packs under a separate remote representation. Existing Opaque Journal data is neither migrated nor read as Adaptive data. Changing formats requires an explicit remote Rebuild or a separate collection prefix.
+
+#### Expected repository ID
+
+Setting key: expectedRepositoryId
+
+This optional base64url identity pins a trusted Adaptive repository. A trusted Setup URI can supply it. Leave it blank only when creating a repository or intentionally trusting the first compatible Adaptive repository reached.
+
+#### Pack retrieval
+
+Setting key: packReadPolicy
+
+Complete Pack retrieval (`whole-pack`) is the portable, throughput-oriented default. Range retrieval (`range`) can reduce transferred bytes, but the endpoint must pass the exact byte-range check. Range support is optional and does not affect the safety of complete Pack retrieval.
+
+#### Endpoint safety check
+
+Adaptive setup writes, reads, lists, and removes disposable objects under a random reserved probe prefix. It checks binary fidelity, read-after-write and delete visibility, complete listing of the probe objects, and conditional creation which does not replace an existing object. Exact HTTP byte-range behaviour is reported separately as optional.
+
+The dialogue reports required operations and Range support independently. Authentication, permission, availability, and invalid-response failures remain explicit failures rather than being reported as unsupported features. A format mismatch requires a remote Rebuild or restoration of the matching profile format.
+
+Onboarding accepts the profile only after the selected policy passes. Adding or editing a profile in Settings also offers **Save without connecting**, which preserves a locally valid but unverified profile.
+
+### 7. CouchDB
 
 These settings are configured within the CouchDB Setup dialogue when adding (`➕`) or editing (`🔧`) a CouchDB connection profile.
 
@@ -411,7 +449,7 @@ This optional check reads the CouchDB server configuration through Obsidian's in
 
 #### Apply Settings
 
-### 7. Peer-to-Peer (P2P) Synchronisation
+### 8. Peer-to-Peer (P2P) Synchronisation
 
 #### Enable P2P Synchronisation
 

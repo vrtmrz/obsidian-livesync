@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    DEFAULT_SETTINGS,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+    REMOTE_WEBDAV,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer";
 
 describe("syncActivatedRemoteSettings", () => {
@@ -85,5 +90,35 @@ describe("syncActivatedRemoteSettings", () => {
         expect(target.couchDB_USER).toBe("current-user");
         expect(target.couchDB_PASSWORD).toBe("current-pass");
         expect(target.couchDB_DBNAME).toBe("current-db");
+    });
+
+    it("should copy the active WebDAV connection and Adaptive protocol into the editing buffer", () => {
+        const target = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_COUCHDB,
+            activeConfigurationId: "old-remote",
+            webDAVactiveConnectionURI: "sls+webdav://stale.invalid/",
+            expectedRepositoryId: "",
+            journalFormat: "opaque-v1" as const,
+            packReadPolicy: "whole-pack" as const,
+        };
+        const source = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_WEBDAV,
+            activeConfigurationId: "remote-webdav",
+            webDAVactiveConnectionURI: "sls+webdav://alice:secret@dav.example/dav?prefix=notes%2F",
+            expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            journalFormat: "adaptive-v1" as const,
+            packReadPolicy: "range" as const,
+        };
+
+        syncActivatedRemoteSettings(target, source);
+
+        expect(target.remoteType).toBe(REMOTE_WEBDAV);
+        expect(target.activeConfigurationId).toBe("remote-webdav");
+        expect(target.webDAVactiveConnectionURI).toBe(source.webDAVactiveConnectionURI);
+        expect(target.expectedRepositoryId).toBe(source.expectedRepositoryId);
+        expect(target.journalFormat).toBe("adaptive-v1");
+        expect(target.packReadPolicy).toBe("range");
     });
 });

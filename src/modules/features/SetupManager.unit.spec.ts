@@ -4,11 +4,13 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     REMOTE_P2P,
+    REMOTE_WEBDAV,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
@@ -21,6 +23,7 @@ vi.mock("./SetupWizard/dialogs/OutroAskUserMode.svelte", () => ({ default: {} })
 vi.mock("./SetupWizard/dialogs/SetupRemote.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteCouchDB.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }));
+vi.mock("./SetupWizard/dialogs/SetupRemoteWebDAV.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 
@@ -306,6 +309,44 @@ describe("SetupManager", () => {
         expect(Object.keys(current.remoteConfigurations).some((id) => id.startsWith("legacy-"))).toBe(false);
     });
 
+    it("preserves Adaptive WebDAV fields imported through a Setup URI profile", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const repositoryId = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        const imported = {
+            ...DEFAULT_SETTINGS,
+            remoteType: REMOTE_COUCHDB,
+            remoteConfigurations: {
+                webdav: {
+                    id: "webdav",
+                    name: "WebDAV notes",
+                    uri:
+                        "sls+webdav://alice:secret@dav.example/dav?prefix=notes%2F" +
+                        `&journalFormat=adaptive-v1&expectedRepositoryId=${repositoryId}&packReadPolicy=range`,
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "webdav",
+        } as ObsidianLiveSyncSettings;
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce(imported)
+            .mockResolvedValueOnce("compatible-existing-user");
+
+        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://webdav-settings");
+
+        const current = setting.currentSettings();
+        expect(current.activeConfigurationId).toBe("webdav");
+        const parsed = ConnectionStringParser.parse(current.remoteConfigurations.webdav.uri);
+        expect(parsed).toMatchObject({
+            type: "webdav",
+            settings: {
+                webDAVactiveConnectionURI: "sls+webdav://alice:secret@dav.example/dav?prefix=notes%2F",
+                expectedRepositoryId: repositoryId,
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "range",
+            },
+        });
+    });
+
     it("adds and activates a manually configured CouchDB without replacing existing profiles", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         setting.settings = {
@@ -514,6 +555,62 @@ describe("SetupManager", () => {
         expect(current.expectedRepositoryId).toBe("");
         const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
         expect(activeProfile?.uri).not.toContain("expectedRepositoryId=");
+    });
+
+    it("adds and activates a manually configured WebDAV profile without replacing existing profiles", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            isConfigured: true,
+            remoteConfigurations: {
+                existing: {
+                    id: "existing",
+                    name: "Existing remote",
+                    uri: "sls+http://old:secret@old.example/?db=old",
+                    isEncrypted: false,
+                },
+            },
+            activeConfigurationId: "existing",
+        };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                webDAVactiveConnectionURI:
+                    "sls+webdav://alice:secret@dav.example/remote.php/dav/files/alice?prefix=notes%2F",
+                expectedRepositoryId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "range",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onWebDAVManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.remoteType).toBe(REMOTE_WEBDAV);
+        expect(current.remoteConfigurations.existing).toBeDefined();
+        expect(Object.keys(current.remoteConfigurations)).toHaveLength(2);
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.name).toBe("WebDAV dav.example");
+        expect(activeProfile?.uri).toContain("sls+webdav://alice:secret@dav.example");
+        expect(activeProfile?.uri).toContain("journalFormat=adaptive-v1");
+        expect(activeProfile?.uri).toContain("packReadPolicy=range");
+        expect(activeProfile?.uri).toContain("expectedRepositoryId=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    });
+
+    it.each([
+        [UserMode.NewUser, "onboarding"],
+        [UserMode.ExistingUser, "onboarding"],
+        [UserMode.Update, "settings"],
+    ] as const)("passes the %s WebDAV verification policy to the manual setup dialogue", async (userMode, mode) => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
+        vi.spyOn(manager, "onOnboard").mockResolvedValue(false);
+
+        await manager.onWebDAVManualSetup(userMode, setting.currentSettings());
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenCalledWith(expect.anything(), {
+            settings: setting.currentSettings(),
+            mode,
+        });
     });
 
     it("creates and selects a P2P profile during fresh manual onboarding", async () => {

@@ -49,6 +49,54 @@ export const liveSyncProvisionalEnglishMessages = {
     "Connect to existing database and continue": "Connect to existing database and continue",
     "Test connection and save": "Test connection and save",
     "Save without connecting": "Save without connecting",
+    "WebDAV Journal Configuration": "WebDAV Journal Configuration",
+    "Configure a dedicated WebDAV collection for Journal synchronisation. Opaque Journal needs ordinary WebDAV access. Adaptive Journal additionally runs an endpoint safety check before the profile is accepted.":
+        "Configure a dedicated WebDAV collection for Journal synchronisation. Opaque Journal needs ordinary WebDAV access. Adaptive Journal additionally runs an endpoint safety check before the profile is accepted.",
+    "Collection prefix": "Collection prefix",
+    "Use a dedicated prefix. WebDAV listing scans the collection, so unrelated files and a long Journal history increase discovery work.":
+        "Use a dedicated prefix. WebDAV listing scans the collection, so unrelated files and a long Journal history increase discovery work.",
+    "Enable this when browser-compatible requests are blocked by CORS. It uses Obsidian's internal request API and may behave differently from standard browser fetch.":
+        "Enable this when browser-compatible requests are blocked by CORS. It uses Obsidian's internal request API and may behave differently from standard browser fetch.",
+    "Enter a complete HTTP or HTTPS endpoint without a query string or fragment.":
+        "Enter a complete HTTP or HTTPS endpoint without a query string or fragment.",
+    "Use HTTP Range requests": "Use HTTP Range requests",
+    "Complete Pack reads favour throughput and are the portable default. Range reads can reduce transferred bytes, but this endpoint must pass the exact byte-range check.":
+        "Complete Pack reads favour throughput and are the portable default. Range reads can reduce transferred bytes, but this endpoint must pass the exact byte-range check.",
+    "The Adaptive safety check writes, reads, lists, and removes disposable objects under a random probe prefix. It does not inspect Vault data.":
+        "The Adaptive safety check writes, reads, lists, and removes disposable objects under a random probe prefix. It does not inspect Vault data.",
+    "Required Adaptive operations are supported by this WebDAV endpoint.":
+        "Required Adaptive operations are supported by this WebDAV endpoint.",
+    "The WebDAV endpoint is missing required Adaptive operations: ${CAPABILITIES}.":
+        "The WebDAV endpoint is missing required Adaptive operations: ${CAPABILITIES}.",
+    "The Adaptive safety check failed (${CATEGORY}; retry ${RETRY}).":
+        "The Adaptive safety check failed (${CATEGORY}; retry ${RETRY}).",
+    "Required Adaptive operations were not checked.": "Required Adaptive operations were not checked.",
+    "Exact HTTP byte-range retrieval is supported.": "Exact HTTP byte-range retrieval is supported.",
+    "HTTP byte-range retrieval is not supported. Complete Pack retrieval remains available.":
+        "HTTP byte-range retrieval is not supported. Complete Pack retrieval remains available.",
+    "HTTP byte-range retrieval was not checked because the required safety check did not complete.":
+        "HTTP byte-range retrieval was not checked because the required safety check did not complete.",
+    "The selected WebDAV Journal policy is not supported by this endpoint.":
+        "The selected WebDAV Journal policy is not supported by this endpoint.",
+    "The remote contains ${REMOTE_FORMAT} data, but this profile selects ${SELECTED_FORMAT}. Rebuild the remote or restore the matching format.":
+        "The remote contains ${REMOTE_FORMAT} data, but this profile selects ${SELECTED_FORMAT}. Rebuild the remote or restore the matching format.",
+    "This build cannot inspect WebDAV Journal capabilities.": "This build cannot inspect WebDAV Journal capabilities.",
+    "Invalid WebDAV settings: ${REASON}": "Invalid WebDAV settings: ${REASON}",
+    "The saved connection contains credentials and custom headers. Configuration encryption protects exported Setup data when it is enabled; do not share a plain connection string.":
+        "The saved connection contains credentials and custom headers. Configuration encryption protects exported Setup data when it is enabled; do not share a plain connection string.",
+    "WebDAV Journal": "WebDAV Journal",
+    "Store Journal data in a dedicated WebDAV collection. Adaptive mode is experimental and requires an endpoint safety check.":
+        "Store Journal data in a dedicated WebDAV collection. Adaptive mode is experimental and requires an endpoint safety check.",
+    "Continue to WebDAV setup": "Continue to WebDAV setup",
+    "Expected repository ID": "Expected repository ID",
+    "This optional identity pins a trusted Adaptive repository. A Setup URI can supply it; leave it blank only when creating a repository or intentionally trusting the first compatible repository reached.":
+        "This optional identity pins a trusted Adaptive repository. A Setup URI can supply it; leave it blank only when creating a repository or intentionally trusting the first compatible repository reached.",
+    "Run endpoint safety check": "Run endpoint safety check",
+    "Test WebDAV connection": "Test WebDAV connection",
+    "Continue with verified settings": "Continue with verified settings",
+    "Save verified settings": "Save verified settings",
+    "WebDAV access and the selected Journal format were verified.":
+        "WebDAV access and the selected Journal format were verified.",
     "Enter a complete HTTP or HTTPS URL.": "Enter a complete HTTP or HTTPS URL.",
     "CouchDB validates the database name when you connect. The name must not be empty.":
         "CouchDB validates the database name when you connect. The name must not be empty.",
