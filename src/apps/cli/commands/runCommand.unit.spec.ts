@@ -7,6 +7,7 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     REMOTE_P2P,
+    REMOTE_WEBDAV,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
@@ -748,6 +749,32 @@ describe("runCommand abnormal cases", () => {
             expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
                 "[Verification] Adaptive Journal repository is available.\n"
             );
+        });
+
+        it("uses the Adaptive verification path for a WebDAV remote", async () => {
+            const core = createCoreMock();
+            const settings = core.services.setting.currentSettings();
+            settings.remoteType = REMOTE_WEBDAV;
+            settings.webDAVactiveConnectionURI = "sls+webdav://dav.example/dav";
+            settings.journalFormat = "adaptive-v1";
+            settings.packReadPolicy = "whole-pack";
+
+            const ensureCheckpointCachesAreFresh = vi.fn(async () => {});
+            core.services.replicator.getActiveReplicator.mockReturnValue({
+                nodeid: "test-node-id",
+                initializeDatabaseForReplication: vi.fn(async () => {}),
+                client: {
+                    ensureCheckpointCachesAreFresh,
+                },
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(true);
+            expect(ensureCheckpointCachesAreFresh).toHaveBeenCalledTimes(1);
         });
 
         it("mark-resolved with remote-id temporarily activates it and runs markResolved", async () => {

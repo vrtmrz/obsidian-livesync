@@ -6,7 +6,7 @@ import {
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
     REMOTE_COUCHDB,
-    REMOTE_MINIO,
+    isJournalRemoteType,
     type EntryMilestoneInfo,
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -61,7 +61,7 @@ async function verifyRemoteState(
                 return false;
             }
             milestone = await dbRet.db.get(MILESTONE_DOCID);
-        } else if (settings.remoteType === REMOTE_MINIO) {
+        } else if (isJournalRemoteType(settings.remoteType)) {
             const journalReplicator = replicator as LiveSyncJournalReplicator;
             if (journalProtocolConfigurationForSettings(settings).journalFormat === "adaptive-v1") {
                 try {

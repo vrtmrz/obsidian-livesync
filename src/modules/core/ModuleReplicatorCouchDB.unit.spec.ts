@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_WEBDAV } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleReplicatorCouchDB } from "./ModuleReplicatorCouchDB.ts";
 
 function createModule(
-    settings: { liveSync: boolean; syncOnStart: boolean; remoteType?: typeof REMOTE_COUCHDB | typeof REMOTE_MINIO },
+    settings: { liveSync: boolean; remoteType?: string; syncOnStart: boolean },
     isReplicationReady = true
 ) {
     const openReplication = vi.fn(async () => true);
@@ -91,17 +91,18 @@ describe("ModuleReplicatorCouchDB resume replication activity", () => {
         expect(openReplication).not.toHaveBeenCalled();
     });
 
-    it("does not start CouchDB replication for a registered Journal provider", async () => {
-        const { module, openReplication } = createModule({
+    it.each([REMOTE_MINIO, REMOTE_WEBDAV])("does not claim or resume registered Journal provider %s", async (remoteType) => {
+        const { module, openReplication, runFiniteReplicationActivity } = createModule({
             liveSync: true,
+            remoteType,
             syncOnStart: true,
-            remoteType: REMOTE_MINIO,
         });
 
         await expect(module._anyNewReplicator()).resolves.toBe(false);
         await module._everyAfterResumeProcess();
         await new Promise((resolve) => setTimeout(resolve, 0));
 
+        expect(runFiniteReplicationActivity).not.toHaveBeenCalled();
         expect(openReplication).not.toHaveBeenCalled();
     });
 });
