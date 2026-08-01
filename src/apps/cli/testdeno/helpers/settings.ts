@@ -127,7 +127,7 @@ export async function applyCouchdbSettings(
 export async function applyRemoteSyncSettings(
     settingsFile: string,
     options: {
-        remoteType: "COUCHDB" | "MINIO" | "WEBDAV";
+        remoteType: "COUCHDB" | "MINIO" | "POSTGREST" | "WEBDAV";
         couchdbUri?: string;
         couchdbUser?: string;
         couchdbPassword?: string;
@@ -136,6 +136,7 @@ export async function applyRemoteSyncSettings(
         minioEndpoint?: string;
         minioAccessKey?: string;
         minioSecretKey?: string;
+        postgRESTConnectionURI?: string;
         webDAVConnectionURI?: string;
         encrypt?: boolean;
         passphrase?: string;
@@ -162,6 +163,9 @@ export async function applyRemoteSyncSettings(
         data.secretKey = options.minioSecretKey;
         data.region = "auto";
         data.forcePathStyle = true;
+    } else if (options.remoteType === "POSTGREST") {
+        data.remoteType = "POSTGREST";
+        data.postgrestActiveConnectionURI = options.postgRESTConnectionURI;
     } else {
         data.remoteType = "WEBDAV";
         data.webDAVactiveConnectionURI = options.webDAVConnectionURI;

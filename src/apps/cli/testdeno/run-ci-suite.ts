@@ -13,6 +13,7 @@ const TASKS = [
     "test:e2e-matrix:minio-enc1",
     "test:adaptive-journal-s3",
     "test:adaptive-journal-webdav",
+    "test:adaptive-journal-postgrest",
 ] as const;
 
 for (const [index, task] of TASKS.entries()) {

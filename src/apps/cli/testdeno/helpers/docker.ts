@@ -6,6 +6,8 @@
  * available — including Windows — without needing bash.
  */
 
+import { join } from "@std/path";
+
 type DockerInvoker = {
     bin: string;
     prefix: string[];
@@ -15,6 +17,7 @@ type DockerInvoker = {
 let dockerInvokerPromise: Promise<DockerInvoker> | null = null;
 const DOCKER_TEE = Deno.env.get("LIVESYNC_DOCKER_TEE") === "1" || Deno.env.get("LIVESYNC_TEST_TEE") === "1";
 const trackedContainers = new Set<string>();
+const trackedNetworks = new Set<string>();
 const CLEANUP_SIGNALS: Deno.Signal[] = ["SIGINT", "SIGTERM"];
 let signalCleanupHandlersInstalled = false;
 let signalCleanupInProgress = false;
@@ -62,17 +65,28 @@ async function collectStream(
     return out;
 }
 
-async function runCommand(bin: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+async function runCommand(
+    bin: string,
+    args: string[],
+    stdinData?: Uint8Array
+): Promise<{ code: number; stdout: string; stderr: string }> {
     try {
         const child = new Deno.Command(bin, {
             args,
-            stdin: "null",
+            stdin: stdinData ? "piped" : "null",
             stdout: "piped",
             stderr: "piped",
         }).spawn();
         const stdoutPromise = collectStream(child.stdout, DOCKER_TEE ? (chunk) => Deno.stdout.writeSync(chunk) : null);
         const stderrPromise = collectStream(child.stderr, DOCKER_TEE ? (chunk) => Deno.stderr.writeSync(chunk) : null);
-        const [status, stdout, stderr] = await Promise.all([child.status, stdoutPromise, stderrPromise]);
+        const stdinPromise = stdinData
+            ? (async () => {
+                  const writer = child.stdin.getWriter();
+                  await writer.write(stdinData);
+                  await writer.close();
+              })()
+            : Promise.resolve();
+        const [status, stdout, stderr] = await Promise.all([child.status, stdoutPromise, stderrPromise, stdinPromise]);
         const dec = new TextDecoder();
         const result = {
             code: status.code,
@@ -163,6 +177,20 @@ async function getDockerInvoker(): Promise<DockerInvoker> {
 }
 
 async function docker(...args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+    return await dockerCommand(undefined, ...args);
+}
+
+async function dockerWithInput(
+    input: Uint8Array,
+    ...args: string[]
+): Promise<{ code: number; stdout: string; stderr: string }> {
+    return await dockerCommand(input, ...args);
+}
+
+async function dockerCommand(
+    input: Uint8Array | undefined,
+    ...args: string[]
+): Promise<{ code: number; stdout: string; stderr: string }> {
     const invoker = await getDockerInvoker();
 
     // Either:
@@ -176,7 +204,7 @@ async function docker(...args: string[]): Promise<{ code: number; stdout: string
                 : args
             : [...invoker.prefix, ...args];
 
-    const r = await runCommand(invoker.bin, finalArgs);
+    const r = await runCommand(invoker.bin, finalArgs, input);
     return { code: r.code, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -195,12 +223,21 @@ async function stopAndRemoveContainer(container: string): Promise<void> {
 
 async function cleanupTrackedContainers(reason: string): Promise<void> {
     const names = [...trackedContainers];
-    if (names.length === 0) return;
+    if (names.length > 0) {
+        console.warn(`[WARN] cleaning up tracked containers on ${reason}: ${names.join(", ")}`);
+        for (const container of names.reverse()) {
+            await stopAndRemoveContainer(container);
+            trackedContainers.delete(container);
+        }
+    }
 
-    console.warn(`[WARN] cleaning up tracked containers on ${reason}: ${names.join(", ")}`);
-    for (const container of names.reverse()) {
-        await stopAndRemoveContainer(container);
-        trackedContainers.delete(container);
+    const networks = [...trackedNetworks];
+    if (networks.length > 0) {
+        console.warn(`[WARN] cleaning up tracked networks on ${reason}: ${networks.join(", ")}`);
+        for (const network of networks.reverse()) {
+            await docker("network", "rm", network).catch(() => {});
+            trackedNetworks.delete(network);
+        }
     }
 }
 
@@ -250,7 +287,19 @@ function trackContainer(container: string): void {
 
 function untrackContainer(container: string): void {
     trackedContainers.delete(container);
-    if (trackedContainers.size === 0) {
+    if (trackedContainers.size === 0 && trackedNetworks.size === 0) {
+        removeSignalCleanupHandlers();
+    }
+}
+
+function trackNetwork(network: string): void {
+    ensureSignalCleanupHandlers();
+    trackedNetworks.add(network);
+}
+
+function untrackNetwork(network: string): void {
+    trackedNetworks.delete(network);
+    if (trackedContainers.size === 0 && trackedNetworks.size === 0) {
         removeSignalCleanupHandlers();
     }
 }
@@ -332,6 +381,14 @@ const MINIO_MC_IMAGE = "minio/mc:RELEASE.2025-04-16T18-13-26Z";
 
 const WEBDAV_CONTAINER = "webdav-test";
 const WEBDAV_IMAGE = "httpd:2.4.68";
+const POSTGRES_CONTAINER = "postgrest-postgres-test";
+const POSTGRES_IMAGE = "postgres:15-alpine";
+const POSTGREST_CONTAINER = "postgrest-test";
+const POSTGREST_IMAGE = "postgrest/postgrest:v14.16";
+const POSTGREST_NETWORK = "postgrest-test";
+const POSTGREST_DATABASE_PASSWORD = "integration-password";
+const POSTGREST_VAULT_ID = "adaptive-cli-vault-01";
+const POSTGREST_VAULT_CREDENTIAL = "adaptive-cli-vault-credential-0000000000001";
 const WEBDAV_HTTPD_CONFIG = `ServerRoot "/usr/local/apache2"
 Listen 80
 
@@ -763,6 +820,220 @@ export async function readWebDAVObjectText(collectionEndpoint: string, key: stri
         throw new Error(`Could not read WebDAV object ${key}: HTTP ${response.status}`);
     }
     return await response.text();
+}
+
+// ---------------------------------------------------------------------------
+// PostgREST
+// ---------------------------------------------------------------------------
+
+export interface PostgRESTFixture {
+    endpoint: string;
+    vaultCredential: string;
+    vaultId: string;
+}
+
+export interface PostgRESTAdaptiveRowCounts {
+    chunks: number;
+    commits: number;
+    manifests: number;
+    writers: number;
+}
+
+async function waitForPostgres(): Promise<void> {
+    let consecutiveReadyChecks = 0;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+        const result = await docker("exec", POSTGRES_CONTAINER, "pg_isready", "-U", "postgres");
+        if (result.code === 0) {
+            consecutiveReadyChecks += 1;
+            if (consecutiveReadyChecks >= 3) return;
+        } else {
+            consecutiveReadyChecks = 0;
+        }
+        await sleep(500);
+    }
+    throw new Error("PostgreSQL did not become ready in time");
+}
+
+async function applyPostgresSql(sql: string): Promise<void> {
+    const result = await dockerWithInput(
+        new TextEncoder().encode(sql),
+        "exec",
+        "-i",
+        POSTGRES_CONTAINER,
+        "psql",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres"
+    );
+    if (result.code !== 0) {
+        throw new Error(`Could not initialise PostgreSQL for PostgREST: ${result.stderr.trim()}`);
+    }
+}
+
+async function waitForPostgREST(fixture: PostgRESTFixture): Promise<void> {
+    const capabilityUrl = `${fixture.endpoint.replace(/\/+$/u, "")}/rpc/livesync_adaptive_capabilities`;
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+        try {
+            const response = await fetch(capabilityUrl, {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    "Accept-Profile": "livesync_api",
+                    "Content-Profile": "livesync_api",
+                    "Content-Type": "application/json",
+                    "X-LiveSync-Vault-Credential": fixture.vaultCredential,
+                    "X-LiveSync-Vault-ID": fixture.vaultId,
+                },
+                body: "{}",
+                signal: AbortSignal.timeout(3000),
+            });
+            await response.body?.cancel().catch(() => {});
+            if (response.ok) return;
+        } catch {
+            // PostgREST or its schema cache is still starting.
+        }
+        await sleep(500);
+    }
+    throw new Error(`PostgREST did not become ready: ${fixture.endpoint}`);
+}
+
+export async function stopPostgREST(): Promise<void> {
+    await stopAndRemoveContainer(POSTGREST_CONTAINER);
+    untrackContainer(POSTGREST_CONTAINER);
+    await stopAndRemoveContainer(POSTGRES_CONTAINER);
+    untrackContainer(POSTGRES_CONTAINER);
+    await docker("network", "rm", POSTGREST_NETWORK).catch(() => {});
+    untrackNetwork(POSTGREST_NETWORK);
+}
+
+export async function startPostgREST(endpoint: string): Promise<PostgRESTFixture> {
+    const endpointUrl = new URL(endpoint);
+    if (
+        endpointUrl.protocol !== "http:" ||
+        (endpointUrl.hostname !== "127.0.0.1" && endpointUrl.hostname !== "localhost")
+    ) {
+        throw new Error(`Managed PostgREST requires a local HTTP endpoint, received: ${endpoint}`);
+    }
+    if (endpointUrl.pathname !== "/" || endpointUrl.search || endpointUrl.hash) {
+        throw new Error(`Managed PostgREST requires a root endpoint without query parameters, received: ${endpoint}`);
+    }
+
+    const fixture: PostgRESTFixture = {
+        endpoint: endpoint.replace(/\/+$/u, ""),
+        vaultCredential: POSTGREST_VAULT_CREDENTIAL,
+        vaultId: POSTGREST_VAULT_ID,
+    };
+    const fixtureDirectory = join(import.meta.dirname!, "..", "fixtures", "postgrest");
+    const commonlibSqlPath = join(
+        import.meta.dirname!,
+        "..",
+        "..",
+        "..",
+        "..",
+        "..",
+        "node_modules",
+        "@vrtmrz",
+        "livesync-commonlib",
+        "sql",
+        "postgrest",
+        "adaptive_journal_v1.sql"
+    );
+
+    console.log("[INFO] stopping leftover PostgREST test services if present");
+    await stopPostgREST().catch(() => {});
+
+    try {
+        await dockerOrFail("network", "create", POSTGREST_NETWORK);
+        trackNetwork(POSTGREST_NETWORK);
+
+        console.log("[INFO] starting PostgreSQL test container");
+        await dockerOrFail(
+            "run",
+            "-d",
+            "--name",
+            POSTGRES_CONTAINER,
+            "--network",
+            POSTGREST_NETWORK,
+            "--network-alias",
+            "postgres",
+            "-e",
+            `POSTGRES_PASSWORD=${POSTGREST_DATABASE_PASSWORD}`,
+            POSTGRES_IMAGE
+        );
+        trackContainer(POSTGRES_CONTAINER);
+        await waitForPostgres();
+
+        for (const sqlPath of [
+            join(fixtureDirectory, "00_roles.sql"),
+            commonlibSqlPath,
+            join(fixtureDirectory, "02_vault.sql"),
+        ]) {
+            await applyPostgresSql(await Deno.readTextFile(sqlPath));
+        }
+
+        console.log("[INFO] starting PostgREST test container");
+        await dockerOrFail(
+            "run",
+            "-d",
+            "--name",
+            POSTGREST_CONTAINER,
+            "--network",
+            POSTGREST_NETWORK,
+            "-p",
+            `${endpointUrl.port || "80"}:3000`,
+            "-e",
+            "PGRST_DB_ANON_ROLE=livesync_postgrest_anon",
+            "-e",
+            "PGRST_DB_SCHEMAS=livesync_api",
+            "-e",
+            `PGRST_DB_URI=postgres://livesync_postgrest_authenticator:${POSTGREST_DATABASE_PASSWORD}@postgres:5432/postgres`,
+            "-e",
+            "PGRST_SERVER_PORT=3000",
+            POSTGREST_IMAGE
+        );
+        trackContainer(POSTGREST_CONTAINER);
+        await waitForPostgREST(fixture);
+        return fixture;
+    } catch (error) {
+        await stopPostgREST().catch(() => {});
+        throw error;
+    }
+}
+
+export async function readPostgRESTAdaptiveRowCounts(vaultId: string): Promise<PostgRESTAdaptiveRowCounts> {
+    if (!/^[A-Za-z0-9_-]{16,128}$/u.test(vaultId)) {
+        throw new Error(`Invalid PostgREST test Vault ID: ${vaultId}`);
+    }
+    const query = `select
+        (select count(*) from livesync_private.adaptive_v1_manifests where vault_id = '${vaultId}'),
+        (select count(*) from livesync_private.adaptive_v1_chunks where vault_id = '${vaultId}'),
+        (select count(*) from livesync_private.adaptive_v1_writers where vault_id = '${vaultId}'),
+        (select count(*) from livesync_private.adaptive_v1_commits where vault_id = '${vaultId}')`;
+    const output = await dockerOrFail(
+        "exec",
+        POSTGRES_CONTAINER,
+        "psql",
+        "-At",
+        "-F",
+        ",",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-c",
+        query
+    );
+    const [manifests, chunks, writers, commits] = output
+        .trim()
+        .split(",")
+        .map((value) => Number(value));
+    if (![manifests, chunks, writers, commits].every(Number.isSafeInteger)) {
+        throw new Error(`Could not parse PostgREST row counts: ${output}`);
+    }
+    return { chunks, commits, manifests, writers };
 }
 
 // ---------------------------------------------------------------------------

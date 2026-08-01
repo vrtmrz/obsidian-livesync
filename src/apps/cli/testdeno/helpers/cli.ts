@@ -40,13 +40,15 @@ function concatChunks(chunks: Uint8Array[]): Uint8Array {
     return out;
 }
 
+export function redactCliSensitiveText(value: string): string {
+    return value
+        .replace(/(obsidian:\/\/setuplivesync\?settings=)[^\s"']+/gu, "$1<redacted>")
+        .replace(/(sls\+[^:\s]+:\/\/)[^/?#@\s]*@/gu, "$1<redacted>@");
+}
+
 export function formatTeeCommand(args: string[]): string {
-    const redactArgument = (argument: string): string => {
-        if (argument.startsWith(SETUP_URI_PREFIX)) {
-            return `${SETUP_URI_PREFIX}<redacted>`;
-        }
-        return argument.replace(/^(sls\+[^:]+:\/\/)[^/?#@]*@/u, "$1<redacted>@");
-    };
+    const redactArgument = (argument: string): string =>
+        argument.startsWith(SETUP_URI_PREFIX) ? `${SETUP_URI_PREFIX}<redacted>` : redactCliSensitiveText(argument);
     return ["node", CLI_DIST, ...args.map(redactArgument)].map((part) => JSON.stringify(part)).join(" ");
 }
 
@@ -64,7 +66,7 @@ export function createLineTeeWriter(
             writer(enc.encode(`[CLI tee pid=${pid}:${streamName}]\n`));
             headerWritten = true;
         }
-        writer(enc.encode(`[CLI tee pid=${pid}:${streamName}] ${line}\n`));
+        writer(enc.encode(`[CLI tee pid=${pid}:${streamName}] ${redactCliSensitiveText(line)}\n`));
     };
 
     const flush = (final = false) => {

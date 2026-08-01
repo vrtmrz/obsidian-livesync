@@ -26,6 +26,8 @@
         "test:e2e:adaptive-s3": "deno task --cwd testdeno test:adaptive-journal-s3",
         "pretest:e2e:adaptive-webdav": "npm run build",
         "test:e2e:adaptive-webdav": "deno task --cwd testdeno test:adaptive-journal-webdav",
+        "pretest:e2e:adaptive-postgrest": "npm run build",
+        "test:e2e:adaptive-postgrest": "deno task --cwd testdeno test:adaptive-journal-postgrest",
         "test:e2e:mirror": "bash test/test-mirror-linux.sh",
         "test:e2e:remote-commands": "bash test/test-remote-commands-linux.sh",
         "pretest:e2e:all": "npm run build",
