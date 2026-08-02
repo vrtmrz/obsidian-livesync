@@ -18,6 +18,7 @@ export type SetupState = {
     endpoint: string;
     bucket: string;
     bucketPrefix: string;
+    expectedRepositoryId: string;
     journalFormat: string;
     packReadPolicy: string;
     p2pEnabled: boolean;
@@ -345,6 +346,7 @@ export async function readSetupState(cliBinary: string, environment: NodeJS.Proc
             "endpoint:settings.endpoint||'',",
             "bucket:settings.bucket||'',",
             "bucketPrefix:settings.bucketPrefix||'',",
+            "expectedRepositoryId:settings.expectedRepositoryId||'',",
             "journalFormat:settings.journalFormat||'',",
             "packReadPolicy:settings.packReadPolicy||'',",
             "p2pEnabled:settings.P2P_Enabled===true,",

@@ -254,10 +254,22 @@ async function enterManualAdaptiveWebDAVSettings(
     return screenshots;
 }
 
-function assertAdaptiveWebDAVSettings(state: SetupState, webDAV: WebDAVConfig, prefix: string, label: string): void {
+function assertAdaptiveWebDAVSettings(
+    state: SetupState,
+    webDAV: WebDAVConfig,
+    prefix: string,
+    label: string,
+    expectedRepositoryId?: string
+): string {
     assertEqual(state.remoteType, "WEBDAV", `${label} did not retain WebDAV as its active remote.`);
     assertEqual(state.journalFormat, "adaptive-v1", `${label} did not retain the Adaptive Journal format.`);
     assertEqual(state.packReadPolicy, "whole-pack", `${label} did not retain complete Pack retrieval.`);
+    if (!/^[A-Za-z0-9_-]{43}$/u.test(state.expectedRepositoryId)) {
+        throw new Error(`${label} did not retain a canonical repository ID.`);
+    }
+    if (expectedRepositoryId !== undefined) {
+        assertEqual(state.expectedRepositoryId, expectedRepositoryId, `${label} retained a different repository ID.`);
+    }
     assertEqual(state.remoteConfigurationCount, 1, `${label} did not retain exactly one remote profile.`);
     const connection = parseWebDAVConnectionURI(state.webDAVactiveConnectionURI);
     assertEqual(connection.endpoint, webDAV.endpoint, `${label} retained a different WebDAV endpoint.`);
@@ -269,6 +281,7 @@ function assertAdaptiveWebDAVSettings(state: SetupState, webDAV: WebDAVConfig, p
         true,
         `${label} did not retain the Obsidian internal request API selection.`
     );
+    return state.expectedRepositoryId;
 }
 
 function deterministicBytes(length: number, seed: number): Uint8Array {
@@ -390,7 +403,12 @@ async function waitForAdaptiveObjects(
     );
 }
 
-async function assertAdaptiveRepository(webDAV: WebDAVConfig, prefix: string, keys: string[]): Promise<void> {
+async function assertAdaptiveRepository(
+    webDAV: WebDAVConfig,
+    prefix: string,
+    keys: string[],
+    expectedRepositoryId: string
+): Promise<void> {
     for (const legacyPrefix of ["a1~delta~", "a1~index~", "a1~metadata~"]) {
         if (keys.some((key) => key.startsWith(legacyPrefix))) {
             throw new Error(`Adaptive WebDAV wrote a retired object family ${legacyPrefix}: ${keys.join(", ")}`);
@@ -412,9 +430,11 @@ async function assertAdaptiveRepository(webDAV: WebDAVConfig, prefix: string, ke
     assertEqual(manifest.format, "adaptive-journal", "Unexpected Adaptive WebDAV manifest format.");
     assertEqual(manifest.formatVersion, 1, "Unexpected Adaptive WebDAV manifest version.");
     assertEqual(manifest.objectLayout, "commit-bundle-v1", "Unexpected Adaptive WebDAV object layout.");
-    if (typeof manifest.repositoryId !== "string" || manifest.repositoryId.length === 0) {
-        throw new Error("Adaptive WebDAV manifest did not contain a repository ID.");
-    }
+    assertEqual(
+        manifest.repositoryId,
+        expectedRepositoryId,
+        "Adaptive WebDAV did not create the repository with the preselected identity."
+    );
     if (typeof manifest.manifestAuth !== "string" || manifest.manifestAuth.length === 0) {
         throw new Error("Adaptive WebDAV manifest did not contain its authentication value.");
     }
@@ -435,6 +455,7 @@ async function main(): Promise<void> {
     let generatedSetup: SetupArtifact | undefined;
     let shouldStopWebDAV = false;
     let observedRequests = 0;
+    let repositoryId = "";
 
     try {
         if (manageWebDAV) {
@@ -463,12 +484,12 @@ async function main(): Promise<void> {
             screenshots.push(await acknowledgeDisabledOptionalFeatures(session.remoteDebuggingPort, captures));
             const state = await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
-            assertAdaptiveWebDAVSettings(state, webDAV, prefix, "The first device");
+            repositoryId = assertAdaptiveWebDAVSettings(state, webDAV, prefix, "The first device");
 
             await writePayloadViaObsidian(context.cliBinary, session.cliEnv, firstText, firstBinarySeed);
             observedRequests += await pushAndObserve(session, context.cliBinary);
             const keys = await waitForAdaptiveObjects(webDAV, prefix, 1, 1);
-            await assertAdaptiveRepository(webDAV, prefix, keys);
+            await assertAdaptiveRepository(webDAV, prefix, keys, repositoryId);
         } catch (error) {
             await captureFailure(session, "first-device");
             throw error;
@@ -481,7 +502,7 @@ async function main(): Promise<void> {
             await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
             const state = await readSetupState(context.cliBinary, session.cliEnv);
-            assertAdaptiveWebDAVSettings(state, webDAV, prefix, "The restarted first device");
+            assertAdaptiveWebDAVSettings(state, webDAV, prefix, "The restarted first device", repositoryId);
             const generated = await generateSetupURIFromDevice(
                 session.remoteDebuggingPort,
                 randomBytes(24).toString("base64url"),
@@ -512,7 +533,7 @@ async function main(): Promise<void> {
             screenshots.push(await skipMissingRemoteConfiguration(session.remoteDebuggingPort, secondDeviceCaptures));
             const state = await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
-            assertAdaptiveWebDAVSettings(state, webDAV, prefix, "The second device");
+            assertAdaptiveWebDAVSettings(state, webDAV, prefix, "The second device", repositoryId);
             observedRequests += await pushAndObserve(session, context.cliBinary);
             await waitForText(vaultB, firstText);
             await waitForBinary(vaultB, deterministicBytes(binaryLength, firstBinarySeed));
@@ -520,7 +541,7 @@ async function main(): Promise<void> {
             await writePayloadViaObsidian(context.cliBinary, session.cliEnv, secondText, secondBinarySeed);
             observedRequests += await pushAndObserve(session, context.cliBinary);
             const keys = await waitForAdaptiveObjects(webDAV, prefix, 2, 2);
-            await assertAdaptiveRepository(webDAV, prefix, keys);
+            await assertAdaptiveRepository(webDAV, prefix, keys, repositoryId);
         } catch (error) {
             await captureFailure(session, "second-device");
             throw error;
@@ -536,7 +557,8 @@ async function main(): Promise<void> {
                 await readSetupState(context.cliBinary, session.cliEnv),
                 webDAV,
                 prefix,
-                "The final first-device session"
+                "The final first-device session",
+                repositoryId
             );
             observedRequests += await pushAndObserve(session, context.cliBinary);
             await waitForText(vaultA, secondText);
