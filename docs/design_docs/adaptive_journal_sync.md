@@ -1343,6 +1343,76 @@ The first implementation does not calculate a recommendation from these measurem
 Range retrieval according to the endpoint capability report and their own deployment knowledge. Measurements may later
 justify an optional automatic policy, but provider names alone must not become performance policy.
 
+## Verification ownership
+
+Each behaviour should be verified at the lowest layer which owns it. Higher-layer tests prove composition and a
+user-observable result; they should not repeat the remote-format assertions already owned by Commonlib.
+
+| Boundary | Required verification | Deliberately excluded |
+| --- | --- | --- |
+| Commonlib unit and contract tests | Provider registration, connection-string round trips, repository identity, canonical records, state machines, error classification, batching, publication ordering, restart recovery, and settings projection | Obsidian dialogue rendering and Vault lifecycle |
+| Commonlib real-service integration | The actual adapter and Journal core together, using two clients against a disposable service; remote capabilities, immutable publication, repository binding, complete send and receive, Chunk reuse, restart, format rejection, and provider-specific failure semantics | Host settings panes, Setup URI controls, and Obsidian file reflection |
+| CLI consumption | The exact packaged Commonlib artefact in the Node/Deno composition, persistent writer and checkpoint state, connection-profile projection, a small bidirectional synchronisation, and credential redaction | A second copy of the remote object, Pack, or SQL-layout inspection |
+| Real Obsidian UI without a remote service | Registry-driven provider selection, the correct dialogue, defaults, input validation, safety-check gating through an injected replicator result, the returned profile, settings persistence, and reload | Real endpoint semantics and the Adaptive remote layout |
+| Focused real-Obsidian integration | A representative visible user journey, the real Host request bridge, restart, local-database and Vault reflection, and an observable synchronisation result | Exhaustive protocol, failure-matrix, request-count, remote-row, or remote-object assertions |
+
+The real-Obsidian UI path must use DOM, control-value, saved-profile, and reload assertions as its pass criteria. A
+screenshot is supporting review and failure-diagnostic evidence, not an automated guarantee. Pixel comparison should be
+reserved for a small number of stable layout regressions because Obsidian, Electron, fonts, and operating systems can
+otherwise produce unrelated differences.
+
+The real-service integration harness should be reusable across S3-compatible Object Storage, WebDAV, and PostgREST.
+Object-store providers additionally run both whole-Pack and supported Range retrieval, while PostgREST runs the native
+bounded-batch path. This places complete Journal send and receive coverage in Commonlib instead of leaving WebDAV or
+PostgREST with adapter-operation tests only.
+
+Full real-Obsidian remote journeys are selected by materially different composition boundaries rather than by requiring
+the same long journey for every provider. The v1 release evidence should include one object-store delivery path which
+also exercises the Obsidian internal request bridge, and one native delivery path. WebDAV and PostgREST are the current
+representatives respectively. Adaptive S3 may retain a small one-device composition smoke test, but it is not a
+substitute for the S3 Commonlib integration and does not need to repeat the two-device journey. Provider-specific
+dialogues remain covered for every registered provider by the real-Obsidian UI test which does not require a remote
+service.
+
+The recommended assurance order is:
+
+1. maintained Journal fixes which do not depend on Adaptive Journal;
+2. Commonlib provider registration and Host presentation registration;
+3. provider-neutral Adaptive core contracts;
+4. the S3-compatible reference adapter, complete Commonlib Journal integration, and repository binding;
+5. S3 CLI consumption and Host settings, with an optional one-device real-Obsidian smoke test outside the required
+   chain;
+6. WebDAV Commonlib integration, followed by generic Host composition, WebDAV CLI consumption, and Host settings;
+7. the native storage boundary and PostgREST Commonlib integration, followed by PostgREST CLI consumption and Host
+   settings;
+8. the all-provider real-Obsidian UI path which does not require a remote service;
+9. the provider-neutral real-Obsidian remote-journey runner; and
+10. independent representative WebDAV and PostgREST real-Obsidian journeys based on that runner.
+
+### Review and evidence units
+
+The implementation should remain divisible into the following review units. Each unit has a narrow evidence gate, so a
+reviewer does not need to infer lower-layer correctness from a later full-system test.
+
+| Review unit | Principal change | Evidence required before the next dependent unit |
+| --- | --- | --- |
+| Maintained Journal fixes | Failure propagation in Commonlib, CLI log ownership, and the Host native-request boundary | Focused regression tests for each unchanged public behaviour |
+| Provider registries | Commonlib remote-provider registration and Host presentation registration | Registry, connection-profile, Setup Manager, and existing-provider regression tests |
+| Adaptive core | Canonical records, repository identity, publication, receive state, Chunk handling, and object/native delivery contracts | Provider-neutral unit and contract tests |
+| S3 reference delivery | S3-compatible adapter, Pack policies, and complete two-client Journal integration | Real MinIO tests for object semantics, remote layout, restart, Chunk reuse, and both whole-Pack and Range retrieval |
+| Repository binding and S3 consumers | Repository acceptance, CLI state, settings projection, and Host S3 controls | Commonlib repository tests, focused CLI synchronisation, and Host UI tests without a remote service |
+| WebDAV delivery and consumers | Capability inspection, WebDAV adapter, generic Journal composition, CLI support, and Host controls | Real Apache WebDAV Commonlib integration for both Pack policies, focused CLI synchronisation, and Host UI tests without a remote service |
+| Native delivery and PostgREST | Bounded native batches, transactional publication, PostgREST adapter, SQL schema, and repository isolation | Real PostgreSQL and PostgREST Commonlib integration, including the complete two-client Journal contract |
+| PostgREST consumers | CLI support and Host controls | Focused CLI synchronisation, credential redaction, and Host UI tests without a remote service |
+| Remote-free Host UI | Registry-driven selection, dialogue mounting, validation, inspection gating, persistence, and reload for every provider | One parameterised real-Obsidian scenario using injected replicator outcomes |
+| Shared remote journey | Provider-neutral onboarding, restart, Setup URI, Vault reflection, waiting, and cleanup | Runner-level checks plus at least one representative journey |
+| Representative full journeys | WebDAV for object delivery through the Obsidian request bridge, and PostgREST for native delivery | Independent real-service, two-device Obsidian journeys asserting visible text and binary synchronisation outcomes |
+
+The two representative full journeys branch from the same reviewed runner and may be reviewed in parallel. Neither is a
+base for the other. The optional S3 real-Obsidian smoke test also branches from the S3 Host unit and is not a merge gate.
+Consumer units may be reviewed using an exact packed Commonlib artefact before that package is published, but they must
+not merge with an unpublished or floating Commonlib dependency.
+
 ## Planned implementation stages
 
 ### Stage 0: Executable model
@@ -1357,6 +1427,9 @@ justify an optional automatic policy, but provider names alone must not become p
 
 - Add the single immutable repository manifest, Security Seed, role-key derivation, and read-back authentication.
 - Implement conditional-create semantics in each adaptive adapter.
+- Use S3-compatible Object Storage as the reference object implementation, and verify conditional create, complete
+  prefix listing, binary fidelity, read-after-write, deletion visibility, and selected Range semantics against the
+  configured endpoint.
 - Add the non-destructive WebDAV capability checker, with Range reported as optional.
 - Fail closed on ambiguous initialisation and repository-format mismatch.
 
@@ -1389,7 +1462,10 @@ justify an optional automatic policy, but provider names alone must not become p
 
 ### Stage 6: Consumer integration
 
-- Add multi-device Commonlib integration, CLI consumption, and focused real-Obsidian tests.
+- Run the reusable two-client Commonlib Journal integration against every provider before adding consumer tests.
+- Add focused CLI consumption for each provider and a parameterised real-Obsidian test, which does not require a remote
+  service, for provider selection, dialogue behaviour, returned settings, persistence, and reload.
+- Keep full real-Obsidian remote journeys at the representative physical-delivery boundaries described above.
 - Define opt-in migration, rollback, diagnostics, and maintenance controls.
 
 ### Stage 7: Release decision
@@ -1442,9 +1518,18 @@ output; independently valid compressed frames may differ while deriving the same
   validates and accepts the winning plaintext.
 - Object-pack retrieval groups requests by pack and avoids per-Chunk network loops.
 - Range and whole-pack retrieval produce identical validated Chunk results.
+- S3-compatible integration rejects replacement of an immutable object, paginates complete prefix listings, removes
+  capability probes, and exercises two-client Metadata and Chunk synchronisation through both object retrieval paths.
 - Complete-pack digest, index digest, frame digest, and record AEAD failures are independently detected.
 - The WebDAV checker touches only its random probe keys, reports conditional-create and Range capabilities separately,
   and reports incomplete cleanup.
+- S3-compatible Object Storage, WebDAV, and PostgREST each complete a two-client Journal send and receive through their
+  actual adapter in Commonlib; provider-specific remote-layout assertions remain at this boundary.
+- Every registered Host provider opens the expected dialogue in real Obsidian, exposes the expected defaults and
+  controls, applies injected safety-check outcomes, saves the exact returned profile, and retains it after reload without
+  requiring a remote service.
+- Real-Obsidian remote journeys assert the user-visible setup and synchronisation outcome, while Commonlib owns
+  manifest, Writer, Commit, Pack, probe-cleanup, SQL-row, and transaction-layout assertions.
 - Catalogue reconstruction from snapshots and deltas is deterministic.
 - A stale snapshot hint cannot hide later valid deltas.
 - Interrupted snapshotting, repacking, retirement, and deletion preserve readable data.
