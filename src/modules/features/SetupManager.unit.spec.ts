@@ -494,6 +494,8 @@ describe("SetupManager", () => {
             expect.arrayContaining([
                 expect.objectContaining({ type: "couchdb" }),
                 expect.objectContaining({ type: "s3" }),
+                expect.objectContaining({ type: "webdav" }),
+                expect.objectContaining({ type: "postgrest" }),
                 expect.objectContaining({ type: "p2p" }),
             ])
         );
