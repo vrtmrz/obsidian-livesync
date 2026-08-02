@@ -7,58 +7,33 @@
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import { $msg as translateMessage } from "@/common/translation";
-    import {
-        TYPE_COUCHDB,
-        TYPE_BUCKET,
-        TYPE_P2P,
-        TYPE_CANCELLED,
-        type SetupRemoteResultType,
-    } from "./setupDialogTypes";
+    import { onMount } from "svelte";
+    import { type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { TYPE_CANCELLED, type SetupRemoteInitialData, type SetupRemoteResultType } from "./setupDialogTypes";
 
-    type Props = {
-        setResult: (result: SetupRemoteResultType) => void;
-    };
-    const { setResult }: Props = $props();
+    type Props = GuestDialogProps<SetupRemoteResultType, SetupRemoteInitialData>;
+    const { setResult, getInitialData }: Props = $props();
+    let choices = $state<SetupRemoteInitialData>([]);
     let userType = $state<SetupRemoteResultType>(TYPE_CANCELLED);
-    let proceedTitle = $derived.by(() => {
-        if (userType === TYPE_COUCHDB) {
-            return translateMessage("Continue to CouchDB setup");
-        } else if (userType === TYPE_BUCKET) {
-            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedBucket");
-        } else if (userType === TYPE_P2P) {
-            return translateMessage("Ui.SetupWizard.SetupRemote.ProceedP2P");
-        } else {
-            return translateMessage("Please select an option to proceed");
-        }
+    onMount(() => {
+        choices = getInitialData?.() ?? [];
     });
-    const canProceed = $derived.by(() => {
-        return userType === TYPE_COUCHDB || userType === TYPE_BUCKET || userType === TYPE_P2P;
-    });
+    const selectedChoice = $derived(choices.find((choice) => choice.type === userType));
+    const proceedTitle = $derived(
+        selectedChoice?.proceedTitle ?? translateMessage("Please select an option to proceed")
+    );
+    const canProceed = $derived(selectedChoice !== undefined);
 </script>
 
 <DialogHeader title={translateMessage("Ui.SetupWizard.SetupRemote.Title")} />
 <Instruction>
     <Question>{translateMessage("Ui.SetupWizard.SetupRemote.Guidance")}</Question>
     <Options>
-        <Option selectedValue={TYPE_COUCHDB} title="CouchDB" bind:value={userType}>
-            {translateMessage("Ui.SetupWizard.SetupRemote.CouchDbOptionDesc")}
-        </Option>
-        <Option
-            selectedValue={TYPE_BUCKET}
-            title={translateMessage("Ui.SetupWizard.SetupRemote.BucketOption")}
-            bind:value={userType}
-        >
-            {translateMessage("Ui.SetupWizard.SetupRemote.BucketOptionDesc")}
-        </Option>
-        <Option
-            selectedValue={TYPE_P2P}
-            title={translateMessage("Ui.SetupWizard.SetupRemote.P2POption")}
-            bind:value={userType}
-        >
-            {translateMessage(
-                "No central data-storage server is required, but a signalling relay is required for peer discovery. Both devices must be online at the same time. Vault data travels through the encrypted P2P connection, not through the signalling relay. Some features may be limited."
-            )}
-        </Option>
+        {#each choices as choice (choice.type)}
+            <Option selectedValue={choice.type} title={choice.title} bind:value={userType}>
+                {choice.description}
+            </Option>
+        {/each}
     </Options>
 </Instruction>
 <UserDecisions>

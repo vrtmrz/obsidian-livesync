@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
+    REMOTE_MINIO,
     REMOTE_P2P,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -419,6 +420,40 @@ describe("SetupManager", () => {
         const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
         expect(activeProfile?.name).toBe("S3 notes");
         expect(activeProfile?.uri).toContain("sls+s3://key:secret@storage.example");
+    });
+
+    it("uses the registered provider choices when configuring a Settings edit buffer", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const bucketSettings = {
+            endpoint: "https://storage.example",
+            accessKey: "key",
+            secretKey: "secret",
+            bucket: "notes",
+            region: "auto",
+            bucketPrefix: "",
+            useCustomRequestHandler: false,
+            bucketCustomHeaders: "",
+            forcePathStyle: true,
+        };
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("s3").mockResolvedValueOnce(bucketSettings);
+
+        const nextSettings = await manager.configureRemoteForSettings(setting.currentSettings());
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenNthCalledWith(
+            1,
+            expect.anything(),
+            expect.arrayContaining([
+                expect.objectContaining({ type: "couchdb" }),
+                expect.objectContaining({ type: "s3" }),
+                expect.objectContaining({ type: "p2p" }),
+            ])
+        );
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenNthCalledWith(
+            2,
+            expect.anything(),
+            setting.currentSettings()
+        );
+        expect(nextSettings).toEqual(expect.objectContaining({ ...bucketSettings, remoteType: REMOTE_MINIO }));
     });
 
     it("creates and selects a P2P profile during fresh manual onboarding", async () => {

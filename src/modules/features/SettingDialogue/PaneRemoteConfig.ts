@@ -1,7 +1,4 @@
 import {
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-    REMOTE_P2P,
     DEFAULT_SETTINGS,
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
@@ -21,18 +18,12 @@ import { SetupManager, UserMode } from "@/modules/features/SetupManager.ts";
 import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts";
 import {
     activateRemoteConfiguration,
+    createRemoteConfigurationId,
+    defaultRemoteProviderRegistry,
+    suggestRemoteConfigurationName,
+    type BuiltInRemoteConfiguration,
     type RemoteConfiguration,
 } from "@vrtmrz/livesync-commonlib/remote-configurations";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
-import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
-import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
-import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
-import type {
-    SetupRemoteCouchDBInitialData,
-    SetupRemoteCouchDBResultType,
-} from "@/modules/features/SetupWizard/dialogs/setupDialogTypes.ts";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
 function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianLiveSyncSettings {
@@ -43,10 +34,6 @@ function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianL
     }
     return workObj;
 }
-function createRemoteConfigurationId(): string {
-    return `remote-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function cloneRemoteConfigurations(
     configs: Record<string, RemoteConfiguration> | undefined
 ): Record<string, RemoteConfiguration> {
@@ -54,13 +41,10 @@ function cloneRemoteConfigurations(
 }
 
 function serializeRemoteConfiguration(settings: ObsidianLiveSyncSettings): string {
-    if (settings.remoteType === REMOTE_MINIO) {
-        return ConnectionStringParser.serialize({ type: "s3", settings });
-    }
-    if (settings.remoteType === REMOTE_P2P) {
-        return ConnectionStringParser.serialize({ type: "p2p", settings });
-    }
-    return ConnectionStringParser.serialize({ type: "couchdb", settings });
+    const type = defaultRemoteProviderRegistry.typeForRemoteType(settings.remoteType);
+    if (!type) throw new Error(`Unsupported remote type: ${settings.remoteType}`);
+    const configuration = defaultRemoteProviderRegistry.configurationFromSettings(type, settings);
+    return defaultRemoteProviderRegistry.serialise(configuration);
 }
 
 function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string) {
@@ -69,21 +53,6 @@ function setEmojiButton(button: ButtonComponent, emoji: string, tooltip: string)
     // button.buttonEl.addClass("clickable-icon");
     button.buttonEl.addClass("mod-muted");
     return button;
-}
-
-function suggestRemoteConfigurationName(parsed: RemoteConfigurationResult): string {
-    if (parsed.type === "couchdb") {
-        try {
-            const url = new URL(parsed.settings.couchDB_URI);
-            return `CouchDB ${url.host}`;
-        } catch {
-            return "Imported CouchDB";
-        }
-    }
-    if (parsed.type === "s3") {
-        return `S3 ${parsed.settings.bucket || parsed.settings.endpoint}`;
-    }
-    return `P2P ${parsed.settings.P2P_roomID || "Remote"}`;
 }
 
 export function paneRemoteConfig(
@@ -189,48 +158,10 @@ export function paneRemoteConfig(
             };
             const runRemoteSetup = async (
                 baseSettings: ObsidianLiveSyncSettings,
-                remoteType?: typeof REMOTE_COUCHDB | typeof REMOTE_MINIO | typeof REMOTE_P2P
+                type?: BuiltInRemoteConfiguration["type"]
             ): Promise<ObsidianLiveSyncSettings | false> => {
                 const setupManager = this.core.getModule(SetupManager);
-                const dialogManager = setupManager.dialogManager;
-                let targetRemoteType = remoteType;
-
-                if (targetRemoteType === undefined) {
-                    const method = await dialogManager.openWithExplicitCancel(SetupRemote);
-                    if (method === "cancelled") {
-                        return false;
-                    }
-                    targetRemoteType =
-                        method === "bucket" ? REMOTE_MINIO : method === "p2p" ? REMOTE_P2P : REMOTE_COUCHDB;
-                }
-
-                if (targetRemoteType === REMOTE_MINIO) {
-                    const bucketConf = await dialogManager.openWithExplicitCancel(SetupRemoteBucket, baseSettings);
-                    if (bucketConf === "cancelled" || typeof bucketConf !== "object") {
-                        return false;
-                    }
-                    return { ...baseSettings, ...bucketConf, remoteType: REMOTE_MINIO };
-                }
-
-                if (targetRemoteType === REMOTE_P2P) {
-                    const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, baseSettings);
-                    if (p2pConf === "cancelled" || typeof p2pConf !== "object") {
-                        return false;
-                    }
-                    return { ...baseSettings, ...p2pConf, remoteType: REMOTE_P2P };
-                }
-
-                const couchConf = await dialogManager.openWithExplicitCancel<
-                    SetupRemoteCouchDBResultType,
-                    SetupRemoteCouchDBInitialData
-                >(SetupRemoteCouchDB, {
-                    settings: baseSettings,
-                    mode: "settings",
-                });
-                if (couchConf === "cancelled" || typeof couchConf !== "object") {
-                    return false;
-                }
-                return { ...baseSettings, ...couchConf, remoteType: REMOTE_COUCHDB };
+                return await setupManager.configureRemoteForSettings(baseSettings, type);
             };
             const createBaseRemoteSettings = (): ObsidianLiveSyncSettings => ({
                 ...DEFAULT_SETTINGS,
@@ -282,9 +213,9 @@ export function paneRemoteConfig(
                     return;
                 }
 
-                let parsed: RemoteConfigurationResult;
+                let parsed: BuiltInRemoteConfiguration;
                 try {
-                    parsed = ConnectionStringParser.parse(trimmedURI);
+                    parsed = defaultRemoteProviderRegistry.parse(trimmedURI);
                 } catch (ex) {
                     this.services.API.addLog(`Failed to import remote configuration!`, LOG_LEVEL_NOTICE);
                     this.services.API.addLog(ex, LOG_LEVEL_VERBOSE);
@@ -302,7 +233,7 @@ export function paneRemoteConfig(
                 configs[id] = {
                     id,
                     name: name.trim() || defaultName,
-                    uri: ConnectionStringParser.serialize(parsed),
+                    uri: defaultRemoteProviderRegistry.serialise(parsed),
                     isEncrypted: false,
                 };
                 this.editingSettings.remoteConfigurations = configs;
@@ -337,9 +268,9 @@ export function paneRemoteConfig(
 
                     row.addButton((btn) =>
                         setEmojiButton(btn, "🔧", "Configure").onClick(async () => {
-                            let parsed: RemoteConfigurationResult;
+                            let parsed: BuiltInRemoteConfiguration;
                             try {
-                                parsed = ConnectionStringParser.parse(config.uri);
+                                parsed = defaultRemoteProviderRegistry.parse(config.uri);
                             } catch (ex) {
                                 this.services.API.addLog(
                                     `Failed to parse remote configuration '${config.id}' for editing!`,
@@ -349,16 +280,9 @@ export function paneRemoteConfig(
                                 return;
                             }
                             const workSettings = createBaseRemoteSettings();
-                            if (parsed.type === "couchdb") {
-                                workSettings.remoteType = REMOTE_COUCHDB;
-                            } else if (parsed.type === "s3") {
-                                workSettings.remoteType = REMOTE_MINIO;
-                            } else {
-                                workSettings.remoteType = REMOTE_P2P;
-                            }
-                            Object.assign(workSettings, parsed.settings);
+                            defaultRemoteProviderRegistry.applyConfiguration(workSettings, parsed);
 
-                            const nextSettings = await runRemoteSetup(workSettings, workSettings.remoteType);
+                            const nextSettings = await runRemoteSetup(workSettings, parsed.type);
                             if (!nextSettings) {
                                 return;
                             }
@@ -447,9 +371,9 @@ export function paneRemoteConfig(
                                 .addSeparator()
                                 .addItem((item) => {
                                     item.setTitle("📡 Fetch remote settings").onClick(async () => {
-                                        let parsed: RemoteConfigurationResult;
+                                        let parsed: BuiltInRemoteConfiguration;
                                         try {
-                                            parsed = ConnectionStringParser.parse(config.uri);
+                                            parsed = defaultRemoteProviderRegistry.parse(config.uri);
                                         } catch (ex) {
                                             this.services.API.addLog(
                                                 `Failed to parse remote configuration '${config.id}' for fetching settings!`,
@@ -459,14 +383,7 @@ export function paneRemoteConfig(
                                             return;
                                         }
                                         const workSettings = createBaseRemoteSettings();
-                                        if (parsed.type === "couchdb") {
-                                            workSettings.remoteType = REMOTE_COUCHDB;
-                                        } else if (parsed.type === "s3") {
-                                            workSettings.remoteType = REMOTE_MINIO;
-                                        } else {
-                                            workSettings.remoteType = REMOTE_P2P;
-                                        }
-                                        Object.assign(workSettings, parsed.settings);
+                                        defaultRemoteProviderRegistry.applyConfiguration(workSettings, parsed);
                                         const newTweaks =
                                             await this.services.tweakValue.checkAndAskUseRemoteConfiguration(
                                                 workSettings
