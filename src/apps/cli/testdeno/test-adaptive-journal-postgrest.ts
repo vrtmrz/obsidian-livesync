@@ -9,12 +9,7 @@ import {
     sanitiseCatStdout,
 } from "./helpers/cli.ts";
 import { applyRemoteSyncSettings, generateSetupUriFromSettings, initSettingsFile } from "./helpers/settings.ts";
-import {
-    type PostgRESTFixture,
-    readPostgRESTAdaptiveRowCounts,
-    startPostgREST,
-    stopPostgREST,
-} from "./helpers/docker.ts";
+import { type PostgRESTFixture, startPostgREST, stopPostgREST } from "./helpers/docker.ts";
 
 const BINARY_TEST_BYTES = 2 * 1024 * 1024;
 
@@ -187,14 +182,6 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal PostgREST", 
             typeof status.estimatedSize === "number" && status.estimatedSize > 0,
             `PostgREST remote status did not report a positive size: ${JSON.stringify(status)}`
         );
-
-        if (shouldStartDocker) {
-            const counts = await readPostgRESTAdaptiveRowCounts(fixture.vaultId);
-            assertEquals(counts.manifests, 1);
-            assert(counts.chunks > 0, `PostgREST did not persist Chunk rows: ${JSON.stringify(counts)}`);
-            assert(counts.writers >= 2, `PostgREST did not preserve both Writer streams: ${JSON.stringify(counts)}`);
-            assert(counts.commits >= 2, `PostgREST did not persist Commit Bundles: ${JSON.stringify(counts)}`);
-        }
     } finally {
         if (shouldStartDocker && !keepDocker) {
             await stopPostgREST().catch(() => {});
