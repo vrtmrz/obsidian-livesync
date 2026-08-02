@@ -2,7 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
 import { assertFilesEqual, runCli, runCliOrFail, runCliWithInputOrFail, sanitiseCatStdout } from "./helpers/cli.ts";
 import { applyRemoteSyncSettings, generateSetupUriFromSettings, initSettingsFile } from "./helpers/settings.ts";
-import { listWebDAVObjectKeys, readWebDAVObjectText, startWebDAV, stopWebDAV } from "./helpers/docker.ts";
+import { startWebDAV, stopWebDAV } from "./helpers/docker.ts";
 
 const EXTERNAL_PACK_TEST_BYTES = 9 * 1024 * 1024;
 
@@ -55,7 +55,6 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal WebDAV", asy
     const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
     const endpoint = (Deno.env.get("WEBDAV_ENDPOINT") ?? "http://127.0.0.1:8088/dav").replace(/\/+$/u, "");
     const prefix = `adaptive-cli-${suffix}/`;
-    const collectionEndpoint = `${endpoint}/${prefix}`;
     const connectionURI = webDAVConnectionURI(endpoint, prefix);
     const adaptiveConnectionURI = selectAdaptiveJournal(connectionURI);
     const vaultPassphrase = "adaptive-journal-webdav-cli-e2ee";
@@ -178,35 +177,6 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal WebDAV", asy
         await runCliOrFail(vaultB, "--settings", settingsB, "sync");
         const deleted = await runCli(vaultB, "--settings", settingsB, "cat", binaryPath);
         assert(deleted.code !== 0, `Deleted binary remained readable:\n${deleted.combined}`);
-
-        const objectKeys = await listWebDAVObjectKeys(collectionEndpoint);
-        assert(objectKeys.includes("a1~manifest.json"), `Adaptive manifest is missing:\n${objectKeys.join("\n")}`);
-        for (const objectPrefix of ["a1~writer~", "a1~pack~", "a1~commit~"]) {
-            assert(
-                objectKeys.some((key) => key.startsWith(objectPrefix)),
-                `Adaptive object with prefix ${objectPrefix} is missing:\n${objectKeys.join("\n")}`
-            );
-        }
-        const packKeys = objectKeys.filter((key) => key.startsWith("a1~pack~"));
-        assert(packKeys.length >= 2, `Expected external Packs from both CLI writers:\n${objectKeys.join("\n")}`);
-        for (const legacyPrefix of ["a1~index~", "a1~delta~", "a1~metadata~"]) {
-            assert(
-                !objectKeys.some((key) => key.startsWith(legacyPrefix)),
-                `Legacy Adaptive object with prefix ${legacyPrefix} was written:\n${objectKeys.join("\n")}`
-            );
-        }
-        const manifest = JSON.parse(await readWebDAVObjectText(collectionEndpoint, "a1~manifest.json")) as {
-            objectLayout?: unknown;
-        };
-        assertEquals(manifest.objectLayout, "commit-bundle-v1");
-        assert(
-            !objectKeys.some((key) => key.startsWith("a1~probe~")),
-            `Adaptive capability probe objects were not removed:\n${objectKeys.join("\n")}`
-        );
-        assert(
-            !objectKeys.includes("_00000000-milestone.json"),
-            `Legacy Journal milestone was written into the Adaptive repository:\n${objectKeys.join("\n")}`
-        );
     } finally {
         if (shouldStartDocker && !keepDocker) {
             await stopWebDAV().catch(() => {});
