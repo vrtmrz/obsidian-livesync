@@ -17,6 +17,7 @@ const testSteps: Step[] = [
     { name: "Svelte dialogue mounts", args: ["run", "test:e2e:obsidian:dialog-mounts"] },
     { name: "revision repair", args: ["run", "test:e2e:obsidian:revision-repair"] },
     { name: "settings UI", args: ["run", "test:e2e:obsidian:settings-ui"] },
+    { name: "remote setup providers", args: ["run", "test:e2e:obsidian:remote-setup-providers"] },
     { name: "Review Harness", args: ["run", "test:e2e:obsidian:review-harness"] },
     { name: "P2P status pane", args: ["run", "test:e2e:obsidian:p2p-pane"] },
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },

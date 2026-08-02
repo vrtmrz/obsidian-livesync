@@ -11,6 +11,7 @@ const focusedScenarios = new Set([
     "revision-repair",
     "document-history-nav",
     "settings-ui",
+    "remote-setup-providers",
     "review-harness",
     "p2p-pane",
     "vault-reflection",
