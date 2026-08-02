@@ -697,6 +697,46 @@ describe("SetupManager", () => {
         });
     });
 
+    it("preselects a repository identity during fresh Adaptive PostgREST onboarding", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                postgrestActiveConnectionURI:
+                    "sls+postgrest://vault-id-00000001:vault-credential@project.example/rest/v1?apiKey=publishable",
+                expectedRepositoryId: "",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onPostgRESTManualSetup(UserMode.NewUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.expectedRepositoryId).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.uri).toContain(`expectedRepositoryId=${current.expectedRepositoryId}`);
+    });
+
+    it("leaves an existing-device Adaptive PostgREST attachment on trust on first use", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                postgrestActiveConnectionURI:
+                    "sls+postgrest://vault-id-00000001:vault-credential@project.example/rest/v1?apiKey=publishable",
+                expectedRepositoryId: "",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onPostgRESTManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.expectedRepositoryId).toBe("");
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.uri).not.toContain("expectedRepositoryId=");
+    });
+
     it.each([
         [UserMode.NewUser, "onboarding"],
         [UserMode.ExistingUser, "onboarding"],
