@@ -103,6 +103,27 @@ async function readEstimatedSize(config: PostgRESTConfig): Promise<number> {
     return estimatedSize;
 }
 
+async function readManifestRepositoryId(config: PostgRESTConfig): Promise<string> {
+    const headers = postgRESTHeaders(config);
+    headers.set("Accept", "application/octet-stream");
+    const response = await fetch(`${config.endpoint}/rpc/livesync_adaptive_manifest_get`, {
+        headers,
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
+        throw new Error(`Adaptive PostgREST manifest read failed with HTTP ${response.status}.`);
+    }
+    const manifest = JSON.parse(new TextDecoder().decode(await response.arrayBuffer())) as {
+        repositoryId?: unknown;
+    };
+    if (typeof manifest.repositoryId !== "string") {
+        throw new Error("Adaptive PostgREST manifest did not contain a repository ID.");
+    }
+    return manifest.repositoryId;
+}
+
 async function assertPostgRESTReachable(config: PostgRESTConfig): Promise<void> {
     await readEstimatedSize(config);
 }
@@ -248,13 +269,18 @@ async function main(): Promise<void> {
             enterManualSettings: async (port, vaultPassphrase) =>
                 await enterManualAdaptivePostgRESTSettings(port, config, vaultPassphrase),
             assertSettings: (state, label) => assertAdaptivePostgRESTSettings(state, config, label),
-            assertPublished: async (minimumWriters, minimumCommits) => {
+            assertPublished: async (minimumWriters, minimumCommits, expectedRepositoryId) => {
                 const deadline = Date.now() + remoteTimeoutMs;
                 let lastSize = 0;
                 while (Date.now() < deadline) {
                     lastSize = await readEstimatedSize(config);
                     if (lastSize > observedEstimatedSize && lastSize > 0) {
                         observedEstimatedSize = lastSize;
+                        assertEqual(
+                            await readManifestRepositoryId(config),
+                            expectedRepositoryId,
+                            "Adaptive PostgREST did not retain the preselected repository identity."
+                        );
                         return;
                     }
                     await new Promise((resolve) => setTimeout(resolve, 500));
