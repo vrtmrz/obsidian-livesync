@@ -31,6 +31,7 @@ const testSteps: Step[] = [
         args: ["run", "test:e2e:obsidian:cli-to-obsidian-sync"],
     },
     { name: "Object Storage upload", args: ["run", "test:e2e:obsidian:minio-upload"] },
+    { name: "Adaptive WebDAV workflow", args: ["run", "test:e2e:obsidian:adaptive-webdav"] },
     {
         name: "Object Storage Setup URI workflow",
         args: ["run", "test:e2e:obsidian:object-storage-setup-uri-workflow"],
@@ -47,10 +48,12 @@ const testSteps: Step[] = [
 const manageCouchDb = process.argv.includes("--manage-couchdb") || process.argv.includes("--manage-services");
 const manageMinio = process.argv.includes("--manage-minio") || process.argv.includes("--manage-services");
 const manageP2P = process.argv.includes("--manage-p2p") || process.argv.includes("--manage-services");
+const manageWebDAV = process.argv.includes("--manage-webdav") || process.argv.includes("--manage-services");
 const keepServices = process.argv.includes("--keep-services");
 const keepCouchDb = keepServices || process.argv.includes("--keep-couchdb");
 const keepMinio = keepServices || process.argv.includes("--keep-minio");
 const keepP2P = keepServices || process.argv.includes("--keep-p2p");
+const keepWebDAV = keepServices || process.argv.includes("--keep-webdav");
 
 function npmBinary(): string {
     return process.platform === "win32" ? "npm.cmd" : "npm";
@@ -105,10 +108,19 @@ async function stopManagedP2P(): Promise<void> {
     });
 }
 
+async function stopManagedWebDAV(): Promise<void> {
+    await runStep({
+        name: "stop WebDAV fixture",
+        args: ["run", "test:docker-webdav:stop"],
+        optional: true,
+    });
+}
+
 async function main(): Promise<void> {
     let shouldStopCouchDb = false;
     let shouldStopMinio = false;
     let shouldStopP2P = false;
+    let shouldStopWebDAV = false;
     try {
         if (manageCouchDb) {
             await stopManagedCouchDb();
@@ -125,11 +137,19 @@ async function main(): Promise<void> {
             await runStep({ name: "start P2P relay fixture", args: ["run", "test:docker-p2p:start"] });
             shouldStopP2P = !keepP2P;
         }
+        if (manageWebDAV) {
+            await stopManagedWebDAV();
+            await runStep({ name: "start WebDAV fixture", args: ["run", "test:docker-webdav:start"] });
+            shouldStopWebDAV = !keepWebDAV;
+        }
 
         for (const step of testSteps) {
             await runStep(step);
         }
     } finally {
+        if (shouldStopWebDAV) {
+            await stopManagedWebDAV();
+        }
         if (shouldStopP2P) {
             await stopManagedP2P();
         }

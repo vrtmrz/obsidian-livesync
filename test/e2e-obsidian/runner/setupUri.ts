@@ -18,9 +18,12 @@ export type SetupState = {
     endpoint: string;
     bucket: string;
     bucketPrefix: string;
+    journalFormat: string;
+    packReadPolicy: string;
     p2pEnabled: boolean;
     p2pRelays: string;
     p2pRoomId: string;
+    webDAVactiveConnectionURI: string;
 };
 
 export type SetupCaptureNames = {
@@ -182,16 +185,16 @@ export async function captureAndStartInitialisation(
         ? "Setup Complete: Preparing This P2P Device"
         : p2pAdditionalDevice
           ? "Setup Complete: Preparing to Fetch from Another Device"
-        : mode === "new"
-          ? "Setup Complete: Preparing to Initialise Server"
-          : "Setup Complete: Preparing to Fetch Synchronisation Data";
+          : mode === "new"
+            ? "Setup Complete: Preparing to Initialise Server"
+            : "Setup Complete: Preparing to Fetch Synchronisation Data";
     const button = p2pFirstDevice
         ? "Restart and Prepare This Device"
         : p2pAdditionalDevice
           ? "Restart and Select Source Device"
-        : mode === "new"
-          ? "Restart and Initialise Server"
-          : "Restart and Fetch Data";
+          : mode === "new"
+            ? "Restart and Initialise Server"
+            : "Restart and Fetch Data";
     if (p2pAdditionalDevice) {
         await withObsidianPage(port, async (page) => {
             const modal = modalByTitle(page, title);
@@ -342,9 +345,12 @@ export async function readSetupState(cliBinary: string, environment: NodeJS.Proc
             "endpoint:settings.endpoint||'',",
             "bucket:settings.bucket||'',",
             "bucketPrefix:settings.bucketPrefix||'',",
+            "journalFormat:settings.journalFormat||'',",
+            "packReadPolicy:settings.packReadPolicy||'',",
             "p2pEnabled:settings.P2P_Enabled===true,",
             "p2pRelays:settings.P2P_relays||'',",
             "p2pRoomId:settings.P2P_roomID||'',",
+            "webDAVactiveConnectionURI:settings.webDAVactiveConnectionURI||'',",
             "});",
             "})()",
         ].join(""),
