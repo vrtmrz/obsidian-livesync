@@ -15,13 +15,13 @@ import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/co
 import type { LiveSyncReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
 import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
+import { useJournalSyncFeature } from "@vrtmrz/livesync-commonlib/journal-sync";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator";
 import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB";
-import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
@@ -139,7 +139,6 @@ export class LiveSyncBaseCore<
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
         this._registerModule(new ModuleConflictChecker(this));
-        this._registerModule(new ModuleReplicatorMinIO(this));
         this._registerModule(new ModuleReplicatorCouchDB(this));
         this._registerModule(new ModuleReplicator(this));
         this._registerModule(new ModuleConflictResolver(this));
@@ -279,6 +278,8 @@ export class LiveSyncBaseCore<
         usePrepareDatabaseForUse(this);
         // Migration to multiple remote configurations
         useRemoteConfigurationMigration(this);
+        // Journal providers are selected through the composed remote-provider registry.
+        useJournalSyncFeature(this);
     }
 }
 

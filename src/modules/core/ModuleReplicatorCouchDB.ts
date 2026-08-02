@@ -1,5 +1,6 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { defaultRemoteProviderRegistry } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import { AbstractModule } from "@/modules/AbstractModule";
@@ -8,8 +9,7 @@ import type { LiveSyncCore } from "@/main";
 export class ModuleReplicatorCouchDB extends AbstractModule {
     _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator | false> {
         const settings = { ...this.settings, ...settingOverride };
-        // If new remote types were added, add them here. Do not use `REMOTE_COUCHDB` directly for the safety valve.
-        if (settings.remoteType == REMOTE_MINIO || settings.remoteType == REMOTE_P2P) {
+        if (!defaultRemoteProviderRegistry.isRemoteTypeInFamily(settings.remoteType, "couchdb")) {
             return Promise.resolve(false);
         }
         return Promise.resolve(new LiveSyncCouchDBReplicator(this.core));
@@ -17,7 +17,7 @@ export class ModuleReplicatorCouchDB extends AbstractModule {
     _everyAfterResumeProcess(): Promise<boolean> {
         if (this.services.appLifecycle.isSuspended()) return Promise.resolve(true);
         if (!this.services.appLifecycle.isReady()) return Promise.resolve(true);
-        if (this.settings.remoteType != REMOTE_MINIO && this.settings.remoteType != REMOTE_P2P) {
+        if (defaultRemoteProviderRegistry.isRemoteTypeInFamily(this.settings.remoteType, "couchdb")) {
             const LiveSyncEnabled = this.settings.liveSync;
             const continuous = LiveSyncEnabled;
             const eventualOnStart = !LiveSyncEnabled && this.settings.syncOnStart;

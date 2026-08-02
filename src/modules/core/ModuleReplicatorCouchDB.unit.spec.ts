@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleReplicatorCouchDB } from "./ModuleReplicatorCouchDB.ts";
 
-function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isReplicationReady = true) {
+function createModule(
+    settings: { liveSync: boolean; syncOnStart: boolean; remoteType?: typeof REMOTE_COUCHDB | typeof REMOTE_MINIO },
+    isReplicationReady = true
+) {
     const openReplication = vi.fn(async () => true);
     const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
     const services = {
@@ -30,7 +34,7 @@ function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isR
         _services: services,
         services,
         settings: {
-            remoteType: "",
+            remoteType: REMOTE_COUCHDB,
             ...settings,
         },
         replicator: { openReplication },
@@ -84,6 +88,20 @@ describe("ModuleReplicatorCouchDB resume replication activity", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         expect(runFiniteReplicationActivity).not.toHaveBeenCalled();
+        expect(openReplication).not.toHaveBeenCalled();
+    });
+
+    it("does not start CouchDB replication for a registered Journal provider", async () => {
+        const { module, openReplication } = createModule({
+            liveSync: true,
+            syncOnStart: true,
+            remoteType: REMOTE_MINIO,
+        });
+
+        await expect(module._anyNewReplicator()).resolves.toBe(false);
+        await module._everyAfterResumeProcess();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
         expect(openReplication).not.toHaveBeenCalled();
     });
 });
