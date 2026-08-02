@@ -24,6 +24,7 @@ export type SetupState = {
     p2pEnabled: boolean;
     p2pRelays: string;
     p2pRoomId: string;
+    postgrestActiveConnectionURI: string;
     webDAVactiveConnectionURI: string;
 };
 
@@ -352,6 +353,7 @@ export async function readSetupState(cliBinary: string, environment: NodeJS.Proc
             "p2pEnabled:settings.P2P_Enabled===true,",
             "p2pRelays:settings.P2P_relays||'',",
             "p2pRoomId:settings.P2P_roomID||'',",
+            "postgrestActiveConnectionURI:settings.postgrestActiveConnectionURI||'',",
             "webDAVactiveConnectionURI:settings.webDAVactiveConnectionURI||'',",
             "});",
             "})()",
