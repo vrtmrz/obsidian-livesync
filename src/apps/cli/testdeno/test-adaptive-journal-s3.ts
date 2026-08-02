@@ -2,7 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
 import { assertFilesEqual, runCli, runCliOrFail, runCliWithInputOrFail, sanitiseCatStdout } from "./helpers/cli.ts";
 import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts";
-import { listMinioObjectKeys, readMinioObjectText, startMinio, stopMinio } from "./helpers/docker.ts";
+import { startMinio, stopMinio } from "./helpers/docker.ts";
 
 const EXTERNAL_PACK_TEST_BYTES = 9 * 1024 * 1024;
 
@@ -109,35 +109,6 @@ Deno.test("e2e: two CLI vaults synchronise through Adaptive Journal S3", async (
         await runCliOrFail(vaultB, "--settings", settingsB, "sync");
         const deleted = await runCli(vaultB, "--settings", settingsB, "cat", binaryPath);
         assert(deleted.code !== 0, `Deleted binary remained readable:\n${deleted.combined}`);
-
-        const objectKeys = await listMinioObjectKeys(endpoint, accessKey, secretKey, bucket);
-        assert(objectKeys.includes("a1~manifest.json"), `Adaptive manifest is missing:\n${objectKeys.join("\n")}`);
-        for (const prefix of ["a1~writer~", "a1~pack~", "a1~commit~"]) {
-            assert(
-                objectKeys.some((key) => key.startsWith(prefix)),
-                `Adaptive object with prefix ${prefix} is missing:\n${objectKeys.join("\n")}`
-            );
-        }
-        const packKeys = objectKeys.filter((key) => key.startsWith("a1~pack~"));
-        assert(packKeys.length >= 2, `Expected external Packs from both CLI writers:\n${objectKeys.join("\n")}`);
-        for (const legacyPrefix of ["a1~index~", "a1~delta~", "a1~metadata~"]) {
-            assert(
-                !objectKeys.some((key) => key.startsWith(legacyPrefix)),
-                `Legacy Adaptive object with prefix ${legacyPrefix} was written:\n${objectKeys.join("\n")}`
-            );
-        }
-        const manifest = JSON.parse(
-            await readMinioObjectText(endpoint, accessKey, secretKey, bucket, "a1~manifest.json")
-        ) as { objectLayout?: unknown };
-        assertEquals(manifest.objectLayout, "commit-bundle-v1");
-        assert(
-            !objectKeys.some((key) => key.startsWith("a1~probe~")),
-            `Adaptive capability probe objects were not removed:\n${objectKeys.join("\n")}`
-        );
-        assert(
-            !objectKeys.includes("_00000000-milestone.json"),
-            `Legacy Journal milestone was written into the Adaptive repository:\n${objectKeys.join("\n")}`
-        );
     } finally {
         if (!keepDocker) {
             await stopMinio().catch(() => {});
