@@ -71,6 +71,8 @@
         "test:e2e:obsidian:couchdb-manual-setup-workflow": "tsx test/e2e-obsidian/scripts/couchdb-manual-setup-workflow.ts",
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
+        "test:e2e:obsidian:adaptive-postgrest": "tsx test/e2e-obsidian/scripts/adaptive-postgrest.ts",
+        "test:e2e:obsidian:adaptive-postgrest:services": "tsx test/e2e-obsidian/scripts/adaptive-postgrest.ts --manage-postgrest",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",
         "test:e2e:obsidian:p2p-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/p2p-setup-uri-workflow.ts",
         "pretest:e2e:obsidian:p2p-connection-check": "npm run build && npm run build --workspace webpeer",

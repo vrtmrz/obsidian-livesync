@@ -31,6 +31,7 @@ const testSteps: Step[] = [
         args: ["run", "test:e2e:obsidian:cli-to-obsidian-sync"],
     },
     { name: "Object Storage upload", args: ["run", "test:e2e:obsidian:minio-upload"] },
+    { name: "Adaptive PostgREST workflow", args: ["run", "test:e2e:obsidian:adaptive-postgrest"] },
     {
         name: "Object Storage Setup URI workflow",
         args: ["run", "test:e2e:obsidian:object-storage-setup-uri-workflow"],
@@ -47,10 +48,12 @@ const testSteps: Step[] = [
 const manageCouchDb = process.argv.includes("--manage-couchdb") || process.argv.includes("--manage-services");
 const manageMinio = process.argv.includes("--manage-minio") || process.argv.includes("--manage-services");
 const manageP2P = process.argv.includes("--manage-p2p") || process.argv.includes("--manage-services");
+const managePostgREST = process.argv.includes("--manage-postgrest") || process.argv.includes("--manage-services");
 const keepServices = process.argv.includes("--keep-services");
 const keepCouchDb = keepServices || process.argv.includes("--keep-couchdb");
 const keepMinio = keepServices || process.argv.includes("--keep-minio");
 const keepP2P = keepServices || process.argv.includes("--keep-p2p");
+const keepPostgREST = keepServices || process.argv.includes("--keep-postgrest");
 
 function npmBinary(): string {
     return process.platform === "win32" ? "npm.cmd" : "npm";
@@ -105,10 +108,18 @@ async function stopManagedP2P(): Promise<void> {
     });
 }
 
+async function stopManagedPostgREST(): Promise<void> {
+    await runStep({
+        name: "stop PostgREST fixture",
+        args: ["run", "test:docker-postgrest:stop"],
+        optional: true,
+    });
+}
 async function main(): Promise<void> {
     let shouldStopCouchDb = false;
     let shouldStopMinio = false;
     let shouldStopP2P = false;
+    let shouldStopPostgREST = false;
     try {
         if (manageCouchDb) {
             await stopManagedCouchDb();
@@ -125,11 +136,19 @@ async function main(): Promise<void> {
             await runStep({ name: "start P2P relay fixture", args: ["run", "test:docker-p2p:start"] });
             shouldStopP2P = !keepP2P;
         }
+        if (managePostgREST) {
+            await stopManagedPostgREST();
+            await runStep({ name: "start PostgREST fixture", args: ["run", "test:docker-postgrest:start"] });
+            shouldStopPostgREST = !keepPostgREST;
+        }
 
         for (const step of testSteps) {
             await runStep(step);
         }
     } finally {
+        if (shouldStopPostgREST) {
+            await stopManagedPostgREST();
+        }
         if (shouldStopP2P) {
             await stopManagedP2P();
         }
