@@ -596,6 +596,46 @@ describe("SetupManager", () => {
         expect(activeProfile?.uri).toContain("expectedRepositoryId=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     });
 
+    it("preselects a repository identity during fresh Adaptive WebDAV onboarding", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                webDAVactiveConnectionURI:
+                    "sls+webdav://alice:secret@dav.example/remote.php/dav/files/alice?prefix=notes%2F",
+                expectedRepositoryId: "",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onWebDAVManualSetup(UserMode.NewUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.expectedRepositoryId).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.uri).toContain(`expectedRepositoryId=${current.expectedRepositoryId}`);
+    });
+
+    it("leaves an existing-device Adaptive WebDAV attachment on trust on first use", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                webDAVactiveConnectionURI:
+                    "sls+webdav://alice:secret@dav.example/remote.php/dav/files/alice?prefix=notes%2F",
+                expectedRepositoryId: "",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onWebDAVManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.expectedRepositoryId).toBe("");
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.uri).not.toContain("expectedRepositoryId=");
+    });
+
     it.each([
         [UserMode.NewUser, "onboarding"],
         [UserMode.ExistingUser, "onboarding"],
