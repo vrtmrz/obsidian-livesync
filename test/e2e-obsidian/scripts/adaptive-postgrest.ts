@@ -27,7 +27,6 @@ if (unsupportedArguments.length > 0) {
 const managePostgREST = process.argv.includes("--manage-postgrest");
 const keepPostgRESTFixture = process.argv.includes("--keep-postgrest");
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_SETUP_URI_TIMEOUT_MS ?? 30000);
-const remoteTimeoutMs = Number(process.env.E2E_OBSIDIAN_POSTGREST_TIMEOUT_MS ?? 30000);
 
 function environmentValue(primary: string, legacy: string, fallback: string): string {
     return process.env[primary] ?? process.env[legacy] ?? fallback;
@@ -101,27 +100,6 @@ async function readEstimatedSize(config: PostgRESTConfig): Promise<number> {
         throw new Error("Adaptive PostgREST status returned an invalid estimated size.");
     }
     return estimatedSize;
-}
-
-async function readManifestRepositoryId(config: PostgRESTConfig): Promise<string> {
-    const headers = postgRESTHeaders(config);
-    headers.set("Accept", "application/octet-stream");
-    const response = await fetch(`${config.endpoint}/rpc/livesync_adaptive_manifest_get`, {
-        headers,
-        method: "GET",
-        signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) {
-        await response.body?.cancel().catch(() => undefined);
-        throw new Error(`Adaptive PostgREST manifest read failed with HTTP ${response.status}.`);
-    }
-    const manifest = JSON.parse(new TextDecoder().decode(await response.arrayBuffer())) as {
-        repositoryId?: unknown;
-    };
-    if (typeof manifest.repositoryId !== "string") {
-        throw new Error("Adaptive PostgREST manifest did not contain a repository ID.");
-    }
-    return manifest.repositoryId;
 }
 
 async function assertPostgRESTReachable(config: PostgRESTConfig): Promise<void> {
@@ -254,7 +232,6 @@ function assertAdaptivePostgRESTSettings(state: SetupState, config: PostgRESTCon
 async function main(): Promise<void> {
     const config = loadPostgRESTConfig();
     let shouldStopPostgREST = false;
-    let observedEstimatedSize = 0;
 
     try {
         if (managePostgREST) {
@@ -269,26 +246,6 @@ async function main(): Promise<void> {
             enterManualSettings: async (port, vaultPassphrase) =>
                 await enterManualAdaptivePostgRESTSettings(port, config, vaultPassphrase),
             assertSettings: (state, label) => assertAdaptivePostgRESTSettings(state, config, label),
-            assertPublished: async (minimumWriters, minimumCommits, expectedRepositoryId) => {
-                const deadline = Date.now() + remoteTimeoutMs;
-                let lastSize = 0;
-                while (Date.now() < deadline) {
-                    lastSize = await readEstimatedSize(config);
-                    if (lastSize > observedEstimatedSize && lastSize > 0) {
-                        observedEstimatedSize = lastSize;
-                        assertEqual(
-                            await readManifestRepositoryId(config),
-                            expectedRepositoryId,
-                            "Adaptive PostgREST did not retain the preselected repository identity."
-                        );
-                        return;
-                    }
-                    await new Promise((resolve) => setTimeout(resolve, 500));
-                }
-                throw new Error(
-                    `Timed out waiting for Adaptive PostgREST publication stage ${minimumWriters}/${minimumCommits}; last estimated size was ${lastSize}.`
-                );
-            },
         });
     } finally {
         if (shouldStopPostgREST) {

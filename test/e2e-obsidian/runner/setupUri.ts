@@ -183,16 +183,16 @@ export async function captureAndStartInitialisation(
         ? "Setup Complete: Preparing This P2P Device"
         : p2pAdditionalDevice
           ? "Setup Complete: Preparing to Fetch from Another Device"
-        : mode === "new"
-          ? "Setup Complete: Preparing to Initialise Server"
-          : "Setup Complete: Preparing to Fetch Synchronisation Data";
+          : mode === "new"
+            ? "Setup Complete: Preparing to Initialise Server"
+            : "Setup Complete: Preparing to Fetch Synchronisation Data";
     const button = p2pFirstDevice
         ? "Restart and Prepare This Device"
         : p2pAdditionalDevice
           ? "Restart and Select Source Device"
-        : mode === "new"
-          ? "Restart and Initialise Server"
-          : "Restart and Fetch Data";
+          : mode === "new"
+            ? "Restart and Initialise Server"
+            : "Restart and Fetch Data";
     if (p2pAdditionalDevice) {
         await withObsidianPage(port, async (page) => {
             const modal = modalByTitle(page, title);
