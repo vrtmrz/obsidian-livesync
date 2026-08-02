@@ -462,6 +462,60 @@ describe("SetupManager", () => {
         expect(nextSettings).toEqual(expect.objectContaining({ ...bucketSettings, remoteType: REMOTE_MINIO }));
     });
 
+    it("preselects a repository identity during fresh Adaptive Object Storage onboarding", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                endpoint: "https://storage.example",
+                accessKey: "key",
+                secretKey: "secret",
+                bucket: "notes",
+                region: "auto",
+                bucketPrefix: "",
+                useCustomRequestHandler: false,
+                bucketCustomHeaders: "",
+                forcePathStyle: true,
+                expectedRepositoryId: "",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onBucketManualSetup(UserMode.NewUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.expectedRepositoryId).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.uri).toContain(`expectedRepositoryId=${current.expectedRepositoryId}`);
+    });
+
+    it("leaves an existing-device Adaptive Object Storage attachment on trust on first use", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                endpoint: "https://storage.example",
+                accessKey: "key",
+                secretKey: "secret",
+                bucket: "notes",
+                region: "auto",
+                bucketPrefix: "",
+                useCustomRequestHandler: false,
+                bucketCustomHeaders: "",
+                forcePathStyle: true,
+                expectedRepositoryId: "",
+                journalFormat: "adaptive-v1",
+                packReadPolicy: "whole-pack",
+            })
+            .mockResolvedValueOnce(true);
+
+        await manager.onBucketManualSetup(UserMode.ExistingUser, setting.currentSettings());
+
+        const current = setting.currentSettings();
+        expect(current.expectedRepositoryId).toBe("");
+        const activeProfile = current.remoteConfigurations[current.activeConfigurationId];
+        expect(activeProfile?.uri).not.toContain("expectedRepositoryId=");
+    });
+
     it("creates and selects a P2P profile during fresh manual onboarding", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         setting.settings = {

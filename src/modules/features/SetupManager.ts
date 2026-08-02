@@ -5,6 +5,7 @@ import {
     LOG_LEVEL_VERBOSE,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { generateAdaptiveJournalRepositoryIdV1 } from "@vrtmrz/livesync-commonlib/adaptive-journal";
 import {
     defaultRemoteProviderRegistry,
     upsertRemoteConfigurationInPlace,
@@ -69,6 +70,29 @@ export const enum UserMode {
      */
     // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values -- Update is a semantic alias for the unknown setup mode.
     Update = "unknown", // Alias for Unknown for better readability
+}
+
+type AdaptiveJournalIdentitySetting = {
+    expectedRepositoryId?: string;
+    journalFormat?: string;
+};
+
+async function prepareAdaptiveRepositoryIdentityForSetup<T extends object>(
+    settings: T,
+    userMode: UserMode
+): Promise<T> {
+    const adaptiveSettings = settings as T & AdaptiveJournalIdentitySetting;
+    if (
+        userMode !== UserMode.NewUser ||
+        adaptiveSettings.journalFormat !== "adaptive-v1" ||
+        (adaptiveSettings.expectedRepositoryId ?? "").trim() !== ""
+    ) {
+        return settings;
+    }
+    return {
+        ...settings,
+        expectedRepositoryId: await generateAdaptiveJournalRepositoryIdV1(),
+    };
 }
 
 /**
@@ -210,10 +234,15 @@ export class SetupManager extends AbstractModule {
         }
 
         const newSetting = copySettingsForRemoteProfileUpdate(currentSetting);
+        const preparedSettings = await prepareAdaptiveRepositoryIdentityForSetup(configuration.settings, userMode);
+        const preparedConfiguration = {
+            ...configuration,
+            settings: preparedSettings,
+        } as BuiltInRemoteConfiguration;
         if (activate) {
-            defaultRemoteProviderRegistry.applyConfiguration(newSetting, configuration);
+            defaultRemoteProviderRegistry.applyConfiguration(newSetting, preparedConfiguration);
         } else {
-            Object.assign(newSetting, configuration.settings);
+            Object.assign(newSetting, preparedSettings);
         }
 
         const activateForP2P = defaultRemoteProviderRegistry.supportsActivationRole(type, "p2p");
