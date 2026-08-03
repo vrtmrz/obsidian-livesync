@@ -399,7 +399,7 @@ export async function main(
             if (!options.verbose) return;
         }
         writeStderrLine(standardIo, prefix, message);
-    });
+    }, true);
     // Prevent replication result from being processed automatically in non-daemon commands.
     // In daemon mode the default handler must run so changes are applied to the filesystem.
     if (options.command !== "daemon") {
