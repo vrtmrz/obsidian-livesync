@@ -12,6 +12,13 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Fixed
+
+- File consistency checks no longer read older revisions after the current Vault content matches known synchronised history, avoiding unnecessary 'Missing document content' warnings from obsolete unreadable revisions.
+- Remote chunk fetching now retains chunks which were returned successfully when another chunk in the same request is unavailable, so the available content can still be processed (#771).
+
 ### P2P and experimental browser applications
 
 #### Improved
