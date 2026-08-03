@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.3
+
+3rd August, 2026
+
 ### Synchronisation and storage
 
 #### Fixed
