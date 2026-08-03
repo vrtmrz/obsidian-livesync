@@ -22,6 +22,7 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 #### Fixed
 
+- The in-editor LiveSync status on iOS now remains below the view-header controls instead of overlapping them.
 - The Remediation setting now displays its configured modification-time limit without raising a `HierarchyRequestError`.
 
 ## 1.0.2
