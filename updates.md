@@ -23,12 +23,6 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 - File consistency checks no longer read older revisions after the current Vault content matches known synchronised history, avoiding unnecessary 'Missing document content' warnings from obsolete unreadable revisions.
 - Remote chunk fetching now retains chunks which were returned successfully when another chunk in the same request is unavailable, so the available content can still be processed (#771).
 
-### P2P and experimental browser applications
-
-#### Improved
-
-- WebPeer now includes a separate P2P connection check which prepares a disposable encrypted Setup URI and QR code locally, tests desktop and mobile devices in separate random rooms, can reuse the unchanged QR and a recorded baseline for an optional second device in the same room, and displays browser-side WebRTC diagnostic totals without presenting them as note-synchronisation results.
-
 ### Interface
 
 #### Fixed
