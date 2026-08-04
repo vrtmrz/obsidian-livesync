@@ -14,7 +14,7 @@ Batch database update: 批次更新資料庫
 Batch limit: 批次上限
 Batch size: 批次大小
 Batch size of on-demand fetching: 按需抓取的批次大小
-Bucket Name: 儲存桶名稱
+Bucket Name: 儲存庫名稱
 Check: 檢查
 Configuration Encryption: 設定加密
 CouchDB Connection Tweak: CouchDB 連線調校
@@ -63,6 +63,7 @@ Delete all data on the remote server.: 刪除遠端伺服器上的所有資料�
 Delete local database to reset or uninstall Self-hosted LiveSync: 刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync
 Delete Remote Configuration: 刪除遠端設定
 Delete remote configuration '{name}'?: 要刪除遠端設定「{name}」嗎？
+Delete remote configuration '${name}'?: 要刪除遠端設定「${name}」嗎？
 desktop: 桌面裝置
 Device name: 裝置名稱
 Disables all synchronization and restart.: 停用所有同步並重新啟動。
@@ -130,11 +131,127 @@ If enabled, the ⛔ icon will be shown inside the status instead of the file war
 Ignore patterns: 忽略模式
 Import connection: 匯入連線
 Initialise all journal history, On the next sync, every item will be received and sent.: 初始化所有日誌歷史。下次同步時，每個項目都會重新接收與傳送。
+K:
+  exp: 實驗性
+  long_p2p_sync: "%{title_p2p_sync}"
+  P2P: "%{Peer}-to-%{Peer}"
+  Peer: Peer
+  ScanCustomization: 掃描自訂項目
+  short_p2p_sync: P2P 同步
+  title_p2p_sync: Peer-to-Peer 同步
 Later: 稍後
 "Limit: {datetime} ({timestamp})": 限制：{datetime}（{timestamp}）
+liveSyncSetting:
+  errorNoSuchSettingItem: "沒有這個設定項目：${key}"
+  originalValue: "原始值：${value}"
+  valueShouldBeInRange: 值應介於 ${min} < value < ${max}
+liveSyncSettings:
+  btnApply: 套用
 Lock: 鎖定
+logPane:
+  title: Self-hosted LiveSync 日誌
 Lock Server: 鎖定伺服器
 Lock the remote server to prevent synchronization with other devices.: 鎖定遠端伺服器，以防止其他裝置進行同步。
+moduleCheckRemoteSize:
+  optionIncreaseLimit: 提高到 ${newMax}MB
+moduleInputUIObsidian:
+  defaultTitleConfirmation: 確認
+  defaultTitleSelect: 選擇
+  optionNo: 否
+  optionYes: 是
+moduleLiveSyncMain:
+  logAdditionalSafetyScan: 額外的安全掃描...
+  logLoadingPlugin: 正在載入外掛...
+  logPluginInitCancelled: 外掛初始化被某個模組取消
+  logSafetyScanCompleted: 額外的安全掃描已完成
+  logSafetyScanFailed: 額外的安全掃描在某個模組上失敗
+  logUnloadingPlugin: 正在卸載外掛...
+  msgScramEnabled: |
+    Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？
+
+    | 類型 | 狀態 | 說明 |
+    |:---:|:---:|---|
+    | 儲存空間事件 | ${fileWatchingStatus} | 所有修改都會被忽略 |
+    | 資料庫事件 | ${parseReplicationStatus} | 所有已同步的變更都會被延後 |
+
+    你想要恢復它們並重新啟動 Obsidian 嗎？
+
+    > [!DETAILS]-
+    > 這些標記是外掛在重建或抓取時設定的。如果程序異常結束，可能會非預期地留存下來。
+    > 如果你不確定，可以嘗試重新執行這些程序。請務必先備份你的 Vault。
+  optionKeepLiveSyncDisabled: 保持 LiveSync 停用
+  optionResumeAndRestart: 恢復並重新啟動 Obsidian
+  titleScramEnabled: 已啟用緊急處置
+moduleLog:
+  showLog: 顯示日誌
+moduleMigration:
+  fix0256:
+    buttons:
+      checkItLater: 稍後再檢查
+      DismissForever: 我已修正，不要再詢問
+      fix: 修正
+    message: |
+      由於近期的一個問題（存在於 v0.25.6），部分檔案可能未正確儲存到同步資料庫中。
+      我們已掃描你的檔案，並找出一些需要修正的項目。
+
+      **可以修正的檔案：**
+
+      ${files}
+
+      這些檔案在儲存空間中有大小相符的原始檔案，很可能可以復原。
+      我們可以用它們修正資料庫，請點選下方的「修正」按鈕進行修正。
+
+      ${messageUnrecoverable}
+
+      如果你想再次執行，可以從 Hatch 頁面操作。
+    messageUnrecoverable: |
+      **無法在此裝置上修正的檔案：**
+
+      ${filesNotRecoverable}
+
+      這些檔案的中繼資料不一致，無法在此裝置上修正（多數情況下我們無法判斷哪一份才正確）。
+      若要復原它們，請檢查你的其他裝置（同樣使用此功能），或從備份手動復原。
+    title: 已偵測到損壞的檔案
+  insecureChunkExist:
+    buttons:
+      fetch: 我已重建遠端，從遠端抓取
+      later: 我稍後再處理
+      rebuild: 重建全部
+    laterMessage: 我們強烈建議盡快處理此問題！
+    message: |
+      部分 chunks 未安全儲存，在資料庫中也未加密。
+      **請重建資料庫以修正此問題**。
+
+      如果你的遠端資料庫未設定 SSL，或使用了安全性較低的憑證，**敏感資料就有外洩風險**。
+
+      注意：請將所有裝置上的 Self-hosted LiveSync 升級到 v0.25.6 或更新版本，並確實備份你的 Vault。
+      注意 2：重建全部與抓取會耗用一些時間與流量，請在離峰時段進行，並確保網路連線穩定。
+    title: 發現不安全的 chunks！
+  logBulkSendCorrupted: 已啟用批次傳送 chunks，但此功能已損壞。造成不便，敬請見諒。已自動停用。
+  logLocalDatabaseNotReady: 發生問題！本機資料庫尚未就緒
+  msgInitialSetup: |-
+    你的裝置**尚未完成設定**。讓我引導你完成設定流程。
+
+    請記得，每個對話框的內容都可以複製到剪貼簿。如果日後需要參考，可以貼到 Obsidian 的筆記中，也可以用翻譯工具翻成你的語言。
+
+    首先，你有 **Setup URI** 嗎？
+
+    注意：如果你不知道那是什麼，請參閱[說明文件](${URI_DOC})。
+  msgRecommendSetupUri: |-
+    我們強烈建議你產生 Setup URI 並使用它。
+    如果你對此不熟悉，請參閱[說明文件](${URI_DOC})（再次抱歉，但這很重要）。
+
+    你想要如何手動設定？
+  optionHaveSetupUri: 有，我有
+  optionManualSetup: 全部手動設定
+  optionNoSetupUri: 沒有，我沒有
+  optionRemindNextLaunch: 下次啟動時提醒我
+  optionSetupViaP2P: 使用「%{short_p2p_sync}」進行設定
+  optionSetupWizard: 帶我進入設定精靈
+  titleRecommendSetupUri: 建議使用 Setup URI
+  titleWelcome: 歡迎使用 Self-hosted LiveSync
+moduleObsidianMenu:
+  replicate: 複寫
 More actions: 更多操作
 Network warning style: 網路警告樣式
 New Remote: 新增遠端
@@ -143,30 +260,144 @@ Non-Synchronising files: 不同步的檔案
 Normal Files: 一般檔案
 obsidianLiveSyncSettingTab:
   btnApply: 套用
+  btnCopy: 複製
   btnDisable: 停用
+  btnDiscard: 捨棄
+  btnEnable: 啟用
+  btnFix: 修正
   btnNext: 下一步
+  btnUse: 使用
   buttonNext: 下一步
   defaultLanguage: 預設語言
+  descConnectSetupURI: 這是使用 Setup URI 設定 Self-hosted LiveSync 的建議方式。
+  descCopySetupURI: 設定新裝置時非常方便！
+  descEnableLiveSync: 請先完成上述兩個選項之一，或手動完成所有設定，再啟用此選項。
+  errAccessForbidden: ❗ 存取被拒。
+  errCannotContinueTest: 無法繼續進行測試。
+  errCorsCredentials: ❗ cors.credentials 設定錯誤
+  errCorsNotAllowingCredentials: ❗ CORS 不允許憑證
+  errCorsOrigins: ❗ cors.origins 設定錯誤
+  errEnableCors: ❗ httpd.enable_cors 設定錯誤
+  errEnableCorsChttpd: ❗ chttpd.enable_cors 設定錯誤
+  errMaxDocumentSize: ❗ couchdb.max_document_size 設定過低)
+  errMaxRequestSize: ❗ chttpd.max_http_request_size 設定過低)
+  errMissingWwwAuth: ❗ 缺少 httpd.WWW-Authenticate 設定
+  errRequireValidUser: ❗ chttpd.require_valid_user 設定錯誤。
+  errRequireValidUserAuth: ❗ chttpd_auth.require_valid_user 設定錯誤。
   labelDisabled: "⏹️ : 已停用"
   labelEnabled: "🔁 : 已啟用"
+  levelAdvanced: （進階）
+  levelEdgeCase: （邊緣情況）
+  levelPowerUser: （進階使用者）
+  linkOpenInBrowser: 在瀏覽器中開啟
+  linkPageTop: 回到頁首
+  linkTipsAndTroubleshooting: 提示與疑難排解
+  logCannotUseCloudant: 此功能無法與 IBM Cloudant 一併使用。
+  logCheckPassphraseFailed: "錯誤：無法透過遠端伺服器檢查密語：\n${db}。"
+  logCheckingConfigDone: 設定檢查完成
+  logCheckingConfigFailed: 設定檢查失敗
+  logCheckingDbConfig: 正在檢查資料庫設定
   logConfiguredDisabled: 已設定的同步模式：已停用
   logConfiguredLiveSync: 已設定的同步模式：LiveSync
   logConfiguredPeriodic: 已設定的同步模式：定期同步
+  logCouchDbConfigFail: "CouchDB 設定：${title} 失敗"
+  logCouchDbConfigSet: "CouchDB 設定：${title} -> 將 ${key} 設為 ${value}"
+  logCouchDbConfigUpdated: "CouchDB 設定：${title} 已成功更新"
+  logDatabaseConnected: 資料庫已連線
+  logEncryptionNoPassphrase: 沒有密語就無法啟用加密
+  logEncryptionNoSupport: 你的裝置不支援加密。
+  logErrorOccurred: 發生錯誤！！
+  logEstimatedSize: "預估大小：${size}"
+  logPassphraseNotCompatible: 錯誤：密語與遠端伺服器不符！請再檢查一次！
+  logRebuildNote: 同步已停用；如有需要，請先抓取再重新啟用。
   logSelectAnyPreset: 請選擇任一預設項目。
+  msgAreYouSureProceed: 你確定要繼續嗎？
+  msgChangesNeedToBeApplied: 需要套用變更！
+  msgConfigCheck: "--設定檢查--"
   msgConfigCheckFailed: 設定檢查失敗。仍要繼續嗎？
+  msgConnectionCheck: "--連線檢查--"
+  msgConnectionProxyNote: 如果連線檢查仍有問題（即使設定已經檢查過），請檢查你的反向代理設定。
+  msgCurrentOrigin: "目前來源：${origin}"
+  msgDiscardConfirmation: 你真的要捨棄現有的設定與資料庫嗎？
+  msgDone: "--完成--"
+  msgEnableCors: 設定 httpd.enable_cors
+  msgEnableCorsChttpd: 設定 chttpd.enable_cors
   msgEnableEncryptionRecommendation: 我們建議啟用端對端加密與路徑混淆。你確定要在未加密的情況下繼續嗎？
   msgFetchConfigFromRemote: 要從遠端伺服器抓取設定嗎？
   msgGenerateSetupURI: 全部完成！要產生 Setup URI 以便設定其他裝置嗎？
+  msgIfConfigNotPersistent: 如果伺服器設定並非持久保存（例如在 Docker 上執行），這裡的值可能會變動。一旦能夠連線，請更新伺服器 local.ini 中的設定。
   msgInvalidPassphrase: 你的加密密語可能無效。你確定要繼續嗎？
+  msgNotice: "---注意---"
+  msgOriginCheck: "來源檢查：${org}"
+  msgRebuildRequired: |-
+    需要重建資料庫才能套用變更。請選擇套用變更的方式。
+
+    <details>
+    <summary>圖例</summary>
+
+    | 符號 | 含意 |
+    |: ------ :| ------- |
+    | ⇔ | 已是最新 |
+    | ⇄ | 同步以取得一致 |
+    | ⇐,⇒ | 傳輸並覆寫 |
+    | ⇠,⇢ | 從另一端傳輸並覆寫 |
+
+    </details>
+
+    ## ${OPTION_REBUILD_BOTH}
+    概覽： 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
+    以此裝置上現有的檔案重建本機與遠端資料庫。
+    這會鎖定其他裝置，它們必須執行抓取。
+    ## ${OPTION_FETCH}
+    概覽： 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
+    初始化本機資料庫，並以從遠端資料庫抓取的資料重建。
+    這也涵蓋你已重建遠端資料庫的情況。
+    ## ${OPTION_ONLY_SETTING}
+    僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。
   msgSelectAndApplyPreset: 請選擇並套用任一預設項目以完成精靈。
+  msgSetCorsCredentials: 設定 cors.credentials
+  msgSetCorsOrigins: 設定 cors.origins
+  msgSetMaxDocSize: 設定 couchdb.max_document_size
+  msgSetMaxRequestSize: 設定 chttpd.max_http_request_size
+  msgSetRequireValidUser: 設定 chttpd.require_valid_user = true
+  msgSetRequireValidUserAuth: 設定 chttpd_auth.require_valid_user = true
+  msgSetWwwAuth: 設定 httpd.WWW-Authenticate
+  msgSettingModified: 設定「${setting}」已由另一台裝置修改。點選 {HERE} 可重新載入設定，點選其他位置則忽略變更。
+  nameConnectSetupURI: 使用 Setup URI 連線
+  nameCopySetupURI: 將目前設定複製為 Setup URI
   nameDisableHiddenFileSync: 停用隱藏檔案同步
+  nameDiscardSettings: 捨棄現有的設定與資料庫
   nameEnableHiddenFileSync: 啟用隱藏檔案同步
+  nameEnableLiveSync: 啟用 LiveSync
   nameHiddenFileSynchronization: 隱藏檔案同步
+  okAdminPrivileges: ✔ 你具有管理者權限。
+  okCorsCredentials: ✔ cors.credentials 設定正確。
+  okCorsCredentialsForOrigin: CORS 憑證正常
+  okCorsOriginMatched: ✔ CORS 來源正常
+  okCorsOrigins: ✔ cors.origins 設定正確。
+  okEnableCors: ✔ httpd.enable_cors 設定正確。
+  okEnableCorsChttpd: ✔ chttpd.enable_cors 設定正確。
+  okMaxDocumentSize: ✔ couchdb.max_document_size 設定正確。
+  okMaxRequestSize: ✔ chttpd.max_http_request_size 設定正確。
+  okRequireValidUser: ✔ chttpd.require_valid_user 設定正確。
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user 設定正確。
+  okWwwAuth: ✔ httpd.WWW-Authenticate 設定正確。
+  optionApply: 套用
+  optionCancel: 取消
   optionDisableAllAutomatic: 停用所有自動同步
+  optionFetchFromRemote: 從遠端抓取
+  optionHere: 這裡
   optionLiveSync: LiveSync 同步
   optionOnEvents: 事件觸發時
   optionPeriodicAndEvents: 定期與事件觸發
   optionPeriodicWithBatch: 定期（批次）
+  optionRebuildBoth: 從此裝置重建兩端
+  optionSaveOnlySettings: （危險）僅儲存設定
+  panelChangeLog: 變更紀錄
+  panelGeneralSettings: 一般設定
+  panelRemoteConfiguration: 遠端設定
+  panelSetup: 設定
+  serverVersion: "伺服器資訊：${info}"
   titleAppearance: 外觀
   titleConflictResolution: 衝突處理
   titleCongratulations: 恭喜！
@@ -174,20 +405,30 @@ obsidianLiveSyncSettingTab:
   titleDeletionPropagation: 刪除傳播
   titleEncryptionNotEnabled: 尚未啟用加密
   titleEncryptionPassphraseInvalid: 加密密語無效
+  titleExtraFeatures: 啟用額外與進階功能
   titleFetchConfig: 抓取設定
   titleHiddenFiles: 隱藏檔案
   titleLogging: 記錄
   titleMinioS3R2: MinIO、S3、R2
   titleNotification: 通知
+  titleOnlineTips: 線上提示
+  titleQuickSetup: 快速設定
+  titleRebuildRequired: 需要重建
   titleRemoteConfigCheckFailed: 遠端設定檢查失敗
   titleRemoteServer: 遠端伺服器
+  titleReset: 重設
+  titleSetupOtherDevices: 設定其他裝置
   titleSynchronizationMethod: 同步方式
   titleSynchronizationPreset: 同步預設
+  titleSyncSettings: 同步設定
   titleSyncSettingsViaMarkdown: 透過 Markdown 同步設定
   titleUpdateThinning: 更新精簡
+  warnCorsOriginUnmatched: "⚠ CORS 來源不相符 ${from}->${to}"
+  warnNoAdmin: ⚠ 你沒有管理者權限。
 Ok: 確定
 Old Algorithm: 舊演算法
 Older fallback (Slow, W/O WebAssembly): 舊版回退（較慢，無 WebAssembly）
+Open the dialog: 開啟對話框
 Overwrite patterns: 覆寫模式
 Overwrite remote: 覆寫遠端
 Overwrite remote with local DB and passphrase.: 使用本機資料庫與密語覆寫遠端。
@@ -200,7 +441,7 @@ paneMaintenance:
 Paste a connection string: 貼上連線字串
 Patterns to match files for overwriting instead of merging: 用於匹配需覆寫而非合併檔案的模式
 Patterns to match files for syncing: 用於匹配同步檔案的模式
-Peer-to-Peer Synchronisation: 點對點同步
+Peer-to-Peer Synchronisation: Peer-to-Peer 同步
 Perform: 執行
 Perform cleanup: 執行清理
 Perform Garbage Collection: 執行垃圾回收
@@ -220,6 +461,32 @@ Remote Database Tweak (In sunset): 遠端資料庫調校（即將淘汰）
 Remote Databases: 遠端資料庫
 Remote name: 遠端名稱
 Rename: 重新命名
+Replicator:
+  Dialogue:
+    Locked:
+      Action:
+        Dismiss: 取消，稍後再確認
+        Fetch: 重設此裝置上的同步
+        Unlock: 解鎖遠端資料庫
+      Message:
+        _value: |
+          遠端資料庫已鎖定，這是因為其中一台裝置執行過重建。
+          因此系統要求此裝置暫停連線，以避免資料庫損毀。
+
+          我們有三種做法：
+
+          - %{Replicator.Dialogue.Locked.Action.Fetch}
+            最建議且最可靠的方式。這會先捨棄本機資料庫，再從遠端資料庫重設所有同步資訊。多數情況下都能安全執行，但會花上一些時間，且應在網路穩定時進行。
+          - %{Replicator.Dialogue.Locked.Action.Unlock}
+            只有在已透過其他複寫方式可靠同步的情況下才能使用此方式。這不只是指雙方擁有相同的檔案。如果你不確定，請避免使用。
+          - %{Replicator.Dialogue.Locked.Action.Dismiss}
+              這會取消此操作，下次請求時會再次詢問。
+        Fetch: 已排定執行全部抓取。外掛將重新啟動以執行此作業。
+        Unlocked: 遠端資料庫已解鎖，請重試該操作。
+      Title: 已鎖定
+  Message:
+    InitialiseFatalError: 沒有可用的複寫器，這是嚴重錯誤。
+    SomeModuleFailed: 複寫因某個模組失敗而取消
 Resend: 重新傳送
 Resend all chunks to the remote.: 將所有 chunks 重新傳送到遠端。
 Reset: 重設
@@ -243,6 +510,14 @@ Select the database adapter to use.: 選擇要使用的資料庫適配器。
 Send: 傳送
 Send chunks: 傳送 chunks
 Setting:
+  TroubleShooting:
+    _value: 疑難排解
+    Doctor:
+      _value: 設定診斷
+      Desc: 偵測不理想的設定。（與遷移期間相同）
+    ScanBrokenFiles:
+      _value: 掃描損壞檔案
+      Desc: 掃描未正確儲存在資料庫中的檔案。
   GenerateKeyPair:
     Desc: |-
       我們已產生新的金鑰對！
@@ -286,8 +561,82 @@ Synchronising files: 同步中的檔案
 Syncing: 同步中
 Target patterns: 目標模式
 This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: 這會為所有檔案重新建立 chunks。若先前有遺失的 chunks，這可能修復相關錯誤。
+TweakMismatchResolve:
+  Action:
+    Dismiss: 不處理
+    UseConfigured: 採用已設定的值
+    UseMine: 更新遠端資料庫設定
+    UseMineAcceptIncompatible: 更新遠端資料庫設定，但保持現狀
+    UseMineWithRebuild: 更新遠端資料庫設定並再次重建
+    UseRemote: 將設定套用到此裝置
+    UseRemoteAcceptIncompatible: 將設定套用到此裝置，並忽略不相容之處
+    UseRemoteWithRebuild: 將設定套用到此裝置，並再次抓取
+  Message:
+    Main: |-
+
+      遠端資料庫中的設定如下。這些值由其他裝置所設定，而那些裝置至少與此裝置同步過一次。
+
+      如果你想使用這些設定，請選擇「%{TweakMismatchResolve.Action.UseConfigured}」。
+      如果你想保留此裝置的設定，請選擇「%{TweakMismatchResolve.Action.Dismiss}」。
+
+      ${table}
+
+      >[!TIP]
+      > 如果你想同步所有設定，請先用此功能套用最小設定，再使用 `Sync settings via markdown`。
+
+      ${additionalMessage}
+    MainTweakResolving: |-
+      你的設定與遠端伺服器上的設定不一致。
+
+      以下設定需要保持一致：
+
+      ${table}
+
+      請告訴我們你的決定。
+
+      ${additionalMessage}
+    mineUpdated: 此裝置的設定已調整。
+    remoteUpdated: 遠端儲存的設定已更新。
+    UseRemote:
+      WarningRebuildRecommended: |-
+
+        >[!NOTICE]
+        > 部分變更雖然相容，但可能耗用額外的儲存空間與傳輸量，建議進行重建。不過目前可能不會執行重建，未來的維護作業可能會實作。
+        > ***請確認你有足夠時間且網路連線穩定，再進行套用！***
+      WarningRebuildRequired: |-
+
+        >[!WARNING]
+        > 部分遠端設定與此裝置的本機資料庫不相容，將需要重建本機資料庫。
+        > ***請確認你有足夠時間且網路連線穩定，再進行套用！***
+    WarningIncompatibleRebuildRecommended: |-
+
+      >[!NOTICE]
+      > 我們偵測到部分值不同，會使本機資料庫與遠端資料庫不相容。
+      > 部分變更雖然相容，但可能耗用額外的儲存空間與傳輸量，建議進行重建。不過目前可能不會執行重建，未來的維護作業可能會實作。
+      > 如果你要重建，會花上數分鐘甚至更久。**請確認現在執行是安全的。**
+    WarningIncompatibleRebuildRequired: |-
+
+      >[!WARNING]
+      > 我們偵測到部分值不同，會使本機資料庫與遠端資料庫不相容。
+      > 需要重建本機或遠端其中一方，兩者都會花上數分鐘甚至更久。**請確認現在執行是安全的。**
+  Table:
+    _value: |+
+      | 設定項目 | 此裝置 | 遠端 |
+      |: --- |: ---- :|: ---- :|
+      ${rows}
+
+    Row: "| ${name} | ${self} | ${remote} |"
+  Title:
+    TweakResolving: 偵測到設定不一致
+    UseRemoteConfig: 使用遠端設定
+Ui:
+  SetupWizard:
+    Invitation:
+      Start: 開始設定
 Verify all: 全部驗證
 Verify and repair all files: 驗證並修復所有檔案
+We have to configure the device name: 我們必須先設定裝置名稱
+🗑 Delete: 🗑 刪除
 Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
   透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
 Run Doctor: 執行診斷
@@ -394,6 +743,9 @@ Setup:
     Step3: 在來源裝置上，從命令面板執行「將設定顯示為 QR 碼」命令。
     Step4: 在這台裝置上切換到相機 App，或使用 QR 碼掃描器掃描顯示出的 QR 碼。
     ButtonClose: 關閉此對話框
+  ShowQRCode:
+    _value: 顯示 QR 碼
+    Desc: 顯示 QR 碼以傳遞設定。
 "Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": 若要使用垃圾回收，請在設定中啟用「Compute revisions for chunks」。
 "Please disable 'Read chunks online' in settings to use Garbage Collection.": 若要使用垃圾回收，請在設定中停用「Read chunks online」。
 "Setup URI dialog cancelled.": Setup URI 對話框已取消。

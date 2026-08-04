@@ -234,6 +234,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "🗑 Delete",
         es: "🗑 Eliminar",
         ko: "🗑 삭제",
+        "zh-tw": "🗑 刪除",
     },
     "🟢 Connected": {
         def: "🟢 Connected",
@@ -610,7 +611,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "버킷 이름",
         ru: "Имя бакета",
         zh: "存储桶名称",
-        "zh-tw": "儲存桶名稱",
+        "zh-tw": "儲存庫名稱",
     },
     "by resetting the remote, you will be informed on other devices.": {
         def: "by resetting the remote, you will be informed on other devices.",
@@ -1219,6 +1220,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Delete remote configuration '${name}'?",
         es: "¿Eliminar la configuración remota «${name}»?",
         ko: "'${name}' 원격 구성을 삭제할까요?",
+        "zh-tw": "要刪除遠端設定「${name}」嗎？",
     },
     DENIED: {
         def: "DENIED",
@@ -2819,6 +2821,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "실험 기능",
         ru: "Экспериментальная",
         zh: "实验性",
+        "zh-tw": "實驗性",
     },
     "K.long_p2p_sync": {
         def: "Peer-to-Peer Sync",
@@ -2829,6 +2832,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어(P2P) 동기화 (실험 기능)",
         ru: "title_p2p_sync",
         zh: "Peer-to-Peer同步 (实验性)",
+        "zh-tw": "Peer-to-Peer 同步",
     },
     "K.P2P": {
         def: "Peer-to-Peer",
@@ -2839,6 +2843,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어-to-피어",
         ru: "Peer-к-Peer",
         zh: "Peer-to-Peer",
+        "zh-tw": "Peer-to-Peer",
     },
     "K.Peer": {
         def: "Peer",
@@ -2849,6 +2854,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어",
         ru: "Устройство",
         zh: "Peer",
+        "zh-tw": "Peer",
     },
     "K.ScanCustomization": {
         def: "Scan customization",
@@ -2859,6 +2865,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자 설정 검색",
         ru: "Scan customization",
         zh: "扫描自定义",
+        "zh-tw": "掃描自訂項目",
     },
     "K.short_p2p_sync": {
         def: "P2P Sync",
@@ -2869,6 +2876,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "P2P 동기화",
         ru: "P2P Синхр.",
         zh: "P2P同步(实验性)",
+        "zh-tw": "P2P 同步",
     },
     "K.title_p2p_sync": {
         def: "Peer-to-Peer Sync",
@@ -2879,6 +2887,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어(P2P) 동기화",
         ru: "Синхронизация между устройствами",
         zh: "Peer-to-Peer同步",
+        "zh-tw": "Peer-to-Peer 同步",
     },
     "Keep empty folder": {
         def: "Keep empty folder",
@@ -3254,6 +3263,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "해당 설정 항목이 없습니다: ${key}",
         ru: "Такого параметра настройки не существует: key",
         zh: "没有此设置项：${key}",
+        "zh-tw": "沒有這個設定項目：${key}",
     },
     "liveSyncSetting.originalValue": {
         def: "Original: ${value}",
@@ -3264,6 +3274,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원본: ${value}",
         ru: "Оригинал: value",
         zh: "原始值：${value}",
+        "zh-tw": "原始值：${value}",
     },
     "liveSyncSetting.valueShouldBeInRange": {
         def: "The value should ${min} < value < ${max}",
@@ -3274,6 +3285,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "값은 ${min} < 값 < ${max} 범위에 있어야 합니다",
         ru: "Значение должно быть min < значение < max",
         zh: "值应该在 ${min} < value < ${max} 之间",
+        "zh-tw": "值應介於 ${min} < value < ${max}",
     },
     "liveSyncSettings.btnApply": {
         def: "Apply",
@@ -3284,6 +3296,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용",
         ru: "Применить",
         zh: "应用",
+        "zh-tw": "套用",
     },
     "Local Database Tweak": {
         def: "Local Database Tweak",
@@ -3363,6 +3376,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Self-hosted LiveSync 로그",
         ru: "Лог Self-hosted LiveSync",
         zh: "Self-hosted LiveSync 日志",
+        "zh-tw": "Self-hosted LiveSync 日誌",
     },
     "logPane.wrap": {
         def: "Wrap",
@@ -3639,6 +3653,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${newMax}MB로 증가",
         ru: "увеличить до newMaxМБ",
         zh: "增加到 ${newMax}MB",
+        "zh-tw": "提高到 ${newMax}MB",
     },
     "moduleCheckRemoteSize.optionNoWarn": {
         def: "No, never warn please",
@@ -3694,6 +3709,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "확인",
         ru: "Подтверждение",
         zh: "确认",
+        "zh-tw": "確認",
     },
     "moduleInputUIObsidian.defaultTitleSelect": {
         def: "Select",
@@ -3704,6 +3720,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "선택",
         ru: "Выбор",
         zh: "选择",
+        "zh-tw": "選擇",
     },
     "moduleInputUIObsidian.optionNo": {
         def: "No",
@@ -3714,6 +3731,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요",
         ru: "Нет",
         zh: "否",
+        "zh-tw": "否",
     },
     "moduleInputUIObsidian.optionYes": {
         def: "Yes",
@@ -3724,6 +3742,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예",
         ru: "Да",
         zh: "是",
+        "zh-tw": "是",
     },
     "moduleLiveSyncMain.logAdditionalSafetyScan": {
         def: "Additional safety scan...",
@@ -3734,6 +3753,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "추가 안전 검사 중...",
         ru: "Дополнительная проверка безопасности...",
         zh: "额外的安全扫描...",
+        "zh-tw": "額外的安全掃描...",
     },
     "moduleLiveSyncMain.logLoadingPlugin": {
         def: "Loading plugin...",
@@ -3744,6 +3764,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "플러그인 로딩 중...",
         ru: "Загрузка плагина...",
         zh: "正在加载插件...",
+        "zh-tw": "正在載入外掛...",
     },
     "moduleLiveSyncMain.logPluginInitCancelled": {
         def: "Plugin initialisation was cancelled by a module",
@@ -3754,6 +3775,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모듈에 의해 플러그인 초기화가 취소되었습니다",
         ru: "Инициализация плагина отменена модулем",
         zh: "插件初始化被某个模块取消",
+        "zh-tw": "外掛初始化被某個模組取消",
     },
     "moduleLiveSyncMain.logPluginVersion": {
         def: "Self-hosted LiveSync v${manifestVersion} ${packageVersion}",
@@ -3784,6 +3806,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "추가 안전 검사가 완료되었습니다",
         ru: "Дополнительная проверка безопасности завершена",
         zh: "额外的安全扫描完成",
+        "zh-tw": "額外的安全掃描已完成",
     },
     "moduleLiveSyncMain.logSafetyScanFailed": {
         def: "Additional safety scan has failed on a module",
@@ -3794,6 +3817,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모듈에서 추가 안전 검사가 실패했습니다",
         ru: "Дополнительная проверка безопасности не удалась в модуле",
         zh: "额外的安全扫描在某个模块上失败",
+        "zh-tw": "額外的安全掃描在某個模組上失敗",
     },
     "moduleLiveSyncMain.logUnloadingPlugin": {
         def: "Unloading plugin...",
@@ -3804,6 +3828,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "플러그인 언로딩 중...",
         ru: "Выгрузка плагина...",
         zh: "正在卸载插件...",
+        "zh-tw": "正在卸載外掛...",
     },
     "moduleLiveSyncMain.logVersionUpdate": {
         def: "LiveSync has been updated, In case of breaking updates, all automatic synchronization has been temporarily disabled. Ensure that all devices are up to date before enabling.",
@@ -3824,6 +3849,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Self-hosted LiveSync가 일부 이벤트를 무시하도록 설정되어 있습니다. 이 설정이 맞습니까?\n\n| 유형 | 상태 | 설명 |\n|:---:|:---:|---|\n| 스토리지 이벤트 | ${fileWatchingStatus} | 모든 수정 사항이 무시됩니다 |\n| 데이터베이스 이벤트 | ${parseReplicationStatus} | 모든 동기화 변경이 지연됩니다 |\n\n이벤트 감지를 다시 활성화하고 Obsidian을 재시작하시겠습니까?\n\n> [!DETAILS]-\n> 이 플래그는 플러그인이 재구축하거나 가져오는 동안 설정한 것입니다. 처리가 비정상적으로 종료되면 의도치 않게 남아 있을 수 있습니다.\n> 확실하지 않다면 해당 처리를 다시 실행해 보세요. 반드시 보관함을 백업해 두시기 바랍니다.\n",
         ru: "Self-hosted LiveSync has been configured to ignore some events. Is this correct?\n\n| Type | Status | Note |\n|:---:|:---:|---|\n| Storage Events | ${fileWatchingStatus} | Every modification will be ignored |\n| Database Events | ${parseReplicationStatus} | Every synchronised change will be postponed |\n\nDo you want to resume them and restart Obsidian?\n\n> [!DETAILS]-\n> These flags are set by the plug-in while rebuilding, or fetching. If the process ends abnormally, it may be kept unintended.\n> If you are not sure, you can try to rerun these processes. Make sure to back your vault up.\n",
         zh: "Self-hosted LiveSync 已被配置为忽略某些事件。这样对吗？\n\n| 类型 | 状态 | 说明 |\n|:---:|:---:|---|\n| 存储事件 | ${fileWatchingStatus} | 所有修改都将被忽略 |\n| 数据库事件 | ${parseReplicationStatus} | 所有同步的更改都将被推迟 |\n\n您想恢复它们并重启 Obsidian 吗？\n\n> [!DETAILS]-\n> 这些标志是在重建或获取时由插件设置的。如果过程异常结束,它们可能会被无意中保留。\n> 如果您不确定,可以尝试重新运行这些过程。请确保备份您的库。\n",
+        "zh-tw":
+            "Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？\n\n| 類型 | 狀態 | 說明 |\n|:---:|:---:|---|\n| 儲存空間事件 | ${fileWatchingStatus} | 所有修改都會被忽略 |\n| 資料庫事件 | ${parseReplicationStatus} | 所有已同步的變更都會被延後 |\n\n你想要恢復它們並重新啟動 Obsidian 嗎？\n\n> [!DETAILS]-\n> 這些標記是外掛在重建或抓取時設定的。如果程序異常結束，可能會非預期地留存下來。\n> 如果你不確定，可以嘗試重新執行這些程序。請務必先備份你的 Vault。\n",
     },
     "moduleLiveSyncMain.optionKeepLiveSyncDisabled": {
         def: "Keep LiveSync disabled",
@@ -3834,6 +3861,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync 비활성화 유지",
         ru: "Оставить LiveSync отключённым",
         zh: "保持 LiveSync 禁用",
+        "zh-tw": "保持 LiveSync 停用",
     },
     "moduleLiveSyncMain.optionResumeAndRestart": {
         def: "Resume and restart Obsidian",
@@ -3844,6 +3872,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "재개 후 Obsidian 재시작",
         ru: "Продолжить и перезапустить Obsidian",
         zh: "恢复并重启 Obsidian",
+        "zh-tw": "恢復並重新啟動 Obsidian",
     },
     "moduleLiveSyncMain.titleScramEnabled": {
         def: "Scram Enabled",
@@ -3854,6 +3883,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "긴급 정지 활성화됨",
         ru: "Экстренная остановка включена",
         zh: "紧急停止已启用",
+        "zh-tw": "已啟用緊急處置",
     },
     "moduleLocalDatabase.logWaitingForReady": {
         def: "Waiting for ready...",
@@ -3874,6 +3904,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "로그 표시",
         ru: "Показать лог",
         zh: "显示日志",
+        "zh-tw": "顯示日誌",
     },
     "moduleMigration.docUri": {
         def: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
@@ -3894,6 +3925,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "나중에 확인",
         ru: "Проверить позже",
         zh: "稍后检查",
+        "zh-tw": "稍後再檢查",
     },
     "moduleMigration.fix0256.buttons.DismissForever": {
         def: "I have fixed it, and do not ask again",
@@ -3904,6 +3936,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이미 해결했으니 다시 묻지 않기",
         ru: "Исправлено, больше не спрашивать",
         zh: "我已经修复了，不再询问",
+        "zh-tw": "我已修正，不要再詢問",
     },
     "moduleMigration.fix0256.buttons.fix": {
         def: "Fix",
@@ -3914,6 +3947,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "수정",
         ru: "Исправить",
         zh: "修复",
+        "zh-tw": "修正",
     },
     "moduleMigration.fix0256.message": {
         def: 'Due to a recent bug (in v0.25.6), some files may not have been saved correctly in the sync database.\nWe have scanned our files and found some that need to be fixed.\n\n**Files ready to be fixed:**\n\n${files}\n\nThese files have size-matched original file on the storage, and are likely to be recoverable.\nWe can use them to fix the database, please click the "Fix" button below to fix them.\n\n${messageUnrecoverable}\n\nIf you want to run it again, you can do so from Hatch.\n',
@@ -3924,6 +3958,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: '최근 버그(v0.25.6)로 인해 일부 파일이 동기화 데이터베이스에 올바르게 저장되지 않았을 수 있습니다.\n파일을 검사한 결과 수정이 필요한 파일을 발견했습니다.\n\n**수정할 수 있는 파일:**\n\n${files}\n\n이 파일들은 스토리지에 크기가 일치하는 원본이 있어 복구할 수 있을 것으로 보입니다.\n이를 이용해 데이터베이스를 고칠 수 있으니, 아래 "수정" 버튼을 눌러 주세요.\n\n${messageUnrecoverable}\n\n다시 실행하려면 Hatch에서 실행할 수 있습니다.\n',
         ru: "Из-за недавней ошибки некоторые файлы могут быть неправильно сохранены.",
         zh: "由于最近的一个 bug（在 v0.25.6 版本中），某些文件可能未正确保存到同步数据库中\n我们已经扫描了文件，并发现一些需要修复的文件\n\n**准备修复的文件:**\n\n${files}\n\n这些文件在存储中与原文件的大小匹配，可能是可恢复的\n我们可以使用它们修复数据库，请点击下方的“修复”按钮进行修复\n\n${messageUnrecoverable}\n\n\n如果你希望再次执行此操作，可以前往 Hatch 页面进行操作\n",
+        "zh-tw":
+            "由於近期的一個問題（存在於 v0.25.6），部分檔案可能未正確儲存到同步資料庫中。\n我們已掃描你的檔案，並找出一些需要修正的項目。\n\n**可以修正的檔案：**\n\n${files}\n\n這些檔案在儲存空間中有大小相符的原始檔案，很可能可以復原。\n我們可以用它們修正資料庫，請點選下方的「修正」按鈕進行修正。\n\n${messageUnrecoverable}\n\n如果你想再次執行，可以從 Hatch 頁面操作。\n",
     },
     "moduleMigration.fix0256.messageUnrecoverable": {
         def: "**Files cannot be fixed on this device:**\n\n${filesNotRecoverable}\n\nThese files have inconsistent metadata, and cannot be fixed on this device (mostly we cannot determine which is correct).\nTo restore them, please check your other devices (also by this feature) or restore them manually from a backup.\n",
@@ -3934,6 +3970,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "**이 기기에서는 수정할 수 없는 파일:**\n\n${filesNotRecoverable}\n\n이 파일들은 메타데이터가 일치하지 않아 이 기기에서는 수정할 수 없습니다(대부분 어느 쪽이 올바른지 판단할 수 없습니다).\n복원하려면 다른 기기에서 이 기능으로 확인해 보시거나, 백업에서 직접 복원해 주세요.\n",
         ru: "Файлы не могут быть исправлены на этом устройстве:",
         zh: "**无法在此设备上修复的文件:**\n\n${filesNotRecoverable}\n\n这些文件的元数据不一致，无法在此设备上修复（大多数情况下我们无法确定哪一个是正确的）\n要恢复它们，请检查你的其他设备（同样使用此功能），或从备份中手动恢复\n",
+        "zh-tw":
+            "**無法在此裝置上修正的檔案：**\n\n${filesNotRecoverable}\n\n這些檔案的中繼資料不一致，無法在此裝置上修正（多數情況下我們無法判斷哪一份才正確）。\n若要復原它們，請檢查你的其他裝置（同樣使用此功能），或從備份手動復原。\n",
     },
     "moduleMigration.fix0256.title": {
         def: "Broken files has been detected",
@@ -3944,6 +3982,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "손상된 파일이 감지되었습니다",
         ru: "Обнаружены повреждённые файлы",
         zh: "检测到损坏的文件",
+        "zh-tw": "已偵測到損壞的檔案",
     },
     "moduleMigration.insecureChunkExist.buttons.fetch": {
         def: "I already rebuilt the remote. Fetch from the remote",
@@ -3954,6 +3993,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격을 이미 재구축했습니다. 원격에서 가져오기",
         ru: "Я уже перестроил удалённую. Загрузить с удалённой",
         zh: "我已经重建了远程数据库，将从远程获取",
+        "zh-tw": "我已重建遠端，從遠端抓取",
     },
     "moduleMigration.insecureChunkExist.buttons.later": {
         def: "I will do it later",
@@ -3964,6 +4004,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "나중에 하기",
         ru: "Сделаю позже",
         zh: "我稍后再做",
+        "zh-tw": "我稍後再處理",
     },
     "moduleMigration.insecureChunkExist.buttons.rebuild": {
         def: "Rebuild Everything",
@@ -3974,6 +4015,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모두 재구축",
         ru: "Перестроить всё",
         zh: "重建所有内容",
+        "zh-tw": "重建全部",
     },
     "moduleMigration.insecureChunkExist.laterMessage": {
         def: "We strongly recommend to treat this as soon as possible!",
@@ -3984,6 +4026,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가능한 한 빨리 조치하시기를 강력히 권장합니다!",
         ru: "Мы настоятельно рекомендуем обработать это как можно скорее!",
         zh: "我们强烈建议尽快处理此问题！",
+        "zh-tw": "我們強烈建議盡快處理此問題！",
     },
     "moduleMigration.insecureChunkExist.message": {
         def: "Some chunks are not securely stored and are not encrypted in databases.\n**Please rebuild the database to fix this issue**.\n\nIf your Remote Database is not configured with SSL, or using less-secure credentials, **you are at risk of exposing sensitive data**.\n\nNote: Please upgrade your Self-hosted LiveSync v0.25.6 or higher on all your devices, and back your vault up surely.\nNote2: Rebuild Everything and Fetch consumes a bit of time and traffic, please do it in off-peak hours and ensure a stable network connection.\n",
@@ -3994,6 +4037,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일부 청크가 데이터베이스에 안전하게 저장되지 않았으며 암호화되어 있지 않습니다.\n**이 문제를 해결하려면 데이터베이스를 재구축해 주세요.**\n\n원격 데이터베이스에 SSL이 설정되어 있지 않거나 보안이 취약한 자격 증명을 사용하고 있다면, **민감한 데이터가 노출될 위험이 있습니다.**\n\n참고: 모든 기기의 Self-hosted LiveSync를 v0.25.6 이상으로 업그레이드하고, 보관함을 반드시 백업해 주세요.\n참고 2: 모두 재구축과 가져오기는 시간과 트래픽을 다소 소모하므로, 사용량이 적은 시간대에 안정적인 네트워크 환경에서 진행해 주세요.\n",
         ru: "Некоторые чанки хранятся небезопасно. Пожалуйста, перестройте базу данных.",
         zh: "一些块未安全存储，并且在数据库中未加密\n**请重建数据库以修复此问题**.\n\n如果你的远程数据库未配置 SSL，或者使用了不安全的凭据 **你可能面临暴露敏感数据的风险**.\n\n注意：请在所有设备上将 Self-hosted LiveSync 升级到 v0.25.6 或更高版本，并确保备份你的保险库\n\n注意2：重建所有内容和获取操作会消耗一些时间和流量，请在非高峰时段进行，并确保网络连接稳定\n",
+        "zh-tw":
+            "部分 chunks 未安全儲存，在資料庫中也未加密。\n**請重建資料庫以修正此問題**。\n\n如果你的遠端資料庫未設定 SSL，或使用了安全性較低的憑證，**敏感資料就有外洩風險**。\n\n注意：請將所有裝置上的 Self-hosted LiveSync 升級到 v0.25.6 或更新版本，並確實備份你的 Vault。\n注意 2：重建全部與抓取會耗用一些時間與流量，請在離峰時段進行，並確保網路連線穩定。\n",
     },
     "moduleMigration.insecureChunkExist.title": {
         def: "Insecure chunks found!",
@@ -4004,6 +4049,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "안전하지 않은 청크가 발견되었습니다!",
         ru: "Обнаружены небезопасные чанки!",
         zh: "发现不安全的块！",
+        "zh-tw": "發現不安全的 chunks！",
     },
     "moduleMigration.logBulkSendCorrupted": {
         def: "Send chunks in bulk has been enabled, however, this feature had been corrupted. Sorry for your inconvenience. Automatically disabled.",
@@ -4014,6 +4060,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "청크 일괄 전송이 활성화되었지만, 이 기능에 문제가 있었습니다. 불편을 드려 죄송합니다. 자동으로 비활성화되었습니다.",
         ru: "Отправка чанков пакетами была включена, но эта функция была повреждена. Приносим извинения. Автоматически отключено.",
         zh: "已启用批量发送 chunks,但此功能已损坏。给您带来不便,我们深表歉意。已自动禁用",
+        "zh-tw": "已啟用批次傳送 chunks，但此功能已損壞。造成不便，敬請見諒。已自動停用。",
     },
     "moduleMigration.logFetchRemoteTweakFailed": {
         def: "Failed to fetch remote tweak values",
@@ -4034,6 +4081,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문제가 발생했습니다! 로컬 데이터베이스가 준비되지 않았습니다",
         ru: "Что-то пошло не так! Локальная база данных не готова",
         zh: "出错了！本地数据库尚未准备好",
+        "zh-tw": "發生問題！本機資料庫尚未就緒",
     },
     "moduleMigration.logMigratedSameBehaviour": {
         def: "Migrated to db:${current} with the same behaviour as before",
@@ -4104,6 +4152,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기는 **아직 초기 설정이 완료되지 않았습니다**. 지금부터 설정 과정을 안내해 드리겠습니다.\n\n모든 대화 내용은 클립보드에 복사할 수 있습니다. 나중에 참고하려면 Obsidian 노트에 붙여넣거나 번역 도구를 활용해 번역하셔도 됩니다.\n\n먼저, **Setup URI**를 가지고 계신가요?\n\n참고: Setup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요.",
         ru: "Ваше устройство ещё не настроено. У вас есть Setup URI?",
         zh: "您的设备**尚未设置**。让我引导您完成设置过程。\n\n请记住,每个对话框内容都可以复制到剪贴板。如果以后需要参考,可以将其粘贴到 Obsidian 的笔记中。您也可以使用翻译工具将其翻译成您的语言。\n\n首先,您有**设置 URI** 吗？\n\n注意:如果您不知道这是什么,请参阅[文档](${URI_DOC})",
+        "zh-tw":
+            "你的裝置**尚未完成設定**。讓我引導你完成設定流程。\n\n請記得，每個對話框的內容都可以複製到剪貼簿。如果日後需要參考，可以貼到 Obsidian 的筆記中，也可以用翻譯工具翻成你的語言。\n\n首先，你有 **Setup URI** 嗎？\n\n注意：如果你不知道那是什麼，請參閱[說明文件](${URI_DOC})。",
     },
     "moduleMigration.msgRecommendSetupUri": {
         def: "We strongly recommend that you generate a set-up URI and use it.\nIf you do not have knowledge about it, please refer to the [documentation](${URI_DOC}) (Sorry again, but it is important).\n\nHow do you want to set it up manually?",
@@ -4114,6 +4164,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Setup URI를 생성해 사용하는 것을 강력히 권장합니다.\nSetup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요. 중요한 내용이니 꼭 확인하시기 바랍니다.\n\n직접 수동 설정을 진행하시겠습니까?",
         ru: "Мы рекомендуем сгенерировать Setup URI.",
         zh: "我们强烈建议您生成一个设置 URI 并使用它。\n如果您对此不了解,请参阅[文档](${URI_DOC})(再次抱歉,但这很重要)。\n\n您想如何手动设置?",
+        "zh-tw":
+            "我們強烈建議你產生 Setup URI 並使用它。\n如果你對此不熟悉，請參閱[說明文件](${URI_DOC})（再次抱歉，但這很重要）。\n\n你想要如何手動設定？",
     },
     "moduleMigration.msgSinceV02321": {
         def: "Since v0.23.21, the self-hosted LiveSync has changed the default behaviour and database structure. The following changes have been made:\n\n1. **Case sensitivity of filenames**\n   The handling of filenames is now case-insensitive. This is a beneficial change for most platforms, other than Linux and iOS, which do not manage filename case sensitivity effectively.\n   (On These, a warning will be displayed for files with the same name but different cases).\n\n2. **Revision handling of the chunks**\n   Chunks are immutable, which allows their revisions to be fixed. This change will enhance the performance of file saving.\n\n___However, to enable either of these changes, both remote and local databases need to be rebuilt. This process takes a few minutes, and we recommend doing it when you have ample time.___\n\n- If you wish to maintain the previous behaviour, you can skip this process by using `${KEEP}`.\n- If you do not have enough time, please choose `${DISMISS}`. You will be prompted again later.\n- If you have rebuilt the database on another device, please select `${DISMISS}` and try synchronizing again. Since a difference has been detected, you will be prompted again.",
@@ -4184,6 +4236,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예, 있습니다",
         ru: "Да, есть",
         zh: "是的,我有",
+        "zh-tw": "有，我有",
     },
     "moduleMigration.optionKeepPreviousBehaviour": {
         def: "Keep previous behaviour",
@@ -4204,6 +4257,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 것을 수동으로 설정",
         ru: "Настроить всё вручную",
         zh: "全部手动设置",
+        "zh-tw": "全部手動設定",
     },
     "moduleMigration.optionNoAskAgain": {
         def: "No, please ask again",
@@ -4224,6 +4278,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요, 없습니다",
         ru: "Нет, нет",
         zh: "不,我没有",
+        "zh-tw": "沒有，我沒有",
     },
     "moduleMigration.optionRemindNextLaunch": {
         def: "Remind me at the next launch",
@@ -4234,6 +4289,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "다음 시작 시 알림",
         ru: "Напомнить при следующем запуске",
         zh: "下次启动时提醒我",
+        "zh-tw": "下次啟動時提醒我",
     },
     "moduleMigration.optionSetupViaP2P": {
         def: "Use P2P Sync to set up",
@@ -4244,6 +4300,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "P2P 동기화를 사용하여 설정",
         ru: "Использовать short_p2p_sync для настройки",
         zh: "Use P2P同步(实验性) to set up",
+        "zh-tw": "使用「P2P 同步」進行設定",
     },
     "moduleMigration.optionSetupWizard": {
         def: "Take me into the setup wizard",
@@ -4254,6 +4311,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정 마법사로 안내",
         ru: "Перейти в мастер настройки",
         zh: "带我进入设置向导",
+        "zh-tw": "帶我進入設定精靈",
     },
     "moduleMigration.optionYesFetchAgain": {
         def: "Yes, fetch again",
@@ -4284,6 +4342,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Setup URI 사용 권장",
         ru: "Рекомендация использовать Setup URI",
         zh: "推荐使用设置 URI",
+        "zh-tw": "建議使用 Setup URI",
     },
     "moduleMigration.titleWelcome": {
         def: "Welcome to Self-hosted LiveSync",
@@ -4294,6 +4353,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Self-hosted LiveSync에 오신 것을 환영합니다",
         ru: "Добро пожаловать в Self-hosted LiveSync",
         zh: "欢迎使用 Self-hosted LiveSync",
+        "zh-tw": "歡迎使用 Self-hosted LiveSync",
     },
     "moduleObsidianMenu.replicate": {
         def: "Replicate",
@@ -4304,6 +4364,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "복제",
         ru: "Реплицировать",
         zh: "复制",
+        "zh-tw": "複寫",
     },
     "More actions": {
         def: "More actions",
@@ -4597,6 +4658,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "복사",
         ru: "Копировать",
         zh: "复制",
+        "zh-tw": "複製",
     },
     "obsidianLiveSyncSettingTab.btnDisable": {
         def: "Disable",
@@ -4618,6 +4680,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "폐기",
         ru: "Отменить",
         zh: "丢弃",
+        "zh-tw": "捨棄",
     },
     "obsidianLiveSyncSettingTab.btnEnable": {
         def: "Enable",
@@ -4628,6 +4691,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "활성화",
         ru: "Включить",
         zh: "启用",
+        "zh-tw": "啟用",
     },
     "obsidianLiveSyncSettingTab.btnFix": {
         def: "Fix",
@@ -4638,6 +4702,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "수정",
         ru: "Исправить",
         zh: "修复",
+        "zh-tw": "修正",
     },
     "obsidianLiveSyncSettingTab.btnGotItAndUpdated": {
         def: "I got it and updated.",
@@ -4689,6 +4754,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용",
         ru: "Использовать",
         zh: "使用",
+        "zh-tw": "使用",
     },
     "obsidianLiveSyncSettingTab.buttonFetch": {
         def: "Fetch",
@@ -4731,6 +4797,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이것은 Setup URI로 Self-hosted LiveSync를 설정하는 권장 방법입니다.",
         ru: "Это рекомендуемый способ настройки Self-hosted LiveSync с помощью Setup URI.",
         zh: "这是使用设置 URI 设置 Self-hosted LiveSync 的推荐方法",
+        "zh-tw": "這是使用 Setup URI 設定 Self-hosted LiveSync 的建議方式。",
     },
     "obsidianLiveSyncSettingTab.descCopySetupURI": {
         def: "Perfect for setting up a new device!",
@@ -4741,6 +4808,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "새 기기 설정에 완벽합니다!",
         ru: "Идеально подходит для настройки нового устройства!",
         zh: "非常适合设置新设备！",
+        "zh-tw": "設定新裝置時非常方便！",
     },
     "obsidianLiveSyncSettingTab.descEnableLiveSync": {
         def: "Only enable this after configuring either of the above two options or completing all configuration manually.",
@@ -4751,6 +4819,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "위의 두 옵션 중 하나를 구성하거나 모든 구성을 수동으로 완료한 후에만 활성화하세요.",
         ru: "Включайте это только после настройки одного из двух вариантов выше или после полного ручного завершения всей конфигурации.",
         zh: "仅在配置了上述两个选项之一或手动完成所有配置后启用此选项",
+        "zh-tw": "請先完成上述兩個選項之一，或手動完成所有設定，再啟用此選項。",
     },
     "obsidianLiveSyncSettingTab.descFetchConfigFromRemote": {
         def: "Fetch necessary settings from already configured remote server.",
@@ -4801,6 +4870,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ 액세스가 금지되었습니다.",
         ru: "❗ Доступ запрещён.",
         zh: "❗ 访问被禁止",
+        "zh-tw": "❗ 存取被拒。",
     },
     "obsidianLiveSyncSettingTab.errCannotContinueTest": {
         def: "We could not continue the test.",
@@ -4811,6 +4881,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "테스트를 계속할 수 없습니다.",
         ru: "Мы не можем продолжить тест.",
         zh: "我们无法继续测试。",
+        "zh-tw": "無法繼續進行測試。",
     },
     "obsidianLiveSyncSettingTab.errCorsCredentials": {
         def: "❗ cors.credentials is wrong",
@@ -4821,6 +4892,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ cors.credentials가 잘못되었습니다",
         ru: "❗ cors.credentials неверно",
         zh: "❗ cors.credentials 设置错误",
+        "zh-tw": "❗ cors.credentials 設定錯誤",
     },
     "obsidianLiveSyncSettingTab.errCorsNotAllowingCredentials": {
         def: "❗ CORS is not allowing credentials",
@@ -4831,6 +4903,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ CORS에서 자격 증명을 허용하지 않습니다",
         ru: "❗ CORS не разрешает учётные данные",
         zh: "❗ CORS 不允许凭据",
+        "zh-tw": "❗ CORS 不允許憑證",
     },
     "obsidianLiveSyncSettingTab.errCorsOrigins": {
         def: "❗ cors.origins is wrong",
@@ -4841,6 +4914,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ cors.origins가 잘못되었습니다",
         ru: "❗ cors.origins неверно",
         zh: "❗ cors.origins 设置错误",
+        "zh-tw": "❗ cors.origins 設定錯誤",
     },
     "obsidianLiveSyncSettingTab.errEnableCors": {
         def: "❗ httpd.enable_cors is wrong",
@@ -4851,6 +4925,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ httpd.enable_cors가 잘못되었습니다",
         ru: "❗ httpd.enable_cors неверно",
         zh: "❗ httpd.enable_cors 设置错误",
+        "zh-tw": "❗ httpd.enable_cors 設定錯誤",
     },
     "obsidianLiveSyncSettingTab.errEnableCorsChttpd": {
         def: "❗ chttpd.enable_cors is wrong",
@@ -4861,6 +4936,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ chttpd.enable_cors가 잘못되었습니다",
         ru: "❗ chttpd.enable_cors неверно",
         zh: "❗ chttpd.enable_cors 设置错误",
+        "zh-tw": "❗ chttpd.enable_cors 設定錯誤",
     },
     "obsidianLiveSyncSettingTab.errMaxDocumentSize": {
         def: "❗ couchdb.max_document_size is low)",
@@ -4871,6 +4947,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ couchdb.max_document_size가 낮습니다)",
         ru: "❗ couchdb.max_document_size низкое",
         zh: "❗ couchdb.max_document_size 设置过低)",
+        "zh-tw": "❗ couchdb.max_document_size 設定過低)",
     },
     "obsidianLiveSyncSettingTab.errMaxRequestSize": {
         def: "❗ chttpd.max_http_request_size is low)",
@@ -4881,6 +4958,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ chttpd.max_http_request_size가 낮습니다)",
         ru: "❗ chttpd.max_http_request_size низкое",
         zh: "❗ chttpd.max_http_request_size 设置过低)",
+        "zh-tw": "❗ chttpd.max_http_request_size 設定過低)",
     },
     "obsidianLiveSyncSettingTab.errMissingWwwAuth": {
         def: "❗ httpd.WWW-Authenticate is missing",
@@ -4891,6 +4969,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ httpd.WWW-Authenticate가 누락되었습니다",
         ru: "❗ httpd.WWW-Authenticate отсутствует",
         zh: "❗ 缺少 httpd.WWW-Authenticate 设置",
+        "zh-tw": "❗ 缺少 httpd.WWW-Authenticate 設定",
     },
     "obsidianLiveSyncSettingTab.errRequireValidUser": {
         def: "❗ chttpd.require_valid_user is wrong.",
@@ -4901,6 +4980,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ chttpd.require_valid_user가 잘못되었습니다.",
         ru: "❗ chttpd.require_valid_user неверно.",
         zh: "❗ chttpd.require_valid_user 设置错误",
+        "zh-tw": "❗ chttpd.require_valid_user 設定錯誤。",
     },
     "obsidianLiveSyncSettingTab.errRequireValidUserAuth": {
         def: "❗ chttpd_auth.require_valid_user is wrong.",
@@ -4911,6 +4991,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ chttpd_auth.require_valid_user가 잘못되었습니다.",
         ru: "❗ chttpd_auth.require_valid_user неверно.",
         zh: "❗ chttpd_auth.require_valid_user 设置错误",
+        "zh-tw": "❗ chttpd_auth.require_valid_user 設定錯誤。",
     },
     "obsidianLiveSyncSettingTab.labelDisabled": {
         def: "⏹️ : Disabled",
@@ -4943,6 +5024,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: " (고급)",
         ru: " (Расширенные)",
         zh: "(进阶)",
+        "zh-tw": "（進階）",
     },
     "obsidianLiveSyncSettingTab.levelEdgeCase": {
         def: " (Edge Case)",
@@ -4953,6 +5035,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: " (특수 사례)",
         ru: " (Граничные случаи)",
         zh: "(边缘情况)",
+        "zh-tw": "（邊緣情況）",
     },
     "obsidianLiveSyncSettingTab.levelPowerUser": {
         def: " (Power User)",
@@ -4963,6 +5046,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: " (파워 유저)",
         ru: " (Опытный пользователь)",
         zh: "(高级用户)",
+        "zh-tw": "（進階使用者）",
     },
     "obsidianLiveSyncSettingTab.linkOpenInBrowser": {
         def: "Open in browser",
@@ -4973,6 +5057,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "브라우저에서 열기",
         ru: "Открыть в браузере",
         zh: "在浏览器中打开",
+        "zh-tw": "在瀏覽器中開啟",
     },
     "obsidianLiveSyncSettingTab.linkPageTop": {
         def: "Page Top",
@@ -4983,6 +5068,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "페이지 상단",
         ru: "В начало страницы",
         zh: "页面顶部",
+        "zh-tw": "回到頁首",
     },
     "obsidianLiveSyncSettingTab.linkTipsAndTroubleshooting": {
         def: "Tips and Troubleshooting",
@@ -4993,6 +5079,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "팁 및 문제 해결",
         ru: "Советы и устранение неполадок",
         zh: "提示和故障排除",
+        "zh-tw": "提示與疑難排解",
     },
     "obsidianLiveSyncSettingTab.linkTroubleshooting": {
         def: "/docs/troubleshooting.md",
@@ -5013,6 +5100,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기능은 IBM Cloudant와 함께 사용할 수 없습니다.",
         ru: "Эта функция недоступна для IBM Cloudant.",
         zh: "此功能不能与 IBM Cloudant 一起使用 ",
+        "zh-tw": "此功能無法與 IBM Cloudant 一併使用。",
     },
     "obsidianLiveSyncSettingTab.logCheckingConfigDone": {
         def: "Checking configuration done",
@@ -5023,6 +5111,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성 확인 완료",
         ru: "Проверка конфигурации завершена",
         zh: "配置检查完成",
+        "zh-tw": "設定檢查完成",
     },
     "obsidianLiveSyncSettingTab.logCheckingConfigFailed": {
         def: "Checking configuration failed",
@@ -5033,6 +5122,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성 확인 실패",
         ru: "Проверка конфигурации не удалась",
         zh: "配置检查失败",
+        "zh-tw": "設定檢查失敗",
     },
     "obsidianLiveSyncSettingTab.logCheckingDbConfig": {
         def: "Checking database configuration",
@@ -5043,6 +5133,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 구성 확인 중",
         ru: "Проверка конфигурации базы данных",
         zh: "正在检查数据库配置",
+        "zh-tw": "正在檢查資料庫設定",
     },
     "obsidianLiveSyncSettingTab.logCheckPassphraseFailed": {
         def: "ERROR: Failed to check passphrase with the remote server:\n${db}.",
@@ -5053,6 +5144,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "오류: 원격 서버와 패스프레이즈 확인에 실패했습니다:\n${db}.",
         ru: "ОШИБКА: Не удалось проверить пароль с удалённым сервером: db.",
         zh: "错误：无法使用远程服务器检查密码：\n${db}",
+        "zh-tw": "錯誤：無法透過遠端伺服器檢查密語：\n${db}。",
     },
     "obsidianLiveSyncSettingTab.logConfiguredDisabled": {
         def: "Configured synchronization mode: DISABLED",
@@ -5096,6 +5188,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "CouchDB 구성: ${title} 실패",
         ru: "Конфигурация CouchDB: title не удалась",
         zh: "CouchDB 配置：${title} 失败",
+        "zh-tw": "CouchDB 設定：${title} 失敗",
     },
     "obsidianLiveSyncSettingTab.logCouchDbConfigSet": {
         def: "CouchDB Configuration: ${title} -> Set ${key} to ${value}",
@@ -5106,6 +5199,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "CouchDB 구성: ${title} -> ${key}을(를) ${value}(으)로 설정",
         ru: "Конфигурация CouchDB: title -> Установить key в value",
         zh: "CouchDB 配置：${title} -> 设置 ${key} 为 ${value}",
+        "zh-tw": "CouchDB 設定：${title} -> 將 ${key} 設為 ${value}",
     },
     "obsidianLiveSyncSettingTab.logCouchDbConfigUpdated": {
         def: "CouchDB Configuration: ${title} successfully updated",
@@ -5116,6 +5210,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "CouchDB 구성: ${title} 성공적으로 업데이트됨",
         ru: "Конфигурация CouchDB: title успешно обновлена",
         zh: "CouchDB 配置：${title} 成功更新",
+        "zh-tw": "CouchDB 設定：${title} 已成功更新",
     },
     "obsidianLiveSyncSettingTab.logDatabaseConnected": {
         def: "Database connected",
@@ -5126,6 +5221,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 연결됨",
         ru: "База данных подключена",
         zh: "数据库已连接",
+        "zh-tw": "資料庫已連線",
     },
     "obsidianLiveSyncSettingTab.logEncryptionNoPassphrase": {
         def: "You cannot enable encryption without a passphrase",
@@ -5136,6 +5232,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "패스프레이즈 없이는 암호화를 활성화할 수 없습니다",
         ru: "Вы не можете включить шифрование без парольной фразы",
         zh: "没有密码无法启用加密",
+        "zh-tw": "沒有密語就無法啟用加密",
     },
     "obsidianLiveSyncSettingTab.logEncryptionNoSupport": {
         def: "Your device does not support encryption.",
@@ -5146,6 +5243,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "기기가 암호화를 지원하지 않습니다.",
         ru: "Ваше устройство не поддерживает шифрование.",
         zh: "您的设备不支持加密 ",
+        "zh-tw": "你的裝置不支援加密。",
     },
     "obsidianLiveSyncSettingTab.logErrorOccurred": {
         def: "An error occurred!!",
@@ -5156,6 +5254,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "오류가 발생했습니다!",
         ru: "Произошла ошибка!!",
         zh: "发生错误！！",
+        "zh-tw": "發生錯誤！！",
     },
     "obsidianLiveSyncSettingTab.logEstimatedSize": {
         def: "Estimated size: ${size}",
@@ -5166,6 +5265,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예상 크기: ${size}",
         ru: "Примерный размер: size",
         zh: "估计大小：${size}",
+        "zh-tw": "預估大小：${size}",
     },
     "obsidianLiveSyncSettingTab.logPassphraseInvalid": {
         def: "Passphrase is not valid, please fix it.",
@@ -5186,6 +5286,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "오류: 패스프레이즈가 원격 서버와 호환되지 않습니다! 다시 확인해 주세요!",
         ru: "ОШИБКА: Парольная фраза несовместима с удалённым сервером!",
         zh: "错误：密码与远程服务器不兼容！请再次检查！",
+        "zh-tw": "錯誤：密語與遠端伺服器不符！請再檢查一次！",
     },
     "obsidianLiveSyncSettingTab.logRebuildNote": {
         def: "Syncing has been disabled, fetch and re-enabled if desired.",
@@ -5196,6 +5297,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동기화가 비활성화되었습니다. 원하는 경우 가져오기 후 다시 활성화하세요.",
         ru: "Синхронизация отключена, загрузите и включите снова при желании.",
         zh: "同步已禁用,如果需要,请获取并重新启用",
+        "zh-tw": "同步已停用；如有需要，請先抓取再重新啟用。",
     },
     "obsidianLiveSyncSettingTab.logSelectAnyPreset": {
         def: "Select any preset.",
@@ -5221,6 +5323,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "정말로 진행하시겠습니까?",
         ru: "Вы уверены, что хотите продолжить?",
         zh: "您确定要继续吗？",
+        "zh-tw": "你確定要繼續嗎？",
     },
     "obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied": {
         def: "Changes need to be applied!",
@@ -5231,6 +5334,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "변경사항을 적용해야 합니다!",
         ru: "Изменения нужно применить!",
         zh: "需要应用更改！",
+        "zh-tw": "需要套用變更！",
     },
     "obsidianLiveSyncSettingTab.msgConfigCheck": {
         def: "--Config check--",
@@ -5241,6 +5345,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "--구성 확인--",
         ru: "--Проверка конфигурации--",
         zh: "--配置检查--",
+        "zh-tw": "--設定檢查--",
     },
     "obsidianLiveSyncSettingTab.msgConfigCheckFailed": {
         def: "The configuration check has failed. Do you want to continue anyway?",
@@ -5262,6 +5367,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "--연결 확인--",
         ru: "--Проверка подключения--",
         zh: "--连接检查--",
+        "zh-tw": "--連線檢查--",
     },
     "obsidianLiveSyncSettingTab.msgConnectionProxyNote": {
         def: "If you're having trouble with the Connection-check (even after checking config), please check your reverse proxy configuration.",
@@ -5272,6 +5378,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성 확인 후에도 연결 확인에 문제가 있는 경우, 리버스 프록시 구성을 확인해 주세요.",
         ru: "Если у вас проблемы с проверкой подключения, проверьте конфигурацию обратного прокси.",
         zh: "如果您在连接检查时遇到问题(即使检查了配置后),请检查您的反向代理配置",
+        "zh-tw": "如果連線檢查仍有問題（即使設定已經檢查過），請檢查你的反向代理設定。",
     },
     "obsidianLiveSyncSettingTab.msgCurrentOrigin": {
         def: "Current origin: ${origin}",
@@ -5282,6 +5389,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "현재 출처: ${origin}",
         ru: "Текущий origin: origin",
         zh: "当前源: {origin}",
+        "zh-tw": "目前來源：${origin}",
     },
     "obsidianLiveSyncSettingTab.msgDiscardConfirmation": {
         def: "Do you really want to discard existing settings and databases?",
@@ -5292,6 +5400,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "정말로 기존 설정과 데이터베이스를 삭제하시겠습니까?",
         ru: "Вы действительно хотите отменить существующие настройки и базы данных?",
         zh: "您真的要丢弃现有的设置和数据库吗？",
+        "zh-tw": "你真的要捨棄現有的設定與資料庫嗎？",
     },
     "obsidianLiveSyncSettingTab.msgDone": {
         def: "--Done--",
@@ -5302,6 +5411,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "--완료--",
         ru: "--Готово--",
         zh: "--完成--",
+        "zh-tw": "--完成--",
     },
     "obsidianLiveSyncSettingTab.msgEnableCors": {
         def: "Set httpd.enable_cors",
@@ -5312,6 +5422,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "httpd.enable_cors 설정",
         ru: "Установить httpd.enable_cors",
         zh: "设置 httpd.enable_cors",
+        "zh-tw": "設定 httpd.enable_cors",
     },
     "obsidianLiveSyncSettingTab.msgEnableCorsChttpd": {
         def: "Set chttpd.enable_cors",
@@ -5322,6 +5433,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "chttpd.enable_cors 설정",
         ru: "Установить chttpd.enable_cors",
         zh: "设置 chttpd.enable_cors",
+        "zh-tw": "設定 chttpd.enable_cors",
     },
     "obsidianLiveSyncSettingTab.msgEnableEncryptionRecommendation": {
         def: "We recommend enabling End-To-End Encryption, and Path Obfuscation. Are you sure you want to continue without encryption?",
@@ -5365,6 +5477,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "서버 설정이 영구적으로 저장되지 않는 환경(예: Docker에서 실행 중)에서는 이곳의 값들이 변경될 수 있습니다. 연결이 가능해지면 서버의 local.ini 파일에서 설정을 수동으로 업데이트해 주세요.",
         ru: "Если конфигурация сервера непостоянна, значения здесь могут измениться.",
         zh: "如果服务器配置不是持久的(例如,在 docker 上运行),此处的值可能会更改。一旦能够连接,请更新服务器 local.ini 中的设置",
+        "zh-tw":
+            "如果伺服器設定並非持久保存（例如在 Docker 上執行），這裡的值可能會變動。一旦能夠連線，請更新伺服器 local.ini 中的設定。",
     },
     "obsidianLiveSyncSettingTab.msgInvalidPassphrase": {
         def: "Your encryption passphrase might be invalid. Are you sure you want to continue?",
@@ -5416,6 +5530,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "---공지사항---",
         ru: "---Уведомление---",
         zh: "---注意---",
+        "zh-tw": "---注意---",
     },
     "obsidianLiveSyncSettingTab.msgObjectStorageWarning": {
         def: "WARNING: This feature is a Work In Progress, so please keep in mind the following:\n- Append only architecture. A rebuild is required to shrink the storage.\n- A bit fragile.\n- When first syncing, all history will be transferred from the remote. Be mindful of data caps and slow speeds.\n- Only differences are synced live.\n\nIf you run into any issues, or have ideas about this feature, please create a issue on GitHub.\nI appreciate you for your great dedication.",
@@ -5436,6 +5551,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "출처 확인: ${org}",
         ru: "Проверка origin: org",
         zh: "源检查: {org}",
+        "zh-tw": "來源檢查：${org}",
     },
     "obsidianLiveSyncSettingTab.msgRebuildRequired": {
         def: "Rebuilding Databases are required to apply the changes.. Please select the method to apply the changes.\n\n<details>\n<summary>Legends</summary>\n\n| Symbol | Meaning |\n|: ------ :| ------- |\n| ⇔ | Up to Date |\n| ⇄ | Synchronise to balance |\n| ⇐,⇒ | Transfer to overwrite |\n| ⇠,⇢ | Transfer to overwrite from other side |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\nAt a glance:  📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\nReconstruct both the local and remote databases using existing files from this device.\nThis causes a lockout other devices, and they need to perform fetching.\n## ${OPTION_FETCH}\nAt a glance: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\nInitialise the local database and reconstruct it using data fetched from the remote database.\nThis case includes the case which you have rebuilt the remote database.\n## ${OPTION_ONLY_SETTING}\nStore only the settings. **Caution: This may lead to data corruption**; database reconstruction is generally necessary.",
@@ -5446,6 +5562,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "변경 사항을 적용하려면 데이터베이스를 재구축해야 합니다. 변경 사항을 적용할 방법을 선택해 주세요.\n\n<details>\n<summary>범례</summary>\n\n| 기호 | 의미 |\n|: ------ :| ------- |\n| ⇔ | 최신 상태 |\n| ⇄ | 양쪽을 맞추는 동기화 |\n| ⇐,⇒ | 덮어쓰기 전송 |\n| ⇠,⇢ | 반대편에서 덮어쓰기 전송 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n한눈에 보기:  📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n이 기기의 기존 파일을 사용해 로컬과 원격 데이터베이스를 모두 재구축합니다.\n이 경우 다른 기기는 잠기며, 가져오기를 수행해야 합니다.\n## ${OPTION_FETCH}\n한눈에 보기: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n로컬 데이터베이스를 초기화한 뒤, 원격 데이터베이스에서 가져온 데이터로 재구축합니다.\n원격 데이터베이스를 이미 재구축한 경우도 여기에 해당합니다.\n## ${OPTION_ONLY_SETTING}\n설정만 저장합니다. **주의: 데이터가 손상될 수 있습니다.** 일반적으로는 데이터베이스 재구축이 필요합니다.",
         ru: "Требуется перестроение баз данных для применения изменений.",
         zh: "需要重建数据库以应用更改。请选择应用更改的方法。\n\n<details>\n<summary>图例</summary>\n\n| 符号 | 含义 |\n|: ------ :| ------- |\n| ⇔ | 最新 |\n| ⇄ | 同步以平衡 |\n| ⇐,⇒ | 传输以覆盖 |\n| ⇠,⇢ | 从另一侧传输以覆盖 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概览:📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n使用此设备的现有文件重建本地和远程数据库。\n这将导致其他设备被锁定,并且它们需要执行获取操作。\n## ${OPTION_FETCH}\n概览:📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本地数据库并使用从远程数据库获取的数据重建它。\n这种情况包括您已经重建了远程数据库的情况。\n## ${OPTION_ONLY_SETTING}\n仅存储设置。**注意：这可能导致数据损坏**；通常需要重建数据库",
+        "zh-tw":
+            "需要重建資料庫才能套用變更。請選擇套用變更的方式。\n\n<details>\n<summary>圖例</summary>\n\n| 符號 | 含意 |\n|: ------ :| ------- |\n| ⇔ | 已是最新 |\n| ⇄ | 同步以取得一致 |\n| ⇐,⇒ | 傳輸並覆寫 |\n| ⇠,⇢ | 從另一端傳輸並覆寫 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概覽： 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n以此裝置上現有的檔案重建本機與遠端資料庫。\n這會鎖定其他裝置，它們必須執行抓取。\n## ${OPTION_FETCH}\n概覽： 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本機資料庫，並以從遠端資料庫抓取的資料重建。\n這也涵蓋你已重建遠端資料庫的情況。\n## ${OPTION_ONLY_SETTING}\n僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。",
     },
     "obsidianLiveSyncSettingTab.msgSelectAndApplyPreset": {
         def: "Please select and apply any preset item to complete the wizard.",
@@ -5467,6 +5585,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "cors.credentials 설정",
         ru: "Установить cors.credentials",
         zh: "设置 cors.credentials",
+        "zh-tw": "設定 cors.credentials",
     },
     "obsidianLiveSyncSettingTab.msgSetCorsOrigins": {
         def: "Set cors.origins",
@@ -5477,6 +5596,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "cors.origins 설정",
         ru: "Установить cors.origins",
         zh: "设置 cors.origins",
+        "zh-tw": "設定 cors.origins",
     },
     "obsidianLiveSyncSettingTab.msgSetMaxDocSize": {
         def: "Set couchdb.max_document_size",
@@ -5487,6 +5607,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "couchdb.max_document_size 설정",
         ru: "Установить couchdb.max_document_size",
         zh: "设置 couchdb.max_document_size",
+        "zh-tw": "設定 couchdb.max_document_size",
     },
     "obsidianLiveSyncSettingTab.msgSetMaxRequestSize": {
         def: "Set chttpd.max_http_request_size",
@@ -5497,6 +5618,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "chttpd.max_http_request_size 설정",
         ru: "Установить chttpd.max_http_request_size",
         zh: "设置 chttpd.max_http_request_size",
+        "zh-tw": "設定 chttpd.max_http_request_size",
     },
     "obsidianLiveSyncSettingTab.msgSetRequireValidUser": {
         def: "Set chttpd.require_valid_user = true",
@@ -5507,6 +5629,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "chttpd.require_valid_user = true로 설정",
         ru: "Установить chttpd.require_valid_user = true",
         zh: "设置 chttpd.require_valid_user = true",
+        "zh-tw": "設定 chttpd.require_valid_user = true",
     },
     "obsidianLiveSyncSettingTab.msgSetRequireValidUserAuth": {
         def: "Set chttpd_auth.require_valid_user = true",
@@ -5517,6 +5640,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "chttpd_auth.require_valid_user = true로 설정",
         ru: "Установить chttpd_auth.require_valid_user = true",
         zh: "设置 chttpd_auth.require_valid_user = true",
+        "zh-tw": "設定 chttpd_auth.require_valid_user = true",
     },
     "obsidianLiveSyncSettingTab.msgSettingModified": {
         def: 'The setting "${setting}" was modified from another device. Click {HERE} to reload settings. Click elsewhere to ignore changes.',
@@ -5527,6 +5651,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: '"${setting}" 설정이 다른 기기에서 수정되었습니다. 설정을 다시 로드하려면 {HERE}를 클릭하세요. 변경사항을 무시하려면 다른 곳을 클릭하세요.',
         ru: "Настройка setting была изменена с другого устройства.",
         zh: '设置 "${setting}" 已从另一台设备修改。点击 {HERE} 重新加载设置。点击其他地方忽略更改',
+        "zh-tw": "設定「${setting}」已由另一台裝置修改。點選 {HERE} 可重新載入設定，點選其他位置則忽略變更。",
     },
     "obsidianLiveSyncSettingTab.msgSettingsUnchangeableDuringSync": {
         def: 'These settings are unable to be changed during synchronization. Please disable all syncing in the "Sync Settings" to unlock.',
@@ -5547,6 +5672,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "httpd.WWW-Authenticate 설정",
         ru: "Установить httpd.WWW-Authenticate",
         zh: "设置 httpd.WWW-Authenticate",
+        "zh-tw": "設定 httpd.WWW-Authenticate",
     },
     "obsidianLiveSyncSettingTab.nameApplySettings": {
         def: "Apply Settings",
@@ -5567,6 +5693,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Setup URI로 연결",
         ru: "Подключиться через Setup URI",
         zh: "使用设置 URI 连接",
+        "zh-tw": "使用 Setup URI 連線",
     },
     "obsidianLiveSyncSettingTab.nameCopySetupURI": {
         def: "Copy the current settings to a Setup URI",
@@ -5577,6 +5704,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "현재 설정을 Setup URI로 복사",
         ru: "Копировать текущие настройки в Setup URI",
         zh: "将当前设置复制为设置 URI",
+        "zh-tw": "將目前設定複製為 Setup URI",
     },
     "obsidianLiveSyncSettingTab.nameDisableHiddenFileSync": {
         def: "Disable Hidden files sync",
@@ -5598,6 +5726,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "기존 설정 및 데이터베이스 삭제",
         ru: "Отменить существующие настройки и базы данных",
         zh: "丢弃现有设置和数据库",
+        "zh-tw": "捨棄現有的設定與資料庫",
     },
     "obsidianLiveSyncSettingTab.nameEnableHiddenFileSync": {
         def: "Enable Hidden files sync",
@@ -5619,6 +5748,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync 활성화",
         ru: "Включить LiveSync",
         zh: "启用 LiveSync",
+        "zh-tw": "啟用 LiveSync",
     },
     "obsidianLiveSyncSettingTab.nameHiddenFileSynchronization": {
         def: "Hidden file synchronization",
@@ -5680,6 +5810,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ 관리자 권한이 있습니다.",
         ru: "✔ У вас есть права администратора.",
         zh: "✔ 您拥有管理员权限",
+        "zh-tw": "✔ 你具有管理者權限。",
     },
     "obsidianLiveSyncSettingTab.okCorsCredentials": {
         def: "✔ cors.credentials is ok.",
@@ -5690,6 +5821,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ cors.credentials가 정상입니다.",
         ru: "✔ cors.credentials в порядке.",
         zh: "✔ cors.credentials 设置正确",
+        "zh-tw": "✔ cors.credentials 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okCorsCredentialsForOrigin": {
         def: "CORS credentials OK",
@@ -5700,6 +5832,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "CORS 자격 증명 정상",
         ru: "CORS учётные данные в порядке",
         zh: "CORS 凭据正常",
+        "zh-tw": "CORS 憑證正常",
     },
     "obsidianLiveSyncSettingTab.okCorsOriginMatched": {
         def: "✔ CORS origin OK",
@@ -5710,6 +5843,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ CORS 출처 정상",
         ru: "✔ CORS origin в порядке",
         zh: "✔ CORS 源正常",
+        "zh-tw": "✔ CORS 來源正常",
     },
     "obsidianLiveSyncSettingTab.okCorsOrigins": {
         def: "✔ cors.origins is ok.",
@@ -5720,6 +5854,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ cors.origins가 정상입니다.",
         ru: "✔ cors.origins в порядке.",
         zh: "✔ cors.origins 设置正确",
+        "zh-tw": "✔ cors.origins 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okEnableCors": {
         def: "✔ httpd.enable_cors is ok.",
@@ -5730,6 +5865,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ httpd.enable_cors가 정상입니다.",
         ru: "✔ httpd.enable_cors в порядке.",
         zh: "✔ httpd.enable_cors 设置正确",
+        "zh-tw": "✔ httpd.enable_cors 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okEnableCorsChttpd": {
         def: "✔ chttpd.enable_cors is ok.",
@@ -5740,6 +5876,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ chttpd.enable_cors가 정상입니다.",
         ru: "✔ chttpd.enable_cors в порядке.",
         zh: "✔ chttpd.enable_cors is ok.",
+        "zh-tw": "✔ chttpd.enable_cors 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okMaxDocumentSize": {
         def: "✔ couchdb.max_document_size is ok.",
@@ -5750,6 +5887,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ couchdb.max_document_size가 정상입니다.",
         ru: "✔ couchdb.max_document_size в порядке.",
         zh: "✔ couchdb.max_document_size 设置正确",
+        "zh-tw": "✔ couchdb.max_document_size 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okMaxRequestSize": {
         def: "✔ chttpd.max_http_request_size is ok.",
@@ -5760,6 +5898,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ chttpd.max_http_request_size가 정상입니다.",
         ru: "✔ chttpd.max_http_request_size в порядке.",
         zh: "✔ chttpd.max_http_request_size 设置正确",
+        "zh-tw": "✔ chttpd.max_http_request_size 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okRequireValidUser": {
         def: "✔ chttpd.require_valid_user is ok.",
@@ -5770,6 +5909,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ chttpd.require_valid_user가 정상입니다.",
         ru: "✔ chttpd.require_valid_user в порядке.",
         zh: "✔ chttpd.require_valid_user 设置正确",
+        "zh-tw": "✔ chttpd.require_valid_user 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okRequireValidUserAuth": {
         def: "✔ chttpd_auth.require_valid_user is ok.",
@@ -5780,6 +5920,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ chttpd_auth.require_valid_user가 정상입니다.",
         ru: "✔ chttpd_auth.require_valid_user в порядке.",
         zh: "✔ chttpd_auth.require_valid_user 设置正确",
+        "zh-tw": "✔ chttpd_auth.require_valid_user 設定正確。",
     },
     "obsidianLiveSyncSettingTab.okWwwAuth": {
         def: "✔ httpd.WWW-Authenticate is ok.",
@@ -5790,6 +5931,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "✔ httpd.WWW-Authenticate가 정상입니다.",
         ru: "✔ httpd.WWW-Authenticate в порядке.",
         zh: "✔ httpd.WWW-Authenticate 设置正确",
+        "zh-tw": "✔ httpd.WWW-Authenticate 設定正確。",
     },
     "obsidianLiveSyncSettingTab.optionApply": {
         def: "Apply",
@@ -5800,6 +5942,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용",
         ru: "Применить",
         zh: "应用",
+        "zh-tw": "套用",
     },
     "obsidianLiveSyncSettingTab.optionCancel": {
         def: "Cancel",
@@ -5810,6 +5953,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "취소",
         ru: "Отмена",
         zh: "取消",
+        "zh-tw": "取消",
     },
     "obsidianLiveSyncSettingTab.optionCouchDB": {
         def: "CouchDB",
@@ -5841,6 +5985,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에서 가져오기",
         ru: "Загрузить с удалённого",
         zh: "从远程获取",
+        "zh-tw": "從遠端抓取",
     },
     "obsidianLiveSyncSettingTab.optionHere": {
         def: "HERE",
@@ -5851,6 +5996,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "여기",
         ru: "ЗДЕСЬ",
         zh: "这里",
+        "zh-tw": "這裡",
     },
     "obsidianLiveSyncSettingTab.optionLiveSync": {
         def: "LiveSync",
@@ -5925,6 +6071,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기에서 둘 다 재구축",
         ru: "Перестроить оба с этого устройства",
         zh: "从此设备重建两者",
+        "zh-tw": "從此裝置重建兩端",
     },
     "obsidianLiveSyncSettingTab.optionSaveOnlySettings": {
         def: "(Danger) Save Only Settings",
@@ -5935,6 +6082,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(위험) 설정만 저장",
         ru: "(Опасно) Сохранить только настройки",
         zh: "(危险)仅保存设置",
+        "zh-tw": "（危險）僅儲存設定",
     },
     "obsidianLiveSyncSettingTab.panelChangeLog": {
         def: "Change Log",
@@ -5945,6 +6093,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "변경 로그",
         ru: "История изменений",
         zh: "更新日志",
+        "zh-tw": "變更紀錄",
     },
     "obsidianLiveSyncSettingTab.panelGeneralSettings": {
         def: "General Settings",
@@ -5955,6 +6104,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일반 설정",
         ru: "Основные настройки",
         zh: "常规设置",
+        "zh-tw": "一般設定",
     },
     "obsidianLiveSyncSettingTab.panelPrivacyEncryption": {
         def: "Privacy & Encryption",
@@ -5975,6 +6125,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 구성",
         ru: "Удалённая конфигурация",
         zh: "远程配置",
+        "zh-tw": "遠端設定",
     },
     "obsidianLiveSyncSettingTab.panelSetup": {
         def: "Setup",
@@ -5985,6 +6136,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정",
         ru: "Настройка",
         zh: "设置",
+        "zh-tw": "設定",
     },
     "obsidianLiveSyncSettingTab.serverVersion": {
         def: "Server info: ${info}",
@@ -5995,6 +6147,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "서버 정보: ${info}",
         ru: "Информация о сервере: info",
         zh: "服务器信息: ${info}",
+        "zh-tw": "伺服器資訊：${info}",
     },
     "obsidianLiveSyncSettingTab.titleActiveRemoteServer": {
         def: "Active Remote Server",
@@ -6092,6 +6245,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "추가 및 고급 기능 활성화",
         ru: "Включить дополнительные и расширенные функции",
         zh: "启用额外和高级功能",
+        "zh-tw": "啟用額外與進階功能",
     },
     "obsidianLiveSyncSettingTab.titleFetchConfig": {
         def: "Fetch Config",
@@ -6177,6 +6331,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "온라인 팁",
         ru: "Онлайн советы",
         zh: "在线提示",
+        "zh-tw": "線上提示",
     },
     "obsidianLiveSyncSettingTab.titleQuickSetup": {
         def: "Quick Setup",
@@ -6187,6 +6342,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "빠른 설정",
         ru: "Быстрая настройка",
         zh: "快速设置",
+        "zh-tw": "快速設定",
     },
     "obsidianLiveSyncSettingTab.titleRebuildRequired": {
         def: "Rebuild Required",
@@ -6197,6 +6353,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "재구축 필요",
         ru: "Требуется перестроение",
         zh: "需要重建",
+        "zh-tw": "需要重建",
     },
     "obsidianLiveSyncSettingTab.titleRemoteConfigCheckFailed": {
         def: "Remote Configuration Check Failed",
@@ -6229,6 +6386,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "재설정",
         ru: "Сброс",
         zh: "重置",
+        "zh-tw": "重設",
     },
     "obsidianLiveSyncSettingTab.titleSetupOtherDevices": {
         def: "To setup other devices",
@@ -6239,6 +6397,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "다른 기기 설정",
         ru: "Для настройки других устройств",
         zh: "设置其他设备",
+        "zh-tw": "設定其他裝置",
     },
     "obsidianLiveSyncSettingTab.titleSynchronizationMethod": {
         def: "Synchronization Method",
@@ -6271,6 +6430,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동기화 설정",
         ru: "Настройки синхронизации",
         zh: "同步设置",
+        "zh-tw": "同步設定",
     },
     "obsidianLiveSyncSettingTab.titleSyncSettingsViaMarkdown": {
         def: "Sync Settings via Markdown",
@@ -6303,6 +6463,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "⚠ CORS 출처가 일치하지 않습니다 ${from}->${to}",
         ru: "⚠ CORS Origin не совпадает from->to",
         zh: "⚠ CORS 源不匹配 {from}->{to}",
+        "zh-tw": "⚠ CORS 來源不相符 ${from}->${to}",
     },
     "obsidianLiveSyncSettingTab.warnNoAdmin": {
         def: "⚠ You do not have administrator privileges.",
@@ -6313,6 +6474,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "⚠ 관리자 권한이 없습니다.",
         ru: "⚠ У вас нет прав администратора.",
         zh: "⚠ 您没有管理员权限",
+        "zh-tw": "⚠ 你沒有管理者權限。",
     },
     "Of course, we can back up the data before proceeding.": {
         def: "Of course, we can back up the data before proceeding.",
@@ -6406,6 +6568,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "대화상자 열기",
         ru: "Открыть диалог",
         zh: "打开对话框",
+        "zh-tw": "開啟對話框",
     },
     "Other files": {
         def: "Other files",
@@ -6804,7 +6967,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어(P2P) 동기화",
         ru: "Одноранговая синхронизация",
         zh: "点对点同步",
-        "zh-tw": "點對點同步",
+        "zh-tw": "Peer-to-Peer 同步",
     },
     Peers: {
         def: "Peers",
@@ -7447,6 +7610,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "재확인을 위해 취소",
         ru: "Отмена для подтверждения",
         zh: "Cancel for reconfirmation",
+        "zh-tw": "取消，稍後再確認",
     },
     "Replicator.Dialogue.Locked.Action.Fetch": {
         def: "Reset Synchronisation on This Device",
@@ -7457,6 +7621,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기의 동기화 재설정",
         ru: "Сбросить синхронизацию на этом устройстве",
         zh: "Reset Synchronisation on This Device",
+        "zh-tw": "重設此裝置上的同步",
     },
     "Replicator.Dialogue.Locked.Action.Unlock": {
         def: "Unlock the remote database",
@@ -7467,6 +7632,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스 잠금 해제",
         ru: "Разблокировать удалённую базу данных",
         zh: "Unlock the remote database",
+        "zh-tw": "解鎖遠端資料庫",
     },
     "Replicator.Dialogue.Locked.Message": {
         def: "Remote database is locked. This is due to a rebuild on one of the terminals.\nThe device is therefore asked to withhold the connection to avoid database corruption.\n\nThere are three options that we can do:\n\n- Reset Synchronisation on This Device\n  The most preferred and reliable way. This will dispose the local database once, and reset all synchronisation information from the remote database again, In most case, we can perform this safely. However, it takes some time and should be done in stable network.\n- Unlock the remote database\n  This method can only be used if we are already reliably synchronised by other replication methods. This does not simply mean that we have the same files. If you are not sure, you should avoid it.\n- Cancel for reconfirmation\n    This will cancel the operation. And we will asked again on next request.\n",
@@ -7477,6 +7643,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스가 잠겨 있습니다. 이는 일부 터미널에서 데이터베이스를 재구축했기 때문입니다.\n따라서 현재 기기는 데이터베이스 손상을 방지하기 위해 연결을 일시적으로 보류해야 합니다.\n\n선택할 수 있는 세 가지 방법이 있습니다:\n\n- 이 기기의 동기화 재설정\n  가장 권장되고 신뢰할 수 있는 방법입니다. 로컬 데이터베이스를 초기화한 뒤, 원격 데이터베이스의 전체 데이터를 다시 가져옵니다. 대부분의 경우 안전하게 수행할 수 있으나, 시간이 다소 걸리며 안정적인 네트워크 환경에서 진행해야 합니다.\n- 원격 데이터베이스 잠금 해제\n  이 방법은 다른 동기화 방식으로 이미 완전하고 안정적으로 동기화된 경우에만 사용할 수 있습니다. 단순히 파일이 같다는 의미가 아니므로, 확신이 없다면 사용을 피하는 것이 좋습니다.\n- 재확인을 위해 취소\n  이번 작업을 취소하고, 다음 요청 시 다시 안내받습니다.\n",
         ru: "Удалённая база данных заблокирована. Это связано с перестроением на одном из устройств.",
         zh: "Remote database is locked. This is due to a rebuild on one of the terminals.\nThe device is therefore asked to withhold the connection to avoid database corruption.\n\nThere are three options that we can do:\n\n- Reset Synchronisation on This Device\n  The most preferred and reliable way. This will dispose the local database once, and fetch all from the remote database again, In most case, we can perform this safely. However, it takes some time and should be done in stable network.\n- Unlock the remote database\n  This method can only be used if we are already reliably synchronised by other replication methods. This does not simply mean that we have the same files. If you are not sure, you should avoid it.\n- Cancel for reconfirmation\n    This will cancel the operation. And we will asked again on next request.\n",
+        "zh-tw":
+            "遠端資料庫已鎖定，這是因為其中一台裝置執行過重建。\n因此系統要求此裝置暫停連線，以避免資料庫損毀。\n\n我們有三種做法：\n\n- 重設此裝置上的同步\n  最建議且最可靠的方式。這會先捨棄本機資料庫，再從遠端資料庫重設所有同步資訊。多數情況下都能安全執行，但會花上一些時間，且應在網路穩定時進行。\n- 解鎖遠端資料庫\n  只有在已透過其他複寫方式可靠同步的情況下才能使用此方式。這不只是指雙方擁有相同的檔案。如果你不確定，請避免使用。\n- 取消，稍後再確認\n    這會取消此操作，下次請求時會再次詢問。\n",
     },
     "Replicator.Dialogue.Locked.Message.Fetch": {
         def: "Fetch all has been scheduled. Plug-in will be restarted to perform it.",
@@ -7487,6 +7655,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 것 가져오기가 예약되었습니다. 이를 수행하기 위해 플러그인이 재시작됩니다.",
         ru: "Загрузка всего запланирована. Плагин будет перезапущен.",
         zh: "Fetch all has been scheduled. Plug-in will be restarted to perform it.",
+        "zh-tw": "已排定執行全部抓取。外掛將重新啟動以執行此作業。",
     },
     "Replicator.Dialogue.Locked.Message.Unlocked": {
         def: "The remote database has been unlocked. Please retry the operation.",
@@ -7497,6 +7666,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스 잠금이 해제되었습니다. 작업을 다시 시도해 주세요.",
         ru: "Удалённая база данных разблокирована. Повторите операцию.",
         zh: "The remote database has been unlocked. Please retry the operation.",
+        "zh-tw": "遠端資料庫已解鎖，請重試該操作。",
     },
     "Replicator.Dialogue.Locked.Title": {
         def: "Locked",
@@ -7507,6 +7677,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "잠김",
         ru: "Заблокировано",
         zh: "Locked",
+        "zh-tw": "已鎖定",
     },
     "Replicator.Message.Cleaned": {
         def: "Database cleaning up is in process. replication has been cancelled",
@@ -7527,6 +7698,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용 가능한 복제기가 없습니다. 치명적인 오류입니다.",
         ru: "Репликатор недоступен, это фатальная ошибка.",
         zh: "No replicator is available, this is the fatal error.",
+        "zh-tw": "沒有可用的複寫器，這是嚴重錯誤。",
     },
     "Replicator.Message.Pending": {
         def: "Some file events are pending. Replication has been cancelled.",
@@ -7547,6 +7719,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일부 모듈 실패로 복제가 취소되었습니다",
         ru: "Репликация отменена из-за сбоя модуля",
         zh: "Replication has been cancelled by some module failure",
+        "zh-tw": "複寫因某個模組失敗而取消",
     },
     "Replicator.Message.VersionUpFlash": {
         def: "An update has been detected. Please open the Settings dialogue and check the Change Log. Replication has been cancelled.",
@@ -8179,6 +8352,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문제 해결",
         ru: "Устранение неполадок",
         zh: "故障排除",
+        "zh-tw": "疑難排解",
     },
     "Setting.TroubleShooting.Doctor": {
         def: "Setting Doctor",
@@ -8189,6 +8363,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정 진단 마법사",
         ru: "Диагностика настроек",
         zh: "设置诊断",
+        "zh-tw": "設定診斷",
     },
     "Setting.TroubleShooting.Doctor.Desc": {
         def: "Detects non optimal settings. (Same as during migration)",
@@ -8199,6 +8374,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "최적화되지 않은 설정을 감지합니다. (데이터 구조 전환 시와 동일)",
         ru: "Обнаруживает неоптимальные настройки.",
         zh: "检测系统中不合理的设置。（与迁移期间逻辑相同）",
+        "zh-tw": "偵測不理想的設定。（與遷移期間相同）",
     },
     "Setting.TroubleShooting.ScanBrokenFiles": {
         def: "Scan for broken files",
@@ -8209,6 +8385,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "손상된 파일 검사",
         ru: "Сканировать повреждённые файлы",
         zh: "扫描损坏或异常的文件",
+        "zh-tw": "掃描損壞檔案",
     },
     "Setting.TroubleShooting.ScanBrokenFiles.Desc": {
         def: "Scans for files that are not stored correctly in the database.",
@@ -8219,6 +8396,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스에 올바르게 저장되지 않은 파일을 검사합니다.",
         ru: "Сканирует файлы, которые неправильно хранятся в базе данных.",
         zh: "扫描数据库中未正确存储的文件。",
+        "zh-tw": "掃描未正確儲存在資料庫中的檔案。",
     },
     "SettingTab.Message.AskRebuild": {
         def: "Your changes require fetching from the remote database. Do you want to proceed?",
@@ -8664,6 +8842,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "QR 코드 표시",
         ru: "Показать QR код",
         zh: "使用QR码",
+        "zh-tw": "顯示 QR 碼",
     },
     "Setup.ShowQRCode.Desc": {
         def: "Show QR code to transfer the settings.",
@@ -8674,6 +8853,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정을 전송하기 위한 QR 코드를 표시합니다.",
         ru: "Показать QR код для передачи настроек.",
         zh: "使用QR码来传递配置",
+        "zh-tw": "顯示 QR 碼以傳遞設定。",
     },
     "Setup.UseSetupURI.ButtonCancel": {
         def: "Cancel",
@@ -9497,6 +9677,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "무시",
         ru: "Отмена",
         zh: "Dismiss",
+        "zh-tw": "不處理",
     },
     "TweakMismatchResolve.Action.EnableAutoAcceptCompatible": {
         def: "Enable auto-accept",
@@ -9512,6 +9693,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성된 설정 사용",
         ru: "Использовать настроенные параметры",
         zh: "Use configured settings",
+        "zh-tw": "採用已設定的值",
     },
     "TweakMismatchResolve.Action.UseMine": {
         def: "Update remote database settings",
@@ -9522,6 +9704,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스 설정 업데이트",
         ru: "Обновить настройки удалённой базы данных",
         zh: "Update remote database settings",
+        "zh-tw": "更新遠端資料庫設定",
     },
     "TweakMismatchResolve.Action.UseMineAcceptIncompatible": {
         def: "Update remote database settings but keep as is",
@@ -9532,6 +9715,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스 설정 업데이트하지만 그대로 유지",
         ru: "Обновить настройки, но оставить как есть",
         zh: "Update remote database settings but keep as is",
+        "zh-tw": "更新遠端資料庫設定，但保持現狀",
     },
     "TweakMismatchResolve.Action.UseMineWithRebuild": {
         def: "Update remote database settings and rebuild again",
@@ -9542,6 +9726,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스 설정 업데이트하고 다시 재구축",
         ru: "Обновить настройки и перестроить снова",
         zh: "Update remote database settings and rebuild again",
+        "zh-tw": "更新遠端資料庫設定並再次重建",
     },
     "TweakMismatchResolve.Action.UseRemote": {
         def: "Apply settings to this device",
@@ -9552,6 +9737,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기에 설정 적용",
         ru: "Применить настройки к этому устройству",
         zh: "Apply settings to this device",
+        "zh-tw": "將設定套用到此裝置",
     },
     "TweakMismatchResolve.Action.UseRemoteAcceptIncompatible": {
         def: "Apply settings to this device, but and ignore incompatibility",
@@ -9562,6 +9748,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기에 설정 적용하지만 호환성 문제 무시",
         ru: "Применить настройки, но игнорировать несовместимость",
         zh: "Apply settings to this device, but and ignore incompatibility",
+        "zh-tw": "將設定套用到此裝置，並忽略不相容之處",
     },
     "TweakMismatchResolve.Action.UseRemoteWithRebuild": {
         def: "Apply settings to this device, and fetch again",
@@ -9572,6 +9759,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기에 설정 적용하고 다시 가져오기",
         ru: "Применить настройки и загрузить снова",
         zh: "Apply settings to this device, and fetch again",
+        "zh-tw": "將設定套用到此裝置，並再次抓取",
     },
     "TweakMismatchResolve.Message.AutoAcceptCompatibleUndefined": {
         def: "\nIt appears that the settings differ for each device. You can now automatically apply compatible changes to these configurations.\nWould you like to enable this `auto-accept` setting?",
@@ -9587,6 +9775,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "\n원격 데이터베이스의 설정은 다음과 같습니다. 이 값들은 이 기기와 최소 한 번 동기화된 다른 기기에서 구성된 것입니다.\n\n이 설정을 사용하려면 구성된 설정 사용를 선택해 주세요.\n이 기기의 설정을 유지하려면 무시를 선택해 주세요.\n\n${table}\n\n>[!TIP]\n> 모든 설정을 동기화하려면 이 기능으로 최소 구성을 적용한 후 `마크다운을 통한 설정 동기화`를 사용해 주세요.\n\n${additionalMessage}",
         ru: "Настройки в удалённой базе данных следующие. Эти значения настроены другими устройствами.",
         zh: "\nThe settings in the remote database are as follows. These values are configured by other devices, which are synchronised with this device at least once.\n\nIf you want to use these settings, please select Use configured settings.\nIf you want to keep the settings of this device, please select Dismiss.\n\n${table}\n\n>[!TIP]\n> If you want to synchronise all settings, please use `Sync settings via markdown` after applying minimal configuration with this feature.\n\n${additionalMessage}",
+        "zh-tw":
+            "\n遠端資料庫中的設定如下。這些值由其他裝置所設定，而那些裝置至少與此裝置同步過一次。\n\n如果你想使用這些設定，請選擇「採用已設定的值」。\n如果你想保留此裝置的設定，請選擇「不處理」。\n\n${table}\n\n>[!TIP]\n> 如果你想同步所有設定，請先用此功能套用最小設定，再使用 `Sync settings via markdown`。\n\n${additionalMessage}",
     },
     "TweakMismatchResolve.Message.MainTweakResolving": {
         def: "Your configuration has not been matched with the one on the remote server.\n\nFollowing configuration should be matched:\n\n${table}\n\nLet us know your decision.\n\n${additionalMessage}",
@@ -9597,16 +9787,20 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성이 원격 서버의 것과 일치하지 않습니다.\n\n다음 구성이 일치해야 합니다:\n\n${table}\n\n결정을 알려주세요.\n\n${additionalMessage}",
         ru: "Ваша конфигурация не совпадает с удалённым сервером.",
         zh: "Your configuration has not been matched with the one on the remote server.\n\nFollowing configuration should be matched:\n\n${table}\n\nLet us know your decision.\n\n${additionalMessage}",
+        "zh-tw":
+            "你的設定與遠端伺服器上的設定不一致。\n\n以下設定需要保持一致：\n\n${table}\n\n請告訴我們你的決定。\n\n${additionalMessage}",
     },
     "TweakMismatchResolve.Message.mineUpdated": {
         def: "The device configuration have been adjusted.",
         es: "Se ha ajustado la configuración del dispositivo.",
         ko: "이 기기의 구성이 조정되었습니다.",
+        "zh-tw": "此裝置的設定已調整。",
     },
     "TweakMismatchResolve.Message.remoteUpdated": {
         def: "The configuration stored remotely has been updated.",
         es: "Se ha actualizado la configuración almacenada en el remoto.",
         ko: "원격에 저장된 구성이 업데이트되었습니다.",
+        "zh-tw": "遠端儲存的設定已更新。",
     },
     "TweakMismatchResolve.Message.UseRemote.WarningRebuildRecommended": {
         def: "\n>[!NOTICE]\n> Some changes are compatible but may consume extra storage and transfer volumes. A rebuild is recommended. However, a rebuild may not be performed at present, but may be implemented in future maintenance.\n> ***Please ensure that you have time and are connected to a stable network to apply!***",
@@ -9617,6 +9811,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "\n>[!NOTICE]\n> 일부 변경사항은 호환 가능하지만 추가 스토리지 및 전송량을 소모할 수 있습니다. 재구축을 권장합니다. 하지만 현재 재구축을 수행하지 않더라도 향후 유지보수에서 구현될 수 있습니다.\n> ***시간적 여유가 있고 안정적인 네트워크에 연결된 상태에서 적용해 주세요!***",
         ru: "Некоторые изменения совместимы, но могут потребовать дополнительного хранилища. Рекомендуется перестроение.",
         zh: "\n>[!NOTICE]\n> Some changes are compatible but may consume extra storage and transfer volumes. A rebuild is recommended. However, a rebuild may not be performed at present, but may be implemented in future maintenance.\n> ***Please ensure that you have time and are connected to a stable network to apply!***",
+        "zh-tw":
+            "\n>[!NOTICE]\n> 部分變更雖然相容，但可能耗用額外的儲存空間與傳輸量，建議進行重建。不過目前可能不會執行重建，未來的維護作業可能會實作。\n> ***請確認你有足夠時間且網路連線穩定，再進行套用！***",
     },
     "TweakMismatchResolve.Message.UseRemote.WarningRebuildRequired": {
         def: "\n>[!WARNING]\n> Some remote configurations are not compatible with the local database of this device. Rebuilding the local database will be required.\n> ***Please ensure that you have time and are connected to a stable network to apply!***",
@@ -9627,6 +9823,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "\n>[!WARNING]\n> 일부 원격 구성이 이 기기의 로컬 데이터베이스와 호환되지 않습니다. 로컬 데이터베이스 재구축이 필요합니다.\n> ***시간적 여유가 있고 안정적인 네트워크에 연결된 상태에서 적용해 주세요!***",
         ru: "Некоторые удалённые конфигурации несовместимы с локальной базой данных. Требуется перестроение.",
         zh: "\n>[!WARNING]\n> Some remote configurations are not compatible with the local database of this device. Rebuilding the local database will be required.\n> ***Please ensure that you have time and are connected to a stable network to apply!***",
+        "zh-tw":
+            "\n>[!WARNING]\n> 部分遠端設定與此裝置的本機資料庫不相容，將需要重建本機資料庫。\n> ***請確認你有足夠時間且網路連線穩定，再進行套用！***",
     },
     "TweakMismatchResolve.Message.WarningIncompatibleRebuildRecommended": {
         def: "\n>[!NOTICE]\n> We have detected that some of the values are different to make incompatible the local database with the remote database.\n> Some changes are compatible but may consume extra storage and transfer volumes. A rebuild is recommended. However, a rebuild may not be performed at present, but may be implemented in future maintenance.\n> If you want to rebuild, it takes a few minutes or more. **Make sure it is safe to perform it now.**",
@@ -9637,6 +9835,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "\n>[!NOTICE]\n> 로컬 데이터베이스와 원격 데이터베이스가 호환되지 않도록 만드는 값들이 다른 것을 감지했습니다.\n> 일부 변경사항은 호환 가능하지만 추가 스토리지 및 전송량을 소모할 수 있습니다. 재구축을 권장합니다. 하지만 현재 재구축을 수행하지 않더라도 향후 유지보수에서 구현될 수 있습니다.\n> 재구축을 원한다면 몇 분 이상 소요됩니다. **지금 수행해도 안전한지 확인해 주세요.**",
         ru: "Обнаружены значения, несовместимые с удалённой базой данных. Рекомендуется перестроение.",
         zh: "\n>[!NOTICE]\n> We have detected that some of the values are different to make incompatible the local database with the remote database.\n> Some changes are compatible but may consume extra storage and transfer volumes. A rebuild is recommended. However, a rebuild may not be performed at present, but may be implemented in future maintenance.\n> If you want to rebuild, it takes a few minutes or more. **Make sure it is safe to perform it now.**",
+        "zh-tw":
+            "\n>[!NOTICE]\n> 我們偵測到部分值不同，會使本機資料庫與遠端資料庫不相容。\n> 部分變更雖然相容，但可能耗用額外的儲存空間與傳輸量，建議進行重建。不過目前可能不會執行重建，未來的維護作業可能會實作。\n> 如果你要重建，會花上數分鐘甚至更久。**請確認現在執行是安全的。**",
     },
     "TweakMismatchResolve.Message.WarningIncompatibleRebuildRequired": {
         def: "\n>[!WARNING]\n> We have detected that some of the values are different to make incompatible the local database with the remote database.\n> Either local or remote rebuilds are required. Both of them takes a few minutes or more. **Make sure it is safe to perform it now.**",
@@ -9647,6 +9847,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "\n>[!WARNING]\n> 로컬 데이터베이스와 원격 데이터베이스가 호환되지 않도록 만드는 값들이 다른 것을 감지했습니다.\n> 로컬 또는 원격 재구축이 필요합니다. 둘 다 몇 분 이상 소요됩니다. **지금 수행해도 안전한지 확인해 주세요.**",
         ru: "Обнаружены значения, несовместимые с удалённой базой данных. Требуется перестроение.",
         zh: "\n>[!WARNING]\n> We have detected that some of the values are different to make incompatible the local database with the remote database.\n> Either local or remote rebuilds are required. Both of them takes a few minutes or more. **Make sure it is safe to perform it now.**",
+        "zh-tw":
+            "\n>[!WARNING]\n> 我們偵測到部分值不同，會使本機資料庫與遠端資料庫不相容。\n> 需要重建本機或遠端其中一方，兩者都會花上數分鐘甚至更久。**請確認現在執行是安全的。**",
     },
     "TweakMismatchResolve.Table": {
         def: "| Value name | This device | On Remote |\n|: --- |: ---- :|: ---- :|\n${rows}\n\n",
@@ -9657,6 +9859,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "| 값 이름 | 이 기기 | 원격 |\n|: --- |: ---- :|: ---- :|\n${rows}\n\n",
         ru: "| Имя значения | Это устройство | На удалённом |\n|: --- |: ---- :|: ---- :|",
         zh: "| Value name | This device | On Remote |\n|: --- |: ---- :|: ---- :|\n${rows}\n\n",
+        "zh-tw": "| 設定項目 | 此裝置 | 遠端 |\n|: --- |: ---- :|: ---- :|\n${rows}\n\n",
     },
     "TweakMismatchResolve.Table.Row": {
         def: "| ${name} | ${self} | ${remote} |",
@@ -9667,6 +9870,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "| ${name} | ${self} | ${remote} |",
         ru: "| name | self | remote |",
         zh: "| ${name} | ${self} | ${remote} |",
+        "zh-tw": "| ${name} | ${self} | ${remote} |",
     },
     "TweakMismatchResolve.Title": {
         def: "Configuration Mismatch Detected",
@@ -9692,6 +9896,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성 불일치 감지",
         ru: "Обнаружено несоответствие конфигурации",
         zh: "Configuration Mismatch Detected",
+        "zh-tw": "偵測到設定不一致",
     },
     "TweakMismatchResolve.Title.UseRemoteConfig": {
         def: "Use Remote Configuration",
@@ -9702,6 +9907,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 구성 사용",
         ru: "Использовать удалённую конфигурацию",
         zh: "Use Remote Configuration",
+        "zh-tw": "使用遠端設定",
     },
     "Ui.Common.Signal.Caution": {
         def: "CAUTION",
@@ -10931,6 +11137,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Start setup",
         es: "Comenzar la configuración",
         ko: "설정 시작",
+        "zh-tw": "開始設定",
     },
     "Ui.SetupWizard.OutroAskUserMode.CompatibleOption": {
         def: "The remote is already set up, and the configuration is compatible (or became compatible through this operation).",
@@ -11510,6 +11717,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "We have to configure the device name",
         es: "Hay que configurar el nombre del dispositivo",
         ko: "기기 이름을 설정해야 합니다",
+        "zh-tw": "我們必須先設定裝置名稱",
     },
     "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.":
         {
