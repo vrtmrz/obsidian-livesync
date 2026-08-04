@@ -25,10 +25,20 @@ import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_b
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
 import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
-import { createNodeStandardIo, fsPromises as fs, path, fs as fsSync } from "@vrtmrz/livesync-commonlib/node";
+import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
+import {
+    applyStoredSetting,
+    changedSettingKeys,
+    CLI_RUNTIME_ONLY_SETTING_KEYS,
+    cloneSettings,
+    isSettingsWriteCommand,
+    preserveStoredSetting,
+    reconcileDurableSettings,
+    settingsEqual,
+} from "./settingsPersistence";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();
@@ -92,6 +102,7 @@ Options:
   --vault <path>, -V <path>  (daemon/mirror) Path to the vault directory containing .md files
                               (defaults to database-path; allows separate PouchDB and vault dirs)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
+  --write-settings         Write setting changes after a successful command
 
 Examples:
     livesync-cli ./my-database                        Run daemon (LiveSync mode)
@@ -141,6 +152,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
     let verbose = false;
     let debug = false;
     let force = false;
+    let writeSettings = false;
     let interval: number | undefined;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
@@ -197,6 +209,9 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
             case "-f":
                 force = true;
                 break;
+            case "--write-settings":
+                writeSettings = true;
+                break;
             default: {
                 if (!databasePath) {
                     if (command === "daemon" && isCLICommand(token)) {
@@ -237,6 +252,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
         verbose,
         debug,
         force,
+        writeSettings,
         command,
         commandArgs,
         interval,
@@ -411,16 +427,26 @@ export async function main(
 
     // Setup settings handlers
     const settingService = serviceHubInstance.setting;
+    const originalSettingsText = await fs.readFile(settingsPath, "utf-8").catch(() => undefined);
+    let latestPreparedSettingsText: string | undefined;
+    let preparedSettingsRevision = 0;
+    let commandIsRunning = false;
+    let commandPreparedSettingsTexts: string[] = [];
 
     (settingService as InjectableSettingService<NodeServiceContext>).saveData.setHandler(
         async (data: ObsidianLiveSyncSettings) => {
             try {
-                await fs.writeFile(settingsPath, JSON.stringify(data, null, 2), "utf-8");
+                latestPreparedSettingsText = JSON.stringify(data, null, 2);
+                preparedSettingsRevision++;
+                if (commandIsRunning) {
+                    commandPreparedSettingsTexts.push(latestPreparedSettingsText);
+                }
                 if (options.verbose) {
-                    writeStderrLine(standardIo, `[Settings] Saved to ${settingsPath}`);
+                    writeStderrLine(standardIo, `[Settings] Prepared an update for ${settingsPath}`);
                 }
             } catch (error) {
-                writeStderrLine(standardIo, `[Settings] Failed to save:`, error);
+                writeStderrLine(standardIo, `[Settings] Failed to prepare an update:`, error);
+                throw error;
             }
         }
     );
@@ -503,24 +529,21 @@ export async function main(
     process.on("SIGINT", () => void shutdown("SIGINT"));
     process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
-    // Save the settings file before any lifecycle events can mutate and persist them.
-    // suspendAllSync and other lifecycle hooks clobber sync settings in memory, and
-    // various code paths persist the clobbered state to disk. We restore on shutdown.
-    const settingsBackup = await fs.readFile(settingsPath, "utf-8").catch(() => null!);
-
-    // Restore settings file on any exit to undo lifecycle mutations.
-    // Write to a temp path first so a crash mid-write doesn't leave a truncated file.
-    process.on("exit", () => {
-        if (settingsBackup) {
-            const tmpPath = settingsPath + ".tmp";
-            try {
-                fsSync.writeFileSync(tmpPath, settingsBackup, "utf-8");
-                fsSync.renameSync(tmpPath, settingsPath);
-            } catch (err) {
-                writeStderrLine(standardIo, "[Settings] Failed to restore settings on exit:", err);
+    const writeSettingsAtomically = async (content: string | undefined): Promise<void> => {
+        if (content === undefined || content === originalSettingsText) return;
+        const temporaryPath = `${settingsPath}.${process.pid}.tmp`;
+        await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+        try {
+            await fs.writeFile(temporaryPath, content, "utf-8");
+            await fs.rename(temporaryPath, settingsPath);
+            if (options.verbose) {
+                writeStderrLine(standardIo, `[Settings] Saved to ${settingsPath}`);
             }
+        } catch (error) {
+            await fs.unlink(temporaryPath).catch(() => {});
+            throw error;
         }
-    });
+    };
 
     // Start the core
     try {
@@ -531,9 +554,15 @@ export async function main(
             writeStderrLine(standardIo, `[Error] Failed to initialize LiveSync`);
             process.exit(1);
         }
+        const settingsAfterLoadText = latestPreparedSettingsText
+            ? preserveStoredSetting(latestPreparedSettingsText, originalSettingsText, "useIndexedDBAdapter")
+            : originalSettingsText;
+
         // Capture sync settings before suspendAllSync() clobbers them.
         // Used by daemon mode to restore the correct sync behaviour after the mirror scan.
-        const settingsBeforeSuspend = core.services.setting.currentSettings();
+        const settingsBeforeSuspend = cloneSettings(core.services.setting.currentSettings());
+        const durableSettingsBeforeSuspend = cloneSettings(settingsBeforeSuspend);
+        applyStoredSetting(durableSettingsBeforeSuspend, settingsAfterLoadText, "useIndexedDBAdapter");
         const originalSyncSettings = {
             liveSync: settingsBeforeSuspend.liveSync,
             syncOnStart: settingsBeforeSuspend.syncOnStart,
@@ -544,7 +573,19 @@ export async function main(
             syncAfterMerge: settingsBeforeSuspend.syncAfterMerge,
         };
         await core.services.setting.suspendAllSync();
+        const settingsAfterSuspend = cloneSettings(core.services.setting.currentSettings());
         await core.services.control.onReady();
+        const settingsBeforeCommand = cloneSettings(core.services.setting.currentSettings());
+        const transientSettingKeys = changedSettingKeys(settingsBeforeSuspend, settingsAfterSuspend);
+        for (const key of CLI_RUNTIME_ONLY_SETTING_KEYS) {
+            transientSettingKeys.add(key);
+        }
+        const durableSettingsBeforeCommand = reconcileDurableSettings({
+            durableBase: durableSettingsBeforeSuspend,
+            runtimeBaseline: settingsAfterSuspend,
+            runtimeCurrent: settingsBeforeCommand,
+            preserveKeys: transientSettingKeys,
+        });
 
         infoLog(`[Ready] LiveSync is running`);
         infoLog(`[Ready] Press Ctrl+C to stop`);
@@ -568,14 +609,58 @@ export async function main(
             infoLog("");
         }
 
-        const result = await commandRunner(options, {
-            databasePath,
-            vaultPath,
-            core,
-            p2pReplicator,
-            settingsPath,
-            originalSyncSettings,
-        });
+        commandPreparedSettingsTexts = [];
+        let result: boolean;
+        try {
+            commandIsRunning = true;
+            result = await commandRunner(options, {
+                databasePath,
+                vaultPath,
+                core,
+                p2pReplicator,
+                settingsPath,
+                originalSyncSettings,
+            });
+        } finally {
+            commandIsRunning = false;
+        }
+
+        let settingsTextToCommit: string | undefined;
+        if (result && options.command === "setup") {
+            settingsTextToCommit = commandPreparedSettingsTexts[0];
+            if (settingsTextToCommit === undefined) {
+                throw new Error("The setup command completed without preparing its settings update.");
+            }
+        } else if (result && (isSettingsWriteCommand(options.command) || options.writeSettings)) {
+            const runtimeSettingsAfterCommand = cloneSettings(core.services.setting.currentSettings());
+            const durableSettingsAfterCommand = reconcileDurableSettings({
+                durableBase: durableSettingsBeforeCommand,
+                runtimeBaseline: settingsBeforeCommand,
+                runtimeCurrent: runtimeSettingsAfterCommand,
+                preserveKeys: transientSettingKeys,
+                command: options.command,
+            });
+
+            if (
+                isSettingsWriteCommand(options.command) ||
+                !settingsEqual(durableSettingsAfterCommand, durableSettingsBeforeSuspend)
+            ) {
+                const runtimeSettings = cloneSettings(core.services.setting.currentSettings());
+                const revisionBeforeSave = preparedSettingsRevision;
+                try {
+                    await core.services.setting.updateSettings(() => cloneSettings(durableSettingsAfterCommand), true);
+                    if (preparedSettingsRevision === revisionBeforeSave || latestPreparedSettingsText === undefined) {
+                        throw new Error("The setting service did not prepare the requested settings update.");
+                    }
+                    settingsTextToCommit = latestPreparedSettingsText;
+                } finally {
+                    await core.services.setting.updateSettings(() => runtimeSettings, false);
+                }
+            } else {
+                settingsTextToCommit = settingsAfterLoadText;
+            }
+        }
+
         if (!result) {
             writeStderrLine(standardIo, `[Error] Command '${options.command}' failed`);
             process.exitCode = 1;
@@ -584,10 +669,12 @@ export async function main(
         }
 
         if (options.command === "daemon" && result) {
+            await writeSettingsAtomically(settingsTextToCommit);
             // Keep the process running
             await new Promise(() => {});
         } else {
             await core.services.control.onUnload();
+            await writeSettingsAtomically(settingsTextToCommit);
         }
     } catch (error) {
         writeStderrLine(standardIo, `[Error] Failed to start:`, error);

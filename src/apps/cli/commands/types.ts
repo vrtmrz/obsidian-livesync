@@ -40,6 +40,7 @@ export interface CLIOptions {
     verbose?: boolean;
     debug?: boolean;
     force?: boolean;
+    writeSettings?: boolean;
     command: CLICommand;
     commandArgs: string[];
     interval?: number;

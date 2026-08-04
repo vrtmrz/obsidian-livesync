@@ -7,6 +7,7 @@
         "test:daemon": "deno test --env-file=.test.env -A --no-check test-daemon.ts",
         "test:decoupled-vault": "deno test --env-file=.test.env -A --no-check test-decoupled-vault.ts",
         "test:remote-commands": "deno test --env-file=.test.env -A --no-check test-remote-commands.ts",
+        "test:settings-writeback": "deno test -A --no-check test-settings-writeback.ts",
         "test:push-pull": "deno test --env-file=.test.env -A --no-check test-push-pull.ts",
         "test:setup-put-cat": "deno test --env-file=.test.env -A --no-check test-setup-put-cat.ts",
         "test:mirror": "deno test --env-file=.test.env -A --no-check test-mirror.ts",

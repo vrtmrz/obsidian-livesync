@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Command-line tool
+
+#### Fixed
+
+- Successful setup and remote-configuration commands now retain their settings changes. Other commands leave the settings file unchanged unless `--write-settings` is supplied, and temporary CLI suspension values are never written (#1070).
+
 ## 1.0.3
 
 3rd August, 2026
