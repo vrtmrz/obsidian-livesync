@@ -18,7 +18,14 @@ type LiveSyncTestPlugin = {
     core: {
         services: {
             setting: {
-                currentSettings(): { versionUpFlash: string };
+                currentSettings(): {
+                    versionUpFlash: string;
+                    allowSleepDuringSynchronisation: boolean;
+                    allowSleepDuringSynchronisationOnDesktop: boolean;
+                    useAdvancedMode: boolean;
+                    usePowerUserMode: boolean;
+                    useEdgeCaseMode: boolean;
+                };
                 getSmallConfig(key: string): string | null;
             };
         };
@@ -196,6 +203,30 @@ async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<void> {
 
 async function verifyEffectiveSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const sleepPreferences = await page.evaluate(() => {
+            const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+            if (plugin === undefined) throw new Error("Self-hosted LiveSync is unavailable");
+            const settings = plugin.core.services.setting.currentSettings();
+            return {
+                general: settings.allowSleepDuringSynchronisation,
+                desktop: settings.allowSleepDuringSynchronisationOnDesktop,
+                advancedMode: settings.useAdvancedMode,
+                powerUserMode: settings.usePowerUserMode,
+                edgeCaseMode: settings.useEdgeCaseMode,
+            };
+        });
+        if (
+            sleepPreferences.general !== false ||
+            sleepPreferences.desktop !== true ||
+            sleepPreferences.advancedMode !== false ||
+            sleepPreferences.powerUserMode !== false ||
+            sleepPreferences.edgeCaseMode !== false
+        ) {
+            throw new Error(
+                `Unexpected effective sleep preferences: ${JSON.stringify(sleepPreferences)}`
+            );
+        }
+
         await page.evaluate(() => {
             const setting = (globalThis as ObsidianTestGlobal).app?.setting;
             if (setting === undefined) throw new Error("Obsidian settings are unavailable");
@@ -205,6 +236,16 @@ async function verifyEffectiveSettings(): Promise<void> {
 
         const liveSyncSettings = page.locator(".sls-setting");
         await liveSyncSettings.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const settingsClass = await liveSyncSettings.getAttribute("class");
+        for (const modeClass of [
+            "menu-setting-advanced-disabled",
+            "menu-setting-poweruser-disabled",
+            "menu-setting-edgecase-disabled",
+        ]) {
+            if (!settingsClass?.split(/\s+/u).includes(modeClass)) {
+                throw new Error(`The settings UI did not disable ${modeClass}.`);
+            }
+        }
 
         await liveSyncSettings.locator('.sls-setting-menu-btn[title="Change Log"]').click();
         const removedAcknowledgements = liveSyncSettings.getByRole("button", {
@@ -226,6 +267,35 @@ async function verifyEffectiveSettings(): Promise<void> {
         });
 
         await liveSyncSettings.locator('.sls-setting-menu-btn[title="Sync Settings"]').click();
+        const generalSleepSetting = liveSyncSettings.locator(".setting-item").filter({
+            has: page.getByText("Allow sleep during synchronisation", { exact: true }),
+        });
+        await generalSleepSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        if ((await generalSleepSetting.locator(".checkbox-container.is-enabled").count()) !== 0) {
+            throw new Error("The general sleep preference must be disabled by default.");
+        }
+
+        const desktopSleepSetting = liveSyncSettings.locator(".setting-item").filter({
+            has: page.getByText("Allow sleep during synchronisation on the desktop", { exact: true }),
+        });
+        await desktopSleepSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        if ((await desktopSleepSetting.locator(".checkbox-container.is-enabled").count()) !== 1) {
+            throw new Error("The desktop sleep preference must be enabled by default.");
+        }
+
+        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Setup"]').click();
+        const advancedModeSetting = liveSyncSettings.locator(".setting-item").filter({
+            has: page.getByText("Enable advanced features", { exact: true }),
+        });
+        await advancedModeSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await advancedModeSetting.locator(".checkbox-container").click();
+        await page.waitForFunction(
+            () => document.querySelector(".sls-setting")?.classList.contains("menu-setting-advanced-enabled") === true,
+            undefined,
+            { timeout: uiTimeoutMs }
+        );
+        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Sync Settings"]').click();
+
         const deletionPanel = liveSyncSettings
             .locator("h4.sls-setting-panel-title")
             .filter({ hasText: "Deletion Propagation" })
@@ -271,8 +341,9 @@ async function main(): Promise<void> {
                 syncAfterMerge: false,
                 periodicReplication: false,
                 handleFilenameCaseSensitive: false,
-                useAdvancedMode: true,
-                useEdgeCaseMode: true,
+                useAdvancedMode: false,
+                usePowerUserMode: false,
+                useEdgeCaseMode: false,
             },
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);

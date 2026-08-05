@@ -194,6 +194,10 @@ export function paneSyncSettings(
                 ),
             });
         }
+        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("allowSleepDuringSynchronisation");
+        if (!this.services.API.isMobile()) {
+            new Setting(paneEl).setClass("wizardHidden").autoWireToggle("allowSleepDuringSynchronisationOnDesktop");
+        }
     });
 
     void addPanel(

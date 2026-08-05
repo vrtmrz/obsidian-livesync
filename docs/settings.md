@@ -528,7 +528,19 @@ Sync automatically after merging files
 Setting key: keepReplicationActiveInBackground
 Desktop only; uses more battery and network. This setting applies to continuous and periodic replication.
 
-Finite remote operations, including one-shot replication, P2P peer discovery and selection, rebuilds, fetches, and remote chunk fetching, request best-effort screen-awake protection automatically and do not require this setting. That protection does not guarantee execution while Obsidian is hidden or while the operating system suspends the device.
+#### Allow sleep during synchronisation
+
+Setting key: allowSleepDuringSynchronisation
+
+Allow the operating system to sleep while finite synchronisation operations are in progress. This option applies on every platform and is disabled by default. When it is disabled, finite operations request best-effort screen-awake protection.
+
+#### Allow sleep during synchronisation on the desktop
+
+Setting key: allowSleepDuringSynchronisationOnDesktop
+
+Desktop only. Allow the operating system to sleep during finite synchronisation operations even when the general option is disabled. This option is enabled by default, so periodic or event-driven synchronisation does not repeatedly prevent automatic desktop sleep. Disable it to retain best-effort screen-awake protection on desktop.
+
+Setup URIs preserve both sleep preferences. Older Setup URIs which do not contain them use the defaults described above. The preferences cover finite remote operations, including one-shot replication, P2P peer discovery and selection, rebuilds, fetches, remote chunk fetching, and applying downloaded documents to the Vault. They do not control whether continuous replication remains active while Obsidian is hidden, and allowing sleep does not force the operating system to suspend the device.
 
 ### 3. Update thinning
 

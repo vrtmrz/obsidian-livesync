@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Improved
+
+- Added settings to control whether finite synchronisation operations keep the screen awake. Desktop devices now allow automatic sleep by default, while mobile devices retain screen-awake protection unless the general option is enabled (#1073).
+
 ## 1.0.4
 
 5th August, 2026
