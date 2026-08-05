@@ -91,6 +91,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             appLifecycleService: appLifecycle,
             databaseEventService: databaseEvents,
             activityRunner: screenWakeLock,
+            isMobile: () => API.isMobile(),
         });
         const replication = new ObsidianReplicationService(context, {
             APIService: API,
