@@ -67,6 +67,10 @@ livesync-cli [database-path] [command] [args...]
 - `--vault <path>` / `-V <path>`: (daemon/mirror only) Path to the vault directory containing `.md` files.
     - Allows the PouchDB database directory and the actual vault directory to be different locations.
     - For `mirror` command, the positional `[vault-path]` argument takes precedence over `--vault`.
+- `--write-settings`: Write setting migrations and other lasting changes after the command succeeds.
+    - `init-settings` writes its target file. `setup`, `remote-add`, `remote-rm`, `remote-set`, and `remote-activate` write their settings changes without this option.
+    - All remaining commands leave the settings file unchanged by default.
+    - Temporary values used to suspend synchronisation or select a remote for one command are never written.
 
 ### Commands
 
@@ -333,6 +337,7 @@ Options:
   --debug, -d             Enable debug logging (includes verbose)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --vault <path>, -V <path>  (daemon/mirror) Path to vault directory, decoupled from database-path
+  --write-settings         Write setting changes after a successful command
   --help, -h              Show this help message
 
 Commands:

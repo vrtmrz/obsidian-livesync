@@ -206,4 +206,13 @@ describe("CLI parseArgs", () => {
         expect(parsed.command).toBe("daemon");
         expect(parsed.interval).toBe(30);
     });
+
+    it("parses --write-settings as a global option", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--write-settings", "ls"];
+        const parsed = parseArgs();
+
+        expect(parsed.command).toBe("ls");
+        expect(parsed.writeSettings).toBe(true);
+        expect(parsed.commandArgs).toEqual([]);
+    });
 });

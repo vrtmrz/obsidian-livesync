@@ -1,4 +1,5 @@
 const TASKS = [
+    "test:settings-writeback",
     "test:setup-put-cat",
     "test:mirror",
     "test:daemon",
