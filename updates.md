@@ -16,6 +16,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 5th August, 2026
 
+### Synchronisation and storage
+
+#### Fixed
+
+- Testing or saving a fresh remote configuration no longer tries to access the local database while constructing a replicator, avoiding 'Local database is not ready yet' failures before local database initialisation (#1064).
+
 ### Command-line tool
 
 #### Fixed
