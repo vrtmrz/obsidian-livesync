@@ -18,6 +18,16 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 - Added settings to control whether finite synchronisation operations keep the screen awake. Desktop devices now allow automatic sleep by default, while mobile devices retain screen-awake protection unless the general option is enabled (#1073).
 
+### Interface and translation
+
+#### Improved
+
+- Korean translations now cover the complete current catalogue across Setup, P2P, remote configuration, diagnostics, and maintenance (PR #1075). Thank you to @motolies for the improvement!
+
+#### Fixed
+
+- The in-editor LiveSync status on iOS now remains below the view-header controls instead of overlapping them (PR #1067). Thank you to @Hsiii for the improvement!
+
 ## 1.0.4
 
 5th August, 2026
@@ -49,7 +59,6 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 #### Fixed
 
-- The in-editor LiveSync status on iOS now remains below the view-header controls instead of overlapping them.
 - The Remediation setting now displays its configured modification-time limit without raising a `HierarchyRequestError`.
 
 ## 1.0.2
