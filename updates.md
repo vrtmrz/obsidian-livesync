@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.4
+
+5th August, 2026
+
 ### Command-line tool
 
 #### Fixed
