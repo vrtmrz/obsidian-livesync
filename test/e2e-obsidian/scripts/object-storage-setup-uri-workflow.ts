@@ -29,7 +29,7 @@ import {
     finishInitialisation,
     generateSetupURIFromDevice,
     resumeCompatibilityReviewIfShown,
-    skipMissingRemoteConfiguration,
+    continueWithoutRemoteSettings,
     type SetupArtifact,
     type SetupCaptureNames,
 } from "../runner/setupUri.ts";
@@ -226,7 +226,7 @@ async function main(): Promise<void> {
         screenshots.push(await enterSetupURI(portA, "new", bootstrapArtifact, captures));
         screenshots.push(await captureAndStartInitialisation(portA, "new", captures));
         screenshots.push(await confirmRebuild(portA, captures));
-        screenshots.push(await skipMissingRemoteConfiguration(portA, captures));
+        screenshots.push(await continueWithoutRemoteSettings(portA, captures));
         screenshots.push(await acknowledgeDisabledOptionalFeatures(portA, captures));
         const firstState = await finishInitialisation(portA, context.cliBinary, sessionA.cliEnv);
         await resumeCompatibilityReviewIfShown(portA);

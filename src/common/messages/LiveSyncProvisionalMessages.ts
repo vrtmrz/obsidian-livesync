@@ -49,6 +49,18 @@ export const liveSyncProvisionalEnglishMessages = {
     "Connect to existing database and continue": "Connect to existing database and continue",
     "Test connection and save": "Test connection and save",
     "Save without connecting": "Save without connecting",
+    "Use this device's settings": "Use this device's settings",
+    Retry: "Retry",
+    "No Synchronisation Settings Found": "No Synchronisation Settings Found",
+    "The selected remote has no saved synchronisation settings. This is normal for a new remote. Use this device's settings, or cancel if you expected existing settings.":
+        "The selected remote has no saved synchronisation settings. This is normal for a new remote. Use this device's settings, or cancel if you expected existing settings.",
+    "Could Not Read Synchronisation Settings": "Could Not Read Synchronisation Settings",
+    "Could not read the remote's synchronisation settings. Check the connection and credentials, then retry.":
+        "Could not read the remote's synchronisation settings. Check the connection and credentials, then retry.",
+    "Could not read the remote's synchronisation settings. Retry, or continue the overwrite with this device's settings. A working connection is still required.":
+        "Could not read the remote's synchronisation settings. Retry, or continue the overwrite with this device's settings. A working connection is still required.",
+    "Skips checking and applying synchronisation settings from the remote.":
+        "Skips checking and applying synchronisation settings from the remote.",
     "Enter a complete HTTP or HTTPS URL.": "Enter a complete HTTP or HTTPS URL.",
     "CouchDB validates the database name when you connect. The name must not be empty.":
         "CouchDB validates the database name when you connect. The name must not be empty.",

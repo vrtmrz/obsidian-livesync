@@ -254,17 +254,23 @@ export async function confirmRebuild(port: number, captures: SetupCaptureNames):
     return screenshot;
 }
 
-export async function skipMissingRemoteConfiguration(port: number, captures: SetupCaptureNames): Promise<string> {
-    const title = "Fetch Remote Configuration Failed";
+export async function continueWithoutRemoteSettings(port: number, captures: SetupCaptureNames): Promise<string> {
+    const title = "No Synchronisation Settings Found";
     const screenshot = await captureGuideDialogue(
         port,
         `guide-${captures.guide}-missing-remote-configuration.png`,
         title
     );
     await withObsidianPage(port, async (page) => {
-        await modalByTitle(page, title)
-            .getByRole("button", { name: "Skip and proceed" })
-            .click({ timeout: uiTimeoutMs });
+        const modal = modalByTitle(page, title);
+        await modal
+            .getByText("This is normal for a new remote.", { exact: false })
+            .waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await modal.getByRole("button", { name: "Cancel", exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        await modal.getByRole("button", { name: "Use this device's settings" }).click({ timeout: uiTimeoutMs });
     });
     return screenshot;
 }

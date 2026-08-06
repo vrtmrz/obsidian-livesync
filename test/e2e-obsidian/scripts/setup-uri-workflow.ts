@@ -300,8 +300,8 @@ async function confirmRebuild(port: number): Promise<string> {
     return screenshot;
 }
 
-async function skipMissingRemoteConfiguration(port: number): Promise<string> {
-    const title = "Fetch Remote Configuration Failed";
+async function continueWithoutRemoteSettings(port: number): Promise<string> {
+    const title = "No Synchronisation Settings Found";
     const screenshot = await captureObsidianDialogue(
         port,
         "setup-uri-first-missing-remote-configuration.png",
@@ -309,16 +309,20 @@ async function skipMissingRemoteConfiguration(port: number): Promise<string> {
             const modal = modalByTitle(page, title);
             await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
             await modal
-                .getByText("If you are new to the Self-hosted LiveSync, this might be expected.", {
+                .getByText("This is normal for a new remote.", {
                     exact: false,
                 })
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await modal.getByRole("button", { name: "Cancel", exact: true }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
         }
     );
     await captureGuideDialogue(port, "guide-quick-setup-missing-remote-configuration.png", title);
     await withObsidianPage(port, async (page) => {
         await modalByTitle(page, title)
-            .getByRole("button", { name: "Skip and proceed" })
+            .getByRole("button", { name: "Use this device's settings" })
             .click({ timeout: uiTimeoutMs });
     });
     return screenshot;
@@ -736,7 +740,7 @@ async function main(): Promise<void> {
             await enterSetupURI(session.remoteDebuggingPort, "new", artifact);
             screenshots.push(await captureAndStartInitialisation(session.remoteDebuggingPort, "new"));
             screenshots.push(await confirmRebuild(session.remoteDebuggingPort));
-            screenshots.push(await skipMissingRemoteConfiguration(session.remoteDebuggingPort));
+            screenshots.push(await continueWithoutRemoteSettings(session.remoteDebuggingPort));
             screenshots.push(await acknowledgeDisabledOptionalFeatures(session.remoteDebuggingPort));
             const firstCompletion = await finishInitialisation(
                 session.remoteDebuggingPort,

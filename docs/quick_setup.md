@@ -39,7 +39,7 @@ Use this path only when the remote database is new, or when this device is inten
 
    ![Final server overwrite warning](../images/quick-setup/guide-quick-setup-first-rebuild-confirmation.png)
 
-8. A newly provisioned database may show `Fetch Remote Configuration Failed` because it does not contain a saved preferred configuration yet. If this is a genuinely new setup, select `Skip and proceed`. Otherwise, stop and investigate before continuing.
+8. A newly provisioned database may show `No Synchronisation Settings Found`. Select `Use this device's settings` for the intended new database. If you expected existing settings, cancel and check the selected remote. Cancellation restarts with Vault and database reflection paused; keep LiveSync disabled until the remote has been checked. If `Could Not Read Synchronisation Settings` appears, retry, or use this device's settings to continue the overwrite. The overwrite still requires a working connection.
 
    ![Expected missing remote configuration choice for a new database](../images/quick-setup/guide-quick-setup-missing-remote-configuration.png)
 
@@ -134,7 +134,7 @@ Use this path when CouchDB is ready but a Setup URI is unavailable. It configure
 8. Select `Create or connect to database and continue`. Onboarding requires this connection test to succeed.
 9. Review `Setup Complete: Preparing to Initialise Server`, then select `Restart and Initialise Server`.
 10. Read the final overwrite warning. Select `I Understand, Overwrite Server` only when this device is intentionally the source of truth and a current backup exists.
-11. A newly created database can show `Fetch Remote Configuration Failed` because it does not yet contain a saved preferred configuration. Select `Skip and proceed` only for this known new database.
+11. A newly created database can show `No Synchronisation Settings Found`. Select `Use this device's settings` for this known new database. If you expected existing settings, cancel and check the selected remote. Cancellation restarts with Vault and database reflection paused; keep LiveSync disabled until the remote has been checked. If `Could Not Read Synchronisation Settings` appears, retry, or use this device's settings to continue the overwrite. The overwrite still requires a working connection.
 12. Acknowledge `All optional features are disabled`, then keep Obsidian open until the initialisation progress has cleared.
 
 Create and synchronise an ordinary test note. Once it has reached CouchDB, follow [Create a Setup URI for another device](#create-a-setup-uri-for-another-device), then [Add another device](#add-another-device). This keeps the second device aligned with the remote profile and encryption settings which the first device actually applied.

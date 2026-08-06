@@ -10,6 +10,8 @@ import {
     type RemoteDBSettings,
     IncompatibleChangesInSpecificPattern,
     CompatibleButLossyChanges,
+    type RemotePreferredTweakResult,
+    RemotePreferredTweakStatuses,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
@@ -256,22 +258,21 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         return "IGNORE";
     }
 
-    async _fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<TweakValues | false> {
-        const replicator = await this.services.replicator.getNewReplicator(trialSetting);
-        if (!replicator) {
-            this._log("The remote type is not supported for fetching preferred tweak values.", LOG_LEVEL_NOTICE);
-            return false;
-        }
-        if (await replicator.tryConnectRemote(trialSetting)) {
-            const preferred = await replicator.getRemotePreferredTweakValues(trialSetting);
-            if (preferred) {
-                return preferred;
+    async _fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<RemotePreferredTweakResult> {
+        try {
+            const replicator = await this.services.replicator.getNewReplicator(trialSetting);
+            if (!replicator) {
+                this._log("The remote type does not support preferred tweak values.", LOG_LEVEL_NOTICE);
+                return { status: RemotePreferredTweakStatuses.UNSUPPORTED };
             }
-            this._log("Failed to get the preferred tweak values from the remote server.", LOG_LEVEL_NOTICE);
-            return false;
+            return await replicator.getRemotePreferredTweakValues(trialSetting);
+        } catch (ex) {
+            this._log("Failed to get the preferred tweak values from the remote.", LOG_LEVEL_NOTICE);
+            return {
+                status: RemotePreferredTweakStatuses.UNAVAILABLE,
+                error: ex,
+            };
         }
-        this._log("Failed to connect to the remote server.", LOG_LEVEL_NOTICE);
-        return false;
     }
 
     async _checkAndAskUseRemoteConfiguration(
@@ -281,8 +282,8 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             return { result: false, requireFetch: false };
         }
         const preferred = await this.services.tweakValue.fetchRemotePreferred(trialSetting);
-        if (preferred) {
-            return await this.services.tweakValue.askUseRemoteConfiguration(trialSetting, preferred);
+        if (preferred.status === RemotePreferredTweakStatuses.AVAILABLE) {
+            return await this.services.tweakValue.askUseRemoteConfiguration(trialSetting, preferred.values);
         }
         return { result: false, requireFetch: false };
     }
