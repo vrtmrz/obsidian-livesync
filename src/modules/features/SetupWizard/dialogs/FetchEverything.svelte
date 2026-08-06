@@ -141,10 +141,11 @@
 </Instruction>
 <Instruction>
     <ExtraItems title={translateMessage("Advanced")}>
-        <Check
-            title={translateMessage("Prevent fetching configuration from server")}
-            bind:value={preventFetchingConfig}
-        />
+        <Check title={translateMessage("Use this device's settings")} bind:value={preventFetchingConfig}>
+            <InfoNote>
+                {translateMessage("Skips checking and applying synchronisation settings from the remote.")}
+            </InfoNote>
+        </Check>
     </ExtraItems>
 </Instruction>
 <UserDecisions>

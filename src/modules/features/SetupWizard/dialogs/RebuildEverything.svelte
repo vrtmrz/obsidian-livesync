@@ -129,7 +129,9 @@
 {#if !isP2P}
     <Instruction>
         <ExtraItems title={msg("Advanced")}>
-            <Check title={msg("Prevent fetching configuration from server")} bind:value={preventFetchingConfig} />
+            <Check title={msg("Use this device's settings")} bind:value={preventFetchingConfig}>
+                <InfoNote>{msg("Skips checking and applying synchronisation settings from the remote.")}</InfoNote>
+            </Check>
         </ExtraItems>
     </Instruction>
 {/if}

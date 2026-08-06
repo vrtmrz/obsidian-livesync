@@ -25,7 +25,7 @@ import {
     modalByTitle,
     resumeCompatibilityReviewIfShown,
     selectRadioOption,
-    skipMissingRemoteConfiguration,
+    continueWithoutRemoteSettings,
     type SetupArtifact,
 } from "../runner/setupUri.ts";
 import { captureObsidianPage, withObsidianPage } from "../runner/ui.ts";
@@ -278,7 +278,7 @@ async function main(): Promise<void> {
             screenshots.push(...(await enterManualCouchDBSettings(session.remoteDebuggingPort, couchDb, dbName)));
             screenshots.push(await captureAndStartInitialisation(session.remoteDebuggingPort, "new", captures));
             screenshots.push(await confirmRebuild(session.remoteDebuggingPort, captures));
-            screenshots.push(await skipMissingRemoteConfiguration(session.remoteDebuggingPort, captures));
+            screenshots.push(await continueWithoutRemoteSettings(session.remoteDebuggingPort, captures));
             screenshots.push(await acknowledgeDisabledOptionalFeatures(session.remoteDebuggingPort, captures));
             const state = await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);

@@ -54,6 +54,36 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 describe("ModuleResolvingMismatchedTweaks", () => {
+    it("returns an unconfigured remote result without a separate connection preflight", async () => {
+        const { module, core } = createModule();
+        const tryConnectRemote = vi.fn(async () => true);
+        const getRemotePreferredTweakValues = vi.fn(async () => ({
+            status: "not-configured" as const,
+            reason: "milestone-missing" as const,
+        }));
+        core._services.replicator = {
+            getNewReplicator: vi.fn(async () => ({ tryConnectRemote, getRemotePreferredTweakValues })),
+        };
+
+        await expect(module._fetchRemotePreferredTweakValues(core.settings)).resolves.toEqual({
+            status: "not-configured",
+            reason: "milestone-missing",
+        });
+        expect(getRemotePreferredTweakValues).toHaveBeenCalledOnce();
+        expect(tryConnectRemote).not.toHaveBeenCalled();
+    });
+
+    it("returns unsupported when no replicator implements the remote type", async () => {
+        const { module, core } = createModule();
+        core._services.replicator = {
+            getNewReplicator: vi.fn(async () => undefined),
+        };
+
+        await expect(module._fetchRemotePreferredTweakValues(core.settings)).resolves.toEqual({
+            status: "unsupported",
+        });
+    });
+
     it("should enable and auto-accept compatible mismatches when the preference is undefined", async () => {
         const { module, core, askSelectStringDialogue, applyPartial } = createModule({
             autoAcceptCompatibleTweak: undefined,

@@ -68,6 +68,8 @@ const createLoggerMock = (): LogFunction => {
     return vi.fn();
 };
 
+const availableRemoteTweaks = (values: Record<string, unknown>) => ({ status: "available", values }) as const;
+
 const createStorageAccessMock = () => {
     const files: Set<string> = new Set();
     return {
@@ -149,7 +151,9 @@ const createRebuilderMock = () => {
 
 const createTweakValueMock = () => {
     return {
-        fetchRemotePreferred: vi.fn(() => Promise.resolve<any>(null)),
+        fetchRemotePreferred: vi.fn(() =>
+            Promise.resolve<any>({ status: "unavailable", error: new Error("Remote unavailable") })
+        ),
     };
 };
 
@@ -459,9 +463,9 @@ describe("Red Flag Feature", () => {
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
 
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                batchSave: false,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
 
             const handler = createFetchAllFlagHandler(host as any, log);
             const result = await handler.handle();
@@ -487,9 +491,9 @@ describe("Red Flag Feature", () => {
                 backup: "backup_skipped",
                 extra: { preventFetchingConfig: false },
             });
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                batchSave: false,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
             const handler = createFetchAllFlagHandler(host as any, log);
             const result = await handler.handle();
 
@@ -506,9 +510,9 @@ describe("Red Flag Feature", () => {
             host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(false);
 
             const handler = createFetchAllFlagHandler(host as any, log);
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                batchSave: false,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
             const result = await handler.handle();
 
             expect(result).toBe(false);
@@ -525,9 +529,9 @@ describe("Red Flag Feature", () => {
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
 
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                batchSave: false,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
             const handler = createFetchAllFlagHandler(host as any, log);
             const result = await handler.handle();
 
@@ -763,7 +767,7 @@ describe("Red Flag Feature", () => {
             host.mocks.ui.confirm.confirmWithMessage
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_NEWER_WINS)
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP);
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue({ batchSave: false } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue(availableRemoteTweaks({ batchSave: false }));
             host.mocks.rebuilder.$fetchLocalDBFast.mockRejectedValueOnce(new Error("offline"));
 
             await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
@@ -781,7 +785,7 @@ describe("Red Flag Feature", () => {
             host.mocks.ui.confirm.confirmWithMessage
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue({ batchSave: false } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue(availableRemoteTweaks({ batchSave: false }));
 
             await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
 
@@ -831,6 +835,65 @@ describe("Red Flag Feature", () => {
             expect(host.mocks.rebuilder.$fetchLocalDBFast).not.toHaveBeenCalled();
         });
 
+        it("should preserve automatic synchronisation choices and enter Scram when quick Fetch is cancelled", async () => {
+            const host = createHostMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+            Object.assign(host.mocks.setting.settings, {
+                liveSync: true,
+                periodicReplication: true,
+                syncOnSave: true,
+                syncOnEditorSave: true,
+                syncOnStart: true,
+                syncOnFileOpen: true,
+                syncAfterMerge: true,
+                suspendParseReplicationResult: false,
+            });
+            host.mocks.ui.confirm.confirmWithMessage
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "not-configured",
+                reason: "milestone-missing",
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Cancel");
+
+            const result = await askAndPerformFastSetupOnScheduledFetchAll(
+                host as any,
+                createLoggerMock(),
+                cleanupFlag
+            );
+
+            expect(result).toBe(false);
+            expect(host.mocks.rebuilder.$fetchLocalDBFast).not.toHaveBeenCalled();
+            expect(host.mocks.setting.suspendAllSync).not.toHaveBeenCalled();
+            expect(host.mocks.setting.applyPartial).toHaveBeenCalledWith(
+                {
+                    suspendFileWatching: true,
+                    suspendParseReplicationResult: true,
+                },
+                true
+            );
+            expect(host.mocks.setting.currentSettings()).toMatchObject({
+                liveSync: true,
+                periodicReplication: true,
+                syncOnSave: true,
+                syncOnEditorSave: true,
+                syncOnStart: true,
+                syncOnFileOpen: true,
+                syncAfterMerge: true,
+                suspendFileWatching: true,
+                suspendParseReplicationResult: true,
+            });
+            expect(cleanupFlag).toHaveBeenCalledOnce();
+            expect(host.mocks.appLifecycle.performRestart).toHaveBeenCalledOnce();
+            expect(host.mocks.setting.applyPartial.mock.invocationCallOrder[0]).toBeLessThan(
+                cleanupFlag.mock.invocationCallOrder[0]
+            );
+            expect(cleanupFlag.mock.invocationCallOrder[0]).toBeLessThan(
+                host.mocks.appLifecycle.performRestart.mock.invocationCallOrder[0]
+            );
+        });
+
         it("should reboot and return false when sync has failures and user chooses rerun", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
@@ -839,7 +902,9 @@ describe("Red Flag Feature", () => {
             host.mocks.ui.confirm.confirmWithMessage
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({ batchSave: false } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
             (synchroniseAllFilesBetweenDBandStorage as any).mockResolvedValueOnce(false);
             host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Reboot to re-run the process");
 
@@ -859,7 +924,9 @@ describe("Red Flag Feature", () => {
             host.mocks.ui.confirm.confirmWithMessage
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_REMOTE_WINS)
                 .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL);
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({ batchSave: false } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
             (synchroniseAllFilesBetweenDBandStorage as any).mockResolvedValueOnce(false);
             host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce(
                 "Finalise the process and resume normal operation"
@@ -1017,9 +1084,9 @@ describe("Red Flag Feature", () => {
             const host = createHostMock();
             const config = { batchSave: true } as any;
 
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                batchSave: false,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
 
             await adjustSettingToRemoteIfNeeded(
                 host as any,
@@ -1047,7 +1114,9 @@ describe("Red Flag Feature", () => {
                 const differentConfig = {
                     [key]: differentValue,
                 };
-                host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(differentConfig as any);
+                host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                    availableRemoteTweaks(differentConfig)
+                );
                 host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("OK");
 
                 await adjustSettingToRemote(host as any, createLoggerMock(), config);
@@ -1074,7 +1143,9 @@ describe("Red Flag Feature", () => {
                 const differentConfig = {
                     [key]: differentValue,
                 };
-                host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(differentConfig as any);
+                host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                    availableRemoteTweaks(differentConfig)
+                );
                 host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("OK");
 
                 await adjustSettingToRemote(host as any, createLoggerMock(), config);
@@ -1084,32 +1155,71 @@ describe("Red Flag Feature", () => {
             }
         );
 
-        it("should show dialog when remote fetch fails", async () => {
+        it("should explain that missing remote settings are normal for a new database without offering retry", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
             const config = { batchSave: true } as any;
 
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(null);
-            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Skip and proceed");
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "not-configured",
+                reason: "milestone-missing",
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Use this device's settings");
 
-            await adjustSettingToRemote(host as any, log, config);
+            await expect(adjustSettingToRemote(host as any, log, config)).resolves.toBe(true);
 
-            expect(host.mocks.ui.confirm.askSelectStringDialogue).toHaveBeenCalled();
+            expect(host.mocks.ui.confirm.askSelectStringDialogue).toHaveBeenCalledWith(
+                "The selected remote has no saved synchronisation settings. This is normal for a new remote. Use this device's settings, or cancel if you expected existing settings.",
+                ["Use this device's settings", "Cancel"],
+                {
+                    defaultAction: "Use this device's settings",
+                    timeout: 0,
+                    title: "No Synchronisation Settings Found",
+                }
+            );
+            expect(host.mocks.tweakValue.fetchRemotePreferred).toHaveBeenCalledOnce();
+            expect(host.mocks.setting.applyExternalSettings).not.toHaveBeenCalled();
         });
 
-        it("should retry when user selects retry option", async () => {
+        it("should retry only when remote settings are unavailable", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
             const config = { batchSave: true } as any;
+            const failure = new Error("network failed");
 
             host.mocks.tweakValue.fetchRemotePreferred
-                .mockResolvedValueOnce(null)
-                .mockResolvedValueOnce({ batchSave: false } as any);
-            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Retry (recommended)");
+                .mockResolvedValueOnce({ status: "unavailable", error: failure })
+                .mockResolvedValueOnce({ status: "available", values: { batchSave: false } } as any);
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Retry");
 
-            await adjustSettingToRemote(host as any, log, config);
+            await expect(adjustSettingToRemote(host as any, log, config)).resolves.toBe(true);
 
             expect(host.mocks.tweakValue.fetchRemotePreferred).toHaveBeenCalledTimes(2);
+            expect(host.mocks.ui.confirm.askSelectStringDialogue).toHaveBeenCalledWith(
+                "Could not read the remote's synchronisation settings. Check the connection and credentials, then retry.",
+                ["Retry", "Cancel"],
+                {
+                    defaultAction: "Retry",
+                    timeout: 0,
+                    title: "Could Not Read Synchronisation Settings",
+                }
+            );
+        });
+
+        it("should cancel initialisation instead of proceeding after an unavailable remote", async () => {
+            const host = createHostMock();
+            const config = { batchSave: true } as any;
+
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "unavailable",
+                error: new Error("network failed"),
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Cancel");
+
+            await expect(adjustSettingToRemote(host as any, createLoggerMock(), config)).resolves.toBe(false);
+
+            expect(host.mocks.tweakValue.fetchRemotePreferred).toHaveBeenCalledOnce();
+            expect(host.mocks.setting.applyExternalSettings).not.toHaveBeenCalled();
         });
 
         it("should log when no changes needed", async () => {
@@ -1117,9 +1227,9 @@ describe("Red Flag Feature", () => {
             const log = createLoggerMock();
             const config = { batchSave: false } as any;
 
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                batchSave: false,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ batchSave: false })
+            );
 
             await adjustSettingToRemote(host as any, log, config);
 
@@ -1131,8 +1241,11 @@ describe("Red Flag Feature", () => {
             const log = createLoggerMock();
             const config = { batchSave: true } as any;
 
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(null);
-            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Skip and proceed");
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "not-configured",
+                reason: "preferred-values-missing",
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Use this device's settings");
 
             await adjustSettingToRemoteIfNeeded(host as any, log, null as any, config);
 
@@ -1460,6 +1573,93 @@ describe("Red Flag Feature", () => {
     });
 
     describe("flagHandlerToEventHandler integration", () => {
+        it("should stop a detailed Fetch when remote-setting initialisation is cancelled", async () => {
+            const host = createHostMock();
+            host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
+            host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
+            host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
+                vault: "independent",
+                extra: { preventFetchingConfig: false },
+            });
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "not-configured",
+                reason: "milestone-missing",
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Cancel");
+
+            const result = await createFetchAllFlagHandler(host as any, createLoggerMock()).handle();
+
+            expect(result).toBe(false);
+            expect(host.mocks.rebuilder.$fetchLocal).not.toHaveBeenCalled();
+            expect(host.mocks.setting.suspendAllSync).not.toHaveBeenCalled();
+            expect(host.mocks.setting.applyPartial).toHaveBeenCalledWith(
+                {
+                    suspendFileWatching: true,
+                    suspendParseReplicationResult: true,
+                },
+                true
+            );
+            expect(host.mocks.storageAccess.files.has(FlagFilesOriginal.FETCH_ALL)).toBe(false);
+            expect(host.mocks.appLifecycle.performRestart).toHaveBeenCalledOnce();
+        });
+
+        it("should stop Rebuild before deleting local data when remote-setting initialisation is cancelled", async () => {
+            const host = createHostMock();
+            host.mocks.storageAccess.files.add(FlagFilesOriginal.REBUILD_ALL);
+            host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
+                extra: { preventFetchingConfig: false },
+            });
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "not-configured",
+                reason: "milestone-missing",
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Cancel");
+
+            const result = await createRebuildFlagHandler(host as any, createLoggerMock()).handle();
+
+            expect(result).toBe(false);
+            expect(host.mocks.rebuilder.$rebuildEverything).not.toHaveBeenCalled();
+            expect(host.mocks.setting.suspendAllSync).not.toHaveBeenCalled();
+            expect(host.mocks.setting.applyPartial).toHaveBeenCalledWith(
+                {
+                    suspendFileWatching: true,
+                    suspendParseReplicationResult: true,
+                },
+                true
+            );
+            expect(host.mocks.storageAccess.files.has(FlagFilesOriginal.REBUILD_ALL)).toBe(false);
+            expect(host.mocks.appLifecycle.performRestart).toHaveBeenCalledOnce();
+        });
+
+        it("should let Rebuild use this device's settings when remote settings are unavailable", async () => {
+            const host = createHostMock();
+            host.mocks.storageAccess.files.add(FlagFilesOriginal.REBUILD_ALL);
+            host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({
+                extra: { preventFetchingConfig: false },
+            });
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
+                status: "unavailable",
+                error: new Error("network failed"),
+            });
+            host.mocks.ui.confirm.askSelectStringDialogue.mockResolvedValueOnce("Use this device's settings");
+
+            const result = await createRebuildFlagHandler(host as any, createLoggerMock()).handle();
+
+            expect(result).toBe(true);
+            expect(host.mocks.ui.confirm.askSelectStringDialogue).toHaveBeenCalledWith(
+                "Could not read the remote's synchronisation settings. Retry, or continue the overwrite with this device's settings. A working connection is still required.",
+                ["Retry", "Use this device's settings", "Cancel"],
+                {
+                    defaultAction: "Retry",
+                    timeout: 0,
+                    title: "Could Not Read Synchronisation Settings",
+                }
+            );
+            expect(host.mocks.rebuilder.$rebuildEverything).toHaveBeenCalledOnce();
+            expect(host.mocks.storageAccess.files.has(FlagFilesOriginal.REBUILD_ALL)).toBe(false);
+            expect(host.mocks.appLifecycle.performRestart).not.toHaveBeenCalled();
+        });
+
         it("should return true when flag does not exist", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
@@ -1476,7 +1676,7 @@ describe("Red Flag Feature", () => {
             const log = createLoggerMock();
 
             host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({});
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(availableRemoteTweaks({}));
             host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
             host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
 
@@ -1554,9 +1754,7 @@ describe("Red Flag Feature", () => {
         it("should handle fetchAll flag with flagHandlerToEventHandler identical", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue({
-                customChunkSize: 1,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue(availableRemoteTweaks({ customChunkSize: 1 }));
 
             host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
             host.mocks.ui.confirm.confirmWithMessage.mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_DETAILED);
@@ -1574,9 +1772,9 @@ describe("Red Flag Feature", () => {
         it("should handle rebuildAll flag with flagHandlerToEventHandler", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
-            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce({
-                customChunkSize: 1,
-            } as any);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(
+                availableRemoteTweaks({ customChunkSize: 1 })
+            );
 
             host.mocks.storageAccess.files.add(FlagFilesOriginal.REBUILD_ALL);
             host.mocks.ui.dialogManager.openWithExplicitCancel.mockResolvedValueOnce({ extra: {} });

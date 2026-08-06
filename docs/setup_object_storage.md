@@ -50,7 +50,7 @@ Use a new bucket prefix, or a prefix whose contents you deliberately intend to r
 
     ![Final Object Storage overwrite confirmation](../images/object-storage-setup/guide-object-storage-setup-first-rebuild-confirmation.png)
 
-6. A new prefix may show `Fetch Remote Configuration Failed` because it has no saved configuration. Select `Skip and proceed` only for a genuinely new prefix. Otherwise, stop and check the endpoint, credentials, bucket, and prefix.
+6. A new prefix may show `No Synchronisation Settings Found`. Select `Use this device's settings` for a genuinely new prefix. If you expected existing settings, cancel and check the endpoint, credentials, bucket, and prefix. Cancellation restarts with Vault and database reflection paused; keep LiveSync disabled until the remote has been checked. If `Could Not Read Synchronisation Settings` appears, retry, or use this device's settings to continue the overwrite. The overwrite still requires a working connection.
 
     ![Expected missing remote configuration for a new Object Storage prefix](../images/object-storage-setup/guide-object-storage-setup-missing-remote-configuration.png)
 

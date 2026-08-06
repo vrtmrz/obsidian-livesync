@@ -10,7 +10,11 @@ import {
     synchroniseAllFilesBetweenDBandStorage,
     type FullScanOptions,
 } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { adjustSettingToRemoteIfNeeded, processVaultInitialisation } from "./redFlag";
+import {
+    adjustSettingToRemoteIfNeeded,
+    cancelScheduledInitialisation,
+    processVaultInitialisation,
+} from "./redFlag";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
 export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";
@@ -194,9 +198,7 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
     if (result === "cancelled") {
         log("Fetch cancelled by user.", LOG_LEVEL_NOTICE);
         clearRememberedSimpleFetchMode(host);
-        await cleanupFlag();
-        host.services.appLifecycle.performRestart();
-        return false;
+        return await cancelScheduledInitialisation(host, cleanupFlag);
     }
     if (result === "aborted") {
         log("Fetch exited by user.", LOG_LEVEL_NOTICE);
@@ -208,9 +210,14 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         return undefined; // Let the detailed setup flow handle it.
     }
 
+    const settings = host.services.setting.currentSettings();
+    if (!(await adjustSettingToRemoteIfNeeded(host, log, { preventFetchingConfig: false }, settings))) {
+        log("Fetch initialisation cancelled by user.", LOG_LEVEL_NOTICE);
+        clearRememberedSimpleFetchMode(host);
+        return await cancelScheduledInitialisation(host, cleanupFlag);
+    }
+
     return await processVaultInitialisation(host, log, async () => {
-        const settings = host.services.setting.currentSettings();
-        await adjustSettingToRemoteIfNeeded(host, log, { preventFetchingConfig: false }, settings);
         // 1. Perform fast DB fetch (download remote DB content to local DB)
         await host.serviceModules.rebuilder.$fetchLocalDBFast(false);
 

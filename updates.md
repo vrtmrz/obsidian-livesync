@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Setup and compatibility
+
+#### Fixed
+
+- Initial setup now distinguishes an empty remote with no saved synchronisation settings from a failed remote read. New remotes can use this device's settings without an unnecessary retry; Fetch pauses on unreadable settings, while Rebuild can explicitly continue with this device's settings. Cancelling preserves the selected automatic synchronisation mode and restarts with Vault and database reflection paused (#1064). Thank you to @mateus2k2 for the follow-up report!
+
 ## 1.0.5
 
 5th August, 2026
