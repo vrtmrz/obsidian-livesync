@@ -4,6 +4,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.",
             es: ", selecciona la opción que mejor describa el estado actual de tu Vault. La aplicación comprobará entonces tus archivos de la forma más adecuada según tu elección.",
             ko: ", 이 보관함의 현재 상태를 가장 잘 설명하는 옵션을 선택해 주세요. 선택하신 내용에 따라 가장 적절한 방식으로 파일을 확인합니다.",
+            "zh-tw": "，請選擇最符合你目前 Vault 狀態的選項，應用程式會依你的選擇以最合適的方式檢查你的檔案。",
         },
     "(Active)": {
         def: "(Active)",
@@ -23,6 +24,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(베타) 항상 새로운 파일로 덮어쓰기",
         ru: "(БЕТА) Всегда перезаписывать более новым файлом",
         zh: "始终使用更新的文件覆盖(测试版)",
+        "zh-tw": "（BETA）總是以較新的檔案覆寫",
     },
     "(Beta) Use ignore files": {
         def: "(Beta) Use ignore files",
@@ -33,6 +35,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(베타) 제외 규칙 파일 사용",
         ru: "(Бета) Использовать файлы игнорирования",
         zh: "(测试版)使用忽略文件",
+        "zh-tw": "（Beta）使用忽略檔案",
     },
     "(Days passed, 0 to disable automatic-deletion)": {
         def: "(Days passed, 0 to disable automatic-deletion)",
@@ -43,21 +46,25 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(지난 일수, 0으로 설정하면 자동 삭제 비활성화)",
         ru: "(Дней прошло, 0 для отключения автоматического удаления)",
         zh: "(已过天数,0为禁用自动删除)",
+        "zh-tw": "（已過天數，0 表示停用自動刪除）",
     },
     "(e.g., after editing many files whilst offline)": {
         def: "(e.g., after editing many files whilst offline)",
         es: "(p. ej., tras editar muchos archivos sin conexión)",
         ko: "(예: 오프라인 상태에서 많은 파일을 편집한 뒤)",
+        "zh-tw": "（例如：離線編輯了大量檔案之後）",
     },
     "(e.g., immediately after restoring on another computer, or having recovered from a backup)": {
         def: "(e.g., immediately after restoring on another computer, or having recovered from a backup)",
         es: "(p. ej., justo después de restaurar en otro ordenador o de recuperar una copia de seguridad)",
         ko: "(예: 다른 컴퓨터에서 복원한 직후이거나 백업에서 복구한 경우)",
+        "zh-tw": "（例如：剛在另一台電腦上還原完成，或剛從備份復原之後）",
     },
     "(e.g., setting up for the first time on a new smartphone, starting from a clean slate)": {
         def: "(e.g., setting up for the first time on a new smartphone, starting from a clean slate)",
         es: "(p. ej., configurando por primera vez un móvil nuevo, empezando de cero)",
         ko: "(예: 새 스마트폰에서 처음 설정하여 빈 상태에서 시작하는 경우)",
+        "zh-tw": "（例如：第一次在新手機上設定，從全新狀態開始）",
     },
     "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.":
         {
@@ -69,6 +76,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "(예: 청크를 원격에서 읽음) 이 옵션을 활성화하면, LiveSync는 청크를 로컬에 복제하지 않고 원격에서 직접 읽습니다. 커스텀 청크 크기를 키우는 것을 권장합니다.",
             ru: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.",
             zh: "(例如,在线读取块)如果启用此选项,LiveSync 将直接在线读取块,而不是在本地复制块。建议增加自定义块大小",
+            "zh-tw":
+                "（例如：線上讀取 chunks）啟用此選項後，LiveSync 會直接線上讀取 chunks，而不在本機複寫。建議同時提高自訂 chunk 大小。",
         },
     "(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.":
         {
@@ -80,6 +89,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "(MB) 이 값이 설정되면, 이보다 큰 로컬 및 원격 파일의 변경 사항은 건너뜁니다. 파일이 다시 작아지면 더 새로운 파일이 사용됩니다.",
             ru: "(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.",
             zh: "(MB)如果设置了此项,大于此大小的本地和远程文件的更改将被跳过。如果文件再次变小,将使用更新的文件",
+            "zh-tw": "（MB）若已設定，大於此大小的本機與遠端檔案變更都會被略過。如果檔案之後變小，則會使用較新的版本。",
         },
     "(Mega chars)": {
         def: "(Mega chars)",
@@ -90,11 +100,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(백만 자 단위)",
         ru: "(Мега символов)",
         zh: "(百万字符)",
+        "zh-tw": "（百萬字元）",
     },
     "(Missing)": {
         def: "(Missing)",
         es: "(Falta)",
         ko: "(없음)",
+        "zh-tw": "（缺失）",
     },
     "(Not recommended) If set, credentials will be stored in the file.": {
         def: "(Not recommended) If set, credentials will be stored in the file.",
@@ -105,6 +117,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(권장하지 않음) 설정한 경우 자격 증명이 파일에 저장됩니다.",
         ru: "(Not recommended) If set, credentials will be stored in the file.",
         zh: "(不建议)如果设置,凭据将存储在文件中",
+        "zh-tw": "（不建議）若啟用，憑證將儲存在檔案中。",
     },
     "(Obsolete) Use an old adapter for compatibility": {
         def: "(Obsolete) Use an old adapter for compatibility",
@@ -115,6 +128,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(사용 중단) 호환성을 위해 이전 어댑터 사용",
         ru: "(Устарело) Использовать старый адаптер для совместимости",
         zh: "(已弃用)为兼容性使用旧适配器",
+        "zh-tw": "（已淘汰）使用舊版適配器以維持相容性",
     },
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": {
         def: "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.",
@@ -160,21 +174,25 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "↑: Overwrite Remote",
         es: "↑: Sobrescribir remoto",
         ko: "↑: 원격 덮어쓰기",
+        "zh-tw": "↑：覆寫遠端",
     },
     "↓: Overwrite Local": {
         def: "↓: Overwrite Local",
         es: "↓: Sobrescribir local",
         ko: "↓: 로컬 덮어쓰기",
+        "zh-tw": "↓：覆寫本機",
     },
     "⇅: Use newer": {
         def: "⇅: Use newer",
         es: "⇅: Usar el más nuevo",
         ko: "⇅: 더 새로운 쪽 사용",
+        "zh-tw": "⇅：使用較新版本",
     },
     "+1 week": {
         def: "+1 week",
         es: "+1 semana",
         ko: "+1주",
+        "zh-tw": "+1 週",
     },
     "> [!INFO]- The connected devices have been detected as follows:\n${devices}": {
         def: "> [!INFO]- The connected devices have been detected as follows:\n${devices}",
@@ -189,46 +207,55 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "⚠️ Important Notice",
         es: "⚠️ Aviso importante",
         ko: "⚠️ 중요 안내",
+        "zh-tw": "⚠️ 重要通知",
     },
     "⚠️ Please Confirm the Following": {
         def: "⚠️ Please Confirm the Following",
         es: "⚠️ Confirma lo siguiente",
         ko: "⚠️ 다음 내용을 확인해 주세요",
+        "zh-tw": "⚠️ 請確認以下事項",
     },
     "✔ SELECT": {
         def: "✔ SELECT",
         es: "✔ SELECCIONAR",
         ko: "✔ 선택",
+        "zh-tw": "✔ 已選取",
     },
     "✔ SYNC": {
         def: "✔ SYNC",
         es: "✔ SINCRONIZAR",
         ko: "✔ 동기화",
+        "zh-tw": "✔ 同步中",
     },
     "✔ WATCH": {
         def: "✔ WATCH",
         es: "✔ OBSERVAR",
         ko: "✔ 감시",
+        "zh-tw": "✔ 監看中",
     },
     "📡 Off": {
         def: "📡 Off",
         es: "📡 Desactivado",
         ko: "📡 꺼짐",
+        "zh-tw": "📡 關閉",
     },
     "📡 On": {
         def: "📡 On",
         es: "📡 Activado",
         ko: "📡 켜짐",
+        "zh-tw": "📡 開啟",
     },
     "🔴 Disconnected": {
         def: "🔴 Disconnected",
         es: "🔴 Desconectado",
         ko: "🔴 연결 끊김",
+        "zh-tw": "🔴 已斷線",
     },
     "🕵️ Diag": {
         def: "🕵️ Diag",
         es: "🕵️ Diagnóstico",
         ko: "🕵️ 진단",
+        "zh-tw": "🕵️ 診斷",
     },
     "🗑 Delete": {
         def: "🗑 Delete",
@@ -240,11 +267,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "🟢 Connected",
         es: "🟢 Conectado",
         ko: "🟢 연결됨",
+        "zh-tw": "🟢 已連線",
     },
     "${count} issue(s) detected!": {
         def: "${count} issue(s) detected!",
         es: "¡${count} problema(s) detectado(s)!",
         ko: "${count}개의 문제가 감지되었습니다!",
+        "zh-tw": "偵測到 ${count} 個問題！",
     },
     "A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.":
         {
@@ -261,21 +290,25 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Accept",
         es: "Aceptar",
         ko: "수락",
+        "zh-tw": "接受",
     },
     "Accept in session": {
         def: "Accept in session",
         es: "Aceptar en esta sesión",
         ko: "이 세션에서만 수락",
+        "zh-tw": "本次連線接受",
     },
     ACCEPTED: {
         def: "ACCEPTED",
         es: "ACEPTADO",
         ko: "수락됨",
+        "zh-tw": "已接受",
     },
     "ACCEPTED (in session)": {
         def: "ACCEPTED (in session)",
         es: "ACEPTADO (en esta sesión)",
         ko: "수락됨 (이 세션에서만)",
+        "zh-tw": "已接受（本次連線）",
     },
     "Access Key": {
         def: "Access Key",
@@ -286,16 +319,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "액세스 키",
         ru: "Ключ доступа",
         zh: "访问密钥",
+        "zh-tw": "Access Key",
     },
     "Access Key ID": {
         def: "Access Key ID",
         es: "ID de clave de acceso",
         ko: "액세스 키 ID",
+        "zh-tw": "Access Key ID",
     },
     Action: {
         def: "Action",
         es: "Acción",
         ko: "작업",
+        "zh-tw": "動作",
     },
     Activate: {
         def: "Activate",
@@ -338,43 +374,53 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.",
         es: "El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
         ko: "애드온 모듈(ConfigSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.",
+        "zh-tw": "附加模組（ConfigSync）尚未載入。這是非常異常的情況，請回報此問題。",
     },
     "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
         def: "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.",
         es: "El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
         ko: "애드온 모듈(HiddenFileSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.",
+        "zh-tw": "附加模組（HiddenFileSync）尚未載入。這是非常異常的情況，請回報此問題。",
     },
     Advanced: {
         def: "Advanced",
         es: "Avanzado",
         ko: "고급",
+        "zh-tw": "進階",
     },
     "Advanced Settings": {
         def: "Advanced Settings",
         es: "Ajustes avanzados",
         ko: "고급 설정",
+        "zh-tw": "進階設定",
     },
     "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.":
         {
             def: "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.",
             es: "Tras reiniciar, los datos de este dispositivo se subirán al servidor como «copia maestra». Ten en cuenta que cualquier dato no deseado que haya ahora en el servidor se sobrescribirá por completo.",
             ko: "재시작하면 이 기기의 데이터가 '원본'으로서 서버에 업로드됩니다. 현재 서버에 있는 의도치 않은 데이터는 모두 완전히 덮어써진다는 점에 유의해 주세요.",
+            "zh-tw":
+                "重新啟動後，此裝置上的資料將以「主要複本」的形式上傳到伺服器。請注意，伺服器上任何非預期的現有資料都會被完全覆寫。",
         },
     "After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.":
         {
             def: "After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.",
             es: "Tras reiniciar, la base de datos de este dispositivo se reconstruirá con los datos del servidor. Si hay archivos sin sincronizar en este vault, pueden producirse conflictos con los datos del servidor.",
             ko: "재시작하면 서버의 데이터를 사용해 이 기기의 데이터베이스가 재구축됩니다. 이 보관함에 동기화되지 않은 파일이 있다면 서버 데이터와 충돌이 발생할 수 있습니다.",
+            "zh-tw":
+                "重新啟動後，此裝置上的資料庫將使用伺服器的資料重建。如果此 Vault 中有尚未同步的檔案，可能會與伺服器資料發生衝突。",
         },
     "After that, synchronise to a brand new vault on each other device with the new remote one by one.": {
         def: "After that, synchronise to a brand new vault on each other device with the new remote one by one.",
         es: "Después, sincroniza con un vault totalmente nuevo en cada uno de los demás dispositivos, uno por uno, usando el nuevo remoto.",
         ko: "그런 다음 다른 기기에서도 하나씩 새 원격을 사용해 완전히 새로운 보관함에 동기화하세요.",
+        "zh-tw": "之後，請在其他每個裝置上，逐一使用全新的 Vault 與這個新的遠端進行同步。",
     },
     "All checks passed successfully!": {
         def: "All checks passed successfully!",
         es: "¡Todas las comprobaciones se han superado correctamente!",
         ko: "모든 검사를 통과했습니다!",
+        "zh-tw": "所有檢查都已成功通過！",
     },
     "All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.":
         {
@@ -390,22 +436,27 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "All the same or non-existent",
         es: "Todo igual o inexistente",
         ko: "모두 동일하거나 존재하지 않음",
+        "zh-tw": "全部相同或不存在",
     },
     "Allow in session": {
         def: "Allow in session",
         es: "Permitir en esta sesión",
         ko: "이 세션에서만 허용",
+        "zh-tw": "本次連線允許",
     },
     "Allow permanently": {
         def: "Allow permanently",
         es: "Permitir permanentemente",
         ko: "항상 허용",
+        "zh-tw": "永久允許",
     },
     "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.":
         {
             def: "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.",
             es: "Además, si usas sincronización punto a punto, esta configuración se aplicará cuando en el futuro cambies a otros métodos y te conectes a un servidor remoto.",
             ko: "또한 Peer-to-Peer 동기화를 사용 중이라면, 이 구성은 나중에 다른 방식으로 전환하여 원격 서버에 연결할 때 사용된다는 점에 유의해 주세요.",
+            "zh-tw":
+                "另請注意，如果你目前使用 Peer-to-Peer 同步，日後若切換到其他方式並連線到遠端伺服器時，也會沿用這組設定。",
         },
     "Always prompt merge conflicts": {
         def: "Always prompt merge conflicts",
@@ -456,6 +507,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Apply All Selected",
         es: "Aplicar todo lo seleccionado",
         ko: "선택 항목 모두 적용",
+        "zh-tw": "套用所有已選取項目",
     },
     "Apply Latest Change if Conflicting": {
         def: "Apply Latest Change if Conflicting",
@@ -483,6 +535,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Apply the settings",
         es: "Aplicar los ajustes",
         ko: "설정 적용",
+        "zh-tw": "套用設定",
     },
     "Ask a passphrase at every launch": {
         def: "Ask a passphrase at every launch",
@@ -497,16 +550,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Auto Connect",
         es: "Conexión automática",
         ko: "자동 연결",
+        "zh-tw": "自動連線",
     },
     "Auto Start P2P Connection": {
         def: "Auto Start P2P Connection",
         es: "Iniciar la conexión P2P automáticamente",
         ko: "P2P 연결 자동 시작",
+        "zh-tw": "自動啟動 P2P 連線",
     },
     Automatic: {
         def: "Automatic",
         es: "Automático",
         ko: "자동",
+        "zh-tw": "自動",
     },
     "Automatically Sync all files when opening Obsidian.": {
         def: "Automatically Sync all files when opening Obsidian.",
@@ -523,6 +579,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Available Peers",
         es: "Pares disponibles",
         ko: "사용 가능한 피어",
+        "zh-tw": "可用的 Peer",
     },
     Back: {
         def: "Back",
@@ -596,11 +653,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "v0.17.16 이전에는 로컬 데이터베이스에 이전 어댑터를 사용했습니다. 이제는 새로운 어댑터를 권장합니다. 하지만 로컬 데이터베이스 재구축이 필요합니다. 충분한 시간이 있을 때 이 토글을 비활성화해 주세요. 활성화된 상태로 두면 원격 데이터베이스에서 가져올 때도 이를 비활성화하라는 메시지가 나타납니다.",
             ru: "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
             zh: "在 v0.17.16 之前,我们使用旧适配器作为本地数据库。现在首选新适配器。但是,它需要重建本地数据库。请在有足够时间时禁用此开关。如果保持启用状态,并且在从远程数据库获取时,系统将要求您禁用此开关。",
+            "zh-tw":
+                "在 v0.17.16 之前，本機資料庫使用的是舊版適配器。現在建議使用新版適配器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。",
         },
     "Broadcasting?": {
         def: "Broadcasting?",
         es: "¿Difusión?",
         ko: "브로드캐스트란?",
+        "zh-tw": "廣播中？",
     },
     "Bucket Name": {
         def: "Bucket Name",
@@ -617,6 +677,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "by resetting the remote, you will be informed on other devices.",
         es: "al restablecer el remoto, se te avisará en los demás dispositivos.",
         ko: "원격을 초기화하면 다른 기기에서 알림을 받게 됩니다.",
+        "zh-tw": "重設遠端後，其他裝置上會顯示提示告知此事。",
     },
     Cancel: {
         def: "Cancel",
@@ -641,12 +702,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "Changing the encryption algorithm will prevent access to any data previously encrypted with a different algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your data.",
             es: "Cambiar el algoritmo de cifrado impedirá acceder a los datos cifrados previamente con otro algoritmo. Asegúrate de que todos tus dispositivos usen el mismo algoritmo para no perder el acceso a tus datos.",
             ko: "암호화 알고리즘을 변경하면 이전에 다른 알고리즘으로 암호화된 데이터에는 접근할 수 없게 됩니다. 데이터에 계속 접근할 수 있도록 모든 기기가 동일한 알고리즘을 사용하도록 설정해 주세요.",
+            "zh-tw":
+                "變更加密演算法後，先前以其他演算法加密的資料將無法再存取。請確認所有裝置都設定為使用相同的演算法，以維持對資料的存取能力。",
         },
     "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.":
         {
             def: "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.",
             es: "Cambiar este ajuste requiere migrar los datos existentes (puede tardar un poco) y reiniciar Obsidian. Asegúrate de hacer una copia de seguridad de tus datos antes de continuar.",
             ko: "이 설정을 변경하려면 기존 데이터를 마이그레이션하고(시간이 다소 걸릴 수 있습니다) Obsidian을 재시작해야 합니다. 진행하기 전에 반드시 데이터를 백업해 주세요.",
+            "zh-tw": "變更此設定需要遷移現有資料（可能需要一些時間），並重新啟動 Obsidian。請務必先備份資料再繼續。",
         },
     Check: {
         def: "Check",
@@ -680,31 +744,37 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Checking connection... Please wait.",
         es: "Comprobando la conexión... Espera un momento.",
         ko: "연결을 확인하는 중입니다... 잠시만 기다려 주세요.",
+        "zh-tw": "正在檢查連線... 請稍候。",
     },
     Chunks: {
         def: "Chunks",
         es: "Fragmentos (chunks)",
         ko: "청크",
+        "zh-tw": "Chunks",
     },
     Close: {
         def: "Close",
         es: "Cerrar",
         ko: "닫기",
+        "zh-tw": "關閉",
     },
     "Close & Disconnect": {
         def: "Close & Disconnect",
         es: "Cerrar y desconectar",
         ko: "닫고 연결 끊기",
+        "zh-tw": "關閉並斷線",
     },
     "Close this dialog": {
         def: "Close this dialog",
         es: "Cerrar este diálogo",
         ko: "이 대화 상자 닫기",
+        "zh-tw": "關閉此對話框",
     },
     "Closed:": {
         def: "Closed:",
         es: "Cerradas:",
         ko: "종료됨:",
+        "zh-tw": "已關閉：",
     },
     "cmdConfigSync.showCustomizationSync": {
         def: "Show Customization sync",
@@ -726,16 +796,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "쉼표로 구분된 `.gitignore, .dockerignore`",
         ru: "Через запятую `.gitignore, .dockerignore`",
         zh: "用逗号分隔,例如 `.gitignore, .dockerignore`",
+        "zh-tw": "以逗號分隔，例如 `.gitignore, .dockerignore`",
     },
     Command: {
         def: "Command",
         es: "Comando",
         ko: "명령",
+        "zh-tw": "命令",
     },
     Communicating: {
         def: "Communicating",
         es: "Comunicando",
         ko: "통신 중",
+        "zh-tw": "通訊中",
     },
     "Compaction in progress on remote database...": {
         def: "Compaction in progress on remote database...",
@@ -777,6 +850,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Compare file",
         es: "Comparar archivo",
         ko: "파일 비교",
+        "zh-tw": "比較檔案",
     },
     "Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.":
         {
@@ -851,11 +925,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "청크에 대한 리비전 계산",
         ru: "Вычислять ревизии для чанков",
         zh: "为 chunks 计算修订版本(以前的行为)",
+        "zh-tw": "為 chunks 計算修訂版本（舊有行為）",
     },
     Configuration: {
         def: "Configuration",
         es: "Configuración",
         ko: "구성",
+        "zh-tw": "設定",
     },
     "Configuration Encryption": {
         def: "Configuration Encryption",
@@ -915,16 +991,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Connect",
         es: "Conectar",
         ko: "연결",
+        "zh-tw": "連線",
     },
     "Connected to Signaling Server (as Peer ID: ${peerId})": {
         def: "Connected to Signaling Server (as Peer ID: ${peerId})",
         es: "Conectado al servidor de señalización (como ID de par: ${peerId})",
         ko: "시그널링 서버에 연결되었습니다 (피어 ID: ${peerId})",
+        "zh-tw": "已連線到訊號伺服器（Peer ID：${peerId}）",
     },
     "Connected:": {
         def: "Connected:",
         es: "Conectadas:",
         ko: "연결됨:",
+        "zh-tw": "已連線：",
     },
     "Connection Method": {
         def: "Connection Method",
@@ -939,16 +1018,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Connection Settings",
         es: "Ajustes de conexión",
         ko: "연결 설정",
+        "zh-tw": "連線設定",
     },
     "Connection:": {
         def: "Connection:",
         es: "Conexión:",
         ko: "연결:",
+        "zh-tw": "連線：",
     },
     "Continue anyway": {
         def: "Continue anyway",
         es: "Continuar de todos modos",
         ko: "무시하고 계속",
+        "zh-tw": "仍要繼續",
     },
     "Continue to CouchDB setup": {
         def: "Continue to CouchDB setup",
@@ -1001,6 +1083,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "CouchDB Configuration",
         es: "Configuración de CouchDB",
         ko: "CouchDB 구성",
+        "zh-tw": "CouchDB 設定",
     },
     "CouchDB Connection Tweak": {
         def: "CouchDB Connection Tweak",
@@ -1015,6 +1098,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Create P2P remote",
         es: "Crear remoto P2P",
         ko: "P2P 원격 만들기",
+        "zh-tw": "建立 P2P 遠端",
     },
     "Cross-platform": {
         def: "Cross-platform",
@@ -1038,6 +1122,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Custom Headers",
         es: "Encabezados personalizados",
         ko: "사용자 지정 헤더",
+        "zh-tw": "自訂標頭",
     },
     "Customization Sync": {
         def: "Customization Sync",
@@ -1072,6 +1157,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Data to Copy",
         es: "Datos a copiar",
         ko: "복사할 데이터",
+        "zh-tw": "要複製的資料",
     },
     "Database -> Storage": {
         def: "Database -> Storage",
@@ -1114,6 +1200,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Date",
         es: "Fecha",
         ko: "날짜",
+        "zh-tw": "日期",
     },
     Default: {
         def: "Default",
@@ -1177,6 +1264,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Delete All of",
         es: "Eliminar todo de",
         ko: "모두 삭제할 대상",
+        "zh-tw": "刪除全部",
     },
     "Delete local database to reset or uninstall Self-hosted LiveSync": {
         def: "Delete local database to reset or uninstall Self-hosted LiveSync",
@@ -1226,31 +1314,37 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "DENIED",
         es: "DENEGADO",
         ko: "거부됨",
+        "zh-tw": "已拒絕",
     },
     "DENIED (in session)": {
         def: "DENIED (in session)",
         es: "DENEGADO (en esta sesión)",
         ko: "거부됨 (이 세션에서만)",
+        "zh-tw": "已拒絕（本次連線）",
     },
     Deny: {
         def: "Deny",
         es: "Denegar",
         ko: "거부",
+        "zh-tw": "拒絕",
     },
     "Deny in session": {
         def: "Deny in session",
         es: "Denegar en esta sesión",
         ko: "이 세션에서만 거부",
+        "zh-tw": "本次連線拒絕",
     },
     "Deny permanently": {
         def: "Deny permanently",
         es: "Denegar permanentemente",
         ko: "항상 거부",
+        "zh-tw": "永久拒絕",
     },
     "Deselect all": {
         def: "Deselect all",
         es: "Deseleccionar todo",
         ko: "선택 모두 해제",
+        "zh-tw": "全部取消選取",
     },
     desktop: {
         def: "desktop",
@@ -1265,6 +1359,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Detected Peers",
         es: "Pares detectados",
         ko: "감지된 피어",
+        "zh-tw": "偵測到的 Peer",
     },
     Developer: {
         def: "Developer",
@@ -1288,6 +1383,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "device name",
         es: "nombre del dispositivo",
         ko: "기기 이름",
+        "zh-tw": "裝置名稱",
     },
     "Device name": {
         def: "Device name",
@@ -1305,11 +1401,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: 'Device name to identify the device. Please use shorter one for the stable peer detection, i.e., "iphone-16" or "macbook-2021".',
             es: "Nombre para identificar el dispositivo. Usa uno corto para que la detección de pares sea estable, por ejemplo «iphone-16» o «macbook-2021».",
             ko: '기기를 식별하기 위한 기기 이름입니다. 피어를 안정적으로 감지할 수 있도록 "iphone-16"이나 "macbook-2021"처럼 짧은 이름을 사용해 주세요.',
+            "zh-tw":
+                "用來識別此裝置的裝置名稱。建議使用較短的名稱以穩定偵測 Peer，例如「iphone-16」或「macbook-2021」。",
         },
     "Device Peer ID": {
         def: "Device Peer ID",
         es: "ID de par del dispositivo",
         ko: "기기 피어 ID",
+        "zh-tw": "裝置 Peer ID",
     },
     "Device Setup Method": {
         def: "Device Setup Method",
@@ -1324,11 +1423,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Devices:",
         es: "Dispositivos:",
         ko: "기기:",
+        "zh-tw": "裝置：",
     },
     "Diagnostic RTCPeerConnection is enabled": {
         def: "Diagnostic RTCPeerConnection is enabled",
         es: "El RTCPeerConnection de diagnóstico está habilitado",
         ko: "진단용 RTCPeerConnection이 활성화되어 있습니다",
+        "zh-tw": "已啟用 RTCPeerConnection 診斷",
     },
     "dialog.yourLanguageAvailable": {
         def: "Self-hosted LiveSync had translations for your language, so the %{Display language} setting was enabled.\n\nNote: Not all messages are translated. We are waiting for your contributions!\nNote 2: If you create an Issue, **please revert to Default** and then take screenshots, messages and logs. This can be done in the setting dialogue.\nMay you find it easy to use!",
@@ -1368,11 +1469,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Diff",
         es: "Diferencias",
         ko: "차이",
+        "zh-tw": "差異",
     },
     Different: {
         def: "Different",
         es: "Distinto",
         ko: "다름",
+        "zh-tw": "不同",
     },
     "Disables all synchronization and restart.": {
         def: "Disables all synchronization and restart.",
@@ -1398,11 +1501,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Disconnect",
         es: "Desconectar",
         ko: "연결 끊기",
+        "zh-tw": "斷線",
     },
     Dismiss: {
         def: "Dismiss",
         es: "Descartar",
         ko: "닫기",
+        "zh-tw": "關閉",
     },
     "Display Language": {
         def: "Display Language",
@@ -1477,6 +1582,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요, 다음 릴리스까지 다시 묻지 않음",
         ru: "Нет, и не спрашивать до следующего выпуска",
         zh: "拒绝,并且直到下个版本前不再询问",
+        "zh-tw": "不要，且到下個版本發布前都不要再問",
     },
     "Doctor.Button.Fix": {
         def: "Fix it",
@@ -1487,6 +1593,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "수정",
         ru: "Исправить",
         zh: "修复",
+        "zh-tw": "修正",
     },
     "Doctor.Button.FixButNoRebuild": {
         def: "Fix it but no rebuild",
@@ -1497,6 +1604,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "수정하지만 재구축하지 않음",
         ru: "Исправить без перестроения",
         zh: "修复但不重建",
+        "zh-tw": "修正但不要重建",
     },
     "Doctor.Button.No": {
         def: "No",
@@ -1507,6 +1615,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요",
         ru: "Нет",
         zh: "拒绝",
+        "zh-tw": "否",
     },
     "Doctor.Button.Skip": {
         def: "Leave it as is",
@@ -1517,6 +1626,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "그대로 두기",
         ru: "Оставить как есть",
         zh: "保持不变",
+        "zh-tw": "保持原樣",
     },
     "Doctor.Button.Yes": {
         def: "Yes",
@@ -1527,6 +1637,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예",
         ru: "Да",
         zh: "确定",
+        "zh-tw": "是",
     },
     "Doctor.Dialogue.Main": {
         def: "Hi! Config Doctor has been activated because of ${activateReason}!\nAnd, unfortunately some configurations were detected as potential problems.\nPlease be assured. Let's solve them one by one.\n\nTo let you know ahead of time, we will ask you about the following items.\n\n${issues}\n\nShall we get started?",
@@ -1537,6 +1648,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "안녕하세요! ${activateReason}(으)로 인해 구성 진단 마법사가 실행되었습니다!\n아쉽게도 일부 구성에서 잠재적인 문제가 감지되었습니다.\n걱정하지 마세요. 하나씩 함께 해결해 보겠습니다.\n\n미리 알려드리자면, 다음 항목들에 대해 여쭤보겠습니다.\n\n${issues}\n\n시작할까요?",
         ru: "Привет! Диагностика настроек активирована из-за activateReason!\nК сожалению, некоторые настройки были обнаружены как потенциальные проблемы.\nНе волнуйтесь. Давайте решим их по очереди.\n\nСообщаем вам заранее, мы спросим о следующих пунктах.\n\nissues\n\nНачнём?",
         zh: "您好！配置医生已根据您的要求启动(感谢您)！！遗憾的是,检测到部分配置存在潜在问题。请放心,我们将逐一解决这些问题。\n\n提前告知您,我们将就以下事项进行确认：\n\n为数据块计算修订版本(此前行为)\n增强块大小\n\n我们开始处理吗?",
+        "zh-tw":
+            "嗨！由於 ${activateReason}，設定診斷已啟動！\n很遺憾，偵測到部分設定可能有問題。\n請放心，我們會逐一解決這些問題。\n\n先讓你知道，我們會就以下項目詢問你：\n\n${issues}\n\n要開始了嗎？",
     },
     "Doctor.Dialogue.MainFix": {
         def: "\n## ${name}\n\n| Current | Ideal |\n|:---:|:---:|\n| ${current} | ${ideal} |\n\n**Recommendation Level:** ${level}\n\n### Why this has been detected?\n\n${reason}\n\n${note}\n\nFix this to the ideal value?",
@@ -1547,6 +1660,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "\n## ${name}\n\n| 현재 값 | 이상적인 값 |\n|:---:|:---:|\n| ${current} | ${ideal} |\n\n**권장 수준:** ${level}\n\n### 왜 이것이 감지되었나요?\n\n${reason}\n\n${note}\n\n이상적인 값으로 수정할까요?",
         ru: "name\n\n| Текущее | Идеальное |\n|:---:|:---:|\n| current | ideal |\n\n**Уровень рекомендации:** level\n\n### Почему это было обнаружено?\n\nreason\n\nnote\n\nИсправить на идеальное значение?",
         zh: "\n## ${name}\n\n| Current | Ideal |\n|:---:|:---:|\n| ${current} | ${ideal} |\n\n**Recommendation Level:** ${level}\n\n### Why this has been detected?\n\n${reason}\n\n${note}\n\nFix this to the ideal value?",
+        "zh-tw":
+            "\n## ${name}\n\n| 目前值 | 建議值 |\n|:---:|:---:|\n| ${current} | ${ideal} |\n\n**建議等級：** ${level}\n\n### 為什麼會偵測到這個問題？\n\n${reason}\n\n${note}\n\n要將此項修正為建議值嗎？",
     },
     "Doctor.Dialogue.Title": {
         def: "Self-hosted LiveSync Config Doctor",
@@ -1557,6 +1672,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Self-hosted LiveSync 구성 진단 마법사",
         ru: "Диагностика Self-hosted LiveSync",
         zh: "Self-hosted LiveSync 配置诊断",
+        "zh-tw": "Self-hosted LiveSync 設定診斷",
     },
     "Doctor.Dialogue.TitleAlmostDone": {
         def: "Almost done!",
@@ -1567,6 +1683,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "거의 완료되었습니다!",
         ru: "Почти готово!",
         zh: "全部完成!",
+        "zh-tw": "快完成了！",
     },
     "Doctor.Dialogue.TitleFix": {
         def: "Fix issue ${current}/${total}",
@@ -1577,6 +1694,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문제 해결 ${current}/${total}",
         ru: "Исправление проблемы current/total",
         zh: "修复问题 ${current}/${total}",
+        "zh-tw": "修正問題 ${current}/${total}",
     },
     "Doctor.Level.Must": {
         def: "Must",
@@ -1587,6 +1705,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "필수",
         ru: "Обязательно",
         zh: "必须",
+        "zh-tw": "必須",
     },
     "Doctor.Level.Necessary": {
         def: "Necessary",
@@ -1597,6 +1716,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "필요",
         ru: "Необходимо",
         zh: "必要",
+        "zh-tw": "必要",
     },
     "Doctor.Level.Optional": {
         def: "Optional",
@@ -1607,6 +1727,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "선택사항",
         ru: "Опционально",
         zh: "可选",
+        "zh-tw": "可選",
     },
     "Doctor.Level.Recommended": {
         def: "Recommended",
@@ -1617,6 +1738,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "권장",
         ru: "Рекомендуется",
         zh: "推荐",
+        "zh-tw": "建議",
     },
     "Doctor.Message.NoIssues": {
         def: "No issues detected!",
@@ -1627,6 +1749,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문제가 감지되지 않았습니다!",
         ru: "Проблем не обнаружено!",
         zh: "未发现问题!",
+        "zh-tw": "未偵測到任何問題！",
     },
     "Doctor.Message.RebuildLocalRequired": {
         def: "Attention! A local database rebuild is required to apply this!",
@@ -1637,6 +1760,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "주의! 이를 적용하려면 로컬 데이터베이스 재구축이 필요합니다!",
         ru: "Внимание! Для применения требуется перестроение локальной базы данных!",
         zh: "注意！需要重建本地数据库以应用此项！",
+        "zh-tw": "請注意！套用此項需要重建本機資料庫！",
     },
     "Doctor.Message.RebuildRequired": {
         def: "Attention! A rebuild is required to apply this!",
@@ -1647,6 +1771,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "주의! 이를 적용하려면 재구축이 필요합니다!",
         ru: "Внимание! Для применения требуется перестроение!",
         zh: "注意！需要重建才能应用此项！",
+        "zh-tw": "請注意！套用此項需要重建！",
     },
     "Doctor.Message.SomeSkipped": {
         def: "We left some issues as is. Shall I ask you again on next startup?",
@@ -1657,6 +1782,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일부 문제를 그대로 두었습니다. 다음 시작 시 다시 질문할까요?",
         ru: "Некоторые проблемы оставлены как есть. Спросить снова при следующем запуске?",
         zh: "我们将某些问题留给了以后处理。是否要在下次启动时再次询问您？",
+        "zh-tw": "有些問題我們先保持原樣。要在下次啟動時再次詢問你嗎？",
     },
     "Doctor.RULES.E2EE_V02500.REASON": {
         def: "The End-to-End Encryption has got now more robust and faster. Also because, the previous E2EE was found to be compromised in a re-conducted code review. It should be applied as soon as possible. Really apologises for your inconvenience. And, this setting is not forward compatible. All synchronised devices must be updated to v0.25.0 or higher. Rebuilds are not required and will be converted from the new transfer to the new format, However, it is recommended to rebuild whenever possible.",
@@ -1667,6 +1793,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "종단 간 암호화가 더 견고하고 빨라졌습니다. 또한 다시 진행한 코드 검토에서 이전 E2EE에 취약점이 있는 것으로 확인되었기 때문에, 가능한 한 빨리 적용해 주시기 바랍니다. 불편을 드려 대단히 죄송합니다. 그리고 이 설정은 이전 버전과 호환되지 않습니다. 동기화 중인 모든 기기를 v0.25.0 이상으로 업데이트해야 합니다. 재구축은 필요하지 않으며 새로 전송되는 항목부터 새 형식으로 변환됩니다. 다만 가능하다면 재구축하시기를 권장합니다.",
         ru: "Сквозное шифрование стало более надёжным и быстрым. Предыдущее E2EE было скомпрометировано. Следует применить как можно скорее.",
         zh: "The End-to-End Encryption has got now more robust and faster. Also because, the previous E2EE was found to be compromised in a re-conducted code review. It should be applied as soon as possible. Really apologises for your inconvenience. And, this setting is not forward compatible. All synchronised devices must be updated to v0.25.0 or higher. Rebuilds are not required and will be converted from the new transfer to the new format, However, it is recommended to rebuild whenever possible.",
+        "zh-tw":
+            "端對端加密現在變得更穩固也更快。此外，先前的 E2EE 在重新進行的程式碼審查中被發現有安全漏洞，應盡快套用此項修正。造成的不便由衷抱歉。另外，此設定不具向前相容性，所有同步的裝置都必須更新到 v0.25.0 或更新版本。不需要重建，資料會在下次傳輸時自動轉換為新格式；不過，若條件允許，仍建議進行重建。",
     },
     "Document History": {
         def: "Document History",
@@ -1785,6 +1913,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Enable P2P Replicator",
         es: "Habilitar el replicador P2P",
         ko: "P2P 복제기 활성화",
+        "zh-tw": "啟用 P2P 複寫器",
     },
     "Enable poweruser features": {
         def: "Enable poweruser features",
@@ -1823,12 +1952,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Enabled",
         es: "Habilitado",
         ko: "활성화됨",
+        "zh-tw": "已啟用",
     },
     "Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.":
         {
             def: "Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.",
             es: "Activar el cifrado de extremo a extremo garantiza que tus datos se cifren en tu dispositivo antes de enviarse al servidor remoto. Así, aunque alguien acceda al servidor, no podrá leer tus datos sin la frase de contraseña. Recuérdala bien, porque será necesaria para descifrar tus datos en los demás dispositivos.",
             ko: "종단 간 암호화를 활성화하면 데이터가 원격 서버로 전송되기 전에 기기에서 암호화됩니다. 따라서 누군가 서버에 접근하더라도 패스프레이즈 없이는 데이터를 읽을 수 없습니다. 다른 기기에서 데이터를 복호화할 때 필요하므로 패스프레이즈를 반드시 기억해 두세요.",
+            "zh-tw":
+                "啟用端對端加密後，資料會先在你的裝置上完成加密，再傳送到遠端伺服器。這表示即使有人取得伺服器存取權，沒有密語也無法讀取你的資料。請務必記住你的密語，因為其他裝置在解密資料時也需要它。",
         },
     "Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.":
         {
@@ -1857,6 +1989,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Encryption Algorithm",
         es: "Algoritmo de cifrado",
         ko: "암호화 알고리즘",
+        "zh-tw": "加密演算法",
     },
     "Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.": {
         def: "Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.",
@@ -1906,6 +2039,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Enter a folder prefix (optional)",
         es: "Introduce un prefijo de carpeta (opcional)",
         ko: "폴더 접두사를 입력하세요 (선택 사항)",
+        "zh-tw": "輸入資料夾前綴（可選）",
     },
     "Enter Server Information": {
         def: "Enter Server Information",
@@ -1920,6 +2054,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Enter Setup URI",
         es: "Introducir el Setup URI",
         ko: "Setup URI 입력",
+        "zh-tw": "輸入 Setup URI",
     },
     "Enter the server information manually": {
         def: "Enter the server information manually",
@@ -1934,81 +2069,97 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Enter TURN credential",
         es: "Introduce la credencial de TURN",
         ko: "TURN 자격 증명을 입력하세요",
+        "zh-tw": "輸入 TURN 憑證",
     },
     "Enter TURN username": {
         def: "Enter TURN username",
         es: "Introduce el usuario de TURN",
         ko: "TURN 사용자 이름을 입력하세요",
+        "zh-tw": "輸入 TURN 使用者名稱",
     },
     "Enter your Access Key ID": {
         def: "Enter your Access Key ID",
         es: "Introduce tu ID de clave de acceso",
         ko: "액세스 키 ID를 입력하세요",
+        "zh-tw": "輸入你的 Access Key ID",
     },
     "Enter your Bucket Name": {
         def: "Enter your Bucket Name",
         es: "Introduce el nombre de tu bucket",
         ko: "버킷 이름을 입력하세요",
+        "zh-tw": "輸入你的儲存庫名稱",
     },
     "Enter your database name": {
         def: "Enter your database name",
         es: "Introduce el nombre de tu base de datos",
         ko: "데이터베이스 이름을 입력하세요",
+        "zh-tw": "輸入你的資料庫名稱",
     },
     "Enter your JWT Key ID": {
         def: "Enter your JWT Key ID",
         es: "Introduce el ID de tu clave JWT",
         ko: "JWT 키 ID를 입력하세요",
+        "zh-tw": "輸入你的 JWT Key ID",
     },
     "Enter your JWT secret or private key": {
         def: "Enter your JWT secret or private key",
         es: "Introduce tu secreto JWT o tu clave privada",
         ko: "JWT 시크릿 또는 개인 키를 입력하세요",
+        "zh-tw": "輸入你的 JWT 密鑰或私密金鑰",
     },
     "Enter your JWT Subject (CouchDB Username)": {
         def: "Enter your JWT Subject (CouchDB Username)",
         es: "Introduce el sujeto JWT (usuario de CouchDB)",
         ko: "JWT 주체(CouchDB 사용자 이름)를 입력하세요",
+        "zh-tw": "輸入你的 JWT Subject（CouchDB 使用者名稱）",
     },
     "Enter your passphrase": {
         def: "Enter your passphrase",
         es: "Introduce tu frase de contraseña",
         ko: "패스프레이즈를 입력하세요",
+        "zh-tw": "輸入你的密語",
     },
     "Enter your password": {
         def: "Enter your password",
         es: "Introduce tu contraseña",
         ko: "비밀번호를 입력하세요",
+        "zh-tw": "輸入你的密碼",
     },
     "Enter your Region (e.g., us-east-1, auto for R2)": {
         def: "Enter your Region (e.g., us-east-1, auto for R2)",
         es: "Introduce tu región (p. ej., us-east-1, o auto para R2)",
         ko: "리전을 입력하세요 (예: us-east-1, R2는 auto)",
+        "zh-tw": "輸入你的區域（例如 us-east-1，R2 請用 auto）",
     },
     "Enter your Secret Access Key": {
         def: "Enter your Secret Access Key",
         es: "Introduce tu clave de acceso secreta",
         ko: "시크릿 액세스 키를 입력하세요",
+        "zh-tw": "輸入你的 Secret Access Key",
     },
     "Enter your username": {
         def: "Enter your username",
         es: "Introduce tu usuario",
         ko: "사용자 이름을 입력하세요",
+        "zh-tw": "輸入你的使用者名稱",
     },
     "Error during connection test: ${reason}": {
         def: "Error during connection test: ${reason}",
         es: "Error durante la prueba de conexión: ${reason}",
         ko: "연결 테스트 중 오류가 발생했습니다: ${reason}",
+        "zh-tw": "連線測試時發生錯誤：${reason}",
     },
     "Error during testAndFixSettings: ${reason}": {
         def: "Error during testAndFixSettings: ${reason}",
         es: "Error durante testAndFixSettings: ${reason}",
         ko: "testAndFixSettings 실행 중 오류가 발생했습니다: ${reason}",
+        "zh-tw": "testAndFixSettings 時發生錯誤：${reason}",
     },
     "Experimental Settings": {
         def: "Experimental Settings",
         es: "Ajustes experimentales",
         ko: "실험적 설정",
+        "zh-tw": "實驗性設定",
     },
     Export: {
         def: "Export",
@@ -2041,26 +2192,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Failed to connect to the server: ${reason}",
         es: "No se pudo conectar al servidor: ${reason}",
         ko: "서버에 연결하지 못했습니다: ${reason}",
+        "zh-tw": "無法連線到伺服器：${reason}",
     },
     "Failed to connect to the server. Please check your settings.": {
         def: "Failed to connect to the server. Please check your settings.",
         es: "No se pudo conectar al servidor. Revisa tus ajustes.",
         ko: "서버에 연결하지 못했습니다. 설정을 확인해 주세요.",
+        "zh-tw": "無法連線到伺服器，請檢查你的設定。",
     },
     "Failed to connect to the signalling relay: ${reason}": {
         def: "Failed to connect to the signalling relay: ${reason}",
         es: "No se pudo conectar al relé de señalización: ${reason}",
         ko: "시그널링 중계 서버에 연결하지 못했습니다: ${reason}",
+        "zh-tw": "無法連線到訊號中繼站：${reason}",
     },
     "Failed to create replicator instance.": {
         def: "Failed to create replicator instance.",
         es: "No se pudo crear la instancia del replicador.",
         ko: "복제기 인스턴스를 생성하지 못했습니다.",
+        "zh-tw": "無法建立複寫器實例。",
     },
     "Failed to parse Setup-URI.": {
         def: "Failed to parse Setup-URI.",
         es: "No se pudo interpretar el Setup-URI.",
         ko: "Setup-URI를 해석하지 못했습니다.",
+        "zh-tw": "無法解析 Setup URI。",
     },
     "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": {
         def: "Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.",
@@ -2084,6 +2240,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Failed:",
         es: "Fallidas:",
         ko: "실패:",
+        "zh-tw": "失敗：",
     },
     Fetch: {
         def: "Fetch",
@@ -2129,16 +2286,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "FETCHING",
         es: "OBTENIENDO",
         ko: "가져오는 중",
+        "zh-tw": "擷取中",
     },
     "Fetching status...": {
         def: "Fetching status...",
         es: "Obteniendo el estado...",
         ko: "상태를 가져오는 중입니다...",
+        "zh-tw": "正在取得狀態...",
     },
     "File integrity": {
         def: "File integrity",
         es: "Integridad de archivos",
         ko: "파일 무결성",
+        "zh-tw": "檔案完整性",
     },
     "File to resolve conflict": {
         def: "File to resolve conflict",
@@ -2170,6 +2330,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Final Confirmation: Overwrite Server Data with This Device's Files",
         es: "Confirmación final: sobrescribir los datos del servidor con los archivos de este dispositivo",
         ko: "최종 확인: 이 기기의 파일로 서버 데이터 덮어쓰기",
+        "zh-tw": "最終確認：以此裝置的檔案覆寫伺服器資料",
     },
     "First, please select the option that best describes your current situation.": {
         def: "First, please select the option that best describes your current situation.",
@@ -2184,6 +2345,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Fix",
         es: "Corregir",
         ko: "수정",
+        "zh-tw": "修正",
     },
     "Flag and restart": {
         def: "Flag and restart",
@@ -2198,17 +2360,20 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Flagged Selective",
         es: "Selectivo marcado",
         ko: "플래그 지정 선택적",
+        "zh-tw": "已標記選擇性",
     },
     "Folder Prefix": {
         def: "Folder Prefix",
         es: "Prefijo de carpeta",
         ko: "폴더 접두사",
+        "zh-tw": "資料夾前綴",
     },
     "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.":
         {
             def: "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.",
             es: "Para los algoritmos HS256/HS512, indica la clave secreta compartida. Para ES256/ES512, indica la clave privada en formato PEM pkcs8.",
             ko: "HS256/HS512 알고리즘에는 공유 시크릿 키를, ES256/ES512 알고리즘에는 pkcs8 PEM 형식의 개인 키를 입력하세요.",
+            "zh-tw": "HS256/HS512 演算法請提供共用密鑰；ES256/ES512 演算法請提供 pkcs8 PEM 格式的私密金鑰。",
         },
     "Forces the file to be synced when opened.": {
         def: "Forces the file to be synced when opened.",
@@ -2235,6 +2400,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "Furthermore, if conflicts are already present in the server data, they will be synchronised to this device as they are, and you will need to resolve them locally.",
             es: "Además, si ya hay conflictos en los datos del servidor, se sincronizarán tal cual a este dispositivo y tendrás que resolverlos localmente.",
             ko: "또한 서버 데이터에 이미 충돌이 존재한다면 그 상태 그대로 이 기기에 동기화되므로, 로컬에서 직접 해결해야 합니다.",
+            "zh-tw": "此外，如果伺服器資料中已存在衝突，這些衝突會原樣同步到此裝置，你需要在本機自行解決。",
         },
     "Garbage Collection cancelled by user.": {
         def: "Garbage Collection cancelled by user.",
@@ -2304,16 +2470,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Gathering information...",
         es: "Recopilando información...",
         ko: "정보를 수집하는 중입니다...",
+        "zh-tw": "正在收集資訊...",
     },
     "Generate Random ID": {
         def: "Generate Random ID",
         es: "Generar un ID aleatorio",
         ko: "임의 ID 생성",
+        "zh-tw": "產生隨機 ID",
     },
     "Group ID": {
         def: "Group ID",
         es: "ID de grupo",
         ko: "그룹 ID",
+        "zh-tw": "群組 ID",
     },
     "Handle files as Case-Sensitive": {
         def: "Handle files as Case-Sensitive",
@@ -2330,12 +2499,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Have you created a backup before proceeding?",
         es: "¿Has creado una copia de seguridad antes de continuar?",
         ko: "진행하기 전에 백업을 만드셨나요?",
+        "zh-tw": "你在繼續之前是否已建立備份？",
     },
     "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.":
         {
             def: "Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.",
             es: "La sincronización de archivos ocultos se ha desactivado temporalmente. Vuelve a activarla después de la obtención si la necesitas.",
             ko: "숨김 파일 동기화가 일시적으로 비활성화되었습니다. 필요하다면 가져오기가 끝난 뒤에 다시 활성화해 주세요.",
+            "zh-tw": "隱藏檔案同步已暫時停用。如有需要，請在抓取完成後重新啟用。",
         },
     "Hidden Files": {
         def: "Hidden Files",
@@ -2357,11 +2528,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Hide not applicable items",
         es: "Ocultar elementos no aplicables",
         ko: "해당 없는 항목 숨기기",
+        "zh-tw": "隱藏不適用的項目",
     },
     "Higher (${local} > ${remote})": {
         def: "Higher (${local} > ${remote})",
         es: "Superior (${local} > ${remote})",
         ko: "더 높음 (${local} > ${remote})",
+        "zh-tw": "較高（${local} > ${remote}）",
     },
     "Highlight diff": {
         def: "Highlight diff",
@@ -2391,6 +2564,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "However, This should not be enabled if you want to increase your secrecy more.",
         es: "Sin embargo, esto no debería habilitarse si quieres aumentar aún más tu privacidad.",
         ko: "다만 기밀성을 더 높이고 싶다면 이 옵션은 활성화하지 않는 것이 좋습니다.",
+        "zh-tw": "不過，如果你想加強保密性，不建議啟用此選項。",
     },
     "I am adding a device to an existing synchronisation setup": {
         def: "I am adding a device to an existing synchronisation setup",
@@ -2414,21 +2588,25 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "I am setting up a new server for the first time / I want to reset my existing server.",
         es: "Estoy configurando un servidor nuevo por primera vez / quiero restablecer mi servidor actual.",
         ko: "새 서버를 처음 설정하거나, 기존 서버를 초기화하려고 합니다.",
+        "zh-tw": "我是第一次設定新的伺服器／我想要重設現有的伺服器。",
     },
     "I am unable to create a backup of my Vault.": {
         def: "I am unable to create a backup of my Vault.",
         es: "No puedo crear una copia de seguridad de mi Vault.",
         ko: "보관함을 백업할 수 없습니다.",
+        "zh-tw": "我無法備份我的 Vault。",
     },
     "I am unable to create a backup of my Vaults.": {
         def: "I am unable to create a backup of my Vaults.",
         es: "No puedo crear una copia de seguridad de mis Vaults.",
         ko: "보관함들을 백업할 수 없습니다.",
+        "zh-tw": "我無法備份我的 Vault。",
     },
     "I have created a backup of my Vault.": {
         def: "I have created a backup of my Vault.",
         es: "He creado una copia de seguridad de mi Vault.",
         ko: "보관함을 백업했습니다.",
+        "zh-tw": "我已經備份了我的 Vault。",
     },
     "I know my server details, let me enter them": {
         def: "I know my server details, let me enter them",
@@ -2443,33 +2621,39 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "I understand that all changes made on other smartphones or computers possibly could be lost.",
         es: "Entiendo que todos los cambios hechos en otros móviles u ordenadores podrían perderse.",
         ko: "다른 스마트폰이나 컴퓨터에서 변경한 내용이 모두 사라질 수 있다는 점을 이해합니다.",
+        "zh-tw": "我了解其他手機或電腦上的所有變更可能會遺失。",
     },
     "I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information.":
         {
             def: "I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information.",
             es: "Entiendo que los demás dispositivos ya no podrán sincronizar y que habrá que restablecer su información de sincronización.",
             ko: "다른 기기는 더 이상 동기화할 수 없게 되며, 동기화 정보를 초기화해야 한다는 점을 이해합니다.",
+            "zh-tw": "我了解其他裝置將無法再進行同步，且需要重設其同步資訊。",
         },
     "I understand that this action is irreversible once performed.": {
         def: "I understand that this action is irreversible once performed.",
         es: "Entiendo que esta acción es irreversible una vez realizada.",
         ko: "이 작업은 한 번 수행하면 되돌릴 수 없다는 점을 이해합니다.",
+        "zh-tw": "我了解此操作一旦執行即無法復原。",
     },
     "I understand the risks and will proceed without a backup.": {
         def: "I understand the risks and will proceed without a backup.",
         es: "Entiendo los riesgos y continuaré sin copia de seguridad.",
         ko: "위험을 이해하며 백업 없이 진행하겠습니다.",
+        "zh-tw": "我了解風險，並在沒有備份的情況下繼續。",
     },
     "I Understand, Overwrite Server": {
         def: "I Understand, Overwrite Server",
         es: "Lo entiendo, sobrescribir el servidor",
         ko: "이해했습니다, 서버 덮어쓰기",
+        "zh-tw": "我了解，覆寫伺服器",
     },
     'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.':
         {
             def: 'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.',
             es: "Si «Iniciar la conexión P2P automáticamente» está activado, la conexión P2P se iniciará al arrancar el complemento.",
             ko: '"P2P 연결 자동 시작"이 활성화되어 있으면 플러그인이 시작될 때 P2P 연결이 자동으로 시작됩니다.',
+            "zh-tw": "若啟用「自動啟動 P2P 連線」，外掛啟動時會自動建立 P2P 連線。",
         },
     "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).": {
         def: "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).",
@@ -2596,6 +2780,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "이 옵션을 활성화하면, 제외 규칙 파일에 일치하는 로컬 파일의 변경 사항은 건너뜁니다. 원격 변경 여부 또한 로컬의 제외 규칙 파일에 따라 판단됩니다.",
             ru: "If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.",
             zh: "如果设置了此项,与忽略文件匹配的本地文件的更改将被跳过。远程更改使用本地忽略文件确定",
+            "zh-tw": "若已設定，符合忽略檔案規則的本機檔案變更將被略過。遠端變更則依本機忽略檔案來判斷。",
         },
     "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.":
         {
@@ -2607,24 +2792,32 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "이 옵션이 활성화되면 PouchDB는 연결을 더이상 무한히 열어두지 않고 60초 동안 유지합니다. 그 시간 내에 변경 사항이 없으면 소켓을 닫고 다시 엽니다. 프록시가 요청 지속 시간을 제한할 때 유용하지만 리소스 사용량이 증가할 수 있습니다.",
             ru: "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.",
             zh: "如果启用此选项,PouchDB 将保持连接打开 60 秒,如果在此时间内没有更改到达,则关闭并重新打开套接字,而不是无限期保持打开。当代理限制请求持续时间时有用,但可能会增加资源使用ß",
+            "zh-tw":
+                "啟用此選項後，PouchDB 會將連線保持開啟 60 秒；若在這段時間內沒有變更送達，就會關閉並重新開啟該連線，而不是無限期保持開啟。這在代理伺服器限制請求時長時很有用，但可能會增加資源使用量。",
         },
     "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.":
         {
             def: "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.",
             es: "Si no puedes evitar problemas de CORS, prueba esta opción. Usa la API interna de Obsidian para comunicarse con el servidor CouchDB. No cumple los estándares web, pero funciona. Ten en cuenta que podría dejar de funcionar en versiones futuras de Obsidian.",
             ko: "CORS 문제를 피할 수 없다면 이 옵션을 시도해 볼 수 있습니다. Obsidian의 내부 API를 사용해 CouchDB 서버와 통신합니다. 웹 표준을 따르지는 않지만 동작합니다. 향후 Obsidian 버전에서 동작하지 않을 수 있다는 점에 유의하세요.",
+            "zh-tw":
+                "如果你無法避免 CORS 問題，可以試試這個選項。它會使用 Obsidian 的內部 API 與 CouchDB 伺服器通訊，不符合網頁標準，但可以運作。請注意，未來的 Obsidian 版本可能導致此功能失效。",
         },
     "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.":
         {
             def: "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.",
             es: "Si no puedes evitar problemas de CORS, prueba esta opción. Usa la API interna de Obsidian para comunicarse con el servidor S3. No cumple los estándares web, pero funciona. Ten en cuenta que podría dejar de funcionar en versiones futuras de Obsidian.",
             ko: "CORS 문제를 피할 수 없다면 이 옵션을 시도해 볼 수 있습니다. Obsidian의 내부 API를 사용해 S3 서버와 통신합니다. 웹 표준을 따르지는 않지만 동작합니다. 향후 Obsidian 버전에서 동작하지 않을 수 있다는 점에 유의하세요.",
+            "zh-tw":
+                "如果你無法避免 CORS 問題，可以試試這個選項。它會使用 Obsidian 的內部 API 與 S3 伺服器通訊，不符合網頁標準，但可以運作。請注意，未來的 Obsidian 版本可能導致此功能失效。",
         },
     "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.":
         {
             def: "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.",
             es: "Si tienes cambios sin sincronizar en el Vault de este dispositivo, es probable que divergan de las versiones del servidor tras el restablecimiento. Esto puede provocar un gran número de conflictos de archivos.",
             ko: "이 기기의 보관함에 동기화되지 않은 변경 사항이 있다면, 초기화 후 서버의 버전과 어긋나기 쉽습니다. 그 결과 많은 파일에서 충돌이 발생할 수 있습니다.",
+            "zh-tw":
+                "如果此裝置的 Vault 中有尚未同步的變更，重設後這些變更很可能會與伺服器上的版本產生分歧，可能導致大量檔案衝突。",
         },
     "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.":
         {
@@ -2637,23 +2830,28 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "If you understand the risks and still wish to proceed, select so.",
         es: "Si entiendes los riesgos y aun así quieres continuar, indícalo.",
         ko: "위험을 이해하고도 진행하려면 그렇게 선택해 주세요.",
+        "zh-tw": "如果你了解風險，仍希望繼續，請選取此項。",
     },
     "If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket.":
         {
             def: "If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket.",
             es: "Si quieres guardar los datos en una carpeta concreta del bucket, indica aquí un prefijo de carpeta. Si no, déjalo vacío para guardarlos en la raíz del bucket.",
             ko: "버킷 안의 특정 폴더에 데이터를 저장하려면 여기에 폴더 접두사를 지정할 수 있습니다. 그렇지 않다면 비워 두어 버킷 최상위에 데이터를 저장하세요.",
+            "zh-tw":
+                "如果你想把資料存放在儲存庫內特定的資料夾中，可以在此指定資料夾前綴；留空則會將資料存放在儲存庫的根目錄。",
         },
     "If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching.":
         {
             def: "If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching.",
             es: "Si quieres usar `LiveSync`, debes difundir los cambios. Todos los pares que estén `observando` y lo detecten iniciarán la replicación para obtenerlos.",
             ko: "`LiveSync`를 사용하려면 변경 사항을 브로드캐스트해야 합니다. 이를 감지한 모든 `watching` 상태의 피어가 가져오기를 위한 복제를 시작합니다.",
+            "zh-tw": "若要使用 `LiveSync`，你需要廣播變更。所有偵測到廣播的「監看中」Peer 都會開始執行複寫以進行擷取。",
         },
     Ignore: {
         def: "Ignore",
         es: "Ignorar",
         ko: "무시",
+        "zh-tw": "忽略",
     },
     "Ignore and Proceed": {
         def: "Ignore and Proceed",
@@ -2673,6 +2871,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "제외 규칙 파일",
         ru: "Файлы для игнорирования",
         zh: "忽略文件",
+        "zh-tw": "忽略檔案",
     },
     "Ignore patterns": {
         def: "Ignore patterns",
@@ -2696,23 +2895,29 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "IMPORTANT",
         es: "IMPORTANTE",
         ko: "중요",
+        "zh-tw": "重要",
     },
     "In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.":
         {
             def: "In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.",
             es: "En la mayoría de los casos deberías mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes un Vault cifrado en otro formato.",
             ko: "대부분의 경우 기본 알고리즘(${algorithm})을 그대로 사용하는 것이 좋습니다. 이 설정은 기존 보관함이 다른 형식으로 암호화되어 있는 경우에만 필요합니다.",
+            "zh-tw":
+                "在大多數情況下，建議維持使用預設演算法（${algorithm}）。只有當你現有的 Vault 是以不同格式加密時，才需要調整這項設定。",
         },
     "In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically.":
         {
             def: "In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically.",
             es: "En este caso, Self-hosted LiveSync recreará los metadatos de todos los archivos y generará conflictos a propósito. Cuando el contenido del archivo sea idéntico, esos conflictos se resolverán automáticamente.",
             ko: "이 경우 Self-hosted LiveSync는 모든 파일의 메타데이터를 다시 만들면서 의도적으로 충돌을 발생시킵니다. 파일 내용이 동일한 경우 이러한 충돌은 자동으로 해결됩니다.",
+            "zh-tw":
+                "在這種情況下，Self-hosted LiveSync 會為每個檔案重新建立中繼資料，並刻意產生衝突。若檔案內容相同，這些衝突會自動解決。",
         },
     "Incoming:": {
         def: "Incoming:",
         es: "Entrantes:",
         ko: "수신:",
+        "zh-tw": "收到：",
     },
     "Incubate Chunks in Document": {
         def: "Incubate Chunks in Document",
@@ -2723,11 +2928,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문서 내 청크 임시 보관",
         ru: "Инкубировать чанки в документе",
         zh: "在文档中孵化块",
+        "zh-tw": "在文件中孵化 chunks",
     },
     "Initial Action": {
         def: "Initial Action",
         es: "Acción inicial",
         ko: "초기 작업",
+        "zh-tw": "初始動作",
     },
     "Initialise all journal history, On the next sync, every item will be received and sent.": {
         def: "Initialise all journal history, On the next sync, every item will be received and sent.",
@@ -2760,57 +2967,69 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "간격 (초)",
         ru: "Интервал (сек)",
         zh: "间隔(秒)",
+        "zh-tw": "間隔（秒）",
     },
     INVERTED: {
         def: "INVERTED",
         es: "INVERTIDO",
         ko: "반전됨",
+        "zh-tw": "反向",
     },
     "Issue detection log:": {
         def: "Issue detection log:",
         es: "Registro de detección de problemas:",
         ko: "문제 감지 로그:",
+        "zh-tw": "問題偵測日誌：",
     },
     "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.": {
         def: "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.",
         es: "Se recomienda encarecidamente crear una copia de seguridad antes de continuar. Continuar sin copia de seguridad puede provocar pérdida de datos.",
         ko: "진행하기 전에 백업을 만드시기를 강력히 권장합니다. 백업 없이 진행하면 데이터가 손실될 수 있습니다.",
+        "zh-tw": "強烈建議在繼續之前先建立備份。若不備份就繼續，可能導致資料遺失。",
     },
     "Just for a minute, please!": {
         def: "Just for a minute, please!",
         es: "¡Solo un momento, por favor!",
         ko: "잠시만 기다려 주세요!",
+        "zh-tw": "請稍候片刻！",
     },
     "JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly.":
         {
             def: "JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly.",
             es: "La autenticación JWT (JSON Web Token) permite autenticarse de forma segura con el servidor CouchDB mediante tokens. Asegúrate de que tu servidor CouchDB esté configurado para aceptar JWT y de que la clave y los ajustes indicados coincidan con la configuración del servidor. Por cierto, no lo he verificado a fondo.",
             ko: "JWT(JSON Web Token) 인증을 사용하면 토큰으로 CouchDB 서버에 안전하게 인증할 수 있습니다. CouchDB 서버가 JWT를 받아들이도록 설정되어 있는지, 그리고 입력한 키와 설정이 서버 구성과 일치하는지 확인해 주세요. 참고로 이 기능은 그리 철저하게 검증되지는 않았습니다.",
+            "zh-tw":
+                "JWT（JSON Web Token）驗證讓你可以使用權杖安全地登入 CouchDB 伺服器。請確認你的 CouchDB 伺服器已設定為接受 JWT，且提供的金鑰與設定符合伺服器端的設定。附帶一提，這項功能尚未經過非常徹底的驗證。",
         },
     "JWT Algorithm": {
         def: "JWT Algorithm",
         es: "Algoritmo JWT",
         ko: "JWT 알고리즘",
+        "zh-tw": "JWT 演算法",
     },
     "JWT Expiration Duration (minutes)": {
         def: "JWT Expiration Duration (minutes)",
         es: "Duración de caducidad del JWT (minutos)",
         ko: "JWT 만료 시간(분)",
+        "zh-tw": "JWT 有效期限（分鐘）",
     },
     "JWT Key": {
         def: "JWT Key",
         es: "Clave JWT",
         ko: "JWT 키",
+        "zh-tw": "JWT 金鑰",
     },
     "JWT Key ID (kid)": {
         def: "JWT Key ID (kid)",
         es: "ID de clave JWT (kid)",
         ko: "JWT 키 ID (kid)",
+        "zh-tw": "JWT Key ID（kid）",
     },
     "JWT Subject (sub)": {
         def: "JWT Subject (sub)",
         es: "Sujeto JWT (sub)",
         ko: "JWT 주체 (sub)",
+        "zh-tw": "JWT Subject（sub）",
     },
     "K.exp": {
         def: "Experimental",
@@ -2898,6 +3117,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "빈 폴더 유지",
         ru: "Сохранять пустые папки",
         zh: "保留空文件夹",
+        "zh-tw": "保留空資料夾",
     },
     lang_def: {
         def: "Default",
@@ -2908,6 +3128,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "기본값",
         ru: "По умолчанию",
         zh: "Default",
+        "zh-tw": "預設",
     },
     "lang-de": {
         def: "Deutsche",
@@ -2918,6 +3139,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Deutsche",
         ru: "Deutsch",
         zh: "Deutsche",
+        "zh-tw": "Deutsche",
     },
     "lang-def": {
         def: "Default",
@@ -2928,6 +3150,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "기본값",
         ru: "lang_def",
         zh: "Default",
+        "zh-tw": "預設",
     },
     "lang-es": {
         def: "Español",
@@ -2938,6 +3161,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Español",
         ru: "Español",
         zh: "Español",
+        "zh-tw": "Español",
     },
     "lang-fr": {
         def: "Français",
@@ -2948,12 +3172,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Français",
         ru: "Français",
         zh: "Français",
+        "zh-tw": "Français",
     },
     "lang-he": {
         def: "Hebrew",
         es: "Hebreo",
         he: "עברית",
         ko: "עברית",
+        "zh-tw": "עברית",
     },
     "lang-ja": {
         def: "日本語",
@@ -2964,6 +3190,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "日本語",
         ru: "日本語",
         zh: "日本語",
+        "zh-tw": "日本語",
     },
     "lang-ko": {
         def: "한국어",
@@ -2974,6 +3201,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "한국어",
         ru: "한국어",
         zh: "한국어",
+        "zh-tw": "한국어",
     },
     "lang-ru": {
         def: "Русский",
@@ -2984,6 +3212,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Русский",
         ru: "Русский",
         zh: "Русский",
+        "zh-tw": "Русский",
     },
     "lang-zh": {
         def: "简体中文",
@@ -2994,6 +3223,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "简体中文",
         ru: "简体中文",
         zh: "简体中文",
+        "zh-tw": "简体中文",
     },
     "lang-zh-tw": {
         def: "繁體中文",
@@ -3004,6 +3234,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "繁體中文",
         ru: "繁體中文",
         zh: "繁體中文",
+        "zh-tw": "繁體中文",
     },
     Later: {
         def: "Later",
@@ -3027,6 +3258,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "live",
         es: "en vivo",
         ko: "실시간",
+        "zh-tw": "即時監看",
     },
     "LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.":
         {
@@ -3038,6 +3270,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "LiveSync는 접두사로 구분되지 않은 동일한 이름의 보관함을 여러 개 처리할 수 없습니다. 이 값은 자동으로 구성되어야 합니다.",
             ru: "LiveSync не может обработать несколько хранилищ с одинаковым именем без разных префиксов.",
             zh: "LiveSync 无法处理具有相同名称但没有不同前缀的多个库。这应该自动配置",
+            "zh-tw": "LiveSync 無法處理名稱相同卻沒有不同前綴的多個 Vault，這應該會自動設定。",
         },
     "liveSyncReplicator.beforeLiveSync": {
         def: "Before LiveSync, start OneShot once...",
@@ -3048,6 +3281,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync 전에 OneShot을 먼저 시작합니다...",
         ru: "Перед LiveSync запускаем OneShot...",
         zh: "在LiveSync前,先启动OneShot一次...",
+        "zh-tw": "在 LiveSync 之前，先執行一次 OneShot...",
     },
     "liveSyncReplicator.cantReplicateLowerValue": {
         def: "We can't replicate more lower value.",
@@ -3058,6 +3292,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "더 낮은 값으로 복제할 수 없습니다.",
         ru: "Нельзя реплицировать с меньшим значением.",
         zh: "我们无法复制更小的值",
+        "zh-tw": "無法複寫更低的值。",
     },
     "liveSyncReplicator.checkingLastSyncPoint": {
         def: "Looking for the point last synchronized point.",
@@ -3068,6 +3303,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "마지막으로 동기화된 지점을 찾고 있습니다.",
         ru: "Поиск последней точки синхронизации.",
         zh: "查找上次同步点",
+        "zh-tw": "正在尋找上次同步的位置。",
     },
     "liveSyncReplicator.couldNotConnectTo": {
         def: "Could not connect to ${uri} : ${name}\n(${db})",
@@ -3078,6 +3314,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${uri}에 연결할 수 없습니다: ${name}\n(${db})",
         ru: "Не удалось подключиться к uri : name\n(db)",
         zh: "无法连接到 ${uri} : ${name}\n(${db})",
+        "zh-tw": "無法連線到 ${uri} : ${name}\n(${db})",
     },
     "liveSyncReplicator.couldNotConnectToRemoteDb": {
         def: "Could not connect to remote database: ${d}",
@@ -3088,6 +3325,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스에 연결할 수 없습니다: ${d}",
         ru: "Не удалось подключиться к удалённой базе данных: d",
         zh: "无法连接到远程数据库：${d}",
+        "zh-tw": "無法連線到遠端資料庫：${d}",
     },
     "liveSyncReplicator.couldNotConnectToServer": {
         def: "The connection to the remote has been prevented, or failed.",
@@ -3098,6 +3336,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에 대한 연결이 차단되었거나 실패했습니다.",
         ru: "Не удалось подключиться к серверу.",
         zh: "无法连接到服务器",
+        "zh-tw": "與遠端的連線被阻擋，或連線失敗。",
     },
     "liveSyncReplicator.couldNotConnectToURI": {
         def: "Could not connect to ${uri}:${dbRet}",
@@ -3108,6 +3347,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${uri}에 연결할 수 없습니다: ${dbRet}",
         ru: "Не удалось подключиться к uri:dbRet",
         zh: "无法连接到 ${uri}:${dbRet}",
+        "zh-tw": "無法連線到 ${uri}:${dbRet}",
     },
     "liveSyncReplicator.couldNotMarkResolveRemoteDb": {
         def: "Could not mark resolve remote database.",
@@ -3118,6 +3358,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스를 해결됨으로 표시할 수 없습니다.",
         ru: "Не удалось отметить удалённую базу данных как разрешённую.",
         zh: "无法标记并解决远程数据库",
+        "zh-tw": "無法將遠端資料庫標記為已處理。",
     },
     "liveSyncReplicator.liveSyncBegin": {
         def: "LiveSync begin...",
@@ -3128,6 +3369,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync 시작...",
         ru: "Начало LiveSync...",
         zh: "LiveSync 开始...",
+        "zh-tw": "LiveSync 開始...",
     },
     "liveSyncReplicator.lockRemoteDb": {
         def: "Lock remote database to prevent data corruption",
@@ -3138,6 +3380,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터 손상을 방지하기 위해 원격 데이터베이스를 잠급니다",
         ru: "Блокировка удалённой базы данных для предотвращения повреждения данных",
         zh: "锁定远程数据库以防止数据损坏",
+        "zh-tw": "鎖定遠端資料庫以防止資料損毀",
     },
     "liveSyncReplicator.markDeviceResolved": {
         def: "Mark this device as 'resolved'.",
@@ -3148,11 +3391,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기를 '해결됨'으로 표시합니다.",
         ru: "Отметить это устройство как «разрешённое».",
         zh: "将此设备标记为“已解决”",
+        "zh-tw": "將此裝置標記為「已處理」。",
     },
     "liveSyncReplicator.mismatchedTweakDetected": {
         def: "Some mismatches have been detected in the configuration between devices. Running a manual replication will attempt to resolve this issue.",
         es: "Se han detectado discrepancias en la configuración entre dispositivos. Ejecutar una replicación manual intentará resolverlo.",
         ko: "기기 간 구성에서 일부 불일치가 감지되었습니다. 수동으로 복제를 실행하면 이 문제를 해결하려고 시도합니다.",
+        "zh-tw": "偵測到裝置之間的設定有不一致之處。執行手動複寫將嘗試解決此問題。",
     },
     "liveSyncReplicator.oneShotSyncBegin": {
         def: "OneShot Sync begin... (${syncMode})",
@@ -3163,6 +3408,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "OneShot 동기화 시작... (${syncMode})",
         ru: "Начало OneShot синхронизации... (syncMode)",
         zh: "OneShot同步开始...(${syncMode})",
+        "zh-tw": "OneShot 同步開始...（${syncMode}）",
     },
     "liveSyncReplicator.remoteDbCorrupted": {
         def: "Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed",
@@ -3173,6 +3419,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스가 더 최신이거나 손상되었습니다. 최신 버전의 self-hosted-livesync가 설치되어 있는지 확인하세요",
         ru: "Удалённая база данных новее или повреждена, убедитесь, что установлена последняя версия self-hosted-livesync",
         zh: "远程数据库较新或已损坏,请确保已安装最新版本的self-hosted-livesync",
+        "zh-tw": "遠端資料庫版本較新或已損毀，請確保已安裝最新版本的 Self-hosted LiveSync",
     },
     "liveSyncReplicator.remoteDbCreatedOrConnected": {
         def: "Remote Database Created or Connected",
@@ -3183,6 +3430,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스가 생성되거나 연결되었습니다",
         ru: "Удалённая база данных создана или подключена",
         zh: "远程数据库已创建或连接",
+        "zh-tw": "遠端資料庫已建立或已連線",
     },
     "liveSyncReplicator.remoteDbDestroyed": {
         def: "Remote Database Destroyed",
@@ -3193,6 +3441,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스가 삭제되었습니다",
         ru: "Удалённая база данных уничтожена",
         zh: "远程数据库已销毁",
+        "zh-tw": "遠端資料庫已銷毀",
     },
     "liveSyncReplicator.remoteDbDestroyError": {
         def: "Something happened on Remote Database Destroy:",
@@ -3203,6 +3452,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스 삭제 중 오류가 발생했습니다:",
         ru: "Произошла ошибка при уничтожении удалённой базы данных:",
         zh: "远程数据库销毁时发生错误：",
+        "zh-tw": "銷毀遠端資料庫時發生問題：",
     },
     "liveSyncReplicator.remoteDbMarkedResolved": {
         def: "Remote database has been marked resolved.",
@@ -3213,6 +3463,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스가 해결됨으로 표시되었습니다.",
         ru: "Удалённая база данных отмечена как разрешённая.",
         zh: "远程数据库已标记为已解决",
+        "zh-tw": "遠端資料庫已標記為已處理。",
     },
     "liveSyncReplicator.replicationClosed": {
         def: "Replication closed",
@@ -3223,6 +3474,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "복제가 종료되었습니다",
         ru: "Репликация закрыта",
         zh: "同步已关闭",
+        "zh-tw": "複寫已關閉",
     },
     "liveSyncReplicator.replicationInProgress": {
         def: "Replication is already in progress",
@@ -3233,6 +3485,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "복제가 이미 진행 중입니다",
         ru: "Репликация уже выполняется",
         zh: "同步正在进行中",
+        "zh-tw": "複寫已在進行中",
     },
     "liveSyncReplicator.retryLowerBatchSize": {
         def: "Retry with lower batch size:${batch_size}/${batches_limit}",
@@ -3243,6 +3496,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "더 작은 배치 크기로 재시도: ${batch_size}/${batches_limit}",
         ru: "Повтор с меньшим размером пакета: batch_size/batches_limit",
         zh: "使用更小的批量大小重试：${batch_size}/${batches_limit}",
+        "zh-tw": "以較低的批次大小重試：${batch_size}/${batches_limit}",
     },
     "liveSyncReplicator.unlockRemoteDb": {
         def: "Unlock remote database to prevent data corruption",
@@ -3253,6 +3507,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터 손상을 방지하기 위해 원격 데이터베이스를 잠금 해제합니다",
         ru: "Разблокировка удалённой базы данных для предотвращения повреждения данных",
         zh: "解锁远程数据库以防止数据损坏",
+        "zh-tw": "解鎖遠端資料庫以防止資料損毀",
     },
     "liveSyncSetting.errorNoSuchSettingItem": {
         def: "No such setting item: ${key}",
@@ -3304,11 +3559,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ja: "ローカルデータベースの調整",
         ko: "로컬 데이터베이스 조정",
         ru: "Настройки локальной базы данных",
+        "zh-tw": "本機資料庫調校",
     },
     "Local only": {
         def: "Local only",
         es: "Solo local",
         ko: "로컬에만 있음",
+        "zh-tw": "僅本機有",
     },
     Lock: {
         def: "Lock",
@@ -3346,6 +3603,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "자동 스크롤",
         ru: "Автопрокрутка",
         zh: "自动滚动",
+        "zh-tw": "自動捲動",
     },
     "logPane.logWindowOpened": {
         def: "Log window opened",
@@ -3356,6 +3614,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "로그 창이 열렸습니다",
         ru: "Окно лога открыто",
         zh: "日志窗口已打开",
+        "zh-tw": "日誌視窗已開啟",
     },
     "logPane.pause": {
         def: "Pause",
@@ -3366,6 +3625,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일시 정지",
         ru: "Пауза",
         zh: "暂停",
+        "zh-tw": "暫停",
     },
     "logPane.title": {
         def: "Self-hosted LiveSync Log",
@@ -3387,21 +3647,25 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "줄 바꿈",
         ru: "Перенос",
         zh: "自动换行",
+        "zh-tw": "自動換行",
     },
     "Lower (${local} < ${remote})": {
         def: "Lower (${local} < ${remote})",
         es: "Inferior (${local} < ${remote})",
         ko: "더 낮음 (${local} < ${remote})",
+        "zh-tw": "較低（${local} < ${remote}）",
     },
     "Maintenance Commands": {
         def: "Maintenance Commands",
         es: "Comandos de mantenimiento",
         ko: "유지보수 명령",
+        "zh-tw": "維護命令",
     },
     "Maintenance mode": {
         def: "Maintenance mode",
         es: "Modo de mantenimiento",
         ko: "유지보수 모드",
+        "zh-tw": "維護模式",
     },
     "Maximum delay for batch database updating": {
         def: "Maximum delay for batch database updating",
@@ -3412,6 +3676,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일괄 데이터베이스 업데이트 최대 지연",
         ru: "Максимальная задержка пакетного обновления базы данных",
         zh: "批量数据库更新的最大延迟",
+        "zh-tw": "批次更新資料庫的最大延遲",
     },
     "Maximum file size": {
         def: "Maximum file size",
@@ -3422,6 +3687,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "최대 파일 크기",
         ru: "Максимальный размер файла",
         zh: "最大文件大小",
+        "zh-tw": "最大檔案大小",
     },
     "Maximum Incubating Chunk Size": {
         def: "Maximum Incubating Chunk Size",
@@ -3432,6 +3698,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "임시 보관 청크의 최대 크기",
         ru: "Максимальный размер инкубируемого чанка",
         zh: "最大孵化块大小",
+        "zh-tw": "最大孵化 chunk 大小",
     },
     "Maximum Incubating Chunks": {
         def: "Maximum Incubating Chunks",
@@ -3442,6 +3709,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "임시 보관 청크의 최대 개수",
         ru: "Максимальное количество инкубируемых чанков",
         zh: "最大孵化块数",
+        "zh-tw": "最大孵化 chunk 數量",
     },
     "Maximum Incubation Period": {
         def: "Maximum Incubation Period",
@@ -3452,6 +3720,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "청크 임시 보관 최대 기간",
         ru: "Максимальный период инкубации",
         zh: "最大孵化期",
+        "zh-tw": "最大孵化期間",
     },
     "MB (0 to disable).": {
         def: "MB (0 to disable).",
@@ -3462,6 +3731,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "MB (0으로 설정하면 비활성화).",
         ru: "МБ (0 для отключения).",
         zh: "MB(0为禁用)",
+        "zh-tw": "MB（0 表示停用）。",
     },
     "Memory cache": {
         def: "Memory cache",
@@ -3469,6 +3739,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ja: "メモリキャッシュ",
         ko: "메모리 캐시",
         ru: "Кэш в памяти",
+        "zh-tw": "記憶體快取",
     },
     "Memory cache size (by total characters)": {
         def: "Memory cache size (by total characters)",
@@ -3479,6 +3750,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "메모리 캐시 크기 (총 문자 수)",
         ru: "Размер кэша памяти (по общему количеству символов)",
         zh: "内存缓存大小(按总字符数)",
+        "zh-tw": "記憶體快取大小（依總字元數）",
     },
     "Memory cache size (by total items)": {
         def: "Memory cache size (by total items)",
@@ -3489,6 +3761,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "메모리 캐시 크기 (총 항목 수)",
         ru: "Размер кэша памяти (по общему количеству элементов)",
         zh: "内存缓存大小(按总项目数)",
+        "zh-tw": "記憶體快取大小（依總項目數）",
     },
     Merge: {
         def: "Merge",
@@ -3497,6 +3770,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "병합",
         ru: "Объединить",
         zh: "合并",
+        "zh-tw": "合併",
     },
     "Minimum delay for batch database updating": {
         def: "Minimum delay for batch database updating",
@@ -3507,6 +3781,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일괄 데이터베이스 업데이트 최소 지연",
         ru: "Минимальная задержка пакетного обновления базы данных",
         zh: "批量数据库更新的最小延迟",
+        "zh-tw": "批次更新資料庫的最小延遲",
     },
     "Minimum interval for syncing": {
         def: "Minimum interval for syncing",
@@ -3523,6 +3798,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Mixed",
         es: "Mixto",
         ko: "혼합",
+        "zh-tw": "混合",
     },
     "moduleCheckRemoteSize.logCheckingStorageSizes": {
         def: "Checking storage sizes",
@@ -3533,6 +3809,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "스토리지 크기 확인 중",
         ru: "Проверка размеров хранилища",
         zh: "正在检查存储大小",
+        "zh-tw": "正在檢查儲存空間大小",
     },
     "moduleCheckRemoteSize.logCurrentStorageSize": {
         def: "Remote storage size: ${measuredSize}",
@@ -3543,6 +3820,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 스토리지 크기: ${measuredSize}",
         ru: "Размер удалённого хранилища: measuredSize",
         zh: "远程存储大小：${measuredSize}",
+        "zh-tw": "遠端儲存空間大小：${measuredSize}",
     },
     "moduleCheckRemoteSize.logExceededWarning": {
         def: "Remote storage size: ${measuredSize} exceeded ${notifySize}",
@@ -3553,6 +3831,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 스토리지 크기: ${measuredSize}이(가) ${notifySize}을(를) 초과했습니다",
         ru: "Размер удалённого хранилища: measuredSize превысил notifySize",
         zh: "远程存储大小：${measuredSize} 超过 ${notifySize}",
+        "zh-tw": "遠端儲存空間大小：${measuredSize} 已超過 ${notifySize}",
     },
     "moduleCheckRemoteSize.logThresholdEnlarged": {
         def: "Threshold has been enlarged to ${size}MB",
@@ -3563,6 +3842,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "임계값이 ${size}MB로 증가되었습니다",
         ru: "Порог увеличен до sizeМБ",
         zh: "阈值已扩大到 ${size}MB",
+        "zh-tw": "閾值已提高到 ${size}MB",
     },
     "moduleCheckRemoteSize.msgConfirmRebuild": {
         def: "This may take a bit of a long time. Do you really want to rebuild everything now?",
@@ -3573,6 +3853,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "시간이 꽤 오래 걸릴 수 있습니다. 정말 지금 모든 것을 재구축하시겠습니까?",
         ru: "Это может занять некоторое время. Вы действительно хотите перестроить всё сейчас?",
         zh: "这可能需要一些时间。您真的想现在重建所有内容吗？",
+        "zh-tw": "這可能需要一些時間。你確定要現在重建全部內容嗎？",
     },
     "moduleCheckRemoteSize.msgDatabaseGrowing": {
         def: "**Your database is getting larger!** But do not worry, we can address it now. The time before running out of space on the remote storage.\n\n| Measured size | Configured size |\n| --- | --- |\n| ${estimatedSize} | ${maxSize} |\n\n> [!MORE]-\n> If you have been using it for many years, there may be unreferenced chunks - that is, garbage - accumulating in the database. Therefore, we recommend rebuilding everything. It will probably become much smaller.\n>\n> If the volume of your vault is simply increasing, it is better to rebuild everything after organizing the files. Self-hosted LiveSync does not delete the actual data even if you delete it to speed up the process. It is roughly [documented](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md).\n>\n> If you don't mind the increase, you can increase the notification limit by 100MB. This is the case if you are running it on your own server. However, it is better to rebuild everything from time to time.\n>\n\n> [!WARNING]\n> If you perform rebuild everything, make sure all devices are synchronised. The plug-in will merge as much as possible, though.\n",
@@ -3583,6 +3864,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "**데이터베이스 용량이 점점 커지고 있습니다!** 하지만 걱정하지 마세요. 지금 대응할 수 있습니다. 원격 스토리지 공간이 부족해지기까지 남은 시간입니다.\n\n| 측정된 크기 | 설정된 한도 |\n| --- | --- |\n| ${estimatedSize} | ${maxSize} |\n\n> [!MORE]-\n> 오랜 기간 사용했다면 참조되지 않는 청크, 즉 쓰레기 데이터가 데이터베이스에 쌓였을 수 있습니다. 이 경우 전체 재구축을 권장합니다. 용량이 훨씬 줄어들 것입니다.\n>\n> 단순히 보관함 용량이 커지고 있는 것이라면, 파일을 정리한 뒤에 전체를 재구축하는 것이 좋습니다. Self-hosted LiveSync는 처리 속도를 위해 파일을 삭제해도 실제 데이터를 바로 지우지 않습니다. 이 내용은 [기술 문서](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)에 간략히 정리되어 있습니다.\n>\n> 용량 증가가 괜찮다면 알림 한도를 100MB 단위로 높일 수 있습니다. 직접 서버를 운영하는 경우에 적합한 방법입니다. 다만 가끔은 전체를 재구축해 주는 것이 좋습니다.\n>\n\n> [!WARNING]\n> 전체 재구축을 실행할 때는 모든 기기가 동기화되어 있는지 확인해 주세요. 플러그인이 최대한 병합하려고 시도하기는 합니다.\n",
         ru: "Ваша база данных увеличивается! Но не волнуйтесь, мы можем решить это сейчас.",
         zh: "**您的数据库正在变大！** 但别担心,我们现在可以解决它。在远程存储空间用完之前还有时间。\n\n| 测量大小 | 配置大小 |\n| --- | --- |\n| ${estimatedSize} | ${maxSize} |\n\n> [!MORE]-\n> 如果您已经使用了很多年,数据库中可能会积累未引用的 chunks——也就是垃圾。因此,我们建议重建所有内容。它可能会变得小得多。\n>\n> 如果您的库容量只是在增加,最好在整理文件后重建所有内容。即使您为了加速过程删除了文件,Self-hosted LiveSync 也不会删除实际数据。这大致[有文档记录](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)。\n>\n> 如果您不介意增加,可以将通知限制增加 100MB。如果您在自己的服务器上运行,就是这种情况。但是,最好还是不时地重建所有内容。\n>\n\n> [!WARNING]\n> 如果您执行重建所有内容,请确保所有设备都已同步。尽管如此,插件会尽可能地合并\n",
+        "zh-tw":
+            "**你的資料庫正在變大！** 但不用擔心，我們現在就可以處理。在遠端儲存空間用盡之前還有一些時間。\n\n| 測量大小 | 設定大小 |\n| --- | --- |\n| ${estimatedSize} | ${maxSize} |\n\n> [!MORE]-\n> 如果你已經使用了好幾年，資料庫中可能累積了未被參照的 chunks，也就是垃圾資料。因此，我們建議重建全部內容，通常會讓資料庫變得小很多。\n>\n> 如果你的 Vault 容量只是持續增加，最好先整理檔案再重建全部內容。即使你為了加快速度而刪除了檔案，Self-hosted LiveSync 也不會刪除實際資料，詳情大致記載在[文件](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)中。\n>\n> 如果你不在意容量增加，可以將通知上限調高 100MB，這在你自行架設伺服器時較適用。不過，還是建議偶爾重建全部內容。\n>\n\n> [!WARNING]\n> 若要執行重建全部內容，請確保所有裝置都已同步。不過外掛會盡可能地進行合併。",
     },
     "moduleCheckRemoteSize.msgSetDBCapacity": {
         def: "We can set a maximum database capacity warning, **to take action before running out of space on the remote storage**.\nDo you want to enable this?\n\n> [!MORE]-\n> - 0: Do not warn about storage size.\n>   This is recommended if you have enough space on the remote storage especially you have self-hosted. And you can check the storage size and rebuild manually.\n> - 800: Warn if the remote storage size exceeds 800MB.\n>   This is recommended if you are using fly.io with 1GB limit or IBM Cloudant.\n> - 2000: Warn if the remote storage size exceeds 2GB.\n\nIf we have reached the limit, we will be asked to enlarge the limit step by step.\n",
@@ -3593,16 +3876,20 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "**원격 스토리지 공간이 부족해지기 전에 미리 조치할 수 있도록** 데이터베이스 용량 경고를 설정할 수 있습니다.\n이 기능을 활성화하시겠습니까?\n\n> [!MORE]-\n> - 0: 스토리지 용량을 경고하지 않습니다.\n>   직접 서버를 운영하는 등 원격 스토리지에 여유 공간이 충분한 경우에 권장합니다. 스토리지 용량을 직접 확인하고 수동으로 재구축할 수 있습니다.\n> - 800: 원격 스토리지 용량이 800MB를 초과하면 경고합니다.\n>   1GB 제한이 있는 fly.io나 IBM Cloudant를 사용하는 경우에 권장합니다.\n> - 2000: 원격 스토리지 용량이 2GB를 초과하면 경고합니다.\n\n한도에 도달하면 한도를 단계적으로 늘릴지 여쭤보겠습니다.\n",
         ru: "Можно установить предупреждение о максимальной ёмкости базы данных.",
         zh: "我们可以设置一个最大数据库容量警告,**以便在远程存储空间耗尽前采取行动**。\n您想启用这个功能吗?\n\n> [!MORE]-\n> - 0: 不警告存储大小。\n>   如果您在远程存储(尤其是自托管)上有足够的空间,则推荐此选项。您可以手动检查存储大小并重建。\n> - 800: 如果远程存储大小超过 800MB 则发出警告。\n>   如果您使用的是 fly.io(1GB 限制) 或 IBM Cloudant,则推荐此选项。\n> - 2000: 如果远程存储大小超过 2GB 则发出警告。\n\n如果达到限制,系统会要求我们逐步增大限制\n",
+        "zh-tw":
+            "我們可以設定資料庫容量上限警告，**以便在遠端儲存空間用盡之前及早採取行動**。\n你要啟用這個功能嗎？\n\n> [!MORE]-\n> - 0：不警告儲存空間大小。\n>   如果你在遠端儲存空間（尤其是自行架設）有足夠空間，建議選擇此項；你也可以自行手動檢查儲存空間大小並重建。\n> - 800：遠端儲存空間大小超過 800MB 時警告。\n>   如果你使用限制為 1GB 的 fly.io 或 IBM Cloudant，建議選擇此項。\n> - 2000：遠端儲存空間大小超過 2GB 時警告。\n\n如果達到上限，系統會要求逐步提高限制。",
     },
     "moduleCheckRemoteSize.noticeExceeded": {
         def: "Remote storage size is ${measuredSize}, above the configured ${notifySize} notification threshold. {HERE}",
         es: "El tamaño del almacenamiento remoto es de ${measuredSize}, por encima del umbral de aviso configurado de ${notifySize}. {HERE}",
         ko: "원격 스토리지 크기 ${measuredSize}이(가) 설정된 알림 임계값 ${notifySize}을(를) 초과했습니다. {HERE}",
+        "zh-tw": "遠端儲存空間大小為 ${measuredSize}，已超過設定的 ${notifySize} 通知閾值。{HERE}",
     },
     "moduleCheckRemoteSize.noticeNotConfigured": {
         def: "Remote storage size notifications are not configured. {HERE}",
         es: "Los avisos sobre el tamaño del almacenamiento remoto no están configurados. {HERE}",
         ko: "원격 스토리지 크기 알림이 설정되어 있지 않습니다. {HERE}",
+        "zh-tw": "尚未設定遠端儲存空間大小通知。{HERE}",
     },
     "moduleCheckRemoteSize.option2GB": {
         def: "2GB (Standard)",
@@ -3613,6 +3900,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "2GB (표준)",
         ru: "2ГБ (Стандарт)",
         zh: "2GB (标准)",
+        "zh-tw": "2GB（標準）",
     },
     "moduleCheckRemoteSize.option800MB": {
         def: "800MB (Cloudant, fly.io)",
@@ -3623,6 +3911,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "800MB (Cloudant, fly.io)",
         ru: "800МБ (Cloudant, fly.io)",
         zh: "800MB (Cloudant, fly.io)",
+        "zh-tw": "800MB（Cloudant、fly.io）",
     },
     "moduleCheckRemoteSize.optionAskMeLater": {
         def: "Ask me later",
@@ -3633,6 +3922,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "나중에 물어보기",
         ru: "Спросить позже",
         zh: "稍后问我",
+        "zh-tw": "稍後再問我",
     },
     "moduleCheckRemoteSize.optionDismiss": {
         def: "Dismiss",
@@ -3643,6 +3933,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "무시",
         ru: "Отклонить",
         zh: "忽略",
+        "zh-tw": "忽略",
     },
     "moduleCheckRemoteSize.optionIncreaseLimit": {
         def: "increase to ${newMax}MB",
@@ -3664,6 +3955,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요, 경고하지 마세요",
         ru: "Нет, не уведомлять",
         zh: "不,请永远不要警告",
+        "zh-tw": "不，請永遠不要警告",
     },
     "moduleCheckRemoteSize.optionRebuildAll": {
         def: "Rebuild Everything Now",
@@ -3674,11 +3966,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "지금 모든 것 재구축",
         ru: "Перестроить всё сейчас",
         zh: "立即重建所有内容",
+        "zh-tw": "立即重建全部內容",
     },
     "moduleCheckRemoteSize.optionReview": {
         def: "Review options",
         es: "Revisar las opciones",
         ko: "옵션 검토",
+        "zh-tw": "檢視選項",
     },
     "moduleCheckRemoteSize.titleDatabaseSizeLimitExceeded": {
         def: "Remote storage size exceeded the limit",
@@ -3689,6 +3983,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 스토리지 크기가 제한을 초과했습니다",
         ru: "Размер удалённого хранилища превысил лимит",
         zh: "远程存储大小超出限制",
+        "zh-tw": "遠端儲存空間大小已超過限制",
     },
     "moduleCheckRemoteSize.titleDatabaseSizeNotify": {
         def: "Setting up database size notification",
@@ -3699,6 +3994,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 크기 알림 설정",
         ru: "Настройка уведомления о размере базы данных",
         zh: "设置数据库大小通知",
+        "zh-tw": "設定資料庫大小通知",
     },
     "moduleInputUIObsidian.defaultTitleConfirmation": {
         def: "Confirmation",
@@ -3796,6 +4092,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync가 업데이트되었습니다. 변경사항을 읽어보세요!",
         ru: "LiveSync обновлён, пожалуйста, прочитайте список изменений!",
         zh: "LiveSync 已更新,请阅读更新日志！",
+        "zh-tw": "LiveSync 已更新，請閱讀更新日誌！",
     },
     "moduleLiveSyncMain.logSafetyScanCompleted": {
         def: "Additional safety scan completed",
@@ -3839,6 +4136,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync가 업데이트되었습니다. 호환성 문제가 있는 업데이트의 경우 모든 자동 동기화가 일시적으로 비활성화되었습니다. 활성화하기 전에 모든 기기가 최신 상태인지 확인하세요.",
         ru: "LiveSync обновлён. В случае критических изменений автоматическая синхронизация временно отключена. Убедитесь, что все устройства обновлены перед включением.",
         zh: "LiveSync 已更新,如果存在破坏性更新,所有自动同步已暂时禁用。请确保所有设备都更新到最新版本后再启用",
+        "zh-tw":
+            "LiveSync 已更新。為避免破壞性更新造成問題，已暫時停用所有自動同步。請確保所有裝置都已更新到最新版本後再啟用。",
     },
     "moduleLiveSyncMain.msgScramEnabled": {
         def: "Self-hosted LiveSync has been configured to ignore some events. Is this correct?\n\n| Type | Status | Note |\n|:---:|:---:|---|\n| Storage Events | ${fileWatchingStatus} | Every modification will be ignored |\n| Database Events | ${parseReplicationStatus} | Every synchronised change will be postponed |\n\nDo you want to resume them and restart Obsidian?\n\n> [!DETAILS]-\n> These flags are set by the plug-in while rebuilding, or fetching. If the process ends abnormally, it may be kept unintended.\n> If you are not sure, you can try to rerun these processes. Make sure to back your vault up.\n",
@@ -3894,6 +4193,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "준비 대기 중...",
         ru: "Ожидание готовности...",
         zh: "等待就绪...",
+        "zh-tw": "正在等待就緒...",
     },
     "moduleLog.showLog": {
         def: "Show Log",
@@ -4071,6 +4371,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 조정 값을 가져오는데 실패했습니다",
         ru: "Не удалось загрузить удалённые настройки",
         zh: "获取远程调整值失败",
+        "zh-tw": "無法取得遠端調校值",
     },
     "moduleMigration.logLocalDatabaseNotReady": {
         def: "Something went wrong! The local database is not ready",
@@ -4092,6 +4393,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이전과 동일하게 동작하도록 db:${current}(으)로 마이그레이션했습니다",
         ru: "Миграция на db:current с тем же поведением, что и раньше",
         zh: "已迁移到 db:${current},行为与之前相同",
+        "zh-tw": "已遷移到 db:${current}，行為與先前相同",
     },
     "moduleMigration.logMigrationFailed": {
         def: "Migration failed or cancelled from ${old} to ${current}",
@@ -4102,6 +4404,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${old}에서 ${current}로의 데이터 구조 전환이 실패했거나 중단되었습니다",
         ru: "Миграция не удалась или отменена с old на current",
         zh: "从 ${old} 到 ${current} 的迁移失败或已取消",
+        "zh-tw": "從 ${old} 遷移到 ${current} 失敗或已取消",
     },
     "moduleMigration.logRedflag2CreationFail": {
         def: "Failed to create redflag2",
@@ -4112,6 +4415,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "redflag2 생성에 실패했습니다",
         ru: "Не удалось создать redflag2",
         zh: "创建 redflag2 失败",
+        "zh-tw": "無法建立 redflag2",
     },
     "moduleMigration.logRemoteTweakUnavailable": {
         def: "Could not get remote tweak values",
@@ -4122,6 +4426,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 조정 값을 가져올 수 없습니다",
         ru: "Не удалось получить удалённые настройки",
         zh: "无法获取远程调整值",
+        "zh-tw": "無法取得遠端調校值",
     },
     "moduleMigration.logSetupCancelled": {
         def: "The setup has been cancelled, Self-hosted LiveSync waiting for your setup!",
@@ -4132,6 +4437,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정이 취소되었습니다. Self-hosted LiveSync가 설정을 기다리고 있습니다!",
         ru: "Настройка отменена, Self-hosted LiveSync ожидает вашей настройки!",
         zh: "设置已取消,Self-hosted LiveSync 正在等待您的设置！",
+        "zh-tw": "設定已取消，Self-hosted LiveSync 正在等候你完成設定！",
     },
     "moduleMigration.msgFetchRemoteAgain": {
         def: "As you may already know, the self-hosted LiveSync has changed its default behaviour and database structure.\n\nAnd thankfully, with your time and efforts, the remote database appears to have already been migrated. Congratulations!\n\nHowever, we need a bit more. The configuration of this device is not compatible with the remote database. We will need to fetch the remote database again. Should we fetch from the remote again now?\n\n___Note: We cannot synchronise until the configuration has been changed and the database has been fetched again.___\n___Note2: The chunks are completely immutable, we can fetch only the metadata and difference.___",
@@ -4142,6 +4448,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이미 알고 계시겠지만, Self-hosted LiveSync의 기본 동작 방식과 데이터베이스 구조가 변경되었습니다.\n\n다행히도 여러분의 노력 덕분에 원격 데이터베이스는 이미 성공적으로 데이터 구조 전환이 완료된 것으로 보입니다. 축하드립니다!\n\n하지만 아직 일부 추가 작업이 필요합니다. 이 기기의 설정이 원격 데이터베이스와 호환되지 않으므로, 원격 데이터를 다시 가져와야 합니다. 지금 원격 데이터베이스를 다시 가져오시겠습니까?\n\n___참고: 설정이 변경되고 데이터베이스를 다시 불러오기 전까지는 동기화가 불가능합니다.___\n___참고2: 청크는 변경이 불가능한 구조이므로, 메타데이터와 차이점만 가져올 수 있습니다.___",
         ru: "Удалённая база данных, похоже, уже была мигрирована. Конфигурация этого устройства несовместима.",
         zh: "您可能已经知道,Self-hosted LiveSync 更改了其默认行为和数据库结构。\n\n值得庆幸的是,在您的时间和努力下,远程数据库似乎已经迁移完成。恭喜！\n\n但是,我们还需要一点点操作。此设备的配置与远程数据库不兼容。我们需要再次从远程数据库获取。我们现在应该再次从远程获取吗？\n\n___注意:在更改配置并再次获取数据库之前,我们无法进行同步。___\n___注意2:chunks 是完全不可变的,我们只能获取元数据和差异",
+        "zh-tw":
+            "你可能已經知道，Self-hosted LiveSync 變更了預設行為與資料庫結構。\n\n值得慶幸的是，在你的努力下，遠端資料庫似乎已經完成遷移。恭喜！\n\n不過，還需要再多做一點。此裝置的設定與遠端資料庫不相容，我們需要再次從遠端資料庫抓取。現在要再次從遠端抓取嗎？\n\n___注意：在變更設定並再次抓取資料庫之前，我們無法進行同步。___\n___注意 2：chunks 完全不可變，我們只需要抓取中繼資料與差異部分。___",
     },
     "moduleMigration.msgInitialSetup": {
         def: "Your device has **not been set up yet**. Let me guide you through the setup process.\n\nPlease keep in mind that every dialogue content can be copied to the clipboard. If you need to refer to it later, you can paste it into a note in Obsidian. You can also translate it into your language using a translation tool.\n\nFirst, do you have **Setup URI**?\n\nNote: If you do not know what it is, please refer to the [documentation](${URI_DOC}).",
@@ -4176,6 +4484,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "v0.23.21부터 Self-hosted LiveSync의 기본 동작 방식과 데이터베이스 구조가 변경되었습니다. 변경 내용은 다음과 같습니다:\n\n1. **파일명의 대소문자 구분**\n   이제 파일명을 대소문자 구분 없이 처리합니다. 파일명의 대소문자를 제대로 관리하지 못하는 Linux와 iOS를 제외한 대부분의 플랫폼에서 유리한 변경입니다.\n   (해당 플랫폼에서는 이름이 같고 대소문자만 다른 파일에 대해 경고가 표시됩니다)\n\n2. **청크의 리비전 처리**\n   청크는 변경 불가능하므로 리비전을 고정할 수 있습니다. 이 변경으로 파일 저장 성능이 향상됩니다.\n\n___다만 이 변경 중 어느 하나라도 적용하려면 원격과 로컬 데이터베이스를 모두 재구축해야 합니다. 이 과정은 몇 분이 걸리므로 시간이 충분할 때 진행하시기를 권장합니다.___\n\n- 기존 동작을 유지하려면 `${KEEP}`을 선택해 이 과정을 건너뛸 수 있습니다.\n- 시간이 충분하지 않다면 `${DISMISS}`를 선택해 주세요. 나중에 다시 여쭤보겠습니다.\n- 다른 기기에서 이미 데이터베이스를 재구축했다면 `${DISMISS}`를 선택한 뒤 다시 동기화해 보세요. 차이가 감지되면 다시 안내해 드립니다.",
         ru: "Начиная с v0.23.21, self-hosted LiveSync изменил поведение и структуру базы данных.",
         zh: "自 v0.23.21 起,Self-hosted LiveSync 更改了默认行为和数据库结构。进行了以下更改：\n\n1. **文件名的区分大小写**\n现在处理文件名时不区分大小写。这对于大多数平台来说是一个有益的更改,除了 Linux 和 iOS,它们不能有效地管理文件名的大小写敏感性。\n(在这些平台上,对于名称相同但大小写不同的文件将显示警告)。\n\n2. **chunks 的版本处理**\nchunks 是不可变的,这使得它们的版本可以固定。此更改将提高文件保存的性能。\n\n___然而,要启用这些更改中的任何一个,都需要重建远程和本地数据库。这个过程需要几分钟,我们建议您在有充足时间时进行。___\n\n- 如果您希望保持以前的行为,可以使用 `${KEEP}` 跳过此过程。\n- 如果您没有足够的时间,请选择 `${DISMISS}`。稍后会再次提示您。\n- 如果您已在另一台设备上重建了数据库,请选择 `${DISMISS}` 并尝试再次同步。由于检测到差异,系统会再次提示您",
+        "zh-tw":
+            "自 v0.23.21 起，Self-hosted LiveSync 變更了預設行為與資料庫結構，進行了以下變更：\n\n1. **檔名的大小寫敏感性**\n   現在處理檔名時不區分大小寫。這對多數平台是有益的變更，除了 Linux 與 iOS，它們無法有效處理檔名的大小寫敏感性。\n   （在這些平台上，檔名相同但大小寫不同的檔案會顯示警告。）\n\n2. **chunks 的版本處理**\n   chunks 是不可變的，因此可以固定其版本。這項變更會提升檔案儲存的效能。\n\n___不過，若要啟用這兩項變更中的任何一項，都需要重建遠端與本機資料庫。這個過程需要幾分鐘，建議在時間充裕時進行。___\n\n- 如果你想維持先前的行為，可以使用 `${KEEP}` 略過此程序。\n- 如果你目前沒有足夠的時間，請選擇 `${DISMISS}`，之後會再次提示你。\n- 如果你已在其他裝置上重建過資料庫，請選擇 `${DISMISS}` 並再次嘗試同步；由於偵測到差異，系統會再次提示你。",
     },
     "moduleMigration.optionAdjustRemote": {
         def: "Adjust to remote",
@@ -4186,6 +4496,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에 맞추기",
         ru: "Настроить под удалённую",
         zh: "调整到远程设置",
+        "zh-tw": "調整為遠端設定",
     },
     "moduleMigration.optionDecideLater": {
         def: "Decide it later",
@@ -4196,6 +4507,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "나중에 결정하기",
         ru: "Решить позже",
         zh: "稍后决定",
+        "zh-tw": "稍後再決定",
     },
     "moduleMigration.optionEnableBoth": {
         def: "Enable both",
@@ -4206,6 +4518,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "둘 다 활성화",
         ru: "Включить оба",
         zh: "启用两者",
+        "zh-tw": "兩者都啟用",
     },
     "moduleMigration.optionEnableFilenameCaseInsensitive": {
         def: "Enable only #1",
@@ -4216,6 +4529,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "#1만 활성화",
         ru: "Включить только #1",
         zh: "仅启用 #1",
+        "zh-tw": "僅啟用",
     },
     "moduleMigration.optionEnableFixedRevisionForChunks": {
         def: "Enable only #2",
@@ -4226,6 +4540,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "#2만 활성화",
         ru: "Включить только #2",
         zh: "仅启用 #2",
+        "zh-tw": "僅啟用",
     },
     "moduleMigration.optionHaveSetupUri": {
         def: "Yes, I have",
@@ -4247,6 +4562,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이전 동작 유지",
         ru: "Сохранить предыдущее поведение",
         zh: "保持以前的行为",
+        "zh-tw": "保留先前的行為",
     },
     "moduleMigration.optionManualSetup": {
         def: "Set it up all manually",
@@ -4268,6 +4584,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요 (나중에 다시 물어보기)",
         ru: "Нет, спросить снова",
         zh: "不,请稍后再次询问",
+        "zh-tw": "不，請稍後再問我",
     },
     "moduleMigration.optionNoSetupUri": {
         def: "No, I do not have",
@@ -4322,6 +4639,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예 (다시 가져오기)",
         ru: "Да, загрузить снова",
         zh: "是的,再次获取",
+        "zh-tw": "是，再次抓取",
     },
     "moduleMigration.titleCaseSensitivity": {
         def: "Case Sensitivity",
@@ -4332,6 +4650,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "대소문자 구분",
         ru: "Чувствительность к регистру",
         zh: "大小写敏感性",
+        "zh-tw": "大小寫敏感性",
     },
     "moduleMigration.titleRecommendSetupUri": {
         def: "Recommendation to use Setup URI",
@@ -4379,6 +4698,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Mostly Complete: Decision Required",
         es: "Casi terminado: se requiere una decisión",
         ko: "거의 완료: 결정이 필요합니다",
+        "zh-tw": "大致完成：需要你做出決定",
     },
     "Move remotely deleted files to the trash, instead of deleting.": {
         def: "Move remotely deleted files to the trash, instead of deleting.",
@@ -4389,16 +4709,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에서 삭제된 파일을 삭제하는 대신 휴지통으로 이동합니다.",
         ru: "Перемещать удалённые на удалённом сервере файлы в корзину вместо удаления.",
         zh: "将远程删除的文件移至回收站,而不是直接删除",
+        "zh-tw": "將遠端刪除的檔案移至垃圾桶，而非直接刪除。",
     },
     "My remote server is already set up. I want to join this device.": {
         def: "My remote server is already set up. I want to join this device.",
         es: "Mi servidor remoto ya está configurado. Quiero añadir este dispositivo.",
         ko: "원격 서버가 이미 설정되어 있습니다. 이 기기를 참여시키고 싶습니다.",
+        "zh-tw": "我的遠端伺服器已經設定完成，我想讓這台裝置加入。",
     },
     Name: {
         def: "Name",
         es: "Nombre",
         ko: "이름",
+        "zh-tw": "名稱",
     },
     "Network warning style": {
         def: "Network warning style",
@@ -4413,6 +4736,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "NEW",
         es: "NUEVO",
         ko: "신규",
+        "zh-tw": "新",
     },
     "New Remote": {
         def: "New Remote",
@@ -4427,11 +4751,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Newer (${diff})",
         es: "Más nuevo (${diff})",
         ko: "더 새로움 (${diff})",
+        "zh-tw": "較新（${diff}）",
     },
     "No checks have been performed yet.": {
         def: "No checks have been performed yet.",
         es: "Todavía no se ha realizado ninguna comprobación.",
         ko: "아직 검사를 수행하지 않았습니다.",
+        "zh-tw": "尚未執行任何檢查。",
     },
     "No connected device information found. Cancelling Garbage Collection.": {
         def: "No connected device information found. Cancelling Garbage Collection.",
@@ -4446,16 +4772,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "No Connection",
         es: "Sin conexión",
         ko: "연결 없음",
+        "zh-tw": "沒有連線",
     },
     "No devices available. Waiting for other devices to connect...": {
         def: "No devices available. Waiting for other devices to connect...",
         es: "No hay dispositivos disponibles. Esperando a que se conecten otros dispositivos...",
         ko: "사용 가능한 기기가 없습니다. 다른 기기가 연결되기를 기다리는 중입니다...",
+        "zh-tw": "目前沒有可用的裝置，正在等待其他裝置連線...",
     },
     "No Items.": {
         def: "No Items.",
         es: "Sin elementos.",
         ko: "항목이 없습니다.",
+        "zh-tw": "沒有項目。",
     },
     "No limit configured": {
         def: "No limit configured",
@@ -4470,6 +4799,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "NO PREVIEW",
         es: "SIN VISTA PREVIA",
         ko: "미리 보기 없음",
+        "zh-tw": "無預覽",
     },
     "No, please take me back": {
         def: "No, please take me back",
@@ -4525,27 +4855,32 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: '모든 메시지가 번역되지 않았습니다. 오류 신고 시 "기본값"으로 되돌려 주세요.',
         ru: "Не все сообщения переведены. И, пожалуйста, вернитесь к «По умолчанию» при сообщении об ошибках.",
         zh: '并非所有消息都已翻译。请在报告错误时恢复为"默认"',
+        "zh-tw": "並非所有訊息都已翻譯完成。回報錯誤時，請先切回「預設」語言。",
     },
     "Not configured": {
         def: "Not configured",
         es: "Sin configurar",
         ko: "구성되지 않음",
+        "zh-tw": "尚未設定",
     },
     "Not now": {
         def: "Not now",
         es: "Ahora no",
         ko: "나중에",
+        "zh-tw": "暫不處理",
     },
     "Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.": {
         def: "Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.",
         es: "El ID de grupo no está limitado al formato generado: puedes usar cualquier cadena de texto.",
         ko: "그룹 ID는 생성된 형식으로 제한되지 않으며, 어떤 문자열이든 그룹 ID로 사용할 수 있습니다.",
+        "zh-tw": "請注意，群組 ID 不限於自動產生的格式，你可以使用任何字串作為群組 ID。",
     },
     'Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.':
         {
             def: 'Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.',
             es: "Puedes generar un Setup URI nuevo ejecutando el comando «Copy settings as a new Setup URI» en la paleta de comandos.",
             ko: '명령 팔레트에서 "Copy settings as a new Setup URI" 명령을 실행하면 새 Setup URI를 생성할 수 있습니다.',
+            "zh-tw": "請注意，你可以在命令面板中執行「將設定複製為新的 Setup URI」命令來產生新的 Setup URI。",
         },
     "Notify all setting files": {
         def: "Notify all setting files",
@@ -4556,6 +4891,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 설정 파일 알림",
         ru: "Уведомлять обо всех файлах настроек",
         zh: "通知所有设置文件",
+        "zh-tw": "通知所有設定檔",
     },
     "Notify customized": {
         def: "Notify customized",
@@ -4566,6 +4902,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자 설정 알림",
         ru: "Уведомлять о настройках",
         zh: "通知自定义设置",
+        "zh-tw": "通知自訂內容",
     },
     "Notify when other device has newly customized.": {
         def: "Notify when other device has newly customized.",
@@ -4576,6 +4913,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "다른 기기에서 새로운 사용자 설정이 있을 때 알림을 받습니다.",
         ru: "Уведомлять, когда другое устройство изменило настройки.",
         zh: "当其他设备有新的自定义设置时通知 ",
+        "zh-tw": "當其他裝置有新的自訂內容時通知。",
     },
     "Notify when the estimated remote storage size exceeds on start up": {
         def: "Notify when the estimated remote storage size exceeds on start up",
@@ -4586,6 +4924,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "시작 시 예상 원격 스토리지 크기가 초과되면 알림",
         ru: "Уведомлять, когда оценочный размер удалённого хранилища превышает при запуске",
         zh: "启动时当估计的远程存储大小超出时通知",
+        "zh-tw": "啟動時，若預估的遠端儲存空間大小超出限制則通知",
     },
     "Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.":
         {
@@ -4597,6 +4936,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "한 번에 처리할 배치 개수입니다. 기본값은 40이고 최소값은 2입니다. 배치 크기와 함께 한 번에 메모리에 보관되는 문서 수를 결정합니다.",
             ru: "Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.",
             zh: "一次处理的批量数量。默认为 40。最小为 2。此设置与批量大小一起控制一次在内存中保留多少文档",
+            "zh-tw":
+                "一次處理的批次數量。預設為 40，最小為 2。此設定會與批次大小共同決定一次可保留在記憶體中的文件數量。",
         },
     "Number of changes to sync at a time. Defaults to 50. Minimum is 2.": {
         def: "Number of changes to sync at a time. Defaults to 50. Minimum is 2.",
@@ -4607,17 +4948,21 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "한 번에 동기화할 변경 사항의 수입니다. 기본값은 50입니다. 최소값은 2입니다.",
         ru: "Количество изменений для синхронизации за раз. По умолчанию 50. Минимум 2.",
         zh: "一次同步的更改数量。默认为 50。最小为 2。",
+        "zh-tw": "一次同步的變更數量。預設為 50，最小為 2。",
     },
     "Obfuscate Properties": {
         def: "Obfuscate Properties",
         es: "Ofuscar propiedades",
         ko: "속성 난독화",
+        "zh-tw": "混淆屬性",
     },
     "Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data.":
         {
             def: "Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data.",
             es: "Ofuscar las propiedades (p. ej., la ruta del archivo, el tamaño y las fechas de creación y modificación) añade una capa extra de seguridad, ya que dificulta identificar la estructura y los nombres de tus archivos y carpetas en el servidor remoto. Esto ayuda a proteger tu privacidad y hace más difícil que usuarios no autorizados deduzcan información sobre tus datos.",
             ko: "속성(예: 파일 경로, 크기, 생성 및 수정 날짜)을 난독화하면 원격 서버에서 파일과 폴더의 구조 및 이름을 파악하기 어려워져 보안이 한층 강화됩니다. 이는 개인 정보를 보호하는 데 도움이 되며, 권한 없는 사용자가 데이터에 대한 정보를 추측하기 어렵게 만듭니다.",
+            "zh-tw":
+                "混淆屬性（例如檔案路徑、大小、建立時間與修改時間）可以額外增加一層安全保護，讓遠端伺服器上的檔案與資料夾結構及名稱更難被辨識。這有助於保護你的隱私，也讓未授權使用者更難推測你的資料資訊。",
         },
     "Obsidian version": {
         def: "Obsidian version",
@@ -4648,6 +4993,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "확인",
         ru: "Проверить",
         zh: "检查",
+        "zh-tw": "檢查",
     },
     "obsidianLiveSyncSettingTab.btnCopy": {
         def: "Copy",
@@ -4713,6 +5059,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "알겠습니다. 업데이트했습니다.",
         ru: "Понял и обновил.",
         zh: "我明白了并且已更新",
+        "zh-tw": "我知道了，且已更新。",
     },
     "obsidianLiveSyncSettingTab.btnNext": {
         def: "Next",
@@ -4734,6 +5081,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "시작",
         ru: "Старт",
         zh: "开始",
+        "zh-tw": "開始",
     },
     "obsidianLiveSyncSettingTab.btnTest": {
         def: "Test",
@@ -4744,6 +5092,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "테스트",
         ru: "Тест",
         zh: "测试",
+        "zh-tw": "測試",
     },
     "obsidianLiveSyncSettingTab.btnUse": {
         def: "Use",
@@ -4765,6 +5114,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기",
         ru: "Загрузить",
         zh: "获取",
+        "zh-tw": "抓取",
     },
     "obsidianLiveSyncSettingTab.buttonNext": {
         def: "Next",
@@ -4830,6 +5180,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이미 구성된 원격 서버에서 필요한 설정을 가져옵니다.",
         ru: "Получить необходимые настройки с уже настроенного удалённого сервера.",
         zh: "从已配置的远程服务器获取必要的设置",
+        "zh-tw": "從已設定完成的遠端伺服器抓取必要的設定。",
     },
     "obsidianLiveSyncSettingTab.descManualSetup": {
         def: "Not recommended, but useful if you don't have a Setup URI",
@@ -4840,6 +5191,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "권장하지 않지만 Setup URI가 없는 경우에 유용합니다",
         ru: "Не рекомендуется, но полезно, если у вас нет Setup URI.",
         zh: "不推荐,但如果您没有设置 URI 则很有用",
+        "zh-tw": "不建議使用，但如果你沒有 Setup URI 會很有用",
     },
     "obsidianLiveSyncSettingTab.descTestDatabaseConnection": {
         def: "Open database connection. If the remote database is not found and you have permission to create a database, the database will be created.",
@@ -4850,6 +5202,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 연결을 엽니다. 원격 데이터베이스를 찾을 수 없고 데이터베이스 생성 권한이 있는 경우, 데이터베이스가 생성됩니다.",
         ru: "Открыть подключение к базе данных. Если удалённая база данных не найдена и у вас есть право на её создание, база будет создана.",
         zh: "打开数据库连接。如果未找到远程数据库并且您有创建数据库的权限,则将创建数据库",
+        "zh-tw": "開啟資料庫連線。如果找不到遠端資料庫，且你有建立資料庫的權限，將會建立該資料庫。",
     },
     "obsidianLiveSyncSettingTab.descValidateDatabaseConfig": {
         def: "Checks and fixes any potential issues with the database config.",
@@ -4860,6 +5213,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 구성의 잠재적 문제를 확인하고 수정합니다.",
         ru: "Проверяет и исправляет любые потенциальные проблемы в конфигурации базы данных.",
         zh: "检查并修复数据库配置中的任何潜在问题",
+        "zh-tw": "檢查並修正資料庫設定中任何潛在的問題。",
     },
     "obsidianLiveSyncSettingTab.errAccessForbidden": {
         def: "❗ Access forbidden.",
@@ -5276,6 +5630,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "패스프레이즈가 유효하지 않습니다. 수정해 주세요.",
         ru: "Парольная фраза недействительна, пожалуйста, исправьте.",
         zh: "密码无效,请修正",
+        "zh-tw": "密語無效，請修正。",
     },
     "obsidianLiveSyncSettingTab.logPassphraseNotCompatible": {
         def: "ERROR: Passphrase is not compatible with the remote server! Please check it again!",
@@ -5500,6 +5855,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "업그레이드 알림으로 여기에 오셨나요? 버전 기록을 검토해 주세요. 만족하신다면 버튼을 클릭하세요. 새로운 업데이트 시 다시 안내됩니다.",
         ru: "Вы пришли из-за уведомления об обновлении? Просмотрите историю версий.",
         zh: "因为升级通知来到这里？请查看版本历史。如果您满意,请点击按钮。新的更新将再次提示此信息",
+        "zh-tw": "因為升級通知才來到這裡嗎？請查看版本歷程。若你已確認無誤，請點選按鈕。下次更新時會再次提示。",
     },
     "obsidianLiveSyncSettingTab.msgNonHTTPSInfo": {
         def: "Configured as non-HTTPS URI. Be warned that this may not work on mobile devices.",
@@ -5510,6 +5866,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "비 HTTPS URI로 구성되었습니다. 모바일 기기에서는 작동하지 않을 수 있으니 주의하세요.",
         ru: "Настроено как не-HTTPS URI. Это может не работать на мобильных устройствах.",
         zh: "配置为非 HTTPS URI。请注意,这可能在移动设备上无法工作",
+        "zh-tw": "已設定為非 HTTPS 的 URI。請注意，這在行動裝置上可能無法運作。",
     },
     "obsidianLiveSyncSettingTab.msgNonHTTPSWarning": {
         def: "Cannot connect to non-HTTPS URI. Please update your config and try again.",
@@ -5520,6 +5877,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "비 HTTPS URI에 연결할 수 없습니다. 구성을 업데이트하고 다시 시도해 주세요.",
         ru: "Не удаётся подключиться к не-HTTPS URI. Обновите конфигурацию.",
         zh: "无法连接到非 HTTPS URI。请更新您的配置并重试",
+        "zh-tw": "無法連線到非 HTTPS 的 URI，請更新你的設定後再試一次。",
     },
     "obsidianLiveSyncSettingTab.msgNotice": {
         def: "---Notice---",
@@ -5541,6 +5899,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "경고: 이 기능은 아직 개발 중이므로 다음 사항을 유의해 주세요:\n- 추가 전용 구조로 동작합니다. 저장 용량을 줄이려면 재구축이 필요합니다.\n- 다소 불안정합니다.\n- 최초 동기화 시 모든 기록이 원격에서 전송됩니다. 데이터 사용량 제한과 느린 속도에 유의해 주세요.\n- 실시간 동기화는 변경분만 처리합니다.\n\n문제가 발생했거나 이 기능에 대한 아이디어가 있다면 GitHub에 이슈를 등록해 주세요.\n큰 관심에 깊이 감사드립니다.",
         ru: "ПРЕДУПРЕЖДЕНИЕ: Эта функция в разработке.",
         zh: "警告：此功能仍在开发中,请注意以下几点：\n- 仅追加架构。需要重建才能缩小存储空间。\n- 有点脆弱。\n- 首次同步时,所有历史记录将从远程传输。注意数据上限和慢速。\n- 只有差异会实时同步。\n\n如果您遇到任何问题,或对此功能有任何想法,请在 GitHub 上创建 issue。\n感谢您的巨大贡献",
+        "zh-tw":
+            "警告：此功能仍在開發中，請注意以下事項：\n- 僅附加架構。需要重建才能縮小儲存空間。\n- 較不穩定。\n- 首次同步時，所有歷史記錄都會從遠端傳輸，請留意流量上限與速度較慢的情況。\n- 之後只會即時同步差異部分。\n\n如果你遇到任何問題，或對此功能有任何想法，請到 GitHub 建立 issue。\n感謝你的大力支持。",
     },
     "obsidianLiveSyncSettingTab.msgOriginCheck": {
         def: "Origin check: ${org}",
@@ -5662,6 +6022,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: '동기화 중에는 이 설정들을 변경할 수 없습니다. 잠금을 해제하려면 "동기화 설정"에서 모든 동기화를 비활성화해 주세요.',
         ru: "Эти настройки нельзя изменить во время синхронизации.",
         zh: "这些设置在同步期间无法更改。请在“同步设置”中禁用所有同步以解锁",
+        "zh-tw": "同步期間無法變更這些設定。請在「同步設定」中停用所有同步以解鎖。",
     },
     "obsidianLiveSyncSettingTab.msgSetWwwAuth": {
         def: "Set httpd.WWW-Authenticate",
@@ -5683,6 +6044,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정 적용",
         ru: "Применить настройки",
         zh: "应用设置",
+        "zh-tw": "套用設定",
     },
     "obsidianLiveSyncSettingTab.nameConnectSetupURI": {
         def: "Connect with Setup URI",
@@ -5770,6 +6132,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "수동 설정",
         ru: "Ручная настройка",
         zh: "手动设置",
+        "zh-tw": "手動設定",
     },
     "obsidianLiveSyncSettingTab.nameTestConnection": {
         def: "Test Connection",
@@ -5780,6 +6143,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "연결 테스트",
         ru: "Тест подключения",
         zh: "测试连接",
+        "zh-tw": "測試連線",
     },
     "obsidianLiveSyncSettingTab.nameTestDatabaseConnection": {
         def: "Test Database Connection",
@@ -5790,6 +6154,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 연결 테스트",
         ru: "Тест подключения к базе данных",
         zh: "测试数据库连接",
+        "zh-tw": "測試資料庫連線",
     },
     "obsidianLiveSyncSettingTab.nameValidateDatabaseConfig": {
         def: "Validate Database Configuration",
@@ -5800,6 +6165,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 구성 검증",
         ru: "Проверить конфигурацию базы данных",
         zh: "验证数据库配置",
+        "zh-tw": "驗證資料庫設定",
     },
     "obsidianLiveSyncSettingTab.okAdminPrivileges": {
         def: "✔ You have administrator privileges.",
@@ -5964,6 +6330,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "CouchDB",
         ru: "CouchDB",
         zh: "CouchDB",
+        "zh-tw": "CouchDB",
     },
     "obsidianLiveSyncSettingTab.optionDisableAllAutomatic": {
         def: "Disable all automatic",
@@ -6018,6 +6385,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "MinIO, S3, R2",
         ru: "Minio,S3,R2",
         zh: "Minio, S3, R2",
+        "zh-tw": "Minio、S3、R2",
     },
     "obsidianLiveSyncSettingTab.optionOkReadEverything": {
         def: "OK, I have read everything.",
@@ -6028,6 +6396,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "네, 모든 것을 읽었습니다.",
         ru: "ОК, я всё прочитал.",
         zh: "好的,我已经阅读了所有内容 ",
+        "zh-tw": "好，我已全部閱讀完畢。",
     },
     "obsidianLiveSyncSettingTab.optionOnEvents": {
         def: "On events",
@@ -6115,6 +6484,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "개인정보 보호 및 암호화",
         ru: "Конфиденциальность и шифрование",
         zh: "隐私与加密",
+        "zh-tw": "隱私與加密",
     },
     "obsidianLiveSyncSettingTab.panelRemoteConfiguration": {
         def: "Remote Configuration",
@@ -6158,6 +6528,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "활성 원격 서버",
         ru: "Активный удалённый сервер",
         zh: "活动远程服务器",
+        "zh-tw": "使用中的遠端伺服器",
     },
     "obsidianLiveSyncSettingTab.titleAppearance": {
         def: "Appearance",
@@ -6267,6 +6638,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 서버에서 구성 가져오기",
         ru: "Загрузить конфигурацию с удалённого сервера",
         zh: "从远程服务器获取配置",
+        "zh-tw": "從遠端伺服器抓取設定",
     },
     "obsidianLiveSyncSettingTab.titleFetchSettings": {
         def: "Fetch Settings",
@@ -6277,6 +6649,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정 가져오기",
         ru: "Загрузить настройки",
         zh: "获取设置",
+        "zh-tw": "抓取設定",
     },
     "obsidianLiveSyncSettingTab.titleHiddenFiles": {
         def: "Hidden Files",
@@ -6480,11 +6853,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Of course, we can back up the data before proceeding.",
         es: "Por supuesto, se puede hacer una copia de seguridad de los datos antes de continuar.",
         ko: "물론 진행하기 전에 데이터를 백업할 수 있습니다.",
+        "zh-tw": "當然，你也可以在繼續之前先備份資料。",
     },
     Off: {
         def: "Off",
         es: "Desactivado",
         ko: "꺼짐",
+        "zh-tw": "關閉",
     },
     Ok: {
         def: "Ok",
@@ -6508,6 +6883,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Older (${diff})",
         es: "Más antiguo (${diff})",
         ko: "더 오래됨 (${diff})",
+        "zh-tw": "較舊（${diff}）",
     },
     "Older fallback (Slow, W/O WebAssembly)": {
         def: "Older fallback (Slow, W/O WebAssembly)",
@@ -6522,26 +6898,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "On",
         es: "Activado",
         ko: "켜짐",
+        "zh-tw": "開啟",
     },
     "On the source device, from the command palette, run the 'Show settings as a QR code' command.": {
         def: "On the source device, from the command palette, run the 'Show settings as a QR code' command.",
         es: "En el dispositivo de origen, ejecuta desde la paleta de comandos «Show settings as a QR code».",
         ko: "원본 기기에서 명령 팔레트를 열고 'Show settings as a QR code' 명령을 실행합니다.",
+        "zh-tw": "在來源裝置上，於命令面板執行「將設定顯示為 QR 碼」命令。",
     },
     "On the source device, open Obsidian.": {
         def: "On the source device, open Obsidian.",
         es: "En el dispositivo de origen, abre Obsidian.",
         ko: "원본 기기에서 Obsidian을 엽니다.",
+        "zh-tw": "在來源裝置上開啟 Obsidian。",
     },
     "On this device, please keep this Vault open.": {
         def: "On this device, please keep this Vault open.",
         es: "En este dispositivo, mantén este Vault abierto.",
         ko: "이 기기에서는 이 보관함을 계속 열어 두세요.",
+        "zh-tw": "在這台裝置上，請保持此 Vault 開啟。",
     },
     "On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.": {
         def: "On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.",
         es: "En este dispositivo, cambia a la aplicación de cámara o usa un lector de QR para escanear el código mostrado.",
         ko: "이 기기에서 카메라 앱으로 전환하거나 QR 코드 스캐너를 사용해 화면에 표시된 QR 코드를 스캔합니다.",
+        "zh-tw": "在這台裝置上切換到相機 App，或使用 QR 碼掃描器掃描顯示出的 QR 碼。",
     },
     Open: {
         def: "Open",
@@ -6550,16 +6931,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "열기",
         ru: "Открыть",
         zh: "打开",
+        "zh-tw": "開啟",
     },
     "Open connection": {
         def: "Open connection",
         es: "Abrir conexión",
         ko: "연결 열기",
+        "zh-tw": "開啟連線",
     },
     "Open P2P Setup...": {
         def: "Open P2P Setup...",
         es: "Abrir la configuración P2P...",
         ko: "P2P 설정 열기...",
+        "zh-tw": "開啟 P2P 設定...",
     },
     "Open the dialog": {
         def: "Open the dialog",
@@ -6574,6 +6958,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Other files",
         es: "Otros archivos",
         ko: "기타 파일",
+        "zh-tw": "其他檔案",
     },
     Overwrite: {
         def: "Overwrite",
@@ -6582,6 +6967,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "덮어쓰기",
         ru: "Перезаписать",
         zh: "覆盖",
+        "zh-tw": "覆寫",
     },
     "Overwrite patterns": {
         def: "Overwrite patterns",
@@ -6623,11 +7009,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "P2P Configuration",
         es: "Configuración P2P",
         ko: "P2P 구성",
+        "zh-tw": "P2P 設定",
     },
     "P2P Status": {
         def: "P2P Status",
         es: "Estado P2P",
         ko: "P2P 상태",
+        "zh-tw": "P2P 狀態",
     },
     "P2P.AskPassphraseForDecrypt": {
         def: "The remote peer shared the configuration. Please input the passphrase to decrypt the configuration.",
@@ -6638,6 +7026,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 피어가 구성을 공유했습니다. 구성을 복호화하려면 패스프레이즈를 입력해 주세요.",
         ru: "Удалённое устройство предоставило конфигурацию. Введите пароль для расшифровки.",
         zh: "远程对等方共享了配置，请输入密码短语以解密配置",
+        "zh-tw": "遠端 Peer 已分享設定。請輸入密語以解密該設定。",
     },
     "P2P.AskPassphraseForShare": {
         def: "The remote peer requested this device configuration. Please input the passphrase to share the configuration. You can ignore the request by cancelling this dialogue.",
@@ -6648,6 +7037,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 피어가 이 기기의 구성을 요청했습니다. 구성을 공유하려면 패스프레이즈를 입력해 주세요. 이 대화상자를 취소하여 요청을 무시할 수 있습니다.",
         ru: "Удалённое устройство запрашивает эту конфигурацию. Введите пароль для передачи.",
         zh: "远程对等方请求此设备配置，请输入密码短语以共享配置。你可以通过取消此对话框来忽略此请求",
+        "zh-tw": "遠端 Peer 請求取得此裝置的設定。請輸入密語以分享設定。你可以取消此對話框以忽略該請求。",
     },
     "P2P.DisabledButNeed": {
         def: "Peer-to-Peer Sync is disabled. Do you really want to enable it?",
@@ -6658,6 +7048,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어(P2P) 동기화가 비활성화되어 있습니다. 정말로 활성화하시겠습니까?",
         ru: "title_p2p_sync отключён. Вы действительно хотите включить?",
         zh: "Peer-to-Peer同步 已禁用。你确定要启用它吗？",
+        "zh-tw": "Peer-to-Peer 同步目前已停用。你確定要啟用它嗎？",
     },
     "P2P.FailedToOpen": {
         def: "Failed to open P2P connection to the signalling server.",
@@ -6668,6 +7059,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "시그널링 서버에 P2P 연결을 열 수 없습니다.",
         ru: "Не удалось открыть P2P подключение к серверу сигнализации.",
         zh: "无法打开 P2P 连接到信令服务器",
+        "zh-tw": "無法開啟與訊號伺服器的 P2P 連線。",
     },
     "P2P.NoAutoSyncPeers": {
         def: "No auto-sync peers found. Please set peers on the Peer-to-Peer Sync pane.",
@@ -6678,6 +7070,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "자동 동기화 피어를 찾을 수 없습니다. 피어 투 피어(P2P) 동기화 (실험 기능) 창에서 피어를 설정해 주세요.",
         ru: "Автосинхронизируемые устройства не найдены.",
         zh: "未找到自动同步的对等方，请在 Peer-to-Peer同步 (实验性) 面板中设置对等方",
+        "zh-tw": "找不到自動同步的 Peer。請到「Peer-to-Peer 同步」面板設定 Peer。",
     },
     "P2P.NoKnownPeers": {
         def: "No peers has been detected, waiting incoming other peers...",
@@ -6688,6 +7081,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어가 감지되지 않았습니다. 다른 피어의 접속을 기다리고 있습니다...",
         ru: "Устройства не обнаружены, ожидаем другие устройства...",
         zh: "未检测到对等方，正在等待其他对等方的连接...",
+        "zh-tw": "尚未偵測到任何 Peer，正在等待其他 Peer 連入...",
     },
     "P2P.Note.description": {
         def: " This replicator allows us to synchronise our vault with other devices\nusing a peer-to-peer connection. We can use this to synchronise our vault with our other devices without using a cloud service.\nThis replicator is based on Trystero. It also uses a signalling server to establish a connection between devices. The signalling server is used to exchange connection information between devices. It does (or,should) not know or store any of our data.\n\nThe signalling server can be hosted by anyone. This is just a Nostr relay. For the sake of simplicity and checking the behaviour of the replicator, an instance of the signalling server is hosted by vrtmrz. You can use the experimental server provided by vrtmrz, or you can use any other server.\n\nBy the way, even if the signalling server does not store our data, it can see the connection information of some of our devices. Please be aware of this. Also, be cautious when using the server provided by someone else.",
@@ -6698,6 +7092,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: " 이 복제기는 피어 투 피어 연결을 이용해 다른 기기와 보관함을 동기화할 수 있게 해 줍니다.\n클라우드 서비스를 사용하지 않고도 다른 기기와 보관함을 동기화할 수 있습니다.\n이 복제기는 Trystero를 기반으로 합니다. 기기 간 연결을 맺기 위해 시그널링 서버도 사용합니다. 시그널링 서버는 기기 사이의 연결 정보를 교환하는 데 쓰이며, 사용자의 데이터는 알지도 저장하지도 않습니다(또는 그래야 합니다).\n\n시그널링 서버는 누구나 운영할 수 있습니다. 단순한 Nostr 릴레이일 뿐입니다. 편의를 위해, 그리고 복제기의 동작을 확인할 수 있도록 vrtmrz가 시그널링 서버 인스턴스를 하나 운영하고 있습니다. vrtmrz가 제공하는 실험용 서버를 사용해도 되고, 다른 서버를 사용해도 됩니다.\n\n참고로, 시그널링 서버가 데이터를 저장하지 않더라도 일부 기기의 연결 정보는 볼 수 있습니다. 이 점을 유의해 주세요. 또한 다른 사람이 제공하는 서버를 사용할 때는 주의하시기 바랍니다.",
         ru: "Этот репликатор позволяет синхронизировать хранилище с другими устройствами с использованием однорангового соединения.",
         zh: " This replicator allows us to synchronise our vault with other devices\nusing a peer-to-peer connection. We can        use this to synchronise our vault with our other devices without using a cloud service.\nThis replicator is based on Trystero. It also uses a signaling server to establish a connection between devices. The signaling server is used to exchange connection information between devices. It does (or,should) not know or store any of our data.\n\nThe signaling server can be hosted by anyone. This is just a Nostr relay. For the sake of simplicity and checking the behaviour of the replicator, an instance of the signaling server is hosted by vrtmrz. You can use the experimental server provided by vrtmrz, or you can use any other server.\n\nBy the way, even if the signaling server does not store our data, it can see the connection information of some of our devices. Please be aware of this. Also, be cautious when using the server provided by someone else.",
+        "zh-tw":
+            "這個複寫器讓我們能透過 Peer-to-Peer 連線，將 Vault 與其他裝置同步，\n不需要透過雲端服務就能與其他裝置同步 Vault。\n此複寫器以 Trystero 為基礎，同樣需要透過訊號伺服器來建立裝置之間的連線。訊號伺服器僅用於在裝置間交換連線資訊，它不會（也不應該）得知或儲存我們的任何資料。\n\n訊號伺服器可以由任何人架設，本質上只是一個 Nostr 中繼站。為了簡化操作並驗證複寫器的行為，vrtmrz 提供了一個訊號伺服器的執行實例。你可以使用 vrtmrz 提供的這個實驗性伺服器，也可以使用任何其他伺服器。\n\n另外，即使訊號伺服器不會儲存我們的資料，它仍能看到部分裝置的連線資訊，請留意這點。若使用他人提供的伺服器，也請格外謹慎。",
     },
     "P2P.Note.important_note": {
         def: "Peer-to-Peer Replicator.",
@@ -6708,6 +7104,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어 복제기입니다.",
         ru: "P2P репликатор.",
         zh: "The Experimental Implementation of the Peer-to-Peer Replicator.",
+        "zh-tw": "Peer-to-Peer 複寫器。",
     },
     "P2P.Note.important_note_sub": {
         def: "This feature is still on the bleeding edge. Please be aware that ensure your data is backed up before using this feature. And, we would be so happy if you could contribute to the development of this feature.",
@@ -6718,6 +7115,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기능은 아직 실험 단계입니다. 사용하기 전에 반드시 데이터를 백업해 주세요. 그리고 이 기능의 개발에 기여해 주신다면 매우 감사하겠습니다.",
         ru: "Эта функция всё ещё на стадии разработки. Пожалуйста, убедитесь, что ваши данные зарезервированы.",
         zh: "This feature is still in the experimental stage. Please be aware that this feature may not work as expected. Furthermore, it may have some bugs, security issues, and other issues. Please use this feature at your own risk. Please contribute to the development of this feature.",
+        "zh-tw":
+            "此功能仍處於最前沿的實驗階段。使用前請務必確保資料已備份。如果你願意協助開發這項功能，我們會非常感激。",
     },
     "P2P.Note.Summary": {
         def: "What is this feature? (and some important notes, please read once)",
@@ -6728,6 +7127,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기능은 무엇인가요? (설명과 참고사항이 적혀있습니다. 한 번 읽어보세요!)",
         ru: "Что это за функция? (важные замечания)",
         zh: "What is this  feature? (and some important notes, please read once)",
+        "zh-tw": "這是什麼功能？（有些重要事項，請務必先閱讀一次）",
     },
     "P2P.NotEnabled": {
         def: "Peer-to-Peer Sync is not enabled. We cannot open a new connection.",
@@ -6738,6 +7138,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어(P2P) 동기화가 활성화되지 않았습니다. 새로운 연결을 열 수 없습니다.",
         ru: "title_p2p_sync не включён. Мы не можем открыть новое подключение.",
         zh: "Peer-to-Peer同步 is not enabled. We cannot open a new connection.",
+        "zh-tw": "Peer-to-Peer 同步尚未啟用，無法開啟新連線。",
     },
     "P2P.P2PReplication": {
         def: "Peer-to-Peer Replication",
@@ -6748,6 +7149,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어-to-피어 복제",
         ru: "P2P Репликация",
         zh: "Peer-to-Peer Replication",
+        "zh-tw": "Peer-to-Peer 複寫",
     },
     "P2P.PaneTitle": {
         def: "Peer-to-Peer Sync",
@@ -6758,6 +7160,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 투 피어(P2P) 동기화 (실험 기능)",
         ru: "long_p2p_sync",
         zh: "Peer-to-Peer同步 (实验性)",
+        "zh-tw": "Peer-to-Peer 同步",
     },
     "P2P.ReplicatorInstanceMissing": {
         def: "P2P Sync replicator is not found, possibly not have been configured or enabled.",
@@ -6768,6 +7171,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "P2P 동기화 복제기를 찾을 수 없습니다. 구성되지 않았거나 활성화되지 않았을 수 있습니다.",
         ru: "P2P Sync репликатор не найден, возможно, не настроен.",
         zh: "P2P Sync replicator is not found, possibly not have been configured or enabled.",
+        "zh-tw": "找不到 P2P 同步複寫器，可能尚未設定或啟用。",
     },
     "P2P.SeemsOffline": {
         def: "Peer ${name} seems offline, skipped.",
@@ -6778,6 +7182,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어 ${name}이(가) 오프라인인 것 같습니다. 건너뜁니다.",
         ru: "Устройство name офлайн, пропущено.",
         zh: "Peer ${name} seems offline, skipped.",
+        "zh-tw": "Peer ${name} 似乎已離線，已略過。",
     },
     "P2P.SyncAlreadyRunning": {
         def: "P2P Sync is already running.",
@@ -6788,6 +7193,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "P2P 동기화가 이미 실행 중입니다.",
         ru: "P2P Sync уже запущен.",
         zh: "P2P Sync is already running.",
+        "zh-tw": "P2P 同步已在執行中。",
     },
     "P2P.SyncCompleted": {
         def: "P2P Sync completed.",
@@ -6798,6 +7204,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "P2P 동기화가 완료되었습니다.",
         ru: "P2P Sync завершён.",
         zh: "P2P Sync completed.",
+        "zh-tw": "P2P 同步已完成。",
     },
     "P2P.SyncStartedWith": {
         def: "P2P Sync with ${name} have been started.",
@@ -6808,6 +7215,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${name}과의 P2P 동기화가 시작되었습니다.",
         ru: "P2P Sync с name начат.",
         zh: "P2P Sync with ${name} have been started.",
+        "zh-tw": "已開始與 ${name} 的 P2P 同步。",
     },
     "paneMaintenance.markDeviceResolvedAfterBackup": {
         def: "paneMaintenance.markDeviceResolvedAfterBackup",
@@ -6854,11 +7262,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "패스프레이즈",
         ru: "Парольная фраза",
         zh: "密码",
+        "zh-tw": "密語",
     },
     "Passphrase is required.": {
         def: "Passphrase is required.",
         es: "Se requiere la frase de contraseña.",
         ko: "패스프레이즈가 필요합니다.",
+        "zh-tw": "必須輸入密語。",
     },
     "Passphrase of sensitive configuration items": {
         def: "Passphrase of sensitive configuration items",
@@ -6869,6 +7279,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "민감한 구성 항목의 패스프레이즈",
         ru: "Парольная фраза для конфиденциальных настроек",
         zh: "敏感配置项的密码",
+        "zh-tw": "敏感設定項目的密語",
     },
     password: {
         def: "password",
@@ -6879,6 +7290,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "비밀번호",
         ru: "пароль",
         zh: "密码",
+        "zh-tw": "密碼",
     },
     Password: {
         def: "Password",
@@ -6889,6 +7301,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "비밀번호",
         ru: "Пароль",
         zh: "密码",
+        "zh-tw": "密碼",
     },
     "Paste a connection string": {
         def: "Paste a connection string",
@@ -6912,6 +7325,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Path",
         es: "Ruta",
         ko: "경로",
+        "zh-tw": "路徑",
     },
     "Path Obfuscation": {
         def: "Path Obfuscation",
@@ -6922,6 +7336,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "경로 난독화",
         ru: "Обфускация путей",
         zh: "路径混淆",
+        "zh-tw": "路徑混淆",
     },
     "Patterns to match files for overwriting instead of merging": {
         def: "Patterns to match files for overwriting instead of merging",
@@ -6945,11 +7360,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Peer ID:",
         es: "ID de par:",
         ko: "피어 ID:",
+        "zh-tw": "Peer ID：",
     },
     "Peer to Peer Replicator": {
         def: "Peer to Peer Replicator",
         es: "Replicador Punto a Punto",
         ko: "Peer to Peer 복제기",
+        "zh-tw": "Peer to Peer 複寫器",
     },
     "Peer-to-Peer only": {
         def: "Peer-to-Peer only",
@@ -6973,6 +7390,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Peers",
         es: "Pares",
         ko: "피어",
+        "zh-tw": "Peer",
     },
     "Per-file-saved customization sync": {
         def: "Per-file-saved customization sync",
@@ -6983,6 +7401,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일별 저장 사용자 설정 동기화",
         ru: "Синхронизация настроек для каждого файла",
         zh: "按文件保存的自定义同步",
+        "zh-tw": "以每個檔案儲存的自訂同步",
     },
     Perform: {
         def: "Perform",
@@ -7029,11 +7448,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "주기적 동기화 간격",
         ru: "Интервал периодической синхронизации",
         zh: "定期同步间隔",
+        "zh-tw": "定期同步間隔",
     },
     PERMANENT: {
         def: "PERMANENT",
         es: "PERMANENTE",
         ko: "영구",
+        "zh-tw": "永久",
     },
     "Pick a file to resolve conflict": {
         def: "Pick a file to resolve conflict",
@@ -7055,11 +7476,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "Please be aware that the End-to-End Encryption passphrase is not validated until the synchronisation process actually commences. This is a security measure designed to protect your data.",
             es: "Ten en cuenta que la frase de contraseña del cifrado de extremo a extremo no se valida hasta que comienza realmente la sincronización. Es una medida de seguridad para proteger tus datos.",
             ko: "종단 간 암호화 패스프레이즈는 동기화가 실제로 시작되기 전까지 검증되지 않는다는 점에 유의해 주세요. 이는 데이터를 보호하기 위한 보안 조치입니다.",
+            "zh-tw": "請注意，端對端加密的密語要到同步程序實際開始時才會進行驗證。這是為了保護你資料而設計的安全措施。",
         },
     "Please configure your end-to-end encryption settings.": {
         def: "Please configure your end-to-end encryption settings.",
         es: "Configura los ajustes de cifrado de extremo a extremo.",
         ko: "종단 간 암호화 설정을 구성해 주세요.",
+        "zh-tw": "請設定你的端對端加密選項。",
     },
     "Please disable 'Read chunks online' in settings to use Garbage Collection.": {
         def: "Please disable 'Read chunks online' in settings to use Garbage Collection.",
@@ -7083,32 +7506,38 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Please enter the CouchDB server information below.",
         es: "Introduce a continuación los datos del servidor CouchDB.",
         ko: "아래에 CouchDB 서버 정보를 입력해 주세요.",
+        "zh-tw": "請在下方輸入 CouchDB 伺服器資訊。",
     },
     "Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.": {
         def: "Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.",
         es: "Introduce los datos necesarios para conectarte a tu servicio de almacenamiento de objetos compatible con S3/MinIO/R2.",
         ko: "S3/MinIO/R2 호환 오브젝트 스토리지 서비스에 연결하는 데 필요한 정보를 입력해 주세요.",
+        "zh-tw": "請輸入連線到你的 S3/MinIO/R2 相容物件儲存服務所需的詳細資訊。",
     },
     "Please enter the Peer-to-Peer Synchronisation information below.": {
         def: "Please enter the Peer-to-Peer Synchronisation information below.",
         es: "Introduce a continuación los datos de la sincronización punto a punto.",
         ko: "아래에 Peer-to-Peer 동기화 정보를 입력해 주세요.",
+        "zh-tw": "請在下方輸入 Peer-to-Peer 同步資訊。",
     },
     "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.":
         {
             def: "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.",
             es: "Introduce el Setup URI generado durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña del vault.",
             ko: "서버 설치 과정이나 다른 기기에서 생성된 Setup URI를 보관함 패스프레이즈와 함께 입력해 주세요.",
+            "zh-tw": "請輸入在伺服器安裝期間或其他裝置上產生的 Setup URI，以及 Vault 的密語。",
         },
     "Please follow the steps below to import settings from your existing device.": {
         def: "Please follow the steps below to import settings from your existing device.",
         es: "Sigue los pasos siguientes para importar los ajustes desde tu dispositivo actual.",
         ko: "기존 기기에서 설정을 가져오려면 아래 단계를 따라 주세요.",
+        "zh-tw": "請依照以下步驟，從現有裝置匯入設定。",
     },
     "PLEASE NOTE": {
         def: "PLEASE NOTE",
         es: "TEN EN CUENTA",
         ko: "유의 사항",
+        "zh-tw": "請注意",
     },
     "Please select 'Cancel' explicitly to cancel this operation.": {
         def: "Please select 'Cancel' explicitly to cancel this operation.",
@@ -7132,6 +7561,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Please select an active P2P remote configuration to change P2P sync targets.",
         es: "Selecciona una configuración remota P2P activa para cambiar los destinos de sincronización P2P.",
         ko: "P2P 동기화 대상을 변경하려면 활성 P2P 원격 구성을 선택해 주세요.",
+        "zh-tw": "請選擇一個已啟用的 P2P 遠端設定，以變更 P2P 同步目標。",
     },
     "Please select an option to proceed": {
         def: "Please select an option to proceed",
@@ -7146,11 +7576,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Please select the button below to restart and proceed to the data fetching confirmation.",
         es: "Pulsa el botón de abajo para reiniciar y pasar a la confirmación de la obtención de datos.",
         ko: "아래 버튼을 선택하면 재시작 후 데이터 가져오기 확인 단계로 진행합니다.",
+        "zh-tw": "請點選下方按鈕以重新啟動，並前往資料擷取確認步驟。",
     },
     "Please select the button below to restart and proceed to the final confirmation.": {
         def: "Please select the button below to restart and proceed to the final confirmation.",
         es: "Pulsa el botón de abajo para reiniciar y pasar a la confirmación final.",
         ko: "아래 버튼을 선택하면 재시작 후 최종 확인 단계로 진행합니다.",
+        "zh-tw": "請點選下方按鈕以重新啟動，並前往最終確認步驟。",
     },
     "Please select the type of server to which you are connecting.": {
         def: "Please select the type of server to which you are connecting.",
@@ -7165,6 +7597,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Please select your situation.",
         es: "Selecciona tu situación.",
         ko: "현재 상황을 선택해 주세요.",
+        "zh-tw": "請選擇符合你情況的選項。",
     },
     "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.":
         {
@@ -7174,6 +7607,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "이 기기를 식별할 기기 이름을 설정해 주세요. 이 이름은 기기 간에 고유해야 합니다. 설정하기 전까지는 이 기능을 활성화할 수 없습니다.",
             ru: "Укажите имя устройства для идентификации этого устройства. Имя должно быть уникальным среди ваших устройств. Пока оно не задано, мы не можем включить эту функцию.",
             zh: "请设置设备名称以标识此设备。该名称在你的所有设备之间应保持唯一；未配置前无法启用此功能。",
+            "zh-tw": "請設定用來識別此裝置的裝置名稱。此名稱在你所有裝置中應該是唯一的。尚未設定時，無法啟用此功能。",
         },
     "Please set this device name": {
         def: "Please set this device name",
@@ -7188,6 +7622,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Please understand that this is intended behaviour.",
         es: "Comprende que este es el comportamiento previsto.",
         ko: "이는 의도된 동작이라는 점을 이해해 주세요.",
+        "zh-tw": "請理解這是預期中的行為。",
     },
     "Plug-in version": {
         def: "Plug-in version",
@@ -7202,6 +7637,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Plugins",
         es: "Complementos",
         ko: "플러그인",
+        "zh-tw": "外掛",
     },
     "Prepare the 'report' to create an issue": {
         def: "Prepare the 'report' to create an issue",
@@ -7223,16 +7659,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "프리셋",
         ru: "Пресеты",
         zh: "预设",
+        "zh-tw": "預設集",
     },
     "Prevent fetching configuration from server": {
         def: "Prevent fetching configuration from server",
         es: "Impedir la obtención de la configuración desde el servidor",
         ko: "서버에서 구성 가져오기 방지",
+        "zh-tw": "阻止從伺服器擷取設定",
     },
     Proceed: {
         def: "Proceed",
         es: "Continuar",
         ko: "진행",
+        "zh-tw": "繼續",
     },
     "Proceed Garbage Collection": {
         def: "Proceed Garbage Collection",
@@ -7247,6 +7686,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Proceed to the next step.",
         es: "Continuar al paso siguiente.",
         ko: "다음 단계로 진행합니다.",
+        "zh-tw": "繼續前往下一步。",
     },
     "Proceed with Setup URI": {
         def: "Proceed with Setup URI",
@@ -7284,6 +7724,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "포그라운드에서 작은 파일 처리",
         ru: "Обрабатывать маленькие файлы в основном потоке",
         zh: "在前台处理小文件",
+        "zh-tw": "在前景處理小型檔案",
     },
     Progress: {
         def: "Progress",
@@ -7302,6 +7743,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "속성 암호화",
         ru: "Шифрование свойств",
         zh: "属性加密",
+        "zh-tw": "屬性加密",
     },
     "PureJS fallback  (Fast, W/O WebAssembly)": {
         def: "PureJS fallback  (Fast, W/O WebAssembly)",
@@ -7381,6 +7823,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "어떻게 가져오시겠습니까?\n- 가져오기 전에 로컬 데이터베이스를 한 번 생성.\n  **낮은 트래픽**, **높은 CPU**, **낮은 위험**\n  다음의 경우에 권장합니다.\n  - 파일이 일관되지 않을 가능성이 있음\n  - 파일이 그리 많지 않음\n- 가져오기 전에 로컬 파일 청크 생성.\n  **낮은 트래픽**, **보통 CPU**, **낮음~보통 위험**\n  다음의 경우에 권장합니다.\n  - 파일이 대체로 일관됨\n  - 파일이 많음\n- 원격에서 모든 것 가져오기.\n  **높은 트래픽**, **낮은 CPU**, **낮음~보통 위험**\n\n>[!INFO]- 자세히\n> ## 가져오기 전에 로컬 데이터베이스를 한 번 생성.\n> **낮은 트래픽**, **높은 CPU**, **낮은 위험**\n> 원격에서 데이터를 가져오기 전에 기존 로컬 파일로 로컬 데이터베이스를 먼저 만듭니다.\n> 로컬과 원격 양쪽에 일치하는 파일이 있으면 둘 사이의 차이만 전송됩니다.\n> 다만 양쪽에 모두 있는 파일은 처음에 충돌 파일로 처리됩니다. 실제로 충돌하지 않는다면 자동으로 해결되지만, 이 과정에 시간이 걸릴 수 있습니다.\n> 일반적으로 가장 안전한 방법이며 데이터 손실 위험이 가장 낮습니다.\n> ## 가져오기 전에 로컬 파일 청크 생성.\n> **낮은 트래픽**, **보통 CPU**, **낮음~보통 위험** (작업에 따라 다름)\n> 먼저 로컬 파일로 데이터베이스용 청크를 만든 다음 데이터를 가져옵니다. 따라서 로컬에 없는 청크만 전송됩니다. 다만 메타데이터는 모두 원격에서 가져옵니다.\n> 그다음 시작 시점에 로컬 파일을 이 메타데이터와 비교합니다. 수정 시각을 기준으로 더 새롭다고 판단된 내용이 오래된 쪽을 덮어씁니다. 그 결과는 다시 원격 데이터베이스로 동기화됩니다.\n> 로컬 파일이 실제로 가장 최신 타임스탬프를 가지고 있다면 대체로 안전합니다. 하지만 타임스탬프는 더 새롭지만 내용은 더 오래된 파일(처음 만들어지는 `welcome.md` 같은)이 있으면 문제가 생길 수 있습니다.\n> \"가져오기 전에 로컬 데이터베이스를 한 번 생성\"보다 CPU를 적게 쓰고 더 빠르지만, 주의해서 사용하지 않으면 데이터가 손실될 수 있습니다.\n> ## 원격에서 모든 것 가져오기.\n> **높은 트래픽**, **낮은 CPU**, **낮음~보통 위험** (작업에 따라 다름)\n> 모든 것을 원격에서 가져옵니다.\n> 가져오기 전에 로컬 파일 청크 생성와 비슷하지만, 모든 청크를 원격에서 가져옵니다.\n> 가장 전통적인 가져오기 방식으로, 보통 네트워크 트래픽과 시간을 가장 많이 소모합니다. 또한 '가져오기 전에 로컬 파일 청크 생성' 옵션과 마찬가지로 원격 파일을 덮어쓸 위험이 있습니다.\n> 다만 가장 오래되고 단순한 방식이기 때문에 가장 안정적인 방법으로 여겨지는 경우가 많습니다.",
         ru: "Как вы хотите загрузить?",
         zh: "How do you want to fetch?\n- Create a local database once before fetching.\n  **Low Traffic**, **High CPU**, **Low Risk**\n  Recommended if ...\n  - Files possibly inconsistent\n  - Files were not so much\n- Create local file chunks before fetching.\n  **Low Traffic**, **Moderate CPU**, **Low to Moderate Risk**\n  Recommended if ...\n  - Files probably consistent\n  - You have a lot of files.\n- Fetch everything from the remote.\n  **High Traffic**, **Low CPU**, **Low to Moderate Risk**\n\n>[!INFO]- Details\n> ## Create a local database once before fetching.\n> **Low Traffic**, **High CPU**, **Low Risk**\n> This option first creates a local database using existing local files before fetching data from the remote source.\n> If matching files exist both locally and remotely, only the differences between them will be transferred.\n> However, files present in both locations will initially be handled as conflicted files. They will be resolved automatically if they are not actually conflicted, but this process may take time.\n> This is generally the safest method, minimizing data loss risk.\n> ## Create local file chunks before fetching.\n> **Low Traffic**, **Moderate CPU**, **Low to Moderate Risk** (depending operation)\n> This option first creates chunks from local files for the database, then fetches data. Consequently, only chunks missing locally are transferred. However, all metadata is taken from the remote source.\n> Local files are then compared against this metadata at launch. The content considered newer will overwrite the older one (by modified time). This outcome is then synchronised back to the remote database.\n> This is generally safe if local files are genuinely the latest timestamp. However, it can cause problems if a file has a newer timestamp but older content (like the initial `welcome.md`).\n> This uses less CPU and faster than \"Create a local database once before fetching\", but it may lead to data loss if not used carefully.\n> ## Fetch everything from the remote.\n> **High Traffic**, **Low CPU**, **Low to Moderate Risk** (depending operation)\n> All things will be fetched from the remote.\n> Similar to the Create local file chunks before fetching, but all chunks are fetched from the remote source.\n> This is the most traditional way to fetch, typically consuming the most network traffic and time. It also carries a similar risk of overwriting remote files to the 'Create local file chunks before fetching' option.\n> However, it is often considered the most stable method because it is the longest-established and most straightforward approach.",
+        "zh-tw":
+            "你想要如何抓取？\n- 先建立一次本機資料庫，再抓取。\n  **低流量**、**高 CPU 使用率**、**低風險**\n  建議情況：\n  - 檔案可能不一致\n  - 檔案數量不多\n- 先建立本機檔案的 chunks，再抓取。\n  **低流量**、**中等 CPU 使用率**、**低至中等風險**\n  建議情況：\n  - 檔案應該是一致的\n  - 你有大量檔案\n- 從遠端抓取所有內容。\n  **高流量**、**低 CPU 使用率**、**低至中等風險**\n\n>[!INFO]- 詳細說明\n> ## 先建立一次本機資料庫，再抓取。\n> **低流量**、**高 CPU 使用率**、**低風險**\n> 這個選項會先使用現有的本機檔案建立本機資料庫，再從遠端來源抓取資料。\n> 若本機與遠端都存在相符的檔案，只會傳輸兩者之間的差異部分。\n> 不過，兩邊都存在的檔案一開始會被當作衝突檔案處理。若實際上並無衝突，會自動解決，但這個過程可能需要一些時間。\n> 這通常是最安全的方式，能將資料遺失的風險降到最低。\n> ## 先建立本機檔案的 chunks，再抓取。\n> **低流量**、**中等 CPU 使用率**、**低至中等風險**（依操作而異）\n> 這個選項會先從本機檔案為資料庫建立 chunks，再抓取資料。因此只會傳輸本機缺少的 chunks，但所有中繼資料都會取自遠端來源。\n> 啟動時本機檔案會與這份中繼資料比對，內容較新的一方（依修改時間判斷）會覆寫較舊的一方，其結果會同步回遠端資料庫。\n> 如果本機檔案的時間戳記確實是最新的，這通常是安全的；但如果某個檔案時間戳記較新卻內容較舊（例如初始的 `welcome.md`），可能會出問題。\n> 這比「先建立一次本機資料庫，再抓取」耗用更少 CPU、速度也更快，但若不小心使用可能導致資料遺失。\n> ## 從遠端抓取所有內容。\n> **高流量**、**低 CPU 使用率**、**低至中等風險**（依操作而異）\n> 所有內容都會從遠端抓取。\n> 與「先建立本機檔案的 chunks，再抓取」類似，但所有 chunks 都是從遠端來源抓取。\n> 這是最傳統的抓取方式，通常會耗用最多的網路流量與時間，覆寫遠端檔案的風險也與「先建立本機檔案的 chunks，再抓取」選項相近。\n> 不過，由於這是歷史最久、最直接的做法，通常被認為是最穩定的方式。",
     },
     "RedFlag.Fetch.Method.FetchSafer": {
         def: "Create a local database once before fetching",
@@ -7391,6 +7835,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기 전에 로컬 데이터베이스를 한 번 생성",
         ru: "Создать локальную базу данных перед загрузкой",
         zh: "Create a local database once before fetching",
+        "zh-tw": "先建立一次本機資料庫，再抓取",
     },
     "RedFlag.Fetch.Method.FetchSmoother": {
         def: "Create local file chunks before fetching",
@@ -7401,6 +7846,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기 전에 로컬 파일 청크 생성",
         ru: "Создать локальные чанки перед загрузкой",
         zh: "Create local file chunks before fetching",
+        "zh-tw": "先建立本機檔案的 chunks，再抓取",
     },
     "RedFlag.Fetch.Method.FetchTraditional": {
         def: "Fetch everything from the remote",
@@ -7411,6 +7857,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에서 모든 것 가져오기",
         ru: "Загрузить всё с удалённого",
         zh: "Fetch everything from the remote",
+        "zh-tw": "從遠端抓取所有內容",
     },
     "RedFlag.Fetch.Method.Title": {
         def: "How do you want to fetch?",
@@ -7421,6 +7868,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "어떻게 가져오시겠습니까?",
         ru: "Как вы хотите загрузить?",
         zh: "How do you want to fetch?",
+        "zh-tw": "你想要如何抓取？",
     },
     "RedFlag.FetchRemoteConfig.Buttons.Cancel": {
         def: "No, use local settings",
@@ -7431,6 +7879,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요, 로컬 설정을 사용합니다",
         ru: "Нет, использовать локальные настройки",
         zh: "No, use local settings",
+        "zh-tw": "不用，使用本機設定",
     },
     "RedFlag.FetchRemoteConfig.Buttons.Fetch": {
         def: "Yes, fetch and apply remote settings",
@@ -7441,6 +7890,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예, 원격 설정을 가져와 적용합니다",
         ru: "Да, загрузить и применить удалённые настройки",
         zh: "Yes, fetch and apply remote settings",
+        "zh-tw": "要，抓取並套用遠端設定",
     },
     "RedFlag.FetchRemoteConfig.Message": {
         def: "Do you want to fetch and apply remotely stored preference settings to the device?",
@@ -7451,6 +7901,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에 저장된 환경 설정을 가져와 이 기기에 적용하시겠습니까?",
         ru: "Вы хотите загрузить и применить удалённые настройки?",
         zh: "Do you want to fetch and apply remotely stored preference settings to the device?",
+        "zh-tw": "要將遠端儲存的偏好設定抓取並套用到此裝置嗎？",
     },
     "RedFlag.FetchRemoteConfig.Title": {
         def: "Fetch Remote Configuration",
@@ -7461,6 +7912,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 구성 가져오기",
         ru: "Загрузить удалённую конфигурацию",
         zh: "Fetch Remote Configuration",
+        "zh-tw": "抓取遠端設定",
     },
     "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.":
         {
@@ -7481,11 +7933,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "디스크 변경 사항이 데이터베이스에 반영되는 빈도를 줄입니다",
         ru: "Уменьшение частоты отражения изменений с диска в БД",
         zh: "降低将磁盘上的更改反映到数据库中的频率",
+        "zh-tw": "降低磁碟變更反映到資料庫的頻率",
     },
     Refresh: {
         def: "Refresh",
         es: "Actualizar",
         ko: "새로 고침",
+        "zh-tw": "重新整理",
     },
     Region: {
         def: "Region",
@@ -7496,16 +7950,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "지역",
         ru: "Регион",
         zh: "区域",
+        "zh-tw": "區域",
     },
     "Relay settings": {
         def: "Relay settings",
         es: "Ajustes del relé",
         ko: "중계 서버 설정",
+        "zh-tw": "中繼站設定",
     },
     Reload: {
         def: "Reload",
         es: "Recargar",
         ko: "다시 불러오기",
+        "zh-tw": "重新載入",
     },
     Remediation: {
         def: "Remediation",
@@ -7556,6 +8013,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Remote only",
         es: "Solo remoto",
         ko: "원격에만 있음",
+        "zh-tw": "僅遠端有",
     },
     "Remote server type": {
         def: "Remote server type",
@@ -7566,6 +8024,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 서버 유형",
         ru: "Тип удалённого сервера",
         zh: "远程服务器类型",
+        "zh-tw": "遠端伺服器類型",
     },
     "Remote Type": {
         def: "Remote Type",
@@ -7576,6 +8035,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 유형",
         ru: "Удалённый тип",
         zh: "远程类型",
+        "zh-tw": "遠端類型",
     },
     Rename: {
         def: "Rename",
@@ -7590,16 +8050,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Replicate now",
         es: "Replicar ahora",
         ko: "지금 복제",
+        "zh-tw": "立即複寫",
     },
     Replicating: {
         def: "Replicating",
         es: "Replicando",
         ko: "복제 중",
+        "zh-tw": "複寫中",
     },
     "Replicating...": {
         def: "Replicating...",
         es: "Replicando...",
         ko: "복제 중입니다...",
+        "zh-tw": "複寫中...",
     },
     "Replicator.Dialogue.Locked.Action.Dismiss": {
         def: "Cancel for reconfirmation",
@@ -7688,6 +8151,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 정리가 진행 중입니다. 복제가 취소되었습니다",
         ru: "Очистка базы данных в процессе. Репликация отменена",
         zh: "Database cleaning up is in process. replication has been cancelled",
+        "zh-tw": "資料庫正在清理中，複寫已取消",
     },
     "Replicator.Message.InitialiseFatalError": {
         def: "No replicator is available, this is the fatal error.",
@@ -7709,6 +8173,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "일부 파일 이벤트가 대기 중입니다. 복제가 취소되었습니다.",
         ru: "Некоторые события файлов ожидают. Репликация отменена.",
         zh: "Some file events are pending. Replication has been cancelled.",
+        "zh-tw": "有部分檔案事件尚待處理，複寫已取消。",
     },
     "Replicator.Message.SomeModuleFailed": {
         def: "Replication has been cancelled by some module failure",
@@ -7730,6 +8195,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "업데이트가 감지되었습니다. 설정 대화 상자를 열어 변경 로그를 확인해 주세요. 복제가 취소되었습니다.",
         ru: "Обновление обнаружено. Откройте настройки и проверьте историю изменений.",
         zh: "An update has been detected. Please open the Settings dialogue and check the Change Log. Replication has been cancelled.",
+        "zh-tw": "偵測到更新。請開啟設定對話框並查看變更紀錄，複寫已取消。",
     },
     "Requires restart of Obsidian": {
         def: "Requires restart of Obsidian",
@@ -7740,6 +8206,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Obsidian 재시작 필요",
         ru: "Требуется перезапуск Obsidian",
         zh: "需要重启 Obsidian",
+        "zh-tw": "需要重新啟動 Obsidian",
     },
     "Requires restart of Obsidian.": {
         def: "Requires restart of Obsidian.",
@@ -7750,6 +8217,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Obsidian 재시작이 필요합니다.",
         ru: "Требуется перезапуск Obsidian.",
         zh: "需要重启 Obsidian ",
+        "zh-tw": "需要重新啟動 Obsidian。",
     },
     "Rerun Onboarding Wizard": {
         def: "Rerun Onboarding Wizard",
@@ -7833,6 +8301,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Reset and Resume Synchronisation",
         es: "Restablecer y reanudar la sincronización",
         ko: "동기화 초기화 후 재개",
+        "zh-tw": "重設並恢復同步",
     },
     "Reset journal received history": {
         def: "Reset journal received history",
@@ -7951,11 +8420,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Restart and Fetch Data",
         es: "Reiniciar y obtener los datos",
         ko: "재시작 후 데이터 가져오기",
+        "zh-tw": "重新啟動並擷取資料",
     },
     "Restart and Initialise Server": {
         def: "Restart and Initialise Server",
         es: "Reiniciar e inicializar el servidor",
         ko: "재시작 후 서버 초기화",
+        "zh-tw": "重新啟動並初始化伺服器",
     },
     "Restart Now": {
         def: "Restart Now",
@@ -7987,26 +8458,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Rev",
         es: "Rev",
         ko: "리비전",
+        "zh-tw": "版本",
     },
     "Revert changes": {
         def: "Revert changes",
         es: "Revertir cambios",
         ko: "변경 사항 되돌리기",
+        "zh-tw": "還原變更",
     },
     Revoke: {
         def: "Revoke",
         es: "Revocar",
         ko: "철회",
+        "zh-tw": "撤銷",
     },
     "Room ID": {
         def: "Room ID",
         es: "ID de sala",
         ko: "룸 ID",
+        "zh-tw": "房間 ID",
     },
     "Room ID suffix:": {
         def: "Room ID suffix:",
         es: "Sufijo del ID de sala:",
         ko: "룸 ID 접미사:",
+        "zh-tw": "房間 ID 後綴：",
     },
     "Run Doctor": {
         def: "Run Doctor",
@@ -8023,6 +8499,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "S3/MinIO/R2 Configuration",
         es: "Configuración de S3/MinIO/R2",
         ko: "S3/MinIO/R2 구성",
+        "zh-tw": "S3/MinIO/R2 設定",
     },
     "S3/MinIO/R2 Object Storage": {
         def: "S3/MinIO/R2 Object Storage",
@@ -8037,16 +8514,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Same",
         es: "Igual",
         ko: "동일",
+        "zh-tw": "相同",
     },
     "Same or local only": {
         def: "Same or local only",
         es: "Igual o solo local",
         ko: "동일하거나 로컬에만 있음",
+        "zh-tw": "相同或僅本機有",
     },
     "Save and Apply": {
         def: "Save and Apply",
         es: "Guardar y aplicar",
         ko: "저장 후 적용",
+        "zh-tw": "儲存並套用",
     },
     "Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.":
         {
@@ -8058,6 +8538,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "설정을 마크다운 파일에 저장합니다. 새로운 설정이 도착하면 알림을 받게 됩니다. 플랫폼별로 다른 파일을 설정할 수 있습니다.",
             ru: "Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.",
             zh: "将设置保存到一个 Markdown 文件中。当新设置到达时,您将收到通知。您可以根据平台设置不同的文件 ",
+            "zh-tw": "將設定儲存到 Markdown 檔案中。有新設定送達時會通知你，可依平台設定不同的檔案。",
         },
     "Saving will be performed forcefully after this number of seconds.": {
         def: "Saving will be performed forcefully after this number of seconds.",
@@ -8068,6 +8549,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 시간(초) 후에 강제로 저장이 수행됩니다.",
         ru: "Сохранение будет принудительно выполнено после этого количества секунд.",
         zh: "在此秒数后将强制执行保存 ",
+        "zh-tw": "經過這個秒數後，會強制執行儲存。",
     },
     "Scan a QR Code (Recommended for mobile)": {
         def: "Scan a QR Code (Recommended for mobile)",
@@ -8082,6 +8564,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Scan changes",
         es: "Buscar cambios",
         ko: "변경 사항 검사",
+        "zh-tw": "掃描變更",
     },
     "Scan changes on customization sync": {
         def: "Scan changes on customization sync",
@@ -8092,6 +8575,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자 설정 동기화 시 변경 사항 검색",
         ru: "Сканировать изменения при синхронизации настроек",
         zh: "在自定义同步时扫描更改",
+        "zh-tw": "在自訂同步時掃描變更",
     },
     "Scan customization automatically": {
         def: "Scan customization automatically",
@@ -8102,6 +8586,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자 설정 자동 검색",
         ru: "Сканировать настройки автоматически",
         zh: "自动扫描自定义设置",
+        "zh-tw": "自動掃描自訂內容",
     },
     "Scan customization before replicating.": {
         def: "Scan customization before replicating.",
@@ -8112,6 +8597,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "복제하기 전에 사용자 설정을 검색합니다.",
         ru: "Сканировать настройки перед репликацией.",
         zh: "在复制前扫描自定义设置 ",
+        "zh-tw": "複寫前掃描自訂內容。",
     },
     "Scan customization every 1 minute.": {
         def: "Scan customization every 1 minute.",
@@ -8122,6 +8608,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "1분마다 사용자 설정을 검색합니다.",
         ru: "Сканировать настройки каждую минуту.",
         zh: "每1分钟扫描自定义设置 ",
+        "zh-tw": "每 1 分鐘掃描自訂內容。",
     },
     "Scan customization periodically": {
         def: "Scan customization periodically",
@@ -8132,6 +8619,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "주기적으로 사용자 설정 검색",
         ru: "Сканировать настройки периодически",
         zh: "定期扫描自定义设置",
+        "zh-tw": "定期掃描自訂內容",
     },
     "Scan for Broken files": {
         def: "Scan for Broken files",
@@ -8150,6 +8638,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "복제 전 숨김 파일 검사",
         ru: "Сканировать скрытые файлы перед репликацией",
         zh: "复制前扫描隐藏文件",
+        "zh-tw": "複寫前掃描隱藏檔案",
     },
     "Scan hidden files periodically": {
         def: "Scan hidden files periodically",
@@ -8160,11 +8649,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "주기적으로 숨김 파일 검사",
         ru: "Сканировать скрытые файлы периодически",
         zh: "定期扫描隐藏文件",
+        "zh-tw": "定期掃描隱藏檔案",
     },
     "Scan QR Code": {
         def: "Scan QR Code",
         es: "Escanear código QR",
         ko: "QR 코드 스캔",
+        "zh-tw": "掃描 QR 碼",
     },
     "Scan the QR code displayed on an active device using this device's camera.": {
         def: "Scan the QR code displayed on an active device using this device's camera.",
@@ -8210,6 +8701,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "초 단위, 0으로 설정하면 비활성화",
         ru: "Секунд, 0 для отключения",
         zh: "秒,0为禁用",
+        "zh-tw": "秒，0 表示停用",
     },
     "Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.": {
         def: "Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.",
@@ -8220,11 +8712,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "초 단위입니다. 타이핑이나 저장을 중단한 후 이 시간동안 로컬 데이터베이스 저장이 지연됩니다.",
         ru: "Секунды. Сохранение в локальную базу данных будет отложено.",
         zh: "秒。在我们停止输入或保存后,保存到本地数据库将延迟此值 ",
+        "zh-tw": "秒。停止輸入或儲存後，寫入本機資料庫的動作會延遲這個秒數。",
     },
     "Secret Access Key": {
         def: "Secret Access Key",
         es: "Clave de acceso secreta",
         ko: "시크릿 액세스 키",
+        "zh-tw": "Secret Access Key",
     },
     "Secret Key": {
         def: "Secret Key",
@@ -8235,26 +8729,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "시크릿 키",
         ru: "Секретный ключ",
         zh: "Secret Key",
+        "zh-tw": "Secret Key",
     },
     "Select active P2P remote": {
         def: "Select active P2P remote",
         es: "Seleccionar el remoto P2P activo",
         ko: "활성 P2P 원격 선택",
+        "zh-tw": "選擇啟用中的 P2P 遠端",
     },
     "Select All Shiny": {
         def: "Select All Shiny",
         es: "Seleccionar todo lo nuevo",
         ko: "새 항목 모두 선택",
+        "zh-tw": "全選最新項目",
     },
     "Select Flagged Shiny": {
         def: "Select Flagged Shiny",
         es: "Seleccionar lo nuevo marcado",
         ko: "플래그된 새 항목 선택",
+        "zh-tw": "全選已標記的最新項目",
     },
     "Select P2P remote...": {
         def: "Select P2P remote...",
         es: "Seleccionar remoto P2P...",
         ko: "P2P 원격 선택...",
+        "zh-tw": "選擇 P2P 遠端...",
     },
     "Select the database adapter to use.": {
         def: "Select the database adapter to use.",
@@ -8270,17 +8769,20 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten.",
             es: "Al elegir esta opción, los datos actuales de este dispositivo se usarán para inicializar el servidor. Cualquier dato existente en el servidor se sobrescribirá por completo.",
             ko: "이 옵션을 선택하면 이 기기의 현재 데이터로 서버를 초기화합니다. 서버에 있는 기존 데이터는 모두 완전히 덮어써집니다.",
+            "zh-tw": "選擇此選項會使用此裝置目前的資料來初始化伺服器，伺服器上任何現有資料都會被完全覆寫。",
         },
     "Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.":
         {
             def: "Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.",
             es: "Al elegir esta opción, este dispositivo se unirá al servidor existente. Tendrás que obtener del servidor los datos de sincronización ya existentes.",
             ko: "이 옵션을 선택하면 이 기기가 기존 서버에 참여합니다. 서버에 있는 기존 동기화 데이터를 이 기기로 가져와야 합니다.",
+            "zh-tw": "選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料擷取到此裝置。",
         },
     Selective: {
         def: "Selective",
         es: "Selectivo",
         ko: "선택적",
+        "zh-tw": "選擇性",
     },
     Send: {
         def: "Send",
@@ -8304,6 +8806,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "SENDING",
         es: "ENVIANDO",
         ko: "전송 중",
+        "zh-tw": "傳送中",
     },
     "Server URI": {
         def: "Server URI",
@@ -8314,11 +8817,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "서버 URI",
         ru: "URI сервера",
         zh: "服务器 URI",
+        "zh-tw": "伺服器 URI",
     },
     SESSION: {
         def: "SESSION",
         es: "SESIÓN",
         ko: "세션",
+        "zh-tw": "本次連線",
     },
     "Setting.GenerateKeyPair.Desc": {
         def: 'We have generated a key pair!\n\nNote: This key pair will never be shown again. Please save it in a safe place. If you have lost it, you need to generate a new key pair.\nNote 2: The public key is in spki format, and the Private key is in pkcs8 format. For the sake of convenience, newlines are converted to `\\n` in public key.\nNote 3: The public key should be configured in the remote database, and the private key should be configured in local devices.\n\n>[!FOR YOUR EYES ONLY]-\n> <div class="sls-keypair">\n>\n> ### Public Key\n> ```\n${public_key}\n> ```\n>\n> ### Private Key\n> ```\n${private_key}\n> ```\n>\n> </div>\n\n>[!Both for copying]-\n>\n> <div class="sls-keypair">\n>\n> ```\n${public_key}\n${private_key}\n> ```\n>\n> </div>\n\n',
@@ -8407,16 +8912,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "변경 사항을 적용하려면 원격 데이터베이스에서 가져와야 합니다. 계속 진행하시겠습니까?",
         ru: "Ваши изменения требуют загрузки из удалённой базы данных. Хотите продолжить?",
         zh: "Your changes require fetching from the remote database. Do you want to proceed?",
+        "zh-tw": "你的變更需要從遠端資料庫抓取，要繼續嗎？",
     },
     "Setup Complete: Preparing to Fetch Synchronisation Data": {
         def: "Setup Complete: Preparing to Fetch Synchronisation Data",
         es: "Configuración completada: preparando la obtención de los datos de sincronización",
         ko: "설정 완료: 동기화 데이터를 가져올 준비 중",
+        "zh-tw": "設定完成：準備擷取同步資料",
     },
     "Setup Complete: Preparing to Initialise Server": {
         def: "Setup Complete: Preparing to Initialise Server",
         es: "Configuración completada: preparando la inicialización del servidor",
         ko: "설정 완료: 서버를 초기화할 준비 중",
+        "zh-tw": "設定完成：準備初始化伺服器",
     },
     "Setup URI dialog cancelled.": {
         def: "Setup URI dialog cancelled.",
@@ -8431,6 +8939,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Setup-URI",
         es: "Setup-URI",
         ko: "Setup-URI",
+        "zh-tw": "Setup URI",
     },
     "Setup.Apply.Buttons.ApplyAndFetch": {
         def: "Apply and Fetch",
@@ -8441,6 +8950,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용 후 가져오기",
         ru: "Применить и загрузить",
         zh: "Apply and Fetch",
+        "zh-tw": "套用並抓取",
     },
     "Setup.Apply.Buttons.ApplyAndMerge": {
         def: "Apply and Merge",
@@ -8451,6 +8961,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용 후 병합",
         ru: "Применить и объединить",
         zh: "Apply and Merge",
+        "zh-tw": "套用並合併",
     },
     "Setup.Apply.Buttons.ApplyAndRebuild": {
         def: "Apply and Rebuild",
@@ -8461,6 +8972,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용 후 재구축",
         ru: "Применить и перестроить",
         zh: "Apply and Rebuild",
+        "zh-tw": "套用並重建",
     },
     "Setup.Apply.Buttons.Cancel": {
         def: "Discard and Cancel",
@@ -8471,6 +8983,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "폐기하고 취소",
         ru: "Отменить и отменить",
         zh: "Discard and Cancel",
+        "zh-tw": "捨棄並取消",
     },
     "Setup.Apply.Buttons.OnlyApply": {
         def: "Only Apply",
@@ -8481,6 +8994,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용만 하기",
         ru: "Только применить",
         zh: "Only Apply",
+        "zh-tw": "僅套用",
     },
     "Setup.Apply.Message": {
         def: "The new configuration is ready. Let us proceed to apply it.\nThere are several ways to apply this:\n\n- Apply and Fetch\n  Configure this device as a new client. After applying, synchronise from the remote server.\n- Apply and Merge\n  Configure on a device that already has the file. It processes the local files and transfers the differences. Conflicts may arise.\n- Apply and Rebuild\n  Rebuild the remote using local files. This is typically done if the server becomes corrupted or we wish to start from scratch.\n  Other devices will be locked and required to re-fetch.\n- Only Apply\n  Apply only. Conflicts may arise if a rebuild is required.",
@@ -8491,6 +9005,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "새 구성이 준비되었습니다. 이제 적용해 보겠습니다.\n적용 방법은 여러 가지가 있습니다:\n\n- 적용 후 가져오기\n  이 기기를 새 클라이언트로 구성합니다. 적용한 뒤 원격 서버에서 동기화합니다.\n- 적용 후 병합\n  이미 파일이 있는 기기에서 구성합니다. 로컬 파일을 처리한 뒤 차이만 전송합니다. 충돌이 발생할 수 있습니다.\n- 적용 후 재구축\n  로컬 파일로 원격을 재구축합니다. 보통 서버가 손상되었거나 처음부터 다시 시작하려는 경우에 사용합니다.\n  다른 기기는 잠기며 다시 가져오기를 수행해야 합니다.\n- 적용만 하기\n  적용만 합니다. 재구축이 필요한 경우 충돌이 발생할 수 있습니다.",
         ru: "Новая конфигурация готова. Есть несколько способов применить её.",
         zh: "The new configuration is ready. Let us proceed to apply it.\nThere are several ways to apply this:\n\n- Apply and Fetch\n  Configure this device as a new client. After applying, synchronise from the remote server.\n- Apply and Merge\n  Configure on a device that already has the file. It processes the local files and transfers the differences. Conflicts may arise.\n- Apply and Rebuild\n  Rebuild the remote using local files. This is typically done if the server becomes corrupted or we wish to start from scratch.\n  Other devices will be locked and required to re-fetch.\n- Only Apply\n  Apply only. Conflicts may arise if a rebuild is required.",
+        "zh-tw":
+            "新的設定已經就緒，接下來要套用它。\n有幾種套用方式：\n\n- 套用並抓取\n  將此裝置設定為新的用戶端。套用後會從遠端伺服器同步。\n- 套用並合併\n  在已經有檔案的裝置上設定。會處理本機檔案並傳輸差異部分，可能會產生衝突。\n- 套用並重建\n  使用本機檔案重建遠端。通常在伺服器損毀或想要從頭開始時執行。\n  其他裝置會被鎖定，需要重新抓取。\n- 僅套用\n  只套用設定。若需要重建，可能會產生衝突。",
     },
     "Setup.Apply.Title": {
         def: "Apply new configuration from the ${method}",
@@ -8501,6 +9017,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "${method}에서 가져온 새 구성 적용",
         ru: "Применить новую конфигурацию из method",
         zh: "Apply new configuration from the ${method}",
+        "zh-tw": "從 ${method} 套用新設定",
     },
     "Setup.Apply.WarningRebuildRecommended": {
         def: "NOTE: after adjusting the settings, it has been determined that a rebuild is required; Just Import is not recommended.",
@@ -8511,6 +9028,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "참고: 설정을 조정한 결과 재구축이 필요한 것으로 판단되었습니다. 적용만 하는 것은 권장하지 않습니다.",
         ru: "ПРИМЕЧАНИЕ: после настройки изменений определено, что требуется перестроение.",
         zh: "NOTE: after adjusting the settings, it has been determined that a rebuild is required; Just Import is not recommended.",
+        "zh-tw": "注意：調整設定後判斷需要重建；不建議僅匯入設定。",
     },
     "Setup.Doctor.Buttons.No": {
         def: "No, please use the settings in the URI as is",
@@ -8521,6 +9039,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요, URI에 담긴 설정을 그대로 사용합니다",
         ru: "Нет, использовать настройки из URI как есть",
         zh: "No, please use the settings in the URI as is",
+        "zh-tw": "不用，請直接使用 URI 中的設定",
     },
     "Setup.Doctor.Buttons.Yes": {
         def: "Yes, please consult the doctor",
@@ -8531,6 +9050,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예, 설정 진단 마법사를 실행합니다",
         ru: "Да, пожалуйста, запустить диагностику",
         zh: "Yes, please consult the doctor",
+        "zh-tw": "要，請諮詢診斷",
     },
     "Setup.Doctor.Message": {
         def: "Self-hosted LiveSync has gradually become longer in history and some recommended settings have changed.\n\nNow, setup is a very good time to do this.\n\nDo you want to run Doctor to check if the imported settings are optimal compared to the latest state?",
@@ -8541,6 +9061,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Self-hosted LiveSync는 오랜 기간에 걸쳐 발전해 왔고, 그동안 권장 설정도 일부 바뀌었습니다.\n\n지금 설정 단계가 이를 점검하기에 아주 좋은 시점입니다.\n\n가져온 설정이 최신 기준에 비추어 최적인지 확인하도록 설정 진단 마법사를 실행하시겠습니까?",
         ru: "Self-hosted LiveSync постепенно набрал историю и некоторые рекомендуемые настройки изменились.",
         zh: "Self-hosted LiveSync has gradually become longer in history and some recommended settings have changed.\n\nNow, setup is a very good time to do this.\n\nDo you want to run Doctor to check if the imported settings are optimal compared to the latest state?",
+        "zh-tw":
+            "Self-hosted LiveSync 的歷史逐漸變長，部分建議設定也隨之改變。\n\n現在正是進行這項檢查的好時機。\n\n要執行設定診斷，檢查匯入的設定是否符合最新建議嗎？",
     },
     "Setup.Doctor.Title": {
         def: "Do you want to consult the doctor?",
@@ -8551,6 +9073,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정 진단 마법사를 실행할까요?",
         ru: "Хотите запустить диагностику?",
         zh: "Do you want to consult the doctor?",
+        "zh-tw": "要諮詢設定診斷嗎？",
     },
     "Setup.FetchRemoteConf.Buttons.Fetch": {
         def: "Yes, please fetch the configuration",
@@ -8561,6 +9084,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예, 구성을 가져옵니다",
         ru: "Да, загрузить конфигурацию",
         zh: "Yes, please fetch the configuration",
+        "zh-tw": "要，請抓取設定",
     },
     "Setup.FetchRemoteConf.Buttons.Skip": {
         def: "No, please use the settings in the URI",
@@ -8571,6 +9095,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아니요, URI에 담긴 설정을 사용합니다",
         ru: "Нет, использовать настройки из URI",
         zh: "No, please use the settings in the URI",
+        "zh-tw": "不用，請使用 URI 中的設定",
     },
     "Setup.FetchRemoteConf.Message": {
         def: "If we have already synchronised once with another device, the remote database stores the suitable configuration values between the synchronised devices. The plug-in would like to retrieve them for robust configuration.\n\nHowever, we have to make sure the one thing. Are we currently in a situation where we can access the network safely and retrieve the settings?\n\nNote: Mostly, you are safe to do this, that your remote database is hosted with a SSL certificate, and your network is not compromised.",
@@ -8581,6 +9106,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "다른 기기와 이미 한 번이라도 동기화했다면, 원격 데이터베이스에 동기화된 기기 사이에 적합한 구성 값이 저장되어 있습니다. 플러그인은 더 견고한 구성을 위해 이 값을 가져오려고 합니다.\n\n다만 한 가지 확인이 필요합니다. 지금 네트워크에 안전하게 접근해 설정을 가져올 수 있는 상황인가요?\n\n참고: 원격 데이터베이스가 SSL 인증서로 보호되어 있고 네트워크가 안전하다면, 대부분의 경우 그대로 진행해도 괜찮습니다.",
         ru: "Если мы уже синхронизировались с другим устройством, удалённая база данных хранит подходящие значения конфигурации.",
         zh: "If we have already synchronised once with another device, the remote database stores the suitable configuration values between the synchronised devices. The plug-in would like to retrieve them for robust configuration.\n\nHowever, we have to make sure the one thing. Are we currently in a situation where we can access the network safely and retrieve the settings?\n\nNote: Mostly, you are safe to do this, that your remote database is hosted with a SSL certificate, and your network is not compromised.",
+        "zh-tw":
+            "如果我們已經與其他裝置同步過一次，遠端資料庫會儲存這些已同步裝置之間適用的設定值。外掛想要取得這些值，以取得更穩健的設定。\n\n不過，我們需要先確認一件事：目前是否處於能安全存取網路並取得設定的情況？\n\n注意：多數情況下這樣做是安全的，只要你的遠端資料庫使用 SSL 憑證，且網路沒有遭到入侵。",
     },
     "Setup.FetchRemoteConf.Title": {
         def: "Fetch configuration from remote database?",
@@ -8591,6 +9118,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스에서 구성을 가져올까요?",
         ru: "Загрузить конфигурацию с удалённой базы данных?",
         zh: "Fetch configuration from remote database?",
+        "zh-tw": "要從遠端資料庫抓取設定嗎？",
     },
     "Setup.QRCode": {
         def: 'We have generated a QR code to transfer the settings. Please scan the QR code with your phone or other device.\nNote: The QR code is not encrypted, so be careful to open this.\n\n>[!FOR YOUR EYES ONLY]-\n> <div class="sls-qr">${qr_image}</div>',
@@ -8601,6 +9129,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: '설정을 전송하기 위한 QR 코드를 생성했습니다. 휴대폰이나 다른 기기로 QR 코드를 스캔해 주세요.\n참고: QR 코드는 암호화되지 않았으므로 열 때 주의하세요.\n\n>[!FOR YOUR EYES ONLY]-\n> <div class="sls-qr">${qr_image}</div>',
         ru: "Мы сгенерировали QR-код для передачи настроек. Отсканируйте QR-код телефоном.",
         zh: 'We have generated a QR code to transfer the settings. Please scan the QR code with your phone or other device.\nNote: The QR code is not encrypted, so be careful to open this.\n\n>[!FOR YOUR EYES ONLY]-\n> <div class="sls-qr">${qr_image}</div>',
+        "zh-tw":
+            '我們已產生用於傳遞設定的 QR 碼，請用你的手機或其他裝置掃描這個 QR 碼。\n注意：這個 QR 碼未經加密，開啟時請務必小心。\n\n>[!僅供本人查看]-\n> <div class="sls-qr">${qr_image}</div>',
     },
     "Setup.RemoteE2EE.AdvancedTitle": {
         def: "Advanced",
@@ -8972,6 +9502,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "내부에 파일이 없는 폴더를 유지하시겠습니까?",
         ru: "Сохранять папки без файлов?",
         zh: "我们是否应该保留内部没有任何文件的文件夹？",
+        "zh-tw": "是否要保留內部沒有任何檔案的資料夾？",
     },
     "Should we only check for conflicts when a file is opened?": {
         def: "Should we only check for conflicts when a file is opened?",
@@ -8982,6 +9513,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일을 열 때만 충돌을 확인하시겠습니까?",
         ru: "Проверять конфликты только при открытии файла?",
         zh: "我们是否应该仅在文件打开时检查冲突？",
+        "zh-tw": "是否只在開啟檔案時才檢查衝突？",
     },
     "Should we prompt you about conflicting files when a file is opened?": {
         def: "Should we prompt you about conflicting files when a file is opened?",
@@ -8992,6 +9524,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일을 열 때 충돌하는 파일에 대해 알림을 표시하시겠습니까?",
         ru: "Спрашивать о конфликтующих файлах при открытии файла?",
         zh: "当文件打开时,是否提示冲突文件？",
+        "zh-tw": "開啟檔案時，是否要提示衝突檔案？",
     },
     "Should we prompt you for every single merge, even if we can safely merge automatcially?": {
         def: "Should we prompt you for every single merge, even if we can safely merge automatcially?",
@@ -9002,6 +9535,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "안전하게 자동 병합할 수 있는 경우에도 모든 병합에 대해 알림을 받으시겠습니까?",
         ru: "Спрашивать о каждом слиянии, даже если мы можем безопасно слить автоматически?",
         zh: "即使我们可以安全地自动合并,是否也应该为每一次合并提示您？",
+        "zh-tw": "即使可以安全地自動合併，是否仍要在每次合併時提示你？",
     },
     "Show full banner": {
         def: "Show full banner",
@@ -9034,6 +9568,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "알림만 표시",
         ru: "Показывать только уведомления",
         zh: "仅显示通知",
+        "zh-tw": "僅顯示通知",
     },
     "Show status as icons only": {
         def: "Show status as icons only",
@@ -9044,6 +9579,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "아이콘으로만 상태 표시",
         ru: "Показывать статус только иконками",
         zh: "仅以图标显示状态",
+        "zh-tw": "僅以圖示顯示狀態",
     },
     "Show status icon instead of file warnings banner": {
         def: "Show status icon instead of file warnings banner",
@@ -9065,6 +9601,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "편집기 내부에 상태 표시",
         ru: "Показывать статус внутри редактора",
         zh: "在编辑器内显示状态",
+        "zh-tw": "在編輯器內顯示狀態",
     },
     "Show status on the status bar": {
         def: "Show status on the status bar",
@@ -9075,6 +9612,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "상태 표시줄에 상태 표시",
         ru: "Показывать статус в строке состояния",
         zh: "在状态栏上显示状态",
+        "zh-tw": "在狀態列顯示狀態",
     },
     "Show verbose log. Please enable if you report an issue.": {
         def: "Show verbose log. Please enable if you report an issue.",
@@ -9085,26 +9623,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "자세한 로그를 표시합니다. 문제를 신고하는 경우 활성화해 주세요.",
         ru: "Показывать подробный лог. Пожалуйста, включите при сообщении о проблеме.",
         zh: "显示详细日志。如果您报告问题,请启用此选项 ",
+        "zh-tw": "顯示詳細日誌。如果你要回報問題，請啟用此選項。",
     },
     "Signaling Server Connection": {
         def: "Signaling Server Connection",
         es: "Conexión al servidor de señalización",
         ko: "시그널링 서버 연결",
+        "zh-tw": "訊號伺服器連線",
     },
     "Signalling Status": {
         def: "Signalling Status",
         es: "Estado de la señalización",
         ko: "시그널링 상태",
+        "zh-tw": "訊號狀態",
     },
     "Skip and close": {
         def: "Skip and close",
         es: "Omitir y cerrar",
         ko: "건너뛰고 닫기",
+        "zh-tw": "略過並關閉",
     },
     Snippets: {
         def: "Snippets",
         es: "Fragmentos",
         ko: "스니펫",
+        "zh-tw": "程式碼片段",
     },
     "Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.":
         {
@@ -9121,16 +9664,19 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Start Broadcasting",
         es: "Iniciar difusión",
         ko: "브로드캐스트 시작",
+        "zh-tw": "開始廣播",
     },
     "Start change-broadcasting on Connect": {
         def: "Start change-broadcasting on Connect",
         es: "Iniciar la difusión de cambios al conectar",
         ko: "연결 시 변경 사항 브로드캐스트 시작",
+        "zh-tw": "連線後自動開始廣播變更",
     },
     "Start Sync & Close": {
         def: "Start Sync & Close",
         es: "Iniciar sincronización y cerrar",
         ko: "동기화 시작 후 닫기",
+        "zh-tw": "開始同步並關閉",
     },
     "Starts synchronisation when a file is saved.": {
         def: "Starts synchronisation when a file is saved.",
@@ -9141,26 +9687,31 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일이 저장될 때 동기화를 시작합니다.",
         ru: "Запускать синхронизацию при сохранении файла.",
         zh: "当文件保存时启动同步 ",
+        "zh-tw": "儲存檔案時啟動同步。",
     },
     Stat: {
         def: "Stat",
         es: "Estado",
         ko: "상태",
+        "zh-tw": "狀態",
     },
     Stats: {
         def: "Stats",
         es: "Estadísticas",
         ko: "통계",
+        "zh-tw": "統計",
     },
     "Stop ⚡": {
         def: "Stop ⚡",
         es: "Detener ⚡",
         ko: "중지 ⚡",
+        "zh-tw": "停止 ⚡",
     },
     "Stop Broadcasting": {
         def: "Stop Broadcasting",
         es: "Detener difusión",
         ko: "브로드캐스트 중지",
+        "zh-tw": "停止廣播",
     },
     "Stop reflecting database changes to storage files.": {
         def: "Stop reflecting database changes to storage files.",
@@ -9171,6 +9722,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 변경 사항을 스토리지 파일에 반영하는 것을 중단합니다.",
         ru: "Остановить отражение изменений базы данных в файлы хранилища.",
         zh: "停止将数据库更改反映到存储文件 ",
+        "zh-tw": "停止將資料庫變更反映到儲存空間的檔案。",
     },
     "Stop watching for file changes.": {
         def: "Stop watching for file changes.",
@@ -9181,6 +9733,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일 변경 사항 감시를 중단합니다.",
         ru: "Остановить отслеживание изменений файлов.",
         zh: "停止监视文件更改 ",
+        "zh-tw": "停止監看檔案變更。",
     },
     "Storage -> Database": {
         def: "Storage -> Database",
@@ -9192,6 +9745,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Strongly Recommended",
         es: "Muy recomendado",
         ko: "적극 권장",
+        "zh-tw": "強烈建議",
     },
     "Suppress notification of hidden files change": {
         def: "Suppress notification of hidden files change",
@@ -9202,6 +9756,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "숨김 파일 변경 알림 억제",
         ru: "Подавлять уведомления об изменении скрытых файлов",
         zh: "暂停隐藏文件更改的通知",
+        "zh-tw": "抑制隱藏檔案變更的通知",
     },
     "Suspend database reflecting": {
         def: "Suspend database reflecting",
@@ -9212,6 +9767,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 반영 일시 중단",
         ru: "Приостановить отражение базы данных",
         zh: "暂停数据库反映",
+        "zh-tw": "暫停資料庫反映",
     },
     "Suspend file watching": {
         def: "Suspend file watching",
@@ -9222,6 +9778,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일 감시 일시 중단",
         ru: "Приостановить отслеживание файлов",
         zh: "暂停文件监视",
+        "zh-tw": "暫停檔案監看",
     },
     "Switch to IDB": {
         def: "Switch to IDB",
@@ -9245,6 +9802,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Sync",
         es: "Sincronizar",
         ko: "동기화",
+        "zh-tw": "同步",
     },
     "Sync after merging file": {
         def: "Sync after merging file",
@@ -9255,6 +9813,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일 병합 후 동기화",
         ru: "Синхронизировать после слияния файла",
         zh: "合并文件后同步",
+        "zh-tw": "合併檔案後同步",
     },
     "Sync automatically after merging files": {
         def: "Sync automatically after merging files",
@@ -9265,6 +9824,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일 병합 후 자동으로 동기화",
         ru: "Синхронизировать автоматически после слияния файлов",
         zh: "合并文件后自动同步",
+        "zh-tw": "合併檔案後自動同步",
     },
     "Sync Mode": {
         def: "Sync Mode",
@@ -9275,6 +9835,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동기화 모드",
         ru: "Режим синхронизации",
         zh: "同步模式",
+        "zh-tw": "同步模式",
     },
     "Sync on Editor Save": {
         def: "Sync on Editor Save",
@@ -9285,6 +9846,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "편집기 저장 시 동기화",
         ru: "Синхронизация при сохранении в редакторе",
         zh: "编辑器保存时同步",
+        "zh-tw": "編輯器儲存時同步",
     },
     "Sync on File Open": {
         def: "Sync on File Open",
@@ -9295,6 +9857,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일 열기 시 동기화",
         ru: "Синхронизация при открытии файла",
         zh: "打开文件时同步",
+        "zh-tw": "開啟檔案時同步",
     },
     "Sync on Save": {
         def: "Sync on Save",
@@ -9305,6 +9868,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저장 시 동기화",
         ru: "Синхронизация при сохранении",
         zh: "保存时同步",
+        "zh-tw": "儲存時同步",
     },
     "Sync on Startup": {
         def: "Sync on Startup",
@@ -9315,11 +9879,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "시작 시 동기화",
         ru: "Синхронизация при запуске",
         zh: "启动时同步",
+        "zh-tw": "啟動時同步",
     },
     "Sync once": {
         def: "Sync once",
         es: "Sincronizar una vez",
         ko: "한 번 동기화",
+        "zh-tw": "同步一次",
     },
     "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": {
         def: "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.",
@@ -9352,6 +9918,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Syncing...",
         es: "Sincronizando...",
         ko: "동기화 중입니다...",
+        "zh-tw": "同步中...",
     },
     "Target patterns": {
         def: "Target patterns",
@@ -9366,6 +9933,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Test Settings and Continue",
         es: "Probar los ajustes y continuar",
         ko: "설정 테스트 후 계속",
+        "zh-tw": "測試設定並繼續",
     },
     "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.":
         {
@@ -9377,11 +9945,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "테스트 전용 - 파일의 새로운 사본을 동기화하여 파일 충돌을 해결하며, 수정된 파일을 덮어쓸 수 있습니다. 주의하세요.",
             ru: "Только для тестирования - разрешать конфликты файлов синхронизацией новых копий.",
             zh: "仅供测试 - 通过同步文件的较新副本来解决文件冲突,这可能会覆盖修改过的文件。请注意 ",
+            "zh-tw": "僅供測試——透過同步較新的檔案版本來解決衝突，這可能會覆寫已修改的檔案，請注意。",
         },
     "The connection to the server has been configured successfully. As the next step,": {
         def: "The connection to the server has been configured successfully. As the next step,",
         es: "La conexión con el servidor se ha configurado correctamente. Como paso siguiente,",
         ko: "서버 연결이 성공적으로 구성되었습니다. 다음 단계로,",
+        "zh-tw": "與伺服器的連線已成功設定完成。接下來，",
     },
     "The delay for consecutive on-demand fetches": {
         def: "The delay for consecutive on-demand fetches",
@@ -9392,11 +9962,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "연속 청크 요청 간 대기 시간",
         ru: "Задержка для последовательных запросов по требованию",
         zh: "连续按需获取的延迟",
+        "zh-tw": "連續按需抓取之間的延遲",
     },
     "The files in this Vault are almost identical to the server's.": {
         def: "The files in this Vault are almost identical to the server's.",
         es: "Los archivos de este Vault son casi idénticos a los del servidor.",
         ko: "이 보관함의 파일은 서버의 파일과 거의 동일합니다.",
+        "zh-tw": "此 Vault 中的檔案幾乎與伺服器上的相同。",
     },
     "The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.":
         {
@@ -9414,6 +9986,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and passphrase on all devices you want to synchronise.",
             es: "El ID de grupo y la frase de contraseña identifican tu grupo de dispositivos. Usa el mismo ID de grupo y la misma frase de contraseña en todos los dispositivos que quieras sincronizar.",
             ko: "그룹 ID와 패스프레이즈는 기기 그룹을 식별하는 데 사용됩니다. 동기화하려는 모든 기기에서 동일한 그룹 ID와 패스프레이즈를 사용해야 합니다.",
+            "zh-tw": "群組 ID 與密語用於識別你的裝置群組。請確保所有要同步的裝置都使用相同的群組 ID 與密語。",
         },
     "The Hash algorithm for chunk IDs": {
         def: "The Hash algorithm for chunk IDs",
@@ -9424,6 +9997,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "청크 ID용 해시 알고리즘",
         ru: "Хэш-алгоритм для ID чанков",
         zh: "块 ID 的哈希算法(实验性)",
+        "zh-tw": "chunk ID 的雜湊演算法",
     },
     "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.":
         {
@@ -9437,11 +10011,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "the latest synchronisation data will be downloaded from the server to this device.",
         es: "se descargarán a este dispositivo los datos de sincronización más recientes del servidor.",
         ko: "서버의 최신 동기화 데이터를 이 기기로 내려받습니다.",
+        "zh-tw": "最新的同步資料將從伺服器下載到此裝置。",
     },
     "the local database, that is to say the synchronisation information, must be reconstituted.": {
         def: "the local database, that is to say the synchronisation information, must be reconstituted.",
         es: "hay que reconstruir la base de datos local, es decir, la información de sincronización.",
         ko: "로컬 데이터베이스, 즉 동기화 정보를 다시 구성해야 합니다.",
+        "zh-tw": "本機資料庫，也就是同步資訊，必須重新建立。",
     },
     "The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.":
         {
@@ -9453,6 +10029,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "청크를 문서 안에 임시 보관할 수 있는 최대 기간입니다. 이 기간을 넘긴 청크는 독립된 청크로 분리됩니다.",
             ru: "The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.",
             zh: "文档中可以孵化的数据块的最大持续时间。超过此时间的数据块将成为独立数据块 ",
+            "zh-tw": "chunks 可在文件中孵化的最長時間。超過此時間的 chunks 會立即成為獨立 chunks。",
         },
     "The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.":
         {
@@ -9464,6 +10041,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "문서 안에 임시 보관할 수 있는 청크의 최대 개수입니다. 이 개수를 넘긴 청크는 즉시 독립된 청크로 분리됩니다.",
             ru: "The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.",
             zh: "文档中可以孵化的数据块的最大数量。超过此数量的数据块将立即成为独立数据块 ",
+            "zh-tw": "文件中可孵化的 chunks 最大數量。超過此數量的 chunks 會立即成為獨立 chunks。",
         },
     "The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.":
         {
@@ -9475,6 +10053,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "문서 안에 임시 보관할 수 있는 청크의 최대 총 크기입니다. 이 크기를 넘긴 청크는 즉시 독립된 청크로 분리됩니다.",
             ru: "The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.",
             zh: "文档中可以孵化的数据块的最大总大小。超过此大小的数据块将立即成为独立数据块 ",
+            "zh-tw": "文件中可孵化的 chunks 總大小上限。超過此大小的 chunks 會立即成為獨立 chunks。",
         },
     "The minimum interval for automatic synchronisation on event.": {
         def: "The minimum interval for automatic synchronisation on event.",
@@ -9491,62 +10070,74 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "The remote is already set up, and the configuration is compatible (or got compatible by this operation).",
         es: "El remoto ya está configurado y la configuración es compatible (o pasa a serlo con esta operación).",
         ko: "원격은 이미 설정되어 있으며, 구성도 호환됩니다(또는 이번 작업으로 호환되었습니다).",
+        "zh-tw": "遠端已經設定完成，且設定相容（或透過此操作變得相容）。",
     },
     "The Setup-URI does not appear to be valid. Please check that you have copied it correctly.": {
         def: "The Setup-URI does not appear to be valid. Please check that you have copied it correctly.",
         es: "El Setup-URI no parece válido. Comprueba que lo hayas copiado correctamente.",
         ko: "Setup-URI가 유효하지 않은 것으로 보입니다. 올바르게 복사했는지 확인해 주세요.",
+        "zh-tw": "這個 Setup URI 似乎無效，請檢查是否複製正確。",
     },
     "The Setup-URI is valid and ready to use.": {
         def: "The Setup-URI is valid and ready to use.",
         es: "El Setup-URI es válido y está listo para usarse.",
         ko: "Setup-URI가 유효하며 사용할 준비가 되었습니다.",
+        "zh-tw": "Setup URI 有效，可以使用。",
     },
     "the single, authoritative master copy": {
         def: "the single, authoritative master copy",
         es: "la única copia maestra de referencia",
         ko: "유일하고 확실한 원본이 됩니다",
+        "zh-tw": "唯一且具權威性的主要複本",
     },
     "the synchronisation data on the server will be built based on the current data on this device.": {
         def: "the synchronisation data on the server will be built based on the current data on this device.",
         es: "los datos de sincronización del servidor se construirán a partir de los datos actuales de este dispositivo.",
         ko: "이 기기의 현재 데이터를 바탕으로 서버의 동기화 데이터를 구축합니다.",
+        "zh-tw": "伺服器上的同步資料將依此裝置目前的資料建立。",
     },
     Themes: {
         def: "Themes",
         es: "Temas",
         ko: "테마",
+        "zh-tw": "主題",
     },
     "There is a way to resolve this on other devices.": {
         def: "There is a way to resolve this on other devices.",
         es: "Hay una forma de resolver esto en los demás dispositivos.",
         ko: "다른 기기에서 이를 해결할 방법이 있습니다.",
+        "zh-tw": "在其他裝置上有辦法可以處理這個情況。",
     },
     "There may be differences between the files in this Vault and the server.": {
         def: "There may be differences between the files in this Vault and the server.",
         es: "Puede haber diferencias entre los archivos de este Vault y los del servidor.",
         ko: "이 보관함의 파일과 서버의 파일 사이에 차이가 있을 수 있습니다.",
+        "zh-tw": "此 Vault 中的檔案可能與伺服器上的有所不同。",
     },
     "Therefore, we ask that you exercise extreme caution when configuring server information manually. If an incorrect passphrase is entered, the data on the server will become corrupted.":
         {
             def: "Therefore, we ask that you exercise extreme caution when configuring server information manually. If an incorrect passphrase is entered, the data on the server will become corrupted.",
             es: "Por tanto, extrema la precaución al configurar manualmente los datos del servidor. Si introduces una frase de contraseña incorrecta, los datos del servidor se corromperán.",
             ko: "따라서 서버 정보를 수동으로 구성할 때에는 각별히 주의해 주시기 바랍니다. 잘못된 패스프레이즈를 입력하면 서버의 데이터가 손상됩니다.",
+            "zh-tw": "因此，在手動設定伺服器資訊時請務必格外小心。如果輸入了錯誤的密語，伺服器上的資料將會損毀。",
         },
     "This can isolate your connections between devices. Use the same Room ID for the same devices.": {
         def: "This can isolate your connections between devices. Use the same Room ID for the same devices.",
         es: "Esto permite aislar tus conexiones entre dispositivos. Usa el mismo ID de sala para los mismos dispositivos.",
         ko: "이를 통해 기기 간 연결을 서로 격리할 수 있습니다. 같은 기기들끼리는 동일한 룸 ID를 사용하세요.",
+        "zh-tw": "這可以將你的裝置連線彼此隔離。同一群裝置請使用相同的房間 ID。",
     },
     "This device": {
         def: "This device",
         es: "Este dispositivo",
         ko: "이 기기",
+        "zh-tw": "此裝置",
     },
     "This device name": {
         def: "This device name",
         es: "Nombre de este dispositivo",
         ko: "이 기기의 이름",
+        "zh-tw": "此裝置名稱",
     },
     "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.":
         {
@@ -9573,6 +10164,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.",
             es: "Esta es una operación extremadamente potente. Te recomendamos encarecidamente copiar la carpeta de tu Vault a un lugar seguro.",
             ko: "이는 매우 강력한 작업입니다. 보관함 폴더를 안전한 위치에 복사해 두시기를 강력히 권장합니다.",
+            "zh-tw": "這是威力極強的操作。我們強烈建議你先將 Vault 資料夾複製到安全的位置。",
         },
     "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.":
         {
@@ -9593,33 +10185,41 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 패스프레이즈는 다른 기기로 복사되지 않습니다. 다시 구성할 때까지 `기본값`으로 설정됩니다.",
         ru: "This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.",
         zh: "此密码不会复制到另一台设备。在您再次配置之前,它将设置为 `Default` ",
+        "zh-tw": "此密語不會複製到其他裝置。在你重新設定之前，會維持為 `Default`。",
     },
     "This password is used to encrypt the connection. Use something long enough.": {
         def: "This password is used to encrypt the connection. Use something long enough.",
         es: "Esta contraseña se usa para cifrar la conexión. Usa algo suficientemente largo.",
         ko: "이 비밀번호는 연결을 암호화하는 데 사용됩니다. 충분히 긴 값을 사용하세요.",
+        "zh-tw": "此密碼用於加密連線，請使用足夠長的字串。",
     },
     "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as":
         {
             def: "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as",
             es: "Este procedimiento eliminará primero todos los datos de sincronización existentes en el servidor. A continuación, los datos del servidor se reconstruirán por completo usando el estado actual del Vault de este dispositivo (incluida su base de datos local) como",
             ko: "이 절차는 먼저 서버에서 기존 동기화 데이터를 모두 삭제합니다. 그다음 이 기기에 있는 보관함의 현재 상태(로컬 데이터베이스 포함)를 바탕으로 서버 데이터를 완전히 재구축합니다. 즉, 이 기기의 데이터가",
+            "zh-tw":
+                "此程序將先刪除伺服器上所有現有的同步資料。之後，將以此裝置目前的 Vault 狀態（包含其本機資料庫）為",
         },
     "This setting must be the same even when connecting to multiple synchronisation destinations.": {
         def: "This setting must be the same even when connecting to multiple synchronisation destinations.",
         es: "Este ajuste debe ser el mismo incluso si te conectas a varios destinos de sincronización.",
         ko: "이 설정은 여러 동기화 대상에 연결하는 경우에도 동일해야 합니다.",
+        "zh-tw": "即使連線到多個同步目標，這項設定也必須保持一致。",
     },
     "This Vault is empty, or contains only new files that are not on the server.": {
         def: "This Vault is empty, or contains only new files that are not on the server.",
         es: "Este Vault está vacío o solo contiene archivos nuevos que no están en el servidor.",
         ko: "이 보관함은 비어 있거나, 서버에 없는 새 파일만 포함하고 있습니다.",
+        "zh-tw": "此 Vault 是空的，或只包含伺服器上沒有的新檔案。",
     },
     "This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.":
         {
             def: "This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.",
             es: "Esto reconstruirá la base de datos local de este dispositivo con los datos más recientes del servidor. La acción está pensada para resolver inconsistencias de sincronización y restaurar el funcionamiento correcto.",
             ko: "서버의 최신 데이터를 사용해 이 기기의 로컬 데이터베이스를 재구축합니다. 이 작업은 동기화 불일치를 해결하고 정상적인 동작을 복구하기 위한 것입니다.",
+            "zh-tw":
+                "這會使用伺服器上最新的資料，重建此裝置上的本機資料庫。此操作旨在解決同步不一致的問題，並恢復正常功能。",
         },
     "This will recreate chunks for all files. If there were missing chunks, this may fix the errors.": {
         def: "This will recreate chunks for all files. If there were missing chunks, this may fix the errors.",
@@ -9634,6 +10234,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "To minimise the creation of new conflicts",
         es: "Para minimizar la creación de nuevos conflictos",
         ko: "새로운 충돌 발생을 최소화하기 위해",
+        "zh-tw": "為了盡量減少新增衝突",
     },
     "Transfer Tweak": {
         def: "Transfer Tweak",
@@ -9641,32 +10242,39 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ja: "転送の調整",
         ko: "전송 조정",
         ru: "Настройки передачи",
+        "zh-tw": "傳輸調校",
     },
     "TURN Credential": {
         def: "TURN Credential",
         es: "Credencial de TURN",
         ko: "TURN 자격 증명",
+        "zh-tw": "TURN 憑證",
     },
     "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank.":
         {
             def: "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank.",
             es: "Los ajustes del servidor TURN solo son necesarios si estás detrás de un NAT estricto o de un cortafuegos que impide las conexiones P2P directas. En la mayoría de los casos puedes dejar estos campos vacíos.",
             ko: "TURN 서버 설정은 직접적인 P2P 연결을 막는 엄격한 NAT나 방화벽 뒤에 있는 경우에만 필요합니다. 대부분의 경우 이 항목들은 비워 두어도 됩니다.",
+            "zh-tw":
+                "只有在你身處嚴格的 NAT 或防火牆之後、無法建立直接 P2P 連線時，才需要設定 TURN 伺服器。多數情況下這些欄位可以留空。",
         },
     "TURN Server URLs (comma-separated)": {
         def: "TURN Server URLs (comma-separated)",
         es: "URL de servidores TURN (separadas por comas)",
         ko: "TURN 서버 URL (쉼표로 구분)",
+        "zh-tw": "TURN 伺服器網址（以逗號分隔）",
     },
     "TURN Username": {
         def: "TURN Username",
         es: "Usuario de TURN",
         ko: "TURN 사용자 이름",
+        "zh-tw": "TURN 使用者名稱",
     },
     "TweakMismatchResolve.Action.DisableAutoAcceptCompatible": {
         def: "Disable auto-accept",
         es: "Desactivar la aceptación automática",
         ko: "자동 수용 비활성화",
+        "zh-tw": "停用自動接受",
     },
     "TweakMismatchResolve.Action.Dismiss": {
         def: "Dismiss",
@@ -9683,6 +10291,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Enable auto-accept",
         es: "Activar la aceptación automática",
         ko: "자동 수용 활성화",
+        "zh-tw": "啟用自動接受",
     },
     "TweakMismatchResolve.Action.UseConfigured": {
         def: "Use configured settings",
@@ -9765,6 +10374,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "\nIt appears that the settings differ for each device. You can now automatically apply compatible changes to these configurations.\nWould you like to enable this `auto-accept` setting?",
         es: "\nParece que los ajustes son distintos en cada dispositivo. Ahora se pueden aplicar automáticamente los cambios compatibles a estas configuraciones.\n¿Quieres activar la aceptación automática (`auto-accept`)?",
         ko: "\n기기마다 설정이 다른 것으로 보입니다. 이제 호환되는 변경 사항은 자동으로 적용할 수 있습니다.\n이 `자동 수용` 설정을 활성화하시겠습니까?",
+        "zh-tw":
+            "\n看起來各裝置的設定並不相同。現在可以讓相容的變更自動套用到這些設定。\n你要啟用這個「自動接受」設定嗎？",
     },
     "TweakMismatchResolve.Message.Main": {
         def: "\nThe settings in the remote database are as follows. These values are configured by other devices, which are synchronised with this device at least once.\n\nIf you want to use these settings, please select Use configured settings.\nIf you want to keep the settings of this device, please select Dismiss.\n\n${table}\n\n>[!TIP]\n> If you want to synchronise all settings, please use `Sync settings via markdown` after applying minimal configuration with this feature.\n\n${additionalMessage}",
@@ -9881,11 +10492,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성 불일치 감지",
         ru: "Обнаружено несоответствие конфигурации",
         zh: "Configuration Mismatch Detected",
+        "zh-tw": "偵測到設定不一致",
     },
     "TweakMismatchResolve.Title.AutoAcceptCompatible": {
         def: "Auto-Accept Available",
         es: "Aceptación automática disponible",
         ko: "자동 수용 사용 가능",
+        "zh-tw": "可使用自動接受",
     },
     "TweakMismatchResolve.Title.TweakResolving": {
         def: "Configuration Mismatch Detected",
@@ -9914,1224 +10527,1433 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "PRECAUCIÓN",
         ko: "주의",
         zh: "注意",
+        "zh-tw": "注意",
     },
     "Ui.Common.Signal.Danger": {
         def: "DANGER",
         es: "PELIGRO",
         ko: "위험",
         zh: "危险",
+        "zh-tw": "危險",
     },
     "Ui.Common.Signal.Notice": {
         def: "NOTICE",
         es: "AVISO",
         ko: "알림",
         zh: "提示",
+        "zh-tw": "提示",
     },
     "Ui.Common.Signal.Warning": {
         def: "WARNING",
         es: "ADVERTENCIA",
         ko: "경고",
         zh: "警告",
+        "zh-tw": "警告",
     },
     "Ui.Settings.Advanced.LocalDatabaseTweak": {
         def: "Local Database Tweak",
         es: "Ajuste fino de la base de datos local",
         ko: "로컬 데이터베이스 조정",
         zh: "本地数据库调整",
+        "zh-tw": "本機資料庫調校",
     },
     "Ui.Settings.Advanced.MemoryCache": {
         def: "Memory Cache",
         es: "Caché en memoria",
         ko: "메모리 캐시",
         zh: "内存缓存",
+        "zh-tw": "記憶體快取",
     },
     "Ui.Settings.Advanced.TransferTweak": {
         def: "Transfer Tweak",
         es: "Ajuste fino de la transferencia",
         ko: "전송 조정",
         zh: "传输调整",
+        "zh-tw": "傳輸調校",
     },
     "Ui.Settings.Common.Analyse": {
         def: "Analyse",
         es: "Analizar",
         ko: "분석",
         zh: "分析",
+        "zh-tw": "分析",
     },
     "Ui.Settings.Common.Back": {
         def: "Back",
         es: "Volver",
         ko: "뒤로",
         zh: "返回",
+        "zh-tw": "返回",
     },
     "Ui.Settings.Common.Check": {
         def: "Check",
         es: "Comprobar",
         ko: "확인",
         zh: "检查",
+        "zh-tw": "檢查",
     },
     "Ui.Settings.Common.Configure": {
         def: "Configure",
         es: "Configurar",
         ko: "설정",
         zh: "配置",
+        "zh-tw": "設定",
     },
     "Ui.Settings.Common.Continue": {
         def: "Continue",
         es: "Continuar",
         ko: "계속",
         zh: "继续",
+        "zh-tw": "繼續",
     },
     "Ui.Settings.Common.Delete": {
         def: "Delete",
         es: "Eliminar",
         ko: "삭제",
         zh: "删除",
+        "zh-tw": "刪除",
     },
     "Ui.Settings.Common.Fetch": {
         def: "Fetch",
         es: "Obtener",
         ko: "가져오기",
         zh: "获取",
+        "zh-tw": "抓取",
     },
     "Ui.Settings.Common.Lock": {
         def: "Lock",
         es: "Bloquear",
         ko: "잠금",
         zh: "锁定",
+        "zh-tw": "鎖定",
     },
     "Ui.Settings.Common.Merge": {
         def: "Merge",
         es: "Combinar",
         ko: "병합",
         zh: "合并",
+        "zh-tw": "合併",
     },
     "Ui.Settings.Common.Open": {
         def: "Open",
         es: "Abrir",
         ko: "열기",
         zh: "打开",
+        "zh-tw": "開啟",
     },
     "Ui.Settings.Common.Overwrite": {
         def: "Overwrite",
         es: "Sobrescribir",
         ko: "덮어쓰기",
         zh: "覆盖",
+        "zh-tw": "覆寫",
     },
     "Ui.Settings.Common.Perform": {
         def: "Perform",
         es: "Ejecutar",
         ko: "실행",
         zh: "执行",
+        "zh-tw": "執行",
     },
     "Ui.Settings.Common.ResetAll": {
         def: "Reset all",
         es: "Restablecer todo",
         ko: "모두 재설정",
         zh: "全部重置",
+        "zh-tw": "全部重設",
     },
     "Ui.Settings.Common.ResolveAll": {
         def: "Resolve All",
         es: "Resolver todo",
         ko: "모두 해결",
         zh: "全部解决",
+        "zh-tw": "全部處理",
     },
     "Ui.Settings.Common.Scan": {
         def: "Scan",
         es: "Analizar",
         ko: "검사",
         zh: "扫描",
+        "zh-tw": "掃描",
     },
     "Ui.Settings.Common.Send": {
         def: "Send",
         es: "Enviar",
         ko: "보내기",
         zh: "发送",
+        "zh-tw": "傳送",
     },
     "Ui.Settings.Common.Use": {
         def: "Use",
         es: "Usar",
         ko: "사용",
         zh: "使用",
+        "zh-tw": "使用",
     },
     "Ui.Settings.Common.VerifyAll": {
         def: "Verify all",
         es: "Verificar todo",
         ko: "모두 검증",
         zh: "全部校验",
+        "zh-tw": "全部驗證",
     },
     "Ui.Settings.CustomizationSync.OpenDesc": {
         def: "Open the dialog",
         es: "Abre el diálogo",
         ko: "대화상자 열기",
         zh: "打开此对话框",
+        "zh-tw": "開啟對話框",
     },
     "Ui.Settings.CustomizationSync.Panel": {
         def: "Customization Sync",
         es: "Sincronización de personalizaciones",
         ko: "사용자 설정 동기화",
         zh: "自定义同步",
+        "zh-tw": "自訂同步",
     },
     "Ui.Settings.CustomizationSync.WarnChangeDeviceName": {
         def: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
         es: "No se puede cambiar el nombre del dispositivo mientras esta función esté activada. Desactívala para poder cambiarlo.",
         ko: "이 기능이 활성화되어 있는 동안에는 기기 이름을 변경할 수 없습니다. 기기 이름을 변경하려면 이 기능을 비활성화하세요.",
         zh: "启用此功能时无法修改设备名称。请先关闭此功能，再修改设备名称。",
+        "zh-tw": "啟用此功能時無法變更裝置名稱。請先停用此功能，才能變更裝置名稱。",
     },
     "Ui.Settings.CustomizationSync.WarnSetDeviceName": {
         def: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
         es: "Establece un nombre para identificar este dispositivo. Debe ser único entre tus dispositivos. Mientras no esté configurado, no se puede activar esta función.",
         ko: "이 기기를 식별할 기기 이름을 설정해 주세요. 이 이름은 기기 간에 고유해야 합니다. 설정하기 전까지는 이 기능을 활성화할 수 없습니다.",
         zh: "请先设置用于标识此设备的设备名称。该名称应在你的设备之间保持唯一。未设置前无法启用此功能。",
+        "zh-tw": "請設定用來識別此裝置的裝置名稱。此名稱在你所有裝置中應該是唯一的。尚未設定時，無法啟用此功能。",
     },
     "Ui.Settings.Hatch.AnalyseDatabaseUsage": {
         def: "Analyse database usage",
         es: "Analizar el uso de la base de datos",
         ko: "데이터베이스 사용량 분석",
         zh: "分析数据库使用情况",
+        "zh-tw": "分析資料庫使用情況",
     },
     "Ui.Settings.Hatch.AnalyseDatabaseUsageDesc": {
         def: "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like.",
         es: "Analiza el uso de la base de datos y genera un informe TSV para que puedas diagnosticarlo tú mismo. Puedes pegar el informe generado en la hoja de cálculo que prefieras.",
         ko: "데이터베이스 사용량을 분석하고 직접 진단할 수 있도록 TSV 보고서를 생성합니다. 생성된 보고서는 원하는 스프레드시트에 붙여 넣어 확인할 수 있습니다.",
         zh: "分析数据库使用情况，并生成 TSV 报告供你自行诊断。你可以将生成的报告粘贴到任意电子表格工具中查看。",
+        "zh-tw": "分析資料庫使用情況並產生 TSV 報告，方便你自行診斷。你可以將產生的報告貼到任何慣用的試算表中查看。",
     },
     "Ui.Settings.Hatch.BackToNonConfigured": {
         def: "Back to non-configured",
         es: "Volver al estado sin configurar",
         ko: "미구성 상태로 되돌리기",
         zh: "返回未配置状态",
+        "zh-tw": "恢復為未設定狀態",
     },
     "Ui.Settings.Hatch.ConvertNonObfuscated": {
         def: "Check and convert non-path-obfuscated files",
         es: "Comprobar y convertir los archivos sin ruta ofuscada",
         ko: "경로 난독화되지 않은 파일 검사 및 변환",
         zh: "检查并转换未进行路径混淆的文件",
+        "zh-tw": "檢查並轉換未進行路徑混淆的檔案",
     },
     "Ui.Settings.Hatch.ConvertNonObfuscatedDesc": {
         def: "Check the local database for files that were stored without path obfuscation and convert them when needed.",
         es: "Comprueba si la base de datos local contiene archivos guardados sin ofuscación de ruta y los convierte si hace falta.",
         ko: "경로 난독화 없이 저장된 파일이 있는지 로컬 데이터베이스를 확인하고, 필요하면 변환합니다.",
         zh: "检查本地数据库中未按路径混淆方式存储的文件，并在需要时将其转换为正确格式。",
+        "zh-tw": "檢查本機資料庫中未以路徑混淆方式儲存的檔案，並在需要時進行轉換。",
     },
     "Ui.Settings.Hatch.CopyIssueReport": {
         def: "Copy Report to clipboard",
         es: "Copiar el informe al portapapeles",
         ko: "보고서를 클립보드에 복사",
         zh: "复制报告到剪贴板",
+        "zh-tw": "將報告複製到剪貼簿",
     },
     "Ui.Settings.Hatch.DatabaseLabel": {
         def: "Database: ${details}",
         es: "Base de datos: ${details}",
         ko: "데이터베이스: ${details}",
         zh: "数据库：${details}",
+        "zh-tw": "資料庫：${details}",
     },
     "Ui.Settings.Hatch.DatabaseToStorage": {
         def: "Database -> Storage",
         es: "Base de datos -> Almacenamiento",
         ko: "데이터베이스 -> 스토리지",
         zh: "数据库 -> 存储",
+        "zh-tw": "資料庫 -> 儲存空間",
     },
     "Ui.Settings.Hatch.DeleteCustomizationSyncData": {
         def: "Delete all customization sync data",
         es: "Eliminar todos los datos de la sincronización de personalizaciones",
         ko: "모든 사용자 설정 동기화 데이터 삭제",
         zh: "删除所有自定义同步数据",
+        "zh-tw": "刪除所有自訂同步資料",
     },
     "Ui.Settings.Hatch.GeneratedReport": {
         def: "Generated report",
         es: "Informe generado",
         ko: "생성된 보고서",
         zh: "已生成的报告",
+        "zh-tw": "已產生的報告",
     },
     "Ui.Settings.Hatch.Missing": {
         def: "Missing",
         es: "Falta",
         ko: "누락됨",
         zh: "缺失",
+        "zh-tw": "缺失",
     },
     "Ui.Settings.Hatch.ModifiedSize": {
         def: "Modified: ${modified}, Size: ${size}",
         es: "Modificado: ${modified}, tamaño: ${size}",
         ko: "수정: ${modified}, 크기: ${size}",
         zh: "修改时间：${modified}，大小：${size}",
+        "zh-tw": "修改時間：${modified}，大小：${size}",
     },
     "Ui.Settings.Hatch.ModifiedSizeActual": {
         def: "Modified: ${modified}, Size: ${size} (actual size: ${actualSize})",
         es: "Modificado: ${modified}, tamaño: ${size} (tamaño real: ${actualSize})",
         ko: "수정: ${modified}, 크기: ${size} (실제 크기: ${actualSize})",
         zh: "修改时间：${modified}，大小：${size}（实际大小：${actualSize}）",
+        "zh-tw": "修改時間：${modified}，大小：${size}（實際大小：${actualSize}）",
     },
     "Ui.Settings.Hatch.PrepareIssueReport": {
         def: "Prepare the 'report' to create an issue",
         es: "Preparar el «informe» para abrir una incidencia",
         ko: "이슈 생성을 위한 '보고서' 준비",
         zh: "准备用于提交问题的报告",
+        "zh-tw": "準備建立 Issue 用的「報告」",
     },
     "Ui.Settings.Hatch.RecoveryAndRepair": {
         def: "Recovery and Repair",
         es: "Recuperación y reparación",
         ko: "복구 및 수리",
         zh: "恢复与修复",
+        "zh-tw": "修復與修補",
     },
     "Ui.Settings.Hatch.RecreateAll": {
         def: "Recreate all",
         es: "Recrear todo",
         ko: "모두 다시 생성",
         zh: "全部重建",
+        "zh-tw": "全部重建",
     },
     "Ui.Settings.Hatch.RecreateMissingChunks": {
         def: "Recreate missing chunks for all files",
         es: "Recrear los chunks que faltan de todos los archivos",
         ko: "모든 파일의 누락된 청크 다시 생성",
         zh: "为所有文件重新创建缺失的数据块",
+        "zh-tw": "為所有檔案重建遺失的 chunks",
     },
     "Ui.Settings.Hatch.RecreateMissingChunksDesc": {
         def: "This will recreate chunks for all files. If there were missing chunks, this may fix the errors.",
         es: "Recrea los chunks de todos los archivos. Si faltaban chunks, esto puede corregir los errores.",
         ko: "모든 파일의 청크를 다시 생성합니다. 누락된 청크가 있었다면 이 작업으로 오류가 해결될 수 있습니다.",
         zh: "此操作会为所有文件重新创建数据块。如果存在缺失的数据块，可能会修复相关错误。",
+        "zh-tw": "這會為所有檔案重新建立 chunks。若先前有遺失的 chunks，這可能修復相關錯誤。",
     },
     "Ui.Settings.Hatch.ResetPanel": {
         def: "Reset",
         es: "Restablecer",
         ko: "재설정",
         zh: "重置",
+        "zh-tw": "重設",
     },
     "Ui.Settings.Hatch.ResetRemoteUsage": {
         def: "Reset notification threshold and check the remote database usage",
         es: "Restablecer el umbral de aviso y comprobar el uso de la base de datos remota",
         ko: "알림 임계값을 초기화하고 원격 데이터베이스 사용량 확인",
         zh: "重置通知阈值并检查远程数据库使用情况",
+        "zh-tw": "重設通知閾值並檢查遠端資料庫使用情況",
     },
     "Ui.Settings.Hatch.ResetRemoteUsageDesc": {
         def: "Reset the remote storage size threshold and check the remote storage size again.",
         es: "Restablece el umbral de tamaño del almacenamiento remoto y vuelve a comprobar su tamaño.",
         ko: "원격 저장소 크기 임계값을 초기화하고 원격 저장소 크기를 다시 확인합니다.",
         zh: "重置远程存储大小阈值，并再次检查远程存储大小。",
+        "zh-tw": "重設遠端儲存空間大小閾值，並再次檢查遠端儲存空間大小。",
     },
     "Ui.Settings.Hatch.ResolveAllConflictedFiles": {
         def: "Resolve all conflicted files by the newer one",
         es: "Resolver todos los archivos en conflicto con el más reciente",
         ko: "충돌한 모든 파일을 최신 버전으로 해결",
         zh: "使用较新的版本解决所有冲突文件",
+        "zh-tw": "將所有衝突檔案統一為較新的版本",
     },
     "Ui.Settings.Hatch.ResolveAllConflictedFilesDesc": {
         def: "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.",
         es: "Resuelve todos los archivos en conflicto quedándose con el más reciente. Atención: esto sobrescribe el más antiguo y no se puede recuperar.",
         ko: "충돌한 모든 파일을 더 최신 버전으로 해결합니다. 주의: 이전 버전은 덮어써지며 복원할 수 없습니다.",
         zh: "使用较新的版本解决所有冲突文件。注意：此操作会覆盖较旧版本，且无法恢复被覆盖的内容。",
+        "zh-tw": "將所有衝突檔案統一保留較新的版本。注意：這會覆寫較舊的版本，且被覆寫的內容無法復原。",
     },
     "Ui.Settings.Hatch.RunDoctor": {
         def: "Run Doctor",
         es: "Ejecutar el Doctor",
         ko: "진단 실행",
         zh: "运行诊断",
+        "zh-tw": "執行診斷",
     },
     "Ui.Settings.Hatch.ScanBrokenFiles": {
         def: "Scan for broken files",
         es: "Buscar archivos dañados",
         ko: "손상된 파일 검사",
         zh: "扫描损坏文件",
+        "zh-tw": "掃描損壞檔案",
     },
     "Ui.Settings.Hatch.ScramSwitches": {
         def: "Scram Switches",
         es: "Interruptores de emergencia",
         ko: "긴급 정지 스위치",
         zh: "紧急开关",
+        "zh-tw": "緊急處置開關",
     },
     "Ui.Settings.Hatch.ShowHistory": {
         def: "Show history",
         es: "Mostrar el historial",
         ko: "기록 표시",
         zh: "查看历史",
+        "zh-tw": "顯示歷程",
     },
     "Ui.Settings.Hatch.StorageLabel": {
         def: "Storage: ${details}",
         es: "Almacenamiento: ${details}",
         ko: "스토리지: ${details}",
         zh: "存储：${details}",
+        "zh-tw": "儲存空間：${details}",
     },
     "Ui.Settings.Hatch.StorageToDatabase": {
         def: "Storage -> Database",
         es: "Almacenamiento -> Base de datos",
         ko: "스토리지 -> 데이터베이스",
         zh: "存储 -> 数据库",
+        "zh-tw": "儲存空間 -> 資料庫",
     },
     "Ui.Settings.Hatch.VerifyAndRepairAllFiles": {
         def: "Verify and repair all files",
         es: "Verificar y reparar todos los archivos",
         ko: "모든 파일 검증 및 복구",
         zh: "校验并修复所有文件",
+        "zh-tw": "驗證並修復所有檔案",
     },
     "Ui.Settings.Hatch.VerifyAndRepairAllFilesDesc": {
         def: "Compare the content of files between the local database and storage. If they do not match, you will be asked which one to keep.",
         es: "Compara el contenido de los archivos entre la base de datos local y el almacenamiento. Si no coinciden, se te preguntará cuál conservar.",
         ko: "로컬 데이터베이스와 스토리지의 파일 내용을 비교합니다. 일치하지 않으면 어느 쪽을 유지할지 묻습니다.",
         zh: "比较本地数据库与存储中的文件内容。如果内容不一致，系统会询问你保留哪一份。",
+        "zh-tw": "比較本機資料庫與儲存空間中的檔案內容；若不一致，系統會詢問你要保留哪一份。",
     },
     "Ui.Settings.Maintenance.Cleanup": {
         def: "Perform cleanup",
         es: "Realizar limpieza",
         ko: "정리 실행",
         zh: "执行清理",
+        "zh-tw": "執行清理",
     },
     "Ui.Settings.Maintenance.CleanupDesc": {
         def: "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.",
         es: "Reduce el espacio de almacenamiento descartando todas las revisiones que no sean la última. Requiere la misma cantidad de espacio libre en el servidor remoto y en el cliente local.",
         ko: "최신 버전이 아닌 모든 리비전을 제거하여 저장 공간을 줄입니다. 이 작업을 수행하려면 원격 서버와 로컬 클라이언트에 동일한 양의 여유 공간이 필요합니다.",
         zh: "丢弃所有非最新修订版本，以减少存储空间占用。此操作要求远程服务器和本地客户端都具备同等大小的可用空间。",
+        "zh-tw":
+            "透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。",
     },
     "Ui.Settings.Maintenance.DeleteLocalDatabase": {
         def: "Delete local database to reset or uninstall Self-hosted LiveSync",
         es: "Eliminar la base de datos local para restablecer o desinstalar Self-hosted LiveSync",
         ko: "Self-hosted LiveSync를 초기화하거나 제거하기 위해 로컬 데이터베이스를 삭제",
         zh: "删除本地数据库以重置或卸载 Self-hosted LiveSync",
+        "zh-tw": "刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync",
     },
     "Ui.Settings.Maintenance.EmergencyRestart": {
         def: "Emergency restart",
         es: "Reinicio de emergencia",
         ko: "긴급 재시작",
         zh: "紧急重启",
+        "zh-tw": "緊急重新啟動",
     },
     "Ui.Settings.Maintenance.EmergencyRestartDesc": {
         def: "Disable all synchronisation and restart.",
         es: "Desactiva toda la sincronización y reinicia.",
         ko: "모든 동기화를 비활성화하고 재시작합니다.",
         zh: "禁用所有同步并重新启动。",
+        "zh-tw": "停用所有同步並重新啟動。",
     },
     "Ui.Settings.Maintenance.FreshStartWipe": {
         def: "Fresh Start Wipe",
         es: "Borrado para empezar de cero",
         ko: "초기화 후 새로 시작",
         zh: "全新开始清空",
+        "zh-tw": "全新開始清除",
     },
     "Ui.Settings.Maintenance.FreshStartWipeDesc": {
         def: "Delete all data on the remote server.",
         es: "Elimina todos los datos del servidor remoto.",
         ko: "원격 서버의 모든 데이터를 삭제합니다.",
         zh: "删除远程服务器上的所有数据。",
+        "zh-tw": "刪除遠端伺服器上的所有資料。",
     },
     "Ui.Settings.Maintenance.GarbageCollection": {
         def: "Garbage Collection V3 (Beta)",
         es: "Recolección de basura V3 (beta)",
         ko: "가비지 컬렉션 V3 (Beta)",
         zh: "垃圾回收 V3（测试版）",
+        "zh-tw": "垃圾回收 V3（Beta）",
     },
     "Ui.Settings.Maintenance.GarbageCollectionAction": {
         def: "Perform Garbage Collection",
         es: "Realizar la recolección de basura",
         ko: "가비지 컬렉션 실행",
         zh: "执行垃圾回收",
+        "zh-tw": "執行垃圾回收",
     },
     "Ui.Settings.Maintenance.GarbageCollectionDesc": {
         def: "Perform Garbage Collection to remove unused chunks and reduce database size.",
         es: "Realiza una recolección de basura para eliminar los chunks sin usar y reducir el tamaño de la base de datos.",
         ko: "사용하지 않는 청크를 제거하고 데이터베이스 크기를 줄이기 위해 가비지 컬렉션을 실행합니다.",
         zh: "执行垃圾回收以移除未使用的数据块并减少数据库大小。",
+        "zh-tw": "執行垃圾回收以移除未使用的 chunks 並減少資料庫大小。",
     },
     "Ui.Settings.Maintenance.LockServer": {
         def: "Lock Server",
         es: "Bloquear el servidor",
         ko: "서버 잠금",
         zh: "锁定服务器",
+        "zh-tw": "鎖定伺服器",
     },
     "Ui.Settings.Maintenance.LockServerDesc": {
         def: "Lock the remote server to prevent synchronisation with other devices.",
         es: "Bloquea el servidor remoto para impedir la sincronización con otros dispositivos.",
         ko: "다른 기기와 동기화되지 않도록 원격 서버를 잠급니다.",
         zh: "锁定远程服务器，防止与其他设备继续同步。",
+        "zh-tw": "鎖定遠端伺服器，以防止其他裝置進行同步。",
     },
     "Ui.Settings.Maintenance.OverwriteRemote": {
         def: "Overwrite remote",
         es: "Sobrescribir el remoto",
         ko: "원격 덮어쓰기",
         zh: "覆盖远程端",
+        "zh-tw": "覆寫遠端",
     },
     "Ui.Settings.Maintenance.OverwriteRemoteDesc": {
         def: "Overwrite remote with local DB and passphrase.",
         es: "Sobrescribe el remoto con la base de datos local y la frase de contraseña.",
         ko: "로컬 DB와 패스프레이즈로 원격을 덮어씁니다.",
         zh: "使用本地数据库和密码短语覆盖远程端数据。",
+        "zh-tw": "使用本機資料庫與密語覆寫遠端。",
     },
     "Ui.Settings.Maintenance.OverwriteServerData": {
         def: "Overwrite Server Data with This Device's Files",
         es: "Sobrescribir los datos del servidor con los archivos de este dispositivo",
         ko: "이 기기의 파일로 서버 데이터를 덮어쓰기",
         zh: "用此设备的文件覆盖服务器数据",
+        "zh-tw": "以此裝置的檔案覆寫伺服器資料",
     },
     "Ui.Settings.Maintenance.OverwriteServerDataDesc": {
         def: "Rebuild the local and remote database with files from this device.",
         es: "Reconstruye la base de datos local y la remota con los archivos de este dispositivo.",
         ko: "이 기기의 파일로 로컬과 원격 데이터베이스를 재구축합니다.",
         zh: "使用此设备上的文件重建本地和远程数据库。",
+        "zh-tw": "使用此裝置上的檔案重建本機與遠端資料庫。",
     },
     "Ui.Settings.Maintenance.PurgeAllJournalCounter": {
         def: "Purge all journal counter",
         es: "Purgar todos los contadores del diario",
         ko: "모든 저널 카운터 삭제",
         zh: "清空全部日志计数器",
+        "zh-tw": "清除所有日誌計數器",
     },
     "Ui.Settings.Maintenance.PurgeAllJournalCounterDesc": {
         def: "Purge all download and upload caches.",
         es: "Purga todas las cachés de descarga y de subida.",
         ko: "모든 다운로드 및 업로드 캐시를 제거합니다.",
         zh: "清空所有下载与上传缓存。",
+        "zh-tw": "清除所有下載與上傳快取。",
     },
     "Ui.Settings.Maintenance.RebuildingOperations": {
         def: "Rebuilding Operations (Remote Only)",
         es: "Operaciones de reconstrucción (solo remoto)",
         ko: "재구축 작업 (원격 전용)",
         zh: "重建操作（仅远程端）",
+        "zh-tw": "重建作業（僅遠端）",
     },
     "Ui.Settings.Maintenance.Resend": {
         def: "Resend",
         es: "Reenviar",
         ko: "다시 보내기",
         zh: "重新发送",
+        "zh-tw": "重新傳送",
     },
     "Ui.Settings.Maintenance.ResendDesc": {
         def: "Resend all chunks to the remote.",
         es: "Reenvía todos los chunks al remoto.",
         ko: "모든 청크를 원격으로 다시 보냅니다.",
         zh: "将所有数据块重新发送到远程端。",
+        "zh-tw": "將所有 chunks 重新傳送到遠端。",
     },
     "Ui.Settings.Maintenance.Reset": {
         def: "Reset",
         es: "Restablecer",
         ko: "재설정",
         zh: "重置",
+        "zh-tw": "重設",
     },
     "Ui.Settings.Maintenance.ResetAllJournalCounter": {
         def: "Reset all journal counter",
         es: "Restablecer todos los contadores del diario",
         ko: "모든 저널 카운터 재설정",
         zh: "重置全部日志计数器",
+        "zh-tw": "重設所有日誌計數器",
     },
     "Ui.Settings.Maintenance.ResetAllJournalCounterDesc": {
         def: "Initialise all journal history. On the next sync, every item will be received and sent again.",
         es: "Inicializa todo el historial del diario. En la próxima sincronización se volverán a recibir y enviar todos los elementos.",
         ko: "모든 저널 기록을 초기화합니다. 다음 동기화 때 모든 항목을 다시 주고받습니다.",
         zh: "初始化全部日志历史。下次同步时，所有项目都会重新接收并重新发送。",
+        "zh-tw": "初始化所有日誌歷史。下次同步時，每個項目都會重新接收並再次傳送。",
     },
     "Ui.Settings.Maintenance.ResetJournalReceived": {
         def: "Reset journal received history",
         es: "Restablecer el historial de recepción del diario",
         ko: "저널 수신 기록 재설정",
         zh: "重置日志接收历史",
+        "zh-tw": "重設日誌接收歷史",
     },
     "Ui.Settings.Maintenance.ResetJournalReceivedDesc": {
         def: "Initialise journal received history. On the next sync, every item except those sent by this device will be downloaded again.",
         es: "Inicializa el historial de recepción del diario. En la próxima sincronización se volverán a descargar todos los elementos salvo los enviados por este dispositivo.",
         ko: "저널 수신 기록을 초기화합니다. 다음 동기화 때 이 기기가 보낸 항목을 제외한 모든 항목을 다시 내려받습니다.",
         zh: "初始化日志接收历史。下次同步时，除当前设备发送的项目外，其余项目都会重新下载。",
+        "zh-tw": "初始化接收日誌歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。",
     },
     "Ui.Settings.Maintenance.ResetJournalSent": {
         def: "Reset journal sent history",
         es: "Restablecer el historial de envío del diario",
         ko: "저널 송신 기록 재설정",
         zh: "重置日志发送历史",
+        "zh-tw": "重設日誌傳送歷史",
     },
     "Ui.Settings.Maintenance.ResetJournalSentDesc": {
         def: "Initialise journal sent history. On the next sync, every item except those received by this device will be sent again.",
         es: "Inicializa el historial de envío del diario. En la próxima sincronización se volverán a enviar todos los elementos salvo los recibidos por este dispositivo.",
         ko: "저널 송신 기록을 초기화합니다. 다음 동기화 때 이 기기가 받은 항목을 제외한 모든 항목을 다시 보냅니다.",
         zh: "初始化日志发送历史。下次同步时，除当前设备已接收的项目外，其余项目都会重新发送。",
+        "zh-tw": "初始化傳送日誌歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。",
     },
     "Ui.Settings.Maintenance.ResetLocalSyncInfo": {
         def: "Reset Synchronisation information",
         es: "Restablecer la información de sincronización",
         ko: "동기화 정보 재설정",
         zh: "重置同步信息",
+        "zh-tw": "重設同步資訊",
     },
     "Ui.Settings.Maintenance.ResetLocalSyncInfoDesc": {
         def: "Restore or reconstruct local database from remote.",
         es: "Restaura o reconstruye la base de datos local a partir del remoto.",
         ko: "원격에서 로컬 데이터베이스를 복원하거나 재구축합니다.",
         zh: "从远程端恢复或重建本地数据库。",
+        "zh-tw": "從遠端還原或重建本機資料庫。",
     },
     "Ui.Settings.Maintenance.ResetReceived": {
         def: "Reset received",
         es: "Restablecer lo recibido",
         ko: "수신 기록 재설정",
         zh: "重置接收记录",
+        "zh-tw": "重設接收紀錄",
     },
     "Ui.Settings.Maintenance.ResetSentHistory": {
         def: "Reset sent history",
         es: "Restablecer el historial de envíos",
         ko: "송신 기록 재설정",
         zh: "重置发送记录",
+        "zh-tw": "重設傳送歷史",
     },
     "Ui.Settings.Maintenance.ResetThisDevice": {
         def: "Reset Synchronisation on This Device",
         es: "Restablecer la sincronización en este dispositivo",
         ko: "이 기기의 동기화 재설정",
         zh: "重置此设备上的同步状态",
+        "zh-tw": "重設此裝置上的同步",
     },
     "Ui.Settings.Maintenance.ScheduleAndRestart": {
         def: "Schedule and Restart",
         es: "Programar y reiniciar",
         ko: "예약 후 재시작",
         zh: "计划执行并重启",
+        "zh-tw": "排程後重新啟動",
     },
     "Ui.Settings.Maintenance.Scram": {
         def: "Scram!",
         es: "¡Parada de emergencia!",
         ko: "긴급 정지",
         zh: "紧急处理",
+        "zh-tw": "緊急處置",
     },
     "Ui.Settings.Maintenance.SendChunks": {
         def: "Send chunks",
         es: "Enviar los chunks",
         ko: "청크 보내기",
         zh: "发送数据块",
+        "zh-tw": "傳送 chunks",
     },
     "Ui.Settings.Maintenance.Syncing": {
         def: "Syncing",
         es: "Sincronización",
         ko: "동기화",
         zh: "同步",
+        "zh-tw": "同步中",
     },
     "Ui.Settings.Maintenance.WarningLockedReadyAction": {
         def: "I am ready, unlock the database",
         es: "Estoy listo, desbloquear la base de datos",
         ko: "준비되었습니다. 데이터베이스 잠금 해제",
         zh: "我已准备好，立即解锁数据库",
+        "zh-tw": "我已準備好，解鎖資料庫",
     },
     "Ui.Settings.Maintenance.WarningLockedReadyText": {
         def: "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.",
         es: "Para evitar que el vault se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
         ko: "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
         zh: "为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
+        "zh-tw":
+            "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
     },
     "Ui.Settings.Maintenance.WarningLockedResolveAction": {
         def: "I have made a backup, mark this device as resolved",
         es: "He hecho una copia de seguridad, marcar este dispositivo como resuelto",
         ko: "백업했습니다. 이 기기를 해결됨으로 표시",
         zh: "我已完成备份，将此设备标记为“已确认”",
+        "zh-tw": "我已完成備份，將此裝置標記為已處理",
     },
     "Ui.Settings.Maintenance.WarningLockedResolveText": {
         def: "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.",
         es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que el vault se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu vault, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
         ko: "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
         zh: "为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
+        "zh-tw":
+            "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
     },
     "Ui.Settings.Maintenance.WriteRedFlagAndRestart": {
         def: "Flag and restart",
         es: "Marcar y reiniciar",
         ko: "표시 후 재시작",
         zh: "标记并重启",
+        "zh-tw": "標記後重新啟動",
     },
     "Ui.Settings.Patches.CompatibilityConflict": {
         def: "Compatibility (Conflict Behaviour)",
         es: "Compatibilidad (comportamiento ante conflictos)",
         ko: "호환성 (충돌 동작)",
         zh: "兼容性（冲突行为）",
+        "zh-tw": "相容性（衝突行為）",
     },
     "Ui.Settings.Patches.CompatibilityDatabase": {
         def: "Compatibility (Database structure)",
         es: "Compatibilidad (estructura de la base de datos)",
         ko: "호환성 (데이터베이스 구조)",
         zh: "兼容性（数据库结构）",
+        "zh-tw": "相容性（資料庫結構）",
     },
     "Ui.Settings.Patches.CompatibilityInternalApi": {
         def: "Compatibility (Internal API Usage)",
         es: "Compatibilidad (uso de la API interna)",
         ko: "호환성 (내부 API 사용)",
         zh: "兼容性（内部 API 使用）",
+        "zh-tw": "相容性（內部 API 使用）",
     },
     "Ui.Settings.Patches.CompatibilityMetadata": {
         def: "Compatibility (Metadata)",
         es: "Compatibilidad (metadatos)",
         ko: "호환성 (메타데이터)",
         zh: "兼容性（元数据）",
+        "zh-tw": "相容性（中繼資料）",
     },
     "Ui.Settings.Patches.CompatibilityRemote": {
         def: "Compatibility (Remote Database)",
         es: "Compatibilidad (base de datos remota)",
         ko: "호환성 (원격 데이터베이스)",
         zh: "兼容性（远程数据库）",
+        "zh-tw": "相容性（遠端資料庫）",
     },
     "Ui.Settings.Patches.CompatibilityTrouble": {
         def: "Compatibility (Trouble addressed)",
         es: "Compatibilidad (problemas resueltos)",
         ko: "호환성 (문제 대응)",
         zh: "兼容性（已处理问题）",
+        "zh-tw": "相容性（問題修復）",
     },
     "Ui.Settings.Patches.CurrentAdapter": {
         def: "Current adapter: ${adapter}",
         es: "Adaptador actual: ${adapter}",
         ko: "현재 어댑터: ${adapter}",
         zh: "当前适配器：${adapter}",
+        "zh-tw": "目前的適配器：${adapter}",
     },
     "Ui.Settings.Patches.DatabaseAdapter": {
         def: "Database Adapter",
         es: "Adaptador de base de datos",
         ko: "데이터베이스 어댑터",
         zh: "数据库适配器",
+        "zh-tw": "資料庫適配器",
     },
     "Ui.Settings.Patches.DatabaseAdapterDesc": {
         def: "Select the database adapter to use.",
         es: "Selecciona el adaptador de base de datos que se va a usar.",
         ko: "사용할 데이터베이스 어댑터를 선택합니다.",
         zh: "选择要使用的数据库适配器。",
+        "zh-tw": "選擇要使用的資料庫適配器。",
     },
     "Ui.Settings.Patches.EdgeCaseBehaviour": {
         def: "Edge case addressing (Behaviour)",
         es: "Casos límite (comportamiento)",
         ko: "특수 상황 처리 (동작)",
         zh: "边界情况处理（行为）",
+        "zh-tw": "邊緣情況處理（行為）",
     },
     "Ui.Settings.Patches.EdgeCaseDatabase": {
         def: "Edge case addressing (Database)",
         es: "Casos límite (base de datos)",
         ko: "특수 상황 처리 (데이터베이스)",
         zh: "边界情况处理（数据库）",
+        "zh-tw": "邊緣情況處理（資料庫）",
     },
     "Ui.Settings.Patches.EdgeCaseProcessing": {
         def: "Edge case addressing (Processing)",
         es: "Casos límite (procesamiento)",
         ko: "특수 상황 처리 (처리)",
         zh: "边界情况处理（处理流程）",
+        "zh-tw": "邊緣情況處理（處理）",
     },
     "Ui.Settings.Patches.IndexedDbWarning": {
         def: "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use the IDB adapter instead.",
         es: "El adaptador IndexedDB suele ofrecer mejor rendimiento en ciertos casos, pero se ha comprobado que provoca fugas de memoria con el modo LiveSync. Si usas el modo LiveSync, utiliza en su lugar el adaptador IDB.",
         ko: "IndexedDB 어댑터는 특정 상황에서 더 나은 성능을 보이는 경우가 많지만, LiveSync 모드에서 사용하면 메모리 누수를 일으키는 것으로 확인되었습니다. LiveSync 모드를 사용할 때는 IDB 어댑터를 사용해 주세요.",
         zh: "IndexedDB 适配器在某些场景下通常具有更好的性能，但在 LiveSync 模式下已发现可能导致内存泄漏。使用 LiveSync 模式时，请改用 IDB 适配器。",
+        "zh-tw":
+            "IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。",
     },
     "Ui.Settings.Patches.MigratingToIdb": {
         def: "Migrating all data to IDB...",
         es: "Migrando todos los datos a IDB...",
         ko: "모든 데이터를 IDB로 마이그레이션하는 중...",
         zh: "正在将所有数据迁移到 IDB...",
+        "zh-tw": "正在將所有資料遷移到 IDB...",
     },
     "Ui.Settings.Patches.MigratingToIndexedDb": {
         def: "Migrating all data to IndexedDB...",
         es: "Migrando todos los datos a IndexedDB...",
         ko: "모든 데이터를 IndexedDB로 마이그레이션하는 중...",
         zh: "正在将所有数据迁移到 IndexedDB...",
+        "zh-tw": "正在將所有資料遷移到 IndexedDB...",
     },
     "Ui.Settings.Patches.MigrationIdbCompleted": {
         def: "Migration to IDB completed. Obsidian will be restarted with the new configuration immediately.",
         es: "Migración a IDB completada. Obsidian se reiniciará de inmediato con la nueva configuración.",
         ko: "IDB로 마이그레이션이 완료되었습니다. 새 구성을 적용하기 위해 Obsidian이 곧 재시작됩니다.",
         zh: "已完成迁移到 IDB。Obsidian 将立即使用新配置重新启动。",
+        "zh-tw": "已完成遷移到 IDB。Obsidian 將立即以新設定重新啟動。",
     },
     "Ui.Settings.Patches.MigrationIdbCompletedFollowUp": {
         def: "Migration to IDB completed. Please switch the adapter and restart Obsidian.",
         es: "Migración a IDB completada. Cambia el adaptador y reinicia Obsidian.",
         ko: "IDB로 마이그레이션이 완료되었습니다. 어댑터를 전환하고 Obsidian을 재시작해 주세요.",
         zh: "已完成迁移到 IDB。请切换适配器并重新启动 Obsidian。",
+        "zh-tw": "已完成遷移到 IDB。請切換適配器並重新啟動 Obsidian。",
     },
     "Ui.Settings.Patches.MigrationIndexedDbCompleted": {
         def: "Migration to IndexedDB completed. Obsidian will be restarted with the new configuration immediately.",
         es: "Migración a IndexedDB completada. Obsidian se reiniciará de inmediato con la nueva configuración.",
         ko: "IndexedDB로 마이그레이션이 완료되었습니다. 새 구성을 적용하기 위해 Obsidian이 곧 재시작됩니다.",
         zh: "已完成迁移到 IndexedDB。Obsidian 将立即使用新配置重新启动。",
+        "zh-tw": "已完成遷移到 IndexedDB。Obsidian 將立即以新設定重新啟動。",
     },
     "Ui.Settings.Patches.MigrationIndexedDbCompletedFollowUp": {
         def: "Migration to IndexedDB completed. Please switch the adapter and restart Obsidian.",
         es: "Migración a IndexedDB completada. Cambia el adaptador y reinicia Obsidian.",
         ko: "IndexedDB로 마이그레이션이 완료되었습니다. 어댑터를 전환하고 Obsidian을 재시작해 주세요.",
         zh: "已完成迁移到 IndexedDB。请切换适配器并重新启动 Obsidian。",
+        "zh-tw": "已完成遷移到 IndexedDB。請切換適配器並重新啟動 Obsidian。",
     },
     "Ui.Settings.Patches.MigrationWarning": {
         def: "Changing this setting requires migrating existing data, which may take some time, and restarting Obsidian. Please make sure to back up your data before proceeding.",
         es: "Cambiar este ajuste requiere migrar los datos existentes, lo que puede tardar un rato, y reiniciar Obsidian. Asegúrate de hacer una copia de seguridad de tus datos antes de continuar.",
         ko: "이 설정을 변경하려면 기존 데이터를 마이그레이션하고(시간이 다소 걸릴 수 있습니다) Obsidian을 재시작해야 합니다. 진행하기 전에 반드시 데이터를 백업해 주세요.",
         zh: "修改此设置需要迁移现有数据（可能需要一些时间）并重新启动 Obsidian。请先备份你的数据后再继续。",
+        "zh-tw": "變更此設定需要遷移現有資料（可能需要一些時間），並重新啟動 Obsidian。請務必先備份資料再繼續。",
     },
     "Ui.Settings.Patches.OperationToIdb": {
         def: "to IDB",
         es: "a IDB",
         ko: "IDB로",
         zh: "迁移到 IDB",
+        "zh-tw": "遷移到 IDB",
     },
     "Ui.Settings.Patches.OperationToIndexedDb": {
         def: "to IndexedDB",
         es: "a IndexedDB",
         ko: "IndexedDB로",
         zh: "迁移到 IndexedDB",
+        "zh-tw": "遷移到 IndexedDB",
     },
     "Ui.Settings.Patches.Remediation": {
         def: "Remediation",
         es: "Remediación",
         ko: "복구 조치",
         zh: "修正",
+        "zh-tw": "修復設定",
     },
     "Ui.Settings.Patches.RemediationChanged": {
         def: "Remediation Setting Changed",
         es: "Se ha cambiado el ajuste de remediación",
         ko: "복구 설정이 변경됨",
         zh: "修正设置已更改",
+        "zh-tw": "修復設定已變更",
     },
     "Ui.Settings.Patches.RemediationNoLimit": {
         def: "No limit configured",
         es: "Sin límite configurado",
         ko: "제한이 설정되지 않음",
         zh: "未设置限制",
+        "zh-tw": "尚未設定限制",
     },
     "Ui.Settings.Patches.RemediationRestarting": {
         def: "Remediation setting changed. Restarting Obsidian...",
         es: "Se ha cambiado el ajuste de remediación. Reiniciando Obsidian...",
         ko: "복구 조치 설정이 변경되었습니다. Obsidian을 재시작하는 중...",
         zh: "修正设置已更改，正在重新启动 Obsidian...",
+        "zh-tw": "修復設定已變更，正在重新啟動 Obsidian...",
     },
     "Ui.Settings.Patches.RemediationRestartLater": {
         def: "Later",
         es: "Más tarde",
         ko: "나중에",
         zh: "稍后",
+        "zh-tw": "稍後",
     },
     "Ui.Settings.Patches.RemediationRestartMessage": {
         def: "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and the display may be inconsistent. Are you sure you want to restart now?",
         es: "Se recomienda encarecidamente reiniciar Obsidian. Hasta que lo hagas, puede que algunos cambios no surtan efecto y que la interfaz se muestre de forma inconsistente. ¿Seguro que quieres reiniciar ahora?",
         ko: "Obsidian을 재시작하는 것을 강력히 권장합니다. 재시작하기 전까지는 일부 변경 사항이 적용되지 않거나 화면이 일관되지 않게 표시될 수 있습니다. 지금 재시작하시겠습니까?",
         zh: "强烈建议重新启动 Obsidian。在重启之前，部分更改可能不会生效，界面显示也可能不一致。确定要现在重启吗？",
+        "zh-tw":
+            "強烈建議重新啟動 Obsidian。在重新啟動之前，部分變更可能不會生效，畫面顯示也可能不一致。你確定要現在重新啟動嗎？",
     },
     "Ui.Settings.Patches.RemediationRestartNow": {
         def: "Restart Now",
         es: "Reiniciar ahora",
         ko: "지금 재시작",
         zh: "立即重启",
+        "zh-tw": "立即重新啟動",
     },
     "Ui.Settings.Patches.RemediationSuffixChanged": {
         def: "Suffix has been changed. Reopening database...",
         es: "El sufijo ha cambiado. Reabriendo la base de datos...",
         ko: "접미사가 변경되었습니다. 데이터베이스를 다시 여는 중...",
         zh: "后缀已更改，正在重新打开数据库...",
+        "zh-tw": "後綴已變更，正在重新開啟資料庫...",
     },
     "Ui.Settings.Patches.RemediationWithValue": {
         def: "Limit: ${date} (${timestamp})",
         es: "Límite: ${date} (${timestamp})",
         ko: "제한: ${date} (${timestamp})",
         zh: "限制：${date}（${timestamp}）",
+        "zh-tw": "限制：${date}（${timestamp}）",
     },
     "Ui.Settings.Patches.RemoteDatabaseSunset": {
         def: "Remote Database Tweak (In sunset)",
         es: "Ajuste fino de la base de datos remota (en desuso)",
         ko: "원격 데이터베이스 조정 (폐기 예정)",
         zh: "远程数据库调整（即将弃用）",
+        "zh-tw": "遠端資料庫調校（即將淘汰）",
     },
     "Ui.Settings.Patches.SwitchToIDB": {
         def: "Switch to IDB",
         es: "Cambiar a IDB",
         ko: "IDB로 전환",
         zh: "切换到 IDB",
+        "zh-tw": "切換至 IDB",
     },
     "Ui.Settings.Patches.SwitchToIndexedDb": {
         def: "Switch to IndexedDB",
         es: "Cambiar a IndexedDB",
         ko: "IndexedDB로 전환",
         zh: "切换到 IndexedDB",
+        "zh-tw": "切換至 IndexedDB",
     },
     "Ui.Settings.PowerUsers.ConfigurationEncryption": {
         def: "Configuration Encryption",
         es: "Cifrado de la configuración",
         ko: "구성 암호화",
         zh: "配置加密",
+        "zh-tw": "設定加密",
     },
     "Ui.Settings.PowerUsers.ConnectionTweak": {
         def: "CouchDB Connection Tweak",
         es: "Ajuste fino de la conexión con CouchDB",
         ko: "CouchDB 연결 조정",
         zh: "CouchDB 连接调整",
+        "zh-tw": "CouchDB 連線調校",
     },
     "Ui.Settings.PowerUsers.ConnectionTweakDesc": {
         def: "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.",
         es: "Si alcanzas el límite de tamaño de carga al usar IBM Cloudant, reduce el tamaño de lote y el límite de lote.",
         ko: "IBM Cloudant를 사용하다가 페이로드 크기 제한에 도달했다면, 배치 크기와 배치 개수 제한을 더 낮은 값으로 줄여 주세요.",
         zh: "如果你在使用 IBM Cloudant 时遇到负载大小限制，请将 batch size 和 batch limit 调低。",
+        "zh-tw": "如果你在使用 IBM Cloudant 時遇到負載大小上限，請調低批次大小與批次上限。",
     },
     "Ui.Settings.PowerUsers.Default": {
         def: "Default",
         es: "Predeterminado",
         ko: "기본값",
         zh: "默认",
+        "zh-tw": "預設",
     },
     "Ui.Settings.PowerUsers.Developer": {
         def: "Developer",
         es: "Desarrollo",
         ko: "개발자",
         zh: "开发者",
+        "zh-tw": "開發者",
     },
     "Ui.Settings.PowerUsers.EncryptSensitiveConfig": {
         def: "Encrypt sensitive configuration items",
         es: "Cifrar los elementos sensibles de la configuración",
         ko: "민감한 구성 항목 암호화",
         zh: "加密敏感配置项",
+        "zh-tw": "加密敏感設定項目",
     },
     "Ui.Settings.PowerUsers.PromptPassphraseEveryLaunch": {
         def: "Ask for a passphrase at every launch",
         es: "Solicitar la frase de contraseña en cada inicio",
         ko: "시작할 때마다 패스프레이즈 묻기",
         zh: "每次启动时询问密码短语",
+        "zh-tw": "每次啟動時都詢問密語",
     },
     "Ui.Settings.PowerUsers.UseCustomPassphrase": {
         def: "Use a custom passphrase",
         es: "Usar una frase de contraseña personalizada",
         ko: "사용자 지정 패스프레이즈 사용",
         zh: "使用自定义密码短语",
+        "zh-tw": "使用自訂密語",
     },
     "Ui.Settings.Remote.Activate": {
         def: "Activate",
         es: "Activar",
         ko: "활성화",
         zh: "启用",
+        "zh-tw": "啟用",
     },
     "Ui.Settings.Remote.ActiveSuffix": {
         def: " (Active)",
         es: " (activo)",
         ko: " (활성)",
         zh: "（当前启用）",
+        "zh-tw": "（已啟用）",
     },
     "Ui.Settings.Remote.AddConnection": {
         def: "Add new connection",
         es: "Añadir conexión",
         ko: "연결 추가",
         zh: "新增连接",
+        "zh-tw": "新增連線",
     },
     "Ui.Settings.Remote.AddRemoteDefaultName": {
         def: "New Remote",
         es: "Remoto nuevo",
         ko: "새 원격",
         zh: "新远程端",
+        "zh-tw": "新增遠端",
     },
     "Ui.Settings.Remote.ConfigureAndChangeRemote": {
         def: "Configure and change remote",
         es: "Configurar y cambiar el remoto",
         ko: "원격 구성 및 변경",
         zh: "配置并切换远程端",
+        "zh-tw": "設定並切換遠端",
     },
     "Ui.Settings.Remote.ConfigureE2EE": {
         def: "Configure E2EE",
         es: "Configurar el E2EE",
         ko: "E2EE 구성",
         zh: "配置端到端加密",
+        "zh-tw": "設定 E2EE",
     },
     "Ui.Settings.Remote.ConfigureRemote": {
         def: "Configure Remote",
         es: "Configurar el remoto",
         ko: "원격 구성",
         zh: "配置远程端",
+        "zh-tw": "設定遠端",
     },
     "Ui.Settings.Remote.DeleteRemoteConfirm": {
         def: "Delete remote configuration '${name}'?",
         es: "¿Eliminar la configuración remota «${name}»?",
         ko: "'${name}' 원격 구성을 삭제할까요?",
         zh: "确定要删除远程配置“${name}”吗？",
+        "zh-tw": "要刪除遠端設定「${name}」嗎？",
     },
     "Ui.Settings.Remote.DeleteRemoteTitle": {
         def: "Delete Remote Configuration",
         es: "Eliminar la configuración remota",
         ko: "원격 구성 삭제",
         zh: "删除远程配置",
+        "zh-tw": "刪除遠端設定",
     },
     "Ui.Settings.Remote.DisplayName": {
         def: "Display name",
         es: "Nombre visible",
         ko: "표시 이름",
         zh: "显示名称",
+        "zh-tw": "顯示名稱",
     },
     "Ui.Settings.Remote.DuplicateRemote": {
         def: "Duplicate remote",
         es: "Duplicar el remoto",
         ko: "원격 구성 복사",
         zh: "复制远程配置",
+        "zh-tw": "複製遠端設定",
     },
     "Ui.Settings.Remote.DuplicateRemoteSuffix": {
         def: "${name} (Copy)",
         es: "${name} (copia)",
         ko: "${name} (사본)",
         zh: "${name}（副本）",
+        "zh-tw": "${name}（複製）",
     },
     "Ui.Settings.Remote.E2EEConfiguration": {
         def: "E2EE Configuration",
         es: "Configuración del E2EE",
         ko: "E2EE 구성",
         zh: "端到端加密配置",
+        "zh-tw": "E2EE 設定",
     },
     "Ui.Settings.Remote.Export": {
         def: "Export",
         es: "Exportar",
         ko: "내보내기",
         zh: "导出",
+        "zh-tw": "匯出",
     },
     "Ui.Settings.Remote.FetchRemoteSettings": {
         def: "Fetch remote settings",
         es: "Obtener los ajustes remotos",
         ko: "원격 설정 가져오기",
         zh: "获取远程设置",
+        "zh-tw": "抓取遠端設定",
     },
     "Ui.Settings.Remote.ImportConnection": {
         def: "Import connection",
         es: "Importar conexión",
         ko: "연결 가져오기",
         zh: "导入连接",
+        "zh-tw": "匯入連線",
     },
     "Ui.Settings.Remote.ImportConnectionPrompt": {
         def: "Paste a connection string",
         es: "Pega una cadena de conexión",
         ko: "연결 문자열 붙여넣기",
         zh: "粘贴连接字符串",
+        "zh-tw": "貼上連線字串",
     },
     "Ui.Settings.Remote.ImportedCouchDb": {
         def: "Imported CouchDB",
         es: "CouchDB importado",
         ko: "가져온 CouchDB",
         zh: "已导入的 CouchDB",
+        "zh-tw": "已匯入的 CouchDB",
     },
     "Ui.Settings.Remote.ImportedRemote": {
         def: "Remote",
         es: "Remoto",
         ko: "원격",
         zh: "远程端",
+        "zh-tw": "遠端",
     },
     "Ui.Settings.Remote.MoreActions": {
         def: "More actions",
         es: "Más acciones",
         ko: "추가 작업",
         zh: "更多操作",
+        "zh-tw": "更多操作",
     },
     "Ui.Settings.Remote.PeerToPeerPanel": {
         def: "Peer-to-Peer Synchronisation",
         es: "Sincronización punto a punto",
         ko: "피어 투 피어(P2P) 동기화",
         zh: "点对点同步",
+        "zh-tw": "Peer-to-Peer 同步",
     },
     "Ui.Settings.Remote.RemoteConfigurationPrefix": {
         def: "Remote configuration",
         es: "Configuración remota",
         ko: "원격 구성",
         zh: "远程配置",
+        "zh-tw": "遠端設定",
     },
     "Ui.Settings.Remote.RemoteDatabases": {
         def: "Remote Databases",
         es: "Bases de datos remotas",
         ko: "원격 데이터베이스",
         zh: "远程数据库",
+        "zh-tw": "遠端資料庫",
     },
     "Ui.Settings.Remote.RemoteName": {
         def: "Remote name",
         es: "Nombre del remoto",
         ko: "원격 이름",
         zh: "远程名称",
+        "zh-tw": "遠端名稱",
     },
     "Ui.Settings.Remote.RemoteNameCouchDb": {
         def: "CouchDB ${host}",
         es: "CouchDB ${host}",
         ko: "CouchDB ${host}",
         zh: "CouchDB ${host}",
+        "zh-tw": "CouchDB ${host}",
     },
     "Ui.Settings.Remote.RemoteNameP2P": {
         def: "P2P ${room}",
         es: "P2P ${room}",
         ko: "P2P ${room}",
         zh: "P2P ${room}",
+        "zh-tw": "P2P ${room}",
     },
     "Ui.Settings.Remote.RemoteNameS3": {
         def: "S3 ${bucket}",
         es: "S3 ${bucket}",
         ko: "S3 ${bucket}",
         zh: "S3 ${bucket}",
+        "zh-tw": "S3 ${bucket}",
     },
     "Ui.Settings.Remote.Rename": {
         def: "Rename",
         es: "Cambiar el nombre",
         ko: "이름 바꾸기",
         zh: "重命名",
+        "zh-tw": "重新命名",
     },
     "Ui.Settings.Selector.AddDefaultPatterns": {
         def: "Add default patterns",
         es: "Añadir patrones predeterminados",
         ko: "기본 패턴 추가",
         zh: "添加默认模式",
+        "zh-tw": "新增預設模式",
     },
     "Ui.Settings.Selector.CrossPlatform": {
         def: "Cross-platform",
         es: "Multiplataforma",
         ko: "크로스 플랫폼",
         zh: "跨平台",
+        "zh-tw": "跨平台",
     },
     "Ui.Settings.Selector.Default": {
         def: "Default",
         es: "Predeterminado",
         ko: "기본값",
         zh: "默认",
+        "zh-tw": "預設",
     },
     "Ui.Settings.Selector.HiddenFiles": {
         def: "Hidden Files",
         es: "Archivos ocultos",
         ko: "숨김 파일",
         zh: "隐藏文件",
+        "zh-tw": "隱藏檔案",
     },
     "Ui.Settings.Selector.IgnorePatterns": {
         def: "Ignore patterns",
         es: "Patrones de exclusión",
         ko: "무시 패턴",
         zh: "忽略模式",
+        "zh-tw": "忽略模式",
     },
     "Ui.Settings.Selector.NonSynchronisingFiles": {
         def: "Non-Synchronising files",
         es: "Archivos que no se sincronizan",
         ko: "동기화하지 않는 파일",
         zh: "不同步文件",
+        "zh-tw": "不同步的檔案",
     },
     "Ui.Settings.Selector.NonSynchronisingFilesDesc": {
         def: "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.",
         es: "(RegExp) Si se establece, se omitirá cualquier cambio en archivos locales y remotos que coincida con este patrón.",
         ko: "(정규식) 설정하면 이 패턴과 일치하는 로컬 및 원격 파일 변경은 모두 건너뜁니다.",
         zh: "（RegExp）如果设置了该项，则本地和远程中匹配这些规则的文件变更将被跳过。",
+        "zh-tw": "（正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。",
     },
     "Ui.Settings.Selector.NormalFiles": {
         def: "Normal Files",
         es: "Archivos normales",
         ko: "일반 파일",
         zh: "普通文件",
+        "zh-tw": "一般檔案",
     },
     "Ui.Settings.Selector.OverwritePatterns": {
         def: "Overwrite patterns",
         es: "Patrones de sobrescritura",
         ko: "덮어쓰기 패턴",
         zh: "覆盖模式",
+        "zh-tw": "覆寫模式",
     },
     "Ui.Settings.Selector.OverwritePatternsDesc": {
         def: "Patterns to match files for overwriting instead of merging",
         es: "Patrones de los archivos que se sobrescriben en lugar de combinarse",
         ko: "병합 대신 덮어쓸 파일을 판별하는 패턴",
         zh: "匹配后将执行覆盖而非合并的文件模式",
+        "zh-tw": "用於匹配需覆寫而非合併檔案的模式",
     },
     "Ui.Settings.Selector.SynchronisingFiles": {
         def: "Synchronising files",
         es: "Archivos que se sincronizan",
         ko: "동기화할 파일",
         zh: "同步文件",
+        "zh-tw": "同步中的檔案",
     },
     "Ui.Settings.Selector.SynchronisingFilesDesc": {
         def: "(RegExp) Empty to sync all files. Set a regular expression filter to limit synchronised files.",
         es: "(RegExp) Déjalo vacío para sincronizar todos los archivos. Define un filtro como expresión regular para limitar los archivos sincronizados.",
         ko: "(정규식) 비워 두면 모든 파일을 동기화합니다. 정규식 필터를 지정하면 동기화할 파일을 제한할 수 있습니다.",
         zh: "（RegExp）留空则同步所有文件。可设置正则表达式以限制需要同步的文件。",
+        "zh-tw": "（正則表示式）留空即同步所有檔案。設定正則表示式篩選器可限制要同步的檔案。",
     },
     "Ui.Settings.Selector.TargetPatterns": {
         def: "Target patterns",
         es: "Patrones de inclusión",
         ko: "대상 패턴",
         zh: "目标模式",
+        "zh-tw": "目標模式",
     },
     "Ui.Settings.Selector.TargetPatternsDesc": {
         def: "Patterns to match files for syncing",
         es: "Patrones de los archivos que se van a sincronizar",
         ko: "동기화할 파일을 판별하는 패턴",
         zh: "用于匹配需要同步文件的模式",
+        "zh-tw": "用於匹配同步檔案的模式",
     },
     "Ui.Settings.Setup.RerunWizardButton": {
         def: "Rerun Wizard",
         es: "Volver a ejecutar el asistente",
         ko: "마법사 다시 실행",
         zh: "重新运行向导",
+        "zh-tw": "重新執行精靈",
     },
     "Ui.Settings.Setup.RerunWizardDesc": {
         def: "Rerun the onboarding wizard to set up Self-hosted LiveSync again.",
         es: "Vuelve a ejecutar el asistente de configuración inicial para configurar Self-hosted LiveSync de nuevo.",
         ko: "온보딩 마법사를 다시 실행하여 Self-hosted LiveSync를 다시 설정합니다.",
         zh: "重新运行引导向导，再次设置 Self-hosted LiveSync。",
+        "zh-tw": "重新執行導覽精靈以再次設定 Self-hosted LiveSync。",
     },
     "Ui.Settings.Setup.RerunWizardName": {
         def: "Rerun Onboarding Wizard",
         es: "Volver a ejecutar el asistente de configuración inicial",
         ko: "온보딩 마법사 다시 실행",
         zh: "重新运行引导向导",
+        "zh-tw": "重新執行導覽精靈",
     },
     "Ui.Settings.SyncSettings.Fetch": {
         def: "Fetch",
         es: "Obtener",
         ko: "가져오기",
         zh: "获取",
+        "zh-tw": "抓取",
     },
     "Ui.Settings.SyncSettings.Merge": {
         def: "Merge",
         es: "Combinar",
         ko: "병합",
         zh: "合并",
+        "zh-tw": "合併",
     },
     "Ui.Settings.SyncSettings.Overwrite": {
         def: "Overwrite",
         es: "Sobrescribir",
         ko: "덮어쓰기",
         zh: "覆盖",
+        "zh-tw": "覆寫",
     },
     "Ui.SetupWizard.Common.Back": {
         def: "No, please take me back",
         es: "No, volver atrás",
         ko: "아니요, 이전으로 돌아가겠습니다",
         zh: "不，带我返回",
+        "zh-tw": "不，返回上一步",
     },
     "Ui.SetupWizard.Common.Cancel": {
         def: "Cancel",
         es: "Cancelar",
         ko: "취소",
         zh: "取消",
+        "zh-tw": "取消",
     },
     "Ui.SetupWizard.Common.ProceedSelectOption": {
         def: "Please select an option to proceed",
         es: "Selecciona una opción para continuar",
         ko: "계속하려면 항목을 선택해 주세요",
         zh: "请选择一个选项后继续",
+        "zh-tw": "請選擇一個選項以繼續",
     },
     "Ui.SetupWizard.Intro.ExistingOption": {
         def: "I am adding a device to an existing synchronisation setup",
         es: "Estoy añadiendo un dispositivo a una configuración de sincronización existente",
         ko: "기존 동기화 구성에 기기를 추가합니다",
         zh: "将此设备加入已有同步配置",
+        "zh-tw": "我要將裝置加入既有同步設定",
     },
     "Ui.SetupWizard.Intro.ExistingOptionDesc": {
         def: "Select this if you are already using synchronisation on another computer or smartphone. Use this option to connect this device to that existing setup.",
         es: "Elige esto si ya usas la sincronización en otro ordenador o móvil. Usa esta opción para conectar este dispositivo a esa configuración existente.",
         ko: "다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요. 이 기기를 기존 구성에 연결할 때 사용합니다.",
         zh: "如果你已经在另一台电脑或手机上使用同步，请选择此项。此选项用于将当前设备连接到既有同步配置。",
+        "zh-tw": "如果你已經在另一台電腦或手機上使用同步，請選擇此項。此選項用於將此裝置連接到既有的同步設定。",
     },
     "Ui.SetupWizard.Intro.Guidance": {
         def: "We will now guide you through a few questions to simplify the synchronisation setup.",
         es: "Te guiaremos con unas cuantas preguntas para simplificar la configuración de la sincronización.",
         ko: "동기화 설정을 간단히 마칠 수 있도록 몇 가지 질문으로 안내해 드리겠습니다.",
         zh: "接下来我们会通过几个问题，帮助你更轻松地完成同步配置。",
+        "zh-tw": "接下來我們會透過幾個問題，引導你更輕鬆地完成同步設定。",
     },
     "Ui.SetupWizard.Intro.NewOption": {
         def: "I am setting this up for the first time",
         es: "Lo estoy configurando por primera vez",
         ko: "처음으로 설정합니다",
         zh: "首次设置同步",
+        "zh-tw": "我是第一次進行設定",
     },
     "Ui.SetupWizard.Intro.NewOptionDesc": {
         def: "Select this if you are configuring this device as the first synchronisation device.",
         es: "Elige esto si estás configurando este dispositivo como el primero de la sincronización.",
         ko: "이 기기를 첫 번째 동기화 기기로 설정한다면 선택하세요.",
         zh: "如果你正把这台设备作为第一台同步设备进行配置，请选择此项。",
+        "zh-tw": "如果你正在將此裝置設定為第一台同步裝置，請選擇此項。",
     },
     "Ui.SetupWizard.Intro.ProceedExisting": {
         def: "Yes, I want to add this device to my existing synchronisation",
         es: "Sí, quiero añadir este dispositivo a mi sincronización existente",
         ko: "예, 이 기기를 기존 동기화 구성에 추가하겠습니다",
         zh: "是的，我要将此设备加入现有同步",
+        "zh-tw": "是的，我要把這台裝置加入既有同步",
     },
     "Ui.SetupWizard.Intro.ProceedNew": {
         def: "Yes, I want to set up a new synchronisation",
         es: "Sí, quiero configurar una sincronización nueva",
         ko: "예, 새 동기화를 설정하겠습니다",
         zh: "是的，我要开始新的同步配置",
+        "zh-tw": "是的，我要設定新的同步",
     },
     "Ui.SetupWizard.Intro.Question": {
         def: "First, please select the option that best describes your current situation.",
         es: "Primero, selecciona la opción que mejor describa tu situación actual.",
         ko: "먼저 현재 상황에 가장 잘 맞는 항목을 선택해 주세요.",
         zh: "首先，请选择最符合你当前情况的选项。",
+        "zh-tw": "首先，請選擇最符合你目前情況的選項。",
     },
     "Ui.SetupWizard.Intro.Title": {
         def: "Welcome to Self-hosted LiveSync",
         es: "Bienvenido a Self-hosted LiveSync",
         ko: "Self-hosted LiveSync에 오신 것을 환영합니다",
         zh: "欢迎使用 Self-hosted LiveSync",
+        "zh-tw": "歡迎使用 Self-hosted LiveSync",
     },
     "Ui.SetupWizard.Invitation.Start": {
         def: "Start setup",
@@ -11144,353 +11966,421 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "El remoto ya está configurado y la configuración es compatible (o pasa a serlo con esta operación).",
         ko: "원격이 이미 설정되어 있고, 구성도 호환됩니다(또는 이번 작업으로 호환되었습니다).",
         zh: "远程端已配置完成，且当前配置兼容（或已通过本次操作变为兼容）。",
+        "zh-tw": "遠端已經設定完成，且設定相容（或透過此操作變得相容）。",
     },
     "Ui.SetupWizard.OutroAskUserMode.CompatibleOptionDesc": {
         def: "Unless you are certain, selecting this option is risky. It assumes the server configuration is compatible with this device. If that is not the case, data loss may occur. Please make sure you understand the consequences.",
         es: "Si no estás seguro, elegir esta opción es arriesgado. Da por supuesto que la configuración del servidor es compatible con este dispositivo. Si no lo es, puede haber pérdida de datos. Asegúrate de entender las consecuencias.",
         ko: "확신이 없다면 이 옵션을 선택하는 것은 위험합니다. 서버 구성이 이 기기와 호환된다고 가정하기 때문에, 그렇지 않을 경우 데이터가 손실될 수 있습니다. 결과를 충분히 이해한 뒤에 선택해 주세요.",
         zh: "除非你非常确定，否则选择此项存在风险。它假定服务器配置与当前设备兼容。如果事实并非如此，可能会导致数据丢失。请确认你了解后果。",
+        "zh-tw":
+            "除非你很確定，否則選擇此選項有風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解這麼做的後果。",
     },
     "Ui.SetupWizard.OutroAskUserMode.ExistingOption": {
         def: "My remote server is already set up. I want to join this device.",
         es: "Mi servidor remoto ya está configurado. Quiero añadir este dispositivo.",
         ko: "원격 서버가 이미 설정되어 있습니다. 이 기기를 참여시키려고 합니다.",
         zh: "远程服务器已经配置完成，我想让此设备加入同步。",
+        "zh-tw": "我的遠端伺服器已經設定完成，我想讓這台裝置加入。",
     },
     "Ui.SetupWizard.OutroAskUserMode.ExistingOptionDesc": {
         def: "Selecting this option will make this device join the existing server. You need to fetch the existing synchronisation data from the server to this device.",
         es: "Al elegir esta opción, este dispositivo se unirá al servidor existente. Tendrás que obtener del servidor los datos de sincronización ya existentes.",
         ko: "이 옵션을 선택하면 이 기기가 기존 서버에 참여합니다. 서버에 있는 기존 동기화 데이터를 이 기기로 가져와야 합니다.",
         zh: "选择此项后，此设备会加入已有服务器。你需要将服务器上的现有同步数据获取到此设备。",
+        "zh-tw": "選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料擷取到此裝置。",
     },
     "Ui.SetupWizard.OutroAskUserMode.Guidance": {
         def: "The connection to the server has been configured successfully. As the next step, the local database, in other words the synchronisation information, must be rebuilt.",
         es: "La conexión con el servidor se ha configurado correctamente. Como paso siguiente hay que reconstruir la base de datos local, es decir, la información de sincronización.",
         ko: "서버 연결이 정상적으로 구성되었습니다. 다음 단계로, 로컬 데이터베이스 즉 동기화 정보를 재구축해야 합니다.",
         zh: "服务器连接已成功配置。下一步需要重建本地数据库，也就是同步状态信息。",
+        "zh-tw": "與伺服器的連線已成功設定完成。接下來，本機資料庫，也就是同步資訊，必須重新建立。",
     },
     "Ui.SetupWizard.OutroAskUserMode.NewOption": {
         def: "I am setting up a new server for the first time / I want to reset my existing server.",
         es: "Estoy configurando un servidor nuevo por primera vez / quiero restablecer mi servidor actual.",
         ko: "서버를 처음 설정합니다 / 기존 서버를 초기화하려고 합니다.",
         zh: "我是第一次配置新服务器 / 我想重置现有服务器。",
+        "zh-tw": "我是第一次設定新的伺服器／我想要重設現有的伺服器。",
     },
     "Ui.SetupWizard.OutroAskUserMode.NewOptionDesc": {
         def: "Selecting this option will initialise the server using the current data on this device. Any existing data on the server will be completely overwritten.",
         es: "Al elegir esta opción, el servidor se inicializará con los datos actuales de este dispositivo. Cualquier dato existente en el servidor se sobrescribirá por completo.",
         ko: "이 옵션을 선택하면 이 기기의 현재 데이터로 서버를 초기화합니다. 서버에 있던 기존 데이터는 완전히 덮어써집니다.",
         zh: "选择此项后，服务器会使用当前设备上的数据进行初始化。服务器上的现有数据将被完全覆盖。",
+        "zh-tw": "選擇此選項會使用此裝置目前的資料來初始化伺服器，伺服器上任何現有資料都會被完全覆寫。",
     },
     "Ui.SetupWizard.OutroAskUserMode.ProceedApplySettings": {
         def: "Apply the settings",
         es: "Aplicar los ajustes",
         ko: "설정 적용",
         zh: "应用这些设置",
+        "zh-tw": "套用設定",
     },
     "Ui.SetupWizard.OutroAskUserMode.ProceedNext": {
         def: "Proceed to the next step.",
         es: "Continuar al paso siguiente.",
         ko: "다음 단계로 진행합니다.",
         zh: "继续下一步",
+        "zh-tw": "繼續前往下一步。",
     },
     "Ui.SetupWizard.OutroAskUserMode.Question": {
         def: "Please select your situation.",
         es: "Selecciona tu situación.",
         ko: "현재 상황을 선택해 주세요.",
         zh: "请选择你的当前情况。",
+        "zh-tw": "請選擇符合你情況的選項。",
     },
     "Ui.SetupWizard.OutroAskUserMode.Title": {
         def: "Mostly Complete: Decision Required",
         es: "Casi terminado: se requiere una decisión",
         ko: "거의 완료: 선택이 필요합니다",
         zh: "即将完成：还需要做出选择",
+        "zh-tw": "大致完成：需要你做出決定",
     },
     "Ui.SetupWizard.OutroNewP2PUser.GuidanceNotice": {
         def: "P2P has no central server copy to overwrite. This step prepares only this device; keep it online when another device fetches its initial data.",
         es: "En P2P no hay una copia en un servidor central que sobrescribir. Este paso prepara solo este dispositivo; mantenlo conectado cuando otro dispositivo obtenga sus datos iniciales.",
         ko: "P2P에는 덮어쓸 중앙 서버 사본이 없습니다. 이 단계는 이 기기만 준비하며, 다른 기기가 초기 데이터를 가져올 때는 이 기기를 온라인 상태로 유지해 주세요.",
+        "zh-tw":
+            "P2P 沒有中央伺服器複本可覆寫。此步驟只會準備這台裝置；當其他裝置擷取初始資料時，請讓這台裝置保持連線。",
     },
     "Ui.SetupWizard.OutroNewP2PUser.GuidancePrimary": {
         def: "The peer-to-peer connection has been configured successfully. Next, the local LiveSync database will be built from the current files in this Vault.",
         es: "La conexión punto a punto se ha configurado correctamente. A continuación, la base de datos local de LiveSync se construirá a partir de los archivos actuales de este Vault.",
         ko: "Peer-to-Peer 연결이 정상적으로 구성되었습니다. 다음 단계로, 이 보관함의 현재 파일을 사용해 로컬 LiveSync 데이터베이스를 만듭니다.",
+        "zh-tw": "Peer-to-Peer 連線已成功設定完成。接下來，將依此 Vault 目前的檔案建立本機 LiveSync 資料庫。",
     },
     "Ui.SetupWizard.OutroNewP2PUser.Important": {
         def: "PLEASE NOTE",
         es: "TEN EN CUENTA",
         ko: "유의해 주세요",
+        "zh-tw": "請注意",
     },
     "Ui.SetupWizard.OutroNewP2PUser.Proceed": {
         def: "Restart and Prepare This Device",
         es: "Reiniciar y preparar este dispositivo",
         ko: "재시작하고 이 기기 준비",
+        "zh-tw": "重新啟動並準備此裝置",
     },
     "Ui.SetupWizard.OutroNewP2PUser.Question": {
         def: "Please select the button below to restart and proceed to the local initialisation confirmation.",
         es: "Pulsa el botón de abajo para reiniciar y pasar a la confirmación de la inicialización local.",
         ko: "재시작하고 로컬 초기화 확인 단계로 넘어가려면 아래 버튼을 선택해 주세요.",
+        "zh-tw": "請點選下方按鈕以重新啟動，並前往本機初始化確認步驟。",
     },
     "Ui.SetupWizard.OutroNewP2PUser.Title": {
         def: "Setup Complete: Preparing This P2P Device",
         es: "Configuración completada: preparando este dispositivo P2P",
         ko: "설정 완료: 이 P2P 기기 준비",
+        "zh-tw": "設定完成：準備此 P2P 裝置",
     },
     "Ui.SetupWizard.OutroNewUser.GuidancePrimary": {
         def: "The connection to the server has been configured successfully. As the next step, the synchronisation data on the server will be built from the current data on this device.",
         es: "La conexión con el servidor se ha configurado correctamente. Como paso siguiente, los datos de sincronización del servidor se construirán a partir de los datos actuales de este dispositivo.",
         ko: "서버 연결이 정상적으로 구성되었습니다. 다음 단계로, 이 기기의 현재 데이터를 사용해 서버의 동기화 데이터를 만듭니다.",
         zh: "服务器连接已成功配置。下一步将根据当前设备上的数据，在服务器端建立同步数据。",
+        "zh-tw": "與伺服器的連線已成功設定完成。接下來，伺服器上的同步資料將依此裝置目前的資料建立。",
     },
     "Ui.SetupWizard.OutroNewUser.GuidanceWarning": {
         def: "After restarting, the data on this device will be uploaded to the server as the master copy. Please note that any unintended data currently on the server will be completely overwritten.",
         es: "Tras reiniciar, los datos de este dispositivo se subirán al servidor como copia maestra. Ten en cuenta que cualquier dato no deseado que haya ahora en el servidor se sobrescribirá por completo.",
         ko: "재시작하면 이 기기의 데이터가 원본으로서 서버에 업로드됩니다. 현재 서버에 있는 데이터는 의도치 않은 것이라도 완전히 덮어써지므로 유의해 주세요.",
         zh: "重启后，当前设备上的数据会作为主副本上传到服务器。请注意，服务器上现有的非预期数据将被完全覆盖。",
+        "zh-tw":
+            "重新啟動後，此裝置上的資料將以主要複本的形式上傳到伺服器。請注意，伺服器上任何非預期的現有資料都會被完全覆寫。",
     },
     "Ui.SetupWizard.OutroNewUser.Important": {
         def: "IMPORTANT",
         es: "IMPORTANTE",
         ko: "중요",
         zh: "重要",
+        "zh-tw": "重要",
     },
     "Ui.SetupWizard.OutroNewUser.Proceed": {
         def: "Restart and Initialise Server",
         es: "Reiniciar e inicializar el servidor",
         ko: "재시작하고 서버 초기화",
         zh: "重启并初始化服务器",
+        "zh-tw": "重新啟動並初始化伺服器",
     },
     "Ui.SetupWizard.OutroNewUser.Question": {
         def: "Please select the button below to restart and proceed to the final confirmation.",
         es: "Pulsa el botón de abajo para reiniciar y pasar a la confirmación final.",
         ko: "재시작하고 마지막 확인 단계로 넘어가려면 아래 버튼을 선택해 주세요.",
         zh: "请选择下方按钮，重启并进入最终确认步骤。",
+        "zh-tw": "請點選下方按鈕以重新啟動，並前往最終確認步驟。",
     },
     "Ui.SetupWizard.OutroNewUser.Title": {
         def: "Setup Complete: Preparing to Initialise Server",
         es: "Configuración completada: preparando la inicialización del servidor",
         ko: "설정 완료: 서버 초기화 준비",
         zh: "设置完成：准备初始化服务器",
+        "zh-tw": "設定完成：準備初始化伺服器",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.ConfirmLocalReset": {
         def: "I understand that this resets only this device's local synchronisation database.",
         es: "Entiendo que esto restablece únicamente la base de datos de sincronización local de este dispositivo.",
         ko: "이 작업이 이 기기의 로컬 동기화 데이터베이스만 초기화한다는 것을 이해했습니다.",
+        "zh-tw": "我了解這只會重設此裝置的本機同步資料庫。",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.ConfirmLocalResetNote": {
         def: "The files currently in this Vault are used to rebuild it.",
         es: "Se usarán los archivos que hay ahora en este Vault para reconstruirla.",
         ko: "현재 이 보관함에 있는 파일을 사용해 재구축합니다.",
+        "zh-tw": "此 Vault 目前的檔案將用於重建它。",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.ConfirmTitle": {
         def: "⚠️ Please Confirm the Following",
         es: "⚠️ Confirma lo siguiente",
         ko: "⚠️ 다음 내용을 확인해 주세요",
+        "zh-tw": "⚠️ 請確認以下事項",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.Guidance": {
         def: "This procedure will discard the local LiveSync database on this device and rebuild it from the current files in this Vault. It does not delete or overwrite data on another device.",
         es: "Este procedimiento descartará la base de datos local de LiveSync de este dispositivo y la reconstruirá a partir de los archivos actuales de este Vault. No elimina ni sobrescribe datos de otro dispositivo.",
         ko: "이 절차는 이 기기의 로컬 LiveSync 데이터베이스를 삭제하고, 이 보관함의 현재 파일로 재구축합니다. 다른 기기의 데이터는 삭제하거나 덮어쓰지 않습니다.",
+        "zh-tw":
+            "此程序會捨棄此裝置上的本機 LiveSync 資料庫，並依此 Vault 目前的檔案重新建立。它不會刪除或覆寫其他裝置上的資料。",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.Note": {
         def: "Keep this device online after initialisation so that another device can fetch the Vault from it.",
         es: "Mantén este dispositivo conectado después de la inicialización para que otro dispositivo pueda obtener el Vault desde él.",
         ko: "초기화 후에도 다른 기기가 이 기기에서 보관함을 가져올 수 있도록 이 기기를 온라인 상태로 유지해 주세요.",
+        "zh-tw": "初始化完成後請讓此裝置保持連線，以便其他裝置能從它擷取 Vault。",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.Proceed": {
         def: "I Understand, Prepare This Device",
         es: "Lo entiendo, preparar este dispositivo",
         ko: "이해했습니다, 이 기기 준비",
+        "zh-tw": "我了解，準備此裝置",
     },
     "Ui.SetupWizard.RebuildEverythingP2P.Title": {
         def: "Final Confirmation: Prepare This Device for P2P",
         es: "Confirmación final: preparar este dispositivo para P2P",
         ko: "최종 확인: P2P를 위한 이 기기 준비",
+        "zh-tw": "最終確認：為 P2P 準備此裝置",
     },
     "Ui.SetupWizard.SelectExisting.Guidance": {
         def: "You are adding this device to an existing synchronisation setup.",
         es: "Estás añadiendo este dispositivo a una configuración de sincronización existente.",
         ko: "이 기기를 기존 동기화 구성에 추가합니다.",
         zh: "你正在将此设备加入已有同步配置。",
+        "zh-tw": "你正在將此裝置加入既有同步設定中。",
     },
     "Ui.SetupWizard.SelectExisting.ManualOption": {
         def: "Configure a remote manually",
         es: "Configurar un remoto manualmente",
         ko: "서버 정보를 수동으로 입력",
         zh: "手动输入服务器信息",
+        "zh-tw": "手動設定遠端",
     },
     "Ui.SetupWizard.SelectExisting.ManualOptionDesc": {
         def: "Configure the same remote as your other devices again manually. This is intended only for advanced users.",
         es: "Vuelve a configurar manualmente el mismo remoto que en tus otros dispositivos. Está pensado solo para usuarios avanzados.",
         ko: "다른 기기와 동일한 서버 정보를 다시 직접 입력합니다. 숙련된 사용자 전용입니다.",
         zh: "手动重新配置与你其他设备相同的服务器信息。此方式仅适用于高级用户。",
+        "zh-tw": "手動重新設定與你其他裝置相同的遠端，僅適合進階使用者。",
     },
     "Ui.SetupWizard.SelectExisting.ProceedManual": {
         def: "Proceed with manual configuration",
         es: "Continuar con la configuración manual",
         ko: "서버 정보를 알고 있으니 직접 입력하겠습니다",
         zh: "我知道服务器信息，让我手动输入",
+        "zh-tw": "繼續進行手動設定",
     },
     "Ui.SetupWizard.SelectExisting.ProceedQr": {
         def: "Scan the QR code displayed on an active device using this device's camera.",
         es: "Escanea con la cámara de este dispositivo el código QR mostrado en un dispositivo activo.",
         ko: "이 기기의 카메라로 사용 중인 기기에 표시된 QR 코드를 스캔하세요.",
         zh: "使用本设备摄像头扫描活动设备上显示的二维码",
+        "zh-tw": "使用目前裝置的相機掃描另一台已在使用裝置上顯示的 QR Code。",
     },
     "Ui.SetupWizard.SelectExisting.ProceedSetupUri": {
         def: "Proceed with Setup URI",
         es: "Continuar con el Setup URI",
         ko: "Setup URI로 계속",
         zh: "使用 Setup URI 继续",
+        "zh-tw": "繼續使用 Setup URI",
     },
     "Ui.SetupWizard.SelectExisting.QrOption": {
         def: "Scan a QR Code (Recommended for mobile)",
         es: "Escanear un código QR (recomendado en móvil)",
         ko: "QR 코드 스캔(모바일 권장)",
         zh: "扫描二维码（移动端推荐）",
+        "zh-tw": "掃描 QR Code（行動裝置推薦）",
     },
     "Ui.SetupWizard.SelectExisting.QrOptionDesc": {
         def: "Scan the QR code displayed on an active device using this device's camera.",
         es: "Escanea con la cámara de este dispositivo el código QR mostrado en un dispositivo activo.",
         ko: "이 기기의 카메라로 사용 중인 기기에 표시된 QR 코드를 스캔하세요.",
         zh: "使用本设备摄像头扫描活动设备上显示的二维码。",
+        "zh-tw": "使用目前裝置的相機掃描另一台已在使用裝置上顯示的 QR Code。",
     },
     "Ui.SetupWizard.SelectExisting.Question": {
         def: "Please select a method to import the settings from another device.",
         es: "Selecciona un método para importar los ajustes desde otro dispositivo.",
         ko: "다른 기기에서 설정을 가져올 방법을 선택해 주세요.",
         zh: "请选择一种从其他设备导入设置的方法。",
+        "zh-tw": "請選擇一種從其他裝置匯入設定的方法。",
     },
     "Ui.SetupWizard.SelectExisting.SetupUriOption": {
         def: "Use a Setup URI (Recommended)",
         es: "Usar un Setup URI (recomendado)",
         ko: "Setup URI 사용(권장)",
         zh: "使用 Setup URI（推荐）",
+        "zh-tw": "使用 Setup URI（推薦）",
     },
     "Ui.SetupWizard.SelectExisting.SetupUriOptionDesc": {
         def: "Paste the Setup URI generated from one of your active devices.",
         es: "Pega el Setup URI generado en uno de tus dispositivos activos.",
         ko: "사용 중인 기기 중 하나에서 생성한 Setup URI를 붙여 넣으세요.",
         zh: "粘贴从某台已启用设备生成的 Setup URI。",
+        "zh-tw": "貼上從一台已在使用裝置上產生的 Setup URI。",
     },
     "Ui.SetupWizard.SelectExisting.Title": {
         def: "Device Setup Method",
         es: "Método de configuración del dispositivo",
         ko: "기기 설정 방법",
         zh: "设备设置方式",
+        "zh-tw": "裝置設定方式",
     },
     "Ui.SetupWizard.SelectNew.Guidance": {
         def: "We will now configure the synchronisation connection.",
         es: "Vamos a configurar la conexión de sincronización.",
         ko: "이제 서버 구성을 진행하겠습니다.",
         zh: "接下来将继续配置服务器连接信息。",
+        "zh-tw": "接下來我們將設定同步連線。",
     },
     "Ui.SetupWizard.SelectNew.ManualOption": {
         def: "Configure a remote manually",
         es: "Configurar un remoto manualmente",
         ko: "서버 정보를 수동으로 입력",
         zh: "手动输入服务器信息",
+        "zh-tw": "手動設定遠端",
     },
     "Ui.SetupWizard.SelectNew.ManualOptionDesc": {
         def: "This is an advanced option for users who do not have a Setup URI or who want to configure detailed settings. You can also use it for P2P synchronisation instead of CouchDB or S3-compatible Object Storage.",
         es: "Es una opción avanzada para quienes no tienen un Setup URI o quieren ajustar la configuración en detalle. También puedes usarla para la sincronización P2P en lugar de CouchDB o de un almacenamiento de objetos compatible con S3.",
         ko: "Setup URI가 없거나 세부 설정을 직접 구성하려는 사용자를 위한 고급 옵션입니다.",
         zh: "如果你没有 Setup URI，或希望自行配置更详细的参数，可选择此高级选项。",
+        "zh-tw":
+            "這是進階選項，適合沒有 Setup URI 或想要詳細設定的使用者。你也可以用它來設定 P2P 同步，取代 CouchDB 或 S3 相容物件儲存。",
     },
     "Ui.SetupWizard.SelectNew.ProceedManual": {
         def: "Proceed with manual configuration",
         es: "Continuar con la configuración manual",
         ko: "서버 정보를 알고 있으니 직접 입력하겠습니다",
         zh: "我知道服务器信息，让我手动输入",
+        "zh-tw": "繼續進行手動設定",
     },
     "Ui.SetupWizard.SelectNew.ProceedSetupUri": {
         def: "Proceed with Setup URI",
         es: "Continuar con el Setup URI",
         ko: "Setup URI로 계속",
         zh: "使用 Setup URI 继续",
+        "zh-tw": "繼續使用 Setup URI",
     },
     "Ui.SetupWizard.SelectNew.Question": {
         def: "How would you like to configure this synchronisation connection?",
         es: "¿Cómo quieres configurar esta conexión de sincronización?",
         ko: "서버 연결을 어떻게 구성하시겠습니까?",
         zh: "你希望如何配置服务器连接？",
+        "zh-tw": "你希望如何設定這個同步連線？",
     },
     "Ui.SetupWizard.SelectNew.SetupUriOption": {
         def: "Use a Setup URI (Recommended)",
         es: "Usar un Setup URI (recomendado)",
         ko: "Setup URI 사용(권장)",
         zh: "使用 Setup URI（推荐）",
+        "zh-tw": "使用 Setup URI（推薦）",
     },
     "Ui.SetupWizard.SelectNew.SetupUriOptionDesc": {
         def: "A Setup URI is a single string containing connection and authentication details. When one is available from a setup script, it provides a simple and secure configuration method.",
         es: "Un Setup URI es una única cadena que contiene los datos de conexión y autenticación. Cuando un script de instalación te proporciona uno, es la forma más sencilla y segura de configurarlo.",
         ko: "Setup URI는 서버 주소와 인증 정보를 담은 하나의 문자열입니다. 서버 설치 스크립트가 URI를 생성했다면, 간단하고 안전하게 구성할 수 있는 방법입니다.",
         zh: "Setup URI 是一段包含服务器地址和认证信息的文本。如果你的服务器安装脚本已经生成了它，这是最简单且安全的配置方式。",
+        "zh-tw":
+            "Setup URI 是一段包含連線與驗證資訊的字串。如果安裝腳本已經產生了它，使用它是一種簡單且安全的設定方式。",
     },
     "Ui.SetupWizard.SelectNew.Title": {
         def: "Connection Method",
         es: "Método de conexión",
         ko: "연결 방법",
         zh: "连接方式",
+        "zh-tw": "連線方式",
     },
     "Ui.SetupWizard.SetupRemote.BucketOption": {
         def: "S3-compatible Object Storage",
         es: "Almacenamiento de objetos compatible con S3",
         ko: "S3/MinIO/R2 객체 스토리지",
         zh: "S3/MinIO/R2 对象存储",
+        "zh-tw": "S3 相容物件儲存",
     },
     "Ui.SetupWizard.SetupRemote.BucketOptionDesc": {
         def: "Synchronisation using journal files. You must already have an S3-compatible Object Storage service set up, such as Amazon S3, MinIO, or Cloudflare R2.",
         es: "Sincronización mediante archivos de diario. Necesitas tener ya un servicio de almacenamiento de objetos compatible con S3, como Amazon S3, MinIO o Cloudflare R2.",
         ko: "저널 파일을 사용하는 동기화 방식입니다. S3/MinIO/R2 호환 객체 스토리지 서비스를 미리 구성해 두어야 합니다.",
         zh: "使用日志文件进行同步。你需要先准备好兼容 S3/MinIO/R2 的对象存储服务。",
+        "zh-tw": "使用日誌檔進行同步。你需要事先準備好相容 S3 的物件儲存服務，例如 Amazon S3、MinIO 或 Cloudflare R2。",
     },
     "Ui.SetupWizard.SetupRemote.CouchDbOptionDesc": {
         def: "This is the most suitable synchronisation method for the current design. All features are available. You must already have a CouchDB instance set up.",
         es: "Es el método de sincronización más adecuado para el diseño actual y ofrece todas las funciones. Necesitas tener ya una instancia de CouchDB en marcha.",
         ko: "현재 설계에 가장 적합한 동기화 방식입니다. 모든 기능을 사용할 수 있습니다. CouchDB 인스턴스를 미리 구성해 두어야 합니다.",
         zh: "这是当前设计下最适合的同步方式，所有功能都可用。你需要先准备好 CouchDB 实例。",
+        "zh-tw": "這是目前設計下最適合的同步方式，所有功能皆可使用。你需要事先準備好 CouchDB 實例。",
     },
     "Ui.SetupWizard.SetupRemote.Guidance": {
         def: "Select the remote type for this synchronisation setup.",
         es: "Selecciona el tipo de remoto para esta configuración de sincronización.",
         ko: "연결할 서버 유형을 선택해 주세요.",
         zh: "请选择你要连接的服务器类型。",
+        "zh-tw": "請選擇這次同步設定要使用的遠端類型。",
     },
     "Ui.SetupWizard.SetupRemote.P2POption": {
         def: "Peer-to-Peer (P2P)",
         es: "Punto a punto (P2P)",
         ko: "Peer-to-Peer 전용",
         zh: "仅点对点",
+        "zh-tw": "Peer-to-Peer（P2P）",
     },
     "Ui.SetupWizard.SetupRemote.P2POptionDesc": {
         def: "This enables direct synchronisation between devices. No server is required, but both devices must be online at the same time and some features may be limited. Internet connectivity is required only for signalling, not for data transfer.",
         es: "Permite la sincronización directa entre dispositivos. No hace falta servidor, pero ambos dispositivos deben estar conectados a la vez y algunas funciones pueden estar limitadas. Solo se necesita internet para la señalización, no para transferir los datos.",
         ko: "기기 간에 직접 동기화하는 방식입니다. 서버는 필요 없지만 두 기기가 동시에 온라인 상태여야 하며, 일부 기능은 제한될 수 있습니다. 인터넷 연결은 시그널링에만 필요하고 데이터 전송에는 필요하지 않습니다.",
         zh: "启用设备之间的直接同步。无需服务器，但两台设备必须同时在线，且部分功能可能受限。互联网连接仅用于信令，不用于传输数据。",
+        "zh-tw":
+            "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。",
     },
     "Ui.SetupWizard.SetupRemote.ProceedBucket": {
         def: "Continue to Object Storage setup",
         es: "Continuar con la configuración del almacenamiento de objetos",
         ko: "S3/MinIO/R2 설정으로 계속",
         zh: "继续配置 S3/MinIO/R2",
+        "zh-tw": "繼續進行物件儲存設定",
     },
     "Ui.SetupWizard.SetupRemote.ProceedCouchDb": {
         def: "Continue to CouchDB setup",
         es: "Continuar con la configuración de CouchDB",
         ko: "CouchDB 설정으로 계속",
         zh: "继续配置 CouchDB",
+        "zh-tw": "繼續進行 CouchDB 設定",
     },
     "Ui.SetupWizard.SetupRemote.ProceedP2P": {
         def: "Continue to P2P setup",
         es: "Continuar con la configuración de P2P",
         ko: "Peer-to-Peer 전용 설정으로 계속",
         zh: "继续配置仅点对点模式",
+        "zh-tw": "繼續進行 P2P 設定",
     },
     "Ui.SetupWizard.SetupRemote.Title": {
         def: "Choose a synchronisation remote",
         es: "Elige un remoto de sincronización",
         ko: "서버 정보 입력",
         zh: "输入服务器信息",
+        "zh-tw": "選擇同步遠端",
     },
     "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.": {
         def: "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.",
@@ -11501,22 +12391,27 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 동기화된 기기 간 고유 이름입니다. 이 설정을 편집하려면 사용자 설정 동기화를 한 번 비활성화해 주세요.",
         ru: "Уникальное имя между всеми синхронизируемыми устройствами.",
         zh: "所有同步设备之间的唯一名称。要编辑此设置,请首先禁用自定义同步",
+        "zh-tw": "所有同步裝置之間的唯一名稱。若要編輯此設定，請先停用自訂同步一次。",
     },
     "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing.":
         {
             def: "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing.",
             es: "Si no estás seguro, elegir esta opción es algo arriesgado. Da por supuesto que la configuración del servidor es compatible con este dispositivo. Si no lo es, puede haber pérdida de datos. Asegúrate de saber lo que haces.",
             ko: "확신이 없다면 이 옵션을 선택하는 것은 다소 위험합니다. 이 옵션은 서버 구성이 이 기기와 호환된다고 가정합니다. 그렇지 않은 경우 데이터가 손실될 수 있습니다. 무엇을 하려는지 충분히 이해한 상태에서 진행해 주세요.",
+            "zh-tw":
+                "除非你很確定，否則選擇此選項有一定風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解自己在做什麼。",
         },
     "Updating list...": {
         def: "Updating list...",
         es: "Actualizando lista...",
         ko: "목록을 갱신하는 중입니다...",
+        "zh-tw": "正在更新清單...",
     },
     URL: {
         def: "URL",
         es: "URL",
         ko: "URL",
+        "zh-tw": "URL",
     },
     "Use a custom passphrase": {
         def: "Use a custom passphrase",
@@ -11525,6 +12420,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자 지정 패스프레이즈 사용",
         ru: "Использовать пользовательскую парольную фразу",
         zh: "使用自定义密码短语",
+        "zh-tw": "使用自訂密語",
     },
     "Use a Setup URI (Recommended)": {
         def: "Use a Setup URI (Recommended)",
@@ -11544,11 +12440,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "커스텀 HTTP 핸들러 사용",
         ru: "Использовать пользовательский HTTP обработчик",
         zh: "使用自定义 HTTP 处理程序",
+        "zh-tw": "使用自訂 HTTP 處理程式",
     },
     "Use Diagnostic RTCPeerConnection for statistics": {
         def: "Use Diagnostic RTCPeerConnection for statistics",
         es: "Usar el RTCPeerConnection de diagnóstico para las estadísticas",
         ko: "통계에 진단용 RTCPeerConnection 사용",
+        "zh-tw": "啟用 RTCPeerConnection 診斷以取得統計資訊",
     },
     "Use dynamic iteration count": {
         def: "Use dynamic iteration count",
@@ -11559,31 +12457,37 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동적 반복 횟수 사용",
         ru: "Использовать динамическое количество итераций",
         zh: "使用动态迭代次数",
+        "zh-tw": "使用動態迭代次數",
     },
     "Use internal API": {
         def: "Use internal API",
         es: "Usar la API interna",
         ko: "내부 API 사용",
+        "zh-tw": "使用內部 API",
     },
     "Use Internal API": {
         def: "Use Internal API",
         es: "Usar la API interna",
         ko: "내부 API 사용",
+        "zh-tw": "使用內部 API",
     },
     "Use JWT Authentication": {
         def: "Use JWT Authentication",
         es: "Usar autenticación JWT",
         ko: "JWT 인증 사용",
+        "zh-tw": "使用 JWT 驗證",
     },
     "Use Path-Style Access": {
         def: "Use Path-Style Access",
         es: "Usar acceso de tipo ruta (path-style)",
         ko: "경로 방식(Path-Style) 접근 사용",
+        "zh-tw": "使用路徑樣式存取",
     },
     "Use Random Number": {
         def: "Use Random Number",
         es: "Usar número aleatorio",
         ko: "임의의 숫자 사용",
+        "zh-tw": "使用隨機數字",
     },
     "Use Segmented-splitter": {
         def: "Use Segmented-splitter",
@@ -11594,6 +12498,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "의미 기반 분할 사용",
         ru: "Использовать сегментный разделитель",
         zh: "使用分段分割器",
+        "zh-tw": "使用分段式分割器",
     },
     "Use splitting-limit-capped chunk splitter": {
         def: "Use splitting-limit-capped chunk splitter",
@@ -11604,6 +12509,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "분할 제한 상한 청크 분할기 사용",
         ru: "Использовать разделитель чанков с ограничением",
         zh: "使用分割限制上限的块分割器",
+        "zh-tw": "使用有分割上限的 chunk 分割器",
     },
     "Use the trash bin": {
         def: "Use the trash bin",
@@ -11614,6 +12520,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "휴지통 사용",
         ru: "Использовать корзину",
         zh: "使用回收站",
+        "zh-tw": "使用垃圾桶",
     },
     "Use timeouts instead of heartbeats": {
         def: "Use timeouts instead of heartbeats",
@@ -11624,11 +12531,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "하트비트 대신 타임아웃 사용",
         ru: "Использовать таймауты вместо пульса",
         zh: "使用超时而不是心跳",
+        "zh-tw": "使用逾時取代心跳偵測",
     },
     "Use vrtmrz's relay": {
         def: "Use vrtmrz's relay",
         es: "Usar el relé de vrtmrz",
         ko: "vrtmrz의 중계 서버 사용",
+        "zh-tw": "使用 vrtmrz 提供的中繼站",
     },
     username: {
         def: "username",
@@ -11639,6 +12548,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자명",
         ru: "имя пользователя",
         zh: "用户名",
+        "zh-tw": "使用者名稱",
     },
     Username: {
         def: "Username",
@@ -11649,6 +12559,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용자명",
         ru: "Имя пользователя",
         zh: "用户名",
+        "zh-tw": "使用者名稱",
     },
     "Verbose Log": {
         def: "Verbose Log",
@@ -11659,6 +12570,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "자세한 로그",
         ru: "Подробный лог",
         zh: "详细日志",
+        "zh-tw": "詳細日誌",
     },
     "Verify all": {
         def: "Verify all",
@@ -11688,21 +12600,26 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "경고! 이는 성능에 심각한 영향을 미칩니다. 로그는 기본 이름으로 동기화되지 않습니다. 로그에는 종종 기밀 정보가 포함되어 있으므로 주의해 주세요.",
             ru: "Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.",
             zh: "警告！这将严重影响性能。并且日志不会以默认名称同步。请小心处理日志；它们通常包含您的敏感信息 ",
+            "zh-tw":
+                "警告！這會嚴重影響效能，而且日誌不會以預設名稱同步。請小心處理日誌，因為它們通常包含你的機密資訊。",
         },
     WATCHING: {
         def: "WATCHING",
         es: "OBSERVANDO",
         ko: "감시 중",
+        "zh-tw": "監看中",
     },
     'We can not use "/" to the device name': {
         def: 'We can not use "/" to the device name',
         es: 'No se puede usar "/" en el nombre del dispositivo',
         ko: '기기 이름에는 "/"를 사용할 수 없습니다',
+        "zh-tw": "裝置名稱不可使用「/」",
     },
     "We can use only Secure (HTTPS) connections on Obsidian Mobile.": {
         def: "We can use only Secure (HTTPS) connections on Obsidian Mobile.",
         es: "En Obsidian Mobile solo se pueden usar conexiones seguras (HTTPS).",
         ko: "Obsidian 모바일에서는 보안(HTTPS) 연결만 사용할 수 있습니다.",
+        "zh-tw": "在 Obsidian Mobile 上只能使用安全連線（HTTPS）。",
     },
     "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.":
         {
@@ -11712,6 +12629,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "이 기능이 활성화되어 있는 동안에는 기기 이름을 변경할 수 없습니다. 기기 이름을 변경하려면 이 기능을 비활성화하세요.",
             ru: "Невозможно изменить имя устройства, пока эта функция включена. Отключите её, чтобы изменить имя устройства.",
             zh: "启用此功能时无法更改设备名称。如需修改设备名称，请先禁用此功能。",
+            "zh-tw": "啟用此功能時無法變更裝置名稱。若要變更裝置名稱，請先停用此功能。",
         },
     "We have to configure the device name": {
         def: "We have to configure the device name",
@@ -11724,6 +12642,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.",
             es: "Te recomendamos copiar la carpeta de tu Vault a un lugar seguro. Así tendrás una salvaguarda en caso de que surjan muchos conflictos o de que sincronices por error con un destino incorrecto.",
             ko: "보관함 폴더를 안전한 위치에 복사해 두시기를 권장합니다. 충돌이 대량으로 발생하거나 실수로 잘못된 대상과 동기화한 경우에 대비할 수 있습니다.",
+            "zh-tw":
+                "我們建議你先將 Vault 資料夾複製到安全的位置。萬一發生大量衝突，或不小心同步到錯誤的目標，這可以作為一層保障。",
         },
     "We will now guide you through a few questions to simplify the synchronisation setup.": {
         def: "We will now guide you through a few questions to simplify the synchronisation setup.",
@@ -11761,6 +12681,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "편집기에서 파일을 저장할 때 자동으로 동기화를 시작합니다",
         ru: "Когда вы сохраняете файл в редакторе, автоматически запускать синхронизацию",
         zh: "当您在编辑器中保存文件时,自动开始同步",
+        "zh-tw": "在編輯器中儲存檔案時，自動開始同步",
     },
     "Write credentials in the file": {
         def: "Write credentials in the file",
@@ -11771,6 +12692,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일에 자격 증명 저장",
         ru: "Записывать учётные данные в файл",
         zh: "将凭据写入文件",
+        "zh-tw": "將憑證寫入檔案",
     },
     "Write logs into the file": {
         def: "Write logs into the file",
@@ -11781,6 +12703,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일에 로그 기록",
         ru: "Записывать логи в файл",
         zh: "将日志写入文件",
+        "zh-tw": "將日誌寫入檔案",
     },
     "xxhash32 (Fast but less collision resistance)": {
         def: "xxhash32 (Fast but less collision resistance)",
@@ -11831,17 +12754,21 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "You can configure in the Obsidian Plugin Settings.",
         es: "Puedes configurarlo en los ajustes del complemento de Obsidian.",
         ko: "Obsidian 플러그인 설정에서 구성할 수 있습니다.",
+        "zh-tw": "你可以在 Obsidian 外掛設定中進行設定。",
     },
     "You should create a new synchronisation destination and rebuild your data there.": {
         def: "You should create a new synchronisation destination and rebuild your data there.",
         es: "Deberías crear un nuevo destino de sincronización y reconstruir allí tus datos.",
         ko: "새로운 동기화 대상을 만들고 그곳에서 데이터를 재구축해야 합니다.",
+        "zh-tw": "你應該建立一個新的同步目標，並在該處重建你的資料。",
     },
     "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.":
         {
             def: "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.",
             es: "Solo deberías realizar esta operación en circunstancias excepcionales: cuando los datos del servidor estén completamente corruptos, cuando ya no necesites los cambios de los demás dispositivos o cuando el tamaño de la base de datos sea inusualmente grande respecto al del Vault.",
             ko: "이 작업은 서버 데이터가 완전히 손상된 경우, 다른 모든 기기의 변경 사항이 더 이상 필요하지 않은 경우, 또는 데이터베이스 크기가 보관함 크기에 비해 비정상적으로 커진 경우처럼 예외적인 상황에서만 수행해야 합니다.",
+            "zh-tw":
+                "只有在特殊情況下才應執行此操作，例如伺服器資料已完全損毀、其他所有裝置上的變更都已不再需要，或資料庫大小相對於 Vault 大小已變得異常龐大時。",
         },
     "Compute revisions for chunks (Previous behaviour)": {
         es: "Calcular revisiones para chunks (comportamiento anterior)",
