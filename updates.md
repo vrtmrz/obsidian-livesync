@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.6
+
+6th August, 2026
+
+I know that onboarding, and other parts which feel unclear or confusing, still need improvement. Please do report any such cases.
+
 ### Setup and compatibility
 
 #### Fixed
