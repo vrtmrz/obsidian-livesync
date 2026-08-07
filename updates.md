@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Setup and compatibility
+
+#### Fixed
+
+- Multi-part settings QR codes now preserve special characters in passwords, passphrases, and other settings.
+
 ## 1.0.6
 
 6th August, 2026
