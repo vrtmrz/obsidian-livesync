@@ -325,13 +325,13 @@ describe("Red Flag Feature", () => {
                 () => {
                     return Promise.resolve(true);
                 },
-                false
+                "resume"
             );
 
             expect(host.mocks.setting.currentSettings().suspendFileWatching).toBe(false);
         });
 
-        it("should keep suspending when keepSuspending is true", async () => {
+        it("should keep suspending when the policy is keep", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
 
@@ -341,7 +341,7 @@ describe("Red Flag Feature", () => {
                 () => {
                     return Promise.resolve(true);
                 },
-                true
+                "keep"
             );
 
             expect(host.mocks.setting.currentSettings().suspendFileWatching).toBe(true);
@@ -357,7 +357,7 @@ describe("Red Flag Feature", () => {
                 () => {
                     throw new Error("Process failed");
                 },
-                false
+                "resume"
             );
 
             expect(result).toBe(false);
@@ -759,6 +759,79 @@ describe("Red Flag Feature", () => {
     });
 
     describe("askAndPerformFastSetupOnScheduledFetchAll", () => {
+        it("releases both reflection suspensions after Fast Setup succeeds", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+
+            Object.assign(host.mocks.setting.settings, {
+                doNotSuspendOnFetching: true,
+                suspendParseReplicationResult: true,
+            });
+            host.mocks.ui.confirm.confirmWithMessage
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_NEWER_WINS)
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue(availableRemoteTweaks({ batchSave: false }));
+
+            await expect(askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag)).resolves.toBe(true);
+
+            expect(host.mocks.setting.currentSettings()).toMatchObject({
+                suspendFileWatching: false,
+                suspendParseReplicationResult: false,
+            });
+        });
+
+        it("keeps Vault reflection suspended and preserves recovery state when Fast Fetch fails", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+
+            host.mocks.ui.confirm.confirmWithMessage
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_NEWER_WINS)
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue(availableRemoteTweaks({ batchSave: false }));
+            host.mocks.rebuilder.$fetchLocalDBFast.mockRejectedValueOnce(new Error("cannot decrypt remote document"));
+
+            await expect(askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag)).resolves.toBe(false);
+
+            expect(host.mocks.setting.currentSettings()).toMatchObject({
+                suspendFileWatching: true,
+                suspendParseReplicationResult: true,
+            });
+            expect(host.mocks.rebuilder.finishRebuild).not.toHaveBeenCalled();
+            expect(cleanupFlag).not.toHaveBeenCalled();
+            expect(host.mocks.setting.deleteSmallConfig).not.toHaveBeenCalledWith("simple-fetch-mode");
+        });
+
+        it("re-suspends both reflection directions when finalisation fails after releasing them", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+
+            host.mocks.ui.confirm.confirmWithMessage
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE1_NEWER_WINS)
+                .mockResolvedValueOnce(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP);
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValue(availableRemoteTweaks({ batchSave: false }));
+            host.mocks.rebuilder.finishRebuild.mockImplementationOnce(async () => {
+                await host.mocks.setting.applyPartial(
+                    {
+                        suspendFileWatching: false,
+                        suspendParseReplicationResult: false,
+                    },
+                    true
+                );
+                throw new Error("Vault scan failed after reflection resumed");
+            });
+
+            await expect(askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag)).resolves.toBe(false);
+
+            expect(host.mocks.setting.currentSettings()).toMatchObject({
+                suspendFileWatching: true,
+                suspendParseReplicationResult: true,
+            });
+            expect(cleanupFlag).not.toHaveBeenCalled();
+        });
+
         it("should remember quick flow choices while the scheduled fetch is pending", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
@@ -1352,7 +1425,7 @@ describe("Red Flag Feature", () => {
                 () => {
                     return Promise.resolve(false);
                 },
-                true
+                "keep"
             );
 
             expect(host.mocks.setting.currentSettings().suspendFileWatching).toBe(true);
