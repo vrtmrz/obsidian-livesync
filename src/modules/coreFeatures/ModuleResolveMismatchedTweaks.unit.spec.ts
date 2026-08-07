@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
@@ -6,6 +6,7 @@ import {
     type TweakValues,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
+import { setLang } from "@/common/translation";
 
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
     const askSelectStringDialogue = vi.fn(async (..._args: unknown[]): Promise<string | undefined> => undefined);
@@ -253,5 +254,45 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         expect(core.settings).toBe(initialSettings);
         expect(core.settings.hashAlg).toBe("xxhash32");
         expect(calls).toEqual(["save", "reinitialise", "set-preferred"]);
+    });
+});
+
+describe("ModuleResolvingMismatchedTweaks setting labels", () => {
+    afterEach(() => setLang("def"));
+
+    async function renderMismatchTable() {
+        const { module, askSelectStringDialogue } = createModule({
+            autoAcceptCompatibleTweak: true,
+            hashAlg: "xxhash64",
+            encrypt: false,
+            tweakModified: 100,
+        });
+        const preferred = {
+            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            hashAlg: "xxhash32",
+            encrypt: true,
+            tweakModified: 200,
+        } as Partial<TweakValues>;
+
+        await module._checkAndAskResolvingMismatchedTweaks(preferred);
+
+        return String(askSelectStringDialogue.mock.calls[0]?.[0] ?? "");
+    }
+
+    it("localises the setting names and keeps the status suffix", async () => {
+        setLang("zh-tw");
+
+        const message = await renderMismatchTable();
+
+        expect(message).toContain("chunk ID 的雜湊演算法 (Experimental)");
+        expect(message).toContain("端對端加密");
+        expect(message).not.toContain("The Hash algorithm for chunk IDs");
+    });
+
+    it("leaves English unchanged", async () => {
+        const message = await renderMismatchTable();
+
+        expect(message).toContain("The Hash algorithm for chunk IDs (Experimental)");
+        expect(message).toContain("End-to-End Encryption");
     });
 });
