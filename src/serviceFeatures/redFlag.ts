@@ -150,7 +150,7 @@ export function createFetchAllFlagHandler(
         // Select the remote database if there are multiple remotes configured.
         const isRemoteActivated = await askAndActivateRemoteDatabase(host, log);
         if (!isRemoteActivated) {
-            return false;
+            return await cancelScheduledInitialisation(host, cleanupFlag);
         }
 
         // Ask user for use Fast Setup
