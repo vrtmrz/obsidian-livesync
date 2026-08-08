@@ -16,6 +16,8 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 8th August, 2026
 
+For the first time in a while, I published a release that could not be promoted to a stable release. Sorry about that! I am glad that we caught it while it was still a pre-release.
+
 ### Setup and compatibility
 
 #### Fixed
