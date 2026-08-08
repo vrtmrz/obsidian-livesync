@@ -18,6 +18,18 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 - Multi-part settings QR codes now preserve special characters in passwords, passphrases, and other settings (PR #1083). Thank you to @calvinbui for the improvement!
 - Fast Setup now sizes each finite CouchDB changes page from a one-row status probe, counts the returned result together with `pending`, and resumes from the page's opaque `last_seq` without comparing token representations. Each page uses a one-second idle timeout instead of a heartbeat, allowing CouchDB 3.2 to return its terminator after the currently available rows have been persisted.
+
+## 1.0.8
+
+8th August, 2026
+
+This version was published for pre-release validation only and was not promoted to a stable release.
+
+### Setup and compatibility
+
+#### Fixed
+
+- Fast Setup now sizes each finite CouchDB changes page from a one-row status probe, counts the returned result together with `pending`, and resumes from the page's opaque `last_seq` without comparing token representations. Heartbeat-enabled feeds no longer wait for future writes after the currently available rows have been persisted (#1065).
 - Cancelling remote selection during a scheduled Fetch now removes the Fetch flag before restarting with file and database reflection paused, preventing the same selection dialogue from reopening on every start-up.
 
 ## 1.0.7
