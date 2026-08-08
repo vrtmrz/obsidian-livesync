@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 Thank you for taking the time to report this issue!
-Before filling in this form, please read: [How to report an issue](../docs/to_issue_reporting.md).
+Before filling in this form, please read [How to report an issue](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/to_issue_reporting.md).
 
 Issues with sufficient information will be prioritised.
 
@@ -49,13 +49,14 @@ To get it: open the command palette → "Show debug info".
 </details>
 
 ### LiveSync version
-The hatch report (below) includes version information. If you cannot provide the report, please fill in the version here.
+The full LiveSync report below includes version information. If you cannot provide the report, please fill in the version here.
 
-- Self-hosted LiveSync version: <!-- e.g. 0.23.0 — find it in Obsidian Settings → Community Plugins -->
+- Self-hosted LiveSync version: <!-- Find it in Obsidian Settings → Community plugins. -->
 
 ### Report and Logs from LiveSync
-Perform a `Generate full report for opening the issue with debug info` command and provide the generated report. This contains detailed information and recent 1000 log lines, which is very helpful for debugging. **PLEASE AMEND THE REPORT TO REMOVE ANY SENSITIVE INFORMATION BEFORE PASTING.**
-If too large to paste here, upload to [Gist](https://gist.github.com/) and share the link.
+Run `Generate full report for opening the issue with debug info` and provide the generated report. It contains detailed information and up to 1,000 recent log lines. Review the complete output, and remove credentials, private remote details, Vault names, file paths, file contents, and other private information before sharing it.
+
+If the report is too large to paste here, upload the redacted report to [Gist](https://gist.github.com/) and share the link.
 
 <details>
 <summary>Report and Logs (primary)</summary>

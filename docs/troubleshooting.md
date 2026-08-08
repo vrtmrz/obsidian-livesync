@@ -117,6 +117,8 @@ Enable Obsidian's `Detect all file extensions`, then check LiveSync selectors, i
 
 ## Collect a report
 
+Follow [How to report an issue](to_issue_reporting.md) for the complete reporting checklist, including Obsidian debug information and the privacy review required before sharing evidence.
+
 Run `Generate full report for opening the issue with debug info` to copy the current settings summary and recent verbose log lines. Remove credentials, remote URLs, Vault names, file contents, and other private information before sharing it.
 
 When a problem concerns one file, run **Copy database information for the active file**, or use **Hatch** → **Copy database information for a file** to select another file. The report describes this device's local database view, including the Vault-relative path, document and chunk identifiers, local database revisions, conflicts, and local chunk availability. It does not query the remote server or include file contents. Treat paths and identifiers as private metadata before sharing.
