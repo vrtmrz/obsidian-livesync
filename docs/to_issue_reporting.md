@@ -1,145 +1,65 @@
 # How to report an issue
 
-Thank you for helping improve Self-hosted LiveSync!
+Thank you for helping improve Self-hosted LiveSync. A concise report with the right evidence is more useful than trying several recovery operations before reporting the original symptom.
 
-This document explains how to collect the information needed for an issue report. Issues with sufficient information will be prioritised.
+Use the [issue report template](https://github.com/vrtmrz/obsidian-livesync/issues/new?template=issue-report.md) for the report itself. Use [Troubleshooting](troubleshooting.md) to diagnose a symptom or choose a recovery action.
 
----
+## Preserve the original symptom
 
-## Filled example
+Do not reset a database, rebuild a remote, change transport, or enable P2P merely to see whether the problem disappears. These actions can change the evidence and may make the original cause harder to identify.
 
-Here is an example of a well-filled report for reference.
+If the problem may involve data loss, corruption, or unexpected deletion, preserve a copy of every readable affected file and stop editing it on other devices before changing settings.
 
-### Abstract
+Include when the problem began, whether it followed an update or restart, how often it occurs, and which device and remote type were involved.
 
-The synchronisation hung up immediately after connecting.
+## Required information
 
-### Expected behaviour
+### Describe the behaviour
 
-- Synchronisation ends with the message `Replication completed`
-- Everything synchronised
+Complete the issue template with:
 
-### Actually happened
+- a one- or two-sentence summary;
+- the expected and actual behaviour;
+- repeatable steps, or the frequency and timing when reliable reproduction is not available; and
+- the role of each relevant device, such as the device where the change originated and the device where the failure appeared.
 
-- Synchronisation was cancelled with the message `TypeError: Failed to fetch` (visible in the plug-in log around lines 10–12)
-- No files synchronised
+### Obsidian debug information
 
-### Reproducing procedure
+Open the command palette with `Ctrl`+`P` or `Command`+`P`, run `Show debug info`, and include its output for each relevant device. The device where the problem appeared is required. Information from the other participating devices is particularly useful for synchronisation problems.
 
-1. Configure LiveSync with the settings shown in the attached report.
-2. Click the sync button on the ribbon.
-3. Synchronisation begins.
-4. About two or three seconds later, the error `TypeError: Failed to fetch` appears.
-5. Replication stops. No files synchronised.
+### Full LiveSync report
 
-### Obsidian debug info (Device 1 — Windows desktop)
+Run `Generate full report for opening the issue with debug info` on the device where the problem appeared. For a synchronisation problem, also collect a report from another participating device when its settings or logs are relevant. The command copies the current LiveSync settings summary and up to 1,000 recent log lines. It collects verbose log lines even when `Verbose Log` is disabled, so you do not need to enable that setting before reproducing the problem.
 
-```
-SYSTEM INFO:
-	Obsidian version: v1.2.8
-	Installer version: v1.1.15
-	Operating system: Windows 10 Pro 10.0.19044
-	Login status: logged in
-	Catalyst license: supporter
-	Insider build toggle: off
-	Community theme: Minimal v6.1.11
-	Snippets enabled: 3
-	Restricted mode: off
-	Plugins installed: 35
-	Plugins enabled: 11
-		1: Self-hosted LiveSync v0.19.4
-		...
-```
+The command automatically redacts known credential fields in the settings summary. It cannot guarantee that private text in log messages or unrecognised configuration fields is removed. Review the complete output before sharing it. Remove or replace:
 
-### Report from LiveSync
+- usernames, passwords, passphrases, tokens, keys, and custom headers;
+- private server URLs, network addresses, database names, bucket names, room identifiers, and relay details;
+- Vault names, device names, and file paths; and
+- file contents or other private text which appears in a log message.
 
-```
-----remote config----
-cors:
-  credentials: "true"
-  ...
----- Plug-in config ---
-couchDB_URI: self-hosted
-couchDB_USER: 𝑅𝐸𝐷𝐴𝐶𝑇𝐸𝐷
-...
-```
+Document and chunk identifiers can also be private metadata, but they may be necessary for diagnosing file reconstruction and chunk availability. Decide deliberately whether to share them. If you remove them, state that the report was redacted and that this may limit the diagnosis.
 
-### Plug-in log
+For a large report, you may share a GitHub Gist after reviewing and redacting it. Deleting a Gist later cannot undo information which has already been disclosed.
 
-```
-2023/5/24 10:50:33->HTTP:GET to:/ -> failed
-2023/5/24 10:50:33->TypeError:Failed to fetch
-2023/5/24 10:50:33->could not connect to https://example.com/ : your vault
-(TypeError:Failed to fetch)
-```
+## Additional evidence when relevant
 
----
+### A problem involving one file
 
-## How to collect each piece of information
+Run `Copy database information for the active file`, or use **Hatch** → **Copy database information for a file** to select another file.
 
-### Obsidian debug info
+This report describes only the local database on that device. It includes the Vault-relative path, document and chunk identifiers, local revisions, conflicts, and local chunk availability. It does not query the remote or include file contents. Review paths and identifiers as private metadata before sharing them.
 
-Open the command palette (`Ctrl/Cmd + P`) and run **"Show debug info"**. Copy the output and paste it into the issue.
+### A problem which crosses a restart
 
-If multiple devices are involved in the problem (e.g., sync between a phone and a desktop), please provide the debug info for each device. The device where the issue occurred is required; information from other devices is strongly recommended.
+Use `Write logs into the file` under **Hatch** only when the in-memory report cannot cover the restart. Persistent logging affects performance and can record private information. Disable it after reproducing the problem, review the log before sharing it, and remove the log file when it is no longer needed.
 
-### Report from LiveSync (hatch report)
+### A connection, authentication, or CORS problem
 
-1. Open LiveSync settings.
-2. Go to the **Hatch** pane.
-3. Press the **Make report** button.
+Include network evidence only when the ordinary LiveSync log cannot show the rejected response. Follow [Inspect a network failure](troubleshooting.md#inspect-a-network-failure), and remove request paths, remote addresses, authority and authorisation values, cookies, credentials, payload identifiers, and response secrets before sharing screenshots or copied data.
 
-The report will be copied to your clipboard. It contains your LiveSync configuration and the remote server configuration, with credentials automatically redacted.
+## Sharing the report
 
-**Tip:** For large reports, consider uploading to [GitHub Gist](https://gist.github.com/) and sharing the link instead of pasting directly into the issue. This makes it easier to manage, and if you accidentally leave sensitive data in, a Gist can be deleted.
+Paste reports into the matching collapsible sections in the issue template, or provide a link to an already-redacted Gist. A separate plug-in log is normally unnecessary because the full LiveSync report already contains the recent verbose log history.
 
-If you paste directly, wrap it in a `<details>` tag to keep the issue readable:
-
-```
-<details>
-<summary>Report from hatch</summary>
-
-```
-----remote config----
-  :
-```
-</details>
-```
-
-### Plug-in log
-
-The plug-in log is volatile by default (not saved to disk) and shown only in the log dialogue, which can be opened by tapping the **document box icon** in the ribbon.
-
-#### Enable verbose log
-
-Before reproducing the issue, enable **Verbose Log** in LiveSync's **General Settings** pane. Without this, many diagnostic messages will be suppressed.
-
-#### Persist the log to a file (optional)
-
-If you need to capture a log across a restart, enable **"Write logs into the file"** in General Settings. Note that log files may contain sensitive information — use this option only for troubleshooting, and disable it afterwards.
-
-As with the hatch report, consider uploading large logs to [GitHub Gist](https://gist.github.com/).
-
-### Network log (for connection-related issues only)
-
-If the issue is related to network connectivity (e.g., cannot connect to the server, authentication errors), a network log captured from browser DevTools can be very helpful. You do not need to include this for non-connection issues.
-
-#### Opening DevTools
-
-| Platform | Shortcut |
-|----------|----------|
-| Windows / Linux | `Ctrl + Shift + I` |
-| macOS | `Cmd + Shift + I` |
-| Android | Use [Chrome remote debugging](https://developer.chrome.com/docs/devtools/remote-debugging/) |
-| iOS | Use [Safari Web Inspector](https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios) on a Mac |
-
-#### What to capture
-
-1. Open the **Network** pane in DevTools.
-2. Reproduce the issue.
-3. Look for requests marked in red.
-4. Capture screenshots of the **Headers**, **Payload**, and **Response** tabs for those requests.
-
-**Important — redact before sharing:**
-- Headers: conceal the request URL path, Remote Address, `authority`, and `authorisation` values.
-- Payload / Response: the `_id` field contains your file paths — redact if needed.
+If a maintainer asks for a more specialised diagnostic, collect only that additional evidence and review it again before publishing it.
