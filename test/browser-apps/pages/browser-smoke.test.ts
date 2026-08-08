@@ -30,12 +30,15 @@ Deno.test({
             const aggregator = await browser.newPage();
             const assertNoAggregatorFailures = observePageFailures(aggregator);
             const assertNoAggregatorNetworkFailures = observeNetworkFailures(aggregator);
-            await aggregator.goto(new URL("aggregator.html#id=pages-smoke&n=2&i=0&d=first-", server.baseUrl).href);
+            await aggregator.goto(new URL("aggregator.html#id=pages-smoke&n=2&i=0&d=before%2", server.baseUrl).href);
             await aggregator.getByText("1 / 2 Loaded", { exact: true }).waitFor();
-            await aggregator.goto(new URL("aggregator.html#id=pages-smoke&n=2&i=1&d=second", server.baseUrl).href);
+            await aggregator.goto(
+                new URL("aggregator.html#id=pages-smoke&n=2&i=1&d=3after%26amp%2Bplus%25percent", server.baseUrl)
+                    .href
+            );
             assertEquals(
                 await aggregator.getByRole("link", { name: "Open Obsidian to complete setup" }).getAttribute("href"),
-                "obsidian://setuplivesync?settingsQR=first-second"
+                "obsidian://setuplivesync?settingsQR=before%23after%26amp%2Bplus%25percent"
             );
             assertNoAggregatorFailures();
             assertNoAggregatorNetworkFailures();
