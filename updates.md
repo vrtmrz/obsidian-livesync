@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Setup and compatibility
+
+#### Fixed
+
+- Fast Setup now completes only after the captured CouchDB changes target has been persisted. Decryption, protocol, and local write failures stop the operation without finalising an incomplete database, while transient interruptions resume from the last durable checkpoint (#1065).
+
 ## 1.0.6
 
 6th August, 2026

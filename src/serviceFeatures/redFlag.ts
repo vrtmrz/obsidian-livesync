@@ -372,26 +372,35 @@ export async function cancelScheduledInitialisation(
     return false;
 }
 
+type InitialisationSuspensionPolicy = "resume" | "keep" | "keep-on-failure";
+
 /**
- * Process vault initialisation with suspending file watching and sync.
- * @param proc process to be executed during initialisation, should return true if can be continued, false if app is unable to continue the process.
- * @param keepSuspending  whether to keep suspending file watching after the process.
- * @returns result of the process, or false if error occurs.
+ * Process Vault initialisation with file watching and synchronisation suspended.
+ * @param proc Process to execute during initialisation. It returns true only when normal operation may resume.
+ * @param suspensionPolicy Final file-reflection state. `keep-on-failure` controls both reflection directions so a partly completed Fast Setup remains isolated.
+ * @returns The result of the process, or false if an error occurs.
  */
 export async function processVaultInitialisation(
     host: NecessaryServices<"setting", never>,
     log: LogFunction,
     proc: () => Promise<boolean>,
-    keepSuspending = false
+    suspensionPolicy: InitialisationSuspensionPolicy = "resume"
 ) {
+    let completed = false;
     try {
         // Disable batch saving and file watching during initialisation.
         await host.services.setting.applyPartial({ batchSave: false }, false);
         await host.services.setting.suspendAllSync();
         await host.services.setting.suspendExtraSync();
-        await host.services.setting.applyPartial({ suspendFileWatching: true }, true);
+        await host.services.setting.applyPartial(
+            suspensionPolicy === "keep-on-failure"
+                ? { suspendFileWatching: true, suspendParseReplicationResult: true }
+                : { suspendFileWatching: true },
+            true
+        );
         try {
             const result = await proc();
+            completed = result;
             return result;
         } catch (ex) {
             log("Error during vault initialisation process.", LOG_LEVEL_NOTICE);
@@ -403,9 +412,21 @@ export async function processVaultInitialisation(
         log(ex, LOG_LEVEL_VERBOSE);
         return false;
     } finally {
-        if (!keepSuspending) {
-            // Re-enable file watching after initialisation.
+        if (suspensionPolicy === "resume") {
             await host.services.setting.applyPartial({ suspendFileWatching: false }, true);
+        } else if (suspensionPolicy === "keep") {
+            await host.services.setting.applyPartial({ suspendFileWatching: true }, true);
+        } else {
+            // Fast Setup owns both directions at this boundary. Reasserting the
+            // outcome also covers a late failure after finishRebuild started to
+            // resume reflection, and the legacy doNotSuspendOnFetching path.
+            await host.services.setting.applyPartial(
+                {
+                    suspendFileWatching: !completed,
+                    suspendParseReplicationResult: !completed,
+                },
+                true
+            );
         }
     }
 }
@@ -512,7 +533,7 @@ export function createSuspendFlagHandler(
                 await host.services.setting.applyPartial({ writeLogToTheFile: true }, true);
                 return Promise.resolve(false);
             },
-            true
+            "keep"
         );
     };
 
