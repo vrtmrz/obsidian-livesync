@@ -16,7 +16,19 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 #### Fixed
 
-- Multi-part settings QR codes now preserve special characters in passwords, passphrases, and other settings.
+- Multi-part settings QR codes now preserve special characters in passwords, passphrases, and other settings (PR #1083). Thank you to @calvinbui for the improvement!
+- Fast Setup now sizes each finite CouchDB changes page from a one-row status probe, counts the returned result together with `pending`, and resumes from the page's opaque `last_seq` without comparing token representations. Each page uses a one-second idle timeout instead of a heartbeat, allowing CouchDB 3.2 to return its terminator after the currently available rows have been persisted.
+- Cancelling remote selection during a scheduled Fetch now removes the Fetch flag before restarting with file and database reflection paused, preventing the same selection dialogue from reopening on every start-up.
+
+## 1.0.7
+
+8th August, 2026
+
+### Setup and compatibility
+
+#### Fixed
+
+- Fast Setup now completes only after the captured CouchDB changes target has been persisted. Decryption, protocol, and local write failures stop the operation without finalising an incomplete database, while transient interruptions resume from the last durable checkpoint (#1065).
 
 ## 1.0.6
 

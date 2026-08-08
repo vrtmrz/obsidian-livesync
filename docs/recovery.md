@@ -68,6 +68,8 @@ On the next start, LiveSync:
 4. discards and reconstructs the local LiveSync database from the selected remote; and
 5. resumes only after the scheduled operation has completed or been cancelled safely.
 
+Fast Setup retains its fetch flag, last successfully stored remote position, and selected data-processing method when an error while decrypting data, reading the remote response, or writing to the local database stops the reconstruction. File watching and database reflection remain suspended. Review the first specific error in **Show log**, correct its cause, then restart Obsidian to retry from the retained state. Do not remove the fetch flag or resume the Scram switches while you intend to continue the operation. If the same error remains, leave LiveSync suspended and [collect a report](troubleshooting.md#collect-a-report).
+
 For P2P, a source peer must be online, discovered, and selected in `P2P Rebuild`. Merely opening an empty signalling room does not complete Fetch. Closing the rebuild dialogue without selecting a peer reports failure and does not treat the local database as restored.
 
 Review the [Fast Setup guide](tips/fast-setup.md) before using this operation on a Vault which contains unsynchronised local work.
@@ -105,7 +107,7 @@ Create only the flag required for the chosen operation.
 | `flag_fetch.md` or `redflag3.md` | Schedule **Reset Synchronisation on This Device** from the selected remote. |
 | `flag_rebuild.md` or `redflag2.md` | Schedule **Overwrite Server Data with This Device's Files**, or local P2P preparation when no central remote exists. |
 
-Flag files themselves are excluded from synchronisation. Fetch and rebuild flags are removed by the scheduled workflow after completion or cancellation; `redflag.md` is a manual emergency stop.
+Flag files themselves are excluded from synchronisation. Fetch and rebuild flags are removed by the scheduled workflow after completion or safe cancellation. A failed Fast Setup retains its fetch flag so that a later start can retry it; `redflag.md` is a manual emergency stop.
 
 ## When the warning continues
 
