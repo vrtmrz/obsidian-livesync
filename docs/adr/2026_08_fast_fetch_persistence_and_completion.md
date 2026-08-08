@@ -42,10 +42,20 @@ probe. CouchDB's API documentation says that `limit=0` has the same effect as
 no result rows and leave the complete count in `pending`. Fast Fetch therefore
 uses an explicit one-row normal probe and includes no document bodies.
 
-A continuous feed with a heartbeat remains open at the current tail. It closes
-with a `{ "last_seq": ... }` line only after its finite `limit` has been met.
-Consequently, a limit larger than the workload already known to be available
-can leave initialisation waiting for future writes.
+Finite continuous-feed completion differs across supported CouchDB releases.
+CouchDB 3.5.0 was observed to close a heartbeat-enabled feed with a
+`{ "last_seq": ... }` line when its finite `limit` is met. CouchDB 3.2 instead
+continues to wait for database updates after the limit has been consumed. With
+a heartbeat configured, each wait emits another heartbeat and the page can
+remain open indefinitely, even after every requested row has arrived.
+
+On CouchDB 3.2, an explicit `timeout` without a heartbeat has different
+semantics from a total request deadline. Shard-result waits may emit blank
+keep-alive lines and continue processing. Once the currently available changes
+have been exhausted and the feed is waiting for another database update, the
+timeout stops that wait and returns the feed-level `last_seq`. The timeout can
+therefore terminate a finite page without limiting the duration of an active
+page transfer.
 
 The CouchDB sequence token is opaque and must be handled using CouchDB's
 sequence semantics, without parsing, ordering, or comparison. On clustered
@@ -73,8 +83,16 @@ request starts again from that same cursor.
 The number currently available is `results.length + pending`. If it is zero,
 Fast Fetch is caught up and completes without opening another stream. Otherwise,
 the next continuous request uses the smaller of that count and 10,000 as its
-finite `limit`. This prevents a heartbeat-enabled request from waiting for
-future changes merely to fill an oversized page.
+finite `limit`.
+
+Each finite page omits `heartbeat` and sets `timeout=1000`. This lets CouchDB
+3.2 return the page's terminator one second after it exhausts the currently
+available changes, rather than keeping the request open for future writes. The
+client immediately reconnects from that terminator while another normal probe
+reports available work. This bounded cycle also preserves the intent of the
+earlier iOS and iPadOS heartbeat workaround: Fast Fetch no longer depends on a
+silent continuous request eventually closing at CouchDB's default 60-second
+timeout.
 
 The probe and page are separate HTTP requests, not a transactional snapshot.
 New writes, replica selection, or administrative changes may alter the rows
@@ -252,6 +270,8 @@ writer. Verify that:
   `pending` is zero;
 - every probe uses `limit=1`, excludes document bodies, and is repeated from the
   previous page's opaque terminator;
+- each bounded page omits `heartbeat`, uses `timeout=1000`, and can complete
+  under CouchDB 3.2 after its current rows have been delivered;
 - deletion and document-less rows consume a page slot;
 - a row count cannot complete a page without its `last_seq` terminator;
 - a page terminator cannot advance the checkpoint before its batch is durable;
@@ -286,11 +306,14 @@ existing setup sequence and cleanup.
 
 Commonlib's CouchDB integration test remains responsible for the real HTTP
 changes feed, opaque sequence tokens, deletion rows, and local batch
-persistence. It should use a two-shard database, include a data set large enough
-to cross a local batch boundary, and confirm that the final checkpoint can be
-passed back to CouchDB as `since` with no result rows or pending changes. The
-test must not compare that token's representation with a separately requested
-target or changes-row token.
+persistence. It should use the maintained CI CouchDB release, a two-shard
+database, and a data set large enough to cross a local batch boundary, and
+confirm that the final checkpoint can be passed back to CouchDB as `since` with
+no result rows or pending changes. The test must not compare that token's
+representation with a separately requested target or changes-row token. The
+focused regression test covers CouchDB 3.2's page-tail behaviour; compatibility
+with a real CouchDB 3.2 server can be confirmed manually without expanding the
+permanent CI matrix.
 
 LiveSync's real Obsidian Setup URI workflow remains responsible for the actual
 Fast Fetch selection, E2EE passphrase, Vault reflection, ordinary file round
@@ -310,6 +333,9 @@ This follows [Real Obsidian E2E](2026_06_real_obsidian_e2e.md).
   or local persistence failures which cannot repair themselves.
 - Progress totals remain approximate and may grow when a later probe observes
   new work, without affecting correctness.
+- A completed page can spend up to one second waiting for its terminator before
+  Fast Fetch probes and reconnects. Active page transfer is not constrained to
+  one second.
 - The implementation requires coordinated changes in Commonlib and LiveSync.
   Commonlib remains the authoritative package for streaming and rebuilder
   behaviour; LiveSync consumes an immutable Commonlib release and owns its setup
