@@ -63,3 +63,11 @@ Once you confirm your choices:
 1. The plug-in performs a fast download of the remote database (`fetchLocalDBFast`).
 2. It automatically runs a full scan (`synchroniseAllFilesBetweenDBandStorage`) in the foreground to reflect database changes in your local vault files immediately.
 3. The plug-in finalises the process and resumes normal operational status.
+
+### If Fast Setup Stops
+
+Fast Setup records the last successfully stored remote position as it saves documents. A transient connection interruption is retried automatically from that position. The operation reports completion only after the captured remote state has been stored successfully.
+
+If an error while decrypting data, reading the remote response, or writing to the local database stops the operation, LiveSync does not run the Vault scan or finalise the reconstructed local database. It retains the saved position, the selected data-processing method, and the fetch flag. File watching and database reflection also remain suspended so that a partly reconstructed database cannot be applied to the Vault or combined with new local changes.
+
+Review the first specific error in **Show log**, correct its cause, then restart Obsidian to retry from the retained state. While you intend to continue the operation, do not remove the fetch flag or manually resume the Scram switches. If the same error remains after a restart, leave LiveSync suspended, preserve the available data, and [collect a report](../troubleshooting.md#collect-a-report).
