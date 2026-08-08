@@ -19,8 +19,9 @@ initialisation workflow relies:
 - every result from a batch write is checked;
 - a checkpoint represents the last contiguous remote sequence which is durable
   in the local database; and
-- successful completion means that the captured remote target has been reached,
-  rather than that an estimated number of documents has been received.
+- successful completion requires CouchDB to terminate every finite changes page,
+  every returned row to be durable, and a subsequent normal probe to report no
+  available rows.
 
 The existing implementation combines line parsing, decryption, persistence, and
 completion checks within one broad error handler. A decryption or persistence
@@ -30,35 +31,71 @@ cases the stream may continue, advance its checkpoint incorrectly, or wait
 indefinitely for a completion condition which the failed row would have
 satisfied.
 
-Fast Fetch also estimates the number of documents from the changes feed's
-`pending` value. That value is useful for progress reporting, but it is not an
-authoritative completion boundary. The CouchDB sequence token is opaque and must
-be handled using CouchDB's sequence semantics, without numeric-prefix comparison
-or inferred row counts. On clustered CouchDB, database information and the
-changes feed may encode the same position with different opaque tokens, so an
-`update_seq` from database information must not be compared directly with a
-changes-feed row.
+Fast Fetch also reads the normal changes feed before opening each continuous
+page. A normal response's `pending` value counts items which remain after the
+response's `results`, so `pending` alone is not the available workload. With a
+one-row probe, the page can contain `results.length + pending` rows.
+
+The documented `limit=0` behaviour cannot be used as a portable zero-payload
+probe. CouchDB's API documentation says that `limit=0` has the same effect as
+`limit=1`, while CouchDB 3.5.0 with a two-shard database was observed to return
+no result rows and leave the complete count in `pending`. Fast Fetch therefore
+uses an explicit one-row normal probe and includes no document bodies.
+
+A continuous feed with a heartbeat remains open at the current tail. It closes
+with a `{ "last_seq": ... }` line only after its finite `limit` has been met.
+Consequently, a limit larger than the workload already known to be available
+can leave initialisation waiting for future writes.
+
+The CouchDB sequence token is opaque and must be handled using CouchDB's
+sequence semantics, without parsing, ordering, or comparison. On clustered
+CouchDB, a changes row and the feed-level `last_seq` may encode related
+positions with different opaque tokens. Separate requests are also not one
+locked snapshot: their rows may be partially ordered, and replica failover may
+repeat changes. Fast Fetch must therefore be idempotent and must use each
+terminal `last_seq` only by returning it to CouchDB as the next `since` value.
 
 ## Decision
 
-### Remote snapshot and completion
+### Remote page sizing and completion
 
-Fast Fetch must obtain an authoritative target token from a normal changes-feed
-snapshot before consuming the stream. A request from `since=now` with no result
-rows provides a token in the same sequence domain as the streamed rows. If that
-target cannot be obtained, the fetch fails instead of falling back to a database
-information token, a document-count estimate, or another approximate sequence.
+Fast Fetch obtains an approximate progress target from a normal changes-feed
+request with `since=now`, `limit=1`, and `include_docs=false`. This token is for
+progress reporting only. It is not compared with any other token and is not
+used as a completion checkpoint.
 
-The target token is treated as opaque. Fast Fetch completes only after the row
-for the captured target has been processed and all work up to that row has been
-persisted successfully. When a status request proves that no changes exist after
-the current durable checkpoint, the captured target may be checkpointed without
-opening the continuous stream. This includes an empty remote database. Changes
-made remotely after the target was captured are outside this Fast Fetch snapshot
-and are left for subsequent ordinary replication.
+Before every bounded page, Fast Fetch requests a normal changes feed from the
+current durable cursor with `limit=1` and `include_docs=false`. The probe and
+the following continuous page use the same `since`, style, and filter
+selection. Reading the probe does not consume rows from CouchDB; the continuous
+request starts again from that same cursor.
 
-The estimated document count remains available for progress reporting only. It
-must not determine success.
+The number currently available is `results.length + pending`. If it is zero,
+Fast Fetch is caught up and completes without opening another stream. Otherwise,
+the next continuous request uses the smaller of that count and 10,000 as its
+finite `limit`. This prevents a heartbeat-enabled request from waiting for
+future changes merely to fill an oversized page.
+
+The probe and page are separate HTTP requests, not a transactional snapshot.
+New writes, replica selection, or administrative changes may alter the rows
+between them. A page which returns at least one row and a valid terminator may
+therefore be shorter than the probe's estimate. Fast Fetch persists that page
+and probes again. A page which terminates without making progress after a
+positive probe is a retryable transport failure, avoiding an unbounded busy
+loop.
+
+Each continuous request ends with its own `{ "last_seq": ... }` line. Fast
+Fetch treats that line separately from a changes row, flushes and validates all
+preceding local writes, and only then persists the opaque `last_seq`. The exact
+value is replayed as the next request's `since`; it is never parsed, ordered, or
+compared with a row's `seq`, another request's `last_seq`, or the database's
+`update_seq`.
+
+The limit counts outer changes-result rows. A tombstone is one row and consumes
+one page slot even when no document body is present. With `style=all_docs`,
+multiple leaf revisions inside one row's `changes` array do not consume
+additional slots. Changing `include_docs` between the lightweight probe and the
+document-bearing continuous page changes the payload, not the row selection.
 
 ### Processing and persistence
 
@@ -68,8 +105,9 @@ stages:
 1. parse and validate the changes-feed row;
 2. decrypt and validate its document, when a document is present;
 3. add the document to the pending local batch;
-4. persist the batch; and
-5. inspect every result returned by the batch write.
+4. persist the batch;
+5. inspect every result returned by the batch write; and
+6. after the finite page ends, persist its `last_seq` terminator.
 
 With `new_edits: false`, PouchDB follows CouchDB behaviour and may omit successful
 results. Fast Fetch therefore inspects every returned result and treats any
@@ -79,8 +117,8 @@ the complete batch.
 The checkpoint may advance only to the last contiguous sequence for which all
 preceding documents are durable. A row which legitimately requires no local
 write may advance the checkpoint only after any preceding buffered documents
-have been flushed successfully. The target sequence is committed under the same
-rule before the operation reports success.
+have been flushed successfully. A page's `last_seq` is committed under the same
+rule before that page reports success.
 
 If a batch is partly written, its checkpoint is not advanced. Retrying the batch
 with `new_edits: false` is expected to be idempotent, including for documents
@@ -90,8 +128,8 @@ Blank heartbeat lines are ignored. Malformed rows are failures; they are not
 silently skipped. Logs may describe the stage and sequence involved, but must
 not include the raw changes-feed line because it may be large or sensitive.
 
-The continuous changes request and its decoded reader must be terminated on
-every exit. Releasing a reader lock alone does not cancel the underlying
+Each finite continuous changes request and its decoded reader must be terminated
+on every exit. Releasing a reader lock alone does not cancel the underlying
 request. Failure and completion paths therefore abort the request and attempt
 to cancel the reader before the bounded remote-activity scope ends.
 
@@ -156,7 +194,7 @@ The responsibilities are divided at three injectable boundaries.
 
 The Commonlib streaming implementation owns HTTP response validation, NDJSON
 parsing, invocation of the decryption delegate, batch-write result validation,
-contiguous checkpoint advancement, target-sequence completion, and classified
+contiguous checkpoint advancement, finite-page completion, and classified
 failures. It does not know about the Vault, setup dialogues, flag files, or
 LiveSync settings.
 
@@ -187,7 +225,8 @@ This decision does not:
 - add an automatic fallback from Fast Fetch to Standard Fetch;
 - define the detailed failure dialogue or other setup user-interface changes;
   or
-- require Fast Fetch to include remote changes made after its captured target.
+- provide a transaction or locked snapshot across the normal probe and the
+  following continuous page.
 
 An explicit Standard Fetch choice remains available when a user needs the
 ordinary replication path. Any automatic fallback or richer recovery dialogue
@@ -209,8 +248,18 @@ writer. Verify that:
 - a partly failed batch leaves the checkpoint unchanged and reports a storage
   failure;
 - rows without a local write flush earlier buffered documents before advancing;
-- an estimated document count cannot complete the fetch;
-- the captured target cannot complete the fetch before its batch is durable;
+- a returned probe row is counted in addition to `pending`, including when
+  `pending` is zero;
+- every probe uses `limit=1`, excludes document bodies, and is repeated from the
+  previous page's opaque terminator;
+- deletion and document-less rows consume a page slot;
+- a row count cannot complete a page without its `last_seq` terminator;
+- a page terminator cannot advance the checkpoint before its batch is durable;
+- a final row and `last_seq` with different opaque representations complete
+  normally without a token comparison;
+- a shorter valid page is persisted and followed by another probe, while a
+  zero-row page after a positive probe fails without looping;
+- workloads over 10,000 rows resume from each durable finite-page checkpoint;
 - authentication and malformed-protocol responses are terminal;
 - recognised transient transport failures are classified as retryable; and
 - diagnostics do not log the raw changes-feed line.
@@ -236,9 +285,12 @@ existing setup sequence and cleanup.
 ### Integration and E2E tests
 
 Commonlib's CouchDB integration test remains responsible for the real HTTP
-changes feed, opaque sequence tokens, and local batch persistence. It should
-include a data set large enough to cross a batch boundary and confirm that the
-final checkpoint equals the captured target.
+changes feed, opaque sequence tokens, deletion rows, and local batch
+persistence. It should use a two-shard database, include a data set large enough
+to cross a local batch boundary, and confirm that the final checkpoint can be
+passed back to CouchDB as `since` with no result rows or pending changes. The
+test must not compare that token's representation with a separately requested
+target or changes-row token.
 
 LiveSync's real Obsidian Setup URI workflow remains responsible for the actual
 Fast Fetch selection, E2EE passphrase, Vault reflection, ordinary file round
@@ -256,8 +308,8 @@ This follows [Real Obsidian E2E](2026_06_real_obsidian_e2e.md).
   attempt without exposing the partial database to the Vault.
 - Retry delays are no longer spent on authentication, corrupt content, protocol,
   or local persistence failures which cannot repair themselves.
-- Progress totals remain approximate and may change without affecting
-  correctness.
+- Progress totals remain approximate and may grow when a later probe observes
+  new work, without affecting correctness.
 - The implementation requires coordinated changes in Commonlib and LiveSync.
   Commonlib remains the authoritative package for streaming and rebuilder
   behaviour; LiveSync consumes an immutable Commonlib release and owns its setup
@@ -265,3 +317,9 @@ This follows [Real Obsidian E2E](2026_06_real_obsidian_e2e.md).
 - Ordinary replication remains unchanged and continues to provide the reference
   correctness contract for decrypting, persisting, and checkpointing replicated
   documents.
+
+## References
+
+- [Apache CouchDB changes-feed API](https://docs.couchdb.org/en/stable/api/database/changes.html)
+- [Apache CouchDB 2.0 upgrade notes for opaque update sequences](https://docs.couchdb.org/en/stable/whatsnew/2.0.html#upgrade-notes)
+- [Apache CouchDB replication protocol](https://docs.couchdb.org/en/stable/replication/protocol.html)

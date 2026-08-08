@@ -581,6 +581,16 @@ describe("Red Flag Feature", () => {
 
             expect(result).toBe(false);
             expect(host.mocks.ui.confirm.confirmWithMessage).not.toHaveBeenCalled();
+            expect(host.mocks.storageAccess.files.has(FlagFilesOriginal.FETCH_ALL)).toBe(false);
+            await expect(handler.check()).resolves.toBe(false);
+            expect(host.mocks.setting.applyPartial).toHaveBeenCalledWith(
+                {
+                    suspendFileWatching: true,
+                    suspendParseReplicationResult: true,
+                },
+                true
+            );
+            expect(host.mocks.appLifecycle.performRestart).toHaveBeenCalledOnce();
         });
 
         it("should activate selected remote configuration", async () => {
