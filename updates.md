@@ -12,6 +12,13 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Fixed
+
+- Fractional file timestamps no longer cause affected mobile clients to crash after synchronisation (#1087, PR #1039). Thank you to @andrewleech for the contribution!
+    - Timestamps are now normalised in the command-line tool and before Obsidian's native file-system writes.
+
 ## 1.0.10
 
 9th August, 2026
