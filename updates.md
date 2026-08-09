@@ -12,6 +12,13 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Setup and compatibility
+
+#### Fixed
+
+- Fast Setup now uses Standard Fetch when CouchDB's 'Use Internal API' setting is enabled, avoiding a streaming request path which Obsidian's buffered API cannot support (#1020).
+    - Custom headers alone continue to use Fast Fetch when browser CORS permits them; Standard Fetch clears any obsolete Fast Fetch checkpoint after resetting the local database.
+
 ### Synchronisation and storage
 
 #### Fixed
