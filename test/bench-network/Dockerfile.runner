@@ -3,7 +3,7 @@
 FROM node:24-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ iproute2 \
+    && apt-get install -y --no-install-recommends ca-certificates curl unzip python3 make g++ iproute2 libjpeg-turbo-progs time \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DENO_INSTALL=/usr/local
@@ -18,7 +18,7 @@ COPY src/apps/webpeer/package.json ./src/apps/webpeer/package.json
 RUN npm ci
 
 COPY . .
-RUN npm run build -w self-hosted-livesync-cli
+RUN LIVESYNC_CLI_TEST_SUPPORT=1 npm run build -w self-hosted-livesync-cli
 
 WORKDIR /workspace/src/apps/cli/testdeno
 
@@ -28,7 +28,10 @@ RUN deno cache --lock=deno.lock \
     bench-p2p-split-node.ts \
     bench-p2p.ts \
     bench-couchdb.ts \
-    test-p2p-sync.ts
+    bench-compression.ts \
+    test-p2p-sync.ts \
+    test-p2p-replicator-replacement.ts \
+    test-p2p-relay-disconnect.ts
 
 COPY test/bench-network/run-bench.sh /usr/local/bin/run-livesync-bench
 COPY src/apps/cli/testdeno/run-cli-e2e.sh /usr/local/bin/run-livesync-cli-e2e

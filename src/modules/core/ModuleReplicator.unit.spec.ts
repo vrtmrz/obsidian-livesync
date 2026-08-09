@@ -1,16 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 const chunkMocks = vi.hoisted(() => ({
     purgeUnreferencedChunks: vi.fn(async (_db: unknown, countOnly: boolean) => (countOnly ? 2 : 0)),
     balanceChunkPurgedDBs: vi.fn(async () => undefined),
 }));
 
-vi.mock("@lib/pouchdb/chunks", () => chunkMocks);
-vi.mock("@lib/replication/couchdb/LiveSyncReplicator", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/chunks", () => chunkMocks);
+vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
     LiveSyncCouchDBReplicator: class {},
 }));
 
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { ModuleReplicator } from "./ModuleReplicator";
 
 describe("ModuleReplicator", () => {
@@ -57,9 +60,63 @@ describe("ModuleReplicator", () => {
 
         expect(ensurePBKDF2Salt).toHaveBeenCalledWith({}, false, false);
     });
+
+    it("reprocesses stored documents when the normal-file target filters change", async () => {
+        eventHub.offAll();
+        const settings = {
+            handleFilenameCaseSensitive: false,
+            ignoreFiles: ".gitignore",
+            maxMTimeForReflectEvents: 0,
+            syncOnlyRegEx: "^E2E/allowed/.*",
+            syncIgnoreRegEx: "",
+            syncInternalFiles: false,
+            syncMaxSizeInMB: 0,
+            suspendParseReplicationResult: false,
+            useIgnoreFiles: false,
+        } as ObsidianLiveSyncSettings;
+        const services = {
+            context: createServiceContext(),
+            API: {
+                addLog: vi.fn(),
+                addCommand: vi.fn(),
+                registerWindow: vi.fn(),
+                addRibbonIcon: vi.fn(),
+                registerProtocolHandler: vi.fn(),
+            },
+            appLifecycle: {
+                getUnresolvedMessages: { addHandler: vi.fn() },
+                isSuspended: vi.fn(() => false),
+            },
+        };
+        const core = {
+            _services: services,
+            services,
+            settings,
+        } as any;
+        const module = new ModuleReplicator(core);
+        const reprocessStoredDocuments = vi.fn(async () => 1);
+        Object.assign(module.processor, { reprocessStoredDocuments });
+
+        try {
+            await (module as any)._everyOnloadAfterLoadSettings();
+            eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings });
+            await Promise.resolve();
+            expect(reprocessStoredDocuments).not.toHaveBeenCalled();
+
+            Object.assign(settings, { syncOnlyRegEx: "" });
+            eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings });
+            await vi.waitFor(() => expect(reprocessStoredDocuments).toHaveBeenCalledOnce());
+
+            settings.syncMaxSizeInMB = 10;
+            eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings });
+            await vi.waitFor(() => expect(reprocessStoredDocuments).toHaveBeenCalledTimes(2));
+        } finally {
+            eventHub.offAll();
+        }
+    });
 });
 
-describe("ModuleReplicator legacy cleanup", () => {
+describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", () => {
     it("keeps its finite replication and balancing work inside the shared activity boundary", async () => {
         const activityFinished = vi.fn();
         const runBoundedRemoteActivity = vi.fn(async (task: () => unknown) => {
@@ -69,12 +126,14 @@ describe("ModuleReplicator legacy cleanup", () => {
                 activityFinished();
             }
         });
+        const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const openReplication = vi.fn(async () => true);
         const activeReplicator = Object.assign(new LiveSyncCouchDBReplicator({} as any), {
             connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: {} })),
             markRemoteResolved: vi.fn(async () => undefined),
         });
         const services = {
+            context: createServiceContext(),
             API: {
                 addLog: vi.fn(),
                 addCommand: vi.fn(),
@@ -90,6 +149,7 @@ describe("ModuleReplicator legacy cleanup", () => {
             replicator: {
                 getActiveReplicator: vi.fn(() => activeReplicator),
                 runBoundedRemoteActivity,
+                runFiniteReplicationActivity,
             },
         };
         const localDatabase = {
@@ -110,6 +170,9 @@ describe("ModuleReplicator legacy cleanup", () => {
 
         expect(runBoundedRemoteActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "database-cleanup",
+        });
+        expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
+            label: "replication",
         });
         expect(openReplication).toHaveBeenCalledOnce();
         expect(openReplication.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);

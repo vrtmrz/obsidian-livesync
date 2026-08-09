@@ -2,50 +2,54 @@
     import { onMount } from "svelte";
     import { eventHub } from "@/common/events";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
-    import type { P2PServerInfo } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import {
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
-    import { extractP2PRoomSuffix } from "@lib/common/utils";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
-        liveSyncReplicator: LiveSyncTrysteroReplicator;
+        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
         showBroadcastToggle?: boolean;
         core?: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
+    let { getLiveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
-    let roomSuffix = $state<string>(extractP2PRoomSuffix(core?.services.setting.currentSettings()?.P2P_roomID ?? ""));
-    let useDiagRTC = $state<boolean>(core?.services.setting.currentSettings()?.P2P_useDiagRTC ?? false);
+    // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
+    const readCurrentSettings = () => core?.services.setting.currentSettings();
+    const initialSettings = readCurrentSettings();
+    let roomSuffix = $state<string>(extractP2PRoomSuffix(initialSettings?.P2P_roomID ?? ""));
+    let useDiagRTC = $state<boolean>(initialSettings?.P2P_useDiagRTC ?? false);
 
     async function requestServerStatus() {
-        await Promise.resolve(liveSyncReplicator.requestStatus());
+        await Promise.resolve(getLiveSyncReplicator().requestStatus());
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
     async function onOpenConnection() {
-        await liveSyncReplicator.makeSureOpened();
+        await getLiveSyncReplicator().makeSureOpened();
         await requestServerStatus();
     }
 
     async function onDisconnect() {
-        await liveSyncReplicator.close();
+        await getLiveSyncReplicator().close();
         await requestServerStatus();
     }
 
     function toggleBroadcast() {
         if (replicatorStatus?.isBroadcasting) {
-            liveSyncReplicator.disableBroadcastChanges();
+            getLiveSyncReplicator().disableBroadcastChanges();
         } else {
-            liveSyncReplicator.enableBroadcastChanges();
+            getLiveSyncReplicator().enableBroadcastChanges();
         }
     }
 
@@ -91,57 +95,58 @@
 </script>
 
 <div class="server-status">
-    <h3>Signalling Status</h3>
+    <h3>{translateMessage("Signalling Status")}</h3>
 
     <div class="status-item">
-        <span>Connection:</span>
+        <span>{translateMessage("Connection:")}</span>
         <span class="status-value {isConnected ? 'connected' : 'disconnected'}">
-            {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+            {isConnected ? translateMessage("🟢 Connected") : translateMessage("🔴 Disconnected")}
         </span>
     </div>
 
     <div class="status-item status-action">
         {#if !isConnected}
-            <button onclick={onOpenConnection}>Open connection</button>
+            <button onclick={onOpenConnection}>{translateMessage("Open connection")}</button>
         {:else}
-            <button onclick={onDisconnect}>Close connection</button>
+            <button onclick={onDisconnect}>{translateMessage("Disconnect")}</button>
         {/if}
     </div>
 
     {#if serverInfo}
         <div class="status-item">
-            <span>Room ID suffix:</span>
-            <span class="room-suffix-display" title={roomSuffix || "Not configured"}>
+            <span>{translateMessage("Room ID suffix:")}</span>
+            <span class="room-suffix-display" title={roomSuffix || translateMessage("Not configured")}>
                 {roomSuffix || "-"}
             </span>
         </div>
 
         <div class="status-item">
-            <span>Peer ID:</span>
+            <span>{translateMessage("Peer ID:")}</span>
             <span class="peer-id-display" title={serverInfo.serverPeerId}>
                 {serverInfo.serverPeerId.slice(0, 12)}...
             </span>
         </div>
 
         <div class="status-item">
-            <span>Devices:</span>
+            <span>{translateMessage("Devices:")}</span>
             <span>{serverInfo.knownAdvertisements.length}</span>
         </div>
     {/if}
 
     {#if showBroadcastToggle}
     <div class="status-item status-action broadcast-row">
-        <!-- Live-push to peers: stream this device's changes to connected peers for LiveSync -->
         <label class="broadcast-label" for="broadcast-toggle">
-            Live-push to peers
+            {translateMessage("Announce changes")}
         </label>
         <button
             id="broadcast-toggle"
             class="broadcast-button {isBroadcasting ? 'is-on' : 'is-off'}"
             onclick={toggleBroadcast}
-            title={isBroadcasting ? 'Pushing changes to peers — click to stop' : 'Start pushing changes to peers'}
+            title={isBroadcasting
+                ? translateMessage("Stop announcing changes")
+                : translateMessage("Start announcing changes")}
         >
-            {isBroadcasting ? '📡 On' : '📡 Off'}
+            {isBroadcasting ? translateMessage("📡 On") : translateMessage("📡 Off")}
         </button>
     </div>
     {/if}
@@ -149,39 +154,39 @@
     {#if core}
     <div class="status-item status-action diag-toggle-row">
         <label class="broadcast-label" for="diag-toggle">
-            🕵️ Diag
+            {translateMessage("🕵️ Diag")}
         </label>
         <button
             id="diag-toggle"
             class="broadcast-button {useDiagRTC ? 'is-on' : 'is-off'}"
             onclick={toggleDiagRTC}
             title={useDiagRTC
-                ? 'Diagnostic RTCPeerConnection is enabled'
-                : 'Use Diagnostic RTCPeerConnection for statistics'}
+                ? translateMessage("Diagnostic RTCPeerConnection is enabled")
+                : translateMessage("Use Diagnostic RTCPeerConnection for statistics")}
         >
-            {useDiagRTC ? 'On' : 'Off'}
+            {useDiagRTC ? translateMessage("On") : translateMessage("Off")}
         </button>
     </div>
     {/if}
 
     {#if serverInfo}
         <div class="diag-section">
-            <h4>Stats</h4>
+            <h4>{translateMessage("Stats")}</h4>
             <div class="diag-grid">
                 <div class="diag-item">
-                    <span>Incoming:</span>
+                    <span>{translateMessage("Incoming:")}</span>
                     <span>{serverInfo.diag.totalNewConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Connected:</span>
+                    <span>{translateMessage("Connected:")}</span>
                     <span>{serverInfo.diag.totalSuccessfulConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Failed:</span>
+                    <span>{translateMessage("Failed:")}</span>
                     <span>{serverInfo.diag.totalFailedConnections}</span>
                 </div>
                 <div class="diag-item">
-                    <span>Closed:</span>
+                    <span>{translateMessage("Closed:")}</span>
                     <span>{serverInfo.diag.totalClosedConnections}</span>
                 </div>
             </div>

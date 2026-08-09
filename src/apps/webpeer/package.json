@@ -1,7 +1,7 @@
 {
     "name": "webpeer",
     "private": true,
-    "version": "0.25.82-webpeer",
+    "version": "1.0.10-webpeer",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -9,10 +9,13 @@
         "build:docker": "docker build -f Dockerfile -t livesync-webpeer ../../..",
         "run:docker": "docker run -p 8001:80 livesync-webpeer",
         "preview": "vite preview",
-        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+        "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+        "test:unit": "npm --prefix ../../.. run test:unit -- test/apps/webpeer",
+        "pretest:browser": "npm run build",
+        "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webpeer/browser-smoke.test.ts"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.51"
+        "octagonal-wheels": "^0.1.52"
     },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.19.0",
@@ -22,9 +25,5 @@
         "svelte-check": "^4.6.0",
         "typescript": "5.9.3",
         "vite": "^8.0.16"
-    },
-    "imports": {
-        "../../src/worker/bgWorker.ts": "../../src/worker/bgWorker.mock.ts",
-        "@lib/worker/bgWorker.ts": "@lib/worker/bgWorker.mock.ts"
     }
 }

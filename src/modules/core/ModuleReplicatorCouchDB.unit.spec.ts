@@ -3,7 +3,7 @@ import { ModuleReplicatorCouchDB } from "./ModuleReplicatorCouchDB.ts";
 
 function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isReplicationReady = true) {
     const openReplication = vi.fn(async () => true);
-    const runBoundedRemoteActivity = vi.fn(async (task: () => unknown) => await task());
+    const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
     const services = {
         API: {
             addLog: vi.fn(),
@@ -20,7 +20,7 @@ function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isR
             isReplicationReady: vi.fn(async () => isReplicationReady),
         },
         replicator: {
-            runBoundedRemoteActivity,
+            runFiniteReplicationActivity,
         },
         setting: {
             saveSettingData: vi.fn(async () => undefined),
@@ -38,13 +38,13 @@ function createModule(settings: { liveSync: boolean; syncOnStart: boolean }, isR
     return {
         module: new ModuleReplicatorCouchDB(core),
         openReplication,
-        runBoundedRemoteActivity,
+        runFiniteReplicationActivity,
     };
 }
 
 describe("ModuleReplicatorCouchDB resume replication activity", () => {
-    it("runs start-up one-shot replication through bounded remote activity", async () => {
-        const { module, openReplication, runBoundedRemoteActivity } = createModule({
+    it("exposes start-up one-shot replication as finite replication activity", async () => {
+        const { module, openReplication, runFiniteReplicationActivity } = createModule({
             liveSync: false,
             syncOnStart: true,
         });
@@ -52,14 +52,14 @@ describe("ModuleReplicatorCouchDB resume replication activity", () => {
         await module._everyAfterResumeProcess();
 
         await vi.waitFor(() => expect(openReplication).toHaveBeenCalledOnce());
-        expect(runBoundedRemoteActivity).toHaveBeenCalledWith(expect.any(Function), {
+        expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "replication",
         });
         expect(openReplication).toHaveBeenCalledWith(expect.any(Object), false, false, false);
     });
 
-    it("does not treat continuous replication as bounded activity", async () => {
-        const { module, openReplication, runBoundedRemoteActivity } = createModule({
+    it("does not wrap the unbounded continuous channel in another finite activity", async () => {
+        const { module, openReplication, runFiniteReplicationActivity } = createModule({
             liveSync: true,
             syncOnStart: false,
         });
@@ -67,12 +67,12 @@ describe("ModuleReplicatorCouchDB resume replication activity", () => {
         await module._everyAfterResumeProcess();
 
         await vi.waitFor(() => expect(openReplication).toHaveBeenCalledOnce());
-        expect(runBoundedRemoteActivity).not.toHaveBeenCalled();
+        expect(runFiniteReplicationActivity).not.toHaveBeenCalled();
         expect(openReplication).toHaveBeenCalledWith(expect.any(Object), true, false, false);
     });
 
     it("does not start a one-shot activity when start-up readiness fails", async () => {
-        const { module, openReplication, runBoundedRemoteActivity } = createModule(
+        const { module, openReplication, runFiniteReplicationActivity } = createModule(
             {
                 liveSync: false,
                 syncOnStart: true,
@@ -83,7 +83,7 @@ describe("ModuleReplicatorCouchDB resume replication activity", () => {
         await module._everyAfterResumeProcess();
         await new Promise((resolve) => setTimeout(resolve, 0));
 
-        expect(runBoundedRemoteActivity).not.toHaveBeenCalled();
+        expect(runFiniteReplicationActivity).not.toHaveBeenCalled();
         expect(openReplication).not.toHaveBeenCalled();
     });
 });

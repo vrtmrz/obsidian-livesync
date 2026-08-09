@@ -1,7 +1,7 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@lib/common/types";
-import { LiveSyncCouchDBReplicator } from "@lib/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncAbstractReplicator } from "@lib/replication/LiveSyncAbstractReplicator";
+import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import { AbstractModule } from "@/modules/AbstractModule";
 import type { LiveSyncCore } from "@/main";
 
@@ -33,7 +33,7 @@ export class ModuleReplicatorCouchDB extends AbstractModule {
                     if (continuous) {
                         void openReplication();
                     } else {
-                        await this.services.replicator.runBoundedRemoteActivity(openReplication, {
+                        await this.services.replicator.runFiniteReplicationActivity(openReplication, {
                             label: "replication",
                         });
                     }

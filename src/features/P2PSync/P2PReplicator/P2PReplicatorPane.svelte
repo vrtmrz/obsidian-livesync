@@ -1,36 +1,35 @@
 <script lang="ts">
-    import { onMount, setContext } from "svelte";
-    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@lib/common/types";
+    import { onMount } from "svelte";
+    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import {
         AcceptedStatus,
         ConnectionStatus,
         type PeerStatus,
-    } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicatorPaneHost } from "./P2PReplicatorPaneHost";
     import PeerStatusRow from "@/features/P2PSync/P2PReplicator/PeerStatusRow.svelte";
-    import { EVENT_LAYOUT_READY, eventHub } from "@/common/events";
+    import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
     import {
         type PeerInfo,
         type P2PServerInfo,
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import { type P2PReplicatorStatus } from "@lib/replication/trystero/TrysteroReplicator";
-    import { $msg as _msg } from "@lib/common/i18n";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "@lib/common/types";
-    import { generateP2PRoomId } from "@lib/common/utils";
-    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { $msg as _msg } from "@/common/translation";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 
     interface Props {
-        cmdSync: LiveSyncTrysteroReplicator;
-        core: LiveSyncBaseCore;
+        host: P2PReplicatorPaneHost;
     }
 
-    let { cmdSync, core }: Props = $props();
-    // const cmdSync = plugin.getAddOn<P2PReplicator>("P2PReplicator")!;
-    setContext("getReplicator", () => cmdSync);
-    const currentSettings = () => core.services.setting.currentSettings() as P2PSyncSetting;
+    let { host }: Props = $props();
+    let services = $derived(host.services);
+    let events = $derived(services.context.events);
+    const currentSettings = () => services.setting.currentSettings() as P2PSyncSetting;
+    const currentReplicator = () => host.p2p.replicator;
     const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
     let settings = $state<P2PSyncSetting>(initialSettings);
@@ -82,7 +81,7 @@
         //     P2P_AutoStart: eAutoStart,
         //     P2P_AutoBroadcast: eAutoBroadcast,
         // };
-        await core.services.setting.applyPartial(
+        await services.setting.applyPartial(
             {
                 P2P_Enabled: eP2PEnabled,
                 P2P_relays: eRelay,
@@ -95,7 +94,7 @@
             },
             true
         );
-        core.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
+        services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
         deviceName = eDeviceName;
     }
     async function revert() {
@@ -114,7 +113,7 @@
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
         if (force) {
             const initDeviceName =
-                core.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? core.services.vault.getVaultName();
+                services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? services.vault.getVaultName();
             deviceName = initDeviceName;
             eDeviceName = initDeviceName;
         }
@@ -132,21 +131,22 @@
         settings = d;
     };
     onMount(() => {
-        const r = eventHub.onEvent("setting-saved", async (d) => {
+        const r = events.onEvent("setting-saved", async (d) => {
             applyLoadSettings(d, false);
             closeServer();
         });
-        const rx = eventHub.onEvent(EVENT_LAYOUT_READY, () => {
+        const rx = events.onEvent(EVENT_LAYOUT_READY, () => {
             applyLoadSettings(currentSettings(), true);
         });
-        const r2 = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
+        const r2 = events.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
             advertisements = status?.knownAdvertisements ?? [];
         });
-        const r3 = eventHub.onEvent(EVENT_P2P_REPLICATOR_STATUS, (status) => {
+        const r3 = events.onEvent(EVENT_P2P_REPLICATOR_STATUS, (status) => {
             replicatorInfo = status;
         });
-        eventHub.emitEvent(EVENT_REQUEST_STATUS);
+        applyLoadSettings(currentSettings(), true);
+        events.emitEvent(EVENT_REQUEST_STATUS);
         return () => {
             r();
             rx();
@@ -223,22 +223,22 @@
     }
 
     async function openServer() {
-        await cmdSync.open();
+        await currentReplicator().open();
     }
     async function closeServer() {
-        await cmdSync.close();
+        await currentReplicator().close();
     }
     function startBroadcasting() {
-        void cmdSync.enableBroadcastChanges();
+        currentReplicator().enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        void cmdSync.disableBroadcastChanges();
+        currentReplicator().disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;
     const getDialogStatus = () => {
         try {
-            const initialDialogStatus = JSON.parse(core.services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
+            const initialDialogStatus = JSON.parse(services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
                 notice?: boolean;
                 setting?: boolean;
             };
@@ -255,15 +255,15 @@
             notice: isNoticeOpened,
             setting: isSettingOpened,
         };
-        core.services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
+        services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
     });
     let isObsidian = $derived.by(() => {
-        return core.services.API.getPlatform() === "obsidian";
+        return services.API.getPlatform() === "obsidian";
     });
 </script>
 
 <article>
-    <h1>Peer to Peer Replicator</h1>
+    <h1>{_msg("Peer to Peer Replicator")}</h1>
     <details bind:open={isNoticeOpened}>
         <summary>{_msg("P2P.Note.Summary")}</summary>
         <p class="important">{_msg("P2P.Note.important_note")}</p>
@@ -274,23 +274,23 @@
             <p>{paragraph}</p>
         {/each}
     </details>
-    <h2>Connection Settings</h2>
+    <h2>{_msg("Connection Settings")}</h2>
     {#if isObsidian}
-        You can configure in the Obsidian Plugin Settings.
+        {_msg("You can configure in the Obsidian Plugin Settings.")}
     {:else}
         <details bind:open={isSettingOpened}>
             <summary>{eRelay}</summary>
             <table class="settings">
                 <tbody>
                     <tr>
-                        <th> Enable P2P Replicator </th>
+                        <th>{_msg("Enable P2P Replicator")}</th>
                         <td>
                             <label class={{ "is-dirty": isP2PEnabledModified }}>
                                 <input type="checkbox" bind:checked={eP2PEnabled} />
                             </label>
                         </td>
                     </tr><tr>
-                        <th> Relay settings </th>
+                        <th>{_msg("Relay settings")}</th>
                         <td>
                             <label class={{ "is-dirty": isRelayModified }}>
                                 <input
@@ -299,12 +299,12 @@
                                     bind:value={eRelay}
                                     autocomplete="off"
                                 />
-                                <button onclick={() => useDefaultRelay()}> Use vrtmrz's relay </button>
+                                <button onclick={() => useDefaultRelay()}>{_msg("Use vrtmrz's relay")}</button>
                             </label>
                         </td>
                     </tr>
                     <tr>
-                        <th> Room ID </th>
+                        <th>{_msg("Room ID")}</th>
                         <td>
                             <label class={{ "is-dirty": isRoomIdModified }}>
                                 <input
@@ -315,31 +315,32 @@
                                     spellcheck="false"
                                     autocorrect="off"
                                 />
-                                <button onclick={() => chooseRandom()}> Use Random Number </button>
+                                <button onclick={() => chooseRandom()}>{_msg("Use Random Number")}</button>
                             </label>
                             <span>
-                                <small>
-                                    This can isolate your connections between devices. Use the same Room ID for the same
-                                    devices.</small
+                                <small
+                                    >{_msg(
+                                        "This can isolate your connections between devices. Use the same Room ID for the same devices."
+                                    )}</small
                                 >
                             </span>
                         </td>
                     </tr>
                     <tr>
-                        <th> Password </th>
+                        <th>{_msg("Password")}</th>
                         <td>
                             <label class={{ "is-dirty": isPasswordModified }}>
                                 <input type="password" placeholder="password" bind:value={ePassword} />
                             </label>
                             <span>
                                 <small>
-                                    This password is used to encrypt the connection. Use something long enough.
+                                    {_msg("This password is used to encrypt the connection. Use something long enough.")}
                                 </small>
                             </span>
                         </td>
                     </tr>
                     <tr>
-                        <th> This device name </th>
+                        <th>{_msg("This device name")}</th>
                         <td>
                             <label class={{ "is-dirty": isDeviceNameModified }}>
                                 <input
@@ -351,14 +352,15 @@
                             </label>
                             <span>
                                 <small>
-                                    Device name to identify the device. Please use shorter one for the stable peer
-                                    detection, i.e., "iphone-16" or "macbook-2021".
+                                    {_msg(
+                                        'Device name to identify the device. Please use shorter one for the stable peer detection, i.e., "iphone-16" or "macbook-2021".'
+                                    )}
                                 </small>
                             </span>
                         </td>
                     </tr>
                     <tr>
-                        <th> Auto Connect </th>
+                        <th>{_msg("Auto Connect")}</th>
                         <td>
                             <label class={{ "is-dirty": isAutoStartModified }}>
                                 <input type="checkbox" bind:checked={eAutoStart} />
@@ -366,7 +368,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th> Start change-broadcasting on Connect </th>
+                        <th>{_msg("Start change-broadcasting on Connect")}</th>
                         <td>
                             <label class={{ "is-dirty": isAutoBroadcastModified }}>
                                 <input type="checkbox" bind:checked={eAutoBroadcast} />
@@ -383,39 +385,43 @@
             </tr> -->
                 </tbody>
             </table>
-            <button disabled={!isAnyModified} class="button mod-cta" onclick={saveAndApply}>Save and Apply</button>
-            <button disabled={!isAnyModified} class="button" onclick={revert}>Revert changes</button>
+            <button disabled={!isAnyModified} class="button mod-cta" onclick={saveAndApply}
+                >{_msg("Save and Apply")}</button
+            >
+            <button disabled={!isAnyModified} class="button" onclick={revert}>{_msg("Revert changes")}</button>
         </details>
     {/if}
 
     <div>
-        <h2>Signaling Server Connection</h2>
+        <h2>{_msg("Signaling Server Connection")}</h2>
         <div>
             {#if !isConnected}
-                <p>No Connection</p>
+                <p>{_msg("No Connection")}</p>
             {:else}
-                <p>Connected to Signaling Server (as Peer ID: {serverPeerId})</p>
+                <p>{_msg("Connected to Signaling Server (as Peer ID: ${peerId})", { peerId: serverPeerId })}</p>
             {/if}
         </div>
         <div>
             {#if !isConnected}
-                <button onclick={openServer}>Connect</button>
+                <button onclick={openServer}>{_msg("Connect")}</button>
             {:else}
-                <button onclick={closeServer}>Disconnect</button>
+                <button onclick={closeServer}>{_msg("Disconnect")}</button>
                 {#if replicatorInfo?.isBroadcasting !== undefined}
                     {#if replicatorInfo?.isBroadcasting}
-                        <button onclick={stopBroadcasting}>Stop Broadcasting</button>
+                        <button onclick={stopBroadcasting}>{_msg("Stop Broadcasting")}</button>
                     {:else}
-                        <button onclick={startBroadcasting}>Start Broadcasting</button>
+                        <button onclick={startBroadcasting}>{_msg("Start Broadcasting")}</button>
                     {/if}
                 {/if}
                 <details>
-                    <summary>Broadcasting?</summary>
+                    <summary>{_msg("Broadcasting?")}</summary>
                     <p>
                         <small>
-                            If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which
-                            detects this will start the replication for fetching. <br />
-                            However, This should not be enabled if you want to increase your secrecy more.
+                            {_msg(
+                                "If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching."
+                            )}
+                            <br />
+                            {_msg("However, This should not be enabled if you want to increase your secrecy more.")}
                         </small>
                     </p>
                 </details>
@@ -424,18 +430,18 @@
     </div>
 
     <div>
-        <h2>Peers</h2>
+        <h2>{_msg("Peers")}</h2>
         <table class="peers">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Action</th>
-                    <th>Command</th>
+                    <th>{_msg("Name")}</th>
+                    <th>{_msg("Action")}</th>
+                    <th>{_msg("Command")}</th>
                 </tr>
             </thead>
             <tbody>
                 {#each peers as peer}
-                    <PeerStatusRow peerStatus={peer}></PeerStatusRow>
+                    <PeerStatusRow peerStatus={peer} p2p={host.p2p} showPeerMenu={host.showPeerMenu}></PeerStatusRow>
                 {/each}
             </tbody>
         </table>

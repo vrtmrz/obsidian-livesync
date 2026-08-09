@@ -41,6 +41,13 @@ Deno.test("CLI file operations: push / cat / ls / info / rm / resolve / cat-rev 
         setupResult.combined.includes("[Command] setup ->"),
         `setup command did not execute expected code path\n${setupResult.combined}`
     );
+    const persistedSetup = JSON.parse(await Deno.readTextFile(settingsFile));
+    assertEquals(persistedSetup.isConfigured, true, "setup did not persist the configured state");
+    assert(
+        typeof persistedSetup.encryptedCouchDBConnection === "string" &&
+            persistedSetup.encryptedCouchDBConnection.length > 0,
+        "setup did not persist the encrypted connection settings"
+    );
 
     const run = (...args: string[]) => runCliOrFail(vaultDir, "--settings", settingsFile, ...args);
 

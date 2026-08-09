@@ -1,20 +1,23 @@
 <script lang="ts">
-    import { getContext } from "svelte";
-    import { AcceptedStatus, type PeerStatus } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import { eventHub } from "@/common/events";
-    import { EVENT_P2P_PEER_SHOW_EXTRA_MENU } from "@lib/replication/trystero/P2PReplicatorPaneCommon";
+    import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import type { P2PReplicatorHandle } from "./P2PReplicatorPaneHost";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
         peerStatus: PeerStatus;
+        p2p: P2PReplicatorHandle;
+        showPeerMenu?: (peer: PeerStatus, event: MouseEvent) => void;
     }
 
-    let { peerStatus }: Props = $props();
+    let { peerStatus, p2p, showPeerMenu }: Props = $props();
     let peer = $derived(peerStatus);
+    const currentReplicator = () => p2p.replicator;
 
-    function select<T extends string | number | symbol, U>(d: T, cond: Record<T, U>): U;
-    function select<T extends string | number | symbol, U, V>(d: T, cond: Record<T, U>, def: V): U | V;
-    function select<T extends string | number | symbol, U>(d: T, cond: Record<T, U>, def?: U): U | undefined {
+    function select<T extends PropertyKey, U, V = undefined>(
+        d: T,
+        cond: Partial<Record<T, U>>,
+        def: V | undefined = undefined
+    ): U | V | undefined {
         return d in cond ? cond[d] : def;
     }
 
@@ -25,6 +28,11 @@
             peer.isSending ? ["SENDING"] : [],
         ].flat()
     );
+    const chipLabels: Record<string, string> = {
+        WATCHING: translateMessage("WATCHING"),
+        FETCHING: translateMessage("FETCHING"),
+        SENDING: translateMessage("SENDING"),
+    };
     let acceptedStatusChip = $derived.by(() =>
         select(
             peer.accepted.toString(),
@@ -36,8 +44,15 @@
                 [AcceptedStatus.UNKNOWN]: "NEW",
             },
             ""
-        )
+        ) ?? ""
     );
+    const acceptedStatusLabels: Record<string, string> = {
+        ACCEPTED: translateMessage("ACCEPTED"),
+        "ACCEPTED (in session)": translateMessage("ACCEPTED (in session)"),
+        "DENIED (in session)": translateMessage("DENIED (in session)"),
+        DENIED: translateMessage("DENIED"),
+        NEW: translateMessage("NEW"),
+    };
     const classList = {
         ["SENDING"]: "connected",
         ["FETCHING"]: "connected",
@@ -57,7 +72,7 @@
     let isNew = $derived.by(() => peer.accepted === AcceptedStatus.UNKNOWN);
 
     function makeDecision(isAccepted: boolean, isTemporary: boolean) {
-        replicator.makeDecision({
+        currentReplicator().makeDecision({
             peerId: peer.peerId,
             name: peer.name,
             decision: isAccepted,
@@ -65,39 +80,37 @@
         });
     }
     function revokeDecision() {
-        replicator.revokeDecision({
+        currentReplicator().revokeDecision({
             peerId: peer.peerId,
             name: peer.name,
         });
     }
-    const replicator = getContext<() => LiveSyncTrysteroReplicator>("getReplicator")();
-
     const peerAttrLabels = $derived.by(() => {
         const attrs = [];
         if (peer.syncOnConnect) {
-            attrs.push("✔ SYNC");
+            attrs.push(translateMessage("✔ SYNC"));
         }
         if (peer.watchOnConnect) {
-            attrs.push("✔ WATCH");
+            attrs.push(translateMessage("✔ WATCH"));
         }
         if (peer.syncOnReplicationCommand) {
-            attrs.push("✔ SELECT");
+            attrs.push(translateMessage("✔ SELECT"));
         }
         return attrs;
     });
     function startWatching() {
-        replicator?.watchPeer(peer.peerId);
+        currentReplicator().watchPeer(peer.peerId);
     }
     function stopWatching() {
-        replicator?.unwatchPeer(peer.peerId);
+        currentReplicator().unwatchPeer(peer.peerId);
     }
 
     function sync() {
-        void replicator?.sync(peer.peerId, false);
+        void currentReplicator().sync(peer.peerId, false);
     }
 
     function moreMenu(evt: MouseEvent) {
-        eventHub.emitEvent(EVENT_P2P_PEER_SHOW_EXTRA_MENU, { peer, event: evt });
+        showPeerMenu?.(peer, evt);
     }
 </script>
 
@@ -113,12 +126,14 @@
         </div>
         <div class="status-chips">
             <div class="row">
-                <span class="chip {select(acceptedStatusChip, classList)}">{acceptedStatusChip}</span>
+                <span class="chip {select(acceptedStatusChip, classList)}"
+                    >{acceptedStatusLabels[acceptedStatusChip] ?? acceptedStatusChip}</span
+                >
             </div>
             {#if isAccepted}
                 <div class="row">
                     {#each statusChips as chip}
-                        <span class="chip {select(chip, classList)}">{chip}</span>
+                        <span class="chip {select(chip, classList)}">{chipLabels[chip] ?? chip}</span>
                     {/each}
                 </div>
             {/if}
@@ -134,15 +149,25 @@
             <div class="row">
                 {#if isNew}
                     {#if !isAccepted}
-                        <button class="button" onclick={() => makeDecision(true, true)}>Accept in session</button>
-                        <button class="button mod-cta" onclick={() => makeDecision(true, false)}>Accept</button>
+                        <button class="button" onclick={() => makeDecision(true, true)}
+                            >{translateMessage("Accept in session")}</button
+                        >
+                        <button class="button mod-cta" onclick={() => makeDecision(true, false)}
+                            >{translateMessage("Accept")}</button
+                        >
                     {/if}
                     {#if !isDenied}
-                        <button class="button" onclick={() => makeDecision(false, true)}>Deny in session</button>
-                        <button class="button mod-warning" onclick={() => makeDecision(false, false)}>Deny</button>
+                        <button class="button" onclick={() => makeDecision(false, true)}
+                            >{translateMessage("Deny in session")}</button
+                        >
+                        <button class="button mod-warning" onclick={() => makeDecision(false, false)}
+                            >{translateMessage("Deny")}</button
+                        >
                     {/if}
                 {:else}
-                    <button class="button mod-warning" onclick={() => revokeDecision()}>Revoke</button>
+                    <button class="button mod-warning" onclick={() => revokeDecision()}
+                        >{translateMessage("Revoke")}</button
+                    >
                 {/if}
             </div>
         </div>
@@ -155,11 +180,13 @@
                     <!-- <button class="button" onclick={replicateFrom} disabled={peer.isFetching}>📥</button>
                     <button class="button" onclick={replicateTo} disabled={peer.isSending}>📤</button> -->
                     {#if peer.isWatching}
-                        <button class="button" onclick={stopWatching}>Stop ⚡</button>
+                        <button class="button" onclick={stopWatching}>{translateMessage("Stop ⚡")}</button>
                     {:else}
-                        <button class="button" onclick={startWatching} title="live">⚡</button>
+                        <button class="button" onclick={startWatching} title={translateMessage("live")}>⚡</button>
                     {/if}
-                    <button class="button" onclick={moreMenu}>...</button>
+                    {#if showPeerMenu}
+                        <button class="button" onclick={moreMenu}>...</button>
+                    {/if}
                 </div>
             </div>
         {/if}

@@ -1,4 +1,4 @@
-import type { FilePath, UXStat } from "@lib/common/types";
+import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 /**
  * Node.js file representation

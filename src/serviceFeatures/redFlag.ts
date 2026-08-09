@@ -1,20 +1,28 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
-import { createInstanceLogFunction, type LogFunction } from "@lib/services/lib/logUtils";
-import { FlagFilesHumanReadable, FlagFilesOriginal } from "@lib/common/models/redflag.const";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { createInstanceLogFunction, type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import {
+    FlagFilesHumanReadable,
+    FlagFilesOriginal,
+} from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const";
 import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { REMOTE_MINIO, REMOTE_P2P } from "@lib/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@lib/common/models/setting.type";
-import { TweakValuesShouldMatchedTemplate } from "@lib/common/models/tweak.definition";
+import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
+import {
+    RemotePreferredTweakStatuses,
+    TweakValuesShouldMatchedTemplate,
+} from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
 import type {
     FetchEverythingResult,
     RebuildEverythingResult,
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
 import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
-import { ConnectionStringParser } from "@lib/common/ConnectionString";
-import { activateRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import { isP2PMainRemote } from "@/common/remoteConfiguration";
+import { $msg } from "@/common/translation";
 
 /**
  * Flag file handler interface, similar to target filter pattern.
@@ -24,6 +32,8 @@ interface FlagFileHandler {
     check: () => Promise<boolean>;
     handle: () => Promise<boolean>;
 }
+
+type InitialisationOperation = "fetch" | "rebuild";
 
 export async function isFlagFileExist(host: NecessaryServices<never, "storageAccess">, path: string) {
     const redFlagExist = await host.serviceModules.storageAccess.isExists(
@@ -140,7 +150,7 @@ export function createFetchAllFlagHandler(
         // Select the remote database if there are multiple remotes configured.
         const isRemoteActivated = await askAndActivateRemoteDatabase(host, log);
         if (!isRemoteActivated) {
-            return false;
+            return await cancelScheduledInitialisation(host, cleanupFlag);
         }
 
         // Ask user for use Fast Setup
@@ -154,9 +164,7 @@ export function createFetchAllFlagHandler(
             await host.services.UI.dialogManager.openWithExplicitCancel<FetchEverythingResult>(FetchEverything);
         if (method === "cancelled") {
             log("Fetch everything cancelled by user.", LOG_LEVEL_NOTICE);
-            await cleanupFlag();
-            host.services.appLifecycle.performRestart();
-            return false;
+            return await cancelScheduledInitialisation(host, cleanupFlag);
         }
         const { vault, extra } = method;
         const settings = await Promise.resolve(host.services.setting.currentSettings());
@@ -181,9 +189,11 @@ export function createFetchAllFlagHandler(
             },
         } as const;
 
+        if (!(await adjustSettingToRemoteIfNeeded(host, log, extra, settings))) {
+            log("Fetch initialisation cancelled by user.", LOG_LEVEL_NOTICE);
+            return await cancelScheduledInitialisation(host, cleanupFlag);
+        }
         return await processVaultInitialisation(host, log, async () => {
-            const settings = host.services.setting.currentSettings();
-            await adjustSettingToRemoteIfNeeded(host, log, extra, settings);
             const vaultStateToAction = mapVaultStateToAction[vault];
             const { makeLocalChunkBeforeSync, makeLocalFilesBeforeSync } = vaultStateToAction;
             log(
@@ -213,115 +223,184 @@ export function createFetchAllFlagHandler(
 /**
  * Adjust setting to remote configuration.
  * @param config current configuration to retrieve remote preferred config
- * @returns updated configuration if applied, otherwise null.
+ * @param operation operation which will consume the selected configuration
+ * @returns whether initialisation may continue.
  */
 export async function adjustSettingToRemote(
     host: NecessaryServices<"tweakValue" | "UI" | "setting", never>,
     log: LogFunction,
-    config: ObsidianLiveSyncSettings
-) {
-    // Fetch remote configuration unless prevented.
-    const SKIP_FETCH = "Skip and proceed";
-    const RETRY_FETCH = "Retry (recommended)";
-    let canProceed = false;
-    do {
-        const remoteTweaks = await host.services.tweakValue.fetchRemotePreferred(config);
-        if (!remoteTweaks) {
+    config: ObsidianLiveSyncSettings,
+    operation: InitialisationOperation = "fetch"
+): Promise<boolean> {
+    while (true) {
+        const remoteResult = await host.services.tweakValue.fetchRemotePreferred(config);
+        if (remoteResult.status === RemotePreferredTweakStatuses.NOT_CONFIGURED) {
+            const useDeviceSettings = $msg("Use this device's settings");
+            const cancelInitialisation = $msg("Cancel");
+            log(`Remote synchronisation settings are not configured (${remoteResult.reason}).`, LOG_LEVEL_INFO);
             const choice = await host.services.UI.confirm.askSelectStringDialogue(
-                "Could not fetch configuration from remote. If you are new to the Self-hosted LiveSync, this might be expected. If not, you should check your network or server settings.",
-                [SKIP_FETCH, RETRY_FETCH] as const,
+                $msg(
+                    "The selected remote has no saved synchronisation settings. This is normal for a new remote. Use this device's settings, or cancel if you expected existing settings."
+                ),
+                [useDeviceSettings, cancelInitialisation] as const,
                 {
-                    defaultAction: RETRY_FETCH,
+                    defaultAction: useDeviceSettings,
                     timeout: 0,
-                    title: "Fetch Remote Configuration Failed",
+                    title: $msg("No Synchronisation Settings Found"),
                 }
             );
-            if (choice === SKIP_FETCH) {
-                canProceed = true;
-            }
-        } else {
-            const necessary = extractObject(TweakValuesShouldMatchedTemplate, remoteTweaks);
-            // Check if any necessary tweak value is different from current config.
-            const differentItems = Object.entries(necessary).filter(([key, value]) => {
-                return config[key as keyof ObsidianLiveSyncSettings] !== value;
-            });
-            if (differentItems.length === 0) {
-                log("Remote configuration matches local configuration. No changes applied.", LOG_LEVEL_NOTICE);
-            } else {
-                await host.services.UI.confirm.askSelectStringDialogue(
-                    "Your settings differed slightly from the server's. The plug-in has supplemented the incompatible parts with the server settings!",
-                    ["OK"] as const,
+            return choice === useDeviceSettings;
+        }
+        if (remoteResult.status === RemotePreferredTweakStatuses.UNAVAILABLE) {
+            const retryRemoteSettings = $msg("Retry");
+            const useDeviceSettings = $msg("Use this device's settings");
+            const cancelInitialisation = $msg("Cancel");
+            log("Could not read synchronisation settings from the remote.", LOG_LEVEL_NOTICE);
+            log(remoteResult.error, LOG_LEVEL_VERBOSE);
+            if (operation === "rebuild") {
+                const choice = await host.services.UI.confirm.askSelectStringDialogue(
+                    $msg(
+                        "Could not read the remote's synchronisation settings. Retry, or continue the overwrite with this device's settings. A working connection is still required."
+                    ),
+                    [retryRemoteSettings, useDeviceSettings, cancelInitialisation] as const,
                     {
-                        defaultAction: "OK",
+                        defaultAction: retryRemoteSettings,
                         timeout: 0,
+                        title: $msg("Could Not Read Synchronisation Settings"),
                     }
                 );
+                if (choice === retryRemoteSettings) continue;
+                return choice === useDeviceSettings;
             }
-
-            config = {
-                ...config,
-                ...(Object.fromEntries(differentItems) as Partial<ObsidianLiveSyncSettings>),
-            } satisfies ObsidianLiveSyncSettings;
-            await host.services.setting.applyExternalSettings(config, true);
-            log("Remote configuration applied.", LOG_LEVEL_NOTICE);
-            canProceed = true;
-            const updatedConfig = host.services.setting.currentSettings();
-            return updatedConfig;
+            const choice = await host.services.UI.confirm.askSelectStringDialogue(
+                $msg(
+                    "Could not read the remote's synchronisation settings. Check the connection and credentials, then retry."
+                ),
+                [retryRemoteSettings, cancelInitialisation] as const,
+                {
+                    defaultAction: retryRemoteSettings,
+                    timeout: 0,
+                    title: $msg("Could Not Read Synchronisation Settings"),
+                }
+            );
+            if (choice === retryRemoteSettings) continue;
+            return false;
         }
-    } while (!canProceed);
+        if (remoteResult.status === RemotePreferredTweakStatuses.UNSUPPORTED) {
+            log("Remote synchronisation settings are not supported by this remote type.", LOG_LEVEL_INFO);
+            return true;
+        }
+
+        const remoteTweaks = remoteResult.values;
+        const necessary = extractObject(TweakValuesShouldMatchedTemplate, remoteTweaks);
+        // Check if any necessary tweak value is different from current config.
+        const differentItems = Object.entries(necessary).filter(([key, value]) => {
+            return config[key as keyof ObsidianLiveSyncSettings] !== value;
+        });
+        if (differentItems.length === 0) {
+            log("Remote configuration matches local configuration. No changes applied.", LOG_LEVEL_NOTICE);
+        } else {
+            await host.services.UI.confirm.askSelectStringDialogue(
+                "Your settings differed slightly from the server's. The plug-in has supplemented the incompatible parts with the server settings!",
+                ["OK"] as const,
+                {
+                    defaultAction: "OK",
+                    timeout: 0,
+                }
+            );
+        }
+
+        config = {
+            ...config,
+            ...(Object.fromEntries(differentItems) as Partial<ObsidianLiveSyncSettings>),
+        } satisfies ObsidianLiveSyncSettings;
+        await host.services.setting.applyExternalSettings(config, true);
+        log("Remote configuration applied.", LOG_LEVEL_NOTICE);
+        return true;
+    }
 }
 
 /**
  * Adjust setting to remote if needed.
  * @param extra result of dialogues that may contain preventFetchingConfig flag (e.g, from FetchEverything or RebuildEverything)
  * @param config current configuration to retrieve remote preferred config
+ * @param operation operation which will consume the selected configuration
  */
 export async function adjustSettingToRemoteIfNeeded(
     host: NecessaryServices<"tweakValue" | "UI" | "setting", never>,
     log: LogFunction,
-    extra: { preventFetchingConfig: boolean },
-    config: ObsidianLiveSyncSettings
-) {
-    if (extra && extra.preventFetchingConfig) {
-        return;
+    extra: { preventFetchingConfig: boolean } | null,
+    config: ObsidianLiveSyncSettings,
+    operation: InitialisationOperation = "fetch"
+): Promise<boolean> {
+    if (extra?.preventFetchingConfig) {
+        return true;
     }
 
     // P2P has no centralised remote configuration; skip to avoid a spurious
     // "Failed to connect to the remote server" error dialog.
     if (config.remoteType === REMOTE_P2P) {
         log("Remote configuration fetch skipped (P2P mode).", LOG_LEVEL_INFO);
-        return;
+        return true;
     }
 
-    // Remote configuration fetched and applied.
-    if (await adjustSettingToRemote(host, log, config)) {
-        config = host.services.setting.currentSettings();
-    } else {
+    const canProceed = await adjustSettingToRemote(host, log, config, operation);
+    if (!canProceed) {
         log("Remote configuration not applied.", LOG_LEVEL_NOTICE);
     }
-    // log(JSON.stringify(config), LOG_LEVEL_VERBOSE);
+    return canProceed;
 }
 
 /**
- * Process vault initialisation with suspending file watching and sync.
- * @param proc process to be executed during initialisation, should return true if can be continued, false if app is unable to continue the process.
- * @param keepSuspending  whether to keep suspending file watching after the process.
- * @returns result of the process, or false if error occurs.
+ * Cancel a scheduled Fetch or Rebuild without changing the selected automatic
+ * synchronisation mode. The persisted Scram switches keep both reflection
+ * directions paused until the existing start-up dialogue resumes them.
+ */
+export async function cancelScheduledInitialisation(
+    host: NecessaryServices<"setting" | "appLifecycle", never>,
+    cleanupFlag: () => Promise<void>
+): Promise<false> {
+    await host.services.setting.applyPartial(
+        {
+            suspendFileWatching: true,
+            suspendParseReplicationResult: true,
+        },
+        true
+    );
+    await cleanupFlag();
+    host.services.appLifecycle.performRestart();
+    return false;
+}
+
+type InitialisationSuspensionPolicy = "resume" | "keep" | "keep-on-failure";
+
+/**
+ * Process Vault initialisation with file watching and synchronisation suspended.
+ * @param proc Process to execute during initialisation. It returns true only when normal operation may resume.
+ * @param suspensionPolicy Final file-reflection state. `keep-on-failure` controls both reflection directions so a partly completed Fast Setup remains isolated.
+ * @returns The result of the process, or false if an error occurs.
  */
 export async function processVaultInitialisation(
     host: NecessaryServices<"setting", never>,
     log: LogFunction,
     proc: () => Promise<boolean>,
-    keepSuspending = false
+    suspensionPolicy: InitialisationSuspensionPolicy = "resume"
 ) {
+    let completed = false;
     try {
         // Disable batch saving and file watching during initialisation.
         await host.services.setting.applyPartial({ batchSave: false }, false);
         await host.services.setting.suspendAllSync();
         await host.services.setting.suspendExtraSync();
-        await host.services.setting.applyPartial({ suspendFileWatching: true }, true);
+        await host.services.setting.applyPartial(
+            suspensionPolicy === "keep-on-failure"
+                ? { suspendFileWatching: true, suspendParseReplicationResult: true }
+                : { suspendFileWatching: true },
+            true
+        );
         try {
             const result = await proc();
+            completed = result;
             return result;
         } catch (ex) {
             log("Error during vault initialisation process.", LOG_LEVEL_NOTICE);
@@ -333,9 +412,21 @@ export async function processVaultInitialisation(
         log(ex, LOG_LEVEL_VERBOSE);
         return false;
     } finally {
-        if (!keepSuspending) {
-            // Re-enable file watching after initialisation.
+        if (suspensionPolicy === "resume") {
             await host.services.setting.applyPartial({ suspendFileWatching: false }, true);
+        } else if (suspensionPolicy === "keep") {
+            await host.services.setting.applyPartial({ suspendFileWatching: true }, true);
+        } else {
+            // Fast Setup owns both directions at this boundary. Reasserting the
+            // outcome also covers a late failure after finishRebuild started to
+            // resume reflection, and the legacy doNotSuspendOnFetching path.
+            await host.services.setting.applyPartial(
+                {
+                    suspendFileWatching: !completed,
+                    suspendParseReplicationResult: !completed,
+                },
+                true
+            );
         }
     }
 }
@@ -382,17 +473,20 @@ export function createRebuildFlagHandler(
 
     // Handle the rebuild everything scheduled operation
     const onScheduled = async () => {
-        const method =
-            await host.services.UI.dialogManager.openWithExplicitCancel<RebuildEverythingResult>(RebuildEverything);
+        const settings = host.services.setting.currentSettings();
+        const method = await host.services.UI.dialogManager.openWithExplicitCancel<
+            RebuildEverythingResult,
+            { isP2P: boolean }
+        >(RebuildEverything, { isP2P: isP2PMainRemote(settings) });
         if (method === "cancelled") {
             log("Rebuild everything cancelled by user.", LOG_LEVEL_NOTICE);
-            await cleanupFlag();
-            host.services.appLifecycle.performRestart();
-            return false;
+            return await cancelScheduledInitialisation(host, cleanupFlag);
         }
         const { extra } = method;
-        const settings = host.services.setting.currentSettings();
-        await adjustSettingToRemoteIfNeeded(host, log, extra, settings);
+        if (!(await adjustSettingToRemoteIfNeeded(host, log, extra, settings, "rebuild"))) {
+            log("Rebuild initialisation cancelled by user.", LOG_LEVEL_NOTICE);
+            return await cancelScheduledInitialisation(host, cleanupFlag);
+        }
         return await processVaultInitialisation(host, log, async () => {
             await host.serviceModules.rebuilder.$rebuildEverything();
             await cleanupFlag();
@@ -439,7 +533,7 @@ export function createSuspendFlagHandler(
                 await host.services.setting.applyPartial({ writeLogToTheFile: true }, true);
                 return Promise.resolve(false);
             },
-            true
+            "keep"
         );
     };
 

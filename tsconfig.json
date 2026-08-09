@@ -19,10 +19,18 @@
         "strictBindCallApply": true,
         "strictFunctionTypes": true,
         "paths": {
-            "@/*": ["./src/*"],
-            "@lib/*": ["./src/lib/src/*", "./_types/src/lib/src/*"]
+            "@/*": ["./src/*"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts", "**/*.svelte"],
-    "exclude": ["pouchdb-browser-webpack", "utils", "src/apps", "src/**/*.test.ts", "**/_test/**", "utilsdeno"]
+    "exclude": [
+        "pouchdb-browser-webpack",
+        "utils",
+        "src/apps",
+        "src/**/*.test.ts",
+        "**/_test/**",
+        "test/browser-apps",
+        "test/styles/*.deno.ts",
+        "utilsdeno"
+    ]
 }

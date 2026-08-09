@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+
+FROM denoland/deno:bin-2.9.2 AS deno
+
+FROM mcr.microsoft.com/playwright:v1.62.0-noble
+
+COPY --from=deno /deno /usr/local/bin/deno
+
+ENV DENO_DIR=/deno-dir
+
+WORKDIR /opt/livesync-browser-apps-interop
+
+COPY test/browser-apps/deno.json test/browser-apps/deno.lock ./
+COPY test/browser-apps/helpers ./helpers
+COPY test/browser-apps/interop.test.ts ./
+
+RUN deno cache --frozen --config deno.json --lock deno.lock interop.test.ts
+
+WORKDIR /workspace
+
+CMD ["deno", "test", "-A", "--no-check", "--frozen", "--config", "test/browser-apps/deno.json", "--lock", "test/browser-apps/deno.lock", "test/browser-apps/interop.test.ts"]

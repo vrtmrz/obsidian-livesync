@@ -1,3 +1,13 @@
+/**
+ * Proves that a configured LiveSync Vault scans files created while Obsidian
+ * was stopped. The first launch receives a CouchDB profile using current
+ * settings and its acknowledged device-local compatibility marker before the
+ * plug-in loads.
+ *
+ * The second launch reuses the same Vault, profile, local database, and
+ * settings without rewriting plug-in data, so the assertion covers an
+ * ordinary configured restart rather than the separate onboarding flow.
+ */
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
@@ -11,7 +21,8 @@ import {
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
-    configureCouchDb,
+    createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
@@ -47,6 +58,12 @@ async function main(): Promise<void> {
 
     const couchDb = await loadCouchDbConfig();
     const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "startup-scan");
+    const couchDbSettings = {
+        uri: couchDb.uri,
+        username: couchDb.username,
+        password: couchDb.password,
+        dbName,
+    };
     const vault = await createTemporaryVault();
     let session: ObsidianLiveSyncSession | undefined;
 
@@ -63,15 +80,11 @@ async function main(): Promise<void> {
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+            pluginData: createE2eCouchDbPluginData(couchDbSettings),
+            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
         });
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
-        const configured = await configureCouchDb(cli.binary, session.cliEnv, {
-            uri: couchDb.uri,
-            username: couchDb.username,
-            password: couchDb.password,
-            dbName,
-        });
-        assertEqual(configured.isConfigured, true, "Self-hosted LiveSync was not configured.");
+        const initialReadiness = await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        assertEqual(initialReadiness.configured, true, "Self-hosted LiveSync did not start configured.");
         await prepareRemote(cli.binary, session.cliEnv);
         await session.app.stop();
         session = undefined;
@@ -84,7 +97,8 @@ async function main(): Promise<void> {
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         });
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        const restartedReadiness = await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        assertEqual(restartedReadiness.configured, true, "Self-hosted LiveSync lost its configuration on restart.");
 
         const localEntry = await waitForLocalDatabaseEntry(cli.binary, session.cliEnv, notePath);
         await pushLocalChanges(cli.binary, session.cliEnv);

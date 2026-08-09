@@ -1,7 +1,8 @@
 import { mount } from "svelte";
+import "./theme.css";
 import "./app.css";
 import App from "./App.svelte";
-import { _activeDocument } from "@lib/common/coreEnvFunctions.ts";
+import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 const app = mount(App, {
     target: _activeDocument.getElementById("app")!,

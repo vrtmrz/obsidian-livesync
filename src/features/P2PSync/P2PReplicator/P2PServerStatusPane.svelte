@@ -7,59 +7,56 @@
         EVENT_P2P_REPLICATOR_STATUS,
         EVENT_P2P_REPLICATOR_PROGRESS,
         type P2PServerInfo,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus, P2PReplicationReport } from "@lib/replication/trystero/TrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PReplicatorStatus, P2PReplicationReport } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
-    import { EVENT_SETTING_SAVED } from "@lib/events/coreEvents";
+    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-    import { ConnectionStringParser } from "@lib/common/ConnectionString";
-    import type { P2PSyncSetting, RemoteConfiguration } from "@lib/common/models/setting.type";
-    import { activateP2PRemoteConfiguration, createRemoteConfigurationId } from "@lib/serviceFeatures/remoteConfig";
-    import { extractP2PRoomSuffix } from "@lib/common/utils";
+    import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+    import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+    import {
+        activateP2PRemoteConfiguration,
+        createRemoteConfigurationId,
+        type RemoteConfiguration,
+    } from "@vrtmrz/livesync-commonlib/remote-configurations";
+    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { SetupManager } from "@/modules/features/SetupManager";
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
+    import { Menu } from "@/deps";
+    import { $msg as translateMessage } from "@/common/translation";
+    import {
+        hasExactP2PPeer,
+        togglePersistedP2PPeer,
+        type PersistedP2PPeerSetting,
+    } from "./p2pPeerSettings";
 
     interface Props {
-        liveSyncReplicator: LiveSyncTrysteroReplicator;
+        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
         core: LiveSyncBaseCore;
     }
 
-    let { liveSyncReplicator, core }: Props = $props();
+    let { getLiveSyncReplicator, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     let decidingPeerId = $state<string | null>(null);
     let replicatingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
     const COMMUNICATION_HOLD_MS = 2500;
-    let syncOnReplicationSetting = $state(core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "");
+    // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
+    const readCurrentSettings = () => core.services.setting.currentSettings();
+    const initialSettings = readCurrentSettings();
     type P2PRemoteOption = {
         id: string;
         name: string;
         roomSuffix: string;
     };
     let p2pRemoteOptions = $state<P2PRemoteOption[]>([]);
-    let selectedP2PRemoteConfigurationId = $state(
-        core.services.setting.currentSettings()?.P2P_ActiveRemoteConfigurationId ?? ""
-    );
+    let selectedP2PRemoteConfigurationId = $state(initialSettings?.P2P_ActiveRemoteConfigurationId ?? "");
     let selectingP2PRemote = $state(false);
 
-    function addToList(item: string, list: string): string {
-        const items = list
-            .split(",")
-            .map((e) => e.trim())
-            .filter((e) => e);
-        if (!items.includes(item)) items.push(item);
-        return items.join(",");
-    }
-    function removeFromList(item: string, list: string): string {
-        return list
-            .split(",")
-            .map((e) => e.trim())
-            .filter((e) => e && e !== item)
-            .join(",");
-    }
+    let peerMenu: Menu | undefined;
 
     function markCommunicating(peerId: string) {
         const expiry = Date.now() + COMMUNICATION_HOLD_MS;
@@ -124,7 +121,7 @@
     }
 
     async function requestServerStatus() {
-        await liveSyncReplicator.requestStatus();
+        await getLiveSyncReplicator().requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
@@ -149,7 +146,6 @@
         });
 
         const unsubscribeSettings = eventHub.onEvent(EVENT_SETTING_SAVED, (settings) => {
-            syncOnReplicationSetting = settings?.P2P_SyncOnReplication ?? "";
             refreshP2PRemoteOptions();
         });
         const unsubscribeLayoutReady = eventHub.onEvent(EVENT_LAYOUT_READY, () => {
@@ -169,15 +165,16 @@
             unsubscribeReplicatorProgress();
             unsubscribeSettings();
             unsubscribeLayoutReady();
+            peerMenu?.hide();
         };
     });
 
     function getAcceptanceStatus(peer: P2PServerInfo["knownAdvertisements"][number]) {
-        if (peer.isTemporaryAccepted === true) return "ACCEPTED (in session)";
-        if (peer.isAccepted === true) return "ACCEPTED";
-        if (peer.isTemporaryAccepted === false) return "DENIED (in session)";
-        if (peer.isAccepted === false) return "DENIED";
-        return "NEW";
+        if (peer.isTemporaryAccepted === true) return translateMessage("ACCEPTED (in session)");
+        if (peer.isAccepted === true) return translateMessage("ACCEPTED");
+        if (peer.isTemporaryAccepted === false) return translateMessage("DENIED (in session)");
+        if (peer.isAccepted === false) return translateMessage("DENIED");
+        return translateMessage("NEW");
     }
 
     function getAcceptanceStatusClass(peer: P2PServerInfo["knownAdvertisements"][number]) {
@@ -201,8 +198,6 @@
                 const activated = activateP2PRemoteConfiguration(settings, id);
                 return activated || settings;
             }, true);
-            const latest = core.services.setting.currentSettings();
-            syncOnReplicationSetting = latest.P2P_SyncOnReplication ?? "";
             refreshP2PRemoteOptions();
         } finally {
             selectingP2PRemote = false;
@@ -247,8 +242,6 @@
             const activated = activateP2PRemoteConfiguration(settings, id);
             return activated || settings;
         }, true);
-        const latest = core.services.setting.currentSettings();
-        syncOnReplicationSetting = latest.P2P_SyncOnReplication ?? "";
         refreshP2PRemoteOptions();
     }
 
@@ -294,7 +287,6 @@
             const activated = activateP2PRemoteConfiguration(settings, selectedId);
             return activated || settings;
         }, true);
-        syncOnReplicationSetting = core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "";
     }
 
     async function makeDecision(
@@ -304,7 +296,7 @@
     ) {
         decidingPeerId = peer.peerId;
         try {
-            await liveSyncReplicator.makeDecision({
+            await getLiveSyncReplicator().makeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
                 decision,
@@ -319,7 +311,7 @@
     async function revokeDecision(peer: P2PServerInfo["knownAdvertisements"][number]) {
         decidingPeerId = peer.peerId;
         try {
-            await liveSyncReplicator.revokeDecision({
+            await getLiveSyncReplicator().revokeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
             });
@@ -332,9 +324,9 @@
     async function startReplication(peer: P2PServerInfo["knownAdvertisements"][number]) {
         replicatingPeerId = peer.peerId;
         try {
-            const pullResult = await liveSyncReplicator.replicateFrom(peer.peerId, true);
+            const pullResult = await getLiveSyncReplicator().replicateFrom(peer.peerId, true);
             if (pullResult?.ok) {
-                await liveSyncReplicator.requestSynchroniseToPeer(peer.peerId);
+                await getLiveSyncReplicator().requestSynchroniseToPeer(peer.peerId);
             }
             await requestServerStatus();
         } finally {
@@ -355,9 +347,9 @@
             return;
         }
         if (isWatching(peerId)) {
-            liveSyncReplicator.unwatchPeer(peerId);
+            getLiveSyncReplicator().unwatchPeer(peerId);
         } else {
-            liveSyncReplicator.watchPeer(peerId);
+            getLiveSyncReplicator().watchPeer(peerId);
         }
     }
 
@@ -369,29 +361,55 @@
         return isLiveCommunicating || isHeldCommunicating;
     }
 
-    function isSyncTarget(peerName: string) {
-        return syncOnReplicationSetting
-            .split(",")
-            .map((e) => e.trim())
-            .filter((e) => e)
-            .includes(peerName);
+    function isPersistedPeerSettingEnabled(setting: PersistedP2PPeerSetting, peerName: string) {
+        const settings = core.services.setting.currentSettings();
+        return hasExactP2PPeer(settings[setting] ?? "", peerName);
     }
 
-    async function toggleSyncTarget(peer: P2PServerInfo["knownAdvertisements"][number]) {
+    async function togglePersistedPeerSetting(
+        peer: P2PServerInfo["knownAdvertisements"][number],
+        setting: PersistedP2PPeerSetting
+    ) {
         if (!canEditP2PSettings()) {
             return;
         }
-        const currentValue = core.services.setting.currentSettings()?.P2P_SyncOnReplication ?? "";
-        const newValue = isSyncTarget(peer.name)
-            ? removeFromList(peer.name, currentValue)
-            : addToList(peer.name, currentValue);
-        await updateSelectedP2PRemote({ P2P_SyncOnReplication: newValue });
+        const currentSettings = core.services.setting.currentSettings();
+        await updateSelectedP2PRemote(togglePersistedP2PPeer(currentSettings, setting, peer.name));
+    }
+
+    function openPeerMenu(event: MouseEvent, peer: P2PServerInfo["knownAdvertisements"][number]) {
+        peerMenu?.hide();
+        peerMenu = new Menu()
+            .addItem((item) => {
+                item.setTitle(translateMessage("Synchronise when this device connects"))
+                    .setChecked(isPersistedPeerSettingEnabled("P2P_AutoSyncPeers", peer.name))
+                    .onClick(() => {
+                        void togglePersistedPeerSetting(peer, "P2P_AutoSyncPeers");
+                    });
+            })
+            .addItem((item) => {
+                item.setTitle(translateMessage("Follow whenever this device connects"))
+                    .setChecked(isPersistedPeerSettingEnabled("P2P_AutoWatchPeers", peer.name))
+                    .onClick(() => {
+                        void togglePersistedPeerSetting(peer, "P2P_AutoWatchPeers");
+                    });
+            })
+            .addItem((item) => {
+                item.setTitle(translateMessage("Include in the P2P synchronisation command"))
+                    .setChecked(isPersistedPeerSettingEnabled("P2P_SyncOnReplication", peer.name))
+                    .onClick(() => {
+                        void togglePersistedPeerSetting(peer, "P2P_SyncOnReplication");
+                    });
+            });
+        const target = event.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        peerMenu.showAtPosition({ x: rect.left, y: rect.bottom });
     }
 </script>
 
 <div class="p2p-container">
     <div class="pane-header">
-        <h2>P2P Status</h2>
+        <h2>{translateMessage("P2P Status")}</h2>
         <div class="pane-header-actions">
             <div class="remote-picker-wrap">
                 <select
@@ -399,11 +417,11 @@
                     value={selectedP2PRemoteConfigurationId}
                     onchange={onP2PRemoteSelected}
                     disabled={selectingP2PRemote}
-                    aria-label="Select active P2P remote"
-                    title="Select active P2P remote"
+                    aria-label={translateMessage("Select active P2P remote")}
+                    title={translateMessage("Select active P2P remote")}
                 >
                     {#if p2pRemoteOptions.length === 0}
-                        <option value="">Select P2P remote...</option>
+                        <option value="">{translateMessage("Select P2P remote...")}</option>
                     {/if}
                     {#each p2pRemoteOptions as option}
                         <option value={option.id}>
@@ -414,8 +432,8 @@
                 <button
                     class="icon-button"
                     onclick={() => createAndSelectP2PRemote()}
-                    title="Create P2P remote"
-                    aria-label="Create P2P remote"
+                    title={translateMessage("Create P2P remote")}
+                    aria-label={translateMessage("Create P2P remote")}
                 >
                     +
                 </button>
@@ -423,8 +441,8 @@
             <button
                 class="icon-button"
                 onclick={openConnectionSettings}
-                title="Open P2P Setup..."
-                aria-label="Open P2P Setup..."
+                title={translateMessage("Open P2P Setup...")}
+                aria-label={translateMessage("Open P2P Setup...")}
             >
                 ⚙
             </button>
@@ -432,15 +450,17 @@
     </div>
 
     {#if !canEditP2PSettings()}
-        <p class="warning-line">Please select an active P2P remote configuration to change P2P sync targets.</p>
+        <p class="warning-line">
+            {translateMessage("Please select an active P2P remote configuration to change P2P sync targets.")}
+        </p>
     {/if}
 
-    <P2PServerStatusCard {liveSyncReplicator} {core} />
+    <P2PServerStatusCard {getLiveSyncReplicator} {core} />
 
     <div class="peers-section">
         <div class="peers-header">
-            <h3>Detected Peers</h3>
-            <button class="refresh" onclick={requestServerStatus}>Refresh</button>
+            <h3>{translateMessage("Detected Peers")}</h3>
+            <button class="refresh" onclick={requestServerStatus}>{translateMessage("Refresh")}</button>
         </div>
 
         {#if serverInfo && serverInfo.knownAdvertisements.length > 0}
@@ -452,7 +472,11 @@
                                 {peer.name} :
                                 <span class="peer-id-mini" title={peer.peerId}>({peer.peerId.slice(0, 8)})</span>
                                 {#if isCommunicating(peer.peerId)}
-                                    <span class="comm-icon" title="Communicating" aria-label="Communicating">📡</span>
+                                    <span
+                                        class="comm-icon"
+                                        title={translateMessage("Communicating")}
+                                        aria-label={translateMessage("Communicating")}>📡</span
+                                    >
                                 {/if}
                             </div>
                             <div class="peer-meta">
@@ -468,8 +492,12 @@
                                     <button
                                         class="emoji-button"
                                         disabled={replicatingPeerId !== null}
-                                        title={replicatingPeerId === peer.peerId ? "Replicating..." : "Replicate now"}
-                                        aria-label={replicatingPeerId === peer.peerId ? "Replicating" : "Replicate now"}
+                                        title={replicatingPeerId === peer.peerId
+                                            ? translateMessage("Replicating...")
+                                            : translateMessage("Replicate now")}
+                                        aria-label={replicatingPeerId === peer.peerId
+                                            ? translateMessage("Replicating")
+                                            : translateMessage("Replicate now")}
                                         onclick={() => startReplication(peer)}
                                     >
                                         {replicatingPeerId === peer.peerId ? "⏳" : "🔄"}
@@ -479,35 +507,34 @@
                                         disabled={decidingPeerId !== null}
                                         onclick={() => revokeDecision(peer)}
                                     >
-                                        Revoke
+                                        {translateMessage("Revoke")}
+                                    </button>
+                                    <button
+                                        class="emoji-button"
+                                        title={translateMessage("More actions for ${DEVICE}", { DEVICE: peer.name })}
+                                        aria-label={translateMessage("More actions for ${DEVICE}", {
+                                            DEVICE: peer.name,
+                                        })}
+                                        disabled={!canEditP2PSettings()}
+                                        onclick={(event) => openPeerMenu(event, peer)}
+                                    >
+                                        …
                                     </button>
                                 </div>
                                 <div class="decision-row watch-row">
-                                    <span class="decision-label">WATCH</span>
+                                    <span class="decision-label">{translateMessage("Follow changes")}</span>
                                     <button
                                         class="emoji-button {isWatching(peer.peerId) ? 'is-watching' : ''}"
                                         title={isWatching(peer.peerId)
-                                            ? "Watching this peer \u2014 click to stop"
-                                            : "Watch this peer's changes"}
-                                        aria-label={isWatching(peer.peerId) ? "Stop watching" : "Watch peer"}
+                                            ? translateMessage("Stop following changes from this device")
+                                            : translateMessage("Follow changes from this device")}
+                                        aria-label={isWatching(peer.peerId)
+                                            ? translateMessage("Stop following changes from this device")
+                                            : translateMessage("Follow changes from this device")}
                                         disabled={!canEditP2PSettings()}
                                         onclick={() => toggleWatch(peer.peerId)}
                                     >
                                         {isWatching(peer.peerId) ? "🔔" : "🔕"}
-                                    </button>
-                                </div>
-                                <div class="decision-row watch-row">
-                                    <span class="decision-label">SYNC</span>
-                                    <button
-                                        class="emoji-button {isSyncTarget(peer.name) ? 'is-watching' : ''}"
-                                        title={isSyncTarget(peer.name)
-                                            ? "Sync target \u2014 click to remove"
-                                            : "Set as sync target"}
-                                        aria-label={isSyncTarget(peer.name) ? "Remove sync target" : "Set sync target"}
-                                        disabled={!canEditP2PSettings()}
-                                        onclick={() => toggleSyncTarget(peer)}
-                                    >
-                                        {isSyncTarget(peer.name) ? "🔗" : "⛓️‍💥"}
                                     </button>
                                 </div>
                             {:else}
@@ -517,11 +544,11 @@
                                     </span>
                                 </div>
                                 <div class="decision-row">
-                                    <span class="decision-label">PERMANENT</span>
+                                    <span class="decision-label">{translateMessage("PERMANENT")}</span>
                                     <button
                                         class="emoji-button"
-                                        title="Allow permanently"
-                                        aria-label="Allow permanently"
+                                        title={translateMessage("Allow permanently")}
+                                        aria-label={translateMessage("Allow permanently")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, true, false)}
                                     >
@@ -529,8 +556,8 @@
                                     </button>
                                     <button
                                         class="emoji-button mod-warning"
-                                        title="Deny permanently"
-                                        aria-label="Deny permanently"
+                                        title={translateMessage("Deny permanently")}
+                                        aria-label={translateMessage("Deny permanently")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, false, false)}
                                     >
@@ -538,11 +565,11 @@
                                     </button>
                                 </div>
                                 <div class="decision-row">
-                                    <span class="decision-label">SESSION</span>
+                                    <span class="decision-label">{translateMessage("SESSION")}</span>
                                     <button
                                         class="emoji-button"
-                                        title="Allow in session"
-                                        aria-label="Allow in session"
+                                        title={translateMessage("Allow in session")}
+                                        aria-label={translateMessage("Allow in session")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, true, true)}
                                     >
@@ -550,8 +577,8 @@
                                     </button>
                                     <button
                                         class="emoji-button mod-warning"
-                                        title="Deny in session"
-                                        aria-label="Deny in session"
+                                        title={translateMessage("Deny in session")}
+                                        aria-label={translateMessage("Deny in session")}
                                         disabled={decidingPeerId !== null}
                                         onclick={() => makeDecision(peer, false, true)}
                                     >
@@ -565,7 +592,7 @@
                                     disabled={decidingPeerId !== null}
                                     onclick={() => revokeDecision(peer)}
                                 >
-                                    Revoke
+                                    {translateMessage("Revoke")}
                                 </button>
                             {/if}
                         </div>
@@ -573,9 +600,11 @@
                 {/each}
             </div>
         {:else if serverInfo}
-            <p class="no-peers">No devices available. Waiting for other devices to connect...</p>
+            <p class="no-peers">
+                {translateMessage("No devices available. Waiting for other devices to connect...")}
+            </p>
         {:else}
-            <p class="no-peers">Fetching status...</p>
+            <p class="no-peers">{translateMessage("Fetching status...")}</p>
         {/if}
     </div>
 </div>
@@ -800,7 +829,7 @@
     }
 
     .accepted-row {
-        grid-template-columns: 1fr auto auto;
+        grid-template-columns: 1fr auto auto auto;
     }
 
     .decision-label {

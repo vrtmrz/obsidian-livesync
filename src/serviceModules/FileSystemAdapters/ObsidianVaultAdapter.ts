@@ -1,6 +1,6 @@
-import type { UXDataWriteOptions } from "@lib/common/types";
-import type { IVaultAdapter } from "@lib/serviceModules/adapters";
-import { toArrayBuffer } from "@lib/serviceModules/FileAccessBase";
+import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import type { TFile, App, TFolder } from "obsidian";
 import { toIntegerTimestamps } from "./sanitizeWriteOptions";
 
@@ -11,7 +11,8 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
     constructor(private app: App) {}
 
     async read(file: TFile): Promise<string> {
-        return await this.app.vault.read(file);
+        // Vault.read strips a leading UTF-8 BOM, leaving the content size inconsistent with TFile.stat.
+        return await this.app.vault.adapter.read(file.path);
     }
 
     async cachedRead(file: TFile): Promise<string> {
@@ -38,22 +39,16 @@ export class ObsidianVaultAdapter implements IVaultAdapter<TFile, TFolder> {
         return await this.app.vault.createBinary(path, toArrayBuffer(data), toIntegerTimestamps(options));
     }
 
-    async delete(file: TFile | TFolder, force = false): Promise<void> {
-        if ("trashFile" in this.app.fileManager) {
-            // eslint-disable-next-line obsidianmd/no-unsupported-api
-            return await this.app.fileManager.trashFile(file);
-        }
-        // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Fallback for older versions of Obsidian without trashFile support
-        return await this.app.vault.delete(file, force);
+    async rename(file: TFile, newPath: string): Promise<void> {
+        return await this.app.vault.rename(file, newPath);
     }
 
-    async trash(file: TFile | TFolder, force = false): Promise<void> {
-        if ("trashFile" in this.app.fileManager) {
-            // eslint-disable-next-line obsidianmd/no-unsupported-api
-            return await this.app.fileManager.trashFile(file);
-        }
-        // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Fallback for older versions of Obsidian without trashFile support
-        return await this.app.vault.trash(file, force);
+    async delete(file: TFile | TFolder): Promise<void> {
+        return await this.app.fileManager.trashFile(file);
+    }
+
+    async trash(file: TFile | TFolder): Promise<void> {
+        return await this.app.fileManager.trashFile(file);
     }
 
     trigger(name: string, ...data: unknown[]): void {

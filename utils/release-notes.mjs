@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, writeSync } from "fs";
 
 const updatesPath = "updates.md";
 
@@ -8,7 +8,7 @@ const updatesPath = "updates.md";
 // allowed.
 
 function fail(message) {
-    console.error(message);
+    writeSync(process.stderr.fd, `${message}\n`);
     process.exit(1);
 }
 
@@ -86,7 +86,8 @@ function prepare(version) {
     }
 
     // Keep a fresh empty Unreleased section above the newly dated release notes.
-    const releasedBody = `${unreleased.body.trim()}\n\n`;
+    const releaseSuffix = unreleased.end < markdown.length ? "\n\n" : "\n";
+    const releasedBody = `${unreleased.body.trim()}${releaseSuffix}`;
     const releaseDate = process.env.RELEASE_DATE || formatReleaseDate();
     const replacement = `## Unreleased\n\n## ${version}\n\n${releaseDate}\n\n${releasedBody}`;
     const nextMarkdown = markdown.slice(0, unreleased.headingStart) + replacement + markdown.slice(unreleased.end);

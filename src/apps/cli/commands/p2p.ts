@@ -1,11 +1,11 @@
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { P2P_DEFAULT_SETTINGS } from "@lib/common/types";
-import type { ServiceContext } from "@lib/services/base/ServiceBase";
-import { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
-import { compatGlobal } from "@lib/common/coreEnvFunctions.ts";
-import { LiveSyncError } from "@lib/common/LSError";
-import { getPeerConnectionStats } from "@lib/rpc/transports/DiagRTCPeerConnections.utils";
-import { appendFile } from "node:fs/promises";
+import { P2P_DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
+import { getPeerConnectionStats } from "@vrtmrz/livesync-commonlib/compat/rpc/transports/DiagRTCPeerConnections.utils";
+import { fsPromises } from "@vrtmrz/livesync-commonlib/node";
 
 type CLIP2PPeer = {
     peerId: string;
@@ -13,10 +13,10 @@ type CLIP2PPeer = {
 };
 
 type CandidateSummary = {
-    id: string | "unknown";
-    candidateType: string | "unknown";
-    protocol: string | "unknown";
-    relayProtocol: string | "unknown";
+    id: string;
+    candidateType: string;
+    protocol: string;
+    relayProtocol: string;
 };
 
 function delay(ms: number): Promise<void> {
@@ -98,7 +98,7 @@ function getReportValue<T extends string | number>(
     return typeof value === "string" || typeof value === "number" ? (value as T) : "unknown";
 }
 
-function summariseCandidate(reports: unknown[], candidateId: string | "unknown"): CandidateSummary | undefined {
+function summariseCandidate(reports: unknown[], candidateId: string): CandidateSummary | undefined {
     if (candidateId === "unknown") {
         return undefined;
     }
@@ -155,7 +155,7 @@ async function writePeerConnectionStatsIfRequested(
         localCandidate,
         remoteCandidate,
     };
-    await appendFile(outputPath, `${JSON.stringify(payload)}\n`, "utf8");
+    await fsPromises.appendFile(outputPath, `${JSON.stringify(payload)}\n`, "utf8");
 }
 
 export async function syncWithPeer(
@@ -189,7 +189,7 @@ export async function syncWithPeer(
         }
         const pushResult = await replicator.requestSynchroniseToPeer(targetPeer.peerId);
         if (!pushResult || pushResult.ok !== true) {
-            const err = pushResult?.error;
+            const err: unknown = pushResult && "error" in pushResult ? pushResult.error : undefined;
             throw err instanceof Error
                 ? err
                 : LiveSyncError.fromError(err ?? "P2P sync failed while requesting remote sync");

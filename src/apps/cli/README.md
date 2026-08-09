@@ -15,9 +15,10 @@ This CLI version is built using the same core as the Obsidian plug-in:
 
 ```
 CLI Main
-  └─ LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>
-     ├─ NodeServiceHub (All services without Obsidian dependencies)
-     └─ ServiceModules (wired by initialiseServiceModulesCLI)
+  └─ NodeServiceContext (events, translation, database root, and injected standard I/O)
+     └─ LiveSyncBaseCore<NodeServiceContext, IMinimumLiveSyncCommands>
+        ├─ NodeServiceHub (All services without Obsidian dependencies)
+        └─ ServiceModules (wired by initialiseServiceModulesCLI)
         ├─ FileAccessCLI (Node.js FileSystemAdapter)
         ├─ StorageEventManagerCLI
         ├─ ServiceFileAccessCLI
@@ -37,7 +38,9 @@ CLI Main
     - All core sync functionality preserved
 
 3. **Service Hub and Settings Services** (`services/`)
-    - `NodeServiceHub` provides the CLI service context
+    - `NodeServiceContext` owns the host-selected database root and standard input/output implementation
+    - `NodeServiceHub` receives that exact Context instead of constructing platform capabilities implicitly
+    - Internal adapter diagnostics use injected callbacks wired to the service logging API
     - Node-specific settings and key-value services are provided without Obsidian dependencies
 
 4. **Main Entry Point** (`main.ts`)
@@ -64,6 +67,10 @@ livesync-cli [database-path] [command] [args...]
 - `--vault <path>` / `-V <path>`: (daemon/mirror only) Path to the vault directory containing `.md` files.
     - Allows the PouchDB database directory and the actual vault directory to be different locations.
     - For `mirror` command, the positional `[vault-path]` argument takes precedence over `--vault`.
+- `--write-settings`: Write setting migrations and other lasting changes after the command succeeds.
+    - `init-settings` writes its target file. `setup`, `remote-add`, `remote-rm`, `remote-set`, and `remote-activate` write their settings changes without this option.
+    - All remaining commands leave the settings file unchanged by default.
+    - Temporary values used to suspend synchronisation or select a remote for one command are never written.
 
 ### Commands
 
@@ -108,12 +115,9 @@ livesync-cli ./my-db pull folder/note.md ./note.md
 ### Build from source
 
 ```bash
-# Clone with submodules, because the shared core lives in src/lib
-git clone --recurse-submodules <repository-url>
+# Clone the repository
+git clone <repository-url>
 cd obsidian-livesync
-
-# If you already cloned without submodules, run this once instead
-git submodule update --init --recursive
 
 # Install dependencies from the repository root
 npm install
@@ -126,7 +130,7 @@ cd src/apps/cli
 npm run build
 ```
 
-If `src/lib` is missing, the build process stops early with a targeted message instead of a low-level Vite `ENOENT` error.
+The shared core is installed as the exact `@vrtmrz/livesync-commonlib` package artefact recorded in the root lockfile.
 
 Run the CLI:
 
@@ -333,11 +337,12 @@ Options:
   --debug, -d             Enable debug logging (includes verbose)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --vault <path>, -V <path>  (daemon/mirror) Path to vault directory, decoupled from database-path
+  --write-settings         Write setting changes after a successful command
   --help, -h              Show this help message
 
 Commands:
   daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
-  init-settings [path]    Create settings JSON from DEFAULT_SETTINGS
+  init-settings [path]    Create unconfigured settings JSON with the new-Vault recommendations
   sync                    Run one replication cycle and exit
   p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
   p2p-sync <peer> <timeout>   Synchronise with specified peer-id or peer-name

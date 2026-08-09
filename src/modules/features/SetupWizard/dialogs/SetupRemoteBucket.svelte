@@ -1,24 +1,25 @@
 <script lang="ts">
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
-    import InfoNote from "@lib/UI/components/InfoNote.svelte";
-    import ExtraItems from "@lib/UI/components/ExtraItems.svelte";
-    import InputRow from "@lib/UI/components/InputRow.svelte";
-    import Password from "@lib/UI/components/Password.svelte";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
+    import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
+    import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
     import {
         type BucketSyncSetting,
         type ObsidianLiveSyncSettings,
         DEFAULT_SETTINGS,
         PREFERRED_JOURNAL_SYNC,
         RemoteTypes,
-    } from "@lib/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
     import { onMount } from "svelte";
-    import { getDialogContext, type GuestDialogProps } from "@lib/UI/svelteDialog";
-    import { copyTo, pickBucketSyncSettings } from "@lib/common/utils";
+    import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
+    import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
+    import { $msg as translateMessage } from "@/common/translation";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);
 
@@ -82,17 +83,17 @@
             const trialRemoteSetting = generateSetting();
             const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
             if (!replicator) {
-                return "Failed to create replicator instance.";
+                return translateMessage("Failed to create replicator instance.");
             }
             try {
                 const result = await replicator.tryConnectRemote(trialRemoteSetting, false);
                 if (result) {
                     return "";
                 } else {
-                    return "Failed to connect to the server. Please check your settings.";
+                    return translateMessage("Failed to connect to the server. Please check your settings.");
                 }
             } catch (e) {
-                return `Failed to connect to the server: ${e}`;
+                return translateMessage("Failed to connect to the server: ${reason}", { reason: `${e}` });
             }
         } finally {
             processing = false;
@@ -109,7 +110,7 @@
                 return;
             }
         } catch (e) {
-            error = `Error during connection test: ${e}`;
+            error = translateMessage("Error during connection test: ${reason}", { reason: `${e}` });
             return;
         }
     }
@@ -122,9 +123,13 @@
     }
 </script>
 
-<DialogHeader title="S3/MinIO/R2 Configuration" />
-<Guidance>Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.</Guidance>
-<InputRow label="Endpoint URL">
+<DialogHeader title={translateMessage("S3/MinIO/R2 Configuration")} />
+<Guidance
+    >{translateMessage(
+        "Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service."
+    )}</Guidance
+>
+<InputRow label={translateMessage("Endpoint URL")}>
     <input
         type="text"
         name="s3-endpoint"
@@ -137,13 +142,15 @@
         bind:value={syncSetting.endpoint}
     />
 </InputRow>
-<InfoNote warning visible={isEndpointInsecure}>We can use only Secure (HTTPS) connections on Obsidian Mobile.</InfoNote>
+<InfoNote warning visible={isEndpointInsecure}
+    >{translateMessage("We can use only Secure (HTTPS) connections on Obsidian Mobile.")}</InfoNote
+>
 
-<InputRow label="Access Key ID">
+<InputRow label={translateMessage("Access Key ID")}>
     <input
         type="text"
         name="s3-access-key-id"
-        placeholder="Enter your Access Key ID"
+        placeholder={translateMessage("Enter your Access Key ID")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -152,19 +159,19 @@
     />
 </InputRow>
 
-<InputRow label="Secret Access Key">
+<InputRow label={translateMessage("Secret Access Key")}>
     <Password
         name="s3-secret-access-key"
-        placeholder="Enter your Secret Access Key"
+        placeholder={translateMessage("Enter your Secret Access Key")}
         required
         bind:value={syncSetting.secretKey}
     />
 </InputRow>
-<InputRow label="Bucket Name">
+<InputRow label={translateMessage("Bucket Name")}>
     <input
         type="text"
         name="s3-bucket-name"
-        placeholder="Enter your Bucket Name"
+        placeholder={translateMessage("Enter your Bucket Name")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -172,26 +179,26 @@
         bind:value={syncSetting.bucket}
     /></InputRow
 >
-<InputRow label="Region">
+<InputRow label={translateMessage("Region")}>
     <input
         type="text"
         name="s3-region"
-        placeholder="Enter your Region (e.g., us-east-1, auto for R2)"
+        placeholder={translateMessage("Enter your Region (e.g., us-east-1, auto for R2)")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
         bind:value={syncSetting.region}
     />
 </InputRow>
-<InputRow label="Use Path-Style Access">
+<InputRow label={translateMessage("Use Path-Style Access")}>
     <input type="checkbox" name="s3-use-path-style" bind:checked={syncSetting.forcePathStyle} />
 </InputRow>
 
-<InputRow label="Folder Prefix">
+<InputRow label={translateMessage("Folder Prefix")}>
     <input
         type="text"
         name="s3-folder-prefix"
-        placeholder="Enter a folder prefix (optional)"
+        placeholder={translateMessage("Enter a folder prefix (optional)")}
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
@@ -199,20 +206,21 @@
     />
 </InputRow>
 <InfoNote>
-    If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here.
-    Otherwise, leave it blank to store data at the root of the bucket.
+    {translateMessage(
+        "If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket."
+    )}
 </InfoNote>
-<InputRow label="Use internal API">
+<InputRow label={translateMessage("Use internal API")}>
     <input type="checkbox" name="s3-use-internal-api" bind:checked={syncSetting.useCustomRequestHandler} />
 </InputRow>
 <InfoNote>
-    If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate
-    with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian
-    versions.
+    {translateMessage(
+        "If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions."
+    )}
 </InfoNote>
 
-<ExtraItems title="Advanced Settings">
-    <InputRow label="Custom Headers">
+<ExtraItems title={translateMessage("Advanced Settings")}>
+    <InputRow label={translateMessage("Custom Headers")}>
         <textarea
             name="bucket-custom-headers"
             placeholder="e.g., x-example-header: value\n another-header: value2"
@@ -229,11 +237,16 @@
 </InfoNote>
 
 {#if processing}
-    Checking connection... Please wait.
+    {translateMessage("Checking connection... Please wait.")}
 {:else}
     <UserDecisions>
-        <Decision title="Test Settings and Continue" important disabled={!canProceed} commit={() => checkAndCommit()} />
-        <Decision title="Continue anyway" commit={() => commit()} />
-        <Decision title="Cancel" commit={() => cancel()} />
+        <Decision
+            title={translateMessage("Test Settings and Continue")}
+            important
+            disabled={!canProceed}
+            commit={() => checkAndCommit()}
+        />
+        <Decision title={translateMessage("Continue anyway")} commit={() => commit()} />
+        <Decision title={translateMessage("Cancel")} commit={() => cancel()} />
     </UserDecisions>
 {/if}

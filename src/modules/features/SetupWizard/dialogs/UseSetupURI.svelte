@@ -1,18 +1,19 @@
 <script lang="ts">
     import { configURIBase } from "@/common/types";
-    import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-    import DialogHeader from "@lib/UI/components/DialogHeader.svelte";
-    import Guidance from "@lib/UI/components/Guidance.svelte";
-    import Decision from "@lib/UI/components/Decision.svelte";
-    import UserDecisions from "@lib/UI/components/UserDecisions.svelte";
-    import InfoNote from "@lib/UI/components/InfoNote.svelte";
-    import InputRow from "@lib/UI/components/InputRow.svelte";
-    import Password from "@lib/UI/components/Password.svelte";
+    import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
+    import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
+    import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
+    import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
+    import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
 
     import { onMount } from "svelte";
-    import { decryptString } from "@lib/encryption/stringEncryption.ts";
-    import type { GuestDialogProps } from "@lib/UI/svelteDialog.ts";
+    import { decryptString } from "@vrtmrz/livesync-commonlib/compat/encryption/stringEncryption";
+    import type { GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import { TYPE_CANCELLED, type UseSetupURIResultType } from "./setupDialogTypes";
+    import { $msg as translateMessage } from "@/common/translation";
 
     type Props = GuestDialogProps<UseSetupURIResultType, string>;
     const { setResult, getInitialData }: Props = $props();
@@ -34,7 +35,7 @@
         error = "";
         if (!seemsValid) return;
         if (!passphrase) {
-            error = "Passphrase is required.";
+            error = translateMessage("Passphrase is required.");
             return;
         }
         try {
@@ -47,7 +48,7 @@
             // Logger("Settings imported successfully", LOG_LEVEL_NOTICE);
             return;
         } catch (e) {
-            error = "Failed to parse Setup-URI.";
+            error = translateMessage("Failed to parse Setup-URI.");
             return;
         }
     }
@@ -56,14 +57,17 @@
     }
 </script>
 
-<DialogHeader title="Enter Setup URI" />
+<DialogHeader title={translateMessage("Enter Setup URI")} />
 <Guidance
-    >Please enter the Setup URI that was generated during server installation or on another device, along with the vault
-    passphrase.<br />
-    Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.</Guidance
+    >{translateMessage(
+        "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase."
+    )}<br />
+    {translateMessage(
+        'Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.'
+    )}</Guidance
 >
 
-<InputRow label="Setup-URI">
+<InputRow label={translateMessage("Setup-URI")}>
     <input
         type="text"
         placeholder="obsidian://setuplivesync?settings=...."
@@ -74,12 +78,12 @@
         required
     />
 </InputRow>
-<InfoNote visible={seemsValid}>The Setup-URI is valid and ready to use.</InfoNote>
+<InfoNote visible={seemsValid}>{translateMessage("The Setup-URI is valid and ready to use.")}</InfoNote>
 <InfoNote warning visible={!seemsValid && setupURI.trim() != ""}>
-    The Setup-URI does not appear to be valid. Please check that you have copied it correctly.
+    {translateMessage("The Setup-URI does not appear to be valid. Please check that you have copied it correctly.")}
 </InfoNote>
-<InputRow label="Passphrase">
-    <Password placeholder="Enter your passphrase" bind:value={passphrase} required />
+<InputRow label={translateMessage("Passphrase")}>
+    <Password placeholder={translateMessage("Enter your passphrase")} bind:value={passphrase} required />
 </InputRow>
 <InfoNote error visible={error.trim() != ""}>
     {error}
@@ -87,10 +91,10 @@
 
 <UserDecisions>
     <Decision
-        title="Test Settings and Continue"
+        title={translateMessage("Test Settings and Continue")}
         important={true}
         disabled={!canProceed}
         commit={() => processSetupURI()}
     />
-    <Decision title="Cancel" commit={() => setResult(TYPE_CANCELLED)} />
+    <Decision title={translateMessage("Cancel")} commit={() => setResult(TYPE_CANCELLED)} />
 </UserDecisions>

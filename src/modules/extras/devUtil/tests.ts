@@ -34,8 +34,7 @@ async function measure(
     return [name, measures.get(name) as MeasureResult];
 }
 
-// eslint-disable-next-line require-await, @typescript-eslint/require-await
-async function formatPerfResults(items: NamedMeasureResult[]) {
+function formatPerfResults(items: NamedMeasureResult[]) {
     return (
         `| Name | Runs | Each | Total |\n| --- | --- | --- | --- | \n` +
         items

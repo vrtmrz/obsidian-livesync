@@ -1,5 +1,5 @@
 import { deleteDB, type IDBPDatabase, openDB } from "idb";
-import type { KeyValueDatabase } from "@lib/interfaces/KeyValueDatabase.ts";
+import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "octagonal-wheels/common/logger";
 const databaseCache: { [key: string]: IDBPDatabase<unknown> } = {};
@@ -52,7 +52,8 @@ export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueData
                 db = await _openDB();
                 databaseCache[dbKey] = db;
             }
-            return await db.get(storeKey, key);
+            const value: unknown = await db.get(storeKey, key);
+            return value as T;
         },
         async set<T>(key: IDBValidKey, value: T) {
             if (!db) {
@@ -91,7 +92,7 @@ export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueData
             // await closeDB();
             await deleteDB(dbKey, {
                 blocked() {
-                    console.warn(`Database delete blocked for ${dbKey}`);
+                    Logger(`Database delete blocked for ${dbKey}`);
                 },
             });
         },

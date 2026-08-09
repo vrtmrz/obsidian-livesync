@@ -1,13 +1,13 @@
 # CLI Deno Test Development Notes
 
 This document provides an overview of the Deno-based compatibility tests under `src/apps/cli/testdeno/`.
-The existing bash tests under `src/apps/cli/test/` are preserved, while a Windows-friendly suite is maintained in parallel.
+The Deno suite is the canonical CLI E2E entry point. P2P scenarios run through the repository Compose entry point so that networking, signalling, and the runner environment are reproducible. Existing Bash tests under `src/apps/cli/test/` remain as legacy implementation references, but are not exposed as supported P2P entry points.
 
 ---
 
 ## Goals
 
-- Keep existing bash tests intact.
+- Keep the existing Bash tests as migration references while using Deno and Compose for supported execution.
 - Provide direct execution from Windows PowerShell.
 - Establish a TypeScript (Deno) foundation for core end-to-end and integration scenarios.
 
@@ -18,6 +18,8 @@ The existing bash tests under `src/apps/cli/test/` are preserved, while a Window
 ```
 src/apps/cli/testdeno/
   deno.json
+  run-ci-suite.ts
+  run-compose-p2p.ts
   CONTRIBUTING_TESTS.md
   helpers/
     backgroundCli.ts
@@ -56,6 +58,8 @@ src/apps/cli/testdeno/
 Main tasks:
 
 - `deno task test`
+- `deno task test:ci`
+- `deno task test:p2p:compose`
 - `deno task test:local`
 - `deno task test:daemon`
 - `deno task test:decoupled-vault`
@@ -72,6 +76,8 @@ Main tasks:
 - `deno task test:p2p-upload-download`
 - `deno task test:e2e-couchdb`
 - `deno task test:e2e-matrix`
+
+`deno task test` is an alias for the non-P2P `test:ci` suite. The individual P2P tasks are explicit host-direct entry points for cross-platform diagnostics; they are never selected by the default suite or CI. Use `test:p2p:compose` for canonical P2P verification.
 
 ### `helpers/cli.ts`
 
@@ -206,10 +212,22 @@ Both CouchDB and P2P relay flows are bash-independent.
 
 ## Running tests (PowerShell)
 
+From the repository root, use the canonical package scripts. `test:e2e:cli` runs the same non-P2P task set selected by the default CLI CI workflow. P2P validation runs in Compose so peer discovery does not depend on host loopback, firewall, or WebRTC candidate behaviour.
+
+```powershell
+npm run test:e2e:cli
+npm run test:e2e:cli:p2p
+npm run test:e2e:cli:all
+```
+
 From `src/apps/cli/testdeno`:
 
 ```powershell
 cd src/apps/cli/testdeno
+
+# Canonical suites
+deno task test:ci
+deno task test:p2p:compose
 
 # Local-only set
 deno task test:local
@@ -227,7 +245,8 @@ deno task test:decoupled-vault
 deno task test:remote-commands
 deno task test:e2e-couchdb
 
-# P2P-based tests
+# Explicit host-direct P2P diagnostics for cross-platform investigations.
+# These are not part of the default suite or release evidence.
 deno task test:p2p-host
 deno task test:p2p-peers
 deno task test:p2p-sync

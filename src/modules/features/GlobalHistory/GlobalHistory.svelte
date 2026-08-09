@@ -1,12 +1,13 @@
 <script lang="ts">
     import ObsidianLiveSyncPlugin from "@/main.ts";
     import { onDestroy, onMount } from "svelte";
-    import type { AnyEntry, FilePathWithPrefix } from "@lib/common/types.ts";
-    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "@lib/common/utils.ts";
+    import type { AnyEntry, FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { getDocData, isAnyNote, isDocContentSame, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { diff_match_patch } from "@/deps.ts";
     import { DocumentHistoryModal } from "@/modules/features/DocumentHistory/DocumentHistoryModal.ts";
-    import { isPlainText, stripAllPrefixes } from "@lib/string_and_binary/path.ts";
+    import { isPlainText, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
+    import { $msg as translateMessage } from "@/common/translation";
     export let plugin: ObsidianLiveSyncPlugin;
     export let core: LiveSyncBaseCore;
 
@@ -207,29 +208,35 @@
         <div class="row"><label for="">To:</label><input type="date" bind:value={dispDateTo} disabled={loading} /></div>
         <div class="row">
             <label for="">Info:</label>
-            <label><input type="checkbox" bind:checked={showDiffInfo} disabled={loading} /><span>Diff</span></label>
             <label
-                ><input type="checkbox" bind:checked={showChunkCorrected} disabled={loading} /><span>Chunks</span
+                ><input type="checkbox" bind:checked={showDiffInfo} disabled={loading} /><span
+                    >{translateMessage("Diff")}</span
                 ></label
             >
             <label
-                ><input type="checkbox" bind:checked={checkStorageDiff} disabled={loading} /><span>File integrity</span
+                ><input type="checkbox" bind:checked={showChunkCorrected} disabled={loading} /><span
+                    >{translateMessage("Chunks")}</span
+                ></label
+            >
+            <label
+                ><input type="checkbox" bind:checked={checkStorageDiff} disabled={loading} /><span
+                    >{translateMessage("File integrity")}</span
                 ></label
             >
         </div>
     </div>
     {#if loading}
-        <div class="">Gathering information...</div>
+        <div class="">{translateMessage("Gathering information...")}</div>
     {/if}
     <table>
         <tbody>
             <tr>
-                <th> Date </th>
-                <th> Path </th>
-                <th> Rev </th>
-                <th> Stat </th>
+                <th> {translateMessage("Date")} </th>
+                <th> {translateMessage("Path")} </th>
+                <th> {translateMessage("Rev")} </th>
+                <th> {translateMessage("Stat")} </th>
                 {#if showChunkCorrected}
-                    <th> Chunks </th>
+                    <th> {translateMessage("Chunks")} </th>
                 {/if}
             </tr>
             <tr>
@@ -237,7 +244,7 @@
                     {#if loading}
                         <div class=""></div>
                     {:else}
-                        <div><button on:click={() => nextWeek()}>+1 week</button></div>
+                        <div><button on:click={() => nextWeek()}>{translateMessage("+1 week")}</button></div>
                     {/if}
                 </td>
             </tr>
@@ -286,7 +293,7 @@
                     {#if loading}
                         <div class=""></div>
                     {:else}
-                        <div><button on:click={() => prevWeek()}>+1 week</button></div>
+                        <div><button on:click={() => prevWeek()}>{translateMessage("+1 week")}</button></div>
                     {/if}
                 </td>
             </tr>

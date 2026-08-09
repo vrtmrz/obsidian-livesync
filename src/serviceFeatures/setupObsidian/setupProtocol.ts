@@ -1,9 +1,9 @@
-import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@lib/common/types";
-import type { LogFunction } from "@lib/services/lib/logUtils";
-import { createInstanceLogFunction } from "@lib/services/lib/logUtils";
-import type { SetupFeatureHost } from "@lib/serviceFeatures/setupObsidian/types";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import type { SetupFeatureHost } from "@/serviceFeatures/setupObsidian/types";
 import { configURIBase } from "@/common/types";
-import type { NecessaryServices } from "@lib/interfaces/ServiceModule";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { type SetupManager, UserMode } from "@/modules/features/SetupManager";
 
 async function handleSetupProtocol(setupManager: SetupManager, conf: Record<string, string>) {

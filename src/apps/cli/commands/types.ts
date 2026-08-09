@@ -1,6 +1,7 @@
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { NodeServiceContext } from "@/apps/cli/services/NodeServiceContext";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 
 export type CLICommand =
     | "daemon"
@@ -39,6 +40,7 @@ export interface CLIOptions {
     verbose?: boolean;
     debug?: boolean;
     force?: boolean;
+    writeSettings?: boolean;
     command: CLICommand;
     commandArgs: string[];
     interval?: number;
@@ -47,7 +49,9 @@ export interface CLIOptions {
 export interface CLICommandContext {
     databasePath: string;
     vaultPath: string;
-    core: LiveSyncBaseCore<ServiceContext, never>;
+    core: LiveSyncBaseCore<NodeServiceContext, never>;
+    /** Current-result contract owned by the P2P service feature. */
+    p2pReplicator?: UseP2PReplicatorResult;
     settingsPath: string;
     originalSyncSettings: Pick<
         ObsidianLiveSyncSettings,
@@ -91,3 +95,7 @@ export const VALID_COMMANDS = new Set([
     "remote-status",
     "init-settings",
 ] as const);
+
+export function isCLICommand(value: string): value is CLICommand {
+    return (VALID_COMMANDS as ReadonlySet<string>).has(value);
+}

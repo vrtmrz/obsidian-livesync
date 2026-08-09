@@ -2,15 +2,15 @@
 
 ## Status
 
-Proposed / Spike Implemented
+Accepted / Implemented
 
 ## Release
 
-Not yet. Planned after the serviceFeature refactoring branch is reviewed.
+Accepted — implemented as the maintained local E2E layer for the 1.0 release preparation.
 
 ## Context
 
-The current end-to-end tests run through Vitest browser mode and a mocked Obsidian environment in `test/harness`. This has been useful for exercising synchronisation flows without launching Obsidian, but it is no longer a reliable final signal for plug-in behaviour.
+When this decision was proposed, the end-to-end tests ran through Vitest browser mode and a mocked Obsidian environment in `test/harness`. This was useful for exercising synchronisation flows without launching Obsidian, but it was no longer a reliable final signal for plug-in behaviour.
 
 The main issues are:
 
@@ -31,7 +31,7 @@ The long-term test pyramid should be:
 2. Integration tests for CouchDB, Object Storage, P2P services, database operations, and replication protocols.
 3. Real Obsidian E2E tests for boot-up sequence, vault reflection, command registration, settings dialogues, restart scheduling, and user-visible workflows.
 
-The existing `test/harness` should be demoted to a transitional compatibility layer. It may remain temporarily while the real Obsidian runner reaches parity for critical flows, but new high-level E2E coverage should target the real runner.
+Retain the existing browser Harness only as a transitional compatibility layer while the real Obsidian runner reaches parity for critical flows, then remove it. New high-level E2E coverage targets the real runner.
 
 ## Non-Goals
 
@@ -143,19 +143,19 @@ Current verification:
 - `npm run test:e2e:obsidian:couchdb-upload` configures a unique CouchDB database, creates a note through Obsidian, commits it into the local database, runs one-shot synchronisation, and verifies that CouchDB contains the metadata document and all referenced chunk documents.
 - `npm run test:e2e:obsidian:minio-upload` configures a unique Object Storage bucket prefix, creates a note through Obsidian, runs one-shot Journal Sync, and verifies through the AWS SDK that objects were written to the S3-compatible bucket.
 - `npm run test:e2e:obsidian:startup-scan` verifies that a file written while Obsidian is stopped is picked up during the next real Obsidian boot and uploaded to CouchDB after one-shot synchronisation.
-- `npm run test:e2e:obsidian:two-vault-sync` verifies two-vault note synchronisation: creation, update, rename, deletion, per-device target-filter differences, and a separate encrypted round-trip with Path Obfuscation enabled. The experimental Markdown conflict automatic merge check is available with `E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT=true` but is not part of the default local suite.
+- `npm run test:e2e:obsidian:two-vault-sync` verifies two-vault note synchronisation: creation, update, rename, deletion, per-device target-filter differences, and a separate encrypted round-trip with Path Obfuscation enabled. The optional Markdown conflict check creates divergent branches in two real Vaults, conservatively merges them, edits the merged result again, and verifies that the Vault holding the deleted losing revision accepts the propagated result without recreating a conflict. Enable it with `E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT=true`. A separate `E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS=true` scope keeps four conflicts active while a Vault edits, deletes, case-renames, and cross-path-renames files, then verifies exact parent revisions and replicated trees. Neither scope is part of the default local suite.
 - `npm run test:e2e:obsidian:hidden-file-snippet-sync` verifies hidden file synchronisation as a two-vault round-trip: creation, deletion, automatic JSON conflict merging with the merged result propagated by a second synchronisation, manual JSON Resolve dialogue application through Obsidian's UI, and per-device target-pattern differences.
 - `npm run test:e2e:obsidian:customisation-sync` verifies a two-vault Customisation Sync workflow: scan a real snippet CSS file, config JSON file, and sample plug-in fixture into per-file Customisation Sync data, synchronise them through CouchDB, apply them on the second vault, assert the resulting `.obsidian` files, propagate a snippet update, and verify deletion of the source-vault snippet sync data without confusing it with the target vault's own applied copy.
 - `npm run test:e2e:obsidian:setting-markdown-export` verifies that setting Markdown export creates a vault file and omits credentials when credential export is disabled.
 - `npm run test:e2e:obsidian:install-appimage` reuses the existing AppImage and extracted binary when they are already present.
-- `npm run test:e2e:obsidian:local-suite` runs the local verification sequence for the real Obsidian runner after CouchDB and MinIO have been started.
-- `npm run test:e2e:obsidian:local-suite:services` stops leftover CouchDB and MinIO fixtures, starts fresh fixtures, runs the local suite, and stops the fixtures again.
-- `npm run test:e2e:obsidian:local-suite:services` has been verified locally with real Obsidian, CouchDB, and MinIO. The run completed discovery, smoke, vault reflection, CouchDB upload, Object Storage upload, startup scan, two-vault synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export. The build step still emits existing Svelte warnings.
+- `npm run test:e2e:obsidian:local-suite` runs the local verification sequence for the real Obsidian runner after CouchDB, MinIO, and the P2P relay have been started.
+- `npm run test:e2e:obsidian:local-suite:services` stops leftover CouchDB, MinIO, and P2P relay fixtures, starts fresh fixtures, runs the local suite, and stops the fixtures again.
+- `npm run test:e2e:obsidian:local-suite:services` has been verified locally with real Obsidian and all three fixtures. In addition to the core launch and synchronisation scenarios, the maintained suite covers CouchDB, Object Storage, and P2P Setup URI workflows in which the working first device generates the URI imported by the second device.
 
 Known limits:
 
 - The smoke runner currently proves only one-vault launch and plug-in load readiness. Broader workflows are covered by separate real Obsidian scripts, including CouchDB upload, startup scan, two-vault note synchronisation, Hidden File Sync, Customisation Sync, and setting Markdown export.
-- Cross-platform support is still discovery-level. The working path has been validated on Linux ARM64. macOS and Windows should be validated in their own environments as follow-up work.
+- The working path has been validated on Linux ARM64 and on macOS with Obsidian 1.12.7. Windows remains unverified.
 - CI wiring is intentionally not implemented. The runner depends on a licensed desktop application and is treated as a local verification tool.
 
 ### Phase 2: First Real Workflow
@@ -186,7 +186,7 @@ Current implementation status:
 
 Current implementation status:
 
-- `test:e2e:obsidian:two-vault-sync` covers creation, update, rename, deletion, and per-device target-filter behaviour for a non-encrypted CouchDB configuration. Markdown conflict automatic merging remains an optional check because it needs a dedicated, less timing-sensitive fixture.
+- `test:e2e:obsidian:two-vault-sync` covers creation, update, rename, deletion, and per-device target-filter behaviour for a non-encrypted CouchDB configuration. Its optional conflict fixtures cover real two-Vault divergence, conservative merge, post-resolution editing, propagation to a Vault whose file still contains the deleted losing revision, and edit, logical deletion, case-only rename, and cross-path rename while conflicts remain active.
 - The same script creates a separate temporary CouchDB database and temporary vault pair for an encrypted two-vault round-trip with Path Obfuscation enabled.
 
 ### Phase 4: Harness Retirement
@@ -199,17 +199,18 @@ Current implementation status:
 
 Current implementation status:
 
-- `test/harness` is now documented as a transitional compatibility layer.
-- New broad E2E work should target `test/e2e-obsidian/` when real Obsidian behaviour is the risk being tested.
-- The next high-value scenarios are RedFlag variants and Fast Setup (Simple Fetch) variants, not a line-by-line migration of `test/suite`.
+- The mocked Vitest browser suites, their P2P runner, their root-level relay helpers, and the manual `harness-ci` workflow have been removed after maintained suites covered the critical flows.
+- Headless CouchDB and Object Storage combinations, with and without encryption, remain owned by the CLI two-Vault matrix. P2P transport replacement and relay lifecycle remain owned by the CLI Compose E2E suite. Real Obsidian owns the visible CouchDB, Object Storage, and P2P Setup URI workflows, including URI generation on the first device, import on the second device, and two-way Vault synchronisation.
+- The Obsidian compatibility implementation still needed by the Webapp has moved to `src/apps/webapp/obsidianMock.ts`; it is not a retained browser E2E Harness.
+- Remaining high-value scenarios, including RedFlag and Fast Setup (Simple Fetch) variants, should be added according to their owning integration boundary rather than copied line by line from the retired suite.
 
 ## Local Verification Strategy
 
 Real Obsidian E2E is a local verification layer. It should not be wired into the default CI gate.
 
 - Keep the scripts individually runnable for focused local debugging.
-- Provide `test:e2e:obsidian:local-suite` for a broader local pass after the CouchDB and MinIO fixtures have been started.
-- Provide `test:e2e:obsidian:local-suite:services` for a broader local pass that manages the CouchDB and MinIO fixtures itself.
+- Provide `test:e2e:obsidian:local-suite` for a broader local pass after the CouchDB, MinIO, and P2P relay fixtures have been started.
+- Provide `test:e2e:obsidian:local-suite:services` for a broader local pass that manages all three fixtures itself.
 - Use `OBSIDIAN_BINARY` when testing against an installed desktop application.
 - Use `test:e2e:obsidian:install-appimage` on Linux when a local AppImage copy is needed, and reuse the extracted `_testdata/obsidian/squashfs-root` directory between local runs.
 - Capture Obsidian logs, plug-in logs, vault snapshots, and service logs manually when investigating failures.
@@ -240,12 +241,12 @@ Real Obsidian E2E is a local verification layer. It should not be wired into the
 4. Add `test:e2e:obsidian:smoke` for one-vault plug-in load.
 5. Document required local environment variables, especially `OBSIDIAN_BINARY`.
 6. Port one CouchDB-backed workflow after the smoke test is stable.
-7. Mark `test/harness` as transitional and block new broad E2E work from targeting it.
+7. Retire the browser Harness after critical workflows have replacement coverage.
 8. Add the local suite script for broader local verification.
 
 ## Consequences
 
 - Real Obsidian E2E becomes the source of truth for plug-in lifecycle and vault integration.
 - Unit and integration tests remain the primary fast feedback loops.
-- The old browser harness can be deleted once the new runner covers the critical workflows.
+- The old browser Harness has been deleted now that the replacement coverage owns its critical workflows.
 - The project will gain slower but higher-confidence tests for the behaviours most likely to differ between mocks and Obsidian itself.

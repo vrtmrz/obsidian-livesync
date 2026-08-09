@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { Menu } from "@lib/services/implements/browser/Menu";
-    import { getDialogContext } from "@lib/services/implements/base/SvelteDialog";
+    import { Menu } from "@/apps/browser/BrowserMenu";
+    import { getDialogContext } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
     let result = $state<string | boolean>("");
 
     const context = getDialogContext();
@@ -19,36 +19,32 @@
 
     async function testMenu(event: MouseEvent) {
         const m = new Menu()
-            .addItem((item) => item.setTitle("📥 Only Fetch").onClick(() => {}))
-            .addItem((item) => item.setTitle("📤 Only Send").onClick(() => {}))
+            .addItem((item) => item.setTitle("📥 Only fetch").onClick(() => {}))
+            .addItem((item) => item.setTitle("📤 Only send").onClick(() => {}))
             .addSeparator()
             .addItem((item) => {
-                item.setTitle("🔧 Get Configuration").onClick(async () => {
-                    console.log("Get Configuration");
-                });
+                item.setTitle("🔧 Get configuration").onClick(async () => {});
             })
             .addSeparator()
             .addItem((item) => {
                 const mark = "checkmark";
-                item.setTitle("Toggle Sync on connect")
+                item.setTitle("Toggle sync on connect")
                     .onClick(async () => {
-                        console.log("Toggle Sync on connect");
                         // await this.toggleProp(peer, "syncOnConnect");
                     })
                     .setIcon(mark);
             })
             .addItem((item) => {
                 const mark = null;
-                item.setTitle("Toggle Watch on connect")
+                item.setTitle("Toggle watch on connect")
                     .onClick(async () => {
-                        console.log("Toggle Watch on connect");
                         // await this.toggleProp(peer, "watchOnConnect");
                     })
                     .setIcon(mark);
             })
             .addItem((item) => {
                 const mark = null;
-                item.setTitle("Toggle Sync on `Replicate now` command")
+                item.setTitle("Toggle sync on `Replicate now` command")
                     .onClick(async () => {})
                     .setIcon(mark);
             });

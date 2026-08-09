@@ -5,13 +5,14 @@
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         type P2PServerInfo,
-    } from "@lib/replication/trystero/TrysteroReplicatorP2PServer";
-    // import type { TrysteroReplicator } from "@lib/replication/trystero/TrysteroReplicator";
-    import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@lib/common/types";
-    import { Logger } from "@lib/common/logger";
-    import type { LiveSyncTrysteroReplicator } from "@lib/replication/trystero/LiveSyncTrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    // import type { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
+    import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
         liveSyncReplicator: LiveSyncTrysteroReplicator;
@@ -23,11 +24,12 @@
     }
 
     let { onSync, onSyncAndClose, onClose, showResult, liveSyncReplicator, rebuildMode = false }: Props = $props();
+    const getLiveSyncReplicator = () => liveSyncReplicator;
 
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let syncingPeerId = $state<string | null>(null);
 
-    const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+    const logLevel = $derived(showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
     async function requestServerStatus() {
         await liveSyncReplicator.requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
@@ -83,11 +85,11 @@
     }
 
     function getAcceptanceStatus(peer: P2PServerInfo["knownAdvertisements"][number]) {
-        if (peer.isTemporaryAccepted === true) return "ACCEPTED (in session)";
-        if (peer.isAccepted === true) return "ACCEPTED";
-        if (peer.isTemporaryAccepted === false) return "DENIED (in session)";
-        if (peer.isAccepted === false) return "DENIED";
-        return "NEW";
+        if (peer.isTemporaryAccepted === true) return translateMessage("ACCEPTED (in session)");
+        if (peer.isAccepted === true) return translateMessage("ACCEPTED");
+        if (peer.isTemporaryAccepted === false) return translateMessage("DENIED (in session)");
+        if (peer.isAccepted === false) return translateMessage("DENIED");
+        return translateMessage("NEW");
     }
 
     function getAcceptanceStatusClass(peer: P2PServerInfo["knownAdvertisements"][number]) {
@@ -98,10 +100,10 @@
 </script>
 
 <div class="p2p-container">
-    <P2PServerStatusCard {liveSyncReplicator} showBroadcastToggle={false} />
+    <P2PServerStatusCard {getLiveSyncReplicator} showBroadcastToggle={false} />
 
     <div class="peers-section">
-        <h3>Available Peers</h3>
+        <h3>{translateMessage("Available Peers")}</h3>
         {#if serverInfo && serverInfo.knownAdvertisements.length > 0}
             <div class="peers-list">
                 {#each serverInfo.knownAdvertisements as peer (peer.peerId)}
@@ -125,14 +127,18 @@
                                     disabled={syncingPeerId !== null}
                                     onclick={() => handleSync(peer.peerId)}
                                 >
-                                    {syncingPeerId === peer.peerId ? "Syncing..." : "Sync"}
+                                    {syncingPeerId === peer.peerId
+                                        ? translateMessage("Syncing...")
+                                        : translateMessage("Sync")}
                                 </button>
                                 <button
                                     class="btn {rebuildMode ? 'btn-primary' : 'btn-secondary'}"
                                     disabled={syncingPeerId !== null}
                                     onclick={() => handleSyncThenClose(peer.peerId)}
                                 >
-                                    {syncingPeerId === peer.peerId ? "Syncing..." : "Start Sync & Close"}
+                                    {syncingPeerId === peer.peerId
+                                        ? translateMessage("Syncing...")
+                                        : translateMessage("Start Sync & Close")}
                                 </button>
                             {:else}
                                 <button
@@ -140,7 +146,9 @@
                                     disabled={syncingPeerId !== null}
                                     onclick={() => handleSyncThenClose(peer.peerId)}
                                 >
-                                    {syncingPeerId === peer.peerId ? "Syncing..." : "Sync"}
+                                    {syncingPeerId === peer.peerId
+                                        ? translateMessage("Syncing...")
+                                        : translateMessage("Sync")}
                                 </button>
                             {/if}
                         </div>
@@ -148,16 +156,22 @@
                 {/each}
             </div>
         {:else if serverInfo}
-            <p class="no-peers">No devices available. Waiting for other devices to connect...</p>
+            <p class="no-peers">
+                {translateMessage("No devices available. Waiting for other devices to connect...")}
+            </p>
         {/if}
     </div>
 
     <div class="footer">
         {#if rebuildMode}
-            <button class="btn btn-cancel" onclick={onClose} disabled={syncingPeerId !== null}>Skip and close</button>
+            <button class="btn btn-cancel" onclick={onClose} disabled={syncingPeerId !== null}
+                >{translateMessage("Skip and close")}</button
+            >
         {:else}
-            <button class="btn btn-cancel" onclick={onClose}>Close</button>
-            <button class="btn btn-cancel" onclick={onCloseAndDisconnect}>Close & Disconnect</button>
+            <button class="btn btn-cancel" onclick={onClose}>{translateMessage("Close")}</button>
+            <button class="btn btn-cancel" onclick={onCloseAndDisconnect}
+                >{translateMessage("Close & Disconnect")}</button
+            >
         {/if}
     </div>
 </div>

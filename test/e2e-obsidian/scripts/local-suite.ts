@@ -13,14 +13,30 @@ const testSteps: Step[] = [
         : []),
     { name: "discover", args: ["run", "test:e2e:obsidian:discover"] },
     { name: "smoke", args: ["run", "test:e2e:obsidian:smoke"] },
+    { name: "onboarding invitation", args: ["run", "test:e2e:obsidian:onboarding-invitation"] },
+    { name: "Svelte dialogue mounts", args: ["run", "test:e2e:obsidian:dialog-mounts"] },
+    { name: "revision repair", args: ["run", "test:e2e:obsidian:revision-repair"] },
+    { name: "settings UI", args: ["run", "test:e2e:obsidian:settings-ui"] },
+    { name: "Review Harness", args: ["run", "test:e2e:obsidian:review-harness"] },
+    { name: "P2P status pane", args: ["run", "test:e2e:obsidian:p2p-pane"] },
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },
     { name: "CouchDB upload", args: ["run", "test:e2e:obsidian:couchdb-upload"] },
+    {
+        name: "manual CouchDB setup workflow",
+        args: ["run", "test:e2e:obsidian:couchdb-manual-setup-workflow"],
+    },
     {
         name: "CLI to real Obsidian synchronisation",
         args: ["run", "test:e2e:obsidian:cli-to-obsidian-sync"],
     },
     { name: "Object Storage upload", args: ["run", "test:e2e:obsidian:minio-upload"] },
+    {
+        name: "Object Storage Setup URI workflow",
+        args: ["run", "test:e2e:obsidian:object-storage-setup-uri-workflow"],
+    },
+    { name: "P2P Setup URI workflow", args: ["run", "test:e2e:obsidian:p2p-setup-uri-workflow"] },
     { name: "startup scan", args: ["run", "test:e2e:obsidian:startup-scan"] },
+    { name: "provisioned Setup URI workflow", args: ["run", "test:e2e:obsidian:setup-uri-workflow"] },
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
     { name: "hidden file snippet synchronisation", args: ["run", "test:e2e:obsidian:hidden-file-snippet-sync"] },
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },
@@ -29,9 +45,11 @@ const testSteps: Step[] = [
 
 const manageCouchDb = process.argv.includes("--manage-couchdb") || process.argv.includes("--manage-services");
 const manageMinio = process.argv.includes("--manage-minio") || process.argv.includes("--manage-services");
+const manageP2P = process.argv.includes("--manage-p2p") || process.argv.includes("--manage-services");
 const keepServices = process.argv.includes("--keep-services");
 const keepCouchDb = keepServices || process.argv.includes("--keep-couchdb");
 const keepMinio = keepServices || process.argv.includes("--keep-minio");
+const keepP2P = keepServices || process.argv.includes("--keep-p2p");
 
 function npmBinary(): string {
     return process.platform === "win32" ? "npm.cmd" : "npm";
@@ -78,9 +96,18 @@ async function stopManagedMinio(): Promise<void> {
     });
 }
 
+async function stopManagedP2P(): Promise<void> {
+    await runStep({
+        name: "stop P2P relay fixture",
+        args: ["run", "test:docker-p2p:stop"],
+        optional: true,
+    });
+}
+
 async function main(): Promise<void> {
     let shouldStopCouchDb = false;
     let shouldStopMinio = false;
+    let shouldStopP2P = false;
     try {
         if (manageCouchDb) {
             await stopManagedCouchDb();
@@ -92,11 +119,19 @@ async function main(): Promise<void> {
             await runStep({ name: "start MinIO fixture", args: ["run", "test:docker-s3:start"] });
             shouldStopMinio = !keepMinio;
         }
+        if (manageP2P) {
+            await stopManagedP2P();
+            await runStep({ name: "start P2P relay fixture", args: ["run", "test:docker-p2p:start"] });
+            shouldStopP2P = !keepP2P;
+        }
 
         for (const step of testSteps) {
             await runStep(step);
         }
     } finally {
+        if (shouldStopP2P) {
+            await stopManagedP2P();
+        }
         if (shouldStopMinio) {
             await stopManagedMinio();
         }

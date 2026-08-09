@@ -1,0 +1,1246 @@
+(Active): （有効）
+(BETA) Always overwrite with a newer file: (ベータ機能) 常に新しいファイルで上書きする
+(Beta) Use ignore files: (ベータ機能) 除外ファイル(ignore)の使用
+(Days passed, 0 to disable automatic-deletion): (経過日数、0で自動削除を無効化)
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.:
+  "(例: チャンクをオンラインで読む)
+  このオプションを有効にすると、LiveSyncはチャンクをローカルに複製せず、直接オンラインで読み込みます。カスタムチャンクサイズを増やすことをお勧めしま\
+  す。"
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.:
+  (MB)
+  この値を設定すると、これより大きいサイズのローカルファイルやリモートファイルの変更はスキップされます。ファイルが再び小さくなった場合は、新しいものが使用されます。
+(Mega chars): (メガ文字)
+(Not recommended) If set, credentials will be stored in the file.: (非推奨) 設定した場合、認証情報がファイルに保存されます。
+(Obsolete) Use an old adapter for compatibility: (廃止済み)古いアダプターを互換性のために利用
+(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.: （正規表現）空欄で全ファイルを同期します。正規表現を指定すると、同期対象のファイルを絞り込めます。
+(RegExp) If this is set, any changes to local and remote files that match this will be skipped.: （正規表現）設定すると、これに一致するローカル／リモートファイルの変更はすべてスキップされます。
+Access Key: アクセスキー
+Activate: 有効化
+Add default patterns: デフォルトパターンを追加
+Add new connection: 接続を追加
+Always prompt merge conflicts: 常に競合は手動で解決する
+Apply Latest Change if Conflicting: 競合がある場合は最新の変更を適用する
+Apply preset configuration: プリセットを適用する
+Ask a passphrase at every launch: 起動のたびにパスフレーズを確認
+Automatically Sync all files when opening Obsidian.: Obsidian起動時にすべてのファイルを自動同期します。
+Back: 戻る
+Back to non-configured: 未設定状態に戻す
+Batch database update: データベースのバッチ更新
+Batch limit: バッチの上限
+Batch size: バッチ容量
+Batch size of on-demand fetching: オンデマンド取得のバッチサイズ
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.:
+  v0.17.6までは古いアダプターをローカル用のデータベースに使用していましたが、現在は新しいアダプターを推奨しています。しかし、新しいアダプターに変更するにはローカルデータベースの再構築が必要です。有効のままにしておくと、リモートデータベースからフェッチする場合に、この設定を無効にするかの質問が表示されます。
+Bucket Name: バケット名
+Cancel: キャンセル
+Check and convert non-path-obfuscated files: パス難読化されていないファイルを確認して変換
+Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.: まだパス難読化 ID に変換されていないドキュメントを確認し、必要に応じて変換します。
+cmdConfigSync:
+  showCustomizationSync: カスタマイズ同期を表示
+Comma separated `.gitignore, .dockerignore`: カンマ区切り `.gitignore, .dockerignore`
+Compare the content of files between on local database and storage. If not matched, you will be asked which one you want to keep.: ローカルデータベースとストレージ上のファイル内容を比較します。一致しない場合は、どちらを残すか選択できます。
+Compatibility (Conflict Behaviour): 互換性（競合時の挙動）
+Compatibility (Database structure): 互換性（データベース構造）
+Compatibility (Internal API Usage): 互換性（内部 API の利用）
+Compatibility (Metadata): 互換性（メタデータ）
+Compatibility (Remote Database): 互換性（リモートデータベース）
+Compatibility (Trouble addressed): 互換性（対処済みの問題）
+Compute revisions for chunks: チャンクの修正(リビジョン)を計算
+Configuration Encryption: 設定の暗号化
+Configure: 設定
+Configure And Change Remote: リモートを設定して切り替える
+Configure E2EE: E2EE を設定
+Configure Remote: リモートを設定
+Copy: コピー
+CouchDB Connection Tweak: CouchDB 接続の調整
+Cross-platform: クロスプラットフォーム
+"Current adapter: {adapter}": "現在のアダプター: {adapter}"
+Customization Sync: カスタマイズ同期
+Customization Sync (Beta3): カスタマイズ同期 (Beta3)
+Data Compression: データ圧縮
+Database Adapter: データベースアダプター
+Database Name: データベース名
+Database suffix: データベースの接尾辞(suffix)
+Default: デフォルト
+Delay conflict resolution of inactive files: 非アクティブなファイルは、競合解決を先送りする
+Delay merge conflict prompt for inactive files.: 非アクティブなファイルの競合解決のプロンプトの表示を遅延させる
+Delete: 削除
+Delete all customization sync data: カスタマイズ同期データをすべて削除
+Delete all data on the remote server.: リモートサーバー上のすべてのデータを削除します。
+Delete local database to reset or uninstall Self-hosted LiveSync: Self-hosted LiveSync をリセットまたはアンインストールするため、ローカルデータベースを削除
+Delete old metadata of deleted files on start-up: 削除済みデータのメタデータをクリーンナップする
+Delete Remote Configuration: リモート設定を削除
+Delete remote configuration '{name}'?: リモート設定 '{name}' を削除しますか？
+desktop: デスクトップ
+Developer: 開発者
+Device name: デバイス名
+dialog:
+  yourLanguageAvailable:
+    _value: >-
+      Self-hosted LiveSync に設定されている言語の翻訳がありましたので、%{Display Language}が適用されました。
+
+
+      注意： 全てのメッセージは翻訳されていません。あなたの貢献をお待ちしています！
+
+      GithubにIssueを作成する際には、 %{Display Language} を一旦 %{lang-def}
+      に戻してから、スクショやメッセージ、ログを収集してください。これは設定から変更できます。
+
+
+      便利に使用できれば幸いです。
+    btnRevertToDefault: Keep %{lang-def}
+    Title: 翻訳が利用可能です！
+Disables all synchronization and restart.: すべての同期を無効にして再起動します。
+Disables logging, only shows notifications. Please disable if you report an issue.: ログを無効にし、通知のみを表示します。Issueを報告する場合は無効にしてください。
+Display Language: インターフェースの表示言語
+Display name: 表示名
+Do not check configuration mismatch before replication: サーバーから同期する前に設定の不一致を確認しない
+Do not keep metadata of deleted files.: 削除済みファイルのメタデータを保持しない
+Do not split chunks in the background: バックグラウンドでチャンクを分割しない
+Do not use internal API: 内部APIを使用しない
+Doctor:
+  Button:
+    DismissThisVersion: いいえ、次のリリースまで再度確認しない
+    Fix: 修正する
+    FixButNoRebuild: 修正するが再構築はしない
+    No: いいえ
+    Skip: そのままにする
+    Yes: はい
+  Dialogue:
+    Main: |-
+      こんにちは！${activateReason}のため、設定診断ツールが起動しました！
+      残念ながら、いくつかの設定が潜在的な問題として検出されました。
+      ご安心ください。一つずつ解決していきましょう。
+
+      事前にお知らせしますと、以下の項目についてお尋ねします。
+
+      ${issues}
+
+      始めていいですか？
+    MainFix: |-
+
+      ## ${name}
+
+      | 現在の値 | 理想値 |
+      |:---:|:---:|
+      | ${current} | ${ideal} |
+
+      **推奨レベル:** ${level}
+
+      ### 診断理由？
+
+      ${reason}
+
+      ${note}
+
+      これを理想値に修正しますか？
+    Title: Self-hosted LiveSync 設定診断ツール
+    TitleAlmostDone: あと少しです！
+    TitleFix: 問題の修正 ${current}/${total}
+  Level:
+    Must: 必須
+    Necessary: 必要
+    Optional: 任意
+    Recommended: 推奨
+  Message:
+    NoIssues: 問題は検出されませんでした！
+    RebuildLocalRequired: 注意！これを適用するにはローカルデータベースの再構築が必要です！
+    RebuildRequired: 注意！これを適用するには再構築が必要です！
+    SomeSkipped: いくつかの問題をそのままにしました。次回起動時に再度確認しますか？
+  RULES:
+    E2EE_V02500:
+      REASON: エンドツーエンド暗号化がより堅牢で高速になりました。また、以前のE2EEは再コードレビューにより脆弱性が発見されました。できるだけ早く適用することをお勧めします。ご不便をおかけして申し訳ありません。また、この設定は下位互換性がありません。すべての同期デバイスをv0.25.0以降にアップデートする必要があります。再構築は必須ではなく、新しい転送から新しいフォーマットに変換されますが、可能な限り再構築をお勧めします。
+Duplicate: 複製
+Duplicate remote: リモート設定を複製
+E2EE Configuration: E2EE 設定
+Edge case addressing (Behaviour): 特殊なケースへの対応（動作）
+Edge case addressing (Database): 特殊なケースへの対応（データベース）
+Edge case addressing (Processing): 特殊なケースへの対応（処理）
+Emergency restart: 緊急再起動
+Enable advanced features: 高度な機能を有効にする
+Enable customization sync: カスタマイズ同期を有効
+Enable Developers' Debug Tools.: 開発者用デバッグツールを有効にする
+Enable edge case treatment features: エッジケース対応機能を有効にする
+Enable poweruser features: エキスパート機能を有効にする
+Enable this if your Object Storage doesn't support CORS: オブジェクトストレージがCORSをサポートしていない場合は有効にしてください
+Enable this option to automatically apply the most recent change to documents even when it conflicts: このオプションを有効にすると、競合があっても最新の変更を自動的にドキュメントに適用します
+Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.: リモートデータベースの暗号化（オンにすることを推奨）
+Encrypting sensitive configuration items: 機密性の高い設定項目の暗号化
+Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.: 暗号化パスフレーズ。変更した場合、新しい（暗号化された）ファイルでサーバーのデータベースを上書きする必要があります。
+End-to-End Encryption: E2E暗号化
+Endpoint URL: エンドポイントURL
+Enhance chunk size: チャンクサイズを最適化する
+Export: エクスポート
+Fetch: 取得
+Fetch chunks on demand: ユーザーのタイミングでチャンクの更新を確認する
+Fetch database with previous behaviour: 以前の動作でデータベースを取得
+Fetch remote settings: リモート設定を取得
+File to resolve conflict: 競合を解決するファイル
+Filename: ファイル名
+Flag and restart: フラグを立てて再起動
+Forces the file to be synced when opened.: ファイルを開いたときに強制的に同期します。
+Fresh Start Wipe: 初期化ワイプ
+Garbage Collection V3 (Beta): ガーベジコレクション V3 (Beta)
+Handle files as Case-Sensitive: ファイルの大文字・小文字を区別する
+Hidden Files: 隠しファイル
+How to display network errors when the sync server is unreachable.: 同期サーバーに到達できない場合のネットワークエラーの表示方法を設定します。
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: 無効（トグル）にすると、チャンクはUIスレッドで分割されます（以前の動作）。
+If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.:
+  有効にすると、ファイルごとの効率的なカスタマイズ同期が使用されます。有効化時に小規模な移行が必要です。また、すべてのデバイスをv0.23.18にアップデートする必要があります。一度有効にすると、古いバージョンとの互換性がなくなります。
+If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.: 有効にすると、チャンクは最大100項目に分割されます。ただし、重複除去の精度は落ちます。
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: 有効にすると、新しく作成されたチャンクはドキュメント内に一時的に保持され、安定したら独立したチャンクになります。
+If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.: 有効にすると、ファイル警告バナーの代わりにステータス内へ ⛔ アイコンのみを表示します。詳細は表示されません。
+If enabled, the file under 1kb will be processed in the UI thread.: 有効にすると、1kb未満のファイルはUIスレッドで処理されます。
+If enabled, the notification of hidden files change will be suppressed.: 有効にすると、隠しファイルの変更通知が抑制されます。
+If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour): 有効にすると、すべてのチャンクはコンテンツから作成されたリビジョンと共に保存されます（以前の動作）。
+If this enabled, All files are handled as case-Sensitive (Previous behaviour).: 有効にすると、すべてのファイルは大文字小文字を区別して処理されます（以前の動作）。
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: 有効にすると、チャンクは意味的に有意なセグメントに分割されます。すべてのプラットフォームがこの機能をサポートしているわけではありません。
+If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.: これを設定すると、除外ファイルに一致するローカルファイルの変更はスキップされます。リモートの変更はローカルの無視ファイルを使用して判定されます。
+If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.:
+  このオプションを有効にすると、PouchDBは接続を60秒間保持し、その間に通信がない場合、一度接続を閉じて再接続します。接続を無期限に保持する代わりにこの動作を行います。プロキシ(Cloudflareなど)がリクエストの持続時間を制限している場合に有用ですが、リソース使用量が増加する可能性があります。
+Ignore files: 除外ファイル
+Ignore patterns: 除外パターン
+Import connection: 接続をインポート
+Incubate Chunks in Document: ドキュメント内でチャンクを一時保管する
+Initialise all journal history, On the next sync, every item will be received and sent.: すべてのジャーナル履歴を初期化します。次回の同期時に、すべての項目が再受信・再送信されます。
+Interval (sec): 秒
+K:
+  exp: 試験機能
+  long_p2p_sync: "%{title_p2p_sync} (%{exp})"
+  P2P: "%{Peer}-to-%{Peer}"
+  Peer: Peer
+  ScanCustomization: Scan customization
+  short_p2p_sync: P2P Sync (%{exp})
+  title_p2p_sync: Peer-to-Peer Sync
+Keep empty folder: 空フォルダの維持
+lang_def: Default
+lang-de: Deutsche
+lang-def: "%{lang_def}"
+lang-es: Español
+lang-fr: Français
+lang-ja: 日本語
+lang-ko: 한국어
+lang-ru: Русский
+lang-zh: 简体中文
+lang-zh-tw: 繁體中文
+Later: 後で
+"Limit: {datetime} ({timestamp})": "制限: {datetime} ({timestamp})"
+LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.: LiveSyncは、接頭辞（プレフィックス）のない同名の保管庫(Vault)を扱うことができません。これは自動的に設定されます。
+liveSyncReplicator:
+  beforeLiveSync: LiveSyncの前に、まずOneShotを開始します...
+  cantReplicateLowerValue: これ以上低い値ではレプリケーション(複製)できません。
+  checkingLastSyncPoint: 最後に同期したポイントを探しています。
+  couldNotConnectTo: |-
+    ${uri} : ${name}に接続できませんでした
+    (${db})
+  couldNotConnectToRemoteDb: "リモートデータベースに接続できませんでした: ${d}"
+  couldNotConnectToServer: サーバーに接続できませんでした。
+  couldNotConnectToURI: "${uri}に接続できませんでした: ${dbRet}"
+  couldNotMarkResolveRemoteDb: リモートデータベースを解決済みとしてマークできませんでした。
+  liveSyncBegin: LiveSyncを開始...
+  lockRemoteDb: データ破損を防ぐためリモートデータベースをロック
+  markDeviceResolved: このデバイスを『解決済み』としてマーク。
+  oneShotSyncBegin: OneShot同期を開始... (${syncMode})
+  remoteDbCorrupted: リモートデータベースが新しいか破損しています。self-hosted-livesyncの最新バージョンがインストールされていることを確認してください
+  remoteDbCreatedOrConnected: リモートデータベースが作成または接続されました
+  remoteDbDestroyed: リモートデータベースが削除されました
+  remoteDbDestroyError: "リモートデータベースの削除中に問題が発生しました:"
+  remoteDbMarkedResolved: リモートデータベースが解決済みとしてマークされました。
+  replicationClosed: レプリケーション(複製)が終了しました
+  replicationInProgress: レプリケーション(複製)は既に進行中です
+  retryLowerBatchSize: "より小さいバッチサイズで再試行: ${batch_size}/${batches_limit}"
+  unlockRemoteDb: データ破損を防ぐためリモートデータベースをアンロック
+liveSyncSetting:
+  errorNoSuchSettingItem: "その設定項目は存在しません: ${key}"
+  originalValue: "元の値: ${value}"
+  valueShouldBeInRange: 値は ${min} < 値 < ${max} の範囲である必要があります
+liveSyncSettings:
+  btnApply: 適用
+Local Database Tweak: ローカルデータベースの調整
+Lock: ロック
+Lock Server: サーバーをロック
+Lock the remote server to prevent synchronization with other devices.: 他のデバイスとの同期を防ぐため、リモートサーバーをロックします。
+logPane:
+  autoScroll: 自動スクロール
+  logWindowOpened: ログウィンドウが開かれました
+  pause: 一時停止
+  title: Self-hosted LiveSync ログ
+  wrap: 折り返し
+Maximum delay for batch database updating: バッチデータベース更新の最大遅延
+Maximum file size: 最大ファイル容量
+Maximum Incubating Chunk Size: 保持するチャンクの最大サイズ
+Maximum Incubating Chunks: 一時保管する最大チャンク数
+Maximum Incubation Period: 最大保持期限
+MB (0 to disable).: MB (0で無効化)。
+Memory cache: メモリキャッシュ
+Memory cache size (by total characters): 全体でキャッシュする文字数
+Memory cache size (by total items): 全体のキャッシュサイズ
+Merge: マージ
+Minimum delay for batch database updating: バッチデータベース更新の最小遅延
+moduleCheckRemoteSize:
+  logCheckingStorageSizes: ストレージサイズを確認中
+  logCurrentStorageSize: "リモートストレージサイズ: ${measuredSize}"
+  logExceededWarning: "リモートストレージサイズ: ${measuredSize} が ${notifySize} を超過しました"
+  logThresholdEnlarged: しきい値が ${size}MB に設定されました
+  msgConfirmRebuild: これは少し時間がかかる場合があります。本当に今すべてを再構築しますか？
+  msgDatabaseGrowing: |
+    **データベースが大きくなっています！** でも心配しないでください。リモートストレージの容量が不足する前に対応できます。
+
+    | 測定サイズ | 設定サイズ |
+    | --- | --- |
+    | ${estimatedSize} | ${maxSize} |
+
+    > [!MORE]-
+    > 長年使用している場合、参照されていないチャンク（つまりゴミ）がデータベースに蓄積している可能性があります。そのため、すべてを再構築することをお勧めします。おそらくかなり小さくなるでしょう。
+    >
+    > 単純に保管庫の容量が増えている場合は、事前にファイルを整理してからすべてを再構築するのが良いでしょう。Self-hosted LiveSyncは処理速度を上げるため、削除しても実際のデータを削除しません。これはおおまかに[documentation](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)に記載されています。
+    >
+    > 増加を気にしない場合は、通知制限を100MB単位で増やすことができます。これは自分のサーバーで実行している場合に適しています。ただし、定期的にすべてを再構築する方が良いでしょう。
+    >
+
+    > [!WARNING]
+    > すべてを再構築する場合は、すべてのデバイスが同期されていることを確認してください。もちろん、プラグインは可能な限り解決しようと努力はしますけど...
+  msgSetDBCapacity: |
+    リモートストレージの容量が不足する前に対策を講じるため、**最大データベース容量の警告**を設定できます。
+    これを有効にしますか？
+
+    > [!MORE]-
+    > - 0: ストレージサイズについて警告しない。
+    >   自宅サーバーなど、リモートストレージに十分な容量がある場合に推奨されます。ストレージサイズを確認し、手動で再構築できます。
+    > - 800: リモートストレージサイズが800MBを超えたら警告。
+    >   1GB制限のfly.ioやIBM Cloudantを使用している場合に推奨されます。
+    > - 2000: リモートストレージサイズが2GBを超えたら警告。
+
+    制限に達した場合、段階的に制限を増やすよう求められます。
+  option2GB: 2GB (標準)
+  option800MB: 800MB (Cloudant, fly.io)
+  optionAskMeLater: 後で確認する
+  optionDismiss: 無視
+  optionIncreaseLimit: ${newMax}MBに設定
+  optionNoWarn: いいえ、警告しないでください
+  optionRebuildAll: 今すべてを再構築
+  titleDatabaseSizeLimitExceeded: リモートストレージサイズが制限を超過しました
+  titleDatabaseSizeNotify: データベースサイズ通知の設定
+moduleInputUIObsidian:
+  defaultTitleConfirmation: 確認
+  defaultTitleSelect: 選択
+  optionNo: いいえ
+  optionYes: はい
+moduleLiveSyncMain:
+  logAdditionalSafetyScan: 追加の安全スキャン中...
+  logLoadingPlugin: プラグインをロード中...
+  logPluginInitCancelled: プラグインの初期化がモジュールによってキャンセルされました
+  logPluginVersion: Self-hosted LiveSync v${manifestVersion} ${packageVersion}
+  logReadChangelog: LiveSyncが更新されました。変更履歴をお読みください！
+  logSafetyScanCompleted: 追加の安全スキャンが完了しました
+  logSafetyScanFailed: モジュールで追加の安全スキャンが失敗しました
+  logUnloadingPlugin: プラグインをアンロード中...
+  logVersionUpdate: LiveSyncが更新されました。互換性のない更新の場合、すべての自動同期が一時的に無効化されています。有効にする前に、すべてのデバイスが最新の状態であることを確認してください。
+  msgScramEnabled: |
+    Self-hosted LiveSyncは一部のイベントを無視するように設定されています。これは正しいですか？
+
+    | タイプ | ステータス | メモ |
+    |:---:|:---:|---|
+    | ストレージイベント | ${fileWatchingStatus} | すべての変更が無視されます |
+    | データベースイベント | ${parseReplicationStatus} | すべての同期された変更が延期されます |
+
+    これらを再開してObsidianを再起動しますか？
+
+    > [!DETAILS]-
+    > これらのフラグは、プラグインが再構築またはフェッチ中に設定されます。プロセスが異常終了した場合、意図せず保持されることがあります。
+    > 不明な場合は、これらのプロセスを再実行してみてください。必ず保管庫をバックアップしてください。
+  optionKeepLiveSyncDisabled: LiveSyncを無効のままにする
+  optionResumeAndRestart: 再開してObsidianを再起動
+  titleScramEnabled: 緊急停止(Scram)が有効
+moduleLocalDatabase:
+  logWaitingForReady: しばらくお待ちください...
+moduleLog:
+  showLog: ログを表示
+moduleMigration:
+  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
+  fix0256:
+    buttons:
+      checkItLater: 後で確認する
+      DismissForever: 修正済み、今後確認しない
+      fix: 修正
+    message: |
+      最近のバグ（v0.25.6）により、一部のファイルが同期データベースに正しく保存されていない可能性があります。
+      ファイルをスキャンし、修正が必要なものが見つかりました。
+
+      **修正準備ができたファイル:**
+
+      ${files}
+
+      これらのファイルはストレージ上の元ファイルとサイズが一致しており、復元可能です。
+      「修正」ボタンをクリックしてデータベースを修正できます。
+
+      ${messageUnrecoverable}
+
+      再実行したい場合は、Hatchから実行できます。
+    messageUnrecoverable: |
+      **このデバイスで修正できないファイル:**
+
+      ${filesNotRecoverable}
+
+      これらのファイルはメタデータに不整合があり、このデバイスでは修正できません（ほとんどの場合、どちらが正しいか判定できません）。
+      復元するには、他のデバイスで確認するか、バックアップから手動で復元してください。
+    title: 破損ファイルが検出されました
+  insecureChunkExist:
+    buttons:
+      fetch: リモートを既に再構築した。リモートからフェッチ
+      later: 後で行う
+      rebuild: すべてを再構築
+    laterMessage: できるだけ早く対処することを強くお勧めします！
+    message: |
+      一部のチャンクが安全に保存されておらず、データベースで暗号化されていません。
+      **この問題を修正するにはデータベースを再構築してください**。
+
+      リモートデータベースがSSLで設定されていない、または安全性の低い認証情報を使用している場合、**機密データが漏洩するリスクがあります**。
+
+      注意: すべてのデバイスでSelf-hosted LiveSync v0.25.6以降にアップグレードし、必ず保管庫をバックアップしてください。
+      注意2: すべてを再構築とフェッチは時間とトラフィックを消費します。オフピーク時間に安定したネットワークで実行してください。
+    title: 安全でないチャンクが見つかりました！
+  logBulkSendCorrupted: チャンクの一括送信が有効にされていましたが、この機能に問題がありました。ご不便をおかけして申し訳ありません。自動的に無効化されました。
+  logFetchRemoteTweakFailed: リモートの調整値の取得に失敗しました
+  logLocalDatabaseNotReady: 何か問題が発生しました！ローカルデータベースが準備できていません
+  logMigratedSameBehaviour: 以前と同じ動作でdb:${current}に移行しました
+  logMigrationFailed: ${old}から${current}への移行が失敗またはキャンセルされました
+  logRedflag2CreationFail: redflag2の作成に失敗しました
+  logRemoteTweakUnavailable: リモートの調整値を取得できませんでした
+  logSetupCancelled: セットアップがキャンセルされました。Self-hosted LiveSyncはセットアップを待っています！
+  msgFetchRemoteAgain: |-
+    ご存知のとおり、self-hosted LiveSyncはデフォルトの動作とデータベース構造を変更しました。
+
+    ご協力のおかげで、リモートデータベースはすでに移行されているようです。おめでとうございます！
+
+    しかし、もう少し必要です。このデバイスの設定はリモートデータベースと互換性がありません。リモートデータベースを再度フェッチする必要があります。今すぐリモートから再フェッチしますか？
+
+    ___注意: 設定が変更され、データベースが再フェッチされるまで同期できません。___
+    ___注意2: チャンクは完全に不変なので、メタデータと差分のみフェッチできます。___
+  msgInitialSetup: |-
+    このデバイスは**まだセットアップされていません**。セットアッププロセスをご案内します。
+
+    すべてのダイアログの内容はクリップボードにコピーできます。後で参照する必要があれば、Obsidianのノートに貼り付けてください。翻訳ツールを使ってお使いの言語に翻訳することもできます。
+
+    まず、**セットアップURI**をお持ちですか？
+
+    注意: それが何か分からない場合は、[documentation](${URI_DOC})を参照してください。
+  msgRecommendSetupUri: |-
+    セットアップURIを生成して使用することを強くお勧めします。
+    これについて知識がない場合は、[documentation](${URI_DOC})を参照してください（重要です）。
+
+    手動でセットアップしますか？
+  msgSinceV02321: |-
+    v0.23.21以降、self-hosted LiveSyncはデフォルトの動作とデータベース構造を変更しました。以下の変更が行われました：
+
+    1. **ファイル名の大文字小文字の区別**
+       ファイル名の処理が大文字小文字を区別しなくなりました。これは、ファイル名の大文字小文字を効果的に管理しないLinuxとiOS以外のほとんどのプラットフォームにとって有益な変更です。
+       （これらの環境では、同じ名前で大文字小文字が異なるファイルに対して警告が表示されます）。
+
+    2. **チャンクのリビジョン処理**
+       チャンクは不変であり、リビジョンを固定できます。この変更により、ファイル保存のパフォーマンスが向上します。
+
+    ___しかし、これらの変更を有効にするには、リモートとローカルの両方のデータベースを再構築する必要があります。このプロセスは数分かかります。時間に余裕があるときに行うことをお勧めします。___
+
+    - 以前の動作を維持したい場合は、`${KEEP}`を使用してこのプロセスをスキップできます。
+    - 時間がない場合は、`${DISMISS}`を選択してください。後で再度確認されます。
+    - 別のデバイスでデータベースを再構築した場合は、`${DISMISS}`を選択して再度同期してみてください。差異が検出されたため、再度確認されます。
+  optionAdjustRemote: リモートに合わせる
+  optionDecideLater: 後で決める
+  optionEnableBoth: 両方を有効にする
+  optionEnableFilenameCaseInsensitive: "#1のみ有効にする"
+  optionEnableFixedRevisionForChunks: "#2のみ有効にする"
+  optionHaveSetupUri: はい、持っています
+  optionKeepPreviousBehaviour: 以前の動作を維持
+  optionManualSetup: すべて手動でセットアップ
+  optionNoAskAgain: いいえ、後で確認する
+  optionNoSetupUri: いいえ、持っていません
+  optionRemindNextLaunch: 次回起動時にリマインド
+  optionSetupViaP2P: "%{short_p2p_sync}を使ってセットアップ"
+  optionSetupWizard: セットアップウィザードへ
+  optionYesFetchAgain: はい、再フェッチする
+  titleCaseSensitivity: 大文字小文字の区別
+  titleRecommendSetupUri: セットアップURIの使用を推奨
+  titleWelcome: Self-hosted LiveSyncへようこそ
+moduleObsidianMenu:
+  replicate: レプリケート
+More actions: その他の操作
+Move remotely deleted files to the trash, instead of deleting.: リモートで削除されたファイルを削除せずにゴミ箱に移動する。
+Network warning style: ネットワーク警告の表示方式
+New Remote: 新しいリモート
+No limit configured: 制限は設定されていません
+Non-Synchronising files: 同期しないファイル
+Normal Files: 通常ファイル
+Not all messages have been translated. And, please revert to "Default" when reporting errors.: すべてのメッセージが翻訳されているわけではありません。また、Issue報告の際にはいったん"Default"に戻してください
+Notify all setting files: すべての設定を通知
+Notify customized: カスタマイズが行われたら通知する
+Notify when other device has newly customized.: 別の端末がカスタマイズを行なったら通知する
+Notify when the estimated remote storage size exceeds on start up: 起動時に予想リモートストレージサイズを超えたら通知
+Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.: 1度に処理するバッチの数。デフォルトは40、最小は2。この数値は、どれだけの容量の書類がメモリに保存されるかも定義します。
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.: 一度に同期する変更の数。デフォルトは50、最小は2。
+obsidianLiveSyncSettingTab:
+  btnApply: 適用
+  btnCheck: 確認
+  btnCopy: コピー
+  btnDisable: 無効化
+  btnDiscard: 破棄
+  btnEnable: 有効化
+  btnFix: 修正
+  btnGotItAndUpdated: 理解しました、更新しました。
+  btnNext: 次へ
+  btnStart: 開始
+  btnTest: テスト
+  btnUse: 使用
+  buttonFetch: フェッチ
+  buttonNext: 次へ
+  defaultLanguage: デフォルト
+  descConnectSetupURI: セットアップURIを使用してSelf-hosted LiveSyncをセットアップする推奨方法です。
+  descCopySetupURI: 新しいデバイスのセットアップにおすすめ！
+  descEnableLiveSync: 上記の2つのオプションのいずれかを設定するか、すべての設定を手動で完了した後にのみ有効にしてください。
+  descFetchConfigFromRemote: 既に設定済みのリモートサーバーから必要な設定を取得します。
+  descManualSetup: 推奨しませんが、セットアップURIがない場合に便利です
+  descTestDatabaseConnection: データベース接続を開きます。リモートデータベースが見つからず、データベースを作成する権限がある場合は、データベースが作成されます。
+  descValidateDatabaseConfig: データベース設定の潜在的な問題を確認し、修正します。
+  errAccessForbidden: ❗ アクセスが禁止されています。
+  errCannotContinueTest: テストを続行できませんでした。
+  errCorsCredentials: ❗ cors.credentialsが不正です
+  errCorsNotAllowingCredentials: ❗ CORSが認証情報を許可していません
+  errCorsOrigins: ❗ cors.originsが不正です
+  errEnableCors: ❗ httpd.enable_corsが不正です
+  errEnableCorsChttpd: ❗ chttpd.enable_corsが不正です
+  errMaxDocumentSize: ❗ couchdb.max_document_sizeが低すぎます
+  errMaxRequestSize: ❗ chttpd.max_http_request_sizeが低すぎます
+  errMissingWwwAuth: ❗ httpd.WWW-Authenticateが不足しています
+  errRequireValidUser: ❗ chttpd.require_valid_userが不正です。
+  errRequireValidUserAuth: ❗ chttpd_auth.require_valid_userが不正です。
+  labelDisabled: "⏹️ : 無効"
+  labelEnabled: "🔁 : 有効"
+  levelAdvanced: " (上級)"
+  levelEdgeCase: " (エッジケース)"
+  levelPowerUser: " (エキスパート)"
+  linkOpenInBrowser: ブラウザで開く
+  linkPageTop: ページトップ
+  linkTipsAndTroubleshooting: ヒントとトラブルシューティング
+  linkTroubleshooting: /docs/troubleshooting.md
+  logCannotUseCloudant: この機能はIBM Cloudantでは使用できません。
+  logCheckingConfigDone: 設定の確認が完了しました
+  logCheckingConfigFailed: 設定の確認に失敗しました
+  logCheckingDbConfig: データベース設定を確認中
+  logCheckPassphraseFailed: |-
+    エラー: リモートサーバーとのパスフレーズ確認に失敗しました:
+    ${db}。
+  logConfiguredDisabled: "設定された同期モード: 無効"
+  logConfiguredLiveSync: "設定された同期モード: LiveSync"
+  logConfiguredPeriodic: "設定された同期モード: 定期"
+  logCouchDbConfigFail: "CouchDB設定: ${title} 失敗"
+  logCouchDbConfigSet: "CouchDB設定: ${title} -> ${key}を${value}に設定"
+  logCouchDbConfigUpdated: "CouchDB設定: ${title} 正常に更新されました"
+  logDatabaseConnected: データベースに接続しました
+  logEncryptionNoPassphrase: パスフレーズなしでは暗号化を有効にできません
+  logEncryptionNoSupport: お使いのデバイスは暗号化をサポートしていません。
+  logErrorOccurred: エラーが発生しました！！
+  logEstimatedSize: "推定サイズ: ${size}"
+  logPassphraseInvalid: パスフレーズが無効です、修正してください。
+  logPassphraseNotCompatible: "エラー: パスフレーズがリモートサーバーと適合しません！再度確認してください！"
+  logRebuildNote: 同期が無効になりました。必要に応じてフェッチして再有効化してください。
+  logSelectAnyPreset: プリセットを選択してください。
+  msgAreYouSureProceed: 本当に続行しますか？
+  msgChangesNeedToBeApplied: 変更を適用する必要があります！
+  msgConfigCheck: --設定確認--
+  msgConfigCheckFailed: 設定確認に失敗しました。それでも続行しますか？
+  msgConnectionCheck: --接続確認--
+  msgConnectionProxyNote: 設定確認後も接続確認に問題がある場合は、リバースプロキシの設定を確認してください。
+  msgCurrentOrigin: "現在のオリジン: ${origin}"
+  msgDiscardConfirmation: 本当に既存の設定とデータベースを破棄しますか？
+  msgDone: --完了--
+  msgEnableCors: httpd.enable_corsを設定
+  msgEnableCorsChttpd: chttpd.enable_corsを設定
+  msgEnableEncryptionRecommendation: エンドツーエンド暗号化とパス難読化を有効にすることをお勧めします。暗号化なしで続行してもよろしいですか？
+  msgFetchConfigFromRemote: リモートサーバーから設定を取得しますか？
+  msgGenerateSetupURI: 完了！他のデバイスをセットアップするためのセットアップURIを生成しますか？
+  msgIfConfigNotPersistent: "サーバー設定が永続的でない場合（例:
+    Dockerで実行中）、ここの値は変更される可能性があります。接続できるようになったら、サーバーのlocal.iniの設定を更新してください。"
+  msgInvalidPassphrase: 暗号化パスフレーズが無効かもしれません。続行してもよろしいですか？
+  msgNewVersionNote: アップグレード通知でここに来ましたか？バージョン履歴を確認してください。納得したらボタンをクリックしてください。新しい更新があると再度確認されます。
+  msgNonHTTPSInfo: 非HTTPS URIとして設定されています。モバイルデバイスでは動作しない可能性があります。
+  msgNonHTTPSWarning: 非HTTPS URIに接続できません。設定を更新して再試行してください。
+  msgNotice: ---お知らせ---
+  msgObjectStorageWarning: |-
+    警告: この機能は開発中です。以下の点にご注意ください：
+    - 追記専用アーキテクチャ。ストレージを縮小するには再構築が必要です。
+    - やや不安定です。
+    - 初回同期時、すべての履歴がリモートから転送されます。データ制限と速度に注意してください。
+    - ライブ同期は差分のみです。
+
+    問題があれば、またはこの機能についてアイデアがあれば、GitHubにIssueを作成してください。
+    ご協力に感謝します。
+  msgOriginCheck: "オリジン確認: ${org}"
+  msgRebuildRequired: |-
+    変更を適用するにはデータベースの再構築が必要です。変更を適用する方法を選択してください。
+
+    <details>
+    <summary>凡例</summary>
+
+    | 記号 | 意味 |
+    |: ------ :| ------- |
+    | ⇔ | 最新 |
+    | ⇄ | 同期してバランスを取る |
+    | ⇐,⇒ | 上書きするため転送 |
+    | ⇠,⇢ | 反対側から上書きするため転送 |
+
+    </details>
+
+    ## ${OPTION_REBUILD_BOTH}
+    概要: 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
+    このデバイスの既存ファイルを使用してローカルとリモートの両方のデータベースを再構築します。
+    他のデバイスはロックアウトされ、フェッチが必要です。
+    ## ${OPTION_FETCH}
+    概要: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
+    ローカルデータベースを初期化し、リモートデータベースから取得したデータを使用して再構築します。
+    リモートデータベースを再構築した場合も含まれます。
+    ## ${OPTION_ONLY_SETTING}
+    設定のみを保存します。**注意: データ破損につながる可能性があります**。通常、データベースの再構築が必要です。
+  msgSelectAndApplyPreset: ウィザードを完了するには、プリセット項目を選択して適用してください。
+  msgSetCorsCredentials: cors.credentialsを設定
+  msgSetCorsOrigins: cors.originsを設定
+  msgSetMaxDocSize: couchdb.max_document_sizeを設定
+  msgSetMaxRequestSize: chttpd.max_http_request_sizeを設定
+  msgSetRequireValidUser: chttpd.require_valid_user = trueを設定
+  msgSetRequireValidUserAuth: chttpd_auth.require_valid_user = trueを設定
+  msgSettingModified: 設定"${setting}"が別のデバイスから変更されました。{HERE}をクリックして設定を再読み込みしてください。変更を無視するには他の場所をクリックしてください。
+  msgSettingsUnchangeableDuringSync: これらの設定は同期中に変更できません。ロックを解除するには、"同期設定"ですべての同期を無効にしてください。
+  msgSetWwwAuth: httpd.WWW-Authenticateを設定
+  nameApplySettings: 設定を適用
+  nameConnectSetupURI: セットアップURIで接続
+  nameCopySetupURI: 現在の設定をセットアップURIにコピー
+  nameDisableHiddenFileSync: 隠しファイル同期を無効化
+  nameDiscardSettings: 既存の設定とデータベースを破棄
+  nameEnableHiddenFileSync: 隠しファイル同期を有効化
+  nameEnableLiveSync: LiveSyncを有効化
+  nameHiddenFileSynchronization: 隠しファイル同期
+  nameManualSetup: 手動セットアップ
+  nameTestConnection: 接続テスト
+  nameTestDatabaseConnection: データベース接続テスト
+  nameValidateDatabaseConfig: データベース設定を検証
+  okAdminPrivileges: ✔ 管理者権限があります。
+  okCorsCredentials: ✔ cors.credentialsは正常です。
+  okCorsCredentialsForOrigin: CORS認証情報OK
+  okCorsOriginMatched: ✔ CORSオリジンOK
+  okCorsOrigins: ✔ cors.originsは正常です。
+  okEnableCors: ✔ httpd.enable_corsは正常です。
+  okEnableCorsChttpd: ✔ chttpd.enable_corsは正常です。
+  okMaxDocumentSize: ✔ couchdb.max_document_sizeは正常です。
+  okMaxRequestSize: ✔ chttpd.max_http_request_sizeは正常です。
+  okRequireValidUser: ✔ chttpd.require_valid_userは正常です。
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_userは正常です。
+  okWwwAuth: ✔ httpd.WWW-Authenticateは正常です。
+  optionApply: 適用
+  optionCancel: キャンセル
+  optionCouchDB: CouchDB
+  optionDisableAllAutomatic: すべての自動を無効化
+  optionFetchFromRemote: リモートからフェッチ
+  optionHere: ここ
+  optionLiveSync: LiveSync 同期
+  optionMinioS3R2: Minio,S3,R2
+  optionOkReadEverything: OK、すべて読みました。
+  optionOnEvents: イベント時
+  optionPeriodicAndEvents: 定期およびイベント時
+  optionPeriodicWithBatch: バッチ付き定期
+  optionRebuildBoth: このデバイスから両方を再構築
+  optionSaveOnlySettings: (危険) 設定のみ保存
+  panelChangeLog: 変更履歴
+  panelGeneralSettings: 一般設定
+  panelPrivacyEncryption: プライバシーと暗号化
+  panelRemoteConfiguration: リモート設定
+  panelSetup: セットアップ
+  serverVersion: "サーバー情報: ${info}"
+  titleActiveRemoteServer: アクティブなリモートサーバー
+  titleAppearance: 外観
+  titleConflictResolution: 競合解決
+  titleCongratulations: おめでとうございます！
+  titleCouchDB: CouchDB サーバー
+  titleDeletionPropagation: 削除の伝播
+  titleEncryptionNotEnabled: 暗号化が有効になっていません
+  titleEncryptionPassphraseInvalid: 暗号化パスフレーズが無効です
+  titleExtraFeatures: 追加および上級機能を有効化
+  titleFetchConfig: 設定を取得
+  titleFetchConfigFromRemote: リモートサーバーから設定を取得
+  titleFetchSettings: 設定の取得
+  titleHiddenFiles: 隠しファイル
+  titleLogging: ログ
+  titleMinioS3R2: MinIO、S3、R2
+  titleNotification: 通知
+  titleOnlineTips: オンラインヒント
+  titleQuickSetup: クイックセットアップ
+  titleRebuildRequired: 再構築が必要
+  titleRemoteConfigCheckFailed: リモート設定の確認に失敗
+  titleRemoteServer: リモートサーバー
+  titleReset: リセット
+  titleSetupOtherDevices: 他のデバイスのセットアップ
+  titleSynchronizationMethod: 同期方法
+  titleSynchronizationPreset: 同期プリセット
+  titleSyncSettings: 同期設定
+  titleSyncSettingsViaMarkdown: Markdown経由で設定を同期
+  titleUpdateThinning: 更新の間引き
+  warnCorsOriginUnmatched: ⚠ CORS Originが一致しません ${from}->${to}
+  warnNoAdmin: ⚠ 管理者権限がありません。
+Ok: OK
+Old Algorithm: 旧アルゴリズム
+Older fallback (Slow, W/O WebAssembly): 旧フォールバック (低速、WebAssembly なし)
+Open: 開く
+Open the dialog: ダイアログを開く
+Overwrite: 上書き
+Overwrite patterns: 上書きパターン
+Overwrite remote: リモートを上書き
+Overwrite remote with local DB and passphrase.: ローカル DB とパスフレーズでリモートを上書きします。
+Overwrite Server Data with This Device's Files: このデバイスのファイルでサーバーデータを上書き
+P2P:
+  AskPassphraseForDecrypt: リモートピアから設定が共有されました。設定を復号するためのパスフレーズを入力してください。
+  AskPassphraseForShare: リモートピアからこのデバイスの設定が要求されました。設定を共有するためのパスフレーズを入力してください。このダイアログをキャンセルすることでリクエストを無視できます。
+  DisabledButNeed: "%{title_p2p_sync}は無効になっています。本当に有効にしますか？"
+  FailedToOpen: シグナリングサーバーへのP2P接続を開けませんでした。
+  NoAutoSyncPeers: 自動同期ピアが見つかりません。%{long_p2p_sync}ペインでピアを設定してください。
+  NoKnownPeers: ピアが検出されていません。他のピアからの接続を待機中...
+  Note:
+    description: |-
+      このレプリケーターは、ピアツーピア接続を使用して、Vaultを他のデバイスと同期することができます。クラウドサービスを使用せずに、他のデバイスとVaultを同期することができます。
+      このレプリケーターはTrysteroをベースにしています。デバイス間の接続を確立するためにシグナリングサーバーを使用します。シグナリングサーバーはデバイス間で接続情報を交換するために使用されます。私たちのデータを知ったり保存したりすることはありません（または、そうあるべきではありません）。
+
+      シグナリングサーバーは誰でもホストできます。これは単なるNostrリレーです。簡便さとレプリケーターの動作確認のために、vrtmrzがシグナリングサーバーのインスタンスをホストしています。vrtmrzが提供する実験用サーバーを使用することも、他のサーバーを使用することもできます。
+
+      なお、シグナリングサーバーが私たちのデータを保存しなくても、一部のデバイスの接続情報を見ることができます。これにご注意ください。また、他の人が提供するサーバーを使用する場合は注意してください。
+    important_note: ピアツーピアレプリケーターの実験的実装
+    important_note_sub: この機能はまだ実験段階です。期待通りに動作しない可能性があることにご注意ください。さらに、バグ、セキュリティの問題、その他の問題がある可能性があります。この機能は自己責任でご使用ください。この機能の開発にご協力ください。
+    Summary: この機能について（重要な注意事項を含む、一度お読みください）
+  NotEnabled: "%{title_p2p_sync}が有効になっていません。新しい接続を開くことができません。"
+  P2PReplication: "%{P2P}レプリケーション(複製)"
+  PaneTitle: "%{long_p2p_sync}"
+  ReplicatorInstanceMissing: P2P同期レプリケーターが見つかりません。設定または有効化されていない可能性があります。
+  SeemsOffline: ピア${name}はオフラインのようです。スキップしました。
+  SyncAlreadyRunning: P2P同期はすでに実行中です。
+  SyncCompleted: P2P同期が完了しました。
+  SyncStartedWith: ${name}とのP2P同期を開始しました。
+paneMaintenance:
+  markDeviceResolvedAfterBackup: バックアップ後にこのデバイスを解決済みにする
+  remoteLockedAndDeviceNotAccepted: リモートデータベースはロックされており、このデバイスはまだ承認されていません。
+  remoteLockedResolvedDevice: リモートデータベースはロックされていますが、このデバイスはすでに承認されています。
+  unlockDatabaseReady: データベースのロックを解除
+Passphrase: パスフレーズ
+Passphrase of sensitive configuration items: 機密性の高い設定項目にパスフレーズを使用
+password: パスワード
+Password: パスワード
+Paste a connection string: 接続文字列を貼り付ける
+Path Obfuscation: パスの難読化
+Patterns to match files for overwriting instead of merging: マージではなく上書きするファイルを判定するパターン
+Patterns to match files for syncing: 同期対象ファイルを判定するパターン
+Peer-to-Peer Synchronisation: ピアツーピア同期
+Per-file-saved customization sync: ファイルごとのカスタマイズ同期
+Perform: 実行
+Perform cleanup: クリーンアップを実行
+Perform Garbage Collection: ガーベジコレクションを実行
+Perform Garbage Collection to remove unused chunks and reduce database size.: 未使用のチャンクを削除し、データベースサイズを削減するためにガーベジコレクションを実行します。
+Periodic Sync interval: 定時同期の感覚
+Pick a file to resolve conflict: 競合を解決するファイルを選択
+Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.: このデバイスを識別するためのデバイス名を設定してください。この名前は各デバイスで一意である必要があります。設定されるまで、この機能は有効にできません。
+Please set this device name: このデバイス名を設定してください
+Presets: プリセット
+Process small files in the foreground: 小さいファイルを最前面で処理
+PureJS fallback  (Fast, W/O WebAssembly): PureJS フォールバック (高速、WebAssembly なし)
+Purge all download/upload cache.: ダウンロード／アップロードキャッシュをすべて削除します。
+Purge all journal counter: すべてのジャーナルカウンターを削除
+Rebuild local and remote database with local files.: ローカルファイルを使ってローカルとリモートのデータベースを再構築します。
+Rebuilding Operations (Remote Only): 再構築操作 (リモートのみ)
+Recreate all: すべて再作成
+Recreate missing chunks for all files: すべてのファイルの不足チャンクを再作成
+RedFlag:
+  Fetch:
+    Method:
+      Desc: |-
+        どのようにフェッチしますか？
+        - %{RedFlag.Fetch.Method.FetchSafer}
+          **低トラフィック**, **高CPU負荷**, **低リスク**
+          推奨条件...
+          - ファイルの整合性に不安がある
+          - ファイル数がそれほど多くない
+        - %{RedFlag.Fetch.Method.FetchSmoother}
+          **低トラフィック**, **中程CPU負荷**, **低～中リスク**
+          推奨条件...
+          - ファイルがおそらく整合している
+          - ファイル数が多い
+        - %{RedFlag.Fetch.Method.FetchTraditional}
+          **高トラフィック**, **低CPU負荷**, **低～中リスク**
+
+        >[!INFO]- 詳細
+        > ## %{RedFlag.Fetch.Method.FetchSafer}
+        > **低トラフィック**, **高CPU負荷**, **低リスク**
+        > このオプションは、リモートからデータをフェッチする前に、既存のローカルファイルを使用してローカルデータベースを作成します。
+        > ローカルとリモートの両方に一致するファイルがある場合、差分のみが転送されます。
+        > ただし、両方の場所に存在するファイルは最初は競合ファイルとして処理されます。実際に競合していなければ自動的に解決されますが、この処理には時間がかかる場合があります。
+        > これは一般的に最も安全な方法で、データ損失のリスクを最小限に抑えます。
+        > ## %{RedFlag.Fetch.Method.FetchSmoother}
+        > **低トラフィック**, **中程CPU負荷**, **低～中リスク**（操作による）
+        > このオプションは、最初にローカルファイルからデータベース用のチャンクを作成し、その後データをフェッチします。そのため、ローカルにないチャンクのみが転送されます。ただし、すべてのメタデータはリモートから取得されます。
+        > ローカルファイルは起動時にこのメタデータと比較されます。新しいと判断されたコンテンツ（更新日時による）が古いものを上書きします。この結果はリモートデータベースに同期されます。
+        > ローカルファイルが本当に最新のタイムスタンプであれば一般的に安全です。ただし、ファイルのタイムスタンプが新しくてもコンテンツが古い場合（初期の`welcome.md`など）は問題が発生する可能性があります。
+        > これは"%{RedFlag.Fetch.Method.FetchSafer}"よりCPU使用量が少なく高速ですが、注意しないとデータ損失につながる可能性があります。
+        > ## %{RedFlag.Fetch.Method.FetchTraditional}
+        > **高トラフィック**, **低CPU負荷**, **低～中リスク**（操作による）
+        > すべてのデータがリモートからフェッチされます。
+        > %{RedFlag.Fetch.Method.FetchSmoother}と似ていますが、すべてのチャンクがリモートからフェッチされます。
+        > これは最も従来のフェッチ方法で、通常最もネットワークトラフィックと時間を消費します。'%{RedFlag.Fetch.Method.FetchSmoother}'オプションと同様のリモートファイル上書きのリスクがあります。
+        > ただし、最も歴史があり簡単なアプローチであるため、最も安定した方法と見なされることが多いです。
+      FetchSafer: フェッチ前にローカルデータベースを作成
+      FetchSmoother: フェッチ前にローカルファイルチャンクを作成
+      FetchTraditional: リモートからすべてをフェッチ
+      Title: どのようにフェッチしますか？
+  FetchRemoteConfig:
+    Buttons:
+      Cancel: いいえ、ローカル設定を使用
+      Fetch: はい、リモート設定を取得して適用
+    Message: リモートに保存された設定を取得して、このデバイスに適用しますか？
+    Title: リモート設定の取得
+Reducing the frequency with which on-disk changes are reflected into the DB: ローカルでの変更がデータベースに反映される頻度を下げる(所定の回数まとめて同期する、逐一反映しない)
+Region: リージョン
+Remediation: 是正
+Remediation Setting Changed: 是正設定が変更されました
+Remote Database Tweak (In sunset): リモートデータベースの調整 (廃止予定)
+Remote Databases: リモートデータベース
+Remote name: リモート名
+Remote server type: リモートの種別
+Remote Type: 同期方式
+Rename: 名前を変更
+Replicator:
+  Dialogue:
+    Locked:
+      Action:
+        Dismiss: 再確認のためキャンセル
+        Fetch: このデバイスの同期をリセット
+        Unlock: リモートデータベースのロックを解除
+      Message:
+        _value: >
+          リモートデータベースがロックされています。これはいずれかの端末での再構築が原因です。
+
+          データベースの破損を避けるため、このデバイスは接続を保留するよう求められています。
+
+
+          3つのオプションがあります：
+
+
+          - %{Replicator.Dialogue.Locked.Action.Fetch}
+            最も推奨される信頼性の高い方法です。ローカルデータベースを一度破棄し、リモートデータベースからすべての同期情報を再取得します。ほとんどの場合、これは安全に実行できます。ただし、時間がかかり、安定したネットワークで実行する必要があります。
+          - %{Replicator.Dialogue.Locked.Action.Unlock}
+            この方法は、他のレプリケーション(複製)方法ですでに確実に同期されている場合のみ使用できます。単に同じファイルがあるという意味ではありません。確信がない場合は避けてください。
+          - %{Replicator.Dialogue.Locked.Action.Dismiss}
+            操作をキャンセルします。次回のリクエスト時に再度確認されます。
+        Fetch: 全フェッチがスケジュールされました。プラグインは実行のために再起動されます。
+        Unlocked: リモートデータベースのロックが解除されました。操作を再試行してください。
+      Title: ロック中
+  Message:
+    Cleaned: データベースのクリーナップ中です。レプリケーション(複製)はキャンセルされました。
+    InitialiseFatalError: レプリケーターが利用できません。これは致命的なエラーです。
+    Pending: ファイルイベントが保留中です。レプリケーション(複製)はキャンセルされました。
+    SomeModuleFailed: 一部のモジュールの失敗によりレプリケーション(複製)がキャンセルされました。
+    VersionUpFlash: 更新が検出されました。設定ダイアログを開いて変更ログを確認してください。レプリケーション(複製)はキャンセルされました。
+Requires restart of Obsidian: Obsidianの再起動が必要です
+Requires restart of Obsidian.: Obsidianの再起動が必要です。
+Resend: 再送信
+Resend all chunks to the remote.: すべてのチャンクをリモートへ再送信します。
+Reset: リセット
+Reset all: すべてリセット
+Reset all journal counter: すべてのジャーナルカウンターをリセット
+Reset journal received history: ジャーナル受信履歴をリセット
+Reset journal sent history: ジャーナル送信履歴をリセット
+Reset received: 受信履歴をリセット
+Reset sent history: 送信履歴をリセット
+Reset Synchronisation information: 同期情報をリセット
+Reset Synchronisation on This Device: このデバイスの同期状態をリセット
+Resolve All: すべて解決
+Resolve all conflicted files: 競合しているすべてのファイルを解決
+Resolve All conflicted files by the newer one: 競合したすべてのファイルを新しい方で解決
+"Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one.": 競合しているすべてのファイルを新しい方の内容で解決します。注意：古い方は上書きされ、復元できません。
+Restart Now: 今すぐ再起動
+Restore or reconstruct local database from remote.: リモートからローカルデータベースを復元または再構築します。
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.: Markdownファイルに設定を保存します。新しい設定が到着すると通知されます。プラットフォームごとに異なるファイルを設定できます。
+Saving will be performed forcefully after this number of seconds.: この秒数後に強制的に保存されます。
+Scan changes on customization sync: カスタマイズされた同期時に、変更をスキャンする
+Scan customization automatically: 自動的にカスタマイズをスキャン
+Scan customization before replicating.: レプリケーション(複製)前に、カスタマイズをスキャン
+Scan customization every 1 minute.: カスタマイズのスキャンを1分ごとに行う
+Scan customization periodically: 定期的にカスタマイズをスキャン
+Scan for hidden files before replication: レプリケーション(複製)開始前に、隠しファイルのスキャンを行う
+Scan hidden files periodically: 定期的に隠しファイルのスキャンを行う
+Schedule and Restart: 予約して再起動
+Scram!: 緊急停止
+Seconds, 0 to disable: 秒数、0で無効
+Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.: 秒。入力や保存を停止してからこの値の間、ローカルデータベースへの保存が遅延されます。
+Secret Key: シークレットキー
+Select the database adapter to use.: 使用するデータベースアダプターを選択します。
+Send: 送信
+Send chunks: チャンクを送信
+Server URI: URI
+Setting:
+  GenerateKeyPair:
+    Desc: |+
+      キーペアを生成しました！
+
+      注意: このキーペアは再度表示されません。安全な場所に保存してください。紛失した場合は、新しいキーペアを生成する必要があります。
+      注意2: 公開鍵はspki形式、秘密鍵はpkcs8形式です。利便性のため、公開鍵の改行は`\n`に変換されています。
+      注意3: 公開鍵はリモートデータベースに、秘密鍵はローカルデバイスに設定してください。
+
+      >[!FOR YOUR EYES ONLY]-
+      > <div class="sls-keypair">
+      >
+      > ### 公開鍵
+      > ```
+      ${public_key}
+      > ```
+      >
+      > ### 秘密鍵
+      > ```
+      ${private_key}
+      > ```
+      >
+      > </div>
+
+      >[!Both for copying]-
+      >
+      > <div class="sls-keypair">
+      >
+      > ```
+      ${public_key}
+      ${private_key}
+      > ```
+      >
+      > </div>
+
+    Title: 新しいキーペアが生成されました！
+  TroubleShooting:
+    _value: トラブルシューティング
+    Doctor:
+      _value: 設定診断ツール
+      Desc: 最適でない設定を検出します。（マイグレーション時と同じ）
+    ScanBrokenFiles:
+      _value: 破損ファイルのスキャン
+      Desc: データベースに正しく保存されていないファイルをスキャンします。
+SettingTab:
+  Message:
+    AskRebuild: 変更にはリモートデータベースからのフェッチが必要です。続行しますか？
+Setup:
+  Apply:
+    Buttons:
+      ApplyAndFetch: 適用してフェッチ
+      ApplyAndMerge: 適用してマージ
+      ApplyAndRebuild: 適用して再構築
+      Cancel: 破棄してキャンセル
+      OnlyApply: 適用のみ
+    Message: |-
+      新しい設定の準備ができました。適用に進みましょう。
+      適用方法はいくつかあります：
+
+      - 適用してフェッチ
+        このデバイスを新しいクライアントとして設定します。適用後、リモートサーバーから同期します。
+      - 適用してマージ
+        既にファイルがあるデバイスで設定します。ローカルファイルを処理し、差分を転送します。競合が発生する場合があります。
+      - 適用して再構築
+        ローカルファイルを使用してリモートを再構築します。これは通常、サーバーが破損した場合や最初からやり直したい場合に行います。
+        他のデバイスはロックされ、再フェッチが必要になります。
+      - 適用のみ
+        適用のみを行います。再構築が必要な場合、競合が発生する可能性があります。
+    Title: ${method}からの新しい設定を適用
+    WarningRebuildRecommended: "注意: 設定の調整後、再構築が必要と判断されました。インポートのみは推奨されません。"
+  Doctor:
+    Buttons:
+      No: いいえ、URIの設定をそのまま使用
+      Yes: はい、診断ツールに相談する
+    Message: |-
+      Self-hosted LiveSyncは徐々に歴史が長くなり、一部の推奨設定が変更されています。
+
+      セットアップは、これを行う非常に良い機会です。
+
+      インポートされた設定が最新の状態と比較して最適かどうかを確認するために、診断ツールを実行しますか？
+    Title: 診断ツールに相談しますか？
+  FetchRemoteConf:
+    Buttons:
+      Fetch: はい、設定を取得
+      Skip: いいえ、URIの設定を使用
+    Message: |-
+      既に他のデバイスと同期したことがある場合、リモートデータベースには同期されたデバイス間の適切な設定値が保存されています。プラグインは堅牢な設定のためにそれらを取得したいと考えています。
+
+      ただし、1つ確認が必要です。現在、ネットワークに安全にアクセスして設定を取得できる状況ですか？
+
+      注意: リモートデータベースがSSL証明書でホストされており、ネットワークが侵害されていなければ、ほとんどの場合安全に実行できます。
+    Title: リモートデータベースから設定を取得しますか？
+  QRCode: |-
+    設定を転送するためのQRコードを生成しました。スマートフォンや他のデバイスでQRコードをスキャンしてください。
+    注意: QRコードは暗号化されていないため、開く際は注意してください。
+
+    >[!FOR YOUR EYES ONLY]-
+    > <div class="sls-qr">${qr_image}</div>
+  ShowQRCode:
+    _value: QRコードを表示
+    Desc: 設定を転送するためのQRコードを表示します。
+  RemoteE2EE:
+    Title: エンドツーエンド暗号化
+    Guidance: エンドツーエンド暗号化の設定を行ってください。
+    LabelEncrypt: エンドツーエンド暗号化
+    PlaceholderPassphrase: パスフレーズを入力してください
+    StronglyRecommendedTitle: 強く推奨
+    StronglyRecommendedLine1: エンドツーエンド暗号化を有効にすると、データはリモートサーバーへ送信される前にこの端末上で暗号化されます。つまり、たとえ誰かがサーバーへアクセスできても、パスフレーズがなければデータを読むことはできません。他の端末でデータを復号する際にも必要になるため、パスフレーズは必ず覚えておいてください。
+    StronglyRecommendedLine2: また、Peer-to-Peer 同期を使用している場合でも、将来ほかの方式へ切り替えてリモートサーバーへ接続するときには、この設定が使われます。
+    MultiDestinationWarning: 複数の同期先へ接続する場合でも、この設定は同一である必要があります。
+    LabelObfuscateProperties: プロパティを難読化
+    ObfuscatePropertiesDesc: プロパティ（ファイルパス、サイズ、作成日時、更新日時など）を難読化すると、リモートサーバー上のファイルやフォルダーの構造や名前を特定しにくくできるため、追加の保護層になります。これによりプライバシーが守られ、権限のない第三者がデータに関する情報を推測しにくくなります。
+    AdvancedTitle: 詳細設定
+    LabelEncryptionAlgorithm: 暗号化アルゴリズム
+    DefaultAlgorithmDesc: ほとんどの場合は、既定のアルゴリズム（${algorithm}）をそのまま使用してください。この設定が必要になるのは、既存の Vault が別の形式で暗号化されている場合のみです。
+    AlgorithmWarning: 暗号化アルゴリズムを変更すると、別のアルゴリズムで暗号化された既存データにはアクセスできなくなります。すべての端末で同じアルゴリズムを使うよう設定し、データにアクセスできる状態を維持してください。
+    PassphraseValidationLine1: エンドツーエンド暗号化のパスフレーズは、実際に同期処理が開始されるまで検証されない点にご注意ください。これはデータを保護するためのセキュリティ対策です。
+    PassphraseValidationLine2: そのため、サーバー情報を手動で設定する際は細心の注意を払ってください。誤ったパスフレーズを入力すると、サーバー上のデータが破損します。これは意図された動作ですので、あらかじめご理解ください。
+    ButtonProceed: 進む
+    ButtonCancel: キャンセル
+  UseSetupURI:
+    Title: Setup URI を入力
+    GuidanceLine1: サーバーのセットアップ時または別の端末で生成された Setup URI と、Vault のパスフレーズを入力してください。
+    GuidanceLine2: コマンドパレットで「設定を新しい Setup URI としてコピー」を実行すると、新しい Setup URI を生成できます。
+    LabelSetupURI: Setup URI
+    ValidInfo: Setup URI は有効で、使用できます。
+    InvalidInfo: Setup URI が無効です。内容を確認して再試行してください。
+    LabelPassphrase: Vault のパスフレーズ
+    PlaceholderPassphrase: Vault のパスフレーズを入力してください
+    ErrorPassphraseRequired: Vault のパスフレーズを入力してください。
+    ErrorFailedToParse: Setup URI を解析できませんでした。URI とパスフレーズを確認してください。
+    ButtonProceed: 設定をテストして続行
+    ButtonCancel: キャンセル
+  ScanQRCode:
+    Title: QRコードをスキャン
+    Guidance: 既存の端末から設定を取り込むには、以下の手順に従ってください。
+    Step1: この端末では、この Vault を開いたままにしてください。
+    Step2: 元の端末で Obsidian を開きます。
+    Step3: 元の端末でコマンドパレットから「設定を QR コードとして表示」を実行します。
+    Step4: この端末でカメラアプリに切り替えるか QR コードスキャナーを使って、表示された QR コードを読み取ってください。
+    ButtonClose: このダイアログを閉じる
+"Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": Garbage Collection を使うには、設定で「Compute revisions for chunks」を有効にしてください。
+"Please disable 'Read chunks online' in settings to use Garbage Collection.": Garbage Collection を使うには、設定で「Read chunks online」を無効にしてください。
+"Setup URI dialog cancelled.": Setup URI ダイアログはキャンセルされました。
+"Please select 'Cancel' explicitly to cancel this operation.": この操作を中止するには、明示的に「キャンセル」を選択してください。
+"Failed to connect to remote for compaction.": リモートデータベースに接続できず、コンパクションを実行できませんでした。
+"Failed to connect to remote for compaction. ${reason}": リモートデータベースに接続できず、コンパクションを実行できませんでした。${reason}
+"Compaction in progress on remote database...": リモートデータベースでコンパクションを実行中です...
+"Compaction on remote database timed out.": リモートデータベースでのコンパクションがタイムアウトしました。
+"Compaction on remote database completed successfully.": リモートデータベースでのコンパクションが正常に完了しました。
+"Compaction on remote database failed.": リモートデータベースでのコンパクションに失敗しました。
+"Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.": Garbage Collection 前にワンショットレプリケーションを開始できませんでした。Garbage Collection はキャンセルされました。
+"Cancel Garbage Collection": Garbage Collection をキャンセル
+"No connected device information found. Cancelling Garbage Collection.": 接続済みデバイスの情報が見つかりませんでした。Garbage Collection をキャンセルします。
+"The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": |-
+  次の承認済みノードにはノード情報がありません:
+  - ${missingNodes}
+
+  これは、それらがしばらく接続されていないか、古いバージョンのままになっていることを示しています。
+  可能であれば、まずすべてのデバイスを更新することをおすすめします。すでに使用していないデバイスがある場合は、リモートを一度ロックすることで承認済みノードをすべてクリアできます。
+"Ignore and Proceed": 無視して続行
+"Node Information Missing": ノード情報がありません
+"Garbage Collection cancelled by user.": ユーザーによって Garbage Collection がキャンセルされました。
+"Proceeding with Garbage Collection, ignoring missing nodes.": 不足しているノードを無視して Garbage Collection を続行します。
+"Proceed Garbage Collection": Garbage Collection を続行
+"> [!INFO]- The connected devices have been detected as follows:\n${devices}": |-
+  > [!INFO]- 次の接続済みデバイスが検出されました:
+  ${devices}
+"Device": デバイス
+"Node ID": ノード ID
+"Obsidian version": Obsidian バージョン
+"Plug-in version": プラグインバージョン
+"Progress": 進捗
+"Some devices have differing progress values (max: ${maxProgress}, min: ${minProgress}).\nThis may indicate that some devices have not completed synchronisation, which could lead to conflicts. Strongly recommend confirming that all devices are synchronised before proceeding.": |-
+  一部のデバイスで進捗値が異なっています（最大: ${maxProgress}、最小: ${minProgress}）。
+  これは一部のデバイスで同期が完了していない可能性を示しており、競合の原因になることがあります。続行する前に、すべてのデバイスが同期済みであることを確認することを強くおすすめします。
+"All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.": すべてのデバイスで進捗値が同じです（${progress}）。デバイスは同期されているようなので、Garbage Collection を続行できます。
+"Garbage Collection Confirmation": Garbage Collection の確認
+"Proceeding with Garbage Collection.": Garbage Collection を実行します。
+"Garbage Collection: Scanned ${scanned} / ~${docCount}": |-
+  Garbage Collection: ${scanned} / ~${docCount} をスキャン済み
+"Garbage Collection: Scanning completed. Total chunks: ${totalChunks}, Used chunks: ${usedChunks}": |-
+  Garbage Collection: スキャン完了。総チャンク数: ${totalChunks}、使用中チャンク数: ${usedChunks}
+"Garbage Collection: Found ${unusedChunks} unused chunks to delete.": |-
+  Garbage Collection: 削除対象の未使用チャンクが ${unusedChunks} 件見つかりました。
+"Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
+  Garbage Collection が完了しました。削除したチャンク: ${deletedChunks} / ${totalChunks}。所要時間: ${seconds} 秒。
+"Failed to start replication after Garbage Collection.": Garbage Collection 後にレプリケーションを開始できませんでした。
+Should we keep folders that don't have any files inside?: 中にファイルがないフォルダーを保持しますか？
+Should we only check for conflicts when a file is opened?: ファイルを開いたときのみ競合をチェックしますか？
+Should we prompt you about conflicting files when a file is opened?: ファイルを開いたときに競合ファイルについて確認を求めますか？
+Should we prompt you for every single merge, even if we can safely merge automatcially?: 自動的に安全にマージできる場合でも、すべてのマージについて確認を求めますか？
+Show full banner: 完全なバナーを表示
+Show only notifications: 通知のみ表示
+Show status as icons only: ステータス表示をアイコンのみにする
+Show status icon instead of file warnings banner: ファイル警告バナーの代わりにステータスアイコンを表示
+Show status inside the editor: ステータスをエディタ内に表示
+Show status on the status bar: ステータスバーに、ステータスを表示
+Show verbose log. Please enable if you report an issue.: エラー以外の詳細ログ項目も表示する。問題が発生した場合は有効にしてください。
+Starts synchronisation when a file is saved.: ファイルが保存されたときに同期を開始します。
+Stop reflecting database changes to storage files.: データベースの変更をストレージファイルに反映させない
+Stop watching for file changes.: 監視の停止
+Suppress notification of hidden files change: 隠しファイルの変更通知を抑制
+Suspend database reflecting: データベース反映の一時停止
+Suspend file watching: 監視の一時停止
+Switch to IDB: IDB に切り替える
+Switch to IndexedDB: IndexedDB に切り替える
+Sync after merging file: ファイルがマージ(統合)された時に同期
+Sync automatically after merging files: ファイルのマージ後に自動的に同期
+Sync Mode: 同期モード
+Sync on Editor Save: エディタでの保存時に、同期されます
+Sync on File Open: ファイルを開いた時に同期
+Sync on Save: 保存時に同期
+Sync on Startup: 起動時同期
+Synchronising files: 同期するファイル
+Syncing: 同期
+Target patterns: 対象パターン
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.: テスト用 - ファイルの新しいコピーを同期してファイル競合を解決します。これにより変更されたファイルが上書きされる可能性があります。注意してください。
+The delay for consecutive on-demand fetches: 連続したオンデマンドフェッチの遅延
+The Hash algorithm for chunk IDs: チャンクIDのハッシュアルゴリズム
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: ドキュメント内でチャンクを保持できる最大期間。この期間を超えたチャンクは独立したチャンクに昇格します。
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: ドキュメント内で保持できるチャンクの最大数。この数を超えたチャンクは即座に独立したチャンクに昇格します。
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: ドキュメント内で保持できるチャンクの最大合計サイズ。このサイズを超えたチャンクは即座に独立したチャンクに昇格します。
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: このパスフレーズは他のデバイスにコピーされません。再度設定するまで`Default`に設定されます。
+This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: すべてのファイルについてチャンクを再作成します。欠損しているチャンクがあった場合、エラーが解消される可能性があります。
+Transfer Tweak: 転送の調整
+TweakMismatchResolve:
+  Action:
+    Dismiss: 無視
+    UseConfigured: 設定済みの設定を使用
+    UseMine: リモートデータベースの設定を更新
+    UseMineAcceptIncompatible: リモートデータベースの設定を更新するがそのまま維持
+    UseMineWithRebuild: リモートデータベースの設定を更新して再構築
+    UseRemote: このデバイスに設定を適用
+    UseRemoteAcceptIncompatible: このデバイスに設定を適用し、非互換性を無視
+    UseRemoteWithRebuild: このデバイスに設定を適用し、再フェッチ
+  Message:
+    Main: |-
+
+      リモートデータベースの設定は以下の通りです。これらの値は、このデバイスと少なくとも1回同期された他のデバイスによって設定されています。
+
+      これらの設定を使用する場合は、%{TweakMismatchResolve.Action.UseConfigured}を選択してください。
+      このデバイスの設定を維持する場合は、%{TweakMismatchResolve.Action.Dismiss}を選択してください。
+
+      ${table}
+
+      >[!TIP]
+      > すべての設定を同期したい場合は、この機能で最小限の設定を適用した後、`Sync settings via markdown`を使用してください。
+
+      ${additionalMessage}
+    MainTweakResolving: |-
+      設定がリモートサーバーの設定と一致しません。
+
+      以下の設定が一致している必要があります：
+
+      ${table}
+
+      判断をお知らせください。
+
+      ${additionalMessage}
+    UseRemote:
+      WarningRebuildRecommended: |-
+
+        >[!NOTICE]
+        > 一部の変更は互換性がありますが、追加のストレージと転送量を消費する可能性があります。再構築をお勧めします。ただし、再構築は現時点では実行されない場合がありますが、将来のメンテナンスで実装される可能性があります。
+        > ***適用には時間と安定したネットワーク接続が必要です！***
+      WarningRebuildRequired: |-
+
+        >[!WARNING]
+        > 一部のリモート設定はこのデバイスのローカルデータベースと互換性がありません。ローカルデータベースの再構築が必要です。
+        > ***適用には時間と安定したネットワーク接続が必要です！***
+    WarningIncompatibleRebuildRecommended: |-
+
+      >[!NOTICE]
+      > ローカルデータベースとリモートデータベースの非互換性を引き起こす値の違いが検出されました。
+      > 一部の変更は互換性がありますが、追加のストレージと転送量を消費する可能性があります。再構築をお勧めします。ただし、再構築は現時点では実行されない場合がありますが、将来のメンテナンスで実装される可能性があります。
+      > 再構築を行う場合は数分以上かかります。**今実行しても安全か確認してください。**
+    WarningIncompatibleRebuildRequired: |-
+
+      >[!WARNING]
+      > ローカルデータベースとリモートデータベースの非互換性を引き起こす値の違いが検出されました。
+      > ローカルまたはリモートの再構築が必要です。どちらも数分以上かかります。**今実行しても安全か確認してください。**
+  Table:
+    _value: |+
+      | 値の名前 | このデバイス | リモート |
+      |: --- |: ---- :|: ---- :|
+      ${rows}
+
+    Row: "| ${name} | ${self} | ${remote} |"
+  Title:
+    _value: 設定の不一致が検出されました
+    TweakResolving: 設定の不一致が検出されました
+    UseRemoteConfig: リモート設定を使用
+Unique name between all synchronized devices. To edit this setting, please disable customization sync once.: 同期するすべての端末間で重複しない(一意の)名前。この設定を変更する場合、カスタマイズ同期を無効にしてください。
+Use a custom passphrase: カスタムパスフレーズを使う
+Use Custom HTTP Handler: カスタムHTTPハンドラーの利用
+Use dynamic iteration count: 動的な繰り返し回数
+Use Segmented-splitter: セグメント分割を使用
+Use splitting-limit-capped chunk splitter: 分割制限付きチャンク分割を使用
+Use the trash bin: ゴミ箱を使用
+Use timeouts instead of heartbeats: ハートビートの代わりにタイムアウトを使用
+username: ユーザー名
+Username: ユーザー名
+Verbose Log: エラー以外のログ項目
+Verify all: すべて検証
+Verify and repair all files: すべてのファイルを検証して修復
+Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.: 警告！これはパフォーマンスに重大な影響を与えます。また、ログはデフォルト名では同期されません。ログには機密情報が含まれることが多いため、注意してください。
+We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.: この機能が有効な間はデバイス名を変更できません。変更するにはこの機能を無効にしてください。
+When you save a file in the editor, start a sync automatically: エディタでファイルを保存すると、自動的に同期を開始します
+Write credentials in the file: 認証情報のファイル内保存
+Write logs into the file: ファイルにログを記録
+xxhash32 (Fast but less collision resistance): xxhash32 (高速ですが衝突耐性は低め)
+xxhash64 (Fastest): xxhash64 (最速)
+Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
+  最新版以外のすべてのリビジョンを破棄して、使用容量を削減します。実行には、リモートサーバーとローカルクライアントの両方に同程度の空き容量が必要です。
+Rerun Onboarding Wizard: オンボーディングウィザードを再実行
+Rerun the onboarding wizard to set up Self-hosted LiveSync again.: オンボーディングウィザードを再実行して、Self-hosted LiveSync をもう一度設定します。
+Rerun Wizard: ウィザードを再実行
+Run Doctor: 診断を実行
+Scan for Broken files: 破損ファイルをスキャン
+Prepare the 'report' to create an issue: Issue 作成用の「レポート」を準備
+Copy Report to clipboard: レポートをクリップボードにコピー
+Analyse database usage: データベース使用状況を分析
+Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like.:
+  データベース使用状況を分析し、自分で診断できるよう TSV レポートを生成します。生成したレポートは任意のスプレッドシートに貼り付けて確認できます。
+Reset notification threshold and check the remote database usage: 通知しきい値をリセットしてリモートデータベース使用量を確認
+Reset the remote storage size threshold and check the remote storage size again.: リモートストレージ容量のしきい値をリセットし、リモートストレージ容量を再確認します。
+Scram Switches: 緊急対応スイッチ
+Minimum interval for syncing: 同期間隔の最小値
+The minimum interval for automatic synchronisation on event.: イベント発生時の自動同期における最小間隔です。
+"Welcome to Self-hosted LiveSync": "Self-hosted LiveSync へようこそ"
+"We will now guide you through a few questions to simplify the synchronisation setup.": "これからいくつかの質問に沿って、同期設定を簡単に進めます。"
+"First, please select the option that best describes your current situation.": "まず、現在の状況に最も近い項目を選択してください。"
+"I am setting this up for the first time": "はじめて設定します"
+"(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（この端末を最初の同期端末として設定する場合に選択してください。）LiveSync を初めて利用し、最初から設定したい場合に適しています。"
+"I am adding a device to an existing synchronisation setup": "既存の同期構成に端末を追加します"
+"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。"
+"Yes, I want to set up a new synchronisation": "はい、新しい同期を設定します"
+"Yes, I want to add this device to my existing synchronisation": "はい、この端末を既存の同期に追加します"
+"No, please take me back": "いいえ、前に戻ります"
+"Device Setup Method": "端末の設定方法"
+"You are adding this device to an existing synchronisation setup.": "この端末を既存の同期構成に追加しようとしています。"
+"Please select a method to import the settings from another device.": "別の端末から設定を取り込む方法を選択してください。"
+"Use a Setup URI (Recommended)": "Setup URI を使う（推奨）"
+"Paste the Setup URI generated from one of your active devices.": "稼働中の端末で生成した Setup URI を貼り付けてください。"
+"Scan a QR Code (Recommended for mobile)": "QR コードをスキャンする（モバイル推奨）"
+"Scan the QR code displayed on an active device using this device's camera.": "稼働中の端末に表示された QR コードを、この端末のカメラで読み取ってください。"
+"Enter the server information manually": "サーバー情報を手動で入力する"
+"Configure the same server information as your other devices again, manually, very advanced users only.": "他の端末と同じサーバー情報を手動で再入力します。上級者向けの方法です。"
+"Proceed with Setup URI": "Setup URI で続行"
+"I know my server details, let me enter them": "サーバー情報を把握しているので、自分で入力します"
+"Please select an option to proceed": "続行するには項目を選択してください"
+"Connection Method": "接続方法"
+"We will now proceed with the server configuration.": "次にサーバー設定を進めます。"
+"How would you like to configure the connection to your server?": "サーバー接続をどのように設定しますか？"
+"A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.": "Setup URI は、サーバーアドレスと認証情報を含む 1 本の文字列です。サーバーのインストールスクリプトで生成された URI がある場合は、それを使うと簡単かつ安全に設定できます。"
+"This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": "URI を持っていない場合や、詳細設定を手動で行いたいユーザー向けの上級者オプションです。"
+"Enter Server Information": "サーバー情報の入力"
+"Please select the type of server to which you are connecting.": "接続するサーバーの種類を選択してください。"
+"Continue to CouchDB setup": "CouchDB 設定へ進む"
+"Continue to S3/MinIO/R2 setup": "S3/MinIO/R2 設定へ進む"
+"Continue to Peer-to-Peer only setup": "Peer-to-Peer 専用設定へ進む"
+"This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.": "この設計に最も適した同期方式です。すべての機能が利用できます。CouchDB インスタンスを事前に構成しておく必要があります。"
+"S3/MinIO/R2 Object Storage": "S3/MinIO/R2 オブジェクトストレージ"
+"Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": "ジャーナルファイルを利用する同期方式です。S3/MinIO/R2 互換のオブジェクトストレージを事前に構成しておく必要があります。"
+"Peer-to-Peer only": "Peer-to-Peer のみ"
+"This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "この機能では端末同士を直接同期できます。サーバーは不要ですが、同期を行うには両端末が同時にオンラインである必要があり、一部機能は制限されます。インターネット接続はシグナリング（ピア検出）にのみ必要で、データ転送自体には使われません。"

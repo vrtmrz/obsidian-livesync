@@ -33,7 +33,8 @@
             const id = params.get('id');
             const total = parseInt(params.get('n') || '0');
             const index = parseInt(params.get('i') || '-1');
-            const data = params.get('d');
+            // Keep the chunk percent-encoded so URI delimiters remain part of the settings payload.
+            const data = hash.match(/(?:^|&)d=([^&]*)/)?.[1];
 
             const app = document.getElementById('app');
 

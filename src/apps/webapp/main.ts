@@ -1,265 +1,172 @@
-/**
- * Self-hosted LiveSync WebApp
- * Browser-based version of Self-hosted LiveSync plugin using FileSystem API
- */
+import { createNativeElement } from "@/apps/browserDom";
+import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { mount } from "svelte";
 
-import { BrowserServiceHub } from "@lib/services/BrowserServices";
-import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { ServiceContext } from "@lib/services/base/ServiceBase";
-import { initialiseServiceModulesFSAPI } from "./serviceModules/FSAPIServiceModules";
-import type { ObsidianLiveSyncSettings } from "@lib/common/types";
-import type { BrowserAPIService } from "@lib/services/implements/browser/BrowserAPIService";
-import type { InjectableSettingService } from "@lib/services/implements/injectable/InjectableSettingService";
-import { useOfflineScanner } from "@lib/serviceFeatures/offlineScanner";
-import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
-import { useCheckRemoteSize } from "@lib/serviceFeatures/checkRemoteSize";
-import { useSetupURIFeature } from "@lib/serviceFeatures/setupObsidian/setupUri";
-import { useRemoteConfiguration } from "@lib/serviceFeatures/remoteConfig";
-import { SetupManager } from "@/modules/features/SetupManager";
-import { useSetupManagerHandlersFeature } from "@/serviceFeatures/setupObsidian/setupManagerHandlers";
-import { useP2PReplicatorCommands } from "@lib/replication/trystero/useP2PReplicatorCommands";
-import { useP2PReplicatorFeature } from "@lib/replication/trystero/useP2PReplicatorFeature";
-import { compatGlobal, _activeDocument } from "@lib/common/coreEnvFunctions.ts";
+import { WebAppRuntime, type WebAppRuntimeStatusKind } from "./WebAppRuntime";
+import WebAppP2P from "./WebAppP2P.svelte";
+import { VaultHistoryStore, type VaultHistoryItem } from "./vaultSelector";
 
-const SETTINGS_DIR = ".livesync";
-const SETTINGS_FILE = "settings.json";
+const historyStore = new VaultHistoryStore();
+let runtime: WebAppRuntime | null = null;
 
-/**
- * Default settings for the webapp
- */
-const DEFAULT_SETTINGS: Partial<ObsidianLiveSyncSettings> = {
-    liveSync: false,
-    syncOnSave: true,
-    syncOnStart: false,
-    savingDelay: 200,
-    lessInformationInLog: false,
-    gcDelay: 0,
-    periodicReplication: false,
-    periodicReplicationInterval: 60,
-    isConfigured: false,
-    // CouchDB settings - user needs to configure these
-    couchDB_URI: "",
-    couchDB_USER: "",
-    couchDB_PASSWORD: "",
-    couchDB_DBNAME: "",
-    // Disable features not needed in webapp
-    usePluginSync: false,
-    autoSweepPlugins: false,
-    autoSweepPluginsPeriodic: false,
+type LiveSyncWebAppDebugApi = {
+    getRuntime: () => WebAppRuntime | null;
+    historyStore: VaultHistoryStore;
 };
 
-class LiveSyncWebApp {
-    private rootHandle: FileSystemDirectoryHandle;
-    private core: LiveSyncBaseCore<ServiceContext, never> | null = null;
-    private serviceHub: BrowserServiceHub<ServiceContext> | null = null;
+type LiveSyncWebAppGlobal = typeof compatGlobal & {
+    livesyncApp?: LiveSyncWebAppDebugApi;
+};
 
-    constructor(rootHandle: FileSystemDirectoryHandle) {
-        this.rootHandle = rootHandle;
+function getRequiredElement<T extends HTMLElement>(id: string): T {
+    const element = _activeDocument.getElementById(id);
+    if (!element) {
+        throw new Error(`Missing element: #${id}`);
     }
+    return element as T;
+}
 
-    async initialize() {
-        console.log("Self-hosted LiveSync WebApp");
-        console.log("Initializing...");
+function setStatus(kind: WebAppRuntimeStatusKind, message: string): void {
+    const statusEl = getRequiredElement<HTMLDivElement>("status");
+    statusEl.className = kind;
+    statusEl.textContent = message;
+}
 
-        console.log(`Vault directory: ${this.rootHandle.name}`);
+function setBusyState(isBusy: boolean): void {
+    const pickNewBtn = getRequiredElement<HTMLButtonElement>("pick-new-vault");
+    pickNewBtn.disabled = isBusy;
 
-        // Create service context and hub
-        this.serviceHub = new BrowserServiceHub<ServiceContext>();
+    const historyButtons = _activeDocument.querySelectorAll<HTMLButtonElement>(".vault-item button");
+    historyButtons.forEach((button) => {
+        button.disabled = isBusy;
+    });
+}
 
-        // Setup API service
-        (this.serviceHub.API as BrowserAPIService<ServiceContext>).getSystemVaultName.setHandler(
-            () => this.rootHandle?.name || "livesync-webapp"
-        );
+function formatLastUsed(unixMillis: number): string {
+    if (!unixMillis) {
+        return "unknown";
+    }
+    return new Date(unixMillis).toLocaleString();
+}
 
-        // Setup settings handlers - save to .livesync folder
-        const settingService = this.serviceHub.setting as InjectableSettingService<ServiceContext>;
+async function renderHistoryList(): Promise<VaultHistoryItem[]> {
+    const listEl = getRequiredElement<HTMLDivElement>("vault-history-list");
+    const emptyEl = getRequiredElement<HTMLParagraphElement>("vault-history-empty");
 
-        settingService.saveData.setHandler(async (data: ObsidianLiveSyncSettings) => {
-            try {
-                await this.saveSettingsToFile(data);
-                console.log("[Settings] Saved to .livesync/settings.json");
-            } catch (error) {
-                console.error("[Settings] Failed to save:", error);
-            }
+    const [items, lastUsedId] = await Promise.all([historyStore.getVaultHistory(), historyStore.getLastUsedVaultId()]);
+
+    listEl.replaceChildren();
+    emptyEl.classList.toggle("is-hidden", items.length > 0);
+
+    for (const item of items) {
+        const row = createNativeElement(_activeDocument, "div");
+        row.className = "vault-item";
+
+        const info = createNativeElement(_activeDocument, "div");
+        info.className = "vault-item-info";
+
+        const name = createNativeElement(_activeDocument, "div");
+        name.className = "vault-item-name";
+        name.textContent = item.name;
+
+        const meta = createNativeElement(_activeDocument, "div");
+        meta.className = "vault-item-meta";
+        const label = item.id === lastUsedId ? "Last used" : "Used";
+        meta.textContent = `${label}: ${formatLastUsed(item.lastUsedAt)}`;
+
+        info.append(name, meta);
+
+        const useButton = createNativeElement(_activeDocument, "button");
+        useButton.type = "button";
+        useButton.textContent = "Use this vault";
+        useButton.addEventListener("click", () => {
+            void startWithHistory(item);
         });
 
-        settingService.loadData.setHandler(async (): Promise<ObsidianLiveSyncSettings | undefined> => {
-            try {
-                const data = await this.loadSettingsFromFile();
-                if (data) {
-                    console.log("[Settings] Loaded from .livesync/settings.json");
-                    return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
-                }
-            } catch {
-                console.log("[Settings] Failed to load, using defaults");
-            }
-            return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
-        });
-
-        // App lifecycle handlers
-        this.serviceHub.appLifecycle.scheduleRestart.setHandler(() => {
-            void (async () => {
-                console.log("[AppLifecycle] Restart requested");
-                await this.shutdown();
-                await this.initialize();
-                compatGlobal.setTimeout(() => {
-                    compatGlobal.location.reload();
-                }, 1000);
-            })();
-        });
-
-        // Create LiveSync core
-        this.core = new LiveSyncBaseCore<ServiceContext, never>(
-            this.serviceHub,
-            (core, serviceHub) => {
-                return initialiseServiceModulesFSAPI(this.rootHandle, core, serviceHub);
-            },
-            (core) => [
-                // new ModuleObsidianEvents(this, core),
-                // new ModuleObsidianSettingDialogue(this, core),
-                // new ModuleObsidianMenu(core),
-                // new ModuleObsidianSettingsAsMarkdown(core),
-                // new ModuleLog(this, core),
-                // new ModuleObsidianDocumentHistory(this, core),
-                // new ModuleInteractiveConflictResolver(this, core),
-                // new ModuleObsidianGlobalHistory(this, core),
-                // new ModuleDev(this, core),
-                // new ModuleReplicateTest(this, core),
-                // new ModuleIntegratedTest(this, core),
-                // new ModuleReplicatorP2P(core), // Register P2P replicator for CLI (useP2PReplicator is not used here)
-                new SetupManager(core),
-            ],
-            () => [] as never[], // No add-ons
-            (core) => {
-                useOfflineScanner(core);
-                useRedFlagFeatures(core);
-                useCheckRemoteSize(core);
-                useRemoteConfiguration(core);
-                const replicator = useP2PReplicatorFeature(core);
-                useP2PReplicatorCommands(core, replicator);
-                const setupManager = core.getModule(SetupManager);
-                useSetupManagerHandlersFeature(core, setupManager);
-                useSetupURIFeature(core);
-            }
-        );
-
-        // Start the core
-        await this.start();
+        row.append(info, useButton);
+        listEl.appendChild(row);
     }
 
-    private async saveSettingsToFile(data: ObsidianLiveSyncSettings): Promise<void> {
-        try {
-            // Create .livesync directory if it doesn't exist
-            const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR, { create: true });
+    return items;
+}
 
-            // Create/overwrite settings.json
-            const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(JSON.stringify(data, null, 2));
-            await writable.close();
-        } catch (error) {
-            console.error("[Settings] Error saving to file:", error);
-            throw error;
-        }
+async function startWithHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+    setStatus("info", `Starting LiveSync with vault: ${handle.name}`);
+    const nextRuntime = new WebAppRuntime(handle, { reportStatus: setStatus });
+    await nextRuntime.start();
+    runtime = nextRuntime;
+
+    const selectorEl = getRequiredElement<HTMLDivElement>("vault-selector");
+    selectorEl.classList.add("is-hidden");
+
+    const p2pControl = getRequiredElement<HTMLElement>("p2p-control");
+    mount(WebAppP2P, {
+        target: p2pControl,
+        props: {
+            runtime: nextRuntime,
+        },
+    });
+    p2pControl.classList.remove("is-hidden");
+}
+
+async function startWithHistory(item: VaultHistoryItem): Promise<void> {
+    setBusyState(true);
+    let handle: FileSystemDirectoryHandle;
+    try {
+        handle = await historyStore.activateHistoryItem(item);
+    } catch (error) {
+        setStatus("error", `Failed to open saved vault: ${String(error)}`);
+        setBusyState(false);
+        return;
     }
-
-    private async loadSettingsFromFile(): Promise<Partial<ObsidianLiveSyncSettings> | null> {
-        try {
-            const livesyncDir = await this.rootHandle.getDirectoryHandle(SETTINGS_DIR);
-            const fileHandle = await livesyncDir.getFileHandle(SETTINGS_FILE);
-            const file = await fileHandle.getFile();
-            const text = await file.text();
-            return JSON.parse(text);
-        } catch {
-            // File doesn't exist yet
-            return null;
-        }
-    }
-
-    private async start() {
-        if (!this.core) {
-            throw new Error("Core not initialized");
-        }
-
-        try {
-            console.log("[Starting] Initializing LiveSync...");
-
-            const loadResult = await this.core.services.control.onLoad();
-            if (!loadResult) {
-                console.error("[Error] Failed to initialize LiveSync");
-                this.showError("Failed to initialize LiveSync");
-                return;
-            }
-
-            await this.core.services.control.onReady();
-
-            console.log("[Ready] LiveSync is running");
-
-            // Check if configured
-            const settings = this.core.services.setting.currentSettings();
-            if (!settings.isConfigured) {
-                console.warn("[Warning] LiveSync is not configured yet");
-                this.showWarning("Please configure CouchDB connection in settings");
-            } else {
-                console.log("[Info] LiveSync is configured and ready");
-                console.log(`[Info] Database: ${settings.couchDB_URI}/${settings.couchDB_DBNAME}`);
-                this.showSuccess("LiveSync is ready!");
-            }
-
-            // Scan the directory to populate file cache
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const fileAccess = (this.core as any)._serviceModules?.storageAccess?.vaultAccess;
-            if (fileAccess?.fsapiAdapter) {
-                console.log("[Scanning] Scanning vault directory...");
-                await fileAccess.fsapiAdapter.scanDirectory();
-                const files = await fileAccess.fsapiAdapter.getFiles();
-                console.log(`[Scanning] Found ${files.length} files`);
-            }
-        } catch (error) {
-            console.error("[Error] Failed to start:", error);
-            this.showError(`Failed to start: ${error}`);
-        }
-    }
-
-    async shutdown() {
-        if (this.core) {
-            console.log("[Shutdown] Shutting down...");
-
-            // Stop file watching
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Accessing private service modules
-            const storageEventManager = (this.core as any)._serviceModules?.storageAccess?.storageEventManager;
-            if (storageEventManager?.cleanup) {
-                await storageEventManager.cleanup();
-            }
-
-            await this.core.services.control.onUnload();
-            console.log("[Shutdown] Complete");
-        }
-    }
-
-    private showError(message: string) {
-        const statusEl = _activeDocument.getElementById("status");
-        if (statusEl) {
-            statusEl.className = "error";
-            statusEl.textContent = `Error: ${message}`;
-        }
-    }
-
-    private showWarning(message: string) {
-        const statusEl = _activeDocument.getElementById("status");
-        if (statusEl) {
-            statusEl.className = "warning";
-            statusEl.textContent = `Warning: ${message}`;
-        }
-    }
-
-    private showSuccess(message: string) {
-        const statusEl = _activeDocument.getElementById("status");
-        if (statusEl) {
-            statusEl.className = "success";
-            statusEl.textContent = message;
-        }
+    try {
+        await startWithHandle(handle);
+    } catch (error) {
+        setStatus("error", `Failed to start LiveSync: ${String(error)}`);
+        setBusyState(false);
     }
 }
 
-export { LiveSyncWebApp };
+async function startWithNewPicker(): Promise<void> {
+    setBusyState(true);
+    let handle: FileSystemDirectoryHandle;
+    try {
+        handle = await historyStore.pickNewVault();
+    } catch (error) {
+        setStatus("warning", `Vault selection was cancelled or failed: ${String(error)}`);
+        setBusyState(false);
+        return;
+    }
+    try {
+        await startWithHandle(handle);
+    } catch (error) {
+        setStatus("error", `Failed to start LiveSync: ${String(error)}`);
+        setBusyState(false);
+    }
+}
+
+async function initialiseVaultSelector(): Promise<void> {
+    setStatus("info", "Select a vault folder to start LiveSync.");
+
+    const pickNewBtn = getRequiredElement<HTMLButtonElement>("pick-new-vault");
+    pickNewBtn.addEventListener("click", () => {
+        void startWithNewPicker();
+    });
+
+    await renderHistoryList();
+}
+
+compatGlobal.addEventListener("load", () => {
+    initialiseVaultSelector().catch((error) => {
+        setStatus("error", `Initialisation failed: ${String(error)}`);
+    });
+});
+
+compatGlobal.addEventListener("beforeunload", () => {
+    void runtime?.shutdown();
+});
+
+(compatGlobal as LiveSyncWebAppGlobal).livesyncApp = {
+    getRuntime: () => runtime,
+    historyStore,
+};
