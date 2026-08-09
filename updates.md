@@ -12,6 +12,12 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+### Setup and compatibility
+
+#### Fixed
+
+- Fast Setup now sends configured CouchDB custom headers with every changes-feed request, allowing reverse proxies such as Cloudflare Access to authenticate initial setup in the same way as ordinary synchronisation ([Commonlib PR #82](https://github.com/vrtmrz/livesync-commonlib/pull/82)). Thank you to @nimula for the contribution!
+
 ## 1.0.9
 
 8th August, 2026
