@@ -12,12 +12,17 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.12
+
+11th August, 2026
+
 ### Synchronisation and storage
 
 #### Fixed
 
-- Start-up and recovery scans now keep failed database-to-Vault writes retryable instead of recording them as successful and later mistaking the still-missing file for a local deletion ([Commonlib PR #106](https://github.com/vrtmrz/livesync-commonlib/pull/106)).
-    - Files over the size limit or in conflict remain deliberate skips, while actual write failures are reported to Fast Setup, CLI mirror, and daemon callers.
+- One-shot CouchDB replication now closes its temporary remote database after each run and before retrying, preventing inactive PouchDB instances from accumulating during long-running periodic synchronisation (Commonlib PR #75). Thank you to @apple-ouyang for the contribution!
+- Start-up and recovery scans now keep failed database-to-Vault writes retryable instead of recording them as successful and later mistaking the still-missing file for a local deletion (Commonlib PR #106).
+    - Files over the size limit or in conflict remain deliberately skipped, while actual write failures are reported to Fast Setup, CLI mirror, and daemon callers.
 
 ## 1.0.11
 
