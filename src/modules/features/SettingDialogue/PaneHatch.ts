@@ -7,7 +7,7 @@ import {
     type EntryDoc,
     type diff_result,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createBlob, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { createBlob, escapeMarkdownValue, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { shouldBeIgnored } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { Menu, diff_match_patch, setIcon } from "@/deps.ts";
@@ -44,6 +44,21 @@ import {
     getFileRepairRevisionComparison,
 } from "@/serviceFeatures/fileRepairPresentation.ts";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
+import {
+    inspectMetadataDocumentIdentities,
+    MetadataDocumentRepairResults,
+    OfflineScanUnresolvedReasons,
+    repairMetadataDocumentIdentity,
+    type MetadataDocumentIdentityIssue,
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import {
+    metadataIdentityPathKey,
+    selectUnresolvedMetadataIdentityEntries,
+} from "@/serviceFeatures/metadataIdentityInspection.ts";
+import {
+    executeMetadataIdentityRepair,
+    MetadataIdentityRepairExecutions,
+} from "@/serviceFeatures/metadataIdentityRepair.ts";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
     // hatchWarn.addClass("op-warn-info");
@@ -177,6 +192,150 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     menu.showAtPosition({ x: rect.left, y: rect.bottom });
                 });
             });
+        };
+        const addMetadataIdentityResult = (entry: MetadataDocumentIdentityIssue) => {
+            const { diagnostic } = entry.inspection;
+            const card = this.createEl(resultArea, "div", { cls: "sls-repair-result" });
+            this.createEl(card, "h6", { text: diagnostic.declaredPath });
+            this.createEl(card, "div", {
+                text: $msg("Metadata entry requires review and was left unchanged"),
+                cls: "sls-repair-status-warning",
+            });
+            this.createEl(card, "div", {
+                text:
+                    diagnostic.reason === OfflineScanUnresolvedReasons.DOCUMENT_ID_MISMATCH
+                        ? $msg("The stored document ID does not match the ID derived from its recorded path.")
+                        : $msg(
+                              "The stored document ID and recorded path are handled by different synchronisation features."
+                          ),
+                cls: "sls-repair-metric",
+            });
+            this.createEl(card, "div", {
+                text: $msg("Stored document ID: ${ID}", { ID: diagnostic.actualDocumentId }),
+                cls: "sls-repair-metric",
+            });
+            if (diagnostic.expectedDocumentId !== undefined) {
+                this.createEl(card, "div", {
+                    text: $msg("Expected document ID: ${ID}", { ID: diagnostic.expectedDocumentId }),
+                    cls: "sls-repair-metric",
+                });
+            }
+            this.createEl(card, "div", {
+                text: $msg("Source revision: ${REVISION}", {
+                    REVISION: entry.sourceRevision ?? $msg("Unknown revision"),
+                }),
+                cls: "sls-repair-metric",
+            });
+            if (entry.logicallyDeleted) {
+                this.createEl(card, "div", {
+                    text: $msg("🗑️ Logical deletion"),
+                    cls: "sls-repair-metric mod-warning",
+                });
+            }
+            if (entry.conflictRevisions.length > 0) {
+                this.createEl(card, "div", {
+                    text: $msg("⚠️ Conflicts: ${COUNT}", { COUNT: `${entry.conflictRevisions.length}` }),
+                    cls: "sls-repair-metric mod-warning",
+                });
+            }
+
+            if (
+                !entry.repairAvailable ||
+                diagnostic.expectedDocumentId === undefined ||
+                entry.sourceRevision === null
+            ) {
+                this.createEl(card, "div", {
+                    text: $msg(
+                        "One-step repair is unavailable because this entry is ambiguous, no longer current, or unsafe to change."
+                    ),
+                    cls: "sls-repair-metric mod-warning",
+                });
+                return;
+            }
+
+            this.createEl(card, "div", {
+                text: entry.targetAlreadyPresent
+                    ? $msg("An exact target is already present; repair can remove the obsolete ID.")
+                    : $msg("Repair is available for this entry."),
+                cls: "sls-repair-status-ok",
+            });
+            const request = {
+                actualDocumentId: diagnostic.actualDocumentId,
+                expectedDocumentId: diagnostic.expectedDocumentId,
+                sourceRevision: entry.sourceRevision,
+            };
+            const repairAction = $msg("Repair Metadata ID");
+            const keepAction = $msg("Keep unchanged");
+            addActionMenu(card, $msg("More actions for ${FILE}", { FILE: diagnostic.declaredPath }), [
+                {
+                    title: $msg("Repair this Metadata document ID"),
+                    warning: true,
+                    run: async () => {
+                        const execution = await executeMetadataIdentityRepair(request, {
+                            confirm: async () =>
+                                (await this.core.confirm.confirmWithMessage(
+                                    $msg("Repair Metadata document ID"),
+                                    $msg(
+                                        "This moves one local Metadata entry to the ID derived from its recorded path.\n\n**File:** `${FILE}`  \n**Source:** `${SOURCE}@${REVISION}`  \n**Target:** `${TARGET}`\n\nThe target is verified before the source is removed. Its CouchDB revision ancestry cannot be preserved.\n\n> [!warning] Before repairing\n> - Back up this device.\n> - If file-name case or path obfuscation was intentionally changed for the whole database, use Rebuild instead.\n> - If other devices share this database, pause them, allow this device to upload the repair, then resume them one at a time.",
+                                        {
+                                            FILE: escapeMarkdownValue(diagnostic.declaredPath),
+                                            SOURCE: escapeMarkdownValue(diagnostic.actualDocumentId),
+                                            REVISION: escapeMarkdownValue(entry.sourceRevision!),
+                                            TARGET: escapeMarkdownValue(diagnostic.expectedDocumentId!),
+                                        }
+                                    ),
+                                    [repairAction, keepAction],
+                                    keepAction,
+                                    undefined,
+                                    "vertical"
+                                )) === repairAction,
+                            repair: async (repairRequest) =>
+                                await repairMetadataDocumentIdentity(this.core, repairRequest),
+                            requestOrdinaryScan: async () => await this.services.vault.scanVault(true, false),
+                        });
+
+                        if (execution.status === MetadataIdentityRepairExecutions.CANCELLED) return;
+
+                        const result = execution.result;
+                        if (result.message) Logger(result.message, LOG_LEVEL_VERBOSE);
+                        if (result.status === MetadataDocumentRepairResults.COMPLETED) {
+                            if (execution.scanError !== undefined) {
+                                Logger(execution.scanError, LOG_LEVEL_VERBOSE);
+                            }
+                            resultArea.replaceChildren();
+                            this.createEl(resultArea, "div", {
+                                text: execution.scanCompleted
+                                    ? $msg(
+                                          "Metadata document ID repair and the ordinary Vault scan completed. Run this inspection again after synchronisation."
+                                      )
+                                    : $msg(
+                                          "Metadata document ID repair completed, but the ordinary Vault scan did not run. Keep synchronisation paused, resolve the scan condition, then run 'Scan storage and database again'."
+                                      ),
+                                cls: execution.scanCompleted
+                                    ? "sls-repair-status-ok"
+                                    : "sls-repair-metric mod-warning",
+                            });
+                            return;
+                        }
+
+                        const resultMessage =
+                            result.status === MetadataDocumentRepairResults.STALE ||
+                            result.status === MetadataDocumentRepairResults.BLOCKED
+                                ? $msg("The inspected state changed. No repair was performed; run inspection again.")
+                                : result.targetCreated
+                                  ? $msg(
+                                        "Repair stopped after creating the target. The source was retained. Run inspection again before retrying."
+                                    )
+                                  : $msg(
+                                        "Repair failed before the source was removed. Run inspection again before retrying."
+                                    );
+                        this.createEl(card, "div", {
+                            text: resultMessage,
+                            cls: "sls-repair-metric mod-warning",
+                        });
+                    },
+                },
+            ]);
         };
         const findHiddenFile = async (path: string) => {
             const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
@@ -827,7 +986,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setName($msg("Inspect conflicts and file/database differences"))
             .setDesc(
                 $msg(
-                    "Scan every Vault file and live local-database revision for conflicts, missing chunks, and differences. Each result provides actions for the exact revision."
+                    "Scan Vault files and local-database Metadata for conflicts, missing chunks, identity mismatches, and differences. Each result provides actions for one exact entry or revision."
                 )
             )
             .addButton((button) =>
@@ -839,6 +998,13 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         resultArea.replaceChildren();
                         Logger("Start inspecting file/database state", LOG_LEVEL_NOTICE, "verify");
                         this.core.localDatabase.clearCaches();
+                        const identityEntries = await inspectMetadataDocumentIdentities(this.core);
+                        const handleFilenameCaseSensitive = this.core.settings.handleFilenameCaseSensitive;
+                        const unresolvedIdentity = selectUnresolvedMetadataIdentityEntries(
+                            identityEntries,
+                            handleFilenameCaseSensitive
+                        );
+                        unresolvedIdentity.entries.forEach(addMetadataIdentityResult);
                         const allPaths = await collectFileDatabaseInfoPaths(this.core);
                         let i = 0;
                         const incProc = () => {
@@ -853,6 +1019,13 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         const semaphore = Semaphore(10);
                         const processes = allPaths.map(async (path) => {
                             try {
+                                if (
+                                    unresolvedIdentity.unresolvedPathKeys.has(
+                                        metadataIdentityPathKey(path, handleFilenameCaseSensitive)
+                                    )
+                                ) {
+                                    return incProc();
+                                }
                                 if (shouldBeIgnored(path)) {
                                     return incProc();
                                 }

@@ -54,6 +54,25 @@ The `Hatch` recovery controls are ordered by escalation. Running **Recreate chun
 
 An absent Vault file and a logical-deletion winner already agree and do not require a repair card unless another live branch remains. If the scan reports many unrelated files, or the local database itself is incomplete or corrupt, stop the per-file workflow and use [Reset synchronisation on this device](#reset-synchronisation-on-this-device) from a trusted remote. If the central remote must instead be reconstructed from an authoritative Vault, use [Overwrite server data with this device's files](#overwrite-server-data-with-this-devices-files).
 
+Metadata document-ID mismatches use a separate action in the same Inspector. Follow [Repair a Metadata document ID mismatch](#repair-a-metadata-document-id-mismatch) rather than applying a file revision by path.
+
+## Repair a Metadata document ID mismatch
+
+Use this workflow when **Inspect conflicts and file/database differences** reports `Metadata entry requires review and was left unchanged`. The Inspector found local Metadata whose stored document ID no longer represents its recorded path. It leaves the entry unchanged, while any consistently addressed Metadata for the same logical path remains available to ordinary inspection and Vault reflection. This inspection does not query the remote.
+
+1. Back up this device. If other devices share the database, stop editing and pause synchronisation on them.
+2. Confirm that the current file-name case and path obfuscation settings are intended for this database. If either setting was deliberately changed for the whole database, stop this workflow and use Rebuild instead.
+3. Open **Self-hosted LiveSync settings** → **Hatch** → **Inspect conflicts and file/database differences**, then select **Begin inspection**.
+4. Find the affected Metadata card and review its recorded path, stored document ID, expected document ID, and source revision.
+5. Continue only when the card says `Repair is available for this entry.` Open its wrench menu and select **Repair this Metadata document ID**. If the action is unavailable, do not force an ID: the entry is ambiguous, conflicted, deleted, outside the normal-file namespace, or otherwise unsafe for one-entry repair.
+6. Review the warning and select **Repair Metadata ID**. LiveSync rechecks the source revision and expected ID, writes and verifies the target, then removes the obsolete ID.
+7. Wait for the ordinary Vault scan to complete. If LiveSync reports that the repair completed but the scan did not run, keep synchronisation paused, resolve the reported scan condition, then run the **Scan storage and database again** command.
+8. Allow this device to upload the repair. Resume the other devices one at a time, then run the inspection again and confirm that the Metadata card no longer appears and the Vault file has the intended content.
+
+This action changes one local database entry. It does not rename Vault files or folders, repair several entries at once, coordinate other devices, or preserve CouchDB revision ancestry across the two document IDs.
+
+If many entries reflect folder-name differences across devices, stop every device, choose the authoritative Vault, close Obsidian, correct the actual storage names with operating-system tools, then rebuild the central remote from that Vault and reset the other devices. During Fast Setup on an empty Vault, there are no storage names to correct: allow consistently addressable Metadata to be reflected, then inspect any remaining unresolved references.
+
 ## Reset synchronisation on this device
 
 Use this when the remote copy is trusted but this device's local LiveSync database is incomplete, corrupt, or no longer aligned with it.
