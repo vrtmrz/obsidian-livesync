@@ -141,8 +141,8 @@ This field stores an array of Chunk Document IDs.
 
 \_id is generated based on the path of the Obsidian note.
 
-The validation, quarantine, and explicit repair contract for normal-file
-Metadata whose stored path does not derive its actual ID is defined in
+The validation and explicit repair contract for normal-file Metadata whose
+actual ID does not match the ID derived from its stored path is defined in
 [Normal-file Metadata Document ID Validation and Repair](design_docs/metadata_document_id_validation_and_repair.md).
 
 - If the path starts with `_`, it is converted to `/_` for convenience.
