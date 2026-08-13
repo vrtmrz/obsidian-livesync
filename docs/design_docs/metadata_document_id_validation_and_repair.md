@@ -11,7 +11,7 @@ Vault-relative path. Historical data can contain a readable Metadata document
 whose actual local database ID no longer matches that derivation. An ordinary
 path-based read then looks up a different ID. It may reach a separate,
 consistently addressed Metadata document, or it may find no document at all;
-it cannot reach the malformed document which the Offline Scanner enumerated.
+it cannot reach the mismatched document which the Offline Scanner enumerated.
 
 The mismatch can repeatedly produce failed reflection, and an offline-deletion
 decision can be made before that failure. The scanner must therefore recognise
@@ -63,24 +63,26 @@ construction.
 - Consistent special-namespace Metadata remains owned by its feature.
 - An ID/path or namespace mismatch is left unchanged and does not enter pair
   processing.
-- If consistent, selected Metadata represents the same case-normalised path,
-  that Metadata and its storage file continue through the established
+- If consistently addressed Metadata is selected for the same case-normalised
+  path, that Metadata and its storage file continue through the established
   path-based scan. A stale enumerated document must not suppress this flow.
-- If no consistent, selected Metadata represents that logical path, its storage
-  entry is also withheld. No storage write, database deletion, or last-seen
-  update is performed for that withheld path.
-- Expired logical deletion history is not hard-tombstoned while its identity is
-  inconsistent.
+- If no consistently addressed Metadata is selected for that logical path, its
+  storage entry is also withheld. No storage write, database deletion, or
+  last-seen update is performed for that withheld path.
+- Expired logical deletion history with an inconsistent identity is left
+  unchanged.
 
 The ordinary scan still returns its established Boolean execution result. A
-recognised mismatch is a quarantined input, not a new public scan result and not
-a Fast Setup or CLI policy. Detailed inspection is deliberately separate.
+recognised mismatch is left unchanged and omitted before file-pair processing.
+It therefore does not add a `FilePairProcessResult`, change the ordinary Boolean
+scan contract, or change Fast Setup or CLI completion policy. Detailed
+inspection remains separate.
 
 ## Inspection decision
 
-inspectMetadataDocumentIdentities is read-only and enumerates the local database
-by actual document ID. This is necessary because a path-first Inspector cannot
-discover the malformed source.
+`inspectMetadataDocumentIdentities` is read-only and enumerates the local
+database by actual document ID. This is necessary because inspection through a
+path-derived lookup cannot discover the mismatched source.
 
 The existing **Inspect conflicts and file/database differences** interface shows
 one card for each mismatch. It excludes that card's path from ordinary
@@ -95,7 +97,7 @@ A one-entry repair is offered only when all of these checks pass:
 - the source is the current live revision and has no conflicts;
 - the recorded path is valid and selected by current synchronisation policy;
 - one case-normalised path maps to one source under the active filename setting;
-- only one malformed source expects the target ID; and
+- only one mismatched source expects the target ID; and
 - the target ID is absent, or contains an exact structural copy left by an
   earlier attempt.
 
@@ -115,7 +117,8 @@ Commonlib then:
 4. removes the path from the Offline Scanner's durable last-seen map;
 5. writes the expected target ID when it is absent;
 6. reads the target back and verifies the exact structural copy;
-7. hard-tombstones the source using the approved source revision; and
+7. writes a deletion revision for the source against the approved source
+   revision; and
 8. returns control to LiveSync, which requests an ordinary Vault scan.
 
 The repair result and the follow-up scan result remain separate. If the scan is
@@ -175,10 +178,10 @@ This change does not:
 
 ## Verification
 
-Focused Commonlib tests cover early quarantine, continued processing of a
-resolvable same-path entry, expired logical-deletion retention, namespace
-routing, read-only actual-ID inspection, repair preconditions, target-first
-ordering, stale approval, exact-target retry, source preservation on failure,
-and last-seen clearing. LiveSync tests cover selective presentation-path
-withholding, separate confirmation, cancellation, and the ordinary scan request
-after a completed repair.
+Focused Commonlib tests cover unresolved-identity exclusion before pair
+construction, continued processing of a resolvable same-path entry, expired
+logical-deletion retention, namespace routing, read-only actual-ID inspection,
+repair preconditions, target-first ordering, stale approval, exact-target retry,
+source preservation on failure, and last-seen clearing. LiveSync tests cover
+selective presentation-path withholding, separate confirmation, cancellation,
+and the ordinary scan request after a completed repair.
