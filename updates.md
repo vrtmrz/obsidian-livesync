@@ -22,6 +22,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 - **Inspect conflicts and file/database differences** now reports local Metadata whose stored document ID does not match the ID derived from its recorded path. Ordinary scans leave unresolved entries and their corresponding Vault paths unchanged, while allowing consistently addressed Metadata for the same logical path to proceed normally.
     - When one live, unconflicted entry has an unambiguous target, its wrench menu can repair that one local Metadata document after separate confirmation. The target is written and verified before the mismatched source ID is removed; ambiguous or otherwise unsafe entries remain read-only.
+ 
+#### Fixed
+- Fast Fetch now writes deletion tombstones to the local database without attempting to decrypt them. A tombstone has no encrypted payload, and decryption previously aborted the whole fetch at the first deleted document. New devices could not complete their initial sync on vaults that contain old deletions (Commonlib PR #108).
+    - Thank you to @KennethLloyd for the contribution!
 
 ## 1.0.12
 
