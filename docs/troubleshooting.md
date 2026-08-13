@@ -66,6 +66,14 @@ The repair card uses compact diagnostic rows which remain readable in a narrow m
 
 `Recreate chunks for current Vault files` uses current Vault content. It cannot recreate unique bytes which exist only in an unreadable historical or conflict revision.
 
+## A Metadata entry requires review
+
+When **Inspect conflicts and file/database differences** reports `Metadata entry requires review and was left unchanged`, the local database contains Metadata whose stored document ID does not agree with the ID derived from its recorded path. LiveSync withholds that entry from ordinary file reflection and deletion rather than guessing which identity is intended. The inspection is local and does not query the remote.
+
+Do not change file-name case handling or path obfuscation merely to make the displayed IDs agree. Follow [Repair a Metadata document ID mismatch](recovery.md#repair-a-metadata-document-id-mismatch) when the card offers **Repair this Metadata document ID**. If no repair action is offered, the entry is ambiguous, conflicted, deleted, outside the normal-file namespace, or otherwise unsafe for one-entry repair. Preserve the evidence and use the wider recovery guidance instead of forcing a target ID.
+
+If many entries reflect deliberate folder-name or ID-derivation differences across devices, choose an authoritative Vault and use the established Rebuild workflow. A one-entry repair is not a distributed rename or database migration.
+
 ## A configuration mismatch dialogue blocks synchronisation
 
 Some settings must match across devices. LiveSync pauses synchronisation when the local and remote values differ rather than propagating an unexpected change silently.
