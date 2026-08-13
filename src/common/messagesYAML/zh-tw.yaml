@@ -6,10 +6,10 @@
 (MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.: （MB）若已設定，大於此大小的本機與遠端檔案變更都會被略過。如果檔案之後變小，則會使用較新的版本。
 (Mega chars): （百萬字元）
 (Not recommended) If set, credentials will be stored in the file.: （不建議）若啟用，憑證將儲存在檔案中。
-(Obsolete) Use an old adapter for compatibility: （已淘汰）使用舊版適配器以維持相容性
+(Obsolete) Use an old adapter for compatibility: （已淘汰）使用舊版轉接器以維持相容性
 (ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.: （例如：線上讀取 chunks）啟用此選項後，LiveSync 會直接線上讀取 chunks，而不在本機複寫。建議同時提高自訂 chunk 大小。
 Access Key: Access Key
-Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.: 在 v0.17.16 之前，本機資料庫使用的是舊版適配器。現在建議使用新版適配器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.: 在 v0.17.16 之前，本機資料庫使用的是舊版轉接器。現在建議使用新版轉接器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。
 Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.: 變更此設定需要遷移現有資料（可能需要一些時間），並重新啟動 Obsidian。請務必先備份資料再繼續。
 Comma separated `.gitignore, .dockerignore`: 以逗號分隔，例如 `.gitignore, .dockerignore`
 Compute revisions for chunks: 為 chunks 計算修訂版本（舊有行為）
@@ -23,16 +23,16 @@ If this is set, changes to local files which are matched by the ignore files wil
 If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.: 啟用此選項後，PouchDB 會將連線保持開啟 60 秒；若在這段時間內沒有變更送達，就會關閉並重新開啟該連線，而不是無限期保持開啟。這在代理伺服器限制請求時長時很有用，但可能會增加資源使用量。
 Ignore files: 忽略檔案
 In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.: 在大多數情況下，建議維持使用預設演算法（${algorithm}）。只有當你現有的 Vault 是以不同格式加密時，才需要調整這項設定。
-Incubate Chunks in Document: 在文件中孵化 chunks
+Incubate Chunks in Document: 在文件中暫存 chunks
 Interval (sec): 間隔（秒）
 Keep empty folder: 保留空資料夾
 LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.: LiveSync 無法處理名稱相同卻沒有不同前綴的多個 Vault，這應該會自動設定。
 Local Database Tweak: 本機資料庫調校
 "Lower (${local} < ${remote})": "較低（${local} < ${remote}）"
 MB (0 to disable).: MB（0 表示停用）。
-Maximum Incubating Chunk Size: 最大孵化 chunk 大小
-Maximum Incubating Chunks: 最大孵化 chunk 數量
-Maximum Incubation Period: 最大孵化期間
+Maximum Incubating Chunk Size: 最大暫存 chunk 大小
+Maximum Incubating Chunks: 最大暫存 chunk 數量
+Maximum Incubation Period: 最大暫存期間
 Maximum delay for batch database updating: 批次更新資料庫的最大延遲
 Maximum file size: 最大檔案大小
 Memory cache: 記憶體快取
@@ -100,12 +100,12 @@ Sync on Editor Save: 編輯器儲存時同步
 Sync on File Open: 開啟檔案時同步
 Sync on Save: 儲存時同步
 Sync on Startup: 啟動時同步
-Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.: 僅供測試——透過同步較新的檔案版本來解決衝突，這可能會覆寫已修改的檔案，請注意。
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.: 僅供測試 —— 透過同步較新的檔案版本解決衝突，這可能會覆寫已修改的檔案，請注意。
 The Hash algorithm for chunk IDs: chunk ID 的雜湊演算法
 The delay for consecutive on-demand fetches: 連續按需抓取之間的延遲
-The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: chunks 可在文件中孵化的最長時間。超過此時間的 chunks 會立即成為獨立 chunks。
-The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: 文件中可孵化的 chunks 最大數量。超過此數量的 chunks 會立即成為獨立 chunks。
-The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: 文件中可孵化的 chunks 總大小上限。超過此大小的 chunks 會立即成為獨立 chunks。
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: chunks 可在文件中暫存的最長時間。超過此時間的 chunks 會立即成為獨立 chunks。
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: 文件中可暫存的 chunks 最大數量。超過此數量的 chunks 會立即成為獨立 chunks。
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: 文件中可暫存的 chunks 總大小上限。超過此大小的 chunks 會立即成為獨立 chunks。
 This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: 此密語不會複製到其他裝置。在你重新設定之前，會維持為 `Default`。
 Transfer Tweak: 傳輸調校
 Unique name between all synchronized devices. To edit this setting, please disable customization sync once.: 所有同步裝置之間的唯一名稱。若要編輯此設定，請先停用自訂同步一次。
@@ -173,7 +173,7 @@ Snippets: 程式碼片段
 Sync once: 同步一次
 Themes: 主題
 This device: 此裝置
-Updating list...: 正在更新清單...
+Updating list...: 正在更新清單⋯
 We can not use "/" to the device name: 裝置名稱不可使用「/」
 Access Key ID: Access Key ID
 Advanced: 進階
@@ -182,7 +182,7 @@ Also, please note that if you are using Peer-to-Peer synchronization, this confi
 All checks passed successfully!: 所有檢查都已成功通過！
 Auto Start P2P Connection: 自動啟動 P2P 連線
 Changing the encryption algorithm will prevent access to any data previously encrypted with a different algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your data.: 變更加密演算法後，先前以其他演算法加密的資料將無法再存取。請確認所有裝置都設定為使用相同的演算法，以維持對資料的存取能力。
-Checking connection... Please wait.: 正在檢查連線... 請稍候。
+Checking connection... Please wait.: 正在檢查連線⋯ 請稍候。
 Continue anyway: 仍要繼續
 CouchDB Configuration: CouchDB 設定
 Custom Headers: 自訂標頭
@@ -339,7 +339,7 @@ Date: 日期
 Diff: 差異
 Dismiss: 關閉
 File integrity: 檔案完整性
-Gathering information...: 正在收集資訊...
+Gathering information...: 正在收集資訊⋯
 Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.: 隱藏檔案同步已暫時停用。如有需要，請在抓取完成後重新啟用。
 INVERTED: 反向
 Just for a minute, please!: 請稍候片刻！
@@ -402,9 +402,9 @@ Configure E2EE: 設定 E2EE
 Configure Remote: 設定遠端
 Copy: 複製
 Cross-platform: 跨平台
-"Current adapter: {adapter}": 目前的適配器：{adapter}
+"Current adapter: {adapter}": 目前的轉接器：{adapter}
 Customization Sync (Beta3): 自訂同步（Beta3）
-Database Adapter: 資料庫適配器
+Database Adapter: 資料庫轉接器
 Default: 預設
 Delete: 刪除
 Delete all customization sync data: 刪除所有自訂同步資料
@@ -445,7 +445,7 @@ Endpoint URL: 端點 URL
 Enhance chunk size: 擴大 chunk 大小
 Fetch: 抓取
 Fetch chunks on demand: 按需抓取 chunks
-Fetch database with previous behaviour: 以前一種行為抓取資料庫
+Fetch database with previous behaviour: 以先前的行為抓取資料庫
 Filename: 檔名
 Forces the file to be synced when opened.: 開啟檔案時強制同步該檔案。
 Handle files as Case-Sensitive: 將檔案視為區分大小寫
@@ -543,7 +543,7 @@ Doctor:
     E2EE_V02500:
       REASON: 端對端加密現在變得更穩固也更快。此外，先前的 E2EE 在重新進行的程式碼審查中被發現有安全漏洞，應盡快套用此項修正。造成的不便由衷抱歉。另外，此設定不具向前相容性，所有同步的裝置都必須更新到 v0.25.0 或更新版本。不需要重建，資料會在下次傳輸時自動轉換為新格式；不過，若條件允許，仍建議進行重建。
 liveSyncReplicator:
-  beforeLiveSync: 在 LiveSync 之前，先執行一次 OneShot...
+  beforeLiveSync: 在 LiveSync 之前，先執行一次 OneShot 同步⋯
   cantReplicateLowerValue: 無法複寫更低的值。
   checkingLastSyncPoint: 正在尋找上次同步的位置。
   couldNotConnectTo: "無法連線到 ${uri} : ${name}\n(${db})"
@@ -551,11 +551,11 @@ liveSyncReplicator:
   couldNotConnectToServer: 與遠端的連線被阻擋，或連線失敗。
   couldNotConnectToURI: "無法連線到 ${uri}:${dbRet}"
   couldNotMarkResolveRemoteDb: 無法將遠端資料庫標記為已處理。
-  liveSyncBegin: LiveSync 開始...
+  liveSyncBegin: LiveSync 開始⋯
   lockRemoteDb: 鎖定遠端資料庫以防止資料損毀
   markDeviceResolved: 將此裝置標記為「已處理」。
   mismatchedTweakDetected: 偵測到裝置之間的設定有不一致之處。執行手動複寫將嘗試解決此問題。
-  oneShotSyncBegin: "OneShot 同步開始...（${syncMode}）"
+  oneShotSyncBegin: "OneShot 同步開始⋯（${syncMode}）"
   remoteDbCorrupted: 遠端資料庫版本較新或已損毀，請確保已安裝最新版本的 Self-hosted LiveSync
   remoteDbCreatedOrConnected: 遠端資料庫已建立或已連線
   remoteDbDestroyed: 遠端資料庫已銷毀
@@ -633,14 +633,14 @@ moduleInputUIObsidian:
   optionNo: 否
   optionYes: 是
 moduleLiveSyncMain:
-  logAdditionalSafetyScan: 額外的安全掃描...
-  logLoadingPlugin: 正在載入外掛...
+  logAdditionalSafetyScan: 額外的安全掃描⋯
+  logLoadingPlugin: 正在載入外掛⋯
   logPluginInitCancelled: 外掛初始化被某個模組取消
   logReadChangelog: LiveSync 已更新，請閱讀更新日誌！
   logVersionUpdate: LiveSync 已更新。為避免破壞性更新造成問題，已暫時停用所有自動同步。請確保所有裝置都已更新到最新版本後再啟用。
   logSafetyScanCompleted: 額外的安全掃描已完成
   logSafetyScanFailed: 額外的安全掃描在某個模組上失敗
-  logUnloadingPlugin: 正在卸載外掛...
+  logUnloadingPlugin: 正在卸載外掛⋯
   msgScramEnabled: |
     Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？
 
@@ -658,7 +658,7 @@ moduleLiveSyncMain:
   optionResumeAndRestart: 恢復並重新啟動 Obsidian
   titleScramEnabled: 已啟用緊急處置
 moduleLocalDatabase:
-  logWaitingForReady: 正在等待就緒...
+  logWaitingForReady: 正在等待就緒⋯
 moduleLog:
   showLog: 顯示日誌
 moduleMigration:
@@ -804,8 +804,8 @@ obsidianLiveSyncSettingTab:
   errCorsOrigins: ❗ cors.origins 設定錯誤
   errEnableCors: ❗ httpd.enable_cors 設定錯誤
   errEnableCorsChttpd: ❗ chttpd.enable_cors 設定錯誤
-  errMaxDocumentSize: ❗ couchdb.max_document_size 設定過低)
-  errMaxRequestSize: ❗ chttpd.max_http_request_size 設定過低)
+  errMaxDocumentSize: ❗ couchdb.max_document_size 設定過低
+  errMaxRequestSize: ❗ chttpd.max_http_request_size 設定過低
   errMissingWwwAuth: ❗ 缺少 httpd.WWW-Authenticate 設定
   errRequireValidUser: ❗ chttpd.require_valid_user 設定錯誤。
   errRequireValidUserAuth: ❗ chttpd_auth.require_valid_user 設定錯誤。
@@ -1017,7 +1017,7 @@ Disconnect: 斷線
 Enable P2P Replicator: 啟用 P2P 複寫器
 "Failed:": 失敗：
 FETCHING: 擷取中
-Fetching status...: 正在取得狀態...
+Fetching status...: 正在取得狀態⋯
 However, This should not be enabled if you want to increase your secrecy more.: 不過，如果你想加強保密性，不建議啟用此選項。
 If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching.: 若要使用 `LiveSync`，你需要廣播變更。所有偵測到廣播的「監看中」Peer 都會開始執行複寫以進行擷取。
 "Incoming:": 收到：
@@ -1025,12 +1025,12 @@ live: 即時監看
 Name: 名稱
 NEW: 新
 No Connection: 沒有連線
-No devices available. Waiting for other devices to connect...: 目前沒有可用的裝置，正在等待其他裝置連線...
+No devices available. Waiting for other devices to connect...: 目前沒有可用的裝置，正在等待其他裝置連線⋯
 Not configured: 尚未設定
 "Off": 關閉
 "On": 開啟
 Open connection: 開啟連線
-Open P2P Setup...: 開啟 P2P 設定...
+Open P2P Setup...: 開啟 P2P 設定⋯
 P2P Status: P2P 狀態
 Password: 密碼
 "Peer ID:": Peer ID：
@@ -1042,14 +1042,14 @@ Refresh: 重新整理
 Relay settings: 中繼站設定
 Replicate now: 立即複寫
 Replicating: 複寫中
-Replicating...: 複寫中...
+Replicating...: 複寫中⋯
 Revert changes: 還原變更
 Revoke: 撤銷
 Room ID: 房間 ID
 "Room ID suffix:": 房間 ID 後綴：
 Save and Apply: 儲存並套用
 Select active P2P remote: 選擇啟用中的 P2P 遠端
-Select P2P remote...: 選擇 P2P 遠端...
+Select P2P remote...: 選擇 P2P 遠端⋯
 SENDING: 傳送中
 SESSION: 本次連線
 Signaling Server Connection: 訊號伺服器連線
@@ -1062,7 +1062,7 @@ Stats: 統計
 Stop ⚡: 停止 ⚡
 Stop Broadcasting: 停止廣播
 Sync: 同步
-Syncing...: 同步中...
+Syncing...: 同步中⋯
 This can isolate your connections between devices. Use the same Room ID for the same devices.: 這可以將你的裝置連線彼此隔離。同一群裝置請使用相同的房間 ID。
 This device name: 此裝置名稱
 This password is used to encrypt the connection. Use something long enough.: 此密碼用於加密連線，請使用足夠長的字串。
@@ -1077,12 +1077,12 @@ P2P:
   DisabledButNeed: "%{title_p2p_sync}目前已停用。你確定要啟用它嗎？"
   FailedToOpen: 無法開啟與訊號伺服器的 P2P 連線。
   NoAutoSyncPeers: 找不到自動同步的 Peer。請到「%{long_p2p_sync}」面板設定 Peer。
-  NoKnownPeers: 尚未偵測到任何 Peer，正在等待其他 Peer 連入...
+  NoKnownPeers: 尚未偵測到任何 Peer，正在等待其他 Peer 連入⋯
   Note:
     description: |-
       這個複寫器讓我們能透過 Peer-to-Peer 連線，將 Vault 與其他裝置同步，
       不需要透過雲端服務就能與其他裝置同步 Vault。
-      此複寫器以 Trystero 為基礎，同樣需要透過訊號伺服器來建立裝置之間的連線。訊號伺服器僅用於在裝置間交換連線資訊，它不會（也不應該）得知或儲存我們的任何資料。
+      此複寫器以 Trystero 為基礎，同樣需要透過訊號伺服器建立裝置之間的連線。訊號伺服器僅用於在裝置間交換連線資訊，它不會（也不應該）得知或儲存我們的任何資料。
 
       訊號伺服器可以由任何人架設，本質上只是一個 Nostr 中繼站。為了簡化操作並驗證複寫器的行為，vrtmrz 提供了一個訊號伺服器的執行實例。你可以使用 vrtmrz 提供的這個實驗性伺服器，也可以使用任何其他伺服器。
 
@@ -1182,7 +1182,7 @@ Restart Now: 立即重新啟動
 Restore or reconstruct local database from remote.: 從遠端還原或重建本機資料庫。
 Schedule and Restart: 排程後重新啟動
 Scram!: 緊急處置
-Select the database adapter to use.: 選擇要使用的資料庫適配器。
+Select the database adapter to use.: 選擇要使用的資料庫轉接器。
 Send: 傳送
 Send chunks: 傳送 chunks
 Setting:
@@ -1373,7 +1373,7 @@ Ui:
   Settings:
     Maintenance:
       Cleanup: 執行清理
-      CleanupDesc: 透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
+      CleanupDesc: 透過捨棄所有非最新版本減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
       DeleteLocalDatabase: 刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync
       EmergencyRestart: 緊急重新啟動
       EmergencyRestartDesc: 停用所有同步並重新啟動。
@@ -1421,30 +1421,30 @@ Ui:
       CompatibilityMetadata: 相容性（中繼資料）
       CompatibilityRemote: 相容性（遠端資料庫）
       CompatibilityTrouble: 相容性（問題修復）
-      CurrentAdapter: "目前的適配器：${adapter}"
-      DatabaseAdapter: 資料庫適配器
-      DatabaseAdapterDesc: 選擇要使用的資料庫適配器。
+      CurrentAdapter: "目前的轉接器：${adapter}"
+      DatabaseAdapter: 資料庫轉接器
+      DatabaseAdapterDesc: 選擇要使用的資料庫轉接器。
       EdgeCaseBehaviour: 邊緣情況處理（行為）
       EdgeCaseDatabase: 邊緣情況處理（資料庫）
       EdgeCaseProcessing: 邊緣情況處理（處理）
-      IndexedDbWarning: IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。
-      MigratingToIdb: 正在將所有資料遷移到 IDB...
-      MigratingToIndexedDb: 正在將所有資料遷移到 IndexedDB...
+      IndexedDbWarning: IndexedDB 轉接器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 轉接器。
+      MigratingToIdb: 正在將所有資料遷移到 IDB⋯
+      MigratingToIndexedDb: 正在將所有資料遷移到 IndexedDB⋯
       MigrationIdbCompleted: 已完成遷移到 IDB。Obsidian 將立即以新設定重新啟動。
-      MigrationIdbCompletedFollowUp: 已完成遷移到 IDB。請切換適配器並重新啟動 Obsidian。
+      MigrationIdbCompletedFollowUp: 已完成遷移到 IDB。請切換轉接器並重新啟動 Obsidian。
       MigrationIndexedDbCompleted: 已完成遷移到 IndexedDB。Obsidian 將立即以新設定重新啟動。
-      MigrationIndexedDbCompletedFollowUp: 已完成遷移到 IndexedDB。請切換適配器並重新啟動 Obsidian。
+      MigrationIndexedDbCompletedFollowUp: 已完成遷移到 IndexedDB。請切換轉接器並重新啟動 Obsidian。
       MigrationWarning: 變更此設定需要遷移現有資料（可能需要一些時間），並重新啟動 Obsidian。請務必先備份資料再繼續。
       OperationToIdb: 遷移到 IDB
       OperationToIndexedDb: 遷移到 IndexedDB
       Remediation: 修復設定
       RemediationChanged: 修復設定已變更
       RemediationNoLimit: 尚未設定限制
-      RemediationRestarting: 修復設定已變更，正在重新啟動 Obsidian...
+      RemediationRestarting: 修復設定已變更，正在重新啟動 Obsidian⋯
       RemediationRestartLater: 稍後
       RemediationRestartMessage: 強烈建議重新啟動 Obsidian。在重新啟動之前，部分變更可能不會生效，畫面顯示也可能不一致。你確定要現在重新啟動嗎？
       RemediationRestartNow: 立即重新啟動
-      RemediationSuffixChanged: 後綴已變更，正在重新開啟資料庫...
+      RemediationSuffixChanged: 後綴已變更，正在重新開啟資料庫⋯
       RemediationWithValue: "限制：${date}（${timestamp}）"
       RemoteDatabaseSunset: 遠端資料庫調校（即將淘汰）
       SwitchToIDB: 切換至 IDB
@@ -1660,7 +1660,7 @@ Verify and repair all files: 驗證並修復所有檔案
 We have to configure the device name: 我們必須先設定裝置名稱
 🗑 Delete: 🗑 刪除
 Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
-  透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
+  透過捨棄所有非最新版本減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
 Run Doctor: 執行診斷
 Scan for Broken files: 掃描損壞檔案
 Prepare the 'report' to create an issue: 準備建立 Issue 用的「報告」
@@ -1681,7 +1681,7 @@ Database -> Storage: 資料庫 -> 儲存空間
 Storage -> Database: 儲存空間 -> 資料庫
 Show history: 顯示歷程
 Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?: 強烈建議重新啟動 Obsidian。在重新啟動之前，部分變更可能尚未生效，顯示也可能不一致。你確定要現在重新啟動嗎？
-The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.: IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。
+The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.: IndexedDB 轉接器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 轉接器。
 Scram Switches: 緊急處置開關
 Minimum interval for syncing: 同步最小間隔
 The minimum interval for automatic synchronisation on event.: 事件觸發自動同步的最小間隔。
@@ -1824,7 +1824,7 @@ Setup:
 "Please select 'Cancel' explicitly to cancel this operation.": 若要取消此操作，請明確選擇「取消」。
 "Failed to connect to remote for compaction.": 無法連線到遠端資料庫以執行壓縮。
 "Failed to connect to remote for compaction. ${reason}": 無法連線到遠端資料庫以執行壓縮。${reason}
-"Compaction in progress on remote database...": 正在遠端資料庫上執行壓縮...
+"Compaction in progress on remote database...": 正在遠端資料庫上執行壓縮⋯
 "Compaction on remote database timed out.": 遠端資料庫壓縮逾時。
 "Compaction on remote database completed successfully.": 遠端資料庫壓縮已成功完成。
 "Compaction on remote database failed.": 遠端資料庫壓縮失敗。

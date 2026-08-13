@@ -128,7 +128,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "(사용 중단) 호환성을 위해 이전 어댑터 사용",
         ru: "(Устарело) Использовать старый адаптер для совместимости",
         zh: "(已弃用)为兼容性使用旧适配器",
-        "zh-tw": "（已淘汰）使用舊版適配器以維持相容性",
+        "zh-tw": "（已淘汰）使用舊版轉接器以維持相容性",
     },
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": {
         def: "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.",
@@ -654,7 +654,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
             zh: "在 v0.17.16 之前,我们使用旧适配器作为本地数据库。现在首选新适配器。但是,它需要重建本地数据库。请在有足够时间时禁用此开关。如果保持启用状态,并且在从远程数据库获取时,系统将要求您禁用此开关。",
             "zh-tw":
-                "在 v0.17.16 之前，本機資料庫使用的是舊版適配器。現在建議使用新版適配器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。",
+                "在 v0.17.16 之前，本機資料庫使用的是舊版轉接器。現在建議使用新版轉接器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。",
         },
     "Broadcasting?": {
         def: "Broadcasting?",
@@ -744,7 +744,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Checking connection... Please wait.",
         es: "Comprobando la conexión... Espera un momento.",
         ko: "연결을 확인하는 중입니다... 잠시만 기다려 주세요.",
-        "zh-tw": "正在檢查連線... 請稍候。",
+        "zh-tw": "正在檢查連線⋯ 請稍候。",
     },
     Chunks: {
         def: "Chunks",
@@ -817,7 +817,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스에서 압축 정리를 진행 중입니다...",
         ru: "Выполняется компакция удалённой базы данных...",
         zh: "正在远程数据库上执行压缩...",
-        "zh-tw": "正在遠端資料庫上執行壓縮...",
+        "zh-tw": "正在遠端資料庫上執行壓縮⋯",
     },
     "Compaction on remote database completed successfully.": {
         def: "Compaction on remote database completed successfully.",
@@ -1116,7 +1116,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "현재 어댑터: {adapter}",
         ru: "Текущий адаптер: {adapter}",
         zh: "当前适配器：{adapter}",
-        "zh-tw": "目前的適配器：{adapter}",
+        "zh-tw": "目前的轉接器：{adapter}",
     },
     "Custom Headers": {
         def: "Custom Headers",
@@ -1172,7 +1172,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 어댑터",
         ru: "Адаптер базы данных",
         zh: "数据库适配器",
-        "zh-tw": "資料庫適配器",
+        "zh-tw": "資料庫轉接器",
     },
     "Database Name": {
         def: "Database Name",
@@ -2271,7 +2271,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이전 동작으로 데이터베이스 가져오기",
         ru: "Загрузить базу данных с предыдущим поведением",
         zh: "使用以前的行为获取数据库",
-        "zh-tw": "以前一種行為抓取資料庫",
+        "zh-tw": "以先前的行為抓取資料庫",
     },
     "Fetch remote settings": {
         def: "Fetch remote settings",
@@ -2292,7 +2292,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Fetching status...",
         es: "Obteniendo el estado...",
         ko: "상태를 가져오는 중입니다...",
-        "zh-tw": "正在取得狀態...",
+        "zh-tw": "正在取得狀態⋯",
     },
     "File integrity": {
         def: "File integrity",
@@ -2470,7 +2470,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Gathering information...",
         es: "Recopilando información...",
         ko: "정보를 수집하는 중입니다...",
-        "zh-tw": "正在收集資訊...",
+        "zh-tw": "正在收集資訊⋯",
     },
     "Generate Random ID": {
         def: "Generate Random ID",
@@ -2928,7 +2928,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문서 내 청크 임시 보관",
         ru: "Инкубировать чанки в документе",
         zh: "在文档中孵化块",
-        "zh-tw": "在文件中孵化 chunks",
+        "zh-tw": "在文件中暫存 chunks",
     },
     "Initial Action": {
         def: "Initial Action",
@@ -3281,7 +3281,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync 전에 OneShot을 먼저 시작합니다...",
         ru: "Перед LiveSync запускаем OneShot...",
         zh: "在LiveSync前,先启动OneShot一次...",
-        "zh-tw": "在 LiveSync 之前，先執行一次 OneShot...",
+        "zh-tw": "在 LiveSync 之前，先執行一次 OneShot 同步⋯",
     },
     "liveSyncReplicator.cantReplicateLowerValue": {
         def: "We can't replicate more lower value.",
@@ -3369,7 +3369,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync 시작...",
         ru: "Начало LiveSync...",
         zh: "LiveSync 开始...",
-        "zh-tw": "LiveSync 開始...",
+        "zh-tw": "LiveSync 開始⋯",
     },
     "liveSyncReplicator.lockRemoteDb": {
         def: "Lock remote database to prevent data corruption",
@@ -3408,7 +3408,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "OneShot 동기화 시작... (${syncMode})",
         ru: "Начало OneShot синхронизации... (syncMode)",
         zh: "OneShot同步开始...(${syncMode})",
-        "zh-tw": "OneShot 同步開始...（${syncMode}）",
+        "zh-tw": "OneShot 同步開始⋯（${syncMode}）",
     },
     "liveSyncReplicator.remoteDbCorrupted": {
         def: "Remote database is newer or corrupted, make sure to latest version of self-hosted-livesync installed",
@@ -3698,7 +3698,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "임시 보관 청크의 최대 크기",
         ru: "Максимальный размер инкубируемого чанка",
         zh: "最大孵化块大小",
-        "zh-tw": "最大孵化 chunk 大小",
+        "zh-tw": "最大暫存 chunk 大小",
     },
     "Maximum Incubating Chunks": {
         def: "Maximum Incubating Chunks",
@@ -3709,7 +3709,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "임시 보관 청크의 최대 개수",
         ru: "Максимальное количество инкубируемых чанков",
         zh: "最大孵化块数",
-        "zh-tw": "最大孵化 chunk 數量",
+        "zh-tw": "最大暫存 chunk 數量",
     },
     "Maximum Incubation Period": {
         def: "Maximum Incubation Period",
@@ -3720,7 +3720,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "청크 임시 보관 최대 기간",
         ru: "Максимальный период инкубации",
         zh: "最大孵化期",
-        "zh-tw": "最大孵化期間",
+        "zh-tw": "最大暫存期間",
     },
     "MB (0 to disable).": {
         def: "MB (0 to disable).",
@@ -4049,7 +4049,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "추가 안전 검사 중...",
         ru: "Дополнительная проверка безопасности...",
         zh: "额外的安全扫描...",
-        "zh-tw": "額外的安全掃描...",
+        "zh-tw": "額外的安全掃描⋯",
     },
     "moduleLiveSyncMain.logLoadingPlugin": {
         def: "Loading plugin...",
@@ -4060,7 +4060,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "플러그인 로딩 중...",
         ru: "Загрузка плагина...",
         zh: "正在加载插件...",
-        "zh-tw": "正在載入外掛...",
+        "zh-tw": "正在載入外掛⋯",
     },
     "moduleLiveSyncMain.logPluginInitCancelled": {
         def: "Plugin initialisation was cancelled by a module",
@@ -4125,7 +4125,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "플러그인 언로딩 중...",
         ru: "Выгрузка плагина...",
         zh: "正在卸载插件...",
-        "zh-tw": "正在卸載外掛...",
+        "zh-tw": "正在卸載外掛⋯",
     },
     "moduleLiveSyncMain.logVersionUpdate": {
         def: "LiveSync has been updated, In case of breaking updates, all automatic synchronization has been temporarily disabled. Ensure that all devices are up to date before enabling.",
@@ -4193,7 +4193,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "준비 대기 중...",
         ru: "Ожидание готовности...",
         zh: "等待就绪...",
-        "zh-tw": "正在等待就緒...",
+        "zh-tw": "正在等待就緒⋯",
     },
     "moduleLog.showLog": {
         def: "Show Log",
@@ -4778,7 +4778,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "No devices available. Waiting for other devices to connect...",
         es: "No hay dispositivos disponibles. Esperando a que se conecten otros dispositivos...",
         ko: "사용 가능한 기기가 없습니다. 다른 기기가 연결되기를 기다리는 중입니다...",
-        "zh-tw": "目前沒有可用的裝置，正在等待其他裝置連線...",
+        "zh-tw": "目前沒有可用的裝置，正在等待其他裝置連線⋯",
     },
     "No Items.": {
         def: "No Items.",
@@ -5301,7 +5301,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ couchdb.max_document_size가 낮습니다)",
         ru: "❗ couchdb.max_document_size низкое",
         zh: "❗ couchdb.max_document_size 设置过低)",
-        "zh-tw": "❗ couchdb.max_document_size 設定過低)",
+        "zh-tw": "❗ couchdb.max_document_size 設定過低",
     },
     "obsidianLiveSyncSettingTab.errMaxRequestSize": {
         def: "❗ chttpd.max_http_request_size is low)",
@@ -5312,7 +5312,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "❗ chttpd.max_http_request_size가 낮습니다)",
         ru: "❗ chttpd.max_http_request_size низкое",
         zh: "❗ chttpd.max_http_request_size 设置过低)",
-        "zh-tw": "❗ chttpd.max_http_request_size 設定過低)",
+        "zh-tw": "❗ chttpd.max_http_request_size 設定過低",
     },
     "obsidianLiveSyncSettingTab.errMissingWwwAuth": {
         def: "❗ httpd.WWW-Authenticate is missing",
@@ -6943,7 +6943,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Open P2P Setup...",
         es: "Abrir la configuración P2P...",
         ko: "P2P 설정 열기...",
-        "zh-tw": "開啟 P2P 設定...",
+        "zh-tw": "開啟 P2P 設定⋯",
     },
     "Open the dialog": {
         def: "Open the dialog",
@@ -7081,7 +7081,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "피어가 감지되지 않았습니다. 다른 피어의 접속을 기다리고 있습니다...",
         ru: "Устройства не обнаружены, ожидаем другие устройства...",
         zh: "未检测到对等方，正在等待其他对等方的连接...",
-        "zh-tw": "尚未偵測到任何 Peer，正在等待其他 Peer 連入...",
+        "zh-tw": "尚未偵測到任何 Peer，正在等待其他 Peer 連入⋯",
     },
     "P2P.Note.description": {
         def: " This replicator allows us to synchronise our vault with other devices\nusing a peer-to-peer connection. We can use this to synchronise our vault with our other devices without using a cloud service.\nThis replicator is based on Trystero. It also uses a signalling server to establish a connection between devices. The signalling server is used to exchange connection information between devices. It does (or,should) not know or store any of our data.\n\nThe signalling server can be hosted by anyone. This is just a Nostr relay. For the sake of simplicity and checking the behaviour of the replicator, an instance of the signalling server is hosted by vrtmrz. You can use the experimental server provided by vrtmrz, or you can use any other server.\n\nBy the way, even if the signalling server does not store our data, it can see the connection information of some of our devices. Please be aware of this. Also, be cautious when using the server provided by someone else.",
@@ -7093,7 +7093,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Этот репликатор позволяет синхронизировать хранилище с другими устройствами с использованием однорангового соединения.",
         zh: " This replicator allows us to synchronise our vault with other devices\nusing a peer-to-peer connection. We can        use this to synchronise our vault with our other devices without using a cloud service.\nThis replicator is based on Trystero. It also uses a signaling server to establish a connection between devices. The signaling server is used to exchange connection information between devices. It does (or,should) not know or store any of our data.\n\nThe signaling server can be hosted by anyone. This is just a Nostr relay. For the sake of simplicity and checking the behaviour of the replicator, an instance of the signaling server is hosted by vrtmrz. You can use the experimental server provided by vrtmrz, or you can use any other server.\n\nBy the way, even if the signaling server does not store our data, it can see the connection information of some of our devices. Please be aware of this. Also, be cautious when using the server provided by someone else.",
         "zh-tw":
-            "這個複寫器讓我們能透過 Peer-to-Peer 連線，將 Vault 與其他裝置同步，\n不需要透過雲端服務就能與其他裝置同步 Vault。\n此複寫器以 Trystero 為基礎，同樣需要透過訊號伺服器來建立裝置之間的連線。訊號伺服器僅用於在裝置間交換連線資訊，它不會（也不應該）得知或儲存我們的任何資料。\n\n訊號伺服器可以由任何人架設，本質上只是一個 Nostr 中繼站。為了簡化操作並驗證複寫器的行為，vrtmrz 提供了一個訊號伺服器的執行實例。你可以使用 vrtmrz 提供的這個實驗性伺服器，也可以使用任何其他伺服器。\n\n另外，即使訊號伺服器不會儲存我們的資料，它仍能看到部分裝置的連線資訊，請留意這點。若使用他人提供的伺服器，也請格外謹慎。",
+            "這個複寫器讓我們能透過 Peer-to-Peer 連線，將 Vault 與其他裝置同步，\n不需要透過雲端服務就能與其他裝置同步 Vault。\n此複寫器以 Trystero 為基礎，同樣需要透過訊號伺服器建立裝置之間的連線。訊號伺服器僅用於在裝置間交換連線資訊，它不會（也不應該）得知或儲存我們的任何資料。\n\n訊號伺服器可以由任何人架設，本質上只是一個 Nostr 中繼站。為了簡化操作並驗證複寫器的行為，vrtmrz 提供了一個訊號伺服器的執行實例。你可以使用 vrtmrz 提供的這個實驗性伺服器，也可以使用任何其他伺服器。\n\n另外，即使訊號伺服器不會儲存我們的資料，它仍能看到部分裝置的連線資訊，請留意這點。若使用他人提供的伺服器，也請格外謹慎。",
     },
     "P2P.Note.important_note": {
         def: "Peer-to-Peer Replicator.",
@@ -7922,7 +7922,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "최신 버전이 아닌 모든 리비전을 제거하여 저장 공간을 줄입니다. 이 작업을 수행하려면 원격 서버와 로컬 클라이언트에 동일한 양의 여유 공간이 필요합니다.",
             zh: "通过丢弃所有非最新版本来减少存储空间。这需要远程服务器和本地客户端具备相同数量的可用空间。",
             "zh-tw":
-                "透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。",
+                "透過捨棄所有非最新版本減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。",
         },
     "Reducing the frequency with which on-disk changes are reflected into the DB": {
         def: "Reducing the frequency with which on-disk changes are reflected into the DB",
@@ -8062,7 +8062,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Replicating...",
         es: "Replicando...",
         ko: "복제 중입니다...",
-        "zh-tw": "複寫中...",
+        "zh-tw": "複寫中⋯",
     },
     "Replicator.Dialogue.Locked.Action.Dismiss": {
         def: "Cancel for reconfirmation",
@@ -8753,7 +8753,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Select P2P remote...",
         es: "Seleccionar remoto P2P...",
         ko: "P2P 원격 선택...",
-        "zh-tw": "選擇 P2P 遠端...",
+        "zh-tw": "選擇 P2P 遠端⋯",
     },
     "Select the database adapter to use.": {
         def: "Select the database adapter to use.",
@@ -8762,7 +8762,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "사용할 데이터베이스 어댑터를 선택합니다.",
         ru: "Выберите используемый адаптер базы данных.",
         zh: "选择要使用的数据库适配器。",
-        "zh-tw": "選擇要使用的資料庫適配器。",
+        "zh-tw": "選擇要使用的資料庫轉接器。",
     },
     "Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten.":
         {
@@ -9918,7 +9918,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Syncing...",
         es: "Sincronizando...",
         ko: "동기화 중입니다...",
-        "zh-tw": "同步中...",
+        "zh-tw": "同步中⋯",
     },
     "Target patterns": {
         def: "Target patterns",
@@ -9945,7 +9945,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "테스트 전용 - 파일의 새로운 사본을 동기화하여 파일 충돌을 해결하며, 수정된 파일을 덮어쓸 수 있습니다. 주의하세요.",
             ru: "Только для тестирования - разрешать конфликты файлов синхронизацией новых копий.",
             zh: "仅供测试 - 通过同步文件的较新副本来解决文件冲突,这可能会覆盖修改过的文件。请注意 ",
-            "zh-tw": "僅供測試——透過同步較新的檔案版本來解決衝突，這可能會覆寫已修改的檔案，請注意。",
+            "zh-tw": "僅供測試 —— 透過同步較新的檔案版本解決衝突，這可能會覆寫已修改的檔案，請注意。",
         },
     "The connection to the server has been configured successfully. As the next step,": {
         def: "The connection to the server has been configured successfully. As the next step,",
@@ -10005,7 +10005,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             es: "El adaptador IndexedDB suele ofrecer mejor rendimiento en ciertos casos, pero se ha comprobado que provoca fugas de memoria con el modo LiveSync. Si usas el modo LiveSync, utiliza en su lugar el adaptador IDB.",
             ko: "IndexedDB 어댑터는 특정 상황에서 더 나은 성능을 보이는 경우가 많지만, LiveSync 모드에서 사용하면 메모리 누수를 일으키는 것으로 확인되었습니다. LiveSync 모드를 사용할 때는 IDB 어댑터를 사용해 주세요.",
             "zh-tw":
-                "IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。",
+                "IndexedDB 轉接器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 轉接器。",
         },
     "the latest synchronisation data will be downloaded from the server to this device.": {
         def: "the latest synchronisation data will be downloaded from the server to this device.",
@@ -10029,7 +10029,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "청크를 문서 안에 임시 보관할 수 있는 최대 기간입니다. 이 기간을 넘긴 청크는 독립된 청크로 분리됩니다.",
             ru: "The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.",
             zh: "文档中可以孵化的数据块的最大持续时间。超过此时间的数据块将成为独立数据块 ",
-            "zh-tw": "chunks 可在文件中孵化的最長時間。超過此時間的 chunks 會立即成為獨立 chunks。",
+            "zh-tw": "chunks 可在文件中暫存的最長時間。超過此時間的 chunks 會立即成為獨立 chunks。",
         },
     "The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.":
         {
@@ -10041,7 +10041,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "문서 안에 임시 보관할 수 있는 청크의 최대 개수입니다. 이 개수를 넘긴 청크는 즉시 독립된 청크로 분리됩니다.",
             ru: "The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.",
             zh: "文档中可以孵化的数据块的最大数量。超过此数量的数据块将立即成为独立数据块 ",
-            "zh-tw": "文件中可孵化的 chunks 最大數量。超過此數量的 chunks 會立即成為獨立 chunks。",
+            "zh-tw": "文件中可暫存的 chunks 最大數量。超過此數量的 chunks 會立即成為獨立 chunks。",
         },
     "The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.":
         {
@@ -10053,7 +10053,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "문서 안에 임시 보관할 수 있는 청크의 최대 총 크기입니다. 이 크기를 넘긴 청크는 즉시 독립된 청크로 분리됩니다.",
             ru: "The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.",
             zh: "文档中可以孵化的数据块的最大总大小。超过此大小的数据块将立即成为独立数据块 ",
-            "zh-tw": "文件中可孵化的 chunks 總大小上限。超過此大小的 chunks 會立即成為獨立 chunks。",
+            "zh-tw": "文件中可暫存的 chunks 總大小上限。超過此大小的 chunks 會立即成為獨立 chunks。",
         },
     "The minimum interval for automatic synchronisation on event.": {
         def: "The minimum interval for automatic synchronisation on event.",
@@ -10955,7 +10955,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "최신 버전이 아닌 모든 리비전을 제거하여 저장 공간을 줄입니다. 이 작업을 수행하려면 원격 서버와 로컬 클라이언트에 동일한 양의 여유 공간이 필요합니다.",
         zh: "丢弃所有非最新修订版本，以减少存储空间占用。此操作要求远程服务器和本地客户端都具备同等大小的可用空间。",
         "zh-tw":
-            "透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。",
+            "透過捨棄所有非最新版本減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。",
     },
     "Ui.Settings.Maintenance.DeleteLocalDatabase": {
         def: "Delete local database to reset or uninstall Self-hosted LiveSync",
@@ -11286,21 +11286,21 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Adaptador actual: ${adapter}",
         ko: "현재 어댑터: ${adapter}",
         zh: "当前适配器：${adapter}",
-        "zh-tw": "目前的適配器：${adapter}",
+        "zh-tw": "目前的轉接器：${adapter}",
     },
     "Ui.Settings.Patches.DatabaseAdapter": {
         def: "Database Adapter",
         es: "Adaptador de base de datos",
         ko: "데이터베이스 어댑터",
         zh: "数据库适配器",
-        "zh-tw": "資料庫適配器",
+        "zh-tw": "資料庫轉接器",
     },
     "Ui.Settings.Patches.DatabaseAdapterDesc": {
         def: "Select the database adapter to use.",
         es: "Selecciona el adaptador de base de datos que se va a usar.",
         ko: "사용할 데이터베이스 어댑터를 선택합니다.",
         zh: "选择要使用的数据库适配器。",
-        "zh-tw": "選擇要使用的資料庫適配器。",
+        "zh-tw": "選擇要使用的資料庫轉接器。",
     },
     "Ui.Settings.Patches.EdgeCaseBehaviour": {
         def: "Edge case addressing (Behaviour)",
@@ -11329,21 +11329,21 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "IndexedDB 어댑터는 특정 상황에서 더 나은 성능을 보이는 경우가 많지만, LiveSync 모드에서 사용하면 메모리 누수를 일으키는 것으로 확인되었습니다. LiveSync 모드를 사용할 때는 IDB 어댑터를 사용해 주세요.",
         zh: "IndexedDB 适配器在某些场景下通常具有更好的性能，但在 LiveSync 模式下已发现可能导致内存泄漏。使用 LiveSync 模式时，请改用 IDB 适配器。",
         "zh-tw":
-            "IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。",
+            "IndexedDB 轉接器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 轉接器。",
     },
     "Ui.Settings.Patches.MigratingToIdb": {
         def: "Migrating all data to IDB...",
         es: "Migrando todos los datos a IDB...",
         ko: "모든 데이터를 IDB로 마이그레이션하는 중...",
         zh: "正在将所有数据迁移到 IDB...",
-        "zh-tw": "正在將所有資料遷移到 IDB...",
+        "zh-tw": "正在將所有資料遷移到 IDB⋯",
     },
     "Ui.Settings.Patches.MigratingToIndexedDb": {
         def: "Migrating all data to IndexedDB...",
         es: "Migrando todos los datos a IndexedDB...",
         ko: "모든 데이터를 IndexedDB로 마이그레이션하는 중...",
         zh: "正在将所有数据迁移到 IndexedDB...",
-        "zh-tw": "正在將所有資料遷移到 IndexedDB...",
+        "zh-tw": "正在將所有資料遷移到 IndexedDB⋯",
     },
     "Ui.Settings.Patches.MigrationIdbCompleted": {
         def: "Migration to IDB completed. Obsidian will be restarted with the new configuration immediately.",
@@ -11357,7 +11357,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Migración a IDB completada. Cambia el adaptador y reinicia Obsidian.",
         ko: "IDB로 마이그레이션이 완료되었습니다. 어댑터를 전환하고 Obsidian을 재시작해 주세요.",
         zh: "已完成迁移到 IDB。请切换适配器并重新启动 Obsidian。",
-        "zh-tw": "已完成遷移到 IDB。請切換適配器並重新啟動 Obsidian。",
+        "zh-tw": "已完成遷移到 IDB。請切換轉接器並重新啟動 Obsidian。",
     },
     "Ui.Settings.Patches.MigrationIndexedDbCompleted": {
         def: "Migration to IndexedDB completed. Obsidian will be restarted with the new configuration immediately.",
@@ -11371,7 +11371,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Migración a IndexedDB completada. Cambia el adaptador y reinicia Obsidian.",
         ko: "IndexedDB로 마이그레이션이 완료되었습니다. 어댑터를 전환하고 Obsidian을 재시작해 주세요.",
         zh: "已完成迁移到 IndexedDB。请切换适配器并重新启动 Obsidian。",
-        "zh-tw": "已完成遷移到 IndexedDB。請切換適配器並重新啟動 Obsidian。",
+        "zh-tw": "已完成遷移到 IndexedDB。請切換轉接器並重新啟動 Obsidian。",
     },
     "Ui.Settings.Patches.MigrationWarning": {
         def: "Changing this setting requires migrating existing data, which may take some time, and restarting Obsidian. Please make sure to back up your data before proceeding.",
@@ -11420,7 +11420,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Se ha cambiado el ajuste de remediación. Reiniciando Obsidian...",
         ko: "복구 조치 설정이 변경되었습니다. Obsidian을 재시작하는 중...",
         zh: "修正设置已更改，正在重新启动 Obsidian...",
-        "zh-tw": "修復設定已變更，正在重新啟動 Obsidian...",
+        "zh-tw": "修復設定已變更，正在重新啟動 Obsidian⋯",
     },
     "Ui.Settings.Patches.RemediationRestartLater": {
         def: "Later",
@@ -11449,7 +11449,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "El sufijo ha cambiado. Reabriendo la base de datos...",
         ko: "접미사가 변경되었습니다. 데이터베이스를 다시 여는 중...",
         zh: "后缀已更改，正在重新打开数据库...",
-        "zh-tw": "後綴已變更，正在重新開啟資料庫...",
+        "zh-tw": "後綴已變更，正在重新開啟資料庫⋯",
     },
     "Ui.Settings.Patches.RemediationWithValue": {
         def: "Limit: ${date} (${timestamp})",
@@ -12405,7 +12405,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Updating list...",
         es: "Actualizando lista...",
         ko: "목록을 갱신하는 중입니다...",
-        "zh-tw": "正在更新清單...",
+        "zh-tw": "正在更新清單⋯",
     },
     URL: {
         def: "URL",
