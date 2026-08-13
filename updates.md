@@ -12,6 +12,10 @@ Earlier releases remain available in the 0.25 release history and the legacy rel
 
 ## Unreleased
 
+## 1.0.13
+
+13th August, 2026
+
 ### Conflict handling and recovery
 
 #### Improved
