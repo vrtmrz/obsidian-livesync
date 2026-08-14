@@ -1,12 +1,12 @@
-import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IFileSystemAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IFileSystemAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters.js";
 import { NodePathAdapter } from "./NodePathAdapter.js";
 import { NodeTypeGuardAdapter } from "./NodeTypeGuardAdapter.js";
 import { NodeConversionAdapter } from "./NodeConversionAdapter.js";
-import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
+import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node.js";
 import { NodeVaultAdapter } from "./NodeVaultAdapter.js";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes.js";
-import { path } from "@vrtmrz/livesync-commonlib/node";
+import { path } from "@vrtmrz/livesync-commonlib/node.js";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput.js";
 
 /**

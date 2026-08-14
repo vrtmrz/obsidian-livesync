@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils.js";
 import {
     FlagFilesHumanReadable,
     FlagFilesOriginal,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const";
-import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const.js";
+import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
 import {
     createFetchAllFlagHandler,
     createRebuildFlagHandler,
@@ -22,12 +22,12 @@ import {
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     ExtraOnLocal,
     FullScanModes,
     synchroniseAllFilesBetweenDBandStorage,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 import {
     SIMPLE_FETCH_STAGE1_DETAILED,
     SIMPLE_FETCH_STAGE1_NEWER_WINS,
@@ -40,9 +40,9 @@ import {
     askAndPerformFastSetupOnScheduledFetchAll,
     askSimpleFetchMode,
 } from "./redFlag.simpleFetch";
-import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
 //Mock synchroniseAllFilesBetweenDBandStorage
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", async (importOriginal) => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js", async (importOriginal) => {
     const originalModule = (await importOriginal()) as any;
     return {
         ...originalModule,
@@ -50,7 +50,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", asyn
     };
 });
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig", () => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig.js", () => {
     return {
         activateRemoteConfiguration: vi.fn((settings: any, configurationId: string) => {
             if (!settings?.remoteConfigurations?.[configurationId]) return false;

@@ -1,5 +1,5 @@
 import { $msg } from "@/common/translation.js";
-import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER, type ConfigLevel } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LEVEL_ADVANCED, LEVEL_EDGE_CASE, LEVEL_POWER_USER, type ConfigLevel } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants.js";
 
 export const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {

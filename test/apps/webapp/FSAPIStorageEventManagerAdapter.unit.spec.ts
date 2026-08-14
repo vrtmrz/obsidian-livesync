@@ -1,5 +1,5 @@
-import { LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import { LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FSAPIStorageEventManagerAdapter } from "@/apps/webapp/managers/FSAPIStorageEventManagerAdapter";

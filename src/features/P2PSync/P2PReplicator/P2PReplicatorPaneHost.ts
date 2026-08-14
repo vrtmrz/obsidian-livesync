@@ -1,6 +1,6 @@
-import type { RequiredServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import type { PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { RequiredServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
+import type { PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon.js";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
 
 export type P2PReplicatorHandle = Pick<UseP2PReplicatorResult, "replicator">;
 

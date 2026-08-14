@@ -7,7 +7,7 @@ import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-ht
 import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";
 import { buildQueryString } from "@smithy/querystring-builder";
 import { requestUrl, type RequestUrlParam } from "@/deps.ts";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 
 ////////////////////////////////////////////////////////////////////////////////
 // special handler using Obsidian requestUrl

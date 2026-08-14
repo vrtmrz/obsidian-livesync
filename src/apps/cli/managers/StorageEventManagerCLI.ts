@@ -1,10 +1,10 @@
-import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
+import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager.js";
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter.js";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules.js";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
-// import type { IMinimumLiveSyncCommands } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+// import type { IMinimumLiveSyncCommands } from "@vrtmrz/livesync-commonlib/compat/services/base/IService.js";
 
 export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEventManagerAdapter> {
     core: LiveSyncBaseCore<ServiceContext, IMinimumLiveSyncCommands>;

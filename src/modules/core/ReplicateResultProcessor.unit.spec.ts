@@ -1,7 +1,7 @@
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { describe, expect, it, vi } from "vitest";
-import type { EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 
 function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {

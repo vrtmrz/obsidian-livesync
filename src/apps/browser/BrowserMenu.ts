@@ -2,7 +2,7 @@ import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheel
 import { createNativeElement } from "@/apps/browserDom.js";
 import { mount } from "svelte";
 import MenuView from "./ui/MenuView.svelte";
-import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 
 export class MenuItem {
     type = "item";

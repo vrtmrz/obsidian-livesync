@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 const chunkMocks = vi.hoisted(() => ({
     purgeUnreferencedChunks: vi.fn(async (_db: unknown, countOnly: boolean) => (countOnly ? 2 : 0)),
     balanceChunkPurgedDBs: vi.fn(async () => undefined),
 }));
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/chunks", () => chunkMocks);
-vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/chunks.js", () => chunkMocks);
+vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator.js", () => ({
     LiveSyncCouchDBReplicator: class {},
 }));
 
-import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator.js";
 import { ModuleReplicator } from "./ModuleReplicator";
 
 describe("ModuleReplicator", () => {

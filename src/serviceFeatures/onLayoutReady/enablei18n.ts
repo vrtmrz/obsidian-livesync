@@ -1,5 +1,5 @@
 import { getLanguage, Notice, requireApiVersion } from "@/deps.js";
-import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta.js";
 import { $msg, __onMissingTranslation, setLang } from "@/common/translation.js";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";

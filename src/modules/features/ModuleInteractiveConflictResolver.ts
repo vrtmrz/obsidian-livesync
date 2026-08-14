@@ -8,7 +8,7 @@ import {
     type DocumentID,
     type FilePathWithPrefix,
     type diff_result,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { ConflictResolveModal, POSTPONED } from "./InteractiveConflictResolving/ConflictResolveModal.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { displayRev } from "@/common/utils.ts";

@@ -1,11 +1,11 @@
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
-import { P2P_DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
-import { getPeerConnectionStats } from "@vrtmrz/livesync-commonlib/compat/rpc/transports/DiagRTCPeerConnections.utils";
-import { fsPromises } from "@vrtmrz/livesync-commonlib/node";
+import { P2P_DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError.js";
+import { getPeerConnectionStats } from "@vrtmrz/livesync-commonlib/compat/rpc/transports/DiagRTCPeerConnections.utils.js";
+import { fsPromises } from "@vrtmrz/livesync-commonlib/node.js";
 
 type CLIP2PPeer = {
     peerId: string;

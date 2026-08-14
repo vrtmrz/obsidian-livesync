@@ -13,11 +13,11 @@
         DEFAULT_SETTINGS,
         PREFERRED_JOURNAL_SYNC,
         RemoteTypes,
-    } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
     import { onMount } from "svelte";
     import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
-    import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
     import { $msg as translateMessage } from "@/common/translation";
 

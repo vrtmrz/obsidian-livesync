@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings.js";
 import { createCoreSettingsAfterFullReset, createEditingSettingsAfterFullReset } from "./settingsReset.ts";
 
 describe("full settings reset", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { NEW_VAULT_SETTINGS, type SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
+import { NEW_VAULT_SETTINGS, type SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings.js";
 import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
 import { ReviewHarnessController, type ReviewHarnessRuntime } from "./reviewHarnessController";
 

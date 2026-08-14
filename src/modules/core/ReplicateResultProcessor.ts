@@ -6,9 +6,9 @@ import {
     type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { ModuleReplicator } from "./ModuleReplicator.js";
-import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
+import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils.js";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -16,13 +16,13 @@ import {
     LOG_LEVEL_VERBOSE,
     Logger,
     type LOG_LEVEL,
-} from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { fireAndForget, isAnyNote, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
+import { fireAndForget, isAnyNote, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
-import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc.js";
 import type PouchDB from "pouchdb-core";
 import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
 

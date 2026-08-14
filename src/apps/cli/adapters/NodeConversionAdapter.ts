@@ -1,7 +1,7 @@
-import type { FilePath, UXFileInfoStub, UXFolderInfo } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IConversionAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import type { FilePath, UXFileInfoStub, UXFolderInfo } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IConversionAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters.js";
 import type { NodeFile, NodeFolder } from "./NodeTypes.js";
-import { path } from "@vrtmrz/livesync-commonlib/node";
+import { path } from "@vrtmrz/livesync-commonlib/node.js";
 
 /**
  * Conversion adapter implementation for Node.js

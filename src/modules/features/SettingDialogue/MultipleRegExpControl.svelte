@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type { CustomRegExpSource } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { isInvertedRegExp, isValidRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import type { CustomRegExpSource } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+    import { isInvertedRegExp, isValidRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import { $msg as translateMessage } from "@/common/translation";
 
     export let patterns = [] as CustomRegExpSource[];

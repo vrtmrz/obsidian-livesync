@@ -1,12 +1,12 @@
-import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
-import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
-import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
+import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings.js";
+import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib.js";
+import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import { requestToCouchDBWithCredentials } from "./utils.js";
-import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
+import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
+import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars.js";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
 function redactObject(obj: Record<string, unknown>, dotted: string, redactedValue = "REDACTED") {
     const keys = dotted.split(".");

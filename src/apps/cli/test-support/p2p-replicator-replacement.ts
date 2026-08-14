@@ -1,6 +1,6 @@
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 import type { CLICommandContext } from "@/apps/cli/commands/types.js";
 import { openP2PHost } from "@/apps/cli/commands/p2p.js";
 

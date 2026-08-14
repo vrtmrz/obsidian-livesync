@@ -1,4 +1,4 @@
-import { type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 export {
     addIcon,

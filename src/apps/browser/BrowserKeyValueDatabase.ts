@@ -1,7 +1,7 @@
 import type {
     KeyValueDatabase,
     KeyValueDatabaseFactory,
-} from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
+} from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase.js";
 import { deleteDB, openDB, type IDBPDatabase } from "idb";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 

@@ -33,7 +33,7 @@ vi.mock("@/deps", () => ({
 
 import { EVENT_PLUGIN_UNLOADED } from "@/common/events";
 import { memoObject, retrieveMemoObject } from "@/common/utils";
-import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
+import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context.js";
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { ObsidianServiceContext } from "./ObsidianServiceContext";
 

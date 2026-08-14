@@ -1,5 +1,5 @@
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {

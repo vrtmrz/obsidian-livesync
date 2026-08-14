@@ -4,10 +4,10 @@ import {
     REMOTE_COUCHDB,
     REMOTE_P2P,
     type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
-import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService.js";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings.js";
 
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
@@ -23,11 +23,11 @@ vi.mock("./SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }
 vi.mock("./SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting.js", () => ({
     decodeSettingsFromQRCodeData: vi.fn(),
 }));
 
-import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
 import { SetupManager, UserMode } from "./SetupManager";
 
 class TestSettingService extends SettingService<ServiceContext> {

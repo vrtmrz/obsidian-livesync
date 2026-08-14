@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon.js";
     import type { P2PReplicatorHandle } from "./P2PReplicatorPaneHost";
     import { $msg as translateMessage } from "@/common/translation";
 

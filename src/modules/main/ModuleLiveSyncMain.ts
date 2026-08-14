@@ -3,7 +3,7 @@ import {
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     EVENT_LAYOUT_READY,
     EVENT_PLUGIN_LOADED,
@@ -13,10 +13,10 @@ import {
 } from "@/common/events.ts";
 import { $msg, setLang } from "@/common/translation.js";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub.js";
 import type { LiveSyncCore } from "@/main.ts";
-import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker/bgWorker";
-import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
+import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker/bgWorker.js";
+import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars.js";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {

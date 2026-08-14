@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { englishMessageTranslator } from "@vrtmrz/livesync-commonlib/context";
+import { englishMessageTranslator } from "@vrtmrz/livesync-commonlib/context.js";
 import { $msg, setLang, translateLiveSyncMessage } from "@/common/translation";
 import { SUPPORTED_I18N_LANGS } from "@/common/rosetta";
 import { liveSyncProvisionalEnglishMessages } from "@/common/messages/LiveSyncProvisionalMessages";

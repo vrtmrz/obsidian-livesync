@@ -5,7 +5,7 @@ import {
     assertLocatorWithinSafeArea,
     assertNoHorizontalOverflow,
 } from "@vrtmrz/obsidian-test-session";
-import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
 import { REVIEW_HARNESS_STATE_KEY } from "../../../src/features/ReviewHarness/reviewHarnessController.ts";
 import { REVIEW_HARNESS_FIXTURE_ROOT } from "../../../src/features/ReviewHarness/reviewHarnessVaultFixture.ts";
 import { evalObsidianJson } from "../runner/cli.ts";

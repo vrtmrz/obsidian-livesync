@@ -5,7 +5,7 @@ import {
     LEAVE_TO_SUBSEQUENT,
     type diff_result,
     type FilePathWithPrefix,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 

@@ -8,7 +8,7 @@ import {
     type ValueComponent,
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
-import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,

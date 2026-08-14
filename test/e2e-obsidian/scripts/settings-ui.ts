@@ -1,4 +1,4 @@
-import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
 import { assertMobileDialogueLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";

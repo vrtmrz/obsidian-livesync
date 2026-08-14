@@ -1,5 +1,5 @@
-import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_ADVANCED } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { type ObsidianLiveSyncSettings, LOG_LEVEL_NOTICE, REMOTE_COUCHDB, LEVEL_ADVANCED } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
 import { $msg } from "@/common/translation.js";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { EVENT_REQUEST_COPY_SETUP_URI, eventHub } from "@/common/events.ts";

@@ -7,21 +7,21 @@
         EVENT_P2P_REPLICATOR_STATUS,
         EVENT_P2P_REPLICATOR_PROGRESS,
         type P2PServerInfo,
-    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
-    import type { P2PReplicatorStatus, P2PReplicationReport } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer.js";
+    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator.js";
+    import type { P2PReplicatorStatus, P2PReplicationReport } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator.js";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
-    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+    import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-    import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-    import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+    import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
+    import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type.js";
     import {
         activateP2PRemoteConfiguration,
         createRemoteConfigurationId,
         type RemoteConfiguration,
-    } from "@vrtmrz/livesync-commonlib/remote-configurations";
-    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
+    import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import { SetupManager } from "@/modules/features/SetupManager";
     import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
     import { Menu } from "@/deps";

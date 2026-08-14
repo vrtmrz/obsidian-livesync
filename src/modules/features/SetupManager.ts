@@ -7,10 +7,10 @@ import {
     LOG_LEVEL_VERBOSE,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
-import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
-import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings.js";
+import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
+import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
 import SelectMethodNewUser from "./SetupWizard/dialogs/SelectMethodNewUser.svelte";
 import SelectMethodExisting from "./SetupWizard/dialogs/SelectMethodExisting.svelte";
@@ -24,7 +24,7 @@ import SetupRemoteCouchDB from "./SetupWizard/dialogs/SetupRemoteCouchDB.svelte"
 import SetupRemoteBucket from "./SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
-import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type {
     OutroAskUserModeResultType,

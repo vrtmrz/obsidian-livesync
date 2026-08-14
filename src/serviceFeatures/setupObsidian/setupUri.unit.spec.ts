@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { EVENT_REQUEST_COPY_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { EVENT_REQUEST_COPY_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import { askEncryptingPassphrase, copySetupURI, copySetupURIFull, useSetupURIFeature } from "./setupUri";
-import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting.js", () => {
     return {
         encodeSettingsToSetupURI: vi.fn(),
     };

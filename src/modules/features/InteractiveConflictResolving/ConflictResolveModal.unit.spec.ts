@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { POSTPONED, ConflictResolveModal } from "./ConflictResolveModal.ts";
-import { CANCELLED, type diff_result, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { CANCELLED, type diff_result, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 vi.mock("@/deps.ts", () => ({
     App: class App {},

@@ -1,1 +1,1 @@
-export * from "@vrtmrz/livesync-commonlib/compat/common/settingConstants";
+export * from "@vrtmrz/livesync-commonlib/compat/common/settingConstants.js";

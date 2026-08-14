@@ -25,8 +25,8 @@ import {
     REMOTE_COUCHDB,
     type DocumentID,
     type EntryDoc,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB.js";
 import { LocalDatabaseMaintenance } from "./CmdLocalDatabaseMainte";
 
 PouchDB.plugin(HttpPouch).plugin(MemoryAdapter).plugin(replication);

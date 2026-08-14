@@ -1,5 +1,5 @@
-import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
-import { ServiceDatabaseFileAccessBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceDatabaseFileAccessBase";
+import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess.js";
+import { ServiceDatabaseFileAccessBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceDatabaseFileAccessBase.js";
 
 // markChangesAreSame uses persistent data implicitly, we should refactor it too.
 // For now, to make the refactoring done once, we just use them directly.

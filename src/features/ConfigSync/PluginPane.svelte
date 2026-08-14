@@ -11,14 +11,14 @@
     } from "./CmdConfigSync.ts";
     import PluginCombo from "./PluginCombo.svelte";
     import { Menu, type PluginManifest } from "@/deps.ts";
-    import { unique } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { unique } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import {
         MODE_SELECTIVE,
         MODE_AUTOMATIC,
         MODE_PAUSED,
         type SYNC_MODE,
         MODE_SHINY,
-    } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
     import { normalizePath } from "@/deps";
     import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";

@@ -1,6 +1,6 @@
-import { fsPromises, os, path } from "@vrtmrz/livesync-commonlib/node";
+import { fsPromises, os, path } from "@vrtmrz/livesync-commonlib/node.js";
 import { describe, expect, it, vi } from "vitest";
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { NodeFileSystemAdapter } from "./NodeFileSystemAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 

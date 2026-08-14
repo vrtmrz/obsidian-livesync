@@ -1,6 +1,6 @@
 import { type TAbstractFile, normalizePath } from "@/deps.js";
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters.js";
 
 /**
  * Path adapter implementation for Obsidian

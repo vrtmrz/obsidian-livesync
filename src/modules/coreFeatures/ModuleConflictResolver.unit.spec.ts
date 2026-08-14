@@ -7,7 +7,7 @@ import {
     MISSING_OR_ERROR,
     type FilePathWithPrefix,
     type MetaEntry,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { ModuleConflictResolver } from "./ModuleConflictResolver";
 
 function createModule(files: FilePathWithPrefix[] = []) {

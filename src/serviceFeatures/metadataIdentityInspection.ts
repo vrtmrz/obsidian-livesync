@@ -1,6 +1,6 @@
-import type { MetadataDocumentIdentityIssue } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { MetadataDocumentIdentityIssue } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 export function metadataIdentityPathKey(path: string, handleFilenameCaseSensitive: boolean): string {
     const vaultPath = stripAllPrefixes(path as FilePathWithPrefix);

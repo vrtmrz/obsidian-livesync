@@ -20,7 +20,7 @@ import type {
     AnyEntry,
     SavingEntry,
     diff_result,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     CANCELLED,
     LEAVE_TO_SUBSEQUENT,
@@ -30,7 +30,7 @@ import {
     LOG_LEVEL_VERBOSE,
     MODE_SELECTIVE,
     MODE_SHINY,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
 import {
     createBlob,
@@ -43,16 +43,16 @@ import {
     isDocContentSame,
     isLoadedEntry,
     isObjectDifferent,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { digestHash } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/hash";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { digestHash } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/hash.js";
 import {
     arrayBufferToBase64,
     decodeBinary,
     readString,
-} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
+} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert.js";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
-import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 import {
     EVEN,
     disposeMemoObject,
@@ -66,7 +66,7 @@ import {
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
+import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores.js";
 import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
@@ -74,9 +74,9 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
 import { $msg } from "@/common/translation.js";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub.js";
 import type { LiveSyncCore } from "@/main.ts";
-import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError.js";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 

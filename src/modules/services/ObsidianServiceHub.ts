@@ -1,6 +1,6 @@
-import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub.js";
 import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
-import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
+import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub.js";
 import type ObsidianLiveSyncPlugin from "@/main.js";
 import {
     ObsidianConflictService,
@@ -23,7 +23,7 @@ import { ObsidianPathService } from "./ObsidianPathService.js";
 import { ObsidianVaultService } from "./ObsidianVaultService.js";
 import { ObsidianUIService } from "./ObsidianUIService.js";
 import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
-import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
+import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser.js";
 import { OpenKeyValueDatabase } from "@/common/KeyValueDB.js";
 import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups.js";
 import { setLang } from "@/common/translation.js";

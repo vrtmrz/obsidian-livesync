@@ -6,7 +6,7 @@ import {
     type FilePathWithPrefix,
     type MetaEntry,
     type UXFileInfo,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 vi.mock("@/deps.ts", () => ({}));
 vi.mock("@/features/HiddenFileCommon/JsonResolveModal.ts", () => ({

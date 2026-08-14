@@ -1,4 +1,4 @@
-import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
+import type { StandardIo } from "@vrtmrz/livesync-commonlib/context.js";
 
 /** Report a CLI-owned diagnostic without selecting its final presentation channel. */
 export type CliDiagnosticReporter = (message: string, detail?: unknown) => void;

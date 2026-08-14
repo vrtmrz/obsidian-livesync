@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
 
 vi.mock("@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView", () => ({

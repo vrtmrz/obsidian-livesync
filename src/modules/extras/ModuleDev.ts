@@ -5,7 +5,7 @@ import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 // import { enableTestFunction } from "./devUtil/testUtils.ts";
 import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { LiveSyncCore } from "@/main.ts";
 import type { WorkspaceLeaf } from "@/deps.ts";
 export class ModuleDev extends AbstractObsidianModule {

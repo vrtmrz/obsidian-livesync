@@ -3,7 +3,7 @@ import {
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     Logger,
-} from "@vrtmrz/livesync-commonlib/compat/common/logger";
+} from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
 import {
     EVENT_REQUEST_OPEN_P2P,
     EVENT_REQUEST_OPEN_SETTING_WIZARD,
@@ -14,16 +14,16 @@ import {
 } from "@/common/events.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg } from "@/common/translation.js";
-import { performDoctorConsultation, RebuildOptions } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
+import { performDoctorConsultation, RebuildOptions } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc.js";
 import { isValidPath } from "@/common/utils.ts";
-import { isMetaEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isMetaEntry } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     isDeletedEntry,
     isDocContentSame,
     isLoadedEntry,
     readAsBlob,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation.js";
 import type { LiveSyncCore } from "@/main.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
 import { showOnboardingInvitation } from "@/serviceFeatures/setupObsidian/setupManagerHandlers.ts";

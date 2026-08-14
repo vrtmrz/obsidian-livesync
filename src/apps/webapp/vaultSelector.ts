@@ -1,4 +1,4 @@
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 
 const HANDLE_DB_NAME = "livesync-webapp-handles";
 const HANDLE_STORE_NAME = "handles";

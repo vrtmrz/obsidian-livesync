@@ -1,9 +1,9 @@
-import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB } from "@/common/events.js";
-import { handlers } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { SettingService, type SettingServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
+import { handlers } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils.js";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import { SettingService, type SettingServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService.js";
 import {
     configureNodeLocalStorage,
     deleteNodeLocalStorageItem,

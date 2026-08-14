@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import {
     EVENT_REQUEST_OPEN_P2P_SETTINGS,
     EVENT_REQUEST_OPEN_SETUP_URI,
-} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
 import {
     openOnboarding,
     openP2PSettings,

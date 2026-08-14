@@ -1,7 +1,7 @@
-import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters.js";
 import type { NodeFile, NodeFolder } from "./NodeTypes.js";
-import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
+import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node.js";
 
 /**
  * Vault adapter implementation for Node.js

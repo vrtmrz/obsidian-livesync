@@ -1,6 +1,6 @@
-import { NEW_VAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/settings";
+import { NEW_VAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/settings.js";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
 import type ObsidianLiveSyncPlugin from "@/main.js";
 import type { LiveSyncCore } from "@/main.js";
 import type { WorkspaceLeaf } from "@/deps.js";

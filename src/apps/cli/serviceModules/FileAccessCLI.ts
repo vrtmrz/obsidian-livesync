@@ -1,4 +1,4 @@
-import { FileAccessBase, type FileAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
+import { FileAccessBase, type FileAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase.js";
 import { NodeFileSystemAdapter } from "@/apps/cli/adapters/NodeFileSystemAdapter.js";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 

@@ -1,8 +1,8 @@
 import type {
     MetadataDocumentRepairRequest,
     MetadataDocumentRepairResult,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { MetadataDocumentRepairResults } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
+import { MetadataDocumentRepairResults } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 
 export const MetadataIdentityRepairExecutions = {
     CANCELLED: "cancelled",

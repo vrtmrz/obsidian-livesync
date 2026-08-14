@@ -4,7 +4,7 @@ import {
     REMOTE_COUCHDB,
     type RemoteDBSettings,
     type TweakValues,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {

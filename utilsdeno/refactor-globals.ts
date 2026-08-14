@@ -190,7 +190,7 @@ for (const sourceFile of project.getSourceFiles()) {
             if (requiredImports.length > 0) {
                 const existingImport = sourceFile.getImportDeclarations().find((imp) => {
                     const spec = imp.getModuleSpecifierValue();
-                    return spec === "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions" || spec === "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+                    return spec === "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js" || spec === "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
                 });
 
                 if (existingImport) {
@@ -205,7 +205,7 @@ for (const sourceFile of project.getSourceFiles()) {
                 } else {
                     sourceFile.addImportDeclaration({
                         namedImports: requiredImports,
-                        moduleSpecifier: "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions",
+                        moduleSpecifier: "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js",
                     });
                 }
             }

@@ -1,5 +1,5 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { LiveSyncCore } from "@/main.ts";
 import {
     COMPATIBILITY_PAUSE_SETTING_MESSAGE,

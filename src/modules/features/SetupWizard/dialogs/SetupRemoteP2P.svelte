@@ -7,7 +7,7 @@
     import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
     import InputRow from "@/modules/services/LiveSyncUI/components/InputRow.svelte";
     import Password from "@/modules/services/LiveSyncUI/components/Password.svelte";
-    import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
+    import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser.js";
     import {
         DEFAULT_SETTINGS,
         P2P_DEFAULT_SETTINGS,
@@ -17,19 +17,19 @@
         type ObsidianLiveSyncSettings,
         type P2PConnectionInfo,
         type P2PSyncSetting,
-    } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
-    import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
-    import type { ReplicatorHostEnv } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/types";
+    import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator.js";
+    import type { ReplicatorHostEnv } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/types.js";
     import {
         copyTo,
         generateP2PRoomId,
         pickP2PSyncSettings,
         type SimpleStore,
-    } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import { onMount } from "svelte";
     import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
     import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
     import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
     import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";

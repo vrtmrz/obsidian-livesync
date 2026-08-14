@@ -2,7 +2,7 @@ import {
     DEFAULT_SETTINGS,
     P2P_DEFAULT_SETTINGS,
     REMOTE_P2P,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters.js";
 import type { NodeFile } from "@/apps/cli/adapters/NodeTypes";
 
 // ── chokidar mock ──────────────────────────────────────────────────────────────

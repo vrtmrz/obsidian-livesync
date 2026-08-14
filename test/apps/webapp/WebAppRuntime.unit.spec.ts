@@ -1,4 +1,4 @@
-import { LOG_LEVEL_INFO, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_INFO, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LiveSyncBrowserServiceHubOptions } from "@/apps/browser/createLiveSyncBrowserServiceHub";
 
@@ -88,7 +88,7 @@ vi.mock("@/LiveSyncBaseCore", () => ({
     },
 }));
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js", () => ({
     collectFilesOnStorage: runtimeMocks.collectFilesOnStorage,
     updateToDatabase: runtimeMocks.updateToDatabase,
     useOfflineScanner: vi.fn(),
@@ -96,13 +96,13 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", () =
 vi.mock("@/serviceFeatures/redFlag", () => ({
     useRedFlagFeatures: vi.fn(),
 }));
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize.js", () => ({
     useCheckRemoteSize: vi.fn(),
 }));
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig.js", () => ({
     useRemoteConfiguration: vi.fn(),
 }));
-vi.mock("@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature.js", () => ({
     useP2PReplicatorFeature: vi.fn(() => runtimeMocks.p2p),
 }));
 

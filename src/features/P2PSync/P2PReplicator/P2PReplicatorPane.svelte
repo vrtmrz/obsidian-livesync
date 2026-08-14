@@ -1,25 +1,25 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
     import {
         AcceptedStatus,
         ConnectionStatus,
         type PeerStatus,
-    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon.js";
     import type { P2PReplicatorPaneHost } from "./P2PReplicatorPaneHost";
     import PeerStatusRow from "@/features/P2PSync/P2PReplicator/PeerStatusRow.svelte";
-    import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+    import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
     import {
         type PeerInfo,
         type P2PServerInfo,
         EVENT_SERVER_STATUS,
         EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
-    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+    } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer.js";
+    import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator.js";
     import { $msg as _msg } from "@/common/translation";
-    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+    import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 
     interface Props {
         host: P2PReplicatorPaneHost;

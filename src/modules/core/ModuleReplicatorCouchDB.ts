@@ -1,7 +1,7 @@
 import { fireAndForget } from "octagonal-wheels/promises";
-import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator.js";
+import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator.js";
 import { AbstractModule } from "@/modules/AbstractModule.js";
 import type { LiveSyncCore } from "@/main.js";
 

@@ -5,7 +5,7 @@ import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
-import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
 export function paneGeneral(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,

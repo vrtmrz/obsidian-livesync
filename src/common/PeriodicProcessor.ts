@@ -1,7 +1,7 @@
 import { Logger } from "octagonal-wheels/common/logger";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { eventHub, EVENT_PLUGIN_UNLOADED } from "./events.js";
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
 type PeriodicProcessorHost = NecessaryServices<"API" | "control", never>;
 export class PeriodicProcessor {
     _process: () => Promise<unknown>;

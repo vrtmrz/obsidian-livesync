@@ -1,4 +1,4 @@
-import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 /**
  * Coerce the timestamp fields of a write-options object to integer milliseconds.

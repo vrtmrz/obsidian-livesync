@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Menu } from "@/apps/browser/BrowserMenu";
-    import { getDialogContext } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
+    import { getDialogContext } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog.js";
     let result = $state<string | boolean>("");
 
     const context = getDialogContext();

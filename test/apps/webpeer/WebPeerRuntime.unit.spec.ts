@@ -1,7 +1,7 @@
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { DEFAULT_SETTINGS, SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import { DEFAULT_SETTINGS, SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
 import { describe, expect, it, vi } from "vitest";
 
 import { WebPeerRuntime } from "@/apps/webpeer/src/WebPeerRuntime";

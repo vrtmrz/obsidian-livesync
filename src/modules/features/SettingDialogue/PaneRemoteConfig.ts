@@ -6,7 +6,7 @@ import {
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { Menu, type ButtonComponent } from "@/deps.ts";
 import { $msg } from "@/common/translation.js";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -22,9 +22,9 @@ import { OnDialogSettingsDefault, type AllSettings } from "./settingConstants.ts
 import {
     activateRemoteConfiguration,
     type RemoteConfiguration,
-} from "@vrtmrz/livesync-commonlib/remote-configurations";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+} from "@vrtmrz/livesync-commonlib/remote-configurations.js";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
+import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
 import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";

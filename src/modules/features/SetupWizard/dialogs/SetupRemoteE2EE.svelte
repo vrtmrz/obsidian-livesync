@@ -12,10 +12,10 @@
         E2EEAlgorithmNames,
         E2EEAlgorithms,
         type EncryptionSettings,
-    } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
     import { onMount } from "svelte";
     import type { GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
-    import { copyTo, pickEncryptionSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { copyTo, pickEncryptionSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import { TYPE_CANCELLED, type SetupRemoteE2EEResultType } from "./setupDialogTypes";
     import { $msg as translateMessage } from "@/common/translation";
 

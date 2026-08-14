@@ -1,4 +1,4 @@
-import { ServiceFileHandlerBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileHandlerBase";
+import { ServiceFileHandlerBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileHandlerBase.js";
 
 // markChangesAreSame uses persistent data implicitly, we should refactor it too.
 // also, compareFileFreshness depends on marked changes, so we should refactor it as well. For now, to make the refactoring done once, we just use them directly.

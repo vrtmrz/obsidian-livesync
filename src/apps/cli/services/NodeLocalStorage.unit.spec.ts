@@ -1,4 +1,4 @@
-import { fs, os, path } from "@vrtmrz/livesync-commonlib/node";
+import { fs, os, path } from "@vrtmrz/livesync-commonlib/node.js";
 import { afterEach, describe, expect, it } from "vitest";
 import {
     clearNodeLocalStorage,

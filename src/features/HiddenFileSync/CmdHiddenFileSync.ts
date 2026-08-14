@@ -15,7 +15,7 @@ import {
     LOG_LEVEL_DEBUG,
     type MetaEntry,
     type UXDataWriteOptions,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
 import {
     readAsBlob,
@@ -26,7 +26,7 @@ import {
     fireAndForget,
     type CustomRegExp,
     getFileRegExp,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import {
     compareMTime,
     isInternalMetadata,
@@ -44,16 +44,16 @@ import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
-import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import {
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores.js";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
-import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc.js";
 import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";

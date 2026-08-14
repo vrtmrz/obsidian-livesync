@@ -1,6 +1,6 @@
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
 import type { CLICommand } from "./commands/types.js";
 
 const SETTINGS_WRITE_COMMANDS = new Set<CLICommand>([

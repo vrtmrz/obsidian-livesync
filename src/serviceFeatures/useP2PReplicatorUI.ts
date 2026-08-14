@@ -1,17 +1,17 @@
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events.js";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
-import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
+import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
+import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector.js";
 import {
     P2PServerStatusPaneView,
     VIEW_TYPE_P2P_SERVER_STATUS,
 } from "@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView.js";
 import type { LiveSyncCore } from "@/main.js";
 import type { WorkspaceLeaf } from "@/deps.js";
-import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type.js";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
 
 export const LEGACY_VIEW_TYPE_P2P = "p2p-replicator";
 

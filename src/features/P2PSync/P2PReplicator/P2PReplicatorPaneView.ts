@@ -4,11 +4,11 @@ import { mount } from "svelte";
 import { SvelteItemView } from "@/common/SvelteItemView.ts";
 
 import { unique } from "octagonal-wheels/collection";
-import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import type { PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
+import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
+import type { PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon.js";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { P2PPaneParams } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { P2PPaneParams } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {

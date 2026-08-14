@@ -1,7 +1,7 @@
 import { TFile, TFolder } from "@/deps.js";
-import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters.js";
 import type {
     IStorageEventTypeGuardAdapter,
     IStorageEventPersistenceAdapter,
@@ -9,11 +9,11 @@ import type {
     IStorageEventStatusAdapter,
     IStorageEventConverterAdapter,
     IStorageEventWatchHandlers,
-} from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
-import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
+} from "@vrtmrz/livesync-commonlib/compat/managers/adapters.js";
+import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager.js";
 import type ObsidianLiveSyncPlugin from "@/main.js";
 import type { LiveSyncCore } from "@/main.js";
-import type { FileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/base/FileProcessingService";
+import type { FileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/base/FileProcessingService.js";
 import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian.js";
 
 /**

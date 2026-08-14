@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { DialogHostProps } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
+    import type { DialogHostProps } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog.js";
     import { type DialogSvelteComponentBaseProps } from "./svelteDialog";
     // type Props = DialogSvelteComponentBaseProps & {
     //     /**

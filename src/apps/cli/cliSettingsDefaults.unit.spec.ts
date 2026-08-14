@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings.js";
 import { createDefaultCliSettings } from "./cliSettingsDefaults.ts";
 
 describe("createDefaultCliSettings", () => {

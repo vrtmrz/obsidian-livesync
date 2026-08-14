@@ -1,5 +1,5 @@
 import { createNativeElement } from "@/apps/browserDom.js";
-import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 import { mount } from "svelte";
 
 import { WebAppRuntime, type WebAppRuntimeStatusKind } from "./WebAppRuntime.js";

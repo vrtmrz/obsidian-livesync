@@ -1,7 +1,7 @@
 import type {
     ObsidianLiveSyncSettings,
     RemoteDBSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type.js";
 
 export type CouchDBConnectionProbeResult = { ok: true } | { ok: false; reason: string };
 

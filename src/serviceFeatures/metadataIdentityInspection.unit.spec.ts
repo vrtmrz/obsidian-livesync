@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MetadataDocumentIdentityIssue } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import type { MetadataDocumentIdentityIssue } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 import { metadataIdentityPathKey, selectUnresolvedMetadataIdentityEntries } from "./metadataIdentityInspection";
 
 function createEntries(): MetadataDocumentIdentityIssue[] {

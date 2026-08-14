@@ -1,10 +1,10 @@
-import { LOG_LEVEL_NOTICE, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { EVENT_REQUEST_COPY_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import { LOG_LEVEL_NOTICE, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils.js";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils.js";
+import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
+import { EVENT_REQUEST_COPY_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
+import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
 import type { SetupFeatureHost } from "./types.js";
 
 export async function askEncryptingPassphrase(host: SetupFeatureHost): Promise<string | false> {

@@ -1,11 +1,11 @@
 // Avoid using Obsidian's native function for CLIs.
-import { getLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { getLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 import {
     commonlibEnglishMessages,
     englishMessageTranslator,
     type CommonlibMessageKey,
     type MessageTranslator,
-} from "@vrtmrz/livesync-commonlib/context";
+} from "@vrtmrz/livesync-commonlib/context.js";
 import { LOG_KIND_WARNING, notice } from "octagonal-wheels/common/logger";
 import type { TaggedType } from "octagonal-wheels/common/types";
 import type { AllMessageKeys, I18N_LANGS, LiveSyncCatalogueMessageKey } from "./rosetta.js";

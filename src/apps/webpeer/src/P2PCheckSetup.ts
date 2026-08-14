@@ -1,13 +1,13 @@
-import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 import {
     P2P_DEFAULT_SETTINGS,
     PREFERRED_BASE,
     createNewVaultSettings,
     type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { generateP2PRoomId } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
 
 export const P2P_CHECK_APP_ID = "self-hosted-livesync-p2p-check-v1";
 export const P2P_CHECK_REMOTE_NAME = "P2P connection check";

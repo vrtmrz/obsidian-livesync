@@ -1,6 +1,6 @@
-import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { DEFAULT_SETTINGS, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
+import { DEFAULT_SETTINGS, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
 import { describe, expect, it } from "vitest";
 
 import {

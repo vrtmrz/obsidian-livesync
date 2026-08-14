@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+    import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer.js";
     import qrcode from "qrcode-generator";
     import { onDestroy, tick } from "svelte";
 

@@ -1,5 +1,5 @@
 import { Notice } from "@/deps.ts";
-import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm.js";
 import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
 import type {
     CompatibilityReviewDetailsAction,

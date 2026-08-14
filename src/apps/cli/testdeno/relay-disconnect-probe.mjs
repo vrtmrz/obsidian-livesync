@@ -1,10 +1,10 @@
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { RTCPeerConnection } from "werift";
-import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
+import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator.js";
 
 const requireFromProbe = createRequire(import.meta.url);
-const commonlibEntry = requireFromProbe.resolve("@vrtmrz/livesync-commonlib/context");
+const commonlibEntry = requireFromProbe.resolve("@vrtmrz/livesync-commonlib/context.js");
 const requireFromCommonlib = createRequire(commonlibEntry);
 const nostrEntry = requireFromCommonlib.resolve("@trystero-p2p/nostr");
 const { getRelaySockets, joinRoom, pauseRelayReconnection } = await import(pathToFileURL(nostrEntry).href);

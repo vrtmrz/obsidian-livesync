@@ -1,4 +1,4 @@
-import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { describe, expect, it, vi } from "vitest";
 
 const { evalObsidianJson } = vi.hoisted(() => ({

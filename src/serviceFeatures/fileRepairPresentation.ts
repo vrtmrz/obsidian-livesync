@@ -2,12 +2,12 @@ import {
     BASE_IS_NEW,
     EVEN,
     TARGET_IS_NEW,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.symbols";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.symbols.js";
 import {
     compareMTime,
     readAsBlob,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 import type {
     FileRepairInspection,
     FileRepairRevision,

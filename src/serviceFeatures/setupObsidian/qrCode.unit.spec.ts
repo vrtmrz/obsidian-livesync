@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import { encodeSetupSettingsAsQR, useSetupQRCodeFeature } from "./qrCode";
-import { encodeQR, encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { encodeQR, encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
 
-vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
+vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting.js", () => {
     return {
         encodeQR: vi.fn(),
         encodeSettingsToQRCodeData: vi.fn(),

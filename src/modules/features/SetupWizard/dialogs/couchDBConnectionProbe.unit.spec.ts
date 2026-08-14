@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type.js";
 import { isValidCouchDBServerURL, probeCouchDBConnection } from "./couchDBConnectionProbe";
 
 const settings = {

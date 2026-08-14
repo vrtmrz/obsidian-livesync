@@ -1,4 +1,4 @@
-import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer.js";
 
 export const P2P_CHECK_OBSERVATION_MILLISECONDS = 60_000;
 

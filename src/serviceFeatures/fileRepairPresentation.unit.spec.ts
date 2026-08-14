@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { FileRepairInspection, FileRepairRevision } from "./fileRepair";
 import {
     getFileRepairRevisionActions,

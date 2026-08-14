@@ -1,26 +1,26 @@
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { createInstanceLogFunction, type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
+import { createInstanceLogFunction, type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils.js";
 import {
     FlagFilesHumanReadable,
     FlagFilesOriginal,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const.js";
 import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
 import { extractObject } from "octagonal-wheels/object";
-import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings.js";
 import {
     RemotePreferredTweakStatuses,
     TweakValuesShouldMatchedTemplate,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition.js";
 import type {
     FetchEverythingResult,
     RebuildEverythingResult,
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes.js";
 import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch.js";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
+import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.js";
 import { $msg } from "@/common/translation.js";
 

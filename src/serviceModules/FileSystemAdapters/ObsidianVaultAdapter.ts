@@ -1,6 +1,6 @@
-import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
+import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters.js";
+import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase.js";
 import type { TFile, App, TFolder } from "obsidian";
 import { toIntegerTimestamps } from "./sanitizeWriteOptions.js";
 

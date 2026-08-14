@@ -1,7 +1,7 @@
 /** Browser runtime for Self-hosted LiveSync over the File System Access API. */
 
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
-import { ServiceContext, type LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
+import { ServiceContext, type LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context.js";
 import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules.js";
 import {
     LOG_LEVEL_INFO,
@@ -9,18 +9,18 @@ import {
     LOG_LEVEL_VERBOSE,
     type LOG_LEVEL,
     type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     collectFilesOnStorage,
     updateToDatabase,
     useOfflineScanner,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 import { useRedFlagFeatures } from "@/serviceFeatures/redFlag.js";
-import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize";
-import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
-import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize.js";
+import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig.js";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature.js";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 import {
     createLiveSyncBrowserServiceHub,
     type LiveSyncBrowserServiceHub,

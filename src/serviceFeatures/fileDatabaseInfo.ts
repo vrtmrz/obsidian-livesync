@@ -4,14 +4,14 @@ import type {
     FilePathWithPrefix,
     LoadedEntry,
     ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { getFileRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
-import { ICHeader, ICXHeader, PSCHeader } from "@vrtmrz/livesync-commonlib/compat/common/models/fileaccess.const";
-import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
-import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
-import type { IPathService, IUIService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
-import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { getFileRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc.js";
+import { ICHeader, ICXHeader, PSCHeader } from "@vrtmrz/livesync-commonlib/compat/common/models/fileaccess.const.js";
+import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess.js";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB.js";
+import type { IPathService, IUIService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService.js";
+import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 
 type DatabaseMeta = LoadedEntry & {
     _rawStorageType: string | null;

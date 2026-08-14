@@ -4,14 +4,14 @@ import {
     type HashAlgorithm,
     LOG_LEVEL_NOTICE,
     SuffixDatabaseName,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
-import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
-import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser.js";
+import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {

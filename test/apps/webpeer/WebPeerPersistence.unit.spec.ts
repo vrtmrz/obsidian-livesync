@@ -1,5 +1,5 @@
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { describe, expect, it } from "vitest";
 
 import {

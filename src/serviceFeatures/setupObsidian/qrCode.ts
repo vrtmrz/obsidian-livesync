@@ -1,11 +1,11 @@
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
 import {
     encodeQR,
     encodeSettingsToQRCodeData,
     OutputFormat,
-} from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
+import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
+import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import type { SetupFeatureHost } from "./types.js";
 
 export async function encodeSetupSettingsAsQR(host: SetupFeatureHost) {

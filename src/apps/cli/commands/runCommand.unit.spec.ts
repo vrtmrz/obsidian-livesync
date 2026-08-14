@@ -1,8 +1,8 @@
-import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
-import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node.js";
+import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
+import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.js";
+import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";

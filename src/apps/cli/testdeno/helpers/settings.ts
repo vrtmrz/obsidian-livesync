@@ -15,8 +15,8 @@ export async function initSettingsFile(settingsFile: string): Promise<void> {
  */
 export async function generateSetupUriFromSettings(settingsFile: string, setupPassphrase: string): Promise<string> {
     const script = [
-        "import { fs } from '@vrtmrz/livesync-commonlib/node';",
-        "import { encodeSettingsToSetupURI } from '@vrtmrz/livesync-commonlib/compat/API/processSetting';",
+        "import { fs } from '@vrtmrz/livesync-commonlib/node.js';",
+        "import { encodeSettingsToSetupURI } from '@vrtmrz/livesync-commonlib/compat/API/processSetting.js';",
         "(async () => {",
         "  const settingsPath = process.env.SETTINGS_FILE;",
         "  const passphrase = process.env.SETUP_PASSPHRASE;",

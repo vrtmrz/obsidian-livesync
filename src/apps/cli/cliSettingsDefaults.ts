@@ -1,5 +1,5 @@
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings.js";
 
 export function createDefaultCliSettings(): ObsidianLiveSyncSettings {
     return {

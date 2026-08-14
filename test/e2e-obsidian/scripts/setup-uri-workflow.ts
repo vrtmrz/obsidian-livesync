@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { Locator, Page } from "playwright";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {

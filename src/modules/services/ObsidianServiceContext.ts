@@ -1,6 +1,6 @@
 import type ObsidianLiveSyncPlugin from "@/main.js";
 import type { App, Plugin } from "@/deps.js";
-import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import { eventHub } from "@/common/events.js";
 import { translateLiveSyncMessage } from "@/common/translation.js";
 import type { ObsidianNoticeGroups } from "./ObsidianNoticeGroups.js";

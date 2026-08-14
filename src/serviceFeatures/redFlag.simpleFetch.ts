@@ -1,7 +1,7 @@
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
+import { type LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils.js";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager.js";
 import {
     ExtraOnLocal,
     ExtraOnRemote,
@@ -9,7 +9,7 @@ import {
     normaliseFullScanOptions,
     synchroniseAllFilesBetweenDBandStorage,
     type FullScanOptions,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 import { adjustSettingToRemoteIfNeeded, cancelScheduledInitialisation, processVaultInitialisation } from "./redFlag.js";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";

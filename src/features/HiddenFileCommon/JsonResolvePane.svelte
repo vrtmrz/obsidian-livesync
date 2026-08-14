@@ -1,8 +1,8 @@
 <script lang="ts">
     import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "@/deps.ts";
-    import type { FilePath, LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { decodeBinary, readString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
-    import { getDocData, isObjectDifferent, mergeObject } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import type { FilePath, LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+    import { decodeBinary, readString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert.js";
+    import { getDocData, isObjectDifferent, mergeObject } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {

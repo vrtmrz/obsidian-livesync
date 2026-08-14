@@ -4,16 +4,16 @@ import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/log
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import type { TFile } from "@/deps.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { reactive, reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import {
     collectingChunks,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
-} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores.js";
 import type { LiveSyncCore } from "@/main.ts";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 
 type MutableCommandDefinition = {
     callback?: () => void;

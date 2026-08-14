@@ -1,7 +1,7 @@
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type { NodeServiceContext } from "@/apps/cli/services/NodeServiceContext.js";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
 
 export type CLICommand =
     | "daemon"

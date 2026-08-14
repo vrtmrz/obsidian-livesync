@@ -5,9 +5,9 @@
         type IPluginDataExDisplay,
         type PluginDataExFile,
     } from "./CmdConfigSync.ts";
-    import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { getDocData, timeDeltaToHumanReadable, unique } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
+    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+    import { getDocData, timeDeltaToHumanReadable, unique } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import type ObsidianLiveSyncPlugin from "@/main";
     // import { askString } from "../../common/utils";
     import { Menu } from "@/deps.ts";

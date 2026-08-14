@@ -1,8 +1,8 @@
-import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
-import type { Rebuilder } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseRebuilder";
-import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
-import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
-import type { IServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess.js";
+import type { Rebuilder } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseRebuilder.js";
+import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler.js";
+import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess.js";
+import type { IServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/base/IService.js";
 
 export interface ServiceModules {
     storageAccess: StorageAccess;

@@ -6,9 +6,9 @@ import {
     LOG_LEVEL_VERBOSE,
     type LOG_LEVEL,
     type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
-import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub.js";
+import type { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService.js";
 import {
     LOG_LEVEL_DEBUG,
     setGlobalLogFunction,
@@ -20,13 +20,13 @@ import {
 import { runCommand } from "./commands/runCommand.js";
 import { isCLICommand } from "./commands/types.js";
 import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types.js";
-import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
-import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils.js";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 import { IgnoreRules } from "./serviceModules/IgnoreRules.js";
-import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
-import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
-import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
+import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature.js";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult.js";
+import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node.js";
+import type { StandardIo } from "@vrtmrz/livesync-commonlib/context.js";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput.js";
 import { createDefaultCliSettings } from "./cliSettingsDefaults.js";
 import {

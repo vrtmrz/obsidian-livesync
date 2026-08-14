@@ -1,6 +1,6 @@
-import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters.js";
 import type {
     IStorageEventTypeGuardAdapter,
     IStorageEventPersistenceAdapter,
@@ -8,12 +8,12 @@ import type {
     IStorageEventStatusAdapter,
     IStorageEventConverterAdapter,
     IStorageEventWatchHandlers,
-} from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
-import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
+} from "@vrtmrz/livesync-commonlib/compat/managers/adapters.js";
+import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager.js";
 import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes.js";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules.js";
-import { fsPromises as fs, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
+import { fsPromises as fs, path, type Stats } from "@vrtmrz/livesync-commonlib/node.js";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput.js";
 
 /**

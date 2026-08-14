@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import type { FileReflectionProvenanceRecord } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileReflectionProvenance";
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import type { FileReflectionProvenanceRecord } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileReflectionProvenance.js";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     createFileReflectionProvenance,
     FILE_REFLECTION_PROVENANCE_STORE,

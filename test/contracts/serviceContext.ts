@@ -1,5 +1,5 @@
-import type { CommonlibMessageKey, ServiceContextContract } from "@vrtmrz/livesync-commonlib/context";
-import type { ServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
+import type { CommonlibMessageKey, ServiceContextContract } from "@vrtmrz/livesync-commonlib/context.js";
+import type { ServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub.js";
 
 export const SERVICE_CONTEXT_MEMBERS = [
     "API",

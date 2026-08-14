@@ -1,5 +1,5 @@
-import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
+import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting.js";
+import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const.js";
 import {
     DEFAULT_SETTINGS,
     MILESTONE_DOCID,
@@ -9,22 +9,22 @@ import {
     REMOTE_MINIO,
     type EntryMilestoneInfo,
     type EntryDoc,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
 import {
     activateRemoteConfiguration,
     createRemoteConfigurationId,
-} from "@vrtmrz/livesync-commonlib/remote-configurations";
-import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+} from "@vrtmrz/livesync-commonlib/remote-configurations.js";
+import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 import type { CLICommandContext, CLIOptions } from "./types.js";
 import { toArrayBuffer, toDatabaseRelativePath } from "./utils.js";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p.js";
-import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
-import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
+import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node.js";
+import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator.js";
+import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator.js";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput.js";
 
 function redactConnectionString(uri: string): string {

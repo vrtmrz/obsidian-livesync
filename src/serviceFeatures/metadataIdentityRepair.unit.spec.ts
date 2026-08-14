@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { DocumentID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { DocumentID } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import type {
     MetadataDocumentRepairRequest,
     MetadataDocumentRepairResult,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 import { executeMetadataIdentityRepair } from "./metadataIdentityRepair";
 
 const request: MetadataDocumentRepairRequest = {

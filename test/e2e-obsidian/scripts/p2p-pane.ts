@@ -16,8 +16,8 @@
  * wrong area, or one which is visible only because another session restored it.
  */
 import { assertLocatorWithinViewport, assertNoHorizontalOverflow } from "@vrtmrz/obsidian-test-session";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
-import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type.js";
+import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations.js";
 import type { ConsoleMessage, Page } from "playwright";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {

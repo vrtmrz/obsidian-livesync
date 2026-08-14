@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { normaliseObsidianSettingsData } from "./ObsidianSettingService.ts";
 
 describe("normaliseObsidianSettingsData", () => {

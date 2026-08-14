@@ -1,7 +1,7 @@
 import type {
     SettingsMigrationReviewReason,
     SettingsMigrationState,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 export const DATABASE_COMPATIBILITY_VERSION_KEY = "database-compatibility-version";
 export const DATABASE_COMPATIBILITY_LEGACY_VERSION_KEY_PREFIX = "obsidian-live-sync-ver";

@@ -1,15 +1,15 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
 
 // Mock performFullScan so daemon tests don't require a real CouchDB connection.
-vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js", () => ({
     performFullScan: vi.fn(async () => true),
 }));
 
 // Mock UnresolvedErrorManager to avoid event-hub side effects.
-vi.mock("@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager", () => ({
+vi.mock("@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager.js", () => ({
     UnresolvedErrorManager: class UnresolvedErrorManager {
         showError() {}
         clearError() {}
@@ -17,7 +17,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager"
     },
 }));
 
-import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 
 function createCoreMock() {
     const standardIo = {

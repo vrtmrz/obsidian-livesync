@@ -1,8 +1,8 @@
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     EVENT_SERVER_STATUS,
     type P2PServerInfo,
-} from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
+} from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer.js";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 
 import { WEBPEER_SETTINGS_KEY } from "./WebPeerPersistence.js";

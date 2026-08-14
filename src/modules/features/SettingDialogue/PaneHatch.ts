@@ -6,10 +6,10 @@ import {
     type FilePath,
     type EntryDoc,
     type diff_result,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createBlob, escapeMarkdownValue, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { shouldBeIgnored } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { createBlob, escapeMarkdownValue, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
+import { shouldBeIgnored } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
 import { Menu, diff_match_patch, setIcon } from "@/deps.ts";
 import { $msg } from "@/common/translation.js";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
@@ -25,7 +25,7 @@ import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc.js";
 import {
     chooseAndCopyFileDatabaseInfo,
     collectFileDatabaseInfoPaths,
@@ -50,7 +50,7 @@ import {
     OfflineScanUnresolvedReasons,
     repairMetadataDocumentIdentity,
     type MetadataDocumentIdentityIssue,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner.js";
 import {
     metadataIdentityPathKey,
     selectUnresolvedMetadataIdentityEntries,

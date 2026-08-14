@@ -1,14 +1,14 @@
 import { escapeStringToHTML } from "octagonal-wheels/string";
-import { E2EEAlgorithmNames, MILESTONE_DOCID, NODEINFO_DOCID, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { E2EEAlgorithmNames, MILESTONE_DOCID, NODEINFO_DOCID, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     pickCouchDBSyncSettings,
     pickBucketSyncSettings,
     pickP2PSyncSettings,
     pickEncryptionSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import { getConfig, type AllSettingItemKey } from "./settingConstants.js";
 import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
-import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc.js";
 import type PouchDB from "pouchdb-core";
 import type {} from "pouchdb-replication";
 

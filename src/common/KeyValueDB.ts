@@ -1,5 +1,5 @@
 import { deleteDB, type IDBPDatabase, openDB } from "idb";
-import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
+import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase.js";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "octagonal-wheels/common/logger";
 const databaseCache: { [key: string]: IDBPDatabase<unknown> } = {};

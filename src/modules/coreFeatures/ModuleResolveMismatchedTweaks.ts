@@ -12,13 +12,13 @@ import {
     CompatibleButLossyChanges,
     type RemotePreferredTweakResult,
     RemotePreferredTweakStatuses,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg } from "@/common/translation.js";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub.js";
 import type { LiveSyncCore } from "@/main.ts";
-import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
 
 function valueToString(value: string | number | boolean | object | undefined): string {
     if (typeof value === "boolean") {

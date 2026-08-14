@@ -1,10 +1,10 @@
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import type { AppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
-import type { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService";
-import type { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
-import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
-import type { InjectableAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAPIService";
-import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import type { AppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService.js";
+import type { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService.js";
+import type { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService.js";
+import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService.js";
+import type { InjectableAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAPIService.js";
+import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService.js";
 import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy.svelte";
 import { BrowserSvelteDialogManager } from "./BrowserSvelteDialogManager.js";
 

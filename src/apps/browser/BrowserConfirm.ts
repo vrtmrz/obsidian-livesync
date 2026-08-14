@@ -1,6 +1,6 @@
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
 import { BrowserUiNotifications, createBrowserUi } from "@vrtmrz/browser-ui-kit";
 
 import { createNativeElement } from "@/apps/browserDom.js";

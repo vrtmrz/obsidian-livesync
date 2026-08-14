@@ -2,7 +2,7 @@
     import { onMount, tick } from "svelte";
     import { translateIfAvailable as translate } from "@/common/translation";
     import { getDialogContext } from "@/modules/services/LiveSyncUI/svelteDialog";
-    import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+    import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 
     type Props = {
         title: string;

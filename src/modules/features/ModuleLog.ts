@@ -6,9 +6,9 @@ import {
     PREFIXMD_LOGFILE,
     type DatabaseConnectingStatus,
     type LOG_LEVEL,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
-import { fireAndForget, isDirty, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { fireAndForget, isDirty, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 import {
     collectingChunks,
     pluginScanningCount,
@@ -16,7 +16,7 @@ import {
     hiddenFilesProcessingCount,
     type LogEntry,
     logMessages,
-} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
+} from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores.js";
 import {
     EVENT_FILE_RENAMED,
     EVENT_LAYOUT_READY,
@@ -30,7 +30,7 @@ import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@/common/translation.js";
-import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
+import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector.js";
 import {
     REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS,
     formatRemoteActivityStatusLabel,
@@ -38,16 +38,16 @@ import {
 } from "./RemoteActivityStatus.ts";
 import { createMinimumVisibleActivityCount, createPaddedCounterLabel } from "./StatusBarDisplay.ts";
 import type { LiveSyncCore } from "@/main.ts";
-import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
+import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError.js";
 import { isValidPath } from "@/common/utils.ts";
 import {
     isValidFilenameInAndroid,
     isValidFilenameInDarwin,
     isValidFilenameInWidows,
-} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path.js";
+import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils.js";
+import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
 import { generateReport } from "@/common/reportTool.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.

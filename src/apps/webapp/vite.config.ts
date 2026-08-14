@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node";
+import { fileURLToPath, fs, path } from "@vrtmrz/livesync-commonlib/node.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
 

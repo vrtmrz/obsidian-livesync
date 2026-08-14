@@ -9,8 +9,8 @@ vi.mock("octagonal-wheels/concurrency/lock_v2", () => ({
 vi.mock("octagonal-wheels/collection", () => ({
     arrayToChunkedArray: vi.fn((values: unknown[]) => [values]),
 }));
-vi.mock("@vrtmrz/livesync-commonlib/compat/common/utils", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/compat/common/utils")>();
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/utils.js", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/compat/common/utils.js")>();
     return {
         ...actual,
         delay: vi.fn(async () => undefined),
@@ -36,7 +36,7 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     REMOTE_P2P,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { LocalDatabaseMaintenance } from "./CmdLocalDatabaseMainte";
 import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
 

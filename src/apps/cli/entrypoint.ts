@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { RTCPeerConnection } from "werift";
 import { main } from "./main.js";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node.js";
 import { writeStderrLine } from "./cliOutput.js";
 
 if (

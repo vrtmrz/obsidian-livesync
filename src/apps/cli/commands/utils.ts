@@ -1,4 +1,4 @@
-import { path } from "@vrtmrz/livesync-commonlib/node";
+import { path } from "@vrtmrz/livesync-commonlib/node.js";
 
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;

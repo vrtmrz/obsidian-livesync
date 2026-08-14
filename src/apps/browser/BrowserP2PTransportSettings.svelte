@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
     import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost";
 

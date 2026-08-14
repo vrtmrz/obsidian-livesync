@@ -1,5 +1,5 @@
 import { Minimatch } from "minimatch";
-import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node.js";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput.js";
 
 /**

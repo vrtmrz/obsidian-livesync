@@ -7,7 +7,7 @@ import {
     LOG_LEVEL_NOTICE,
     type FilePathWithPrefix,
     type diff_result,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 const modalState = vi.hoisted(() => ({
     constructed: 0,

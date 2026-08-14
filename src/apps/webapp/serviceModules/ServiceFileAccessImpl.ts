@@ -1,4 +1,4 @@
-import { ServiceFileAccessBase, type StorageAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileAccessBase";
+import { ServiceFileAccessBase, type StorageAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileAccessBase.js";
 import { FSAPIFileSystemAdapter } from "@/apps/webapp/adapters/FSAPIFileSystemAdapter.js";
 
 /**

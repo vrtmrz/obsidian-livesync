@@ -1,4 +1,4 @@
-import { ServiceFileAccessBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileAccessBase";
+import { ServiceFileAccessBase } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileAccessBase.js";
 import type { ObsidianFileSystemAdapter } from "./FileSystemAdapters/ObsidianFileSystemAdapter.js";
 
 // For now, this is just a re-export of ServiceFileAccess with the Obsidian-specific adapter type.

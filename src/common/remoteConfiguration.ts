@@ -1,8 +1,8 @@
-import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
+import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString.js";
 import {
     REMOTE_P2P,
     type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+} from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 /** Returns whether the selected main remote represents the P2P-only setup. */
 export function isP2PMainRemote(settings: ObsidianLiveSyncSettings): boolean {

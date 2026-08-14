@@ -1,7 +1,7 @@
-import type { LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createBlob, isDocContentSame, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
-import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
+import type { LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { createBlob, isDocContentSame, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess.js";
+import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler.js";
 import {
     inspectFileDatabaseInfo,
     readFileDatabaseRevisionLocally,

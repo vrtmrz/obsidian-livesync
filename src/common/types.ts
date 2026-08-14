@@ -1,6 +1,6 @@
 import type { PluginManifest, TFile } from "@/deps.ts";
-import { type DatabaseEntry, type EntryBody, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
-export type { CacheData, FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { type DatabaseEntry, type EntryBody, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+export type { CacheData, FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 export interface PluginDataEntry extends DatabaseEntry {
     deviceVaultName: string;
@@ -51,7 +51,7 @@ export type queueItem = {
 
 export const FileWatchEventQueueMax = 10;
 
-export { configURIBase, configURIBaseQR } from "@vrtmrz/livesync-commonlib/compat/common/types";
+export { configURIBase, configURIBaseQR } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 export {
     CHeader,
@@ -61,4 +61,4 @@ export {
     ICHeaderEnd,
     ICHeaderLength,
     ICXHeader,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/fileaccess.const";
+} from "@vrtmrz/livesync-commonlib/compat/common/models/fileaccess.const.js";

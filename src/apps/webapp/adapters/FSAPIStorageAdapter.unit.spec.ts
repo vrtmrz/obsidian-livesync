@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { storageAdapterContractCases } from "@/apps/_test/storageAdapterContract";
 import { FSAPIFileSystemAdapter } from "./FSAPIFileSystemAdapter";
-import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/browser";
+import { FileSystemAccessStorageAdapter } from "@vrtmrz/livesync-commonlib/browser.js";
 import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
-import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 
 class MemoryFileHandle {
     readonly kind = "file";

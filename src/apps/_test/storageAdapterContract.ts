@@ -1,4 +1,4 @@
-import type { IStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import type { IStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters.js";
 
 /** One platform-neutral storage adapter contract case. */
 export interface StorageAdapterContractCase {

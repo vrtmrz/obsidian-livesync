@@ -1,4 +1,4 @@
-import { ChunkAlgorithmNames } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ChunkAlgorithmNames } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";

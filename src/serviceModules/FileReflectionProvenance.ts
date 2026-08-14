@@ -1,8 +1,8 @@
 import {
     StoredFileReflectionProvenance,
     type FileReflectionProvenanceRecord,
-} from "@vrtmrz/livesync-commonlib/compat/interfaces/FileReflectionProvenance";
-import type { SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+} from "@vrtmrz/livesync-commonlib/compat/interfaces/FileReflectionProvenance.js";
+import type { SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
 
 export const FILE_REFLECTION_PROVENANCE_STORE = "file-reflection-provenance-v1";
 

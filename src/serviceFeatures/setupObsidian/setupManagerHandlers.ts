@@ -3,9 +3,9 @@ import type { SetupFeatureHost } from "@/serviceFeatures/setupObsidian/types.js"
 import {
     EVENT_REQUEST_OPEN_P2P_SETTINGS,
     EVENT_REQUEST_OPEN_SETUP_URI,
-} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
+import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
 import { $msg } from "@/common/translation.js";
 
 const ONBOARDING_NOTICE_DURATION_MS = 60_000;

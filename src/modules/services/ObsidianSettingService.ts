@@ -1,13 +1,13 @@
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
 import {
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_SETTING_SAVED,
-} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+} from "@vrtmrz/livesync-commonlib/compat/events/coreEvents.js";
 import {
     SettingService,
     type SettingServiceDependencies,
-} from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
+} from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService.js";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
 
 export function normaliseObsidianSettingsData(data: unknown): ObsidianLiveSyncSettings | undefined {

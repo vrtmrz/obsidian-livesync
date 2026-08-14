@@ -14,12 +14,12 @@
         RemoteTypes,
         type CouchDBConnection,
         type ObsidianLiveSyncSettings,
-    } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
+    } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+    import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb.js";
 
     import { onMount } from "svelte";
     import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
-    import { copyTo, pickCouchDBSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+    import { copyTo, pickCouchDBSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
     import PanelCouchDBCheck from "./PanelCouchDBCheck.svelte";
     import {
         TYPE_CANCELLED,

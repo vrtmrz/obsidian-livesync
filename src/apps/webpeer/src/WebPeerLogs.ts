@@ -1,5 +1,5 @@
-import { LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { defaultLoggerEnv, setGlobalLogFunction } from "@vrtmrz/livesync-commonlib/compat/common/logger";
+import { LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { defaultLoggerEnv, setGlobalLogFunction } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
 import { writable } from "svelte/store";
 
 export const logs = writable<string[]>([]);

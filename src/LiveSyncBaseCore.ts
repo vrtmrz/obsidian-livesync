@@ -1,22 +1,22 @@
 import { LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import type PouchDB from "pouchdb-core";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks";
-import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
-import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
-import type { Rebuilder } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseRebuilder";
-import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
-import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
-import type { LiveSyncLocalDBEnv } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
-import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
-import type { LiveSyncReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
-import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
-import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks.js";
+import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm.js";
+import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess.js";
+import type { Rebuilder } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseRebuilder.js";
+import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler.js";
+import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess.js";
+import type { LiveSyncLocalDBEnv } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB.js";
+import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator.js";
+import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes.js";
+import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv.js";
+import type { LiveSyncReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator.js";
+import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter.js";
+import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig.js";
+import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context.js";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub.js";
 import { AbstractModule } from "./modules/AbstractModule.js";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess.js";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator.js";
@@ -26,10 +26,10 @@ import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChec
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.js";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.js";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.js";
-import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule.js";
 import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu.js";
-import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
-import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
+import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse.js";
+import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type.js";
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,

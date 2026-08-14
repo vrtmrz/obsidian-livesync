@@ -1,12 +1,12 @@
 import { requestToCouchDBWithCredentials } from "@/common/utils.js";
 import { $msg } from "@/common/translation.js";
-import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
-import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger.js";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types.js";
+import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils.js";
+import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb.js";
+import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib.js";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions.js";
+import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc.js";
 import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration.js";
 
 export type ResultMessage = { message: string; classes: string[] };

@@ -1,4 +1,4 @@
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type.js";
 
 export type PersistedP2PPeerSetting =
     | "P2P_AutoSyncPeers"
