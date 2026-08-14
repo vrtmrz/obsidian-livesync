@@ -19,7 +19,12 @@
         "strictBindCallApply": true,
         "strictFunctionTypes": true,
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["./src/*"],
+            "@vrtmrz/livesync-commonlib/compat/*": ["./node_modules/@vrtmrz/livesync-commonlib/dist/*"],
+            "octagonal-wheels/*": ["./node_modules/octagonal-wheels/dist/*"],
+            "idb": ["./node_modules/idb/build/index"],
+            "obsidian": ["./node_modules/obsidian/obsidian"],
+            "chokidar": ["./node_modules/chokidar/index"]
         }
     },
     "include": ["**/*.ts", "test/**/*.test.ts", "**/*.unit.spec.ts", "**/*.svelte"],
