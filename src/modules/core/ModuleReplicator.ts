@@ -187,27 +187,31 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                             return false;
                         }
 
-                        await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                        this.localDatabase.clearCaches();
-                        // Perform the synchronisation once.
-                        const replicated = await this.services.replicator.runFiniteReplicationActivity(
-                            () => this.core.replicator.openReplication(this.settings, false, showMessage, true),
-                            { label: "replication" }
-                        );
-                        if (replicated) {
-                            await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                        try {
                             await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                             this.localDatabase.clearCaches();
-                            await this.services.replicator.getActiveReplicator()?.markRemoteResolved(this.settings);
-                            Logger(
-                                "The local database has been cleaned up.",
-                                showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                            // Perform the synchronisation once.
+                            const replicated = await this.services.replicator.runFiniteReplicationActivity(
+                                () => this.core.replicator.openReplication(this.settings, false, showMessage, true),
+                                { label: "replication" }
                             );
-                        } else {
-                            Logger(
-                                "Replication has been cancelled. Please try it again.",
-                                showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
-                            );
+                            if (replicated) {
+                                await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                                await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                                this.localDatabase.clearCaches();
+                                await this.services.replicator.getActiveReplicator()?.markRemoteResolved(this.settings);
+                                Logger(
+                                    "The local database has been cleaned up.",
+                                    showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                );
+                            } else {
+                                Logger(
+                                    "Replication has been cancelled. Please try it again.",
+                                    showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                );
+                            }
+                        } finally {
+                            await remoteDB.db.close();
                         }
                     },
                     { label: "database-cleanup" }

@@ -708,6 +708,18 @@ describe("runCommand abnormal cases", () => {
     describe("mark-resolved and unlock-remote commands", () => {
         it("mark-resolved without args runs on active database", async () => {
             const core = createCoreMock();
+            const remoteDatabase = {
+                close: vi.fn(async () => undefined),
+                get: vi.fn(async () => ({
+                    locked: false,
+                    accepted_nodes: ["test-node-id"],
+                })),
+            };
+            core.services.replicator.getActiveReplicator.mockReturnValueOnce({
+                nodeid: "test-node-id",
+                initializeDatabaseForReplication: vi.fn(async () => undefined),
+                connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase })),
+            });
             const result = await runCommand(makeOptions("mark-resolved", []), {
                 ...context,
                 core,
@@ -715,6 +727,7 @@ describe("runCommand abnormal cases", () => {
             expect(result).toBe(true);
             expect(core.services.replication.markResolved).toHaveBeenCalledTimes(1);
             expect(core.services.control.applySettings).not.toHaveBeenCalled();
+            expect(remoteDatabase.close).toHaveBeenCalledOnce();
         });
 
         it("mark-resolved with remote-id temporarily activates it and runs markResolved", async () => {

@@ -58,7 +58,11 @@ async function verifyRemoteState(
                 standardIo.writeStderr(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
                 return false;
             }
-            milestone = await dbRet.db.get(MILESTONE_DOCID);
+            try {
+                milestone = await dbRet.db.get(MILESTONE_DOCID);
+            } finally {
+                await dbRet.db.close();
+            }
         } else if (settings.remoteType === REMOTE_MINIO) {
             milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
         }

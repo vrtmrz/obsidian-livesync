@@ -8,7 +8,7 @@ export type CouchDBConnectionProbeResult = { ok: true } | { ok: false; reason: s
 type CouchDBConnectionResult =
     | string
     | {
-          db: unknown;
+          db: { close(): Promise<void> };
           info: unknown;
       };
 
@@ -50,7 +50,11 @@ export async function probeCouchDBConnection(
     if (typeof result === "string") {
         return { ok: false, reason: result };
     }
-    return { ok: true };
+    try {
+        return { ok: true };
+    } finally {
+        await result.db.close();
+    }
 }
 
 export function isValidCouchDBServerURL(value: string): boolean {

@@ -128,8 +128,11 @@ describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", (
         });
         const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const openReplication = vi.fn(async () => true);
+        const remoteDatabase = {
+            close: vi.fn(async () => undefined),
+        };
         const activeReplicator = Object.assign(new LiveSyncCouchDBReplicator({} as any), {
-            connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: {} })),
+            connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase })),
             markRemoteResolved: vi.fn(async () => undefined),
         });
         const services = {
@@ -177,5 +180,9 @@ describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", (
         expect(openReplication).toHaveBeenCalledOnce();
         expect(openReplication.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);
         expect(chunkMocks.balanceChunkPurgedDBs).toHaveBeenCalledOnce();
+        expect(remoteDatabase.close).toHaveBeenCalledOnce();
+        expect(remoteDatabase.close.mock.invocationCallOrder[0]).toBeLessThan(
+            activityFinished.mock.invocationCallOrder[0]
+        );
     });
 });

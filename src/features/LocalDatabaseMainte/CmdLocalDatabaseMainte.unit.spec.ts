@@ -222,6 +222,7 @@ describe("LocalDatabaseMaintenance Garbage Collection V3", () => {
         const remoteDatabase = {
             compact: vi.fn(async () => ({ ok: true })),
             info: vi.fn(async () => ({ compact_running: true })),
+            close: vi.fn(async () => undefined),
         };
         Object.assign(maintenance, {
             core: {
@@ -243,6 +244,7 @@ describe("LocalDatabaseMaintenance Garbage Collection V3", () => {
             "Compaction on remote database completed successfully.",
             "gc-compact"
         );
+        expect(remoteDatabase.close).toHaveBeenCalledOnce();
     });
 
     it.each([
