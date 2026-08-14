@@ -1,6 +1,6 @@
 # Legacy release history
 
-This history covers releases before 0.25. Later releases are recorded in the [0.25 history](0.25.md) and the [current release history](../../updates.md).
+This history covers releases before 0.25. Later releases are recorded in the [0.25 history](0.25.md), the [earlier 1.0 history](1.0.md), and the [current release history](../../updates.md).
 
 ## 0.24
 
