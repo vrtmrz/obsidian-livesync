@@ -1,5 +1,5 @@
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import {
     EVENT_REQUEST_RELOAD_SETTING_TAB,
     EVENT_SETTING_SAVED,

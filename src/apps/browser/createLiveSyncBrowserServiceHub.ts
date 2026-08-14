@@ -1,4 +1,4 @@
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import type { KeyValueDatabaseFactory } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService";
