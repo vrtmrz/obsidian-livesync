@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.14
+
+14th August, 2026
+
 Thank you for your patience. At last, it looks as though we can clear some of the Community Review warnings.
 
 ### Synchronisation and storage
