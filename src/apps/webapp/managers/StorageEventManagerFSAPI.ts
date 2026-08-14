@@ -1,6 +1,6 @@
 import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
-import { FSAPIStorageEventManagerAdapter } from "./FSAPIStorageEventManagerAdapter";
-import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { FSAPIStorageEventManagerAdapter } from "./FSAPIStorageEventManagerAdapter.js";
+import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 
 export class StorageEventManagerFSAPI extends StorageEventManagerBase<FSAPIStorageEventManagerAdapter> {

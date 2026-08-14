@@ -12,14 +12,14 @@ import {
     type MetaEntry,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getNoFromRev } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
-import { LiveSyncCommands } from "@/features/LiveSyncCommands";
+import { LiveSyncCommands } from "@/features/LiveSyncCommands.js";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
-import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
+import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.js";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
-import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
+import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites.js";
 // import { _requestToCouchDB } from "@/common/utils";
 const DB_KEY_SEQ = "gc-seq";
 const DB_KEY_CHUNK_SET = "chunk-set";

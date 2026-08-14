@@ -1,10 +1,10 @@
-import { createNativeElement } from "@/apps/browserDom";
+import { createNativeElement } from "@/apps/browserDom.js";
 import { compatGlobal, _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { mount } from "svelte";
 
-import { WebAppRuntime, type WebAppRuntimeStatusKind } from "./WebAppRuntime";
+import { WebAppRuntime, type WebAppRuntimeStatusKind } from "./WebAppRuntime.js";
 import WebAppP2P from "./WebAppP2P.svelte";
-import { VaultHistoryStore, type VaultHistoryItem } from "./vaultSelector";
+import { VaultHistoryStore, type VaultHistoryItem } from "./vaultSelector.js";
 
 const historyStore = new VaultHistoryStore();
 let runtime: WebAppRuntime | null = null;

@@ -1,5 +1,5 @@
-import type { LiveSyncCore } from "@/main";
-import type ObsidianLiveSyncPlugin from "@/main";
+import type { LiveSyncCore } from "@/main.js";
+import type ObsidianLiveSyncPlugin from "@/main.js";
 import { AbstractModule } from "./AbstractModule.ts";
 
 export abstract class AbstractObsidianModule extends AbstractModule {

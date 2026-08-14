@@ -1,6 +1,6 @@
-import { getPathFromTFile, isValidPath } from "@/common/utils";
+import { getPathFromTFile, isValidPath } from "@/common/utils.js";
 import { InjectableVaultService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableVaultService";
-import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
 import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 declare module "obsidian" {

@@ -1,7 +1,7 @@
 import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
-import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
 import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
-import type ObsidianLiveSyncPlugin from "@/main";
+import type ObsidianLiveSyncPlugin from "@/main.js";
 import {
     ObsidianConflictService,
     ObsidianFileProcessingService,
@@ -14,19 +14,19 @@ import {
     ObsidianConfigService,
     ObsidianKeyValueDBService,
     ObsidianControlService,
-} from "./ObsidianServices";
-import { ObsidianSettingService } from "./ObsidianSettingService";
-import { ObsidianDatabaseService } from "./ObsidianDatabaseService";
-import { ObsidianAPIService } from "./ObsidianAPIService";
-import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService";
-import { ObsidianPathService } from "./ObsidianPathService";
-import { ObsidianVaultService } from "./ObsidianVaultService";
-import { ObsidianUIService } from "./ObsidianUIService";
+} from "./ObsidianServices.js";
+import { ObsidianSettingService } from "./ObsidianSettingService.js";
+import { ObsidianDatabaseService } from "./ObsidianDatabaseService.js";
+import { ObsidianAPIService } from "./ObsidianAPIService.js";
+import { ObsidianAppLifecycleService } from "./ObsidianAppLifecycleService.js";
+import { ObsidianPathService } from "./ObsidianPathService.js";
+import { ObsidianVaultService } from "./ObsidianVaultService.js";
+import { ObsidianUIService } from "./ObsidianUIService.js";
 import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
-import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
-import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups";
-import { setLang } from "@/common/translation";
+import { OpenKeyValueDatabase } from "@/common/KeyValueDB.js";
+import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups.js";
+import { setLang } from "@/common/translation.js";
 
 // InjectableServiceHub
 

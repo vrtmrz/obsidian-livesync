@@ -2,8 +2,8 @@ import type { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/b
 import type { AppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
 import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
-import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
-import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian";
+import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
+import { ObsidianSvelteDialogManager } from "./SvelteDialogObsidian.js";
 import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy.svelte";
 import type { IAPIService, IControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = ObsidianServiceContext> = {

@@ -8,11 +8,11 @@ import type {
     IVaultAdapter,
 } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { TAbstractFile, TFile, TFolder, Stat, App } from "obsidian";
-import { ObsidianConversionAdapter } from "./ObsidianConversionAdapter";
-import { ObsidianPathAdapter } from "./ObsidianPathAdapter";
-import { ObsidianStorageAdapter } from "./ObsidianStorageAdapter";
-import { ObsidianTypeGuardAdapter } from "./ObsidianTypeGuardAdapter";
-import { ObsidianVaultAdapter } from "./ObsidianVaultAdapter";
+import { ObsidianConversionAdapter } from "./ObsidianConversionAdapter.js";
+import { ObsidianPathAdapter } from "./ObsidianPathAdapter.js";
+import { ObsidianStorageAdapter } from "./ObsidianStorageAdapter.js";
+import { ObsidianTypeGuardAdapter } from "./ObsidianTypeGuardAdapter.js";
+import { ObsidianVaultAdapter } from "./ObsidianVaultAdapter.js";
 
 declare module "obsidian" {
     interface Vault {

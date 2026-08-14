@@ -6,7 +6,7 @@ import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/servic
 import type { InjectableAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAPIService";
 import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
 import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy.svelte";
-import { BrowserSvelteDialogManager } from "./BrowserSvelteDialogManager";
+import { BrowserSvelteDialogManager } from "./BrowserSvelteDialogManager.js";
 
 export interface LiveSyncBrowserUIServiceDependencies<T extends ServiceContext> {
     API: InjectableAPIService<T>;

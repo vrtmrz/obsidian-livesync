@@ -1,13 +1,13 @@
-import { Modal } from "@/deps";
+import { Modal } from "@/deps.js";
 
 import {
     SvelteDialogManagerBase,
     type ComponentHasResult,
     type SvelteDialogManagerDependencies,
 } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/SvelteDialog";
-import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
 import DialogHost from "@/modules/services/LiveSyncUI/DialogHost.svelte";
-import { SvelteDialogSession } from "@/modules/services/SvelteDialogSession";
+import { SvelteDialogSession } from "@/modules/services/SvelteDialogSession.js";
 
 export class SvelteDialogObsidian<T, U, C extends ObsidianServiceContext = ObsidianServiceContext> extends Modal {
     private readonly session: SvelteDialogSession<T, U, C>;

@@ -8,7 +8,7 @@ import {
     type FileDatabaseInfo,
     type FileDatabaseInfoCore,
     type RevisionDatabaseInfo,
-} from "./fileDatabaseInfo";
+} from "./fileDatabaseInfo.js";
 
 export type FileRepairCore = FileDatabaseInfoCore & {
     fileHandler: Pick<IFileHandler, "deleteRevisionFromDB">;

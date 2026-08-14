@@ -1,5 +1,5 @@
 import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB } from "@/common/events";
+import { EVENT_REQUEST_RELOAD_SETTING_TAB } from "@/common/events.js";
 import { handlers } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
@@ -9,7 +9,7 @@ import {
     deleteNodeLocalStorageItem,
     getNodeLocalStorageItem,
     setNodeLocalStorageItem,
-} from "./NodeLocalStorage";
+} from "./NodeLocalStorage.js";
 
 export class NodeSettingService<T extends ServiceContext> extends SettingService<T> {
     constructor(context: T, dependencies: SettingServiceDependencies, storagePath: string) {

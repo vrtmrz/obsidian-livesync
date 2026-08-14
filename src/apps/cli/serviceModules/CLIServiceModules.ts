@@ -1,16 +1,16 @@
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
-import { ServiceFileHandler } from "@/serviceModules/FileHandler";
+import { ServiceFileHandler } from "@/serviceModules/FileHandler.js";
 import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
-import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { FileAccessCLI } from "./FileAccessCLI";
-import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl";
-import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
-import { StorageEventManagerCLI } from "@/apps/cli/managers/StorageEventManagerCLI";
+import { FileAccessCLI } from "./FileAccessCLI.js";
+import { ServiceFileAccessCLI } from "./ServiceFileAccessImpl.js";
+import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess.js";
+import { StorageEventManagerCLI } from "@/apps/cli/managers/StorageEventManagerCLI.js";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import type { IgnoreRules } from "./IgnoreRules";
-import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance";
+import type { IgnoreRules } from "./IgnoreRules.js";
+import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance.js";
 
 /**
  * Initialize service modules for CLI version

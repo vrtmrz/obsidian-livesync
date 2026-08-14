@@ -3,9 +3,9 @@ import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEn
 import { EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { BrowserUiNotifications, createBrowserUi } from "@vrtmrz/browser-ui-kit";
 
-import { createNativeElement } from "@/apps/browserDom";
-import { renderMessageMarkdownInto } from "./ui/renderMessageMarkdown";
-import { UiInteractionsConfirm } from "./UiInteractionsConfirm";
+import { createNativeElement } from "@/apps/browserDom.js";
+import { renderMessageMarkdownInto } from "./ui/renderMessageMarkdown.js";
+import { UiInteractionsConfirm } from "./UiInteractionsConfirm.js";
 
 /**
  * Compatibility facade consumed by Commonlib while browser presentation is

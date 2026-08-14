@@ -1,4 +1,4 @@
-import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
+import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events.js";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
@@ -6,9 +6,9 @@ import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/t
 import {
     P2PServerStatusPaneView,
     VIEW_TYPE_P2P_SERVER_STATUS,
-} from "@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView";
-import type { LiveSyncCore } from "@/main";
-import type { WorkspaceLeaf } from "@/deps";
+} from "@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView.js";
+import type { LiveSyncCore } from "@/main.js";
+import type { WorkspaceLeaf } from "@/deps.js";
 import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";

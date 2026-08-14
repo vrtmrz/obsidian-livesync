@@ -1,5 +1,5 @@
 import { MarkdownRenderer } from "@/deps.ts";
-import { $msg } from "@/common/translation";
+import { $msg } from "@/common/translation.js";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {

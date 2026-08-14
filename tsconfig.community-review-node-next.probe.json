@@ -1,0 +1,15 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext"
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": [
+        "src/**/*.unit.spec.ts",
+        "src/**/*.integration.spec.ts",
+        "src/**/*.integration.test.ts",
+        "src/**/_test/**",
+        "src/apps/cli/testdeno/**"
+    ]
+}

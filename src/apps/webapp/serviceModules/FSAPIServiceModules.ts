@@ -2,15 +2,15 @@ import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/ser
 import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
 
 import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
-import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { FileAccessFSAPI } from "./FileAccessFSAPI";
-import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl";
-import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess";
-import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI";
+import { FileAccessFSAPI } from "./FileAccessFSAPI.js";
+import { ServiceFileAccessFSAPI } from "./ServiceFileAccessImpl.js";
+import { ServiceDatabaseFileAccessFSAPI } from "./DatabaseFileAccess.js";
+import { StorageEventManagerFSAPI } from "@/apps/webapp/managers/StorageEventManagerFSAPI.js";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { ServiceFileHandler } from "@/serviceModules/FileHandler";
-import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance";
+import { ServiceFileHandler } from "@/serviceModules/FileHandler.js";
+import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance.js";
 
 export interface FSAPIServiceModules extends ServiceModules {
     vaultAccess: FileAccessFSAPI;

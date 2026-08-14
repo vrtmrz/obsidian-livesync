@@ -17,12 +17,12 @@ import {
 import type {
     FetchEverythingResult,
     RebuildEverythingResult,
-} from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
-import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
+} from "@/modules/features/SetupWizard/dialogs/setupDialogTypes.js";
+import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch.js";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
-import { isP2PMainRemote } from "@/common/remoteConfiguration";
-import { $msg } from "@/common/translation";
+import { isP2PMainRemote } from "@/common/remoteConfiguration.js";
+import { $msg } from "@/common/translation.js";
 
 /**
  * Flag file handler interface, similar to target filter pattern.

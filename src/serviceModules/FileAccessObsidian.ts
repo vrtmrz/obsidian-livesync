@@ -1,6 +1,6 @@
-import { type App } from "@/deps";
+import { type App } from "@/deps.js";
 import { FileAccessBase, type FileAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
-import { ObsidianFileSystemAdapter } from "./FileSystemAdapters/ObsidianFileSystemAdapter";
+import { ObsidianFileSystemAdapter } from "./FileSystemAdapters/ObsidianFileSystemAdapter.js";
 
 /**
  * Obsidian-specific implementation of FileAccessBase

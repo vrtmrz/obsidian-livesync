@@ -6,7 +6,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import type { SetupFeatureHost } from "./types";
+import type { SetupFeatureHost } from "./types.js";
 
 export async function encodeSetupSettingsAsQR(host: SetupFeatureHost) {
     const settingString = encodeSettingsToQRCodeData(host.services.setting.currentSettings());

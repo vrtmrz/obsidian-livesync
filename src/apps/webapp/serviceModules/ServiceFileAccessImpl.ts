@@ -1,5 +1,5 @@
 import { ServiceFileAccessBase, type StorageAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileAccessBase";
-import { FSAPIFileSystemAdapter } from "@/apps/webapp/adapters/FSAPIFileSystemAdapter";
+import { FSAPIFileSystemAdapter } from "@/apps/webapp/adapters/FSAPIFileSystemAdapter.js";
 
 /**
  * FileSystem API-specific implementation of ServiceFileAccess

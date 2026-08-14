@@ -4,8 +4,8 @@ import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@vrtmrz/livesync-commonl
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import { visibleOnly, type PageFunctions } from "./SettingPane";
+import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.js";
+import { visibleOnly, type PageFunctions } from "./SettingPane.js";
 export function paneMaintenance(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,

@@ -1,6 +1,6 @@
 import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { FSAPIFile } from "./FSAPITypes";
+import type { FSAPIFile } from "./FSAPITypes.js";
 
 /**
  * Path adapter implementation for FileSystem API

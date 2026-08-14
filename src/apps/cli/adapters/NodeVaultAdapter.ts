@@ -1,6 +1,6 @@
 import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { NodeFile, NodeFolder } from "./NodeTypes";
+import type { NodeFile, NodeFolder } from "./NodeTypes.js";
 import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
 
 /**

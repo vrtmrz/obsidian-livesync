@@ -1,5 +1,5 @@
-import { eventHub } from "@/common/events";
-import { translateLiveSyncMessage } from "@/common/translation";
+import { eventHub } from "@/common/events.js";
+import { translateLiveSyncMessage } from "@/common/translation.js";
 import { ServiceContext, type StandardIo } from "@vrtmrz/livesync-commonlib/context";
 
 /** Host capabilities owned by one Self-hosted LiveSync CLI composition. */

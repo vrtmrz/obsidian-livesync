@@ -1,4 +1,4 @@
-import { $msg } from "@/common/translation";
+import { $msg } from "@/common/translation.js";
 import type {
     FilePath,
     FilePathWithPrefix,

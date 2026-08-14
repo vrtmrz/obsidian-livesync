@@ -1,6 +1,6 @@
 import { Minimatch } from "minimatch";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
-import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput.js";
 
 /**
  * Loads and evaluates ignore rules from `.livesync/ignore` inside the vault.

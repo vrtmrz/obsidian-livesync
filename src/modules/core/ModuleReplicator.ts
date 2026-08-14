@@ -1,6 +1,6 @@
 import type PouchDB from "pouchdb-core";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { AbstractModule } from "@/modules/AbstractModule";
+import { AbstractModule } from "@/modules/AbstractModule.js";
 import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
@@ -13,11 +13,11 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
-import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
+import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events.js";
 
-import { $msg } from "@/common/translation";
-import type { LiveSyncCore } from "@/main";
-import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+import { $msg } from "@/common/translation.js";
+import type { LiveSyncCore } from "@/main.js";
+import { ReplicateResultProcessor } from "./ReplicateResultProcessor.js";
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import { clearHandlers } from "@vrtmrz/livesync-commonlib/compat/replication/SyncParamsHandler";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";

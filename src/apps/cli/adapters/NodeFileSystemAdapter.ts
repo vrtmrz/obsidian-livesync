@@ -1,13 +1,13 @@
 import type { FilePath, UXStat } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IFileSystemAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import { NodePathAdapter } from "./NodePathAdapter";
-import { NodeTypeGuardAdapter } from "./NodeTypeGuardAdapter";
-import { NodeConversionAdapter } from "./NodeConversionAdapter";
+import { NodePathAdapter } from "./NodePathAdapter.js";
+import { NodeTypeGuardAdapter } from "./NodeTypeGuardAdapter.js";
+import { NodeConversionAdapter } from "./NodeConversionAdapter.js";
 import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
-import { NodeVaultAdapter } from "./NodeVaultAdapter";
-import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
+import { NodeVaultAdapter } from "./NodeVaultAdapter.js";
+import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes.js";
 import { path } from "@vrtmrz/livesync-commonlib/node";
-import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput.js";
 
 /**
  * Complete file system adapter implementation for Node.js

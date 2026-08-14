@@ -10,10 +10,10 @@ import type {
     IStorageEventWatchHandlers,
 } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
-import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
+import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes.js";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { WebAppLog } from "@/apps/webapp/WebAppLog";
+import type { WebAppLog } from "@/apps/webapp/WebAppLog.js";
 
 type FileSystemObserverRecord = {
     changedHandle?: FileSystemFileHandle | FileSystemDirectoryHandle;

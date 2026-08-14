@@ -1,4 +1,4 @@
-import { type TAbstractFile, normalizePath } from "@/deps";
+import { type TAbstractFile, normalizePath } from "@/deps.js";
 import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 

@@ -1,4 +1,4 @@
-import { TFile, TFolder } from "@/deps";
+import { TFile, TFolder } from "@/deps.js";
 import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
@@ -11,10 +11,10 @@ import type {
     IStorageEventWatchHandlers,
 } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
-import type ObsidianLiveSyncPlugin from "@/main";
-import type { LiveSyncCore } from "@/main";
+import type ObsidianLiveSyncPlugin from "@/main.js";
+import type { LiveSyncCore } from "@/main.js";
 import type { FileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/base/FileProcessingService";
-import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian";
+import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian.js";
 
 /**
  * Obsidian-specific type guard adapter

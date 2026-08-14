@@ -1,6 +1,6 @@
 import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IPathAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { NodeFile } from "./NodeTypes";
+import type { NodeFile } from "./NodeTypes.js";
 import { path } from "@vrtmrz/livesync-commonlib/node";
 
 /**

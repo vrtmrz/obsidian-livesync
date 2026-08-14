@@ -1,4 +1,4 @@
-import { $msg } from "@/common/translation";
+import { $msg } from "@/common/translation.js";
 
 export function getCouchDBServerFixConfirmation(settingKey: string, expectedValue: string) {
     return {

@@ -1,13 +1,13 @@
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
-import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
+import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.js";
 import { fireAndForget } from "octagonal-wheels/promises";
 import {
     DEFAULT_SETTINGS,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { parseYaml, stringifyYaml, type Editor, type MarkdownView } from "@/deps";
+import { parseYaml, stringifyYaml, type Editor, type MarkdownView } from "@/deps.js";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";

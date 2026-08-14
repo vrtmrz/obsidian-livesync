@@ -5,7 +5,7 @@ import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/
 import { EVENT_REQUEST_COPY_SETUP_URI } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import type { SetupFeatureHost } from "./types";
+import type { SetupFeatureHost } from "./types.js";
 
 export async function askEncryptingPassphrase(host: SetupFeatureHost): Promise<string | false> {
     return await host.services.UI.confirm.askString(

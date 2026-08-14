@@ -1,5 +1,5 @@
-import { requestToCouchDBWithCredentials } from "@/common/utils";
-import { $msg } from "@/common/translation";
+import { requestToCouchDBWithCredentials } from "@/common/utils.js";
+import { $msg } from "@/common/translation.js";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -12,7 +12,7 @@ import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_c
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
-import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
+import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration.js";
 
 export const checkConfig = async (
     checkResultDiv: HTMLDivElement | undefined,

@@ -1,6 +1,6 @@
 import type { FilePath, UXFileInfoStub, UXFolderInfo } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IConversionAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
+import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes.js";
 
 /**
  * Conversion adapter implementation for FileSystem API

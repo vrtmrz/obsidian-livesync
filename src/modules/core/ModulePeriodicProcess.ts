@@ -1,6 +1,6 @@
-import { PeriodicProcessor } from "@/common/PeriodicProcessor";
-import type { LiveSyncCore } from "@/main";
-import { AbstractModule } from "@/modules/AbstractModule";
+import { PeriodicProcessor } from "@/common/PeriodicProcessor.js";
+import type { LiveSyncCore } from "@/main.js";
+import { AbstractModule } from "@/modules/AbstractModule.js";
 
 export class ModulePeriodicProcess extends AbstractModule {
     periodicSyncProcessor = new PeriodicProcessor(this.core, async () => await this.services.replication.replicate());

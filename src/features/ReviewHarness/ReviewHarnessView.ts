@@ -1,10 +1,10 @@
-import { ItemView, Notice, Setting, type WorkspaceLeaf } from "@/deps";
+import { ItemView, Notice, Setting, type WorkspaceLeaf } from "@/deps.js";
 import {
     REVIEW_HARNESS_SCENARIOS,
     type ReviewHarnessScenarioId,
     type ReviewHarnessScenarioStatus,
-} from "./reviewHarnessContract";
-import type { ReviewHarnessController } from "./reviewHarnessController";
+} from "./reviewHarnessContract.js";
+import type { ReviewHarnessController } from "./reviewHarnessController.js";
 
 export const VIEW_TYPE_REVIEW_HARNESS = "self-hosted-livesync-review-harness";
 

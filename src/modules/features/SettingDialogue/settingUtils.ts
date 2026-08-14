@@ -6,7 +6,7 @@ import {
     pickP2PSyncSettings,
     pickEncryptionSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { getConfig, type AllSettingItemKey } from "./settingConstants";
+import { getConfig, type AllSettingItemKey } from "./settingConstants.js";
 import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import type PouchDB from "pouchdb-core";

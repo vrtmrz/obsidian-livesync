@@ -6,7 +6,7 @@ import {
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { SimpleStoreIDBv2 } from "octagonal-wheels/databases/SimpleStoreIDBv2";
 
-import type { LiveSyncBrowserSettingsPersistence } from "@/apps/browser/createLiveSyncBrowserServiceHub";
+import type { LiveSyncBrowserSettingsPersistence } from "@/apps/browser/createLiveSyncBrowserServiceHub.js";
 
 export const WEBPEER_STORE_NAME = "p2p-livesync-web-peer";
 export const WEBPEER_SETTINGS_KEY = "settings";

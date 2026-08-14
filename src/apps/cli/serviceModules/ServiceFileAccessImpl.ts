@@ -1,5 +1,5 @@
 import { ServiceFileAccessBase, type StorageAccessBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileAccessBase";
-import { NodeFileSystemAdapter } from "@/apps/cli/adapters/NodeFileSystemAdapter";
+import { NodeFileSystemAdapter } from "@/apps/cli/adapters/NodeFileSystemAdapter.js";
 
 /**
  * CLI-specific implementation of ServiceFileAccess

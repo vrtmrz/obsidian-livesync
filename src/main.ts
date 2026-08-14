@@ -1,4 +1,4 @@
-import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
+import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps.js";
 import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
@@ -24,7 +24,7 @@ import { FileAccessObsidian } from "./serviceModules/FileAccessObsidian.ts";
 import { StorageEventManagerObsidian } from "./managers/StorageEventManagerObsidian.ts";
 import type { ServiceModules } from "./types.ts";
 import { setNoticeClass } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/wrapper";
-import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
 import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
 import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
@@ -36,8 +36,8 @@ import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/servic
 import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize";
 import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
-import { useSetupQRCodeFeature } from "@/serviceFeatures/setupObsidian/qrCode";
-import { useSetupURIFeature } from "@/serviceFeatures/setupObsidian/setupUri";
+import { useSetupQRCodeFeature } from "@/serviceFeatures/setupObsidian/qrCode.js";
+import { useSetupURIFeature } from "@/serviceFeatures/setupObsidian/setupUri.js";
 import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
 import { useP2PReplicatorCommands } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorCommands";

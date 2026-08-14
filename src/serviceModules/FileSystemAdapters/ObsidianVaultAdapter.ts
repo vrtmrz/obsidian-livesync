@@ -2,7 +2,7 @@ import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/commo
 import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import type { TFile, App, TFolder } from "obsidian";
-import { toIntegerTimestamps } from "./sanitizeWriteOptions";
+import { toIntegerTimestamps } from "./sanitizeWriteOptions.js";
 
 /**
  * Vault adapter implementation for Obsidian

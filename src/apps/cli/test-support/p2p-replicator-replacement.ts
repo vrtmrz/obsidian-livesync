@@ -1,8 +1,8 @@
 import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import type { CLICommandContext } from "@/apps/cli/commands/types";
-import { openP2PHost } from "@/apps/cli/commands/p2p";
+import type { CLICommandContext } from "@/apps/cli/commands/types.js";
+import { openP2PHost } from "@/apps/cli/commands/p2p.js";
 
 const DEFAULT_NOTE_PATH = "p2p-replicator-replacement.md";
 const DEFAULT_NOTE_CONTENT = "Replicated after replacing the active P2P replicator.";

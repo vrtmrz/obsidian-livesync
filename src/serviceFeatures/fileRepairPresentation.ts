@@ -11,7 +11,7 @@ import { isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary
 import type {
     FileRepairInspection,
     FileRepairRevision,
-} from "./fileRepair";
+} from "./fileRepair.js";
 
 export type FileRepairRevisionActions = {
     compareWithVault: boolean;

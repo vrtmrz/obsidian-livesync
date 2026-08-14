@@ -17,17 +17,17 @@ import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatu
 import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
-import { AbstractModule } from "./modules/AbstractModule";
-import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
-import { ModuleReplicator } from "./modules/core/ModuleReplicator";
-import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB";
-import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO";
-import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
-import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
-import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
-import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
+import { AbstractModule } from "./modules/AbstractModule.js";
+import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess.js";
+import { ModuleReplicator } from "./modules/core/ModuleReplicator.js";
+import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB.js";
+import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO.js";
+import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker.js";
+import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver.js";
+import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks.js";
+import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain.js";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
+import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu.js";
 import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
 

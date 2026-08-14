@@ -1,7 +1,7 @@
-import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
-import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
-import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
+import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub.js";
+import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage.js";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
+import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules.js";
 import {
     LOG_LEVEL_VERBOSE,
     type LOG_LEVEL,
@@ -17,18 +17,18 @@ import {
     LOG_LEVEL_URGENT,
     LOG_LEVEL_NOTICE,
 } from "octagonal-wheels/common/logger";
-import { runCommand } from "./commands/runCommand";
-import { isCLICommand } from "./commands/types";
-import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types";
+import { runCommand } from "./commands/runCommand.js";
+import { isCLICommand } from "./commands/types.js";
+import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types.js";
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { IgnoreRules } from "./serviceModules/IgnoreRules";
+import { IgnoreRules } from "./serviceModules/IgnoreRules.js";
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
 import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
-import { writeStderrLine, writeStdoutLine } from "./cliOutput";
-import { createDefaultCliSettings } from "./cliSettingsDefaults";
+import { writeStderrLine, writeStdoutLine } from "./cliOutput.js";
+import { createDefaultCliSettings } from "./cliSettingsDefaults.js";
 import {
     applyStoredSetting,
     changedSettingKeys,
@@ -38,7 +38,7 @@ import {
     preserveStoredSetting,
     reconcileDurableSettings,
     settingsEqual,
-} from "./settingsPersistence";
+} from "./settingsPersistence.js";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 ensureGlobalNodeLocalStorage();

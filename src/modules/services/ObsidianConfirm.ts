@@ -1,11 +1,11 @@
-import { type App, type Plugin, Notice } from "@/deps";
-import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
-import { EVENT_PLUGIN_UNLOADED } from "@/common/events";
-import { $msg } from "@/common/translation";
+import { type App, type Plugin, Notice } from "@/deps.js";
+import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils.js";
+import { EVENT_PLUGIN_UNLOADED } from "@/common/events.js";
+import { $msg } from "@/common/translation.js";
 import type { Confirm, ConfirmActionLayout } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import { confirmAction, pickOne, promptPassword, promptText } from "@vrtmrz/obsidian-plugin-kit";
-import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
-import { confirmWithMessageWithWideButton } from "@/modules/coreObsidian/UILib/dialogs";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
+import { confirmWithMessageWithWideButton } from "@/modules/coreObsidian/UILib/dialogs.js";
 
 export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceContext> implements Confirm {
     private _context: T;

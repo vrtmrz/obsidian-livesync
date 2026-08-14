@@ -5,8 +5,8 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 
-import { WEBPEER_SETTINGS_KEY } from "./WebPeerPersistence";
-import { WebPeerRuntime } from "./WebPeerRuntime";
+import { WEBPEER_SETTINGS_KEY } from "./WebPeerPersistence.js";
+import { WebPeerRuntime } from "./WebPeerRuntime.js";
 
 export const P2P_CHECK_SYSTEM_VAULT_NAME = "p2p-livesync-connection-check";
 

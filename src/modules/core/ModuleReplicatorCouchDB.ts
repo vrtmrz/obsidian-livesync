@@ -2,8 +2,8 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { REMOTE_MINIO, REMOTE_P2P, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
-import { AbstractModule } from "@/modules/AbstractModule";
-import type { LiveSyncCore } from "@/main";
+import { AbstractModule } from "@/modules/AbstractModule.js";
+import type { LiveSyncCore } from "@/main.js";
 
 export class ModuleReplicatorCouchDB extends AbstractModule {
     _anyNewReplicator(settingOverride: Partial<RemoteDBSettings> = {}): Promise<LiveSyncAbstractReplicator | false> {

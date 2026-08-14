@@ -1,5 +1,5 @@
 import type { ITypeGuardAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
+import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes.js";
 
 /**
  * Type guard adapter implementation for FileSystem API

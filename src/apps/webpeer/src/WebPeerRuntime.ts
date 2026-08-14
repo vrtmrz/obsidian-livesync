@@ -13,11 +13,11 @@ import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import {
     createLiveSyncBrowserServiceHub,
     type LiveSyncBrowserServiceHub,
-} from "@/apps/browser/createLiveSyncBrowserServiceHub";
-import { Menu } from "@/apps/browser/BrowserMenu";
-import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost";
-import { translateLiveSyncMessage } from "@/common/translation";
-import { WEBPEER_STORE_NAME, createWebPeerPersistence } from "./WebPeerPersistence";
+} from "@/apps/browser/createLiveSyncBrowserServiceHub.js";
+import { Menu } from "@/apps/browser/BrowserMenu.js";
+import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost.js";
+import { translateLiveSyncMessage } from "@/common/translation.js";
+import { WEBPEER_STORE_NAME, createWebPeerPersistence } from "./WebPeerPersistence.js";
 
 export interface WebPeerRuntimeOptions {
     context?: ServiceContext;

@@ -1,6 +1,6 @@
 import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes";
+import type { FSAPIFile, FSAPIFolder } from "./FSAPITypes.js";
 
 /**
  * Vault adapter implementation for FileSystem API

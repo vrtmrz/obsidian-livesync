@@ -16,16 +16,16 @@ import {
     createRemoteConfigurationId,
 } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import type { CLICommandContext, CLIOptions } from "./types";
-import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
-import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
+import type { CLICommandContext, CLIOptions } from "./types.js";
+import { toArrayBuffer, toDatabaseRelativePath } from "./utils.js";
+import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p.js";
 import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
-import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
+import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput.js";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");

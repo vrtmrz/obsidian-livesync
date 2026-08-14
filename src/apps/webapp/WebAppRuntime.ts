@@ -1,8 +1,8 @@
 /** Browser runtime for Self-hosted LiveSync over the File System Access API. */
 
-import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
 import { ServiceContext, type LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
-import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules";
+import { initialiseServiceModulesFSAPI, type FSAPIServiceModules } from "./serviceModules/FSAPIServiceModules.js";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
@@ -15,7 +15,7 @@ import {
     updateToDatabase,
     useOfflineScanner,
 } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { useRedFlagFeatures } from "@/serviceFeatures/redFlag";
+import { useRedFlagFeatures } from "@/serviceFeatures/redFlag.js";
 import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/checkRemoteSize";
 import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
@@ -25,8 +25,8 @@ import {
     createLiveSyncBrowserServiceHub,
     type LiveSyncBrowserServiceHub,
     type LiveSyncBrowserServiceHubOptions,
-} from "@/apps/browser/createLiveSyncBrowserServiceHub";
-import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost";
+} from "@/apps/browser/createLiveSyncBrowserServiceHub.js";
+import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost.js";
 
 const SETTINGS_DIR = ".livesync";
 const SETTINGS_FILE = "settings.json";

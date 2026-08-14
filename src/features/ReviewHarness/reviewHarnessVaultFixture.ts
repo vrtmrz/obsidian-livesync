@@ -1,4 +1,4 @@
-import type { ReviewHarnessScenarioResult } from "./reviewHarnessTypes";
+import type { ReviewHarnessScenarioResult } from "./reviewHarnessTypes.js";
 
 export const REVIEW_HARNESS_FIXTURE_ROOT = "__self-hosted-livesync-review-harness__";
 export const REVIEW_HARNESS_SOURCE_FILE = `${REVIEW_HARNESS_FIXTURE_ROOT}/round-trip.md`;

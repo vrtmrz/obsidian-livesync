@@ -1,5 +1,5 @@
-import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
-import { normalizePath } from "@/deps";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
+import { normalizePath } from "@/deps.js";
 import { PathService } from "@vrtmrz/livesync-commonlib/compat/services/base/PathService";
 
 import {
@@ -10,7 +10,7 @@ import {
     unmarkChanges,
     compareFileFreshness,
     isMarkedAsSameChanges,
-} from "@/common/utils";
+} from "@/common/utils.js";
 import type { UXFileInfo, AnyEntry, UXFileInfoStub, FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 export class ObsidianPathService extends PathService<ObsidianServiceContext> {
     override markChangesAreSame(

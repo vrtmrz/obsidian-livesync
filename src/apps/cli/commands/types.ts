@@ -1,6 +1,6 @@
-import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { LiveSyncBaseCore } from "@/LiveSyncBaseCore.js";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { NodeServiceContext } from "@/apps/cli/services/NodeServiceContext";
+import type { NodeServiceContext } from "@/apps/cli/services/NodeServiceContext.js";
 import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
 
 export type CLICommand =

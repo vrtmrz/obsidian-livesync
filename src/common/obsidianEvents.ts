@@ -1,4 +1,4 @@
-import type { TFile } from "@/deps";
+import type { TFile } from "@/deps.js";
 import type { FilePathWithPrefix, LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 export const EVENT_REQUEST_SHOW_HISTORY = "show-history";

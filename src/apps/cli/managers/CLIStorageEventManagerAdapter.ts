@@ -10,11 +10,11 @@ import type {
     IStorageEventWatchHandlers,
 } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
-import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
+import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes.js";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
-import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
+import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules.js";
 import { fsPromises as fs, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
-import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput.js";
 
 /**
  * CLI-specific type guard adapter

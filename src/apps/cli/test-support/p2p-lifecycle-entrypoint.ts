@@ -2,10 +2,10 @@
 import { RTCPeerConnection } from "werift";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node";
-import { writeStderrLine } from "@/apps/cli/cliOutput";
-import { main, type CliCommandRunner } from "@/apps/cli/main";
-import { parseTimeoutSeconds } from "@/apps/cli/commands/p2p";
-import { runP2PReplicatorReplacementProbe } from "./p2p-replicator-replacement";
+import { writeStderrLine } from "@/apps/cli/cliOutput.js";
+import { main, type CliCommandRunner } from "@/apps/cli/main.js";
+import { parseTimeoutSeconds } from "@/apps/cli/commands/p2p.js";
+import { runP2PReplicatorReplacementProbe } from "./p2p-replicator-replacement.js";
 
 if (
     typeof (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection === "undefined" &&

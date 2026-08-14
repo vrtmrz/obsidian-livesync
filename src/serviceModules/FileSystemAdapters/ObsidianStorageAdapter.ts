@@ -2,7 +2,7 @@ import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/commo
 import type { IStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import type { Stat, App } from "obsidian";
-import { toIntegerTimestamps } from "./sanitizeWriteOptions";
+import { toIntegerTimestamps } from "./sanitizeWriteOptions.js";
 
 /**
  * Storage adapter implementation for Obsidian

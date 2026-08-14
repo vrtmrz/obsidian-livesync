@@ -1,5 +1,5 @@
 import type { ITypeGuardAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
-import type { NodeFile, NodeFolder } from "./NodeTypes";
+import type { NodeFile, NodeFolder } from "./NodeTypes.js";
 
 /**
  * Type guard adapter implementation for Node.js

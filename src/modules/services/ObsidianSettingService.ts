@@ -8,7 +8,7 @@ import {
     SettingService,
     type SettingServiceDependencies,
 } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
-import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext.js";
 
 export function normaliseObsidianSettingsData(data: unknown): ObsidianLiveSyncSettings | undefined {
     if (typeof data !== "object" || data === null || Array.isArray(data)) return undefined;

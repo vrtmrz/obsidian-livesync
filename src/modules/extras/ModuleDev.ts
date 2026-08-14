@@ -1,5 +1,5 @@
 import { delay } from "octagonal-wheels/promises";
-import { __onMissingTranslation } from "@/common/translation";
+import { __onMissingTranslation } from "@/common/translation.js";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 // import { enableTestFunction } from "./devUtil/testUtils.ts";

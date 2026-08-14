@@ -8,7 +8,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/context";
 import { LOG_KIND_WARNING, notice } from "octagonal-wheels/common/logger";
 import type { TaggedType } from "octagonal-wheels/common/types";
-import type { AllMessageKeys, I18N_LANGS, LiveSyncCatalogueMessageKey } from "./rosetta";
+import type { AllMessageKeys, I18N_LANGS, LiveSyncCatalogueMessageKey } from "./rosetta.js";
 import { allMessages } from "./messages/combinedMessages.prod.ts";
 import {
     liveSyncProvisionalEnglishMessages,

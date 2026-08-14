@@ -10,7 +10,7 @@ import {
     type ReviewHarnessReportInput,
     type ReviewHarnessScenarioId,
     type ReviewHarnessScenarioResult,
-} from "./reviewHarnessContract";
+} from "./reviewHarnessContract.js";
 
 export interface ReviewHarnessRuntime {
     now(): Date;

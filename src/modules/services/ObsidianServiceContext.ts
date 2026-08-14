@@ -1,9 +1,9 @@
-import type ObsidianLiveSyncPlugin from "@/main";
-import type { App, Plugin } from "@/deps";
+import type ObsidianLiveSyncPlugin from "@/main.js";
+import type { App, Plugin } from "@/deps.js";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { eventHub } from "@/common/events";
-import { translateLiveSyncMessage } from "@/common/translation";
-import type { ObsidianNoticeGroups } from "./ObsidianNoticeGroups";
+import { eventHub } from "@/common/events.js";
+import { translateLiveSyncMessage } from "@/common/translation.js";
+import type { ObsidianNoticeGroups } from "./ObsidianNoticeGroups.js";
 
 /** Host capabilities owned by one Self-hosted LiveSync plug-in instance. */
 export class ObsidianServiceContext extends ServiceContext {

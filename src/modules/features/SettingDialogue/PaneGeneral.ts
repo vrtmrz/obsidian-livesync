@@ -1,5 +1,5 @@
-import { $msg, $t } from "@/common/translation";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta";
+import { $msg, $t } from "@/common/translation.js";
+import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta.js";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";

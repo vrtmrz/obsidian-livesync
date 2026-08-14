@@ -1,9 +1,9 @@
-import type { LiveSyncCore } from "@/main";
+import type { LiveSyncCore } from "@/main.js";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { AbstractModule } from "@/modules/AbstractModule";
-import { $msg } from "@/common/translation";
-import { copyFileDatabaseInfo } from "@/serviceFeatures/fileDatabaseInfo";
+import { AbstractModule } from "@/modules/AbstractModule.js";
+import { $msg } from "@/common/translation.js";
+import { copyFileDatabaseInfo } from "@/serviceFeatures/fileDatabaseInfo.js";
 // Separated Module for basic menu commands, which are not related to obsidian specific features. It is expected to be used in other platforms with minimal changes.
 // However, it is odd that it has here at all; it really ought to be in each respective feature. It will likely be moved eventually. Until now, addCommand pointed to Obsidian's version.
 export class ModuleBasicMenu extends AbstractModule {

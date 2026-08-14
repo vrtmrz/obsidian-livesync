@@ -20,17 +20,17 @@ import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/s
 import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableVaultService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import { HeadlessAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/headless/HeadlessAPIService";
-import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
-import { NodeSettingService } from "./NodeSettingService";
+import { NodeKeyValueDBService } from "./NodeKeyValueDBService.js";
+import { NodeSettingService } from "./NodeSettingService.js";
 import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { path as nodePath } from "@vrtmrz/livesync-commonlib/node";
 import type { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
-import { PouchDB } from "@/apps/cli/lib/pouchdb-node";
-import { NodeServiceContext } from "./NodeServiceContext";
-import { setLang } from "@/common/translation";
+import { PouchDB } from "@/apps/cli/lib/pouchdb-node.js";
+import { NodeServiceContext } from "./NodeServiceContext.js";
+import { setLang } from "@/common/translation.js";
 
-export { NodeServiceContext } from "./NodeServiceContext";
+export { NodeServiceContext } from "./NodeServiceContext.js";
 
 class NodeAppLifecycleService<T extends ServiceContext> extends InjectableAppLifecycleService<T> {
     constructor(context: T, dependencies: AppLifecycleServiceDependencies) {

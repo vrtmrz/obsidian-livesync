@@ -1,5 +1,5 @@
 import { addIcon } from "@/deps.ts";
-import { $msg } from "@/common/translation";
+import { $msg } from "@/common/translation.js";
 import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 // Obsidian specific menu commands.

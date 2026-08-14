@@ -21,14 +21,14 @@ import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/service
 import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTweakValueService";
 import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableVaultService";
 
-import { setLang, translateLiveSyncMessage } from "@/common/translation";
-import { BrowserConfirm } from "./BrowserConfirm";
-import { createBrowserKeyValueDatabaseFactory } from "./BrowserKeyValueDatabase";
+import { setLang, translateLiveSyncMessage } from "@/common/translation.js";
+import { BrowserConfirm } from "./BrowserConfirm.js";
+import { createBrowserKeyValueDatabaseFactory } from "./BrowserKeyValueDatabase.js";
 import {
     LiveSyncBrowserAPIService,
     type LiveSyncBrowserAPIServiceOptions,
-} from "./LiveSyncBrowserAPIService";
-import { LiveSyncBrowserUIService } from "./LiveSyncBrowserUIService";
+} from "./LiveSyncBrowserAPIService.js";
+import { LiveSyncBrowserUIService } from "./LiveSyncBrowserUIService.js";
 
 export interface LiveSyncBrowserSettingsPersistence {
     load(): Promise<ObsidianLiveSyncSettings | undefined>;

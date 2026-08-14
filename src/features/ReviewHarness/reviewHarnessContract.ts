@@ -3,9 +3,9 @@ import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
 import type {
     ReviewHarnessScenarioResult,
     ReviewHarnessScenarioStatus,
-} from "./reviewHarnessTypes";
+} from "./reviewHarnessTypes.js";
 
-export type { ReviewHarnessScenarioResult, ReviewHarnessScenarioStatus } from "./reviewHarnessTypes";
+export type { ReviewHarnessScenarioResult, ReviewHarnessScenarioStatus } from "./reviewHarnessTypes.js";
 
 export const REVIEW_HARNESS_SCENARIOS = [
     {

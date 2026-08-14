@@ -1,21 +1,21 @@
 import { NEW_VAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/settings";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
-import type ObsidianLiveSyncPlugin from "@/main";
-import type { LiveSyncCore } from "@/main";
-import type { WorkspaceLeaf } from "@/deps";
+import type ObsidianLiveSyncPlugin from "@/main.js";
+import type { LiveSyncCore } from "@/main.js";
+import type { WorkspaceLeaf } from "@/deps.js";
 import {
     ReviewHarnessController,
     REVIEW_HARNESS_STATE_KEY,
     type ReviewHarnessRuntime,
-} from "@/features/ReviewHarness/reviewHarnessController";
-import { ReviewHarnessView, VIEW_TYPE_REVIEW_HARNESS } from "@/features/ReviewHarness/ReviewHarnessView";
-import type { ReviewHarnessScenarioResult } from "@/features/ReviewHarness/reviewHarnessContract";
+} from "@/features/ReviewHarness/reviewHarnessController.js";
+import { ReviewHarnessView, VIEW_TYPE_REVIEW_HARNESS } from "@/features/ReviewHarness/ReviewHarnessView.js";
+import type { ReviewHarnessScenarioResult } from "@/features/ReviewHarness/reviewHarnessContract.js";
 import {
     REVIEW_HARNESS_FIXTURE_ROOT,
     runReviewHarnessVaultRoundTrip,
-} from "@/features/ReviewHarness/reviewHarnessVaultFixture";
-import type { CompatibilityReviewController } from "./compatibilityReview";
+} from "@/features/ReviewHarness/reviewHarnessVaultFixture.js";
+import type { CompatibilityReviewController } from "./compatibilityReview.js";
 
 async function runVaultRoundTrip(plugin: ObsidianLiveSyncPlugin): Promise<ReviewHarnessScenarioResult> {
     const vault = plugin.app.vault;
