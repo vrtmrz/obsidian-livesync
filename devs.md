@@ -27,6 +27,21 @@ npm ci
 npm run build
 ```
 
+#### Community Review dependency installation
+
+Community Review installs dependencies independently before applying type-aware source rules. A successful installation with the npm version bundled with the repository's current Node.js CI does not prove that the lockfile is accepted by the scanner's npm version.
+
+After changing `package.json`, a workspace manifest, or `package-lock.json`, verify both installation paths:
+
+```bash
+npm ci --ignore-scripts
+npx --yes npm@10.9.2 ci --ignore-scripts
+```
+
+The npm 10.9.2 command is the current project-side compatibility check for the Community Review installation path. Update this check when the scanner runtime changes.
+
+If Community Review reports widespread TypeScript `error` types across unrelated external packages, confirm that dependency installation completed successfully before changing source imports, declarations, or lint rules. An installation failure can make every unresolved external type appear as downstream unsafe-type findings.
+
 ### Commands
 
 ```bash
