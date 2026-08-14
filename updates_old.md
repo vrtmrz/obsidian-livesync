@@ -3,6 +3,7 @@
 The release history is now kept as one chronological sequence across smaller files:
 
 - [Current 1.x releases](updates.md)
+- [Earlier 1.0 releases](docs/releases/1.0.md)
 - [1.0 beta and release-candidate history](docs/releases/1.0-previews.md)
 - [0.25 releases](docs/releases/0.25.md)
 - [Releases before 0.25](docs/releases/legacy.md)

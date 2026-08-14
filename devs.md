@@ -276,6 +276,7 @@ export class ModuleExample extends AbstractObsidianModule {
 - Avoid listing purely internal refactors, maintenance chores, generated-file changes, and dependency updates unless they affect users; group and label them when they are included.
 - When preparing a release, replace `## Unreleased` with the target version heading (for example, `## 0.25.81`) and add a fresh empty `## Unreleased` section above it for the next cycle.
 - Review and polish the released section in the release PR before tagging, because the content is embedded into the plug-in and may be reused as the GitHub Release notes.
+- Keep approximately the five most recent published plug-in versions in the embedded `updates.md`. Move older published sections unchanged into the appropriate release-line archive under `docs/releases/`, and update the history references when rotating them.
 
 ## Release Workflow
 
