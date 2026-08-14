@@ -547,7 +547,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (typeof db === "string") {
             Logger($msg("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", { db }), LOG_LEVEL_NOTICE);
             return false;
-        } else {
+        }
+        try {
             if (await checkSyncInfo(db.db)) {
                 // Logger($msg("obsidianLiveSyncSettingTab.logDatabaseConnected"), LOG_LEVEL_NOTICE);
                 return true;
@@ -555,6 +556,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 Logger($msg("obsidianLiveSyncSettingTab.logPassphraseNotCompatible"), LOG_LEVEL_NOTICE);
                 return false;
             }
+        } finally {
+            await db.db.close();
         }
     };
     isPassphraseValid = async () => {

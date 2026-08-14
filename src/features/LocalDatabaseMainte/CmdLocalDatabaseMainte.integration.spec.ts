@@ -95,18 +95,19 @@ function requiredEnvironment(name: "hostname" | "username" | "password"): string
 describe("LocalDatabaseMaintenance Garbage Collection V3 with CouchDB", () => {
     it("propagates collection safely, completes compaction, and permits content-addressed chunk recreation", async () => {
         const databaseName = `livesync-gcv3-${crypto.randomUUID()}`;
-        const local = new PouchDB<FixtureContent>(`${databaseName}-source`, { adapter: "memory" });
-        const replica = new PouchDB<FixtureContent>(`${databaseName}-replica`, { adapter: "memory" });
-        const remote = new PouchDB<FixtureContent>(
-            `${requiredEnvironment("hostname").replace(/\/+$/u, "")}/${databaseName}`,
-            {
+        const createRemote = () =>
+            new PouchDB<FixtureContent>(`${requiredEnvironment("hostname").replace(/\/+$/u, "")}/${databaseName}`, {
                 adapter: "http",
                 auth: {
                     username: requiredEnvironment("username"),
                     password: requiredEnvironment("password"),
                 },
-            }
-        );
+            });
+        const local = new PouchDB<FixtureContent>(`${databaseName}-source`, { adapter: "memory" });
+        const replica = new PouchDB<FixtureContent>(`${databaseName}-replica`, { adapter: "memory" });
+        const remote = createRemote();
+        const maintenanceRemote = createRemote();
+        const closeMaintenanceRemote = vi.spyOn(maintenanceRemote, "close");
 
         try {
             await remote.info();
@@ -178,7 +179,7 @@ describe("LocalDatabaseMaintenance Garbage Collection V3 with CouchDB", () => {
                         },
                     })
                 ),
-                connectRemoteCouchDBWithSetting: vi.fn(() => Promise.resolve({ db: remote })),
+                connectRemoteCouchDBWithSetting: vi.fn(() => Promise.resolve({ db: maintenanceRemote })),
             };
             const notice = vi.fn();
             const maintenance = Object.create(LocalDatabaseMaintenance.prototype) as LocalDatabaseMaintenance;
@@ -201,6 +202,7 @@ describe("LocalDatabaseMaintenance Garbage Collection V3 with CouchDB", () => {
 
             await maintenance.gcv3();
 
+            expect(closeMaintenanceRemote).toHaveBeenCalledOnce();
             expect(replicationModes).toEqual(["sync", "pushOnly"]);
             expect(clearHash).toHaveBeenCalledOnce();
             expect(notice).toHaveBeenCalledWith("Compaction on remote database completed successfully.", "gc-compact");
@@ -251,6 +253,9 @@ describe("LocalDatabaseMaintenance Garbage Collection V3 with CouchDB", () => {
                 data: "recreated",
             });
         } finally {
+            if (closeMaintenanceRemote.mock.calls.length === 0) {
+                await maintenanceRemote.close();
+            }
             await Promise.all([local.destroy(), replica.destroy(), remote.destroy()]);
         }
     }, 30_000);

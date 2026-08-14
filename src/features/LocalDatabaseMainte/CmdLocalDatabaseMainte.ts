@@ -747,29 +747,33 @@ Success: ${successCount}, Errored: ${errored}`;
             this._notice(`Failed to connect to remote for compaction. ${remote}`, "gc-compact");
             return;
         }
-        const compactResult = await remote.db.compact({
-            interval: 1000,
-        });
-        // Probably no need to wait, but just in case.
-        let timeout = 2 * 60 * 1000; // 2 minutes
-        for (;;) {
-            const status = await remote.db.info();
-            if ("compact_running" in status && status?.compact_running) {
-                this._notice("Compaction in progress on remote database...", "gc-compact");
-                await delay(2000);
-                timeout -= 2000;
-                if (timeout <= 0) {
-                    this._notice("Compaction on remote database timed out.", "gc-compact");
-                    return;
+        try {
+            const compactResult = await remote.db.compact({
+                interval: 1000,
+            });
+            // Probably no need to wait, but just in case.
+            let timeout = 2 * 60 * 1000; // 2 minutes
+            for (;;) {
+                const status = await remote.db.info();
+                if ("compact_running" in status && status?.compact_running) {
+                    this._notice("Compaction in progress on remote database...", "gc-compact");
+                    await delay(2000);
+                    timeout -= 2000;
+                    if (timeout <= 0) {
+                        this._notice("Compaction on remote database timed out.", "gc-compact");
+                        return;
+                    }
+                } else {
+                    break;
                 }
-            } else {
-                break;
             }
-        }
-        if (compactResult && "ok" in compactResult) {
-            this._notice("Compaction on remote database completed successfully.", "gc-compact");
-        } else {
-            this._notice("Compaction on remote database failed.", "gc-compact");
+            if (compactResult && "ok" in compactResult) {
+                this._notice("Compaction on remote database completed successfully.", "gc-compact");
+            } else {
+                this._notice("Compaction on remote database failed.", "gc-compact");
+            }
+        } finally {
+            await remote.db.close();
         }
     }
 

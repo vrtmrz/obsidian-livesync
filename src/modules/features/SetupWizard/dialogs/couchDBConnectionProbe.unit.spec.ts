@@ -14,8 +14,9 @@ describe("CouchDB setup connection policy", () => {
     ] as const)(
         "%s can %s without changing the Commonlib connection contract",
         async (createIfMissing, _description) => {
+            const close = vi.fn(async () => undefined);
             const connectRemoteCouchDBWithSetting = vi.fn(async () => ({
-                db: {},
+                db: { close },
                 info: { db_name: "notes" },
             }));
             const replicator = {
@@ -27,6 +28,7 @@ describe("CouchDB setup connection policy", () => {
             await expect(probeCouchDBConnection(replicator, settings, createIfMissing)).resolves.toEqual({ ok: true });
             expect(connectRemoteCouchDBWithSetting).toHaveBeenCalledWith(settings, false, createIfMissing, false);
             expect(replicator.tryConnectRemote).not.toHaveBeenCalled();
+            expect(close).toHaveBeenCalledOnce();
         }
     );
 
