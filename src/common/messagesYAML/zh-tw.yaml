@@ -1,4 +1,353 @@
 (Active): （已啟用）
+"${count} issue(s) detected!": "偵測到 ${count} 個問題！"
+(BETA) Always overwrite with a newer file: （BETA）總是以較新的檔案覆寫
+(Beta) Use ignore files: （Beta）使用忽略檔案
+(Days passed, 0 to disable automatic-deletion): （已過天數，0 表示停用自動刪除）
+(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.: （MB）若已設定，大於此大小的本機與遠端檔案變更都會被略過。如果檔案之後變小，則會使用較新的版本。
+(Mega chars): （百萬字元）
+(Not recommended) If set, credentials will be stored in the file.: （不建議）若啟用，憑證將儲存在檔案中。
+(Obsolete) Use an old adapter for compatibility: （已淘汰）使用舊版轉接器以維持相容性
+(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.: （例如：線上讀取 chunks）啟用此選項後，LiveSync 會直接線上讀取 chunks，而不在本機複寫。建議同時提高自訂 chunk 大小。
+Access Key: Access Key
+Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.: 在 v0.17.16 之前，本機資料庫使用的是舊版轉接器。現在建議使用新版轉接器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。
+Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.: 變更此設定需要遷移現有資料（可能需要一些時間），並重新啟動 Obsidian。請務必先備份資料再繼續。
+Comma separated `.gitignore, .dockerignore`: 以逗號分隔，例如 `.gitignore, .dockerignore`
+Compute revisions for chunks: 為 chunks 計算修訂版本（舊有行為）
+"Connected to Signaling Server (as Peer ID: ${peerId})": "已連線到訊號伺服器（Peer ID：${peerId}）"
+"Error during connection test: ${reason}": "連線測試時發生錯誤：${reason}"
+"Error during testAndFixSettings: ${reason}": "testAndFixSettings 時發生錯誤：${reason}"
+"Failed to connect to the server: ${reason}": "無法連線到伺服器：${reason}"
+"Failed to connect to the signalling relay: ${reason}": "無法連線到訊號中繼站：${reason}"
+"Higher (${local} > ${remote})": "較高（${local} > ${remote}）"
+If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.: 若已設定，符合忽略檔案規則的本機檔案變更將被略過。遠端變更則依本機忽略檔案來判斷。
+If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.: 啟用此選項後，PouchDB 會將連線保持開啟 60 秒；若在這段時間內沒有變更送達，就會關閉並重新開啟該連線，而不是無限期保持開啟。這在代理伺服器限制請求時長時很有用，但可能會增加資源使用量。
+Ignore files: 忽略檔案
+In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.: 在大多數情況下，建議維持使用預設演算法（${algorithm}）。只有當你現有的 Vault 是以不同格式加密時，才需要調整這項設定。
+Incubate Chunks in Document: 在文件中暫存 chunks
+Interval (sec): 間隔（秒）
+Keep empty folder: 保留空資料夾
+LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.: LiveSync 無法處理名稱相同卻沒有不同前綴的多個 Vault，這應該會自動設定。
+Local Database Tweak: 本機資料庫調校
+"Lower (${local} < ${remote})": "較低（${local} < ${remote}）"
+MB (0 to disable).: MB（0 表示停用）。
+Maximum Incubating Chunk Size: 最大暫存 chunk 大小
+Maximum Incubating Chunks: 最大暫存 chunk 數量
+Maximum Incubation Period: 最大暫存期間
+Maximum delay for batch database updating: 批次更新資料庫的最大延遲
+Maximum file size: 最大檔案大小
+Memory cache: 記憶體快取
+Memory cache size (by total characters): 記憶體快取大小（依總字元數）
+Memory cache size (by total items): 記憶體快取大小（依總項目數）
+Merge: 合併
+Minimum delay for batch database updating: 批次更新資料庫的最小延遲
+Move remotely deleted files to the trash, instead of deleting.: 將遠端刪除的檔案移至垃圾桶，而非直接刪除。
+"Newer (${diff})": "較新（${diff}）"
+Not all messages have been translated. And, please revert to "Default" when reporting errors.: 並非所有訊息都已翻譯完成。回報錯誤時，請先切回「預設」語言。
+Notify all setting files: 通知所有設定檔
+Notify customized: 通知自訂內容
+Notify when other device has newly customized.: 當其他裝置有新的自訂內容時通知。
+Notify when the estimated remote storage size exceeds on start up: 啟動時，若預估的遠端儲存空間大小超出限制則通知
+Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.: 一次處理的批次數量。預設為 40，最小為 2。此設定會與批次大小共同決定一次可保留在記憶體中的文件數量。
+Number of changes to sync at a time. Defaults to 50. Minimum is 2.: 一次同步的變更數量。預設為 50，最小為 2。
+"Older (${diff})": "較舊（${diff}）"
+Open: 開啟
+Overwrite: 覆寫
+Passphrase of sensitive configuration items: 敏感設定項目的密語
+Path Obfuscation: 路徑混淆
+Per-file-saved customization sync: 以每個檔案儲存的自訂同步
+Periodic Sync interval: 定期同步間隔
+Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.: 請設定用來識別此裝置的裝置名稱。此名稱在你所有裝置中應該是唯一的。尚未設定時，無法啟用此功能。
+Presets: 預設集
+Process small files in the foreground: 在前景處理小型檔案
+Property Encryption: 屬性加密
+Reducing the frequency with which on-disk changes are reflected into the DB: 降低磁碟變更反映到資料庫的頻率
+Remote Type: 遠端類型
+Remote server type: 遠端伺服器類型
+Requires restart of Obsidian: 需要重新啟動 Obsidian
+Requires restart of Obsidian.: 需要重新啟動 Obsidian。
+Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.: 將設定儲存到 Markdown 檔案中。有新設定送達時會通知你，可依平台設定不同的檔案。
+Saving will be performed forcefully after this number of seconds.: 經過這個秒數後，會強制執行儲存。
+Scan changes on customization sync: 在自訂同步時掃描變更
+Scan customization automatically: 自動掃描自訂內容
+Scan customization before replicating.: 複寫前掃描自訂內容。
+Scan customization every 1 minute.: 每 1 分鐘掃描自訂內容。
+Scan customization periodically: 定期掃描自訂內容
+Scan for hidden files before replication: 複寫前掃描隱藏檔案
+Scan hidden files periodically: 定期掃描隱藏檔案
+Seconds, 0 to disable: 秒，0 表示停用
+Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.: 秒。停止輸入或儲存後，寫入本機資料庫的動作會延遲這個秒數。
+Secret Key: Secret Key
+Server URI: 伺服器 URI
+Should we keep folders that don't have any files inside?: 是否要保留內部沒有任何檔案的資料夾？
+Should we only check for conflicts when a file is opened?: 是否只在開啟檔案時才檢查衝突？
+Should we prompt you about conflicting files when a file is opened?: 開啟檔案時，是否要提示衝突檔案？
+Should we prompt you for every single merge, even if we can safely merge automatcially?: 即使可以安全地自動合併，是否仍要在每次合併時提示你？
+Show only notifications: 僅顯示通知
+Show status as icons only: 僅以圖示顯示狀態
+Show status inside the editor: 在編輯器內顯示狀態
+Show status on the status bar: 在狀態列顯示狀態
+Show verbose log. Please enable if you report an issue.: 顯示詳細日誌。如果你要回報問題，請啟用此選項。
+Starts synchronisation when a file is saved.: 儲存檔案時啟動同步。
+Stop reflecting database changes to storage files.: 停止將資料庫變更反映到儲存空間的檔案。
+Stop watching for file changes.: 停止監看檔案變更。
+Suppress notification of hidden files change: 抑制隱藏檔案變更的通知
+Suspend database reflecting: 暫停資料庫反映
+Suspend file watching: 暫停檔案監看
+Sync Mode: 同步模式
+Sync after merging file: 合併檔案後同步
+Sync automatically after merging files: 合併檔案後自動同步
+Sync on Editor Save: 編輯器儲存時同步
+Sync on File Open: 開啟檔案時同步
+Sync on Save: 儲存時同步
+Sync on Startup: 啟動時同步
+Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.: 僅供測試 —— 透過同步較新的檔案版本解決衝突，這可能會覆寫已修改的檔案，請注意。
+The Hash algorithm for chunk IDs: chunk ID 的雜湊演算法
+The delay for consecutive on-demand fetches: 連續按需抓取之間的延遲
+The maximum duration for which chunks can be incubated within the document. Chunks exceeding this period will graduate to independent chunks.: chunks 可在文件中暫存的最長時間。超過此時間的 chunks 會立即成為獨立 chunks。
+The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: 文件中可暫存的 chunks 最大數量。超過此數量的 chunks 會立即成為獨立 chunks。
+The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: 文件中可暫存的 chunks 總大小上限。超過此大小的 chunks 會立即成為獨立 chunks。
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: 此密語不會複製到其他裝置。在你重新設定之前，會維持為 `Default`。
+Transfer Tweak: 傳輸調校
+Unique name between all synchronized devices. To edit this setting, please disable customization sync once.: 所有同步裝置之間的唯一名稱。若要編輯此設定，請先停用自訂同步一次。
+Use Custom HTTP Handler: 使用自訂 HTTP 處理程式
+Use Segmented-splitter: 使用分段式分割器
+Use a custom passphrase: 使用自訂密語
+Use dynamic iteration count: 使用動態迭代次數
+Use splitting-limit-capped chunk splitter: 使用有分割上限的 chunk 分割器
+Use the trash bin: 使用垃圾桶
+Use timeouts instead of heartbeats: 使用逾時取代心跳偵測
+Verbose Log: 詳細日誌
+Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.: 警告！這會嚴重影響效能，而且日誌不會以預設名稱同步。請小心處理日誌，因為它們通常包含你的機密資訊。
+We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.: 啟用此功能時無法變更裝置名稱。若要變更裝置名稱，請先停用此功能。
+When you save a file in the editor, start a sync automatically: 在編輯器中儲存檔案時，自動開始同步
+Write credentials in the file: 將憑證寫入檔案
+Write logs into the file: 將日誌寫入檔案
+lang-de: Deutsche
+lang-def: "%{lang_def}"
+lang-es: Español
+lang-fr: Français
+lang-he: עברית
+lang-ja: 日本語
+lang-ko: 한국어
+lang-ru: Русский
+lang-zh: 简体中文
+lang-zh-tw: 繁體中文
+lang_def: 預設
+password: 密碼
+username: 使用者名稱
+"(Missing)": （缺失）
+"↑: Overwrite Remote": ↑：覆寫遠端
+"↓: Overwrite Local": ↓：覆寫本機
+"⇅: Use newer": ⇅：使用較新版本
+AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.: 附加模組（ConfigSync）尚未載入。這是非常異常的情況，請回報此問題。
+AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.: 附加模組（HiddenFileSync）尚未載入。這是非常異常的情況，請回報此問題。
+All the same or non-existent: 全部相同或不存在
+Apply All Selected: 套用所有已選取項目
+Automatic: 自動
+Compare file: 比較檔案
+Configuration: 設定
+Delete All of: 刪除全部
+Deselect all: 全部取消選取
+device name: 裝置名稱
+Different: 不同
+Flagged Selective: 已標記選擇性
+Hide not applicable items: 隱藏不適用的項目
+Ignore: 忽略
+Initial Action: 初始動作
+Local only: 僅本機有
+Maintenance Commands: 維護命令
+Maintenance mode: 維護模式
+Mixed: 混合
+No Items.: 沒有項目。
+Other files: 其他檔案
+Plugins: 外掛
+Reload: 重新載入
+Remote only: 僅遠端有
+Same: 相同
+Same or local only: 相同或僅本機有
+Scan changes: 掃描變更
+Select All Shiny: 全選最新項目
+Select Flagged Shiny: 全選已標記的最新項目
+Selective: 選擇性
+Snippets: 程式碼片段
+Sync once: 同步一次
+Themes: 主題
+This device: 此裝置
+Updating list...: 正在更新清單⋯
+We can not use "/" to the device name: 裝置名稱不可使用「/」
+Access Key ID: Access Key ID
+Advanced: 進階
+Advanced Settings: 進階設定
+Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.: 另請注意，如果你目前使用 Peer-to-Peer 同步，日後若切換到其他方式並連線到遠端伺服器時，也會沿用這組設定。
+All checks passed successfully!: 所有檢查都已成功通過！
+Auto Start P2P Connection: 自動啟動 P2P 連線
+Changing the encryption algorithm will prevent access to any data previously encrypted with a different algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your data.: 變更加密演算法後，先前以其他演算法加密的資料將無法再存取。請確認所有裝置都設定為使用相同的演算法，以維持對資料的存取能力。
+Checking connection... Please wait.: 正在檢查連線⋯ 請稍候。
+Continue anyway: 仍要繼續
+CouchDB Configuration: CouchDB 設定
+Custom Headers: 自訂標頭
+Device Peer ID: 裝置 Peer ID
+Enabled: 已啟用
+Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.: 啟用端對端加密後，資料會先在你的裝置上完成加密，再傳送到遠端伺服器。這表示即使有人取得伺服器存取權，沒有密語也無法讀取你的資料。請務必記住你的密語，因為其他裝置在解密資料時也需要它。
+Encryption Algorithm: 加密演算法
+Enter a folder prefix (optional): 輸入資料夾前綴（可選）
+Enter TURN credential: 輸入 TURN 憑證
+Enter TURN username: 輸入 TURN 使用者名稱
+Enter your Access Key ID: 輸入你的 Access Key ID
+Enter your Bucket Name: 輸入你的儲存庫名稱
+Enter your database name: 輸入你的資料庫名稱
+Enter your JWT Key ID: 輸入你的 JWT Key ID
+Enter your JWT secret or private key: 輸入你的 JWT 密鑰或私密金鑰
+Enter your JWT Subject (CouchDB Username): 輸入你的 JWT Subject（CouchDB 使用者名稱）
+Enter your passphrase: 輸入你的密語
+Enter your password: 輸入你的密碼
+Enter your Region (e.g., us-east-1, auto for R2): 輸入你的區域（例如 us-east-1，R2 請用 auto）
+Enter your Secret Access Key: 輸入你的 Secret Access Key
+Enter your username: 輸入你的使用者名稱
+Experimental Settings: 實驗性設定
+Failed to connect to the server. Please check your settings.: 無法連線到伺服器，請檢查你的設定。
+Failed to create replicator instance.: 無法建立複寫器實例。
+Fix: 修正
+Folder Prefix: 資料夾前綴
+For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.: HS256/HS512 演算法請提供共用密鑰；ES256/ES512 演算法請提供 pkcs8 PEM 格式的私密金鑰。
+Generate Random ID: 產生隨機 ID
+Group ID: 群組 ID
+If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.: 若啟用「自動啟動 P2P 連線」，外掛啟動時會自動建立 P2P 連線。
+If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.: 如果你無法避免 CORS 問題，可以試試這個選項。它會使用 Obsidian 的內部 API 與 CouchDB 伺服器通訊，不符合網頁標準，但可以運作。請注意，未來的 Obsidian 版本可能導致此功能失效。
+If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the S3 server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.: 如果你無法避免 CORS 問題，可以試試這個選項。它會使用 Obsidian 的內部 API 與 S3 伺服器通訊，不符合網頁標準，但可以運作。請注意，未來的 Obsidian 版本可能導致此功能失效。
+If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket.: 如果你想把資料存放在儲存庫內特定的資料夾中，可以在此指定資料夾前綴；留空則會將資料存放在儲存庫的根目錄。
+"Issue detection log:": 問題偵測日誌：
+JWT (JSON Web Token) authentication allows you to securely authenticate with the CouchDB server using tokens. Ensure that your CouchDB server is configured to accept JWTs and that the provided key and settings match the server's configuration. Incidentally, I have not verified it very thoroughly.: JWT（JSON Web Token）驗證讓你可以使用權杖安全地登入 CouchDB 伺服器。請確認你的 CouchDB 伺服器已設定為接受 JWT，且提供的金鑰與設定符合伺服器端的設定。附帶一提，這項功能尚未經過非常徹底的驗證。
+JWT Algorithm: JWT 演算法
+JWT Expiration Duration (minutes): JWT 有效期限（分鐘）
+JWT Key: JWT 金鑰
+JWT Key ID (kid): JWT Key ID（kid）
+JWT Subject (sub): JWT Subject（sub）
+No checks have been performed yet.: 尚未執行任何檢查。
+Note that the Group ID is not limited to the generated format; you can use any string as the Group ID.: 請注意，群組 ID 不限於自動產生的格式，你可以使用任何字串作為群組 ID。
+Obfuscate Properties: 混淆屬性
+Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data.: 混淆屬性（例如檔案路徑、大小、建立時間與修改時間）可以額外增加一層安全保護，讓遠端伺服器上的檔案與資料夾結構及名稱更難被辨識。這有助於保護你的隱私，也讓未授權使用者更難推測你的資料資訊。
+P2P Configuration: P2P 設定
+Passphrase: 密語
+Please be aware that the End-to-End Encryption passphrase is not validated until the synchronisation process actually commences. This is a security measure designed to protect your data.: 請注意，端對端加密的密語要到同步程序實際開始時才會進行驗證。這是為了保護你資料而設計的安全措施。
+Please configure your end-to-end encryption settings.: 請設定你的端對端加密選項。
+Please enter the CouchDB server information below.: 請在下方輸入 CouchDB 伺服器資訊。
+Please enter the details required to connect to your S3/MinIO/R2 compatible object storage service.: 請輸入連線到你的 S3/MinIO/R2 相容物件儲存服務所需的詳細資訊。
+Please enter the Peer-to-Peer Synchronisation information below.: 請在下方輸入 Peer-to-Peer 同步資訊。
+Please understand that this is intended behaviour.: 請理解這是預期中的行為。
+Proceed: 繼續
+Region: 區域
+S3/MinIO/R2 Configuration: S3/MinIO/R2 設定
+Secret Access Key: Secret Access Key
+Strongly Recommended: 強烈建議
+Test Settings and Continue: 測試設定並繼續
+The Group ID and passphrase are used to identify your group of devices. Make sure to use the same Group ID and passphrase on all devices you want to synchronise.: 群組 ID 與密語用於識別你的裝置群組。請確保所有要同步的裝置都使用相同的群組 ID 與密語。
+Therefore, we ask that you exercise extreme caution when configuring server information manually. If an incorrect passphrase is entered, the data on the server will become corrupted.: 因此，在手動設定伺服器資訊時請務必格外小心。如果輸入了錯誤的密語，伺服器上的資料將會損毀。
+This setting must be the same even when connecting to multiple synchronisation destinations.: 即使連線到多個同步目標，這項設定也必須保持一致。
+TURN Credential: TURN 憑證
+TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank.: 只有在你身處嚴格的 NAT 或防火牆之後、無法建立直接 P2P 連線時，才需要設定 TURN 伺服器。多數情況下這些欄位可以留空。
+TURN Server URLs (comma-separated): TURN 伺服器網址（以逗號分隔）
+TURN Username: TURN 使用者名稱
+URL: URL
+Use internal API: 使用內部 API
+Use Internal API: 使用內部 API
+Use JWT Authentication: 使用 JWT 驗證
+Use Path-Style Access: 使用路徑樣式存取
+Username: 使用者名稱
+We can use only Secure (HTTPS) connections on Obsidian Mobile.: 在 Obsidian Mobile 上只能使用安全連線（HTTPS）。
+", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.": "，請選擇最符合你目前 Vault 狀態的選項，應用程式會依你的選擇以最合適的方式檢查你的檔案。"
+(e.g., after editing many files whilst offline): （例如：離線編輯了大量檔案之後）
+(e.g., immediately after restoring on another computer, or having recovered from a backup): （例如：剛在另一台電腦上還原完成，或剛從備份復原之後）
+(e.g., setting up for the first time on a new smartphone, starting from a clean slate): （例如：第一次在新手機上設定，從全新狀態開始）
+"⚠️ Important Notice": ⚠️ 重要通知
+"⚠️ Please Confirm the Following": ⚠️ 請確認以下事項
+After that, synchronise to a brand new vault on each other device with the new remote one by one.: 之後，請在其他每個裝置上，逐一使用全新的 Vault 與這個新的遠端進行同步。
+by resetting the remote, you will be informed on other devices.: 重設遠端後，其他裝置上會顯示提示告知此事。
+"Final Confirmation: Overwrite Server Data with This Device's Files": 最終確認：以此裝置的檔案覆寫伺服器資料
+Furthermore, if conflicts are already present in the server data, they will be synchronised to this device as they are, and you will need to resolve them locally.: 此外，如果伺服器資料中已存在衝突，這些衝突會原樣同步到此裝置，你需要在本機自行解決。
+Have you created a backup before proceeding?: 你在繼續之前是否已建立備份？
+I am unable to create a backup of my Vault.: 我無法備份我的 Vault。
+I am unable to create a backup of my Vaults.: 我無法備份我的 Vault。
+I have created a backup of my Vault.: 我已經備份了我的 Vault。
+I understand that all changes made on other smartphones or computers possibly could be lost.: 我了解其他手機或電腦上的所有變更可能會遺失。
+I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information.: 我了解其他裝置將無法再進行同步，且需要重設其同步資訊。
+I understand that this action is irreversible once performed.: 我了解此操作一旦執行即無法復原。
+I understand the risks and will proceed without a backup.: 我了解風險，並在沒有備份的情況下繼續。
+I Understand, Overwrite Server: 我了解，覆寫伺服器
+If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.: 如果此裝置的 Vault 中有尚未同步的變更，重設後這些變更很可能會與伺服器上的版本產生分歧，可能導致大量檔案衝突。
+If you understand the risks and still wish to proceed, select so.: 如果你了解風險，仍希望繼續，請選取此項。
+In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically.: 在這種情況下，Self-hosted LiveSync 會為每個檔案重新建立中繼資料，並刻意產生衝突。若檔案內容相同，這些衝突會自動解決。
+It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.: 強烈建議在繼續之前先建立備份。若不備份就繼續，可能導致資料遺失。
+Of course, we can back up the data before proceeding.: 當然，你也可以在繼續之前先備份資料。
+Prevent fetching configuration from server: 阻止從伺服器擷取設定
+Reset and Resume Synchronisation: 重設並恢復同步
+the single, authoritative master copy: 唯一且具權威性的主要複本
+The files in this Vault are almost identical to the server's.: 此 Vault 中的檔案幾乎與伺服器上的相同。
+There is a way to resolve this on other devices.: 在其他裝置上有辦法可以處理這個情況。
+There may be differences between the files in this Vault and the server.: 此 Vault 中的檔案可能與伺服器上的有所不同。
+This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.: 這是威力極強的操作。我們強烈建議你先將 Vault 資料夾複製到安全的位置。
+This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as: 此程序將先刪除伺服器上所有現有的同步資料。之後，將以此裝置目前的 Vault 狀態（包含其本機資料庫）為
+This Vault is empty, or contains only new files that are not on the server.: 此 Vault 是空的，或只包含伺服器上沒有的新檔案。
+This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.: 這會使用伺服器上最新的資料，重建此裝置上的本機資料庫。此操作旨在解決同步不一致的問題，並恢復正常功能。
+To minimise the creation of new conflicts: 為了盡量減少新增衝突
+We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.: 我們建議你先將 Vault 資料夾複製到安全的位置。萬一發生大量衝突，或不小心同步到錯誤的目標，這可以作為一層保障。
+You should create a new synchronisation destination and rebuild your data there.: 你應該建立一個新的同步目標，並在該處重建你的資料。
+You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.: 只有在特殊情況下才應執行此操作，例如伺服器資料已完全損毀、其他所有裝置上的變更都已不再需要，或資料庫大小相對於 Vault 大小已變得異常龐大時。
+After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.: 重新啟動後，此裝置上的資料將以「主要複本」的形式上傳到伺服器。請注意，伺服器上任何非預期的現有資料都會被完全覆寫。
+After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.: 重新啟動後，此裝置上的資料庫將使用伺服器的資料重建。如果此 Vault 中有尚未同步的檔案，可能會與伺服器資料發生衝突。
+Apply the settings: 套用設定
+Close this dialog: 關閉此對話框
+Enter Setup URI: 輸入 Setup URI
+Failed to parse Setup-URI.: 無法解析 Setup URI。
+I am setting up a new server for the first time / I want to reset my existing server.: 我是第一次設定新的伺服器／我想要重設現有的伺服器。
+IMPORTANT: 重要
+"Mostly Complete: Decision Required": 大致完成：需要你做出決定
+My remote server is already set up. I want to join this device.: 我的遠端伺服器已經設定完成，我想讓這台裝置加入。
+Note that you can generate a new Setup URI by running the "Copy settings as a new Setup URI" command in the command palette.: 請注意，你可以在命令面板中執行「將設定複製為新的 Setup URI」命令來產生新的 Setup URI。
+On the source device, from the command palette, run the 'Show settings as a QR code' command.: 在來源裝置上，於命令面板執行「將設定顯示為 QR 碼」命令。
+On the source device, open Obsidian.: 在來源裝置上開啟 Obsidian。
+On this device, please keep this Vault open.: 在這台裝置上，請保持此 Vault 開啟。
+On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.: 在這台裝置上切換到相機 App，或使用 QR 碼掃描器掃描顯示出的 QR 碼。
+Passphrase is required.: 必須輸入密語。
+Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.: 請輸入在伺服器安裝期間或其他裝置上產生的 Setup URI，以及 Vault 的密語。
+Please follow the steps below to import settings from your existing device.: 請依照以下步驟，從現有裝置匯入設定。
+"PLEASE NOTE": 請注意
+Please select the button below to restart and proceed to the data fetching confirmation.: 請點選下方按鈕以重新啟動，並前往資料擷取確認步驟。
+Please select the button below to restart and proceed to the final confirmation.: 請點選下方按鈕以重新啟動，並前往最終確認步驟。
+Please select your situation.: 請選擇符合你情況的選項。
+Proceed to the next step.: 繼續前往下一步。
+Restart and Fetch Data: 重新啟動並擷取資料
+Restart and Initialise Server: 重新啟動並初始化伺服器
+Scan QR Code: 掃描 QR 碼
+Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten.: 選擇此選項會使用此裝置目前的資料來初始化伺服器，伺服器上任何現有資料都會被完全覆寫。
+Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.: 選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料擷取到此裝置。
+"Setup Complete: Preparing to Fetch Synchronisation Data": 設定完成：準備擷取同步資料
+"Setup Complete: Preparing to Initialise Server": 設定完成：準備初始化伺服器
+Setup-URI: Setup URI
+The connection to the server has been configured successfully. As the next step,: 與伺服器的連線已成功設定完成。接下來，
+the latest synchronisation data will be downloaded from the server to this device.: 最新的同步資料將從伺服器下載到此裝置。
+the local database, that is to say the synchronisation information, must be reconstituted.: 本機資料庫，也就是同步資訊，必須重新建立。
+The remote is already set up, and the configuration is compatible (or got compatible by this operation).: 遠端已經設定完成，且設定相容（或透過此操作變得相容）。
+The Setup-URI does not appear to be valid. Please check that you have copied it correctly.: 這個 Setup URI 似乎無效，請檢查是否複製正確。
+The Setup-URI is valid and ready to use.: Setup URI 有效，可以使用。
+the synchronisation data on the server will be built based on the current data on this device.: 伺服器上的同步資料將依此裝置目前的資料建立。
+Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing.: 除非你很確定，否則選擇此選項有一定風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解自己在做什麼。
+"+1 week": +1 週
+Chunks: Chunks
+Data to Copy: 要複製的資料
+Date: 日期
+Diff: 差異
+Dismiss: 關閉
+File integrity: 檔案完整性
+Gathering information...: 正在收集資訊⋯
+Hidden file synchronization have been temporarily disabled. Please enable them after the fetching, if you need them.: 隱藏檔案同步已暫時停用。如有需要，請在抓取完成後重新啟用。
+INVERTED: 反向
+Just for a minute, please!: 請稍候片刻！
+"NO PREVIEW": 無預覽
+Not now: 暫不處理
+Path: 路徑
+Rev: 版本
+Stat: 狀態
 (RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.: （正則表示式）留空即同步所有檔案。設定正則表示式可限制要同步的檔案。
 (RegExp) If this is set, any changes to local and remote files that match this will be skipped.: （正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。
 Activate: 啟用
@@ -14,7 +363,7 @@ Batch database update: 批次更新資料庫
 Batch limit: 批次上限
 Batch size: 批次大小
 Batch size of on-demand fetching: 按需抓取的批次大小
-Bucket Name: 儲存桶名稱
+Bucket Name: 儲存庫名稱
 Check: 檢查
 Configuration Encryption: 設定加密
 CouchDB Connection Tweak: CouchDB 連線調校
@@ -53,9 +402,9 @@ Configure E2EE: 設定 E2EE
 Configure Remote: 設定遠端
 Copy: 複製
 Cross-platform: 跨平台
-"Current adapter: {adapter}": 目前的適配器：{adapter}
+"Current adapter: {adapter}": 目前的轉接器：{adapter}
 Customization Sync (Beta3): 自訂同步（Beta3）
-Database Adapter: 資料庫適配器
+Database Adapter: 資料庫轉接器
 Default: 預設
 Delete: 刪除
 Delete all customization sync data: 刪除所有自訂同步資料
@@ -63,6 +412,7 @@ Delete all data on the remote server.: 刪除遠端伺服器上的所有資料�
 Delete local database to reset or uninstall Self-hosted LiveSync: 刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync
 Delete Remote Configuration: 刪除遠端設定
 Delete remote configuration '{name}'?: 要刪除遠端設定「{name}」嗎？
+Delete remote configuration '${name}'?: 要刪除遠端設定「${name}」嗎？
 desktop: 桌面裝置
 Device name: 裝置名稱
 Disables all synchronization and restart.: 停用所有同步並重新啟動。
@@ -95,7 +445,7 @@ Endpoint URL: 端點 URL
 Enhance chunk size: 擴大 chunk 大小
 Fetch: 抓取
 Fetch chunks on demand: 按需抓取 chunks
-Fetch database with previous behaviour: 以前一種行為抓取資料庫
+Fetch database with previous behaviour: 以先前的行為抓取資料庫
 Filename: 檔名
 Forces the file to be synced when opened.: 開啟檔案時強制同步該檔案。
 Handle files as Case-Sensitive: 將檔案視為區分大小寫
@@ -130,11 +480,294 @@ If enabled, the ⛔ icon will be shown inside the status instead of the file war
 Ignore patterns: 忽略模式
 Import connection: 匯入連線
 Initialise all journal history, On the next sync, every item will be received and sent.: 初始化所有日誌歷史。下次同步時，每個項目都會重新接收與傳送。
+K:
+  exp: 實驗性
+  long_p2p_sync: "%{title_p2p_sync}"
+  P2P: "%{Peer}-to-%{Peer}"
+  Peer: Peer
+  ScanCustomization: 掃描自訂項目
+  short_p2p_sync: P2P 同步
+  title_p2p_sync: Peer-to-Peer 同步
 Later: 稍後
 "Limit: {datetime} ({timestamp})": 限制：{datetime}（{timestamp}）
+Doctor:
+  Button:
+    DismissThisVersion: 不要，且到下個版本發布前都不要再問
+    Fix: 修正
+    FixButNoRebuild: 修正但不要重建
+    No: 否
+    Skip: 保持原樣
+    Yes: 是
+  Dialogue:
+    Main: |-
+      嗨！由於 ${activateReason}，設定診斷已啟動！
+      很遺憾，偵測到部分設定可能有問題。
+      請放心，我們會逐一解決這些問題。
+
+      先讓你知道，我們會就以下項目詢問你：
+
+      ${issues}
+
+      要開始了嗎？
+    MainFix: |-
+
+      ## ${name}
+
+      | 目前值 | 建議值 |
+      |:---:|:---:|
+      | ${current} | ${ideal} |
+
+      **建議等級：** ${level}
+
+      ### 為什麼會偵測到這個問題？
+
+      ${reason}
+
+      ${note}
+
+      要將此項修正為建議值嗎？
+    Title: Self-hosted LiveSync 設定診斷
+    TitleAlmostDone: 快完成了！
+    TitleFix: "修正問題 ${current}/${total}"
+  Level:
+    Must: 必須
+    Necessary: 必要
+    Optional: 可選
+    Recommended: 建議
+  Message:
+    NoIssues: 未偵測到任何問題！
+    RebuildLocalRequired: 請注意！套用此項需要重建本機資料庫！
+    RebuildRequired: 請注意！套用此項需要重建！
+    SomeSkipped: 有些問題我們先保持原樣。要在下次啟動時再次詢問你嗎？
+  RULES:
+    E2EE_V02500:
+      REASON: 端對端加密現在變得更穩固也更快。此外，先前的 E2EE 在重新進行的程式碼審查中被發現有安全漏洞，應盡快套用此項修正。造成的不便由衷抱歉。另外，此設定不具向前相容性，所有同步的裝置都必須更新到 v0.25.0 或更新版本。不需要重建，資料會在下次傳輸時自動轉換為新格式；不過，若條件允許，仍建議進行重建。
+liveSyncReplicator:
+  beforeLiveSync: 在 LiveSync 之前，先執行一次 OneShot 同步⋯
+  cantReplicateLowerValue: 無法複寫更低的值。
+  checkingLastSyncPoint: 正在尋找上次同步的位置。
+  couldNotConnectTo: "無法連線到 ${uri} : ${name}\n(${db})"
+  couldNotConnectToRemoteDb: "無法連線到遠端資料庫：${d}"
+  couldNotConnectToServer: 與遠端的連線被阻擋，或連線失敗。
+  couldNotConnectToURI: "無法連線到 ${uri}:${dbRet}"
+  couldNotMarkResolveRemoteDb: 無法將遠端資料庫標記為已處理。
+  liveSyncBegin: LiveSync 開始⋯
+  lockRemoteDb: 鎖定遠端資料庫以防止資料損毀
+  markDeviceResolved: 將此裝置標記為「已處理」。
+  mismatchedTweakDetected: 偵測到裝置之間的設定有不一致之處。執行手動複寫將嘗試解決此問題。
+  oneShotSyncBegin: "OneShot 同步開始⋯（${syncMode}）"
+  remoteDbCorrupted: 遠端資料庫版本較新或已損毀，請確保已安裝最新版本的 Self-hosted LiveSync
+  remoteDbCreatedOrConnected: 遠端資料庫已建立或已連線
+  remoteDbDestroyed: 遠端資料庫已銷毀
+  remoteDbDestroyError: "銷毀遠端資料庫時發生問題："
+  remoteDbMarkedResolved: 遠端資料庫已標記為已處理。
+  replicationClosed: 複寫已關閉
+  replicationInProgress: 複寫已在進行中
+  retryLowerBatchSize: "以較低的批次大小重試：${batch_size}/${batches_limit}"
+  unlockRemoteDb: 解鎖遠端資料庫以防止資料損毀
+liveSyncSetting:
+  errorNoSuchSettingItem: "沒有這個設定項目：${key}"
+  originalValue: "原始值：${value}"
+  valueShouldBeInRange: 值應介於 ${min} < value < ${max}
+liveSyncSettings:
+  btnApply: 套用
 Lock: 鎖定
+logPane:
+  autoScroll: 自動捲動
+  logWindowOpened: 日誌視窗已開啟
+  pause: 暫停
+  title: Self-hosted LiveSync 日誌
+  wrap: 自動換行
 Lock Server: 鎖定伺服器
 Lock the remote server to prevent synchronization with other devices.: 鎖定遠端伺服器，以防止其他裝置進行同步。
+moduleCheckRemoteSize:
+  logCheckingStorageSizes: 正在檢查儲存空間大小
+  logCurrentStorageSize: "遠端儲存空間大小：${measuredSize}"
+  logExceededWarning: "遠端儲存空間大小：${measuredSize} 已超過 ${notifySize}"
+  logThresholdEnlarged: 閾值已提高到 ${size}MB
+  msgConfirmRebuild: 這可能需要一些時間。你確定要現在重建全部內容嗎？
+  msgDatabaseGrowing: |-
+    **你的資料庫正在變大！** 但不用擔心，我們現在就可以處理。在遠端儲存空間用盡之前還有一些時間。
+
+    | 測量大小 | 設定大小 |
+    | --- | --- |
+    | ${estimatedSize} | ${maxSize} |
+
+    > [!MORE]-
+    > 如果你已經使用了好幾年，資料庫中可能累積了未被參照的 chunks，也就是垃圾資料。因此，我們建議重建全部內容，通常會讓資料庫變得小很多。
+    >
+    > 如果你的 Vault 容量只是持續增加，最好先整理檔案再重建全部內容。即使你為了加快速度而刪除了檔案，Self-hosted LiveSync 也不會刪除實際資料，詳情大致記載在[文件](https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/tech_info.md)中。
+    >
+    > 如果你不在意容量增加，可以將通知上限調高 100MB，這在你自行架設伺服器時較適用。不過，還是建議偶爾重建全部內容。
+    >
+
+    > [!WARNING]
+    > 若要執行重建全部內容，請確保所有裝置都已同步。不過外掛會盡可能地進行合併。
+  msgSetDBCapacity: |-
+    我們可以設定資料庫容量上限警告，**以便在遠端儲存空間用盡之前及早採取行動**。
+    你要啟用這個功能嗎？
+
+    > [!MORE]-
+    > - 0：不警告儲存空間大小。
+    >   如果你在遠端儲存空間（尤其是自行架設）有足夠空間，建議選擇此項；你也可以自行手動檢查儲存空間大小並重建。
+    > - 800：遠端儲存空間大小超過 800MB 時警告。
+    >   如果你使用限制為 1GB 的 fly.io 或 IBM Cloudant，建議選擇此項。
+    > - 2000：遠端儲存空間大小超過 2GB 時警告。
+
+    如果達到上限，系統會要求逐步提高限制。
+  noticeExceeded: "遠端儲存空間大小為 ${measuredSize}，已超過設定的 ${notifySize} 通知閾值。{HERE}"
+  noticeNotConfigured: 尚未設定遠端儲存空間大小通知。{HERE}
+  option2GB: 2GB（標準）
+  option800MB: 800MB（Cloudant、fly.io）
+  optionAskMeLater: 稍後再問我
+  optionDismiss: 忽略
+  optionIncreaseLimit: 提高到 ${newMax}MB
+  optionNoWarn: 不，請永遠不要警告
+  optionRebuildAll: 立即重建全部內容
+  optionReview: 檢視選項
+  titleDatabaseSizeLimitExceeded: 遠端儲存空間大小已超過限制
+  titleDatabaseSizeNotify: 設定資料庫大小通知
+moduleInputUIObsidian:
+  defaultTitleConfirmation: 確認
+  defaultTitleSelect: 選擇
+  optionNo: 否
+  optionYes: 是
+moduleLiveSyncMain:
+  logAdditionalSafetyScan: 額外的安全掃描⋯
+  logLoadingPlugin: 正在載入外掛⋯
+  logPluginInitCancelled: 外掛初始化被某個模組取消
+  logReadChangelog: LiveSync 已更新，請閱讀更新日誌！
+  logVersionUpdate: LiveSync 已更新。為避免破壞性更新造成問題，已暫時停用所有自動同步。請確保所有裝置都已更新到最新版本後再啟用。
+  logSafetyScanCompleted: 額外的安全掃描已完成
+  logSafetyScanFailed: 額外的安全掃描在某個模組上失敗
+  logUnloadingPlugin: 正在卸載外掛⋯
+  msgScramEnabled: |
+    Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？
+
+    | 類型 | 狀態 | 說明 |
+    |:---:|:---:|---|
+    | 儲存空間事件 | ${fileWatchingStatus} | 所有修改都會被忽略 |
+    | 資料庫事件 | ${parseReplicationStatus} | 所有已同步的變更都會被延後 |
+
+    你想要恢復它們並重新啟動 Obsidian 嗎？
+
+    > [!DETAILS]-
+    > 這些標記是外掛在重建或抓取時設定的。如果程序異常結束，可能會非預期地留存下來。
+    > 如果你不確定，可以嘗試重新執行這些程序。請務必先備份你的 Vault。
+  optionKeepLiveSyncDisabled: 保持 LiveSync 停用
+  optionResumeAndRestart: 恢復並重新啟動 Obsidian
+  titleScramEnabled: 已啟用緊急處置
+moduleLocalDatabase:
+  logWaitingForReady: 正在等待就緒⋯
+moduleLog:
+  showLog: 顯示日誌
+moduleMigration:
+  fix0256:
+    buttons:
+      checkItLater: 稍後再檢查
+      DismissForever: 我已修正，不要再詢問
+      fix: 修正
+    message: |
+      由於近期的一個問題（存在於 v0.25.6），部分檔案可能未正確儲存到同步資料庫中。
+      我們已掃描你的檔案，並找出一些需要修正的項目。
+
+      **可以修正的檔案：**
+
+      ${files}
+
+      這些檔案在儲存空間中有大小相符的原始檔案，很可能可以復原。
+      我們可以用它們修正資料庫，請點選下方的「修正」按鈕進行修正。
+
+      ${messageUnrecoverable}
+
+      如果你想再次執行，可以從 Hatch 頁面操作。
+    messageUnrecoverable: |
+      **無法在此裝置上修正的檔案：**
+
+      ${filesNotRecoverable}
+
+      這些檔案的中繼資料不一致，無法在此裝置上修正（多數情況下我們無法判斷哪一份才正確）。
+      若要復原它們，請檢查你的其他裝置（同樣使用此功能），或從備份手動復原。
+    title: 已偵測到損壞的檔案
+  insecureChunkExist:
+    buttons:
+      fetch: 我已重建遠端，從遠端抓取
+      later: 我稍後再處理
+      rebuild: 重建全部
+    laterMessage: 我們強烈建議盡快處理此問題！
+    message: |
+      部分 chunks 未安全儲存，在資料庫中也未加密。
+      **請重建資料庫以修正此問題**。
+
+      如果你的遠端資料庫未設定 SSL，或使用了安全性較低的憑證，**敏感資料就有外洩風險**。
+
+      注意：請將所有裝置上的 Self-hosted LiveSync 升級到 v0.25.6 或更新版本，並確實備份你的 Vault。
+      注意 2：重建全部與抓取會耗用一些時間與流量，請在離峰時段進行，並確保網路連線穩定。
+    title: 發現不安全的 chunks！
+  logBulkSendCorrupted: 已啟用批次傳送 chunks，但此功能已損壞。造成不便，敬請見諒。已自動停用。
+  logFetchRemoteTweakFailed: 無法取得遠端調校值
+  logLocalDatabaseNotReady: 發生問題！本機資料庫尚未就緒
+  logMigratedSameBehaviour: "已遷移到 db:${current}，行為與先前相同"
+  logMigrationFailed: "從 ${old} 遷移到 ${current} 失敗或已取消"
+  logRedflag2CreationFail: 無法建立 redflag2
+  logRemoteTweakUnavailable: 無法取得遠端調校值
+  logSetupCancelled: 設定已取消，Self-hosted LiveSync 正在等候你完成設定！
+  msgFetchRemoteAgain: |-
+    你可能已經知道，Self-hosted LiveSync 變更了預設行為與資料庫結構。
+
+    值得慶幸的是，在你的努力下，遠端資料庫似乎已經完成遷移。恭喜！
+
+    不過，還需要再多做一點。此裝置的設定與遠端資料庫不相容，我們需要再次從遠端資料庫抓取。現在要再次從遠端抓取嗎？
+
+    ___注意：在變更設定並再次抓取資料庫之前，我們無法進行同步。___
+    ___注意 2：chunks 完全不可變，我們只需要抓取中繼資料與差異部分。___
+  msgSinceV02321: |-
+    自 v0.23.21 起，Self-hosted LiveSync 變更了預設行為與資料庫結構，進行了以下變更：
+
+    1. **檔名的大小寫敏感性**
+       現在處理檔名時不區分大小寫。這對多數平台是有益的變更，除了 Linux 與 iOS，它們無法有效處理檔名的大小寫敏感性。
+       （在這些平台上，檔名相同但大小寫不同的檔案會顯示警告。）
+
+    2. **chunks 的版本處理**
+       chunks 是不可變的，因此可以固定其版本。這項變更會提升檔案儲存的效能。
+
+    ___不過，若要啟用這兩項變更中的任何一項，都需要重建遠端與本機資料庫。這個過程需要幾分鐘，建議在時間充裕時進行。___
+
+    - 如果你想維持先前的行為，可以使用 `${KEEP}` 略過此程序。
+    - 如果你目前沒有足夠的時間，請選擇 `${DISMISS}`，之後會再次提示你。
+    - 如果你已在其他裝置上重建過資料庫，請選擇 `${DISMISS}` 並再次嘗試同步；由於偵測到差異，系統會再次提示你。
+  optionAdjustRemote: 調整為遠端設定
+  optionDecideLater: 稍後再決定
+  optionEnableBoth: 兩者都啟用
+  optionEnableFilenameCaseInsensitive: 僅啟用 #1
+  optionEnableFixedRevisionForChunks: 僅啟用 #2
+  optionKeepPreviousBehaviour: 保留先前的行為
+  optionNoAskAgain: 不，請稍後再問我
+  optionYesFetchAgain: 是，再次抓取
+  titleCaseSensitivity: 大小寫敏感性
+  msgInitialSetup: |-
+    你的裝置**尚未完成設定**。讓我引導你完成設定流程。
+
+    請記得，每個對話框的內容都可以複製到剪貼簿。如果日後需要參考，可以貼到 Obsidian 的筆記中，也可以用翻譯工具翻成你的語言。
+
+    首先，你有 **Setup URI** 嗎？
+
+    注意：如果你不知道那是什麼，請參閱[說明文件](${URI_DOC})。
+  msgRecommendSetupUri: |-
+    我們強烈建議你產生 Setup URI 並使用它。
+    如果你對此不熟悉，請參閱[說明文件](${URI_DOC})（再次抱歉，但這很重要）。
+
+    你想要如何手動設定？
+  optionHaveSetupUri: 有，我有
+  optionManualSetup: 全部手動設定
+  optionNoSetupUri: 沒有，我沒有
+  optionRemindNextLaunch: 下次啟動時提醒我
+  optionSetupViaP2P: 使用「%{short_p2p_sync}」進行設定
+  optionSetupWizard: 帶我進入設定精靈
+  titleRecommendSetupUri: 建議使用 Setup URI
+  titleWelcome: 歡迎使用 Self-hosted LiveSync
+moduleObsidianMenu:
+  replicate: 複寫
 More actions: 更多操作
 Network warning style: 網路警告樣式
 New Remote: 新增遠端
@@ -143,51 +776,332 @@ Non-Synchronising files: 不同步的檔案
 Normal Files: 一般檔案
 obsidianLiveSyncSettingTab:
   btnApply: 套用
+  btnCheck: 檢查
+  btnCopy: 複製
   btnDisable: 停用
+  btnDiscard: 捨棄
+  btnEnable: 啟用
+  btnGotItAndUpdated: 我知道了，且已更新。
+  btnStart: 開始
+  btnTest: 測試
+  buttonFetch: 抓取
+  btnFix: 修正
   btnNext: 下一步
+  btnUse: 使用
   buttonNext: 下一步
   defaultLanguage: 預設語言
+  descConnectSetupURI: 這是使用 Setup URI 設定 Self-hosted LiveSync 的建議方式。
+  descCopySetupURI: 設定新裝置時非常方便！
+  descEnableLiveSync: 請先完成上述兩個選項之一，或手動完成所有設定，再啟用此選項。
+  descFetchConfigFromRemote: 從已設定完成的遠端伺服器抓取必要的設定。
+  descManualSetup: 不建議使用，但如果你沒有 Setup URI 會很有用
+  descTestDatabaseConnection: 開啟資料庫連線。如果找不到遠端資料庫，且你有建立資料庫的權限，將會建立該資料庫。
+  descValidateDatabaseConfig: 檢查並修正資料庫設定中任何潛在的問題。
+  errAccessForbidden: ❗ 存取被拒。
+  errCannotContinueTest: 無法繼續進行測試。
+  errCorsCredentials: ❗ cors.credentials 設定錯誤
+  errCorsNotAllowingCredentials: ❗ CORS 不允許憑證
+  errCorsOrigins: ❗ cors.origins 設定錯誤
+  errEnableCors: ❗ httpd.enable_cors 設定錯誤
+  errEnableCorsChttpd: ❗ chttpd.enable_cors 設定錯誤
+  errMaxDocumentSize: ❗ couchdb.max_document_size 設定過低
+  errMaxRequestSize: ❗ chttpd.max_http_request_size 設定過低
+  errMissingWwwAuth: ❗ 缺少 httpd.WWW-Authenticate 設定
+  errRequireValidUser: ❗ chttpd.require_valid_user 設定錯誤。
+  errRequireValidUserAuth: ❗ chttpd_auth.require_valid_user 設定錯誤。
   labelDisabled: "⏹️ : 已停用"
   labelEnabled: "🔁 : 已啟用"
+  levelAdvanced: （進階）
+  levelEdgeCase: （邊緣情況）
+  levelPowerUser: （進階使用者）
+  linkOpenInBrowser: 在瀏覽器中開啟
+  linkPageTop: 回到頁首
+  linkTipsAndTroubleshooting: 提示與疑難排解
+  logCannotUseCloudant: 此功能無法與 IBM Cloudant 一併使用。
+  logPassphraseInvalid: 密語無效，請修正。
+  logCheckPassphraseFailed: "錯誤：無法透過遠端伺服器檢查密語：\n${db}。"
+  logCheckingConfigDone: 設定檢查完成
+  logCheckingConfigFailed: 設定檢查失敗
+  logCheckingDbConfig: 正在檢查資料庫設定
   logConfiguredDisabled: 已設定的同步模式：已停用
   logConfiguredLiveSync: 已設定的同步模式：LiveSync
   logConfiguredPeriodic: 已設定的同步模式：定期同步
+  logCouchDbConfigFail: "CouchDB 設定：${title} 失敗"
+  logCouchDbConfigSet: "CouchDB 設定：${title} -> 將 ${key} 設為 ${value}"
+  logCouchDbConfigUpdated: "CouchDB 設定：${title} 已成功更新"
+  logDatabaseConnected: 資料庫已連線
+  logEncryptionNoPassphrase: 沒有密語就無法啟用加密
+  logEncryptionNoSupport: 你的裝置不支援加密。
+  logErrorOccurred: 發生錯誤！！
+  logEstimatedSize: "預估大小：${size}"
+  logPassphraseNotCompatible: 錯誤：密語與遠端伺服器不符！請再檢查一次！
+  logRebuildNote: 同步已停用；如有需要，請先抓取再重新啟用。
   logSelectAnyPreset: 請選擇任一預設項目。
+  msgAreYouSureProceed: 你確定要繼續嗎？
+  msgNewVersionNote: 因為升級通知才來到這裡嗎？請查看版本歷程。若你已確認無誤，請點選按鈕。下次更新時會再次提示。
+  msgNonHTTPSInfo: 已設定為非 HTTPS 的 URI。請注意，這在行動裝置上可能無法運作。
+  msgNonHTTPSWarning: 無法連線到非 HTTPS 的 URI，請更新你的設定後再試一次。
+  msgObjectStorageWarning: |-
+    警告：此功能仍在開發中，請注意以下事項：
+    - 僅附加架構。需要重建才能縮小儲存空間。
+    - 較不穩定。
+    - 首次同步時，所有歷史記錄都會從遠端傳輸，請留意流量上限與速度較慢的情況。
+    - 之後只會即時同步差異部分。
+
+    如果你遇到任何問題，或對此功能有任何想法，請到 GitHub 建立 issue。
+    感謝你的大力支持。
+  msgSettingsUnchangeableDuringSync: 同步期間無法變更這些設定。請在「同步設定」中停用所有同步以解鎖。
+  nameApplySettings: 套用設定
+  nameManualSetup: 手動設定
+  nameTestConnection: 測試連線
+  nameTestDatabaseConnection: 測試資料庫連線
+  nameValidateDatabaseConfig: 驗證資料庫設定
+  msgChangesNeedToBeApplied: 需要套用變更！
+  msgConfigCheck: "--設定檢查--"
   msgConfigCheckFailed: 設定檢查失敗。仍要繼續嗎？
+  msgConnectionCheck: "--連線檢查--"
+  msgConnectionProxyNote: 如果連線檢查仍有問題（即使設定已經檢查過），請檢查你的反向代理設定。
+  msgCurrentOrigin: "目前來源：${origin}"
+  msgDiscardConfirmation: 你真的要捨棄現有的設定與資料庫嗎？
+  msgDone: "--完成--"
+  msgEnableCors: 設定 httpd.enable_cors
+  msgEnableCorsChttpd: 設定 chttpd.enable_cors
   msgEnableEncryptionRecommendation: 我們建議啟用端對端加密與路徑混淆。你確定要在未加密的情況下繼續嗎？
   msgFetchConfigFromRemote: 要從遠端伺服器抓取設定嗎？
   msgGenerateSetupURI: 全部完成！要產生 Setup URI 以便設定其他裝置嗎？
+  msgIfConfigNotPersistent: 如果伺服器設定並非持久保存（例如在 Docker 上執行），這裡的值可能會變動。一旦能夠連線，請更新伺服器 local.ini 中的設定。
   msgInvalidPassphrase: 你的加密密語可能無效。你確定要繼續嗎？
+  msgNotice: "---注意---"
+  msgOriginCheck: "來源檢查：${org}"
+  msgRebuildRequired: |-
+    需要重建資料庫才能套用變更。請選擇套用變更的方式。
+
+    <details>
+    <summary>圖例</summary>
+
+    | 符號 | 含意 |
+    |: ------ :| ------- |
+    | ⇔ | 已是最新 |
+    | ⇄ | 同步以取得一致 |
+    | ⇐,⇒ | 傳輸並覆寫 |
+    | ⇠,⇢ | 從另一端傳輸並覆寫 |
+
+    </details>
+
+    ## ${OPTION_REBUILD_BOTH}
+    概覽： 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄
+    以此裝置上現有的檔案重建本機與遠端資料庫。
+    這會鎖定其他裝置，它們必須執行抓取。
+    ## ${OPTION_FETCH}
+    概覽： 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄
+    初始化本機資料庫，並以從遠端資料庫抓取的資料重建。
+    這也涵蓋你已重建遠端資料庫的情況。
+    ## ${OPTION_ONLY_SETTING}
+    僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。
   msgSelectAndApplyPreset: 請選擇並套用任一預設項目以完成精靈。
+  msgSetCorsCredentials: 設定 cors.credentials
+  msgSetCorsOrigins: 設定 cors.origins
+  msgSetMaxDocSize: 設定 couchdb.max_document_size
+  msgSetMaxRequestSize: 設定 chttpd.max_http_request_size
+  msgSetRequireValidUser: 設定 chttpd.require_valid_user = true
+  msgSetRequireValidUserAuth: 設定 chttpd_auth.require_valid_user = true
+  msgSetWwwAuth: 設定 httpd.WWW-Authenticate
+  msgSettingModified: 設定「${setting}」已由另一台裝置修改。點選 {HERE} 可重新載入設定，點選其他位置則忽略變更。
+  nameConnectSetupURI: 使用 Setup URI 連線
+  nameCopySetupURI: 將目前設定複製為 Setup URI
   nameDisableHiddenFileSync: 停用隱藏檔案同步
+  nameDiscardSettings: 捨棄現有的設定與資料庫
   nameEnableHiddenFileSync: 啟用隱藏檔案同步
+  nameEnableLiveSync: 啟用 LiveSync
   nameHiddenFileSynchronization: 隱藏檔案同步
+  okAdminPrivileges: ✔ 你具有管理者權限。
+  okCorsCredentials: ✔ cors.credentials 設定正確。
+  okCorsCredentialsForOrigin: CORS 憑證正常
+  okCorsOriginMatched: ✔ CORS 來源正常
+  okCorsOrigins: ✔ cors.origins 設定正確。
+  okEnableCors: ✔ httpd.enable_cors 設定正確。
+  okEnableCorsChttpd: ✔ chttpd.enable_cors 設定正確。
+  okMaxDocumentSize: ✔ couchdb.max_document_size 設定正確。
+  okMaxRequestSize: ✔ chttpd.max_http_request_size 設定正確。
+  okRequireValidUser: ✔ chttpd.require_valid_user 設定正確。
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user 設定正確。
+  okWwwAuth: ✔ httpd.WWW-Authenticate 設定正確。
+  optionApply: 套用
+  optionCouchDB: CouchDB
+  optionMinioS3R2: Minio、S3、R2
+  optionOkReadEverything: 好，我已全部閱讀完畢。
+  optionCancel: 取消
   optionDisableAllAutomatic: 停用所有自動同步
+  optionFetchFromRemote: 從遠端抓取
+  optionHere: 這裡
   optionLiveSync: LiveSync 同步
   optionOnEvents: 事件觸發時
   optionPeriodicAndEvents: 定期與事件觸發
   optionPeriodicWithBatch: 定期（批次）
+  optionRebuildBoth: 從此裝置重建兩端
+  optionSaveOnlySettings: （危險）僅儲存設定
+  panelChangeLog: 變更紀錄
+  panelPrivacyEncryption: 隱私與加密
+  panelGeneralSettings: 一般設定
+  panelRemoteConfiguration: 遠端設定
+  panelSetup: 設定
+  serverVersion: "伺服器資訊：${info}"
+  titleActiveRemoteServer: 使用中的遠端伺服器
   titleAppearance: 外觀
+  titleFetchConfigFromRemote: 從遠端伺服器抓取設定
+  titleFetchSettings: 抓取設定
   titleConflictResolution: 衝突處理
   titleCongratulations: 恭喜！
   titleCouchDB: CouchDB 伺服器
   titleDeletionPropagation: 刪除傳播
   titleEncryptionNotEnabled: 尚未啟用加密
   titleEncryptionPassphraseInvalid: 加密密語無效
+  titleExtraFeatures: 啟用額外與進階功能
   titleFetchConfig: 抓取設定
   titleHiddenFiles: 隱藏檔案
   titleLogging: 記錄
   titleMinioS3R2: MinIO、S3、R2
   titleNotification: 通知
+  titleOnlineTips: 線上提示
+  titleQuickSetup: 快速設定
+  titleRebuildRequired: 需要重建
   titleRemoteConfigCheckFailed: 遠端設定檢查失敗
   titleRemoteServer: 遠端伺服器
+  titleReset: 重設
+  titleSetupOtherDevices: 設定其他裝置
   titleSynchronizationMethod: 同步方式
   titleSynchronizationPreset: 同步預設
+  titleSyncSettings: 同步設定
   titleSyncSettingsViaMarkdown: 透過 Markdown 同步設定
   titleUpdateThinning: 更新精簡
+  warnCorsOriginUnmatched: "⚠ CORS 來源不相符 ${from}->${to}"
+  warnNoAdmin: ⚠ 你沒有管理者權限。
+"✔ SELECT": ✔ 已選取
+"✔ SYNC": ✔ 同步中
+"✔ WATCH": ✔ 監看中
+"📡 Off": 📡 關閉
+"📡 On": 📡 開啟
+"🔴 Disconnected": 🔴 已斷線
+"🕵️ Diag": 🕵️ 診斷
+"🟢 Connected": 🟢 已連線
+Accept: 接受
+Accept in session: 本次連線接受
+ACCEPTED: 已接受
+ACCEPTED (in session): 已接受（本次連線）
+Action: 動作
+Allow in session: 本次連線允許
+Allow permanently: 永久允許
+Auto Connect: 自動連線
+Available Peers: 可用的 Peer
+Broadcasting?: 廣播中？
+Close: 關閉
+Close & Disconnect: 關閉並斷線
+"Closed:": 已關閉：
+Command: 命令
+Communicating: 通訊中
+Connect: 連線
+"Connected:": 已連線：
+Connection Settings: 連線設定
+"Connection:": 連線：
+Create P2P remote: 建立 P2P 遠端
+DENIED: 已拒絕
+DENIED (in session): 已拒絕（本次連線）
+Deny: 拒絕
+Deny in session: 本次連線拒絕
+Deny permanently: 永久拒絕
+Detected Peers: 偵測到的 Peer
+Device name to identify the device. Please use shorter one for the stable peer detection, i.e., "iphone-16" or "macbook-2021".: 用來識別此裝置的裝置名稱。建議使用較短的名稱以穩定偵測 Peer，例如「iphone-16」或「macbook-2021」。
+"Devices:": 裝置：
+Diagnostic RTCPeerConnection is enabled: 已啟用 RTCPeerConnection 診斷
+Disconnect: 斷線
+Enable P2P Replicator: 啟用 P2P 複寫器
+"Failed:": 失敗：
+FETCHING: 擷取中
+Fetching status...: 正在取得狀態⋯
+However, This should not be enabled if you want to increase your secrecy more.: 不過，如果你想加強保密性，不建議啟用此選項。
+If you want to use `LiveSync`, you should broadcast changes. All `watching` peers which detects this will start the replication for fetching.: 若要使用 `LiveSync`，你需要廣播變更。所有偵測到廣播的「監看中」Peer 都會開始執行複寫以進行擷取。
+"Incoming:": 收到：
+live: 即時監看
+Name: 名稱
+NEW: 新
+No Connection: 沒有連線
+No devices available. Waiting for other devices to connect...: 目前沒有可用的裝置，正在等待其他裝置連線⋯
+Not configured: 尚未設定
+"Off": 關閉
+"On": 開啟
+Open connection: 開啟連線
+Open P2P Setup...: 開啟 P2P 設定⋯
+P2P Status: P2P 狀態
+Password: 密碼
+"Peer ID:": Peer ID：
+Peer to Peer Replicator: Peer to Peer 複寫器
+Peers: Peer
+PERMANENT: 永久
+Please select an active P2P remote configuration to change P2P sync targets.: 請選擇一個已啟用的 P2P 遠端設定，以變更 P2P 同步目標。
+Refresh: 重新整理
+Relay settings: 中繼站設定
+Replicate now: 立即複寫
+Replicating: 複寫中
+Replicating...: 複寫中⋯
+Revert changes: 還原變更
+Revoke: 撤銷
+Room ID: 房間 ID
+"Room ID suffix:": 房間 ID 後綴：
+Save and Apply: 儲存並套用
+Select active P2P remote: 選擇啟用中的 P2P 遠端
+Select P2P remote...: 選擇 P2P 遠端⋯
+SENDING: 傳送中
+SESSION: 本次連線
+Signaling Server Connection: 訊號伺服器連線
+Signalling Status: 訊號狀態
+Skip and close: 略過並關閉
+Start Broadcasting: 開始廣播
+Start change-broadcasting on Connect: 連線後自動開始廣播變更
+Start Sync & Close: 開始同步並關閉
+Stats: 統計
+Stop ⚡: 停止 ⚡
+Stop Broadcasting: 停止廣播
+Sync: 同步
+Syncing...: 同步中⋯
+This can isolate your connections between devices. Use the same Room ID for the same devices.: 這可以將你的裝置連線彼此隔離。同一群裝置請使用相同的房間 ID。
+This device name: 此裝置名稱
+This password is used to encrypt the connection. Use something long enough.: 此密碼用於加密連線，請使用足夠長的字串。
+Use Diagnostic RTCPeerConnection for statistics: 啟用 RTCPeerConnection 診斷以取得統計資訊
+Use Random Number: 使用隨機數字
+Use vrtmrz's relay: 使用 vrtmrz 提供的中繼站
+WATCHING: 監看中
+You can configure in the Obsidian Plugin Settings.: 你可以在 Obsidian 外掛設定中進行設定。
+P2P:
+  AskPassphraseForDecrypt: 遠端 Peer 已分享設定。請輸入密語以解密該設定。
+  AskPassphraseForShare: 遠端 Peer 請求取得此裝置的設定。請輸入密語以分享設定。你可以取消此對話框以忽略該請求。
+  DisabledButNeed: "%{title_p2p_sync}目前已停用。你確定要啟用它嗎？"
+  FailedToOpen: 無法開啟與訊號伺服器的 P2P 連線。
+  NoAutoSyncPeers: 找不到自動同步的 Peer。請到「%{long_p2p_sync}」面板設定 Peer。
+  NoKnownPeers: 尚未偵測到任何 Peer，正在等待其他 Peer 連入⋯
+  Note:
+    description: |-
+      這個複寫器讓我們能透過 Peer-to-Peer 連線，將 Vault 與其他裝置同步，
+      不需要透過雲端服務就能與其他裝置同步 Vault。
+      此複寫器以 Trystero 為基礎，同樣需要透過訊號伺服器建立裝置之間的連線。訊號伺服器僅用於在裝置間交換連線資訊，它不會（也不應該）得知或儲存我們的任何資料。
+
+      訊號伺服器可以由任何人架設，本質上只是一個 Nostr 中繼站。為了簡化操作並驗證複寫器的行為，vrtmrz 提供了一個訊號伺服器的執行實例。你可以使用 vrtmrz 提供的這個實驗性伺服器，也可以使用任何其他伺服器。
+
+      另外，即使訊號伺服器不會儲存我們的資料，它仍能看到部分裝置的連線資訊，請留意這點。若使用他人提供的伺服器，也請格外謹慎。
+    important_note: Peer-to-Peer 複寫器。
+    important_note_sub: 此功能仍處於最前沿的實驗階段。使用前請務必確保資料已備份。如果你願意協助開發這項功能，我們會非常感激。
+    Summary: 這是什麼功能？（有些重要事項，請務必先閱讀一次）
+  NotEnabled: "%{title_p2p_sync}尚未啟用，無法開啟新連線。"
+  P2PReplication: "%{P2P} 複寫"
+  PaneTitle: "%{long_p2p_sync}"
+  ReplicatorInstanceMissing: 找不到 P2P 同步複寫器，可能尚未設定或啟用。
+  SeemsOffline: Peer ${name} 似乎已離線，已略過。
+  SyncAlreadyRunning: P2P 同步已在執行中。
+  SyncCompleted: P2P 同步已完成。
+  SyncStartedWith: 已開始與 ${name} 的 P2P 同步。
 Ok: 確定
 Old Algorithm: 舊演算法
 Older fallback (Slow, W/O WebAssembly): 舊版回退（較慢，無 WebAssembly）
+Open the dialog: 開啟對話框
 Overwrite patterns: 覆寫模式
 Overwrite remote: 覆寫遠端
 Overwrite remote with local DB and passphrase.: 使用本機資料庫與密語覆寫遠端。
@@ -200,7 +1114,7 @@ paneMaintenance:
 Paste a connection string: 貼上連線字串
 Patterns to match files for overwriting instead of merging: 用於匹配需覆寫而非合併檔案的模式
 Patterns to match files for syncing: 用於匹配同步檔案的模式
-Peer-to-Peer Synchronisation: 點對點同步
+Peer-to-Peer Synchronisation: Peer-to-Peer 同步
 Perform: 執行
 Perform cleanup: 執行清理
 Perform Garbage Collection: 執行垃圾回收
@@ -220,6 +1134,35 @@ Remote Database Tweak (In sunset): 遠端資料庫調校（即將淘汰）
 Remote Databases: 遠端資料庫
 Remote name: 遠端名稱
 Rename: 重新命名
+Replicator:
+  Dialogue:
+    Locked:
+      Action:
+        Dismiss: 取消，稍後再確認
+        Fetch: 重設此裝置上的同步
+        Unlock: 解鎖遠端資料庫
+      Message:
+        _value: |
+          遠端資料庫已鎖定，這是因為其中一台裝置執行過重建。
+          因此系統要求此裝置暫停連線，以避免資料庫損毀。
+
+          我們有三種做法：
+
+          - %{Replicator.Dialogue.Locked.Action.Fetch}
+            最建議且最可靠的方式。這會先捨棄本機資料庫，再從遠端資料庫重設所有同步資訊。多數情況下都能安全執行，但會花上一些時間，且應在網路穩定時進行。
+          - %{Replicator.Dialogue.Locked.Action.Unlock}
+            只有在已透過其他複寫方式可靠同步的情況下才能使用此方式。這不只是指雙方擁有相同的檔案。如果你不確定，請避免使用。
+          - %{Replicator.Dialogue.Locked.Action.Dismiss}
+              這會取消此操作，下次請求時會再次詢問。
+        Fetch: 已排定執行全部抓取。外掛將重新啟動以執行此作業。
+        Unlocked: 遠端資料庫已解鎖，請重試該操作。
+      Title: 已鎖定
+  Message:
+    Cleaned: 資料庫正在清理中，複寫已取消
+    InitialiseFatalError: 沒有可用的複寫器，這是嚴重錯誤。
+    Pending: 有部分檔案事件尚待處理，複寫已取消。
+    SomeModuleFailed: 複寫因某個模組失敗而取消
+    VersionUpFlash: 偵測到更新。請開啟設定對話框並查看變更紀錄，複寫已取消。
 Resend: 重新傳送
 Resend all chunks to the remote.: 將所有 chunks 重新傳送到遠端。
 Reset: 重設
@@ -239,10 +1182,18 @@ Restart Now: 立即重新啟動
 Restore or reconstruct local database from remote.: 從遠端還原或重建本機資料庫。
 Schedule and Restart: 排程後重新啟動
 Scram!: 緊急處置
-Select the database adapter to use.: 選擇要使用的資料庫適配器。
+Select the database adapter to use.: 選擇要使用的資料庫轉接器。
 Send: 傳送
 Send chunks: 傳送 chunks
 Setting:
+  TroubleShooting:
+    _value: 疑難排解
+    Doctor:
+      _value: 設定診斷
+      Desc: 偵測不理想的設定。（與遷移期間相同）
+    ScanBrokenFiles:
+      _value: 掃描損壞檔案
+      Desc: 掃描未正確儲存在資料庫中的檔案。
   GenerateKeyPair:
     Desc: |-
       我們已產生新的金鑰對！
@@ -286,10 +1237,430 @@ Synchronising files: 同步中的檔案
 Syncing: 同步中
 Target patterns: 目標模式
 This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: 這會為所有檔案重新建立 chunks。若先前有遺失的 chunks，這可能修復相關錯誤。
+TweakMismatchResolve:
+  Action:
+    Dismiss: 不處理
+    UseConfigured: 採用已設定的值
+    UseMine: 更新遠端資料庫設定
+    UseMineAcceptIncompatible: 更新遠端資料庫設定，但保持現狀
+    UseMineWithRebuild: 更新遠端資料庫設定並再次重建
+    UseRemote: 將設定套用到此裝置
+    UseRemoteAcceptIncompatible: 將設定套用到此裝置，並忽略不相容之處
+    UseRemoteWithRebuild: 將設定套用到此裝置，並再次抓取
+    DisableAutoAcceptCompatible: 停用自動接受
+    EnableAutoAcceptCompatible: 啟用自動接受
+  Message:
+    AutoAcceptCompatibleUndefined: |-
+
+      看起來各裝置的設定並不相同。現在可以讓相容的變更自動套用到這些設定。
+      你要啟用這個「自動接受」設定嗎？
+    Main: |-
+
+      遠端資料庫中的設定如下。這些值由其他裝置所設定，而那些裝置至少與此裝置同步過一次。
+
+      如果你想使用這些設定，請選擇「%{TweakMismatchResolve.Action.UseConfigured}」。
+      如果你想保留此裝置的設定，請選擇「%{TweakMismatchResolve.Action.Dismiss}」。
+
+      ${table}
+
+      >[!TIP]
+      > 如果你想同步所有設定，請先用此功能套用最小設定，再使用 `Sync settings via markdown`。
+
+      ${additionalMessage}
+    MainTweakResolving: |-
+      你的設定與遠端伺服器上的設定不一致。
+
+      以下設定需要保持一致：
+
+      ${table}
+
+      請告訴我們你的決定。
+
+      ${additionalMessage}
+    mineUpdated: 此裝置的設定已調整。
+    remoteUpdated: 遠端儲存的設定已更新。
+    UseRemote:
+      WarningRebuildRecommended: |-
+
+        >[!NOTICE]
+        > 部分變更雖然相容，但可能耗用額外的儲存空間與傳輸量，建議進行重建。不過目前可能不會執行重建，未來的維護作業可能會實作。
+        > ***請確認你有足夠時間且網路連線穩定，再進行套用！***
+      WarningRebuildRequired: |-
+
+        >[!WARNING]
+        > 部分遠端設定與此裝置的本機資料庫不相容，將需要重建本機資料庫。
+        > ***請確認你有足夠時間且網路連線穩定，再進行套用！***
+    WarningIncompatibleRebuildRecommended: |-
+
+      >[!NOTICE]
+      > 我們偵測到部分值不同，會使本機資料庫與遠端資料庫不相容。
+      > 部分變更雖然相容，但可能耗用額外的儲存空間與傳輸量，建議進行重建。不過目前可能不會執行重建，未來的維護作業可能會實作。
+      > 如果你要重建，會花上數分鐘甚至更久。**請確認現在執行是安全的。**
+    WarningIncompatibleRebuildRequired: |-
+
+      >[!WARNING]
+      > 我們偵測到部分值不同，會使本機資料庫與遠端資料庫不相容。
+      > 需要重建本機或遠端其中一方，兩者都會花上數分鐘甚至更久。**請確認現在執行是安全的。**
+  Table:
+    _value: |+
+      | 設定項目 | 此裝置 | 遠端 |
+      |: --- |: ---- :|: ---- :|
+      ${rows}
+
+    Row: "| ${name} | ${self} | ${remote} |"
+  Title:
+    _value: 偵測到設定不一致
+    AutoAcceptCompatible: 可使用自動接受
+    TweakResolving: 偵測到設定不一致
+    UseRemoteConfig: 使用遠端設定
+RedFlag:
+  Fetch:
+    Method:
+      Desc: |-
+        你想要如何抓取？
+        - %{RedFlag.Fetch.Method.FetchSafer}。
+          **低流量**、**高 CPU 使用率**、**低風險**
+          建議情況：
+          - 檔案可能不一致
+          - 檔案數量不多
+        - %{RedFlag.Fetch.Method.FetchSmoother}。
+          **低流量**、**中等 CPU 使用率**、**低至中等風險**
+          建議情況：
+          - 檔案應該是一致的
+          - 你有大量檔案
+        - %{RedFlag.Fetch.Method.FetchTraditional}。
+          **高流量**、**低 CPU 使用率**、**低至中等風險**
+
+        >[!INFO]- 詳細說明
+        > ## %{RedFlag.Fetch.Method.FetchSafer}。
+        > **低流量**、**高 CPU 使用率**、**低風險**
+        > 這個選項會先使用現有的本機檔案建立本機資料庫，再從遠端來源抓取資料。
+        > 若本機與遠端都存在相符的檔案，只會傳輸兩者之間的差異部分。
+        > 不過，兩邊都存在的檔案一開始會被當作衝突檔案處理。若實際上並無衝突，會自動解決，但這個過程可能需要一些時間。
+        > 這通常是最安全的方式，能將資料遺失的風險降到最低。
+        > ## %{RedFlag.Fetch.Method.FetchSmoother}。
+        > **低流量**、**中等 CPU 使用率**、**低至中等風險**（依操作而異）
+        > 這個選項會先從本機檔案為資料庫建立 chunks，再抓取資料。因此只會傳輸本機缺少的 chunks，但所有中繼資料都會取自遠端來源。
+        > 啟動時本機檔案會與這份中繼資料比對，內容較新的一方（依修改時間判斷）會覆寫較舊的一方，其結果會同步回遠端資料庫。
+        > 如果本機檔案的時間戳記確實是最新的，這通常是安全的；但如果某個檔案時間戳記較新卻內容較舊（例如初始的 `welcome.md`），可能會出問題。
+        > 這比「%{RedFlag.Fetch.Method.FetchSafer}」耗用更少 CPU、速度也更快，但若不小心使用可能導致資料遺失。
+        > ## %{RedFlag.Fetch.Method.FetchTraditional}。
+        > **高流量**、**低 CPU 使用率**、**低至中等風險**（依操作而異）
+        > 所有內容都會從遠端抓取。
+        > 與「%{RedFlag.Fetch.Method.FetchSmoother}」類似，但所有 chunks 都是從遠端來源抓取。
+        > 這是最傳統的抓取方式，通常會耗用最多的網路流量與時間，覆寫遠端檔案的風險也與「%{RedFlag.Fetch.Method.FetchSmoother}」選項相近。
+        > 不過，由於這是歷史最久、最直接的做法，通常被認為是最穩定的方式。
+      FetchSafer: 先建立一次本機資料庫，再抓取
+      FetchSmoother: 先建立本機檔案的 chunks，再抓取
+      FetchTraditional: 從遠端抓取所有內容
+      Title: 你想要如何抓取？
+  FetchRemoteConfig:
+    Buttons:
+      Cancel: 不用，使用本機設定
+      Fetch: 要，抓取並套用遠端設定
+    Message: 要將遠端儲存的偏好設定抓取並套用到此裝置嗎？
+    Title: 抓取遠端設定
+SettingTab:
+  Message:
+    AskRebuild: 你的變更需要從遠端資料庫抓取，要繼續嗎？
+Ui:
+  Common:
+    Signal:
+      Caution: 注意
+      Danger: 危險
+      Notice: 提示
+      Warning: 警告
+  Settings:
+    Maintenance:
+      Cleanup: 執行清理
+      CleanupDesc: 透過捨棄所有非最新版本減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
+      DeleteLocalDatabase: 刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync
+      EmergencyRestart: 緊急重新啟動
+      EmergencyRestartDesc: 停用所有同步並重新啟動。
+      FreshStartWipe: 全新開始清除
+      FreshStartWipeDesc: 刪除遠端伺服器上的所有資料。
+      GarbageCollection: 垃圾回收 V3（Beta）
+      GarbageCollectionAction: 執行垃圾回收
+      GarbageCollectionDesc: 執行垃圾回收以移除未使用的 chunks 並減少資料庫大小。
+      LockServer: 鎖定伺服器
+      LockServerDesc: 鎖定遠端伺服器，以防止其他裝置進行同步。
+      OverwriteRemote: 覆寫遠端
+      OverwriteRemoteDesc: 使用本機資料庫與密語覆寫遠端。
+      OverwriteServerData: 以此裝置的檔案覆寫伺服器資料
+      OverwriteServerDataDesc: 使用此裝置上的檔案重建本機與遠端資料庫。
+      PurgeAllJournalCounter: 清除所有日誌計數器
+      PurgeAllJournalCounterDesc: 清除所有下載與上傳快取。
+      RebuildingOperations: 重建作業（僅遠端）
+      Resend: 重新傳送
+      ResendDesc: 將所有 chunks 重新傳送到遠端。
+      Reset: 重設
+      ResetAllJournalCounter: 重設所有日誌計數器
+      ResetAllJournalCounterDesc: 初始化所有日誌歷史。下次同步時，每個項目都會重新接收並再次傳送。
+      ResetJournalReceived: 重設日誌接收歷史
+      ResetJournalReceivedDesc: 初始化接收日誌歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。
+      ResetJournalSent: 重設日誌傳送歷史
+      ResetJournalSentDesc: 初始化傳送日誌歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。
+      ResetLocalSyncInfo: 重設同步資訊
+      ResetLocalSyncInfoDesc: 從遠端還原或重建本機資料庫。
+      ResetReceived: 重設接收紀錄
+      ResetSentHistory: 重設傳送歷史
+      ResetThisDevice: 重設此裝置上的同步
+      ScheduleAndRestart: 排程後重新啟動
+      Scram: 緊急處置
+      SendChunks: 傳送 chunks
+      Syncing: 同步中
+      WarningLockedReadyAction: 我已準備好，解鎖資料庫
+      WarningLockedReadyText: 為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。
+      WarningLockedResolveAction: 我已完成備份，將此裝置標記為已處理
+      WarningLockedResolveText: 由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。
+      WriteRedFlagAndRestart: 標記後重新啟動
+    Patches:
+      CompatibilityConflict: 相容性（衝突行為）
+      CompatibilityDatabase: 相容性（資料庫結構）
+      CompatibilityInternalApi: 相容性（內部 API 使用）
+      CompatibilityMetadata: 相容性（中繼資料）
+      CompatibilityRemote: 相容性（遠端資料庫）
+      CompatibilityTrouble: 相容性（問題修復）
+      CurrentAdapter: "目前的轉接器：${adapter}"
+      DatabaseAdapter: 資料庫轉接器
+      DatabaseAdapterDesc: 選擇要使用的資料庫轉接器。
+      EdgeCaseBehaviour: 邊緣情況處理（行為）
+      EdgeCaseDatabase: 邊緣情況處理（資料庫）
+      EdgeCaseProcessing: 邊緣情況處理（處理）
+      IndexedDbWarning: IndexedDB 轉接器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 轉接器。
+      MigratingToIdb: 正在將所有資料遷移到 IDB⋯
+      MigratingToIndexedDb: 正在將所有資料遷移到 IndexedDB⋯
+      MigrationIdbCompleted: 已完成遷移到 IDB。Obsidian 將立即以新設定重新啟動。
+      MigrationIdbCompletedFollowUp: 已完成遷移到 IDB。請切換轉接器並重新啟動 Obsidian。
+      MigrationIndexedDbCompleted: 已完成遷移到 IndexedDB。Obsidian 將立即以新設定重新啟動。
+      MigrationIndexedDbCompletedFollowUp: 已完成遷移到 IndexedDB。請切換轉接器並重新啟動 Obsidian。
+      MigrationWarning: 變更此設定需要遷移現有資料（可能需要一些時間），並重新啟動 Obsidian。請務必先備份資料再繼續。
+      OperationToIdb: 遷移到 IDB
+      OperationToIndexedDb: 遷移到 IndexedDB
+      Remediation: 修復設定
+      RemediationChanged: 修復設定已變更
+      RemediationNoLimit: 尚未設定限制
+      RemediationRestarting: 修復設定已變更，正在重新啟動 Obsidian⋯
+      RemediationRestartLater: 稍後
+      RemediationRestartMessage: 強烈建議重新啟動 Obsidian。在重新啟動之前，部分變更可能不會生效，畫面顯示也可能不一致。你確定要現在重新啟動嗎？
+      RemediationRestartNow: 立即重新啟動
+      RemediationSuffixChanged: 後綴已變更，正在重新開啟資料庫⋯
+      RemediationWithValue: "限制：${date}（${timestamp}）"
+      RemoteDatabaseSunset: 遠端資料庫調校（即將淘汰）
+      SwitchToIDB: 切換至 IDB
+      SwitchToIndexedDb: 切換至 IndexedDB
+    Hatch:
+      AnalyseDatabaseUsage: 分析資料庫使用情況
+      AnalyseDatabaseUsageDesc: 分析資料庫使用情況並產生 TSV 報告，方便你自行診斷。你可以將產生的報告貼到任何慣用的試算表中查看。
+      BackToNonConfigured: 恢復為未設定狀態
+      ConvertNonObfuscated: 檢查並轉換未進行路徑混淆的檔案
+      ConvertNonObfuscatedDesc: 檢查本機資料庫中未以路徑混淆方式儲存的檔案，並在需要時進行轉換。
+      CopyIssueReport: 將報告複製到剪貼簿
+      DatabaseLabel: "資料庫：${details}"
+      DatabaseToStorage: 資料庫 -> 儲存空間
+      DeleteCustomizationSyncData: 刪除所有自訂同步資料
+      GeneratedReport: 已產生的報告
+      Missing: 缺失
+      ModifiedSize: "修改時間：${modified}，大小：${size}"
+      ModifiedSizeActual: "修改時間：${modified}，大小：${size}（實際大小：${actualSize}）"
+      PrepareIssueReport: 準備建立 Issue 用的「報告」
+      RecoveryAndRepair: 修復與修補
+      RecreateAll: 全部重建
+      RecreateMissingChunks: 為所有檔案重建遺失的 chunks
+      RecreateMissingChunksDesc: 這會為所有檔案重新建立 chunks。若先前有遺失的 chunks，這可能修復相關錯誤。
+      ResetPanel: 重設
+      ResetRemoteUsage: 重設通知閾值並檢查遠端資料庫使用情況
+      ResetRemoteUsageDesc: 重設遠端儲存空間大小閾值，並再次檢查遠端儲存空間大小。
+      ResolveAllConflictedFiles: 將所有衝突檔案統一為較新的版本
+      ResolveAllConflictedFilesDesc: 將所有衝突檔案統一保留較新的版本。注意：這會覆寫較舊的版本，且被覆寫的內容無法復原。
+      RunDoctor: 執行診斷
+      ScanBrokenFiles: 掃描損壞檔案
+      ScramSwitches: 緊急處置開關
+      ShowHistory: 顯示歷程
+      StorageLabel: "儲存空間：${details}"
+      StorageToDatabase: 儲存空間 -> 資料庫
+      VerifyAndRepairAllFiles: 驗證並修復所有檔案
+      VerifyAndRepairAllFilesDesc: 比較本機資料庫與儲存空間中的檔案內容；若不一致，系統會詢問你要保留哪一份。
+    Remote:
+      Activate: 啟用
+      ActiveSuffix: "（已啟用）"
+      AddConnection: 新增連線
+      AddRemoteDefaultName: 新增遠端
+      ConfigureAndChangeRemote: 設定並切換遠端
+      ConfigureE2EE: 設定 E2EE
+      ConfigureRemote: 設定遠端
+      DeleteRemoteConfirm: "要刪除遠端設定「${name}」嗎？"
+      DeleteRemoteTitle: 刪除遠端設定
+      DisplayName: 顯示名稱
+      DuplicateRemote: 複製遠端設定
+      DuplicateRemoteSuffix: "${name}（複製）"
+      E2EEConfiguration: E2EE 設定
+      Export: 匯出
+      FetchRemoteSettings: 抓取遠端設定
+      ImportConnection: 匯入連線
+      ImportConnectionPrompt: 貼上連線字串
+      ImportedCouchDb: 已匯入的 CouchDB
+      ImportedRemote: 遠端
+      MoreActions: 更多操作
+      PeerToPeerPanel: Peer-to-Peer 同步
+      RemoteConfigurationPrefix: 遠端設定
+      RemoteDatabases: 遠端資料庫
+      RemoteName: 遠端名稱
+      RemoteNameCouchDb: "CouchDB ${host}"
+      RemoteNameP2P: "P2P ${room}"
+      RemoteNameS3: "S3 ${bucket}"
+      Rename: 重新命名
+    Common:
+      Analyse: 分析
+      Back: 返回
+      Check: 檢查
+      Configure: 設定
+      Continue: 繼續
+      Delete: 刪除
+      Fetch: 抓取
+      Lock: 鎖定
+      Merge: 合併
+      Open: 開啟
+      Overwrite: 覆寫
+      Perform: 執行
+      ResetAll: 全部重設
+      ResolveAll: 全部處理
+      Scan: 掃描
+      Send: 傳送
+      Use: 使用
+      VerifyAll: 全部驗證
+    Selector:
+      AddDefaultPatterns: 新增預設模式
+      CrossPlatform: 跨平台
+      Default: 預設
+      HiddenFiles: 隱藏檔案
+      IgnorePatterns: 忽略模式
+      NonSynchronisingFiles: 不同步的檔案
+      NonSynchronisingFilesDesc: （正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。
+      NormalFiles: 一般檔案
+      OverwritePatterns: 覆寫模式
+      OverwritePatternsDesc: 用於匹配需覆寫而非合併檔案的模式
+      SynchronisingFiles: 同步中的檔案
+      SynchronisingFilesDesc: （正則表示式）留空即同步所有檔案。設定正則表示式篩選器可限制要同步的檔案。
+      TargetPatterns: 目標模式
+      TargetPatternsDesc: 用於匹配同步檔案的模式
+    PowerUsers:
+      ConfigurationEncryption: 設定加密
+      ConnectionTweak: CouchDB 連線調校
+      ConnectionTweakDesc: 如果你在使用 IBM Cloudant 時遇到負載大小上限，請調低批次大小與批次上限。
+      Default: 預設
+      Developer: 開發者
+      EncryptSensitiveConfig: 加密敏感設定項目
+      PromptPassphraseEveryLaunch: 每次啟動時都詢問密語
+      UseCustomPassphrase: 使用自訂密語
+    CustomizationSync:
+      OpenDesc: 開啟對話框
+      Panel: 自訂同步
+      WarnChangeDeviceName: 啟用此功能時無法變更裝置名稱。請先停用此功能，才能變更裝置名稱。
+      WarnSetDeviceName: 請設定用來識別此裝置的裝置名稱。此名稱在你所有裝置中應該是唯一的。尚未設定時，無法啟用此功能。
+    Advanced:
+      LocalDatabaseTweak: 本機資料庫調校
+      MemoryCache: 記憶體快取
+      TransferTweak: 傳輸調校
+    Setup:
+      RerunWizardButton: 重新執行精靈
+      RerunWizardDesc: 重新執行導覽精靈以再次設定 Self-hosted LiveSync。
+      RerunWizardName: 重新執行導覽精靈
+    SyncSettings:
+      Fetch: 抓取
+      Merge: 合併
+      Overwrite: 覆寫
+  SetupWizard:
+    Common:
+      Back: 不，返回上一步
+      Cancel: 取消
+      ProceedSelectOption: 請選擇一個選項以繼續
+    Intro:
+      ExistingOption: 我要將裝置加入既有同步設定
+      ExistingOptionDesc: 如果你已經在另一台電腦或手機上使用同步，請選擇此項。此選項用於將此裝置連接到既有的同步設定。
+      Guidance: 接下來我們會透過幾個問題，引導你更輕鬆地完成同步設定。
+      NewOption: 我是第一次進行設定
+      NewOptionDesc: 如果你正在將此裝置設定為第一台同步裝置，請選擇此項。
+      ProceedExisting: 是的，我要把這台裝置加入既有同步
+      ProceedNew: 是的，我要設定新的同步
+      Question: 首先，請選擇最符合你目前情況的選項。
+      Title: 歡迎使用 Self-hosted LiveSync
+    Invitation:
+      Start: 開始設定
+    OutroAskUserMode:
+      CompatibleOption: 遠端已經設定完成，且設定相容（或透過此操作變得相容）。
+      CompatibleOptionDesc: 除非你很確定，否則選擇此選項有風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解這麼做的後果。
+      ExistingOption: 我的遠端伺服器已經設定完成，我想讓這台裝置加入。
+      ExistingOptionDesc: 選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料擷取到此裝置。
+      Guidance: 與伺服器的連線已成功設定完成。接下來，本機資料庫，也就是同步資訊，必須重新建立。
+      NewOption: 我是第一次設定新的伺服器／我想要重設現有的伺服器。
+      NewOptionDesc: 選擇此選項會使用此裝置目前的資料來初始化伺服器，伺服器上任何現有資料都會被完全覆寫。
+      ProceedApplySettings: 套用設定
+      ProceedNext: 繼續前往下一步。
+      Question: 請選擇符合你情況的選項。
+      Title: 大致完成：需要你做出決定
+    OutroNewP2PUser:
+      GuidanceNotice: P2P 沒有中央伺服器複本可覆寫。此步驟只會準備這台裝置；當其他裝置擷取初始資料時，請讓這台裝置保持連線。
+      GuidancePrimary: Peer-to-Peer 連線已成功設定完成。接下來，將依此 Vault 目前的檔案建立本機 LiveSync 資料庫。
+      Important: 請注意
+      Proceed: 重新啟動並準備此裝置
+      Question: 請點選下方按鈕以重新啟動，並前往本機初始化確認步驟。
+      Title: 設定完成：準備此 P2P 裝置
+    OutroNewUser:
+      GuidancePrimary: 與伺服器的連線已成功設定完成。接下來，伺服器上的同步資料將依此裝置目前的資料建立。
+      GuidanceWarning: 重新啟動後，此裝置上的資料將以主要複本的形式上傳到伺服器。請注意，伺服器上任何非預期的現有資料都會被完全覆寫。
+      Important: 重要
+      Proceed: 重新啟動並初始化伺服器
+      Question: 請點選下方按鈕以重新啟動，並前往最終確認步驟。
+      Title: 設定完成：準備初始化伺服器
+    RebuildEverythingP2P:
+      ConfirmLocalReset: 我了解這只會重設此裝置的本機同步資料庫。
+      ConfirmLocalResetNote: 此 Vault 目前的檔案將用於重建它。
+      ConfirmTitle: ⚠️ 請確認以下事項
+      Guidance: 此程序會捨棄此裝置上的本機 LiveSync 資料庫，並依此 Vault 目前的檔案重新建立。它不會刪除或覆寫其他裝置上的資料。
+      Note: 初始化完成後請讓此裝置保持連線，以便其他裝置能從它擷取 Vault。
+      Proceed: 我了解，準備此裝置
+      Title: 最終確認：為 P2P 準備此裝置
+    SetupRemote:
+      BucketOption: S3 相容物件儲存
+      BucketOptionDesc: 使用日誌檔進行同步。你需要事先準備好相容 S3 的物件儲存服務，例如 Amazon S3、MinIO 或 Cloudflare R2。
+      CouchDbOptionDesc: 這是目前設計下最適合的同步方式，所有功能皆可使用。你需要事先準備好 CouchDB 實例。
+      Guidance: 請選擇這次同步設定要使用的遠端類型。
+      P2POption: Peer-to-Peer（P2P）
+      P2POptionDesc: 此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。
+      ProceedBucket: 繼續進行物件儲存設定
+      ProceedCouchDb: 繼續進行 CouchDB 設定
+      ProceedP2P: 繼續進行 P2P 設定
+      Title: 選擇同步遠端
+    SelectExisting:
+      Guidance: 你正在將此裝置加入既有同步設定中。
+      ManualOption: 手動設定遠端
+      ManualOptionDesc: 手動重新設定與你其他裝置相同的遠端，僅適合進階使用者。
+      ProceedManual: 繼續進行手動設定
+      ProceedQr: 使用目前裝置的相機掃描另一台已在使用裝置上顯示的 QR Code。
+      ProceedSetupUri: 繼續使用 Setup URI
+      QrOption: 掃描 QR Code（行動裝置推薦）
+      QrOptionDesc: 使用目前裝置的相機掃描另一台已在使用裝置上顯示的 QR Code。
+      Question: 請選擇一種從其他裝置匯入設定的方法。
+      SetupUriOption: 使用 Setup URI（推薦）
+      SetupUriOptionDesc: 貼上從一台已在使用裝置上產生的 Setup URI。
+      Title: 裝置設定方式
+    SelectNew:
+      Guidance: 接下來我們將設定同步連線。
+      ManualOption: 手動設定遠端
+      ManualOptionDesc: 這是進階選項，適合沒有 Setup URI 或想要詳細設定的使用者。你也可以用它來設定 P2P 同步，取代 CouchDB 或 S3 相容物件儲存。
+      ProceedManual: 繼續進行手動設定
+      ProceedSetupUri: 繼續使用 Setup URI
+      Question: 你希望如何設定這個同步連線？
+      SetupUriOption: 使用 Setup URI（推薦）
+      SetupUriOptionDesc: Setup URI 是一段包含連線與驗證資訊的字串。如果安裝腳本已經產生了它，使用它是一種簡單且安全的設定方式。
+      Title: 連線方式
 Verify all: 全部驗證
 Verify and repair all files: 驗證並修復所有檔案
+We have to configure the device name: 我們必須先設定裝置名稱
+🗑 Delete: 🗑 刪除
 Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.:
-  透過捨棄所有非最新版本來減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
+  透過捨棄所有非最新版本減少儲存空間占用。執行此操作時，遠端伺服器與本機用戶端都需要具備相同數量的可用空間。
 Run Doctor: 執行診斷
 Scan for Broken files: 掃描損壞檔案
 Prepare the 'report' to create an issue: 準備建立 Issue 用的「報告」
@@ -310,7 +1681,7 @@ Database -> Storage: 資料庫 -> 儲存空間
 Storage -> Database: 儲存空間 -> 資料庫
 Show history: 顯示歷程
 Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and display may be inconsistent. Are you sure to restart now?: 強烈建議重新啟動 Obsidian。在重新啟動之前，部分變更可能尚未生效，顯示也可能不一致。你確定要現在重新啟動嗎？
-The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.: IndexedDB 適配器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 適配器。
+The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.: IndexedDB 轉接器在某些情況下通常能提供較佳效能，但在 LiveSync 模式下已發現可能導致記憶體洩漏。使用 LiveSync 模式時，請改用 IDB 轉接器。
 Scram Switches: 緊急處置開關
 Minimum interval for syncing: 同步最小間隔
 The minimum interval for automatic synchronisation on event.: 事件觸發自動同步的最小間隔。
@@ -354,6 +1725,56 @@ xxhash64 (Fastest): xxhash64（最快）
 "Peer-to-Peer only": "僅 Peer-to-Peer"
 "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。"
 Setup:
+  Apply:
+    Buttons:
+      ApplyAndFetch: 套用並抓取
+      ApplyAndMerge: 套用並合併
+      ApplyAndRebuild: 套用並重建
+      Cancel: 捨棄並取消
+      OnlyApply: 僅套用
+    Message: |-
+      新的設定已經就緒，接下來要套用它。
+      有幾種套用方式：
+
+      - 套用並抓取
+        將此裝置設定為新的用戶端。套用後會從遠端伺服器同步。
+      - 套用並合併
+        在已經有檔案的裝置上設定。會處理本機檔案並傳輸差異部分，可能會產生衝突。
+      - 套用並重建
+        使用本機檔案重建遠端。通常在伺服器損毀或想要從頭開始時執行。
+        其他裝置會被鎖定，需要重新抓取。
+      - 僅套用
+        只套用設定。若需要重建，可能會產生衝突。
+    Title: "從 ${method} 套用新設定"
+    WarningRebuildRecommended: 注意：調整設定後判斷需要重建；不建議僅匯入設定。
+  Doctor:
+    Buttons:
+      No: 不用，請直接使用 URI 中的設定
+      Yes: 要，請諮詢診斷
+    Message: |-
+      Self-hosted LiveSync 的歷史逐漸變長，部分建議設定也隨之改變。
+
+      現在正是進行這項檢查的好時機。
+
+      要執行設定診斷，檢查匯入的設定是否符合最新建議嗎？
+    Title: 要諮詢設定診斷嗎？
+  FetchRemoteConf:
+    Buttons:
+      Fetch: 要，請抓取設定
+      Skip: 不用，請使用 URI 中的設定
+    Message: |-
+      如果我們已經與其他裝置同步過一次，遠端資料庫會儲存這些已同步裝置之間適用的設定值。外掛想要取得這些值，以取得更穩健的設定。
+
+      不過，我們需要先確認一件事：目前是否處於能安全存取網路並取得設定的情況？
+
+      注意：多數情況下這樣做是安全的，只要你的遠端資料庫使用 SSL 憑證，且網路沒有遭到入侵。
+    Title: 要從遠端資料庫抓取設定嗎？
+  QRCode: |-
+    我們已產生用於傳遞設定的 QR 碼，請用你的手機或其他裝置掃描這個 QR 碼。
+    注意：這個 QR 碼未經加密，開啟時請務必小心。
+
+    >[!僅供本人查看]-
+    > <div class="sls-qr">${qr_image}</div>
   RemoteE2EE:
     Title: 端對端加密
     Guidance: 請設定你的端對端加密選項。
@@ -394,13 +1815,16 @@ Setup:
     Step3: 在來源裝置上，從命令面板執行「將設定顯示為 QR 碼」命令。
     Step4: 在這台裝置上切換到相機 App，或使用 QR 碼掃描器掃描顯示出的 QR 碼。
     ButtonClose: 關閉此對話框
+  ShowQRCode:
+    _value: 顯示 QR 碼
+    Desc: 顯示 QR 碼以傳遞設定。
 "Please enable 'Compute revisions for chunks' in settings to use Garbage Collection.": 若要使用垃圾回收，請在設定中啟用「Compute revisions for chunks」。
 "Please disable 'Read chunks online' in settings to use Garbage Collection.": 若要使用垃圾回收，請在設定中停用「Read chunks online」。
 "Setup URI dialog cancelled.": Setup URI 對話框已取消。
 "Please select 'Cancel' explicitly to cancel this operation.": 若要取消此操作，請明確選擇「取消」。
 "Failed to connect to remote for compaction.": 無法連線到遠端資料庫以執行壓縮。
 "Failed to connect to remote for compaction. ${reason}": 無法連線到遠端資料庫以執行壓縮。${reason}
-"Compaction in progress on remote database...": 正在遠端資料庫上執行壓縮...
+"Compaction in progress on remote database...": 正在遠端資料庫上執行壓縮⋯
 "Compaction on remote database timed out.": 遠端資料庫壓縮逾時。
 "Compaction on remote database completed successfully.": 遠端資料庫壓縮已成功完成。
 "Compaction on remote database failed.": 遠端資料庫壓縮失敗。
