@@ -118,10 +118,12 @@ Please refer to the [official document](https://docs.couchdb.org/en/stable/insta
 
 Deno 2 is required. Export the CouchDB connection and database details, then run the provisioning wrapper:
 
+The `username` and `password` in this step are CouchDB administrator credentials. For Docker or Docker Compose, use the same values supplied as `COUCHDB_USER` and `COUCHDB_PASSWORD`. For a direct installation, use the administrator configured during CouchDB setup. The wrapper does not create a separate non-administrator synchronisation account.
+
 ```
 export hostname=http://localhost:5984
-export username=<INSERT USERNAME HERE>
-export password=<INSERT PASSWORD HERE>
+export username=<INSERT COUCHDB ADMINISTRATOR USERNAME HERE>
+export password=<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE>
 export database=obsidiannotes
 curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
@@ -135,7 +137,7 @@ The wrapper runs the exact registry-pinned Commonlib consumer. When `database` i
 
 If you are using Docker Compose and the above command does not work or displays `ERROR: Hostname missing`, you can try running the following command, replacing the placeholders with your own values:
 ```
-curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname=http://<YOUR SERVER IP>:5984 username=<INSERT USERNAME HERE> password=<INSERT PASSWORD HERE> database=obsidiannotes bash
+curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname=http://<YOUR SERVER IP>:5984 username=<INSERT COUCHDB ADMINISTRATOR USERNAME HERE> password=<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE> database=obsidiannotes bash
 ```
 
 ## 3. Expose CouchDB to the Internet
@@ -170,10 +172,13 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 > A generated Setup URI is the recommended path because it carries the current defaults for a new Vault and the selected remote profile. If a Setup URI cannot be generated, follow [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device), then generate a new Setup URI from that working device for every additional device.
 
 ### 1. Generate the setup URI on a desktop device or server
+
+The `username` and `password` here are the credentials which Self-hosted LiveSync will store for routine access to this database. They may be the administrator credentials from step 2. If you have separately configured a CouchDB account with the required access to this database, use that account instead. Neither the provisioning wrapper nor the Setup URI generator creates that separate account.
+
 ```bash
 export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com
 export database=obsidiannotes
-export username=johndoe
+export username=<INSERT COUCHDB USERNAME FOR LIVESYNC>
 export password=<INSERT THE COUCHDB PASSWORD>
 export passphrase=<INSERT A STRONG VAULT ENCRYPTION PASSPHRASE>
 export uri_passphrase=<INSERT A SEPARATE SETUP URI PASSPHRASE> # Optional
