@@ -12,6 +12,18 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Improved
+
+- Start-up offline scanning is now faster, especially for larger Vaults using path obfuscation (Commonlib 0.1.15).
+
+### Interface and translation
+
+#### Improved
+
+- The Traditional Chinese translation catalogue has been completed and polished for broader coverage and more natural, consistent terminology (PR #1106). Thank you to @nimula for the contribution!
+
 ## 1.0.14
 
 14th August, 2026
