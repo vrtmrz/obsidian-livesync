@@ -1213,7 +1213,7 @@ The minimum interval for automatic synchronisation on event.: イベント発生
 "I am setting this up for the first time": "はじめて設定します"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（この端末を最初の同期端末として設定する場合に選択してください。）LiveSync を初めて利用し、最初から設定したい場合に適しています。"
 "I am adding a device to an existing synchronisation setup": "既存の同期構成に端末を追加します"
-"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。"
+"(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。"
 "Yes, I want to set up a new synchronisation": "はい、新しい同期を設定します"
 "Yes, I want to add this device to my existing synchronisation": "はい、この端末を既存の同期に追加します"
 "No, please take me back": "いいえ、前に戻ります"

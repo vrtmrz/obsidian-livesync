@@ -15,7 +15,7 @@
     "(Obsolete) Use an old adapter for compatibility": "(사용 중단) 호환성을 위해 이전 어댑터 사용",
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": "(정규식) 비워 두면 모든 파일을 동기화합니다. 정규식을 지정하면 동기화할 파일을 제한할 수 있습니다.",
     "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.": "(정규식) 설정하면 이 패턴과 일치하는 로컬 및 원격 파일 변경은 모두 건너뜁니다.",
-    "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요.) 이 기기를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다.",
+    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요.) 이 기기를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다.",
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(이 기기를 첫 번째 동기화 기기로 설정한다면 선택하세요.) LiveSync를 처음 사용하며 처음부터 설정하려는 경우에 적합합니다.",
     "↑: Overwrite Remote": "↑: 원격 덮어쓰기",
     "↓: Overwrite Local": "↓: 로컬 덮어쓰기",

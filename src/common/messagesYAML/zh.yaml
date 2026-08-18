@@ -1595,7 +1595,7 @@ xxhash64 (Fastest): xxhash64（最快）
 "I am setting this up for the first time": "我是第一次进行设置"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你正在将此设备配置为第一台同步设备，请选择此项。）此选项适合初次使用 LiveSync，并希望从头开始配置的用户。"
 "I am adding a device to an existing synchronisation setup": "我要将设备加入现有同步配置"
-"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你已经在另一台电脑或手机上使用同步，请选择此项。）此选项适合将当前设备加入现有 LiveSync 配置的用户。"
+"(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "（如果你已经在另一台电脑或手机上使用同步，请选择此项。）此选项适合将当前设备加入现有 LiveSync 配置的用户。"
 "Yes, I want to set up a new synchronisation": "是的，我要配置新的同步"
 "Yes, I want to add this device to my existing synchronisation": "是的，我要把这台设备加入现有同步"
 "No, please take me back": "不，返回上一步"

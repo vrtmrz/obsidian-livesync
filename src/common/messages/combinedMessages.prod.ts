@@ -148,9 +148,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "（正则表达式）如果已设置，则所有匹配此模式的本地和远端文件变更都会被跳过。",
         "zh-tw": "（正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。",
     },
-    "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.":
+    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.":
         {
-            def: "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.",
+            def: "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.",
             es: "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。",
             ja: "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。",
             ko: "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요.) 이 기기를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다.",

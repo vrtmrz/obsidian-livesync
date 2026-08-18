@@ -15,7 +15,7 @@
     "(Obsolete) Use an old adapter for compatibility": "(Obsoleto) Usar adaptador antiguo",
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": "(RegExp) Déjelo vacío para sincronizar todos los archivos. Defina un filtro como expresión regular para limitar los archivos que se sincronizan.",
     "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.": "(RegExp) Si se establece, se omitirá cualquier cambio en archivos locales y remotos que coincida con este patrón.",
-    "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。",
+    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。",
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Seleccione esto si está configurando este dispositivo como el primer dispositivo de sincronización). Esta opción es adecuada si es nuevo en LiveSync y desea configurarlo desde cero。",
     "↑: Overwrite Remote": "↑: Sobrescribir remoto",
     "↓: Overwrite Local": "↓: Sobrescribir local",
