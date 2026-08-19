@@ -36,7 +36,7 @@ The flag deliberately enables file logging, which may affect performance. Remove
 
 Use this workflow when one file, or a small number of known files, has conflicts, missing chunks, or a difference between the current Vault file and the local LiveSync database. The inspection is device-local: it does not query a remote database or prove that another device has the same chunks.
 
-The `Hatch` recovery controls are ordered by escalation. Running **Recreate chunks for current Vault files** again with unchanged chunk settings and file contents produces the same chunks, and does not alter the revision tree. **Inspect conflicts and file/database differences** then provides actions for exact revisions. **Resolve All conflicted files by the newer one** is last because it applies a modification-time policy in bulk and logically deletes every other live version.
+The `Hatch` recovery controls are ordered by escalation. Running **Recreate chunks for current Vault files** again with unchanged chunk settings and file contents produces the same chunks, and does not alter the revision tree. **Inspect conflicts and file/database differences** then provides actions for exact revisions. **Resolve All conflicted files by the newer one** is last because it applies a modification-time policy in bulk and logically deletes every other current version.
 
 1. Stop editing the affected file, pause replication on the participating devices, and keep a separate copy of every readable version.
 2. If another device or backup has the intended content, preserve that copy before changing any revision.
@@ -52,7 +52,7 @@ The `Hatch` recovery controls are ordered by escalation. Running **Recreate chun
    - **Apply logical deletion to Vault**, **Discard this branch**, and **Discard unreadable revision** are destructive decisions. Use them only after preserving every version which may still be needed.
 7. Synchronise the healthy source if chunks were restored, scan again, and confirm that the expected conflict or difference has disappeared before resuming ordinary editing.
 
-An absent Vault file and a logical-deletion winner already agree and do not require a repair card unless another live branch remains. If the scan reports many unrelated files, or the local database itself is incomplete or corrupt, stop the per-file workflow and use [Reset synchronisation on this device](#reset-synchronisation-on-this-device) from a trusted remote. If the central remote must instead be reconstructed from an authoritative Vault, use [Overwrite server data with this device's files](#overwrite-server-data-with-this-devices-files).
+An absent Vault file and a logical-deletion winner already agree and do not require a repair card unless another conflict branch remains. If the scan reports many unrelated files, or the local database itself is incomplete or corrupt, stop the per-file workflow and use [Reset synchronisation on this device](#reset-synchronisation-on-this-device) from a trusted remote. If the central remote must instead be reconstructed from an authoritative Vault, use [Overwrite server data with this device's files](#overwrite-server-data-with-this-devices-files).
 
 Metadata document-ID mismatches use a separate action in the same Inspector. Follow [Repair a Metadata document ID mismatch](#repair-a-metadata-document-id-mismatch) rather than applying a file revision by path.
 
@@ -112,7 +112,7 @@ Garbage Collection removes unreferenced chunks while preserving the current data
 - all relevant devices have synchronised; and
 - the remaining historical and deletion state is understood.
 
-Deleted documents, tombstones, live conflicts, and retained metadata are not free. Live conflict branches keep the chunks needed for review, while an ordinary superseded linear revision does not protect its former chunks. Garbage Collection can therefore make old content unreadable and cannot promise the smallest possible remote. Review the [Garbage Collection V3 specification](specs_garbage_collection.md) before using it.
+Deleted documents, tombstones, unresolved conflicts, and retained metadata are not free. Conflict branches keep the chunks needed for review, while an ordinary superseded linear revision does not protect its former chunks. Garbage Collection can therefore make old content unreadable and cannot promise the smallest possible remote. Review the [Garbage Collection V3 specification](specs_garbage_collection.md) before using it.
 
 Rebuild is a different operation. It reconstructs the database from a chosen authoritative state and is the more certain way to remove unwanted history or repair a damaged remote, but it is also more disruptive and can discard changes which exist only elsewhere.
 
