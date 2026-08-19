@@ -12,7 +12,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { isErrorOfMissingDoc } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
-import { fireAndForget, getDocData, readContent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { fireAndForget, getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { isPlainText, stripPrefix } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
@@ -23,6 +23,10 @@ import {
     saveDocumentHistoryPreference,
 } from "./documentHistoryPreferences.ts";
 import type PouchDB from "pouchdb-core";
+import {
+    restoreDocumentHistoryRevision,
+    type DocumentHistoryRestorationResult,
+} from "@/serviceFeatures/documentHistoryRestoration";
 
 function isImage(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();
@@ -277,6 +281,7 @@ export class DocumentHistoryModal extends Modal {
 
     async showExactRev(rev: string) {
         const db = this.core.localDatabase;
+        this.currentDoc = undefined;
         const w = await db.getDBEntry(this.file, { rev: rev }, false, false, true);
         this.currentText = "";
         this.currentDeleted = false;
@@ -702,7 +707,6 @@ export class DocumentHistoryModal extends Modal {
             e.addClass("mod-cta");
             e.addEventListener("click", () => {
                 fireAndForget(async () => {
-                    // const pathToWrite = this.plugin.id2path(this.id, true);
                     const pathToWrite = stripPrefix(this.file);
                     if (!isValidPath(pathToWrite)) {
                         Logger("Path is not valid to write content.", LOG_LEVEL_INFO);
@@ -712,9 +716,94 @@ export class DocumentHistoryModal extends Modal {
                         Logger("No active file loaded.", LOG_LEVEL_INFO);
                         return;
                     }
-                    const d = readContent(this.currentDoc);
-                    await this.core.storageAccess.writeHiddenFileAuto(pathToWrite, d);
-                    await focusFile(pathToWrite);
+                    const sourceRevision = this.currentDoc._rev;
+                    if (!sourceRevision) {
+                        Logger("The selected revision does not have a revision identifier.", LOG_LEVEL_NOTICE);
+                        return;
+                    }
+
+                    e.disabled = true;
+                    let result: DocumentHistoryRestorationResult;
+                    try {
+                        result = await restoreDocumentHistoryRevision(this.core, this.file, sourceRevision, {
+                            isPathValid: isValidPath,
+                        });
+                    } catch (ex) {
+                        Logger(
+                            "Restoring the selected revision failed before Vault reflection completed. Review the file with 'Inspect conflicts and file/database differences' before retrying.",
+                            LOG_LEVEL_NOTICE
+                        );
+                        Logger(ex, LOG_LEVEL_VERBOSE);
+                        e.disabled = false;
+                        return;
+                    }
+
+                    if (result.status === "source-unavailable") {
+                        Logger(
+                            "The selected revision could not be restored because its content is no longer available.",
+                            LOG_LEVEL_NOTICE
+                        );
+                        e.disabled = false;
+                        return;
+                    }
+                    if (result.status === "current-unavailable") {
+                        Logger(
+                            "The current database revision could not be read. The Vault was not changed.",
+                            LOG_LEVEL_NOTICE
+                        );
+                        e.disabled = false;
+                        return;
+                    }
+                    if (result.status === "unsupported-path") {
+                        Logger(
+                            "Only an ordinary valid Vault path can be restored from Document History.",
+                            LOG_LEVEL_NOTICE
+                        );
+                        e.disabled = false;
+                        return;
+                    }
+                    if (result.status === "database-write-refused") {
+                        Logger(
+                            "The restored revision could not be created. The file may have changed during the operation, and the Vault was not changed.",
+                            LOG_LEVEL_NOTICE
+                        );
+                        e.disabled = false;
+                        return;
+                    }
+                    if (result.status === "stored-not-reflected") {
+                        Logger(
+                            "The restored revision was saved in the local database, but it could not be reflected to the Vault. Use 'Inspect conflicts and file/database differences' to review and apply it.",
+                            LOG_LEVEL_NOTICE
+                        );
+                        if (result.cause) {
+                            Logger(result.cause, LOG_LEVEL_VERBOSE);
+                        }
+                        this.close();
+                        return;
+                    }
+
+                    if (result.conflictCheckError) {
+                        Logger(result.conflictCheckError, LOG_LEVEL_VERBOSE);
+                    }
+                    if (result.conflictsRemain === true) {
+                        Logger(
+                            "The selected content was restored as a new revision. Other versions remain unresolved; use 'Inspect conflicts and file/database differences' to review them.",
+                            LOG_LEVEL_NOTICE
+                        );
+                    } else if (result.conflictsRemain === false) {
+                        Logger("The selected content was restored as a new revision.", LOG_LEVEL_NOTICE);
+                    } else {
+                        Logger(
+                            "The selected content was restored as a new revision. LiveSync could not confirm whether other versions remain; use 'Inspect conflicts and file/database differences' to review the file.",
+                            LOG_LEVEL_NOTICE
+                        );
+                    }
+                    try {
+                        await focusFile(result.path);
+                    } catch (ex) {
+                        Logger("The restored file could not be opened in the editor.", LOG_LEVEL_NOTICE);
+                        Logger(ex, LOG_LEVEL_VERBOSE);
+                    }
                     this.close();
                 });
             });

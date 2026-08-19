@@ -10,6 +10,7 @@ const focusedScenarios = new Set([
     "dialog-mounts",
     "revision-repair",
     "document-history-nav",
+    "document-history-restore",
     "settings-ui",
     "review-harness",
     "p2p-pane",

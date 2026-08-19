@@ -59,6 +59,7 @@
         "test:e2e:obsidian:conflict-dialog-policy": "tsx test/e2e-obsidian/scripts/conflict-dialog-policy.ts",
         "test:e2e:obsidian:revision-repair": "tsx test/e2e-obsidian/scripts/revision-repair.ts",
         "test:e2e:obsidian:document-history-nav": "tsx test/e2e-obsidian/scripts/document-history-nav.ts",
+        "test:e2e:obsidian:document-history-restore": "tsx test/e2e-obsidian/scripts/document-history-restore.ts",
         "test:e2e:obsidian:settings-ui": "tsx test/e2e-obsidian/scripts/settings-ui.ts",
         "test:e2e:obsidian:review-harness": "tsx test/e2e-obsidian/scripts/review-harness.ts",
         "test:e2e:obsidian:p2p-pane": "tsx test/e2e-obsidian/scripts/p2p-pane.ts",
