@@ -32,7 +32,7 @@ export type DocumentHistoryRestorationOptions = {
 };
 
 /**
- * Restore historical content as a new child of the current live database winner, then reflect
+ * Restore historical content as a new child of the current database winner, then reflect
  * that exact new revision to the Vault. The historical revision supplies content, not ancestry.
  */
 export async function restoreDocumentHistoryRevision(

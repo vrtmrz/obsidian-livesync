@@ -94,7 +94,7 @@ separately; there is no batch repair.
 A one-entry repair is offered only when all of these checks pass:
 
 - the mismatch is within the normal-file namespace;
-- the source is the current live revision and has no conflicts;
+- the source is the current winner and has no conflict leaves;
 - the recorded path is valid and selected by current synchronisation policy;
 - one case-normalised path maps to one source under the active filename setting;
 - only one mismatched source expects the target ID; and

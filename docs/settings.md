@@ -573,7 +573,7 @@ Should we keep folders that do not have any files inside?
 
 ### 5. Conflict resolution (Advanced)
 
-Conflict resolution preserves unknown local content and automatically merges only when the available revision history supplies a safe shared base. See [Conflict resolution and revision provenance](specs_conflict_resolution.md) for the revision-tree rules, stale and concurrent resolutions, binary-file limitation, and the device-local provenance used for operations while a conflict is live.
+Conflict resolution preserves unknown local content and automatically merges only when the available revision history supplies a safe shared base. See [Conflict resolution and revision provenance](specs_conflict_resolution.md) for the revision-tree rules, stale and concurrent resolutions, binary-file limitation, and the device-local provenance used while a conflict remains unresolved.
 
 #### (BETA) Always overwrite with a newer file
 
@@ -745,11 +745,11 @@ Recreate chunks from files currently present in the Vault. This can repair missi
 
 #### Inspect conflicts and file/database differences
 
-Compare each Vault file with every current live revision in the local database. Each winner and conflict revision is shown separately with its exact revision identifier, local chunk availability, and relationship to the current Vault file. Unavailable shared ancestors are reported separately because they prevent conservative three-way merging but are not live revisions which can be discarded.
+Compare each Vault file with every current leaf revision in the local database. Each winner and conflict revision is shown separately with its exact revision identifier, local chunk availability, and relationship to the current Vault file. Unavailable shared ancestors are reported separately because they prevent conservative three-way merging but are not current leaves which can be discarded.
 
-Select **Begin inspection** to run the inspection. Each reported file and live revision has a wrench menu for read-only comparison, applying an exact database revision to the Vault, recording an exact byte match, preserving the Vault file as a child of a selected branch, retrying chunk retrieval, or explicitly discarding a branch. Destructive actions require confirmation. Follow [Recover a conflicted or mismatched file](recovery.md#recover-a-conflicted-or-mismatched-file) before changing revision history.
+Select **Begin inspection** to run the inspection. Each reported file and current leaf revision has a wrench menu for read-only comparison, applying an exact database revision to the Vault, recording an exact byte match, preserving the Vault file as a child of a selected branch, retrying chunk retrieval, or explicitly discarding a branch. Destructive actions require confirmation. Follow [Recover a conflicted or mismatched file](recovery.md#recover-a-conflicted-or-mismatched-file) before changing revision history.
 
-The same inspection also reports local Metadata whose stored document ID does not agree with its recorded path. A stale entry does not suppress ordinary inspection when consistently addressed Metadata can still be resolved for that logical path; otherwise, the unresolved path is excluded from ordinary file-repair actions. When one live, unconflicted entry has an unambiguous target, its wrench menu offers a separately confirmed, one-entry repair. The target is derived from the current local file-name case and path obfuscation settings, then written and verified before the obsolete ID is removed. Ambiguous, conflicted, deleted, excluded, or otherwise unsafe entries remain read-only. This action does not rename Vault files or folders. Follow [Repair a Metadata document ID mismatch](recovery.md#repair-a-metadata-document-id-mismatch) for the complete backup, repair, propagation, and verification procedure. For widespread naming differences across devices, use that guide to choose an authoritative Vault, correct its storage names while Obsidian is closed, rebuild the central remote, and reset the other devices.
+The same inspection also reports local Metadata whose stored document ID does not agree with its recorded path. A stale entry does not suppress ordinary inspection when consistently addressed Metadata can still be resolved for that logical path; otherwise, the unresolved path is excluded from ordinary file-repair actions. When the current winner has no conflict leaves and has an unambiguous target, its wrench menu offers a separately confirmed, one-entry repair. The target is derived from the current local file-name case and path obfuscation settings, then written and verified before the obsolete ID is removed. Ambiguous, conflicted, deleted, excluded, or otherwise unsafe entries remain read-only. This action does not rename Vault files or folders. Follow [Repair a Metadata document ID mismatch](recovery.md#repair-a-metadata-document-id-mismatch) for the complete backup, repair, propagation, and verification procedure. For widespread naming differences across devices, use that guide to choose an authoritative Vault, correct its storage names while Obsidian is closed, rebuild the central remote, and reset the other devices.
 
 #### Resolve All conflicted files by the newer one
 
@@ -1063,9 +1063,9 @@ Delete all data on the remote server.
 
 ### 6. Garbage Collection V3 (CouchDB only)
 
-Garbage Collection V3 identifies chunk documents which are not reachable from any current file or live conflict branch, creates logical deletions for those chunks locally, propagates the deletions to CouchDB, and requests remote compaction.
+Garbage Collection V3 identifies Chunk documents which are not reachable from any current file or conflict branch, creates logical deletions for those Chunks locally, propagates the deletions to CouchDB, and requests remote compaction.
 
-Use it only when the Vault, local database, and remote are healthy, and every relevant device has synchronised. It can make an ordinary superseded file revision unreadable when no live state still needs its chunks. It does not repair corruption or replace a deliberate rebuild. See the [Garbage Collection V3 specification](specs_garbage_collection.md).
+Use it only when the Vault, local database, and remote are healthy, and every relevant device has synchronised. It can make an ordinary superseded file revision unreadable when no current state still needs its Chunks. It does not repair corruption or replace a deliberate rebuild. See the [Garbage Collection V3 specification](specs_garbage_collection.md).
 
 ### 7. Reset
 

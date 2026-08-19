@@ -33,19 +33,19 @@ If the initial synchronisation, device inspection, or confirmation fails, the wo
 A chunk remains reachable when it is referenced by any of the following:
 
 - the current database winner for a file;
-- any other live conflict revision for that file;
-- an available revision on either side of a live conflict which is required to describe the divergence; or
-- the nearest available revision shared by both live conflict branches.
+- any conflict leaf for that file;
+- an available revision on either side of a current conflict which is required to describe the divergence; or
+- the nearest available revision shared by both conflict branches.
 
 Chunk identifiers are content-derived and shared between files. Reachability is therefore collected into one set across the database. A chunk used by two or more current files remains protected even when one file is updated or deleted.
 
-An ordinary superseded linear revision does not protect its former chunks. Once no current file or live conflict branch references a chunk, it can be collected. After a conflict is resolved, chunks unique to the discarded branch and to no-longer-needed merge ancestry can also become eligible.
+An ordinary superseded linear revision does not protect its former chunks. Once no current file or conflict leaf references a chunk, it can be collected. After a conflict is resolved, chunks unique to the discarded branch and to no-longer-needed merge ancestry can also become eligible.
 
 ## Consequences
 
 Garbage Collection deliberately trades historical recoverability for storage. A metadata revision may remain in the revision tree after a chunk which only that superseded revision used has been collected, so that historical body can become unreadable. Remote compaction can then discard old CouchDB revision bodies. Tombstones and retained metadata also consume storage, so the operation does not promise the smallest possible database.
 
-Writing the same bytes again produces the same content-derived chunk identifier. If that chunk was collected previously, the normal chunk-writing path creates a new live revision for it, and ordinary replication can transfer it again. This does not recover an older file revision automatically; it only makes the newly written content available.
+Writing the same bytes again produces the same content-derived chunk identifier. If that chunk was collected previously, the normal chunk-writing path creates a new non-deleted revision of the Chunk document, and ordinary replication can transfer it again. This does not recover an older file revision automatically; it only makes the newly written content available.
 
 Garbage Collection does not reconstruct a chunk which is already missing, determine whether an unreadable revision is important, or repair a damaged local database. Use **Inspect conflicts and file/database differences**, another healthy replica, or a backup for those cases. Use **Overwrite Server Data with This Device's Files** only when a chosen Vault is authoritative and a deliberate remote rebuild is required.
 
@@ -55,7 +55,7 @@ Commonlib tests use real in-memory PouchDB revision trees to verify:
 
 - collection eligibility after a normal file update;
 - protection of chunks shared by multiple current files;
-- protection of all live conflict branches and their nearest available shared ancestor;
+- protection of all conflict branches and their nearest available shared ancestor;
 - eligibility of losing-branch and ancestor-only chunks after conflict resolution;
 - propagation of chunk deletion to another PouchDB database; and
 - recreation and propagation when the same content is written again.

@@ -80,6 +80,22 @@ All guidelines and conventions listed below are disclosed and maintained solely 
     - A recovery setting that restricts the propagation of changes from the database to local storage, ignoring any file events (such as accidental mass deletions) that occurred after a specified date and time.
 - Reset Synchronisation on This Device
     - A maintenance operation (formerly known as `Fetch everything`) that discards the local database and reconstructs it by downloading all data from the remote server.
+
+#### Revision
+
+A revision is a version of one PouchDB/CouchDB document. Concurrent changes can form a revision tree with more than one current branch.
+
+Revision modifiers describe independent properties. More than one may apply to the same revision:
+
+- **leaf**: Has no known child revision.
+- **winner**: Is the leaf selected by PouchDB/CouchDB as the current document.
+- **conflict**: Is another current leaf which was not selected as the winner.
+- **Vault-matching**: Represents the same file contents, or the same absent-file state, as the current Vault. More than one revision may match.
+- **displayed**: Is recorded by valid device-local file provenance as the branch represented in the Vault. A pending local edit may no longer match its bytes, but still extends this recorded branch.
+- **logically deleted**: Represents the absence of the file through a deletion marker. A logically deleted revision may also be a leaf, winner, conflict, or Vault-matching revision. An absent file retains no displayed provenance.
+
+Avoid **live revision** in prose because it can ambiguously mean either a current leaf or a non-deleted revision. See [Independent revision properties](specs_conflict_resolution.md#independent-revision-properties) for the relationship between revision-tree roles, Vault state, and device-local provenance.
+
 - Scram (Scram Switches)
     - Emergency controls in the settings that allow users to suspend file watching or database writes to prevent corruption.
 - Segmenter (Segmented-splitter)

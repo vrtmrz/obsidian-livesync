@@ -180,7 +180,7 @@ async function waitForVaultRestore(cliBinary: string, env: NodeJS.ProcessEnv): P
             "const file=app.vault.getAbstractFileByPath(path);",
             "const raw=await core.localDatabase.getRaw(id,{revs_info:true}).catch(()=>false);",
             "const content=file?await app.vault.read(file):'';",
-            "throw new Error(`Timed out waiting for History to create and reflect a live successor revision: ${JSON.stringify({storageExists:!!file,deleted:!!(raw&&((raw.deleted||raw._deleted))),contentMatches:content===expectedContent,revision:raw&&raw._rev})}`);",
+            "throw new Error(`Timed out waiting for History to create and reflect a non-deleted successor revision: ${JSON.stringify({storageExists:!!file,deleted:!!(raw&&((raw.deleted||raw._deleted))),contentMatches:content===expectedContent,revision:raw&&raw._rev})}`);",
             "})()",
         ].join(""),
         env
@@ -314,7 +314,7 @@ async function main(): Promise<void> {
         const restored = await waitForVaultRestore(cli.binary, session.cliEnv);
         assertEqual(restored.storageExists, true, "Document History did not restore the Vault file.");
         assertEqual(restored.contentMatches, true, "The restored Vault file did not match the deleted revision.");
-        assertEqual(restored.deleted, false, "Document History did not produce a live database revision.");
+        assertEqual(restored.deleted, false, "Document History did not produce a non-deleted database revision.");
         assertTrue(
             restored.revision !== deletion.revision,
             "Document History did not create a successor database revision."
@@ -322,7 +322,7 @@ async function main(): Promise<void> {
         assertEqual(
             restored.revisionCount,
             deletion.revisionCount + 1,
-            "Document History did not add exactly one live successor revision."
+            "Document History did not add exactly one non-deleted successor revision."
         );
 
         screenshots.push(
@@ -331,7 +331,7 @@ async function main(): Promise<void> {
                     .getByText(contentMarker, { exact: false })
                     .first()
                     .waitFor({ state: "visible", timeout: 10000 });
-                return await captureStep(page, screenshotDir, "03-live-successor-after-history-restore");
+                return await captureStep(page, screenshotDir, "03-non-deleted-successor-after-history-restore");
             })
         );
 
@@ -344,12 +344,12 @@ async function main(): Promise<void> {
                 assertEqual(
                     await modal.getByText("(At this revision, the file has been deleted)", { exact: false }).count(),
                     0,
-                    "The live successor revision was still displayed as deleted."
+                    "The non-deleted successor revision was still displayed as deleted."
                 );
                 assertEqual(
                     (await modal.locator(".history-rev-indicator").innerText()).trim(),
                     "Rev 3/3",
-                    "Document History did not open at the new live successor revision."
+                    "Document History did not open at the new non-deleted successor revision."
                 );
                 return await captureStep(page, screenshotDir, "04-restored-revision-in-history");
             })

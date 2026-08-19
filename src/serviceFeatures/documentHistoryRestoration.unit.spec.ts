@@ -175,7 +175,7 @@ describe("restoreDocumentHistoryRevision", () => {
         expect(getConflictedRevs).not.toHaveBeenCalled();
     });
 
-    it("reports remaining live conflict leaves after restoration", async () => {
+    it("reports remaining conflict leaves after restoration", async () => {
         const { core, getConflictedRevs } = createCore({ conflicts: ["3-other"] });
 
         await expect(restoreDocumentHistoryRevision(core, path, "2-source")).resolves.toEqual({

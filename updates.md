@@ -16,7 +16,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
-- **Back to this revision** in Document History now restores the selected content as a new live database revision before reflecting it to the Vault. A readable revision restored after a logical deletion therefore remains restored through later synchronisation instead of being overwritten by the deletion.
+- **Back to this revision** in Document History now restores the selected content as a new non-deleted successor revision before reflecting it to the Vault. A readable revision restored after a logical deletion therefore remains restored through later synchronisation instead of being overwritten by the deletion.
     - If the file changes while restoration is in progress, the operation stops instead of extending a stale revision. Existing conflicts remain available through **Inspect conflicts and file/database differences**.
 
 ### Synchronisation and storage
@@ -65,7 +65,7 @@ Thank you for your patience. At last, it looks as though we can clear some of th
 #### Improved
 
 - **Inspect conflicts and file/database differences** now reports local Metadata whose stored document ID does not match the ID derived from its recorded path. Ordinary scans leave unresolved entries and their corresponding Vault paths unchanged, while allowing consistently addressed Metadata for the same logical path to proceed normally.
-    - When one live, unconflicted entry has an unambiguous target, its wrench menu can repair that one local Metadata document after separate confirmation. The target is written and verified before the mismatched source ID is removed; ambiguous or otherwise unsafe entries remain read-only.
+    - When the current winner has no conflict leaves and has an unambiguous target, its wrench menu can repair that one local Metadata document after separate confirmation. The target is written and verified before the mismatched source ID is removed; ambiguous or otherwise unsafe entries remain read-only.
 
 #### Fixed
 
