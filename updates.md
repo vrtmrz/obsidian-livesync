@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.16
+
+19th August, 2026
+
 ### Conflict handling and recovery
 
 #### Fixed
