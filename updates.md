@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.16
+
+19th August, 2026
+
 ### Conflict handling and recovery
 
 #### Fixed
@@ -83,31 +87,3 @@ Thank you for your patience. At last, it looks as though we can clear some of th
 - One-shot CouchDB replication now closes its temporary remote database after each run and before retrying, preventing inactive PouchDB instances from accumulating during long-running periodic synchronisation (Commonlib PR #75). Thank you to @apple-ouyang for the contribution!
 - Start-up and recovery scans now keep failed database-to-Vault writes retryable instead of recording them as successful and later mistaking the still-missing file for a local deletion (Commonlib PR #106).
     - Files over the size limit or in conflict remain deliberately skipped, while actual write failures are reported to Fast Setup, CLI mirror, and daemon callers.
-
-## 1.0.11
-
-9th August, 2026
-
-### Setup and compatibility
-
-#### Fixed
-
-- Fast Setup now uses Standard Fetch when CouchDB's 'Use Internal API' setting is enabled, avoiding a streaming request path which Obsidian's buffered API cannot support (#1020).
-    - Custom headers alone continue to use Fast Fetch when browser CORS permits them; Standard Fetch clears any obsolete Fast Fetch checkpoint after resetting the local database.
-
-### Synchronisation and storage
-
-#### Fixed
-
-- Fractional file timestamps no longer cause affected mobile clients to crash after synchronisation (#1087, PR #1039). Thank you to @andrewleech for the contribution!
-    - Timestamps are now normalised in the command-line tool and before Obsidian's native file-system writes.
-
-## 1.0.10
-
-9th August, 2026
-
-### Setup and compatibility
-
-#### Fixed
-
-- Fast Setup now sends configured CouchDB custom headers with every changes-feed request, allowing reverse proxies such as Cloudflare Access to authenticate initial setup in the same way as ordinary synchronisation ([Commonlib PR #82](https://github.com/vrtmrz/livesync-commonlib/pull/82)). Thank you to @nimula for the contribution!
