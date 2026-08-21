@@ -11,8 +11,13 @@
     import {
         DEFAULT_SETTINGS,
         P2P_DEFAULT_SETTINGS,
+        P2PConnectionPaths,
+        P2PMessageSizePresets,
         PREFERRED_BASE,
         RemoteTypes,
+        hasValidP2PTurnServerUrl,
+        normaliseP2PConnectionPath,
+        normaliseP2PMaxWirePayloadBytes,
         type EntryDoc,
         type ObsidianLiveSyncSettings,
         type P2PConnectionInfo,
@@ -41,6 +46,8 @@
 
     const context = getDialogContext();
     let error = $state("");
+    let connectionPathResetNotice = $state(false);
+    const hasValidTurnServer = $derived(hasValidP2PTurnServerUrl(syncSetting.P2P_turnServers ?? ""));
     type Props = GuestDialogProps<SetupRemoteP2PResultType, P2PSyncSetting>;
 
     const { setResult, getInitialData }: Props = $props();
@@ -67,6 +74,12 @@
             ...P2P_DEFAULT_SETTINGS,
             ...syncSetting,
             P2P_Enabled: true,
+            P2P_maxWirePayloadBytes: normaliseP2PMaxWirePayloadBytes(syncSetting.P2P_maxWirePayloadBytes),
+            P2P_connectionPath:
+                normaliseP2PConnectionPath(syncSetting.P2P_connectionPath) === P2PConnectionPaths.Relay &&
+                hasValidTurnServer
+                    ? P2PConnectionPaths.Relay
+                    : P2PConnectionPaths.Automatic,
         };
         const trialSettings: P2PSyncSetting = {
             ...connSetting,
@@ -143,6 +156,13 @@
     function setDefaultRelay() {
         syncSetting.P2P_relays = P2P_DEFAULT_SETTINGS.P2P_relays;
     }
+
+    $effect(() => {
+        if (!hasValidTurnServer && syncSetting.P2P_connectionPath === P2PConnectionPaths.Relay) {
+            syncSetting.P2P_connectionPath = P2PConnectionPaths.Automatic;
+            connectionPathResetNotice = true;
+        }
+    });
 
     let processing = $state(false);
     function generateDefaultGroupId() {
@@ -264,6 +284,50 @@
         "When enabled, this device notifies connected peers after a local change. The notification contains no Vault data; a peer which follows this device then fetches the change through the encrypted P2P connection."
     )}
 </InfoNote>
+<ExtraItems title={translateMessage("Connection compatibility")}>
+    <InputRow label={translateMessage("P2P message size")}>
+        <select
+            name="p2p-message-size"
+            aria-label={translateMessage("P2P message size")}
+            bind:value={syncSetting.P2P_maxWirePayloadBytes}
+        >
+            <option value={P2PMessageSizePresets.Standard}>{translateMessage("Standard")}</option>
+            <option value={P2PMessageSizePresets.Reduced}>{translateMessage("Reduced")}</option>
+            <option value={P2PMessageSizePresets.Conservative}>{translateMessage("Conservative")}</option>
+            <option value={P2PMessageSizePresets.MaximumCompatibility}
+                >{translateMessage("Maximum compatibility")}</option
+            >
+        </select>
+    </InputRow>
+    <InfoNote>
+        {translateMessage(
+            "Smaller messages can improve compatibility on paths which fragment or drop larger WebRTC messages. This setting limits outgoing P2P messages, so use a compatible profile on each sending device when required."
+        )}
+    </InfoNote>
+    <InputRow label={translateMessage("Connection path")}>
+        <select
+            name="p2p-connection-path"
+            aria-label={translateMessage("Connection path")}
+            bind:value={syncSetting.P2P_connectionPath}
+            onchange={() => (connectionPathResetNotice = false)}
+        >
+            <option value={P2PConnectionPaths.Automatic}>{translateMessage("Automatic")}</option>
+            <option value={P2PConnectionPaths.Relay} disabled={!hasValidTurnServer}
+                >{translateMessage("TURN relay only")}</option
+            >
+        </select>
+    </InputRow>
+    <InfoNote>
+        {translateMessage(
+            "TURN relay only is available when at least one valid TURN server URL is configured under Advanced Settings."
+        )}
+    </InfoNote>
+    <InfoNote notice visible={connectionPathResetNotice}>
+        {translateMessage(
+            "TURN relay only requires at least one valid TURN server URL. Connection path has been restored to Automatic."
+        )}
+    </InfoNote>
+</ExtraItems>
 <ExtraItems title={translateMessage("Advanced Settings")}>
     <InfoNote>
         {translateMessage(

@@ -44,6 +44,17 @@ Both settings contain server addresses, but they are not interchangeable.
 
 A TURN provider cannot read LiveSync's encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust. The project does not operate an official TURN service.
 
+## Connection compatibility profiles
+
+`P2P Configuration` includes a separate `Connection compatibility` section. Its defaults preserve the existing transport behaviour:
+
+- **P2P message size** defaults to **Standard**. **Reduced**, **Conservative**, and **Maximum compatibility** progressively limit outgoing P2P messages when a network path appears to drop larger WebRTC messages. This is not a Vault Chunk size or an IP MTU. Smaller values add framing and processing overhead.
+- **Connection path** defaults to **Automatic**, which lets WebRTC select a viable direct or TURN-relayed path. **TURN relay only** forces the encrypted connection through TURN and is available only when the profile contains at least one valid `turn:` or `turns:` URL.
+
+The sending device controls its outgoing message size. Select the same conservative preset on every device which may send across the constrained path. Existing devices do not receive the choice retrospectively merely because another device changed it.
+
+Both compatibility choices belong to the saved P2P profile and are retained in P2P connection strings and encrypted Setup URIs. Separate profiles may use the same Group ID, passphrase, and relay list while selecting different compatibility choices. Only the selected P2P profile joins the group.
+
 ## P2P Status
 
 The **P2P Status** pane is the current Obsidian interface for P2P connections.

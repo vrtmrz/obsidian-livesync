@@ -465,6 +465,22 @@ Setting key: P2P_turnCredential
 
 The password or credential for authentication with the TURN server.
 
+#### P2P message size
+
+Setting key: P2P_maxWirePayloadBytes
+
+This profile setting limits each outgoing Commonlib RPC message before Trystero applies its own framing. It is not a Vault Chunk size, an IP MTU, or an SCTP fragment size. The available presets are **Standard** (15,360 bytes), **Reduced** (2,048 bytes), **Conservative** (1,024 bytes), and **Maximum compatibility** (800 bytes). Smaller values trade throughput for compatibility on paths which appear to drop larger WebRTC messages.
+
+The sender controls the size of its outgoing messages. Select the same conservative preset on every device which may send across the constrained path. Existing profiles without this key use **Standard**. P2P connection strings and encrypted Setup URIs retain the selected preset.
+
+#### Connection path
+
+Setting key: P2P_connectionPath
+
+**Automatic** lets WebRTC select a viable direct or TURN-relayed path and is the default. **TURN relay only** forces `iceTransportPolicy: 'relay'` and is available only when the profile contains at least one valid `turn:` or `turns:` URL. Removing the last valid TURN URL while relay-only mode is selected restores **Automatic** and displays a Notice.
+
+This choice belongs to the P2P profile and is retained in P2P connection strings and encrypted Setup URIs. Separate profiles may use the same Group ID and credentials with different compatibility choices; only the selected P2P profile is active.
+
 ## 4. Sync Settings
 
 ### 1. Synchronisation Preset

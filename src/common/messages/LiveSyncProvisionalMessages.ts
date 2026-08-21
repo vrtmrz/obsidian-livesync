@@ -32,6 +32,20 @@ export const liveSyncProvisionalEnglishMessages = {
     "Learn more about signalling and TURN": "Learn more about signalling and TURN",
     "TURN relays the encrypted WebRTC connection only when a direct path cannot be established. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust.":
         "TURN relays the encrypted WebRTC connection only when a direct path cannot be established. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust.",
+    "Connection compatibility": "Connection compatibility",
+    "P2P message size": "P2P message size",
+    Standard: "Standard",
+    Reduced: "Reduced",
+    Conservative: "Conservative",
+    "Maximum compatibility": "Maximum compatibility",
+    "Smaller messages can improve compatibility on paths which fragment or drop larger WebRTC messages. This setting limits outgoing P2P messages, so use a compatible profile on each sending device when required.":
+        "Smaller messages can improve compatibility on paths which fragment or drop larger WebRTC messages. This setting limits outgoing P2P messages, so use a compatible profile on each sending device when required.",
+    "Connection path": "Connection path",
+    "TURN relay only": "TURN relay only",
+    "TURN relay only is available when at least one valid TURN server URL is configured under Advanced Settings.":
+        "TURN relay only is available when at least one valid TURN server URL is configured under Advanced Settings.",
+    "TURN relay only requires at least one valid TURN server URL. Connection path has been restored to Automatic.":
+        "TURN relay only requires at least one valid TURN server URL. Connection path has been restored to Automatic.",
     "Announce changes": "Announce changes",
     "Announce changes automatically after connecting": "Announce changes automatically after connecting",
     "When enabled, this device notifies connected peers after a local change. The notification contains no Vault data; a peer which follows this device then fetches the change through the encrypted P2P connection.":
