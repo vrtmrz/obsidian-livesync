@@ -3,6 +3,8 @@
 A fully self-hosted CouchDB stack for the [obsidian-livesync](https://github.com/vrtmrz/obsidian-livesync) plugin.  
 **No fly.io. No IBM Cloudant. No cloud accounts required for basic use.**
 
+The optional [Coturn Compose starter](coturn/README.md) is a separate Linux-only service for P2P connectivity. It is not part of the CouchDB stack below.
+
 > ✅ **Tested on Docker Desktop for Windows (Docker 29.2, Compose v5, WSL2 backend)** — full init, CORS, auth, and idempotent restart verified.
 
 ---
