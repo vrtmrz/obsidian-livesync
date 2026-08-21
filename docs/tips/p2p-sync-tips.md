@@ -39,6 +39,8 @@ Try these in order:
 
 TURN is a fallback for encrypted WebRTC traffic. It is different from the required signalling relay. The project does not operate an official TURN service. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume.
 
+For a small self-hosted deployment, the repository includes an optional [Coturn Compose starter](../../docker/coturn/README.md). It uses static credentials and does not include TLS or a managed credential service; review its network and security boundaries before exposing it.
+
 ## A connected peer does not receive later edits
 
 An open signalling connection does not automatically move every change.

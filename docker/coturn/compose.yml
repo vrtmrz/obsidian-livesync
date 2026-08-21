@@ -1,0 +1,33 @@
+name: livesync-coturn
+
+services:
+    coturn:
+        image: coturn/coturn:4.17.2
+        restart: unless-stopped
+        network_mode: host
+        # Compose has already interpolated the environment values. Invoke Coturn
+        # directly so that the image's shell entrypoint does not expand them again.
+        entrypoint:
+            - turnserver
+        command:
+            - "-n"
+            - "--log-file=stdout"
+            - "--pidfile=/tmp/turnserver.pid"
+            - "--listening-ip=0.0.0.0"
+            - "--listening-port=3478"
+            - "--min-port=49160"
+            - "--max-port=49200"
+            - "--external-ip=${TURN_EXTERNAL_IP:?Set TURN_EXTERNAL_IP in docker/coturn/.env}"
+            - "--realm=${TURN_REALM:?Set TURN_REALM in docker/coturn/.env}"
+            - "--user=${TURN_USERNAME:?Set TURN_USERNAME in docker/coturn/.env}:${TURN_PASSWORD:?Set TURN_PASSWORD in docker/coturn/.env}"
+            - "--fingerprint"
+            - "--lt-cred-mech"
+            - "--stale-nonce=600"
+            - "--unauthorized-ratelimit"
+            - "--no-multicast-peers"
+            - "--denied-peer-ip=10.0.0.0-10.255.255.255"
+            - "--denied-peer-ip=100.64.0.0-100.127.255.255"
+            - "--denied-peer-ip=169.254.0.0-169.254.255.255"
+            - "--denied-peer-ip=172.16.0.0-172.31.255.255"
+            - "--denied-peer-ip=192.168.0.0-192.168.255.255"
+            - "--no-tls"
