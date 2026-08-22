@@ -36,10 +36,19 @@ Try these in order:
 1. Put both devices on the same ordinary network and retry.
 2. Remove a VPN temporarily if it blocks peer traffic, or use a trusted VPN such as Tailscale when it provides a reachable path between the devices.
 3. In `P2P Configuration` -> `Advanced Settings`, configure a trusted TURN service.
+4. Under `Connection compatibility`, select `TURN relay only` to test the configured TURN path without direct ICE candidates.
 
 TURN is a fallback for encrypted WebRTC traffic. It is different from the required signalling relay. The project does not operate an official TURN service. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume.
 
 For a small self-hosted deployment, the repository includes an optional [Coturn Compose starter](../../docker/coturn/README.md). It uses static credentials and does not include TLS or a managed credential service; review its network and security boundaries before exposing it.
+
+## A connection opens but a transfer stalls
+
+If peers can connect but a transfer repeatedly stalls on one network path, try the `P2P message size` presets under `Connection compatibility`. Start with `Reduced`, then try `Conservative` and `Maximum compatibility` only if needed.
+
+The preset limits outgoing messages, so select the same value on every device which may send across the affected path. Smaller values add overhead and do not prove that packet fragmentation was the cause. Return to `Standard` when the path works reliably without the compatibility setting.
+
+Compatibility choices are saved with the P2P profile. You may keep separate standard and compatibility profiles with the same Group ID and credentials, then select the profile appropriate to the current network.
 
 ## A connected peer does not receive later edits
 

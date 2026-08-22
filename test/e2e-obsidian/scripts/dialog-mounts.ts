@@ -30,6 +30,7 @@ type DialogueRunState = {
 type SetupManagerHandle = {
     constructor: { name: string };
     onSelectServer?: (settings: unknown, remoteType: string) => Promise<unknown>;
+    onConfirmApplySettingsFromWizard?: (settings: unknown, userMode: string, activate?: boolean) => Promise<boolean>;
     _askUseRemoteConfiguration?: (settings: unknown, preferred: unknown) => Promise<unknown>;
     _checkAndAskResolvingMismatchedTweaks?: (preferred: unknown) => Promise<unknown>;
     __addLog?: (message: string) => void;
@@ -86,6 +87,44 @@ async function openRemoteSelectionDialogue(): Promise<void> {
                     state.done = true;
                 }
             );
+        }, dialogRunStateKey);
+    });
+}
+
+async function openP2PRemoteSelectionDialogueForInspection(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.evaluate((stateKey) => {
+            const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+            if (plugin === undefined) throw new Error("Self-hosted LiveSync is not loaded");
+            const manager = plugin.core.modules.find((module) => module.constructor.name === "SetupManager");
+            if (
+                typeof manager?.onSelectServer !== "function" ||
+                typeof manager.onConfirmApplySettingsFromWizard !== "function"
+            ) {
+                throw new Error("Could not find the P2P setup workflow");
+            }
+            const originalConfirm = manager.onConfirmApplySettingsFromWizard;
+            const state: DialogueRunState = { kind: "p2p-compatibility-settings", done: false };
+            (globalThis as unknown as Record<string, DialogueRunState>)[stateKey] = state;
+            manager.onConfirmApplySettingsFromWizard = async (settings: unknown) => {
+                state.expected = settings;
+                return true;
+            };
+            void manager
+                .onSelectServer(plugin.core.settings, "unknown")
+                .then(
+                    (result) => {
+                        state.result = result;
+                        state.done = true;
+                    },
+                    (error: unknown) => {
+                        state.error = error instanceof Error ? error.message : String(error);
+                        state.done = true;
+                    }
+                )
+                .finally(() => {
+                    manager.onConfirmApplySettingsFromWizard = originalConfirm;
+                });
         }, dialogRunStateKey);
     });
 }
@@ -430,6 +469,158 @@ async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string
         await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
     await assertDialogueRunCompleted();
+    return screenshotPath;
+}
+
+async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
+    await openP2PRemoteSelectionDialogueForInspection();
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const remoteSelection = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "Choose a synchronisation remote" }),
+        });
+        await remoteSelection
+            .locator("label")
+            .filter({ hasText: "Peer-to-Peer (P2P)" })
+            .locator('input[type="radio"]')
+            .first()
+            .check({ timeout: uiTimeoutMs });
+        await remoteSelection
+            .getByRole("button", { name: "Continue to P2P setup", exact: true })
+            .click({ timeout: uiTimeoutMs });
+    });
+
+    const screenshotPath = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "setup-p2p-compatibility-dialogue.png",
+        async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "P2P Configuration" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await modal.locator('input[name="p2p-room-id"]').fill("e2e-p2p-compatibility");
+            await modal.locator('input[name="p2p-password"]').fill("e2e-passphrase");
+            await modal.locator('input[name="p2p-device-peer-id"]').fill("e2e-device");
+
+            const compatibility = modal.locator("details").filter({
+                has: page.locator("summary").filter({ hasText: "Connection compatibility" }),
+            });
+            await compatibility.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            if (!(await compatibility.evaluate((element) => (element as HTMLDetailsElement).open))) {
+                await compatibility.locator("summary").click({ timeout: uiTimeoutMs });
+            }
+            const parentSection = await compatibility.evaluate(
+                (element) =>
+                    element.parentElement?.closest("details")?.querySelector(":scope > summary")?.textContent?.trim() ??
+                    ""
+            );
+            if (parentSection === "Advanced Settings") {
+                throw new Error("P2P connection compatibility controls were placed under Advanced Settings.");
+            }
+
+            const messageSize = compatibility.getByLabel("P2P message size", { exact: true });
+            await messageSize.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const messageSizeOptions = await messageSize.locator("option").evaluateAll((options) =>
+                options.map((option) => ({
+                    label: option.textContent?.trim() ?? "",
+                    value: (option as HTMLOptionElement).value,
+                }))
+            );
+            const expectedMessageSizeOptions = [
+                { label: "Standard", value: "15360" },
+                { label: "Reduced", value: "2048" },
+                { label: "Conservative", value: "1024" },
+                { label: "Maximum compatibility", value: "800" },
+            ];
+            if (JSON.stringify(messageSizeOptions) !== JSON.stringify(expectedMessageSizeOptions)) {
+                throw new Error(`Unexpected P2P message-size presets: ${JSON.stringify(messageSizeOptions)}`);
+            }
+
+            const connectionPath = compatibility.getByLabel("Connection path", { exact: true });
+            await connectionPath.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const relayOnly = connectionPath.locator('option[value="relay"]');
+            if (!(await relayOnly.evaluate((option) => (option as HTMLOptionElement).disabled))) {
+                throw new Error("TURN relay only was enabled without a valid TURN server URL.");
+            }
+
+            const advanced = modal.locator("details").filter({
+                has: page.locator("summary").filter({ hasText: "Advanced Settings" }),
+            });
+            if (!(await advanced.evaluate((element) => (element as HTMLDetailsElement).open))) {
+                await advanced.locator("summary").click({ timeout: uiTimeoutMs });
+            }
+            const turnServers = advanced.getByLabel("TURN Server URLs (comma-separated)", { exact: true });
+            await turnServers.fill("turn:turn.example.com:3478");
+            const relayOnlyElement = await relayOnly.elementHandle();
+            const connectionPathElement = await connectionPath.elementHandle();
+            if (relayOnlyElement === null || connectionPathElement === null) {
+                throw new Error("P2P connection-path controls were removed whilst validating TURN settings.");
+            }
+            await page.waitForFunction((element) => !(element as HTMLOptionElement).disabled, relayOnlyElement, {
+                timeout: uiTimeoutMs,
+            });
+            await connectionPath.selectOption("relay");
+
+            await turnServers.fill("");
+            await page.waitForFunction(
+                (element) => (element as HTMLSelectElement).value === "automatic",
+                connectionPathElement,
+                { timeout: uiTimeoutMs }
+            );
+            const resetNotice = compatibility.locator(".sls-info-note-notice").filter({
+                hasText:
+                    "TURN relay only requires at least one valid TURN server URL. Connection path has been restored to Automatic.",
+            });
+            await resetNotice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await resetNotice
+                .locator(".sls-signal-word-notice")
+                .filter({ hasText: "NOTICE" })
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+
+            await turnServers.fill("turn:turn.example.com:3478");
+            await page.waitForFunction((element) => !(element as HTMLOptionElement).disabled, relayOnlyElement, {
+                timeout: uiTimeoutMs,
+            });
+            await connectionPath.selectOption("relay");
+            await messageSize.selectOption("800");
+            await advanced.locator("summary").click({ timeout: uiTimeoutMs });
+            await compatibility.scrollIntoViewIfNeeded();
+        }
+    );
+
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modal = page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: "P2P Configuration" }),
+        });
+        await modal.getByRole("button", { name: "Continue anyway", exact: true }).click({ timeout: uiTimeoutMs });
+        await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+
+    const state = await assertDialogueRunCompleted();
+    if (state.result !== true || typeof state.expected !== "object" || state.expected === null) {
+        throw new Error("The P2P compatibility settings were not passed to the setup workflow.");
+    }
+    const settings = state.expected as Record<string, unknown>;
+    if (settings.P2P_maxWirePayloadBytes !== 800 || settings.P2P_connectionPath !== "relay") {
+        throw new Error(
+            `The P2P compatibility choices did not round-trip through the setup dialogue: ${JSON.stringify({
+                P2P_maxWirePayloadBytes: settings.P2P_maxWirePayloadBytes,
+                P2P_connectionPath: settings.P2P_connectionPath,
+            })}`
+        );
+    }
+    const activeId = settings.P2P_ActiveRemoteConfigurationId;
+    const configurations = settings.remoteConfigurations;
+    if (typeof activeId !== "string" || typeof configurations !== "object" || configurations === null) {
+        throw new Error("The P2P setup workflow did not create an active remote configuration.");
+    }
+    const active = (configurations as Record<string, { uri?: unknown }>)[activeId];
+    if (typeof active?.uri !== "string") {
+        throw new Error("The active P2P remote configuration did not contain a connection string.");
+    }
+    const query = new URL(active.uri).searchParams;
+    if (query.get("maxWirePayloadBytes") !== "800" || query.get("connectionPath") !== "relay") {
+        throw new Error(`The P2P connection string omitted compatibility settings: ${active.uri}`);
+    }
     return screenshotPath;
 }
 
@@ -1065,6 +1256,10 @@ async function main(): Promise<void> {
         const couchDBScreenshot = await verifyCouchDBSettingsDialogue("desktop");
         console.log(
             `CouchDB settings mode exposed explicit connection, unverified-save, and server-check actions. Screenshot: ${couchDBScreenshot}`
+        );
+        const p2pCompatibilityScreenshot = await verifyP2PCompatibilitySettingsDialogue();
+        console.log(
+            `P2P compatibility presets, TURN validation, and profile round-trip passed. Screenshot: ${p2pCompatibilityScreenshot}`
         );
         const setupUriScreenshot = await verifySetupUriDialogue("desktop");
         console.log(`Setup URI dialogue mounted and closed successfully. Screenshot: ${setupUriScreenshot}`);

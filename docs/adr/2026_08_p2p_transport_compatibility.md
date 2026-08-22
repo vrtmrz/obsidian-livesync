@@ -46,22 +46,19 @@ LiveSync will expose a separate `Connection path` choice:
 - `Automatic` retains normal ICE selection and is the default.
 - `TURN relay only` supplies `iceTransportPolicy: 'relay'` and prevents direct or server-reflexive candidates from being selected.
 
-`TURN relay only` is enabled only when at least one syntactically valid `turn:` or `turns:` URL is configured. If the last valid TURN URL is removed while relay-only mode is selected, saving the settings restores `Automatic` and displays a concise explanation.
+`TURN relay only` is enabled only when at least one syntactically valid `turn:` or `turns:` URL is configured. If the last valid TURN URL is removed while relay-only mode is selected, the dialogue restores `Automatic` and displays a concise explanation.
 
-The route policy is stored per P2P profile on the current device and is omitted from Setup URIs. It is a diagnostic and compatibility choice for the current device and network; forcing every synchronising device through TURN merely because one mobile path needs it would add avoidable latency, bandwidth cost, and metadata exposure.
+The route policy is an ordinary P2P profile property. It is retained in P2P connection strings and encrypted Setup URIs so that an imported compatibility profile has reproducible transport behaviour.
+
+Multiple P2P profiles may intentionally use the same Group ID, passphrase, and relay list while selecting different compatibility settings. For example, one profile may use `Standard` and `Automatic`, while another uses `Maximum compatibility` and `TURN relay only`. Only the selected P2P profile joins the group, so each device can select the profile appropriate to its current network without a separate device-local override system.
 
 No `Direct only` choice will be added. `Automatic` already prefers viable non-relayed candidates, and preventing TURN fallback would mainly create another failure mode.
 
 ### TURN server presentation
 
-The first settings revision retains the existing storage contract of one credential shared by a list of TURN URLs. The dialogue will present it as a profile rather than as one comma-separated text field:
+The first settings revision retains the existing storage and dialogue contract of one comma-separated TURN URL list, one username, and one credential. The connection-path choice is presented separately under `Connection compatibility`, while the TURN values remain under `Advanced Settings`.
 
-- an ordered list of `turn:` and `turns:` URL rows;
-- one username;
-- one credential; and
-- the connection-path choice below the profile.
-
-The interface may parse and serialise the existing comma-separated value so older profiles and Setup URIs remain compatible. A structured list of multiple credential profiles is deferred until a provider or self-hosted use case requires different credentials in the same P2P profile.
+A future interface may present the existing comma-separated value as ordered `turn:` and `turns:` URL rows without changing its serialised representation. A structured list of multiple credential profiles is deferred until a provider or self-hosted use case requires different credentials in the same P2P profile.
 
 Static long-term credentials are the supported first stage. Managed providers may return short-lived credentials, but LiveSync must not store a provider API token or a Coturn shared authentication secret. A future managed-credential design needs a separately trusted HTTPS endpoint, expiry handling, refresh behaviour, failure reporting, and a clear Setup URI policy. It is not represented as another static password field.
 
@@ -134,6 +131,10 @@ The bound controls outgoing messages. This would leave larger messages from anot
 
 TURN is normally a fallback. Forcing it by default adds latency and bandwidth cost, and exposes more connection metadata even when a direct path works.
 
+### Store the connection path in a device-local overlay
+
+A second layer of device-specific profile overrides would make imported profile behaviour less reproducible and add another identity, mapping, and lifecycle contract. Separate named P2P profiles already let each device select an explicit transport policy, including when those profiles share the same Group ID and credentials.
+
 ### Automatically decrease the payload after a transfer failure
 
 A transfer failure does not identify message size as the cause. Reusing a possibly wedged ordered channel would also make the retry inconclusive, while rebuilding the connection expands the lifecycle and user-notification design.
@@ -152,17 +153,18 @@ A layer-4 TLS router could share one public address between distinct CouchDB and
 
 ## Verification
 
-The implementation stage must add focused tests before production changes:
+The first implementation stage must add focused tests before production changes:
 
 - settings-schema defaults for absent keys;
-- Setup URI round trips which retain the message-size preset but omit the device-local connection path;
+- P2P connection-string and Setup URI round trips which retain both transport compatibility settings;
 - compatibility parsing and serialisation of the existing TURN URL string;
 - mapping each message-size preset to the exact Commonlib wire bound;
 - mapping relay-only mode to `iceTransportPolicy: 'relay'`;
 - rejection or automatic reset of relay-only mode without a valid TURN URL;
-- room replacement after either effective transport setting changes;
-- a disposable TURN allocation check using injected WebRTC boundaries; and
-- a real transport test only for the device- or network-owned behaviour which deterministic injection cannot prove.
+- room replacement after either effective transport setting changes; and
+- the real Obsidian dialogue, profile, and connection-string round trip.
+
+The future TURN allocation action requires its own focused tests using injected WebRTC boundaries, followed by a real transport test only for the device- or network-owned behaviour which deterministic injection cannot prove.
 
 The Coturn example is checked independently with `docker compose config`. Runtime verification uses a real Coturn allocation from outside the server network and confirms both UDP and TCP client paths before it is presented as a known-working deployment.
 
@@ -170,6 +172,7 @@ The Coturn example is checked independently with `docker compose config`. Runtim
 
 - Users gain a small compatibility ladder without learning WebRTC internals.
 - A conservative message size affects throughput wherever it is selected or imported, and must be applied to every participating device to protect all transfer directions.
+- Profiles may intentionally share the same P2P group identity while offering different transport compatibility choices; the selected profile determines the active connection behaviour.
 - TURN can be forced for diagnosis or hostile networks without making relay use the global default.
 - Static and managed TURN credentials have separate, explicit responsibility boundaries.
 - Browser-specific heuristics, automatic payload fallback, and low-level transport knobs remain out of scope.
