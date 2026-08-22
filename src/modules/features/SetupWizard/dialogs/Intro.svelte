@@ -59,7 +59,7 @@
             bind:value={userType}
         >
             {translateMessage(
-                "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch."
+                "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup."
             )}
         </Option>
     </Options>

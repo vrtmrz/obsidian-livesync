@@ -2650,7 +2650,7 @@ xxhash64 (Fastest): xxhash64 (el más rápido)
 "I am adding a device to an existing synchronisation setup":
   "Estoy agregando un dispositivo a una configuración de sincronización
   existente"
-"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.":
+"(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.":
   "(Seleccione esto si ya utiliza la sincronización en otro ordenador o
   teléfono). Esta opción es adecuada si desea añadir este dispositivo a una
   configuración de LiveSync existente。"

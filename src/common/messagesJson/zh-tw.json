@@ -15,7 +15,7 @@
     "(Obsolete) Use an old adapter for compatibility": "（已淘汰）使用舊版轉接器以維持相容性",
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": "（正則表示式）留空即同步所有檔案。設定正則表示式可限制要同步的檔案。",
     "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.": "（正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。",
-    "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。",
+    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。",
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你正在將此裝置設定為第一台同步裝置，請選擇此項。）此選項適合初次使用 LiveSync，並希望從頭開始設定的使用者。",
     "↑: Overwrite Remote": "↑：覆寫遠端",
     "↓: Overwrite Local": "↓：覆寫本機",
