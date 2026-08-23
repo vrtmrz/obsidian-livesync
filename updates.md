@@ -12,6 +12,16 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.17
+
+23rd August, 2026
+
+### Interface and translation
+
+#### Fixed
+
+- Settings generated from the settings manifest, Setup Wizard configuration summaries, and warnings about externally changed settings now honour **Display language** when a translation is available, instead of remaining in English (PR #1123). Thank you to @nimula for the contribution!
+
 ### Peer-to-peer synchronisation
 
 #### Improved
