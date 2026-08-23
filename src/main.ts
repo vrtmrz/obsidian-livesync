@@ -120,6 +120,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             UI: services.UI,
             vault: services.vault,
             fileHandler: fileHandler,
+            fileProcessing: services.fileProcessing,
             storageAccess: storageAccess,
             control: services.control,
         });
