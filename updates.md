@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.17
+
+23rd August, 2026
+
 ### Peer-to-peer synchronisation
 
 #### Improved
