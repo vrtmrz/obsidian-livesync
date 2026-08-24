@@ -179,7 +179,7 @@
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
         "@vrtmrz/livesync-commonlib": "0.1.19",
-        "@vrtmrz/obsidian-plugin-kit": "0.1.3",
+        "@vrtmrz/obsidian-plugin-kit": "0.1.4",
         "@vrtmrz/ui-interactions": "0.1.2",
         "diff-match-patch": "^1.0.5",
         "fflate": "^0.8.2",

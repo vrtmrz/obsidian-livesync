@@ -4,7 +4,6 @@ vi.mock("@/deps.ts", () => ({
     addIcon: vi.fn(),
     diff_match_patch: class DiffMatchPatch {},
     normalizePath: vi.fn((path: string) => path),
-    Notice: class Notice {},
     parseYaml: vi.fn(),
     Platform: {},
 }));
@@ -30,13 +29,10 @@ vi.mock("@/common/types.ts", () => ({
     PERIODIC_PLUGIN_SWEEP: 60,
 }));
 vi.mock("@/common/utils.ts", () => ({
+    cancelTask: vi.fn(),
     EVEN: Symbol("even"),
-    disposeMemoObject: vi.fn(),
     isCustomisationSyncMetadata: vi.fn(),
     isPluginMetadata: vi.fn(),
-    memoIfNotExist: vi.fn(),
-    memoObject: vi.fn(),
-    retrieveMemoObject: vi.fn(),
     scheduleTask: vi.fn(),
 }));
 vi.mock("@/common/PeriodicProcessor.ts", () => ({
@@ -55,6 +51,7 @@ vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
 
+import { cancelTask } from "@/common/utils.ts";
 import { ConfigSync } from "./CmdConfigSync";
 
 describe("ConfigSync commands", () => {
@@ -92,5 +89,25 @@ describe("ConfigSync commands", () => {
         expect(command?.checkCallback?.(true)).toBe(true);
         expect(command?.checkCallback?.(false)).toBe(true);
         expect(showPluginSyncModal).toHaveBeenCalledOnce();
+    });
+
+    it("cancels the pending configuration Notice before releasing its owned UI", () => {
+        const notices = { hide: vi.fn() };
+        const periodicPluginSweepProcessor = { disable: vi.fn() };
+        const configSync = Object.create(ConfigSync.prototype) as ConfigSync;
+        Object.assign(configSync, {
+            core: {
+                services: {
+                    context: { notices },
+                },
+            },
+            periodicPluginSweepProcessor,
+        });
+
+        configSync.onunload();
+
+        expect(cancelTask).toHaveBeenCalledWith("config-sync:updated-configuration");
+        expect(notices.hide).toHaveBeenCalledWith("config-sync:updated-configuration");
+        expect(periodicPluginSweepProcessor.disable).toHaveBeenCalledOnce();
     });
 });

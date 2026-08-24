@@ -1,5 +1,5 @@
-import { type App, type Plugin, Notice } from "@/deps";
-import { scheduleTask, memoIfNotExist, memoObject, retrieveMemoObject, disposeMemoObject } from "@/common/utils";
+import { type App, type Plugin } from "@/deps";
+import { scheduleTask } from "@/common/utils";
 import { EVENT_PLUGIN_UNLOADED } from "@/common/events";
 import { $msg } from "@/common/translation";
 import type { Confirm, ConfirmActionLayout } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
@@ -180,30 +180,20 @@ export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceC
                 a.appendText(afterText);
             });
         });
-        scheduleTask(popupKey, 1000, async () => {
+        scheduleTask(popupKey, 1000, () => {
             if (this.dialogueController.signal.aborted) {
                 this.popupKeys.delete(popupKey);
                 return;
             }
-            const popup = await memoIfNotExist(popupKey, () => new Notice(fragment, 0));
-            const isShown = popup?.noticeEl?.isShown();
-            if (!isShown) {
-                memoObject(popupKey, new Notice(fragment, 0));
-            }
-            scheduleTask(popupKey + "-close", durationMs, () => this.closePopup(popupKey));
+            this._context.notices.show(popupKey, fragment, { durationMs });
+            scheduleTask(`${popupKey}-forget`, durationMs, () => {
+                this.popupKeys.delete(popupKey);
+            });
         });
     }
 
     private closePopup(popupKey: string) {
-        const popup = retrieveMemoObject<Notice>(popupKey);
-        if (!popup) {
-            this.popupKeys.delete(popupKey);
-            return;
-        }
-        if (popup.noticeEl?.isShown()) {
-            popup.hide();
-        }
-        disposeMemoObject(popupKey);
+        this._context.notices.hide(popupKey);
         this.popupKeys.delete(popupKey);
     }
 

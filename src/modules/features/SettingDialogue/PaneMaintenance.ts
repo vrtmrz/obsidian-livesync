@@ -1,6 +1,6 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
 import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -90,7 +90,7 @@ export function paneMaintenance(
                     .setButtonText("Flag and restart")
                     .setDisabled(false)
                     .onClick(async () => {
-                        await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG, "");
+                        await this.core.storageAccess.writeFileAuto(FlagFilesOriginal.SUSPEND_ALL, "");
                         this.services.appLifecycle.performRestart();
                     })
             );

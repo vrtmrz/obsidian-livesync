@@ -1,7 +1,6 @@
 import { writable } from "svelte/store";
 import type PouchDB from "pouchdb-core";
 import {
-    Notice,
     type PluginManifest,
     parseYaml,
     normalizePath,
@@ -53,21 +52,11 @@ import {
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import {
-    EVEN,
-    disposeMemoObject,
-    isCustomisationSyncMetadata,
-    isPluginMetadata,
-    memoIfNotExist,
-    memoObject,
-    retrieveMemoObject,
-    scheduleTask,
-} from "@/common/utils.ts";
+import { cancelTask, EVEN, isCustomisationSyncMetadata, isPluginMetadata, scheduleTask } from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
-import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
@@ -82,6 +71,7 @@ import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlu
 
 const d = "\u200b";
 const d2 = "\n";
+const UPDATED_CONFIGURATION_NOTICE_KEY = "config-sync:updated-configuration";
 
 function serialize(data: PluginDataEx): string {
     // For higher performance, create custom plug-in data strings.
@@ -393,8 +383,8 @@ export type PluginDataEx = {
 };
 
 export class ConfigSync extends LiveSyncCommands {
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
-        super(plugin, core);
+    constructor(core: LiveSyncCore) {
+        super(core);
         pluginScanningCount.onChanged((e) => {
             const total = e.value;
             pluginIsEnumerating.set(total != 0);
@@ -428,7 +418,7 @@ export class ConfigSync extends LiveSyncCommands {
         if (this.pluginDialog) {
             this.pluginDialog.open();
         } else {
-            this.pluginDialog = new PluginDialogModal(this.app, this.plugin);
+            this.pluginDialog = new PluginDialogModal(this.app, this.services.context.liveSyncPlugin);
             this.pluginDialog.open();
         }
     }
@@ -440,8 +430,10 @@ export class ConfigSync extends LiveSyncCommands {
         }
     }
     onunload() {
+        cancelTask(UPDATED_CONFIGURATION_NOTICE_KEY);
         this.hidePluginSyncModal();
         this.periodicPluginSweepProcessor?.disable();
+        this.services.context.notices.hide(UPDATED_CONFIGURATION_NOTICE_KEY);
     }
     addRibbonIcon = this.services.API.addRibbonIcon.bind(this.services.API);
     onload() {
@@ -1196,22 +1188,9 @@ export class ConfigSync extends LiveSyncCommands {
                     });
                 });
 
-                const updatedPluginKey = "popupUpdated-plugins";
-                scheduleTask(updatedPluginKey, 1000, async () => {
-                    const popup = await memoIfNotExist(updatedPluginKey, () => new Notice(fragment, 0));
-                    //@ts-ignore -- retained for compatibility with Obsidian versions before Notice.messageEl.
-                    const isShown = popup?.noticeEl?.isShown();
-                    if (!isShown) {
-                        memoObject(updatedPluginKey, new Notice(fragment, 0));
-                    }
-                    scheduleTask(updatedPluginKey + "-close", 20000, () => {
-                        const popup = retrieveMemoObject<Notice>(updatedPluginKey);
-                        if (!popup) return;
-                        //@ts-ignore -- retained for compatibility with Obsidian versions before Notice.messageEl.
-                        if (popup?.noticeEl?.isShown()) {
-                            popup.hide();
-                        }
-                        disposeMemoObject(updatedPluginKey);
+                scheduleTask(UPDATED_CONFIGURATION_NOTICE_KEY, 1000, () => {
+                    this.services.context.notices.show(UPDATED_CONFIGURATION_NOTICE_KEY, fragment, {
+                        durationMs: 20_000,
                     });
                 });
             }
@@ -1716,8 +1695,6 @@ export class ConfigSync extends LiveSyncCommands {
     }
     async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         if (mode == "DISABLE") {
-            // this.plugin.settings.usePluginSync = false;
-            // await this.plugin.saveSettings();
             await this.core.services.setting.applyPartial(
                 {
                     usePluginSync: false,
@@ -1758,9 +1735,6 @@ export class ConfigSync extends LiveSyncCommands {
                 }
                 this.services.setting.setDeviceAndVaultName(name);
             }
-            // this.core.settings.usePluginSync = true;
-            // this.core.settings.useAdvancedMode = true;
-            // await this.core.saveSettings();
             await this.core.services.setting.applyPartial(
                 {
                     usePluginSync: true,

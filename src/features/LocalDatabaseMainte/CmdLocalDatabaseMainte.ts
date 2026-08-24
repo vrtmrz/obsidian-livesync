@@ -35,7 +35,7 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
     }
     onload(): void | Promise<void> {
         // NO OP.
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "analyse-database",
             name: "Analyse Database Usage (advanced)",
             icon: "database-search",
@@ -47,7 +47,7 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
                 return true;
             },
         });
-        this.plugin.addCommand({
+        this.services.API.addCommand({
             id: "gc-v3",
             name: "Garbage Collection V3 (advanced, beta)",
             icon: "trash-2",

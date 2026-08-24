@@ -4,7 +4,8 @@
 // Original Implementation is here: https://github.com/remotely-save/remotely-save/blob/28b99557a864ef59c19d2ad96101196e401718f0/src/remoteForS3.ts
 
 import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-http-handler";
-import { HttpRequest, HttpResponse, type HttpHandlerOptions } from "@smithy/protocol-http";
+import { HttpRequest, HttpResponse } from "@smithy/protocol-http";
+import type { HttpHandlerOptions } from "@smithy/types";
 import { buildQueryString } from "@smithy/querystring-builder";
 import { requestUrl, type RequestUrlParam } from "@/deps.ts";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";

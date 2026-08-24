@@ -3,8 +3,7 @@ import {
     type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
     LOG_LEVEL_NOTICE,
-    FLAGMD_REDFLAG2_HR,
-    FLAGMD_REDFLAG3_HR,
+    FlagFilesHumanReadable,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     type ConfigLevel,
@@ -874,12 +873,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await this.saveAllDirtySettings();
         await Promise.resolve(this.applyAllSettings());
         if (result == OPTION_FETCH) {
-            await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG3_HR, "");
+            await this.core.storageAccess.writeFileAuto(FlagFilesHumanReadable.FETCH_ALL, "");
             this.services.appLifecycle.scheduleRestart();
             this.closeSetting();
             // await rebuildDB("localOnly");
         } else if (result == OPTION_REBUILD_BOTH) {
-            await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG2_HR, "");
+            await this.core.storageAccess.writeFileAuto(FlagFilesHumanReadable.REBUILD_ALL, "");
             this.services.appLifecycle.scheduleRestart();
             this.closeSetting();
         } else if (result == OPTION_ONLY_SETTING) {
