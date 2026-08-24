@@ -12,6 +12,16 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Fixed
+
+- Reset and rebuild workflows now use the local database selected by their updated settings, preventing stale data from reopening after a **Database Suffix** change. If database initialisation does not complete, the workflow remains paused instead of continuing with incomplete state.
+
+#### Improved
+
+- Rebuilds now recheck restored file events against the current Vault, use current file contents, and finish processing them before the plug-in reports readiness.
+
 ## 1.0.17
 
 23rd August, 2026
