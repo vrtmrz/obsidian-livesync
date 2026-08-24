@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Interface and translation
+
+#### Improved
+
+- Settings pages and Advanced controls now use Obsidian 1.13's native page navigation and global settings search, while retaining their familiar icons. Earlier supported Obsidian versions continue to use the existing settings interface.
+
 ## 1.0.18
 
 24th August, 2026

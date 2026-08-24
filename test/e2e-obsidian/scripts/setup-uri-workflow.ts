@@ -31,6 +31,7 @@ import {
     captureObsidianDialogue,
     captureObsidianElement,
     captureObsidianPage,
+    openLiveSyncSettings,
     withObsidianPage,
 } from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
@@ -90,12 +91,10 @@ function modalByTitle(page: Page, title: string): Locator {
     });
 }
 
-function settingPanelByTitle(page: Page, title: string): Locator {
-    return page
-        .locator(".sls-setting")
-        .locator("h4.sls-setting-panel-title:visible")
-        .filter({ hasText: title })
-        .locator("..");
+async function liveSyncSettingPanelByTitle(page: Page, pageName: string, title: string): Promise<Locator> {
+    const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+    const settingsPage = await settingsNavigator.openPage(pageName);
+    return settingsPage.locator("h4.sls-setting-panel-title:visible").filter({ hasText: title }).locator("..");
 }
 
 async function captureGuideDialogue(port: number, filename: string, title: string): Promise<string> {
@@ -535,58 +534,27 @@ async function captureHiddenFileGuideSettings(
         environment
     );
 
-    await withObsidianPage(port, async (page) => {
-        await page.evaluate(() => {
-            const obsidian = globalThis as typeof globalThis & {
-                app?: {
-                    setting?: {
-                        open(): void;
-                        openTabById(tabId: string): void;
-                    };
-                };
-            };
-            const setting = obsidian.app?.setting;
-            if (!setting) throw new Error("Obsidian settings are unavailable");
-            setting.open();
-            setting.openTabById("obsidian-livesync");
-        });
-        const settings = page.locator(".sls-setting");
-        await settings.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await settings.locator('.sls-setting-menu-btn[title="Setup"]').click({ timeout: uiTimeoutMs });
-    });
-
     const screenshots = [
         await captureObsidianElement(port, "guide-hidden-file-advanced-features.png", (page) =>
-            settingPanelByTitle(page, "Enable extra and advanced features")
+            liveSyncSettingPanelByTitle(page, "Setup", "Enable extra and advanced features")
         ),
     ];
 
-    await withObsidianPage(port, async (page) => {
-        await page
-            .locator(".sls-setting")
-            .locator('.sls-setting-menu-btn[title="Selector"]')
-            .click({ timeout: uiTimeoutMs });
-    });
     screenshots.push(
         await captureObsidianElement(port, "guide-hidden-file-selector.png", (page) =>
-            settingPanelByTitle(page, "Hidden Files")
+            liveSyncSettingPanelByTitle(page, "Selector", "Hidden Files")
         )
     );
 
-    await withObsidianPage(port, async (page) => {
-        await page
-            .locator(".sls-setting")
-            .locator('.sls-setting-menu-btn[title="Sync Settings"]')
-            .click({ timeout: uiTimeoutMs });
-    });
     screenshots.push(
         await captureObsidianElement(port, "guide-hidden-file-enable.png", (page) =>
-            settingPanelByTitle(page, "Hidden Files")
+            liveSyncSettingPanelByTitle(page, "Sync Settings", "Hidden Files")
         )
     );
 
     await withObsidianPage(port, async (page) => {
-        await page.keyboard.press("Escape");
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        await settingsNavigator.close();
     });
     return screenshots;
 }

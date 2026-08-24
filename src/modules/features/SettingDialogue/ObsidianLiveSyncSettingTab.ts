@@ -704,7 +704,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         return createSettingsPageCatalogue().map((entry): SettingDefinitionPage => {
             const page: SettingDefinitionPage = {
                 type: "page",
-                name: entry.name(),
+                name: `${entry.icon} ${entry.name()}`,
                 visible: () => this.isPageVisible(entry.level),
             };
             if (entry.content === "native") {

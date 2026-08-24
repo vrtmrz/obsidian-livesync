@@ -9,6 +9,7 @@ import {
     captureObsidianElement,
     captureObsidianPage,
     obsidianRemoteDebuggingPort,
+    openLiveSyncSettings,
     withObsidianPage,
 } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
@@ -46,11 +47,6 @@ type LiveSyncTestPlugin = {
     };
 };
 
-type ObsidianSettingsController = {
-    open(): void;
-    openTabById(tabId: string): void;
-};
-
 type ObsidianVaultFile = {
     path: string;
 };
@@ -58,7 +54,6 @@ type ObsidianVaultFile = {
 type ObsidianTestApp = {
     commands?: { executeCommandById(commandId: string): boolean };
     plugins?: { plugins: Record<string, LiveSyncTestPlugin | undefined> };
-    setting?: ObsidianSettingsController;
     vault?: {
         delete(file: ObsidianVaultFile, force: boolean): Promise<void>;
         getFiles(): ObsidianVaultFile[];
@@ -748,17 +743,10 @@ async function verifyCompatibleAlignmentSettingDefault(): Promise<void> {
             );
         }
 
-        await page.evaluate(() => {
-            const setting = (globalThis as ObsidianTestGlobal).app?.setting;
-            if (setting === undefined) throw new Error("Obsidian settings are unavailable");
-            setting.open();
-            setting.openTabById("obsidian-livesync");
-        });
-        const liveSyncSettings = page.locator(".sls-setting");
-        await liveSyncSettings.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Advanced"]').click({ timeout: uiTimeoutMs });
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        const liveSyncSettings = await settingsNavigator.openPage("Advanced");
         const settingItem = liveSyncSettings.locator(".setting-item").filter({
-            has: page.getByText("Auto-accept compatible tweak mismatches", { exact: true }),
+            has: settingsNavigator.page.getByText("Auto-accept compatible tweak mismatches", { exact: true }),
         });
         await settingItem.waitFor({ state: "visible", timeout: uiTimeoutMs });
         const toggle = settingItem.locator(".checkbox-container");
@@ -944,15 +932,8 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
         obsidianRemoteDebuggingPort(),
         "troubleshooting-hatch.png",
         async (page) => {
-            await page.evaluate(() => {
-                const setting = (globalThis as ObsidianTestGlobal).app?.setting;
-                if (setting === undefined) throw new Error("Obsidian settings are unavailable");
-                setting.open();
-                setting.openTabById("obsidian-livesync");
-            });
-            const liveSyncSettings = page.locator(".sls-setting");
-            await liveSyncSettings.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await liveSyncSettings.locator('.sls-setting-menu-btn[title="Hatch"]').click({ timeout: uiTimeoutMs });
+            const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+            const liveSyncSettings = await settingsNavigator.openPage("Hatch");
             for (const label of [
                 "Write logs into the file",
                 "Recreate chunks for current Vault files",

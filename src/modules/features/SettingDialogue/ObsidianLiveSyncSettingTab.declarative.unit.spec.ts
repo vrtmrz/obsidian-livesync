@@ -105,6 +105,7 @@ vi.mock("./PanePatches.ts", () => ({ panePatches: vi.fn() }));
 vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
+import { createSettingsPageCatalogue } from "./SettingsPageCatalogue.ts";
 
 function isPage(item: SettingDefinitionItem): item is SettingDefinitionPage {
     return "type" in item && item.type === "page";
@@ -151,7 +152,10 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         const pages = tab.getSettingDefinitions().filter(isPage);
 
         expect(pages).toHaveLength(12);
-        const advanced = pages.find(({ name }) => name === "Advanced");
+        expect(pages.map(({ name }) => name)).toEqual(
+            createSettingsPageCatalogue().map((entry) => `${entry.icon} ${entry.name()}`)
+        );
+        const advanced = pages.find(({ name }) => name.endsWith(" Advanced"));
         expect(advanced?.items?.filter((item) => "type" in item && item.type === "group")).toHaveLength(4);
         expect(advanced?.items?.filter((item) => "action" in item && typeof item.action === "function")).toHaveLength(
             1

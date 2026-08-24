@@ -2,16 +2,17 @@
 date: 2026-08-24
 commonlib-version: "0.1.19"
 self-hosted-livesync-version: "1.0.18"
-status: proposed
+status: accepted
 ---
 
 # Architectural Decision Record: Adapt Standard Settings to Obsidian's Declarative API
 
 ## Status
 
-Proposed. The first implementation is deliberately limited to one-key,
-immediately persisted controls and one proof page. It does not attempt to
-describe every existing settings interaction through a new abstraction.
+Accepted and implemented through Stage C1. The implementation is deliberately
+limited to one-key, immediately persisted controls and one proof page. It does
+not attempt to describe every existing settings interaction through a new
+abstraction. Stage C2 remains an optional, page-by-page improvement.
 
 ## Context
 
@@ -132,6 +133,12 @@ safely. The imperative and declarative interfaces consume the same catalogue:
 This makes page names and visibility consistent without requiring every page
 to migrate at once. Page names must be unique because Obsidian uses them for
 nested navigation.
+
+`SettingDefinitionPage` does not expose a separate icon field. The declarative
+renderer therefore prefixes each native page name with the emoji already held
+by the catalogue, while the imperative renderer continues to pass the same
+emoji to its existing menu button. This preserves the established visual
+identity without adding host-DOM manipulation.
 
 The custom `SettingPage` adapter class will be constructed lazily from the
 1.13-or-later path. `SettingPage` may remain a normal runtime import because the
@@ -441,11 +448,11 @@ C1.
 
 ## Verification
 
-Stage A will run the maintained onboarding E2E scenario and an ordinary
-settings navigation scenario. A source check will confirm that no old wizard
-event, state, class, or message consumer remains.
+Stage A runs the maintained onboarding E2E scenario and an ordinary settings
+navigation scenario. A source check confirms that no old wizard event, state,
+class, or message consumer remains.
 
-Stage B focused unit tests will verify:
+Stage B focused unit tests verify:
 
 - only explicitly listed Advanced controls become specifications;
 - synthetic `OnDialogSettings` keys cannot be standard specifications;
@@ -454,7 +461,7 @@ Stage B focused unit tests will verify:
 - rendering the Advanced specifications through `LiveSyncSetting` preserves
   the current save behaviour.
 
-Stage C1 focused unit tests will verify:
+Stage C1 focused unit tests verify:
 
 - the page catalogue contains all 12 existing pages with stable, unique
   identifiers and names;
@@ -468,7 +475,7 @@ Stage C1 focused unit tests will verify:
 - importing and opening the imperative fallback does not evaluate or require
   `SettingPage` on Obsidian before 1.13.
 
-Real-Obsidian verification on 1.13 or later will confirm:
+Real-Obsidian verification on 1.13 or later confirms:
 
 - native page navigation opens every page;
 - Advanced controls appear in global settings search;
@@ -486,17 +493,30 @@ still opens, navigates, saves one Advanced value, and opens one custom page. If
 the maintained E2E runner cannot install that runtime, the exact manual version
 and procedure must be recorded before the implementation is merged.
 
-The current real-Obsidian runner defaults to Obsidian 1.12.7, so it already
-owns the fallback smoke path. The declarative path requires a separate 1.13-or-
-later AppImage selected through `E2E_OBSIDIAN_VERSION`. If a reviewable 1.13
-runtime is not available, the implementation may remain a branch proof but the
-new runtime path must not be merged on type-level evidence alone.
+The current real-Obsidian runner defaults to Obsidian 1.12.7, so it owns the
+fallback smoke path. The declarative path uses a separately installed
+1.13-or-later AppImage selected through `OBSIDIAN_BINARY` and `OBSIDIAN_CLI`.
+`E2E_OBSIDIAN_SETTINGS_ONLY=true` limits that run to the settings contract so
+the same scenario can validate a second Obsidian runtime without repeating its
+unrelated compatibility-review and mobile-layout coverage.
 
 Existing E2E scenarios must use one shared settings-page navigation helper.
 That helper uses the current `.sls-setting-menu-btn` contract on the legacy
 runtime and accessible native page names on 1.13 or later. Individual scenarios
 must not duplicate version checks or retain selectors for a menu which the
 declarative renderer does not create.
+
+The accepted implementation was exercised against the official Obsidian
+1.13.4 arm64 AppImage with SHA-256
+`20d0b13c6d40bb3d7e73d9b4be6d2e21dfcc145b2106a747d0c1b81e651dabfe`.
+That run opened all 12 pages from the native page catalogue, found the Advanced
+control through global settings search, persisted a numeric value on Enter,
+and restored it after the settings dialogue was closed and reopened. The
+complete default scenario also passed on Obsidian 1.12.7, including
+compatibility review, mobile layout, imperative page navigation, and immediate
+persistence of the same Advanced value. The shared E2E navigator owns both the
+separate settings renderer used by Obsidian 1.13 and the legacy
+`.sls-setting-menu-btn` interface.
 
 ## Expansion Checkpoints
 
