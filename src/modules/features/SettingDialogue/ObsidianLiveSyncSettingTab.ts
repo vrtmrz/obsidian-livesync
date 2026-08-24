@@ -1,4 +1,4 @@
-import { App, Component, PluginSettingTab } from "@/deps.ts";
+import { App, Component, PluginSettingTab, requireApiVersion, SettingPage } from "@/deps.ts";
 import {
     type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
@@ -34,7 +34,6 @@ import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
 import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
-import { paneChangeLog } from "./PaneChangeLog.ts";
 import {
     enableOnly,
     // findAttrFromParent,
@@ -46,32 +45,34 @@ import {
     type OnSavedHandlerFunc,
     type OnUpdateFunc,
     type OnUpdateResult,
+    type DeferredPageElement,
     type PageFunctions,
     type UpdateFunction,
 } from "./SettingPane.ts";
-import { paneSetup } from "./PaneSetup.ts";
-import { paneGeneral } from "./PaneGeneral.ts";
-import { paneRemoteConfig } from "./PaneRemoteConfig.ts";
-import { paneSelector } from "./PaneSelector.ts";
-import { paneSyncSettings } from "./PaneSyncSettings.ts";
-import { paneCustomisationSync } from "./PaneCustomisationSync.ts";
-import { paneHatch } from "./PaneHatch.ts";
-import { paneAdvanced } from "./PaneAdvanced.ts";
-import { panePowerUsers } from "./PanePowerUsers.ts";
-import { panePatches } from "./PanePatches.ts";
-import { paneMaintenance } from "./PaneMaintenance.ts";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
 import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replication/journal/objectstore/MinioStorageAdapter";
 import { closeObsidianSettings } from "@/common/obsidianSettings.ts";
+import {
+    createAdvancedSettingDefinitionGroups,
+    createSettingsPageCatalogue,
+    type SettingsPageEntry,
+} from "./SettingsPageCatalogue.ts";
+import { createAdvancedSettingSpecGroups } from "./AdvancedSettingSpecs.ts";
+import { isValidSettingSpecValue, type SettingSpec } from "./SettingSpec.ts";
+import type { SettingDefinitionAction, SettingDefinitionItem, SettingDefinitionPage } from "obsidian";
 
 // For creating a document
 // const toc = new Set<string>();
 
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
-    private _lifetimeComponent: Component = new Component();
+    private _lifetimeComponent?: Component;
+    private activePageRefresh?: () => void;
     get lifetimeComponent(): Component {
+        if (!this._lifetimeComponent) {
+            throw new Error("The settings page render scope has not been initialised");
+        }
         return this._lifetimeComponent;
     }
     get core() {
@@ -200,7 +201,37 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             for (const func of this.controlledElementFunc) {
                 func();
             }
+            if (requireApiVersion("1.13.0") && typeof this.refreshDomState === "function") {
+                this.refreshDomState();
+            }
         });
+    }
+
+    /** Re-render the active imperative page without assuming which settings renderer owns it. */
+    requestPageRefresh() {
+        if (this.activePageRefresh) {
+            this.activePageRefresh();
+            return;
+        }
+        if (requireApiVersion("1.13.0") && typeof SettingPage === "function" && typeof this.update === "function") {
+            this.update();
+            return;
+        }
+        this.displayImperative();
+    }
+
+    /** Rebuild the native page catalogue and preserve the current imperative page where possible. */
+    requestCatalogueRefresh() {
+        if (requireApiVersion("1.13.0") && typeof SettingPage === "function" && typeof this.update === "function") {
+            const refreshPage = this.activePageRefresh;
+            const owner = this._lifetimeComponent;
+            this.update();
+            if (owner && this._lifetimeComponent === owner) {
+                refreshPage?.();
+            }
+        } else {
+            this.displayImperative();
+        }
     }
 
     reloadAllLocalSettings() {
@@ -355,7 +386,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     addOnSaved<T extends AllSettingItemKey>(key: T, func: OnSavedHandlerFunc<T>) {
         const newHandler = { key, handler: func } as OnSavedHandler<AllSettingItemKey>;
-        this.onSavedHandlers.push(newHandler);
+        const existing = this.onSavedHandlers.findIndex((handler) => handler.key === key);
+        if (existing === -1) {
+            this.onSavedHandlers.push(newHandler);
+        } else {
+            this.onSavedHandlers.splice(existing, 1, newHandler);
+        }
     }
     resetEditingSettings() {
         this._editingSettings = undefined;
@@ -363,17 +399,29 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     override hide() {
+        this.disposeRenderScope();
         super.hide();
-        this._lifetimeComponent.unload();
         this.isShown = false;
     }
     isShown: boolean = false;
 
+    private changesPageCatalogue(key: AllSettingItemKey): boolean {
+        return (
+            key === "displayLanguage" ||
+            key === "useAdvancedMode" ||
+            key === "usePowerUserMode" ||
+            key === "useEdgeCaseMode"
+        );
+    }
+
     requestReload() {
-        if (this.isShown) {
+        const nativeTabIsShown =
+            this.supportsDeclarativeSettings() && this.containerEl !== undefined && this.containerEl.isShown();
+        if (this.isShown || nativeTabIsShown) {
             const newConf = this.core.settings;
             const keys = Object.keys(newConf) as (keyof ObsidianLiveSyncSettings)[];
             let hasLoaded = false;
+            let catalogueVisibilityChanged = false;
             for (const k of keys) {
                 if (isObjectDifferent(newConf[k], this.initialSettings?.[k])) {
                     // Something has changed
@@ -388,7 +436,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                                 anchor.text = $msg("obsidianLiveSyncSettingTab.optionHere");
                                 anchor.addEventListener("click", () => {
                                     this.refreshSetting(k as AllSettingItemKey);
-                                    this.display();
+                                    if (this.changesPageCatalogue(k as AllSettingItemKey)) {
+                                        this.requestCatalogueRefresh();
+                                    } else {
+                                        this.requestPageRefresh();
+                                    }
                                 });
                             }
                         );
@@ -399,11 +451,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                             continue;
                         }
                         hasLoaded = true;
+                        if (this.changesPageCatalogue(k as AllSettingItemKey)) {
+                            catalogueVisibilityChanged = true;
+                        }
                     }
                 }
             }
             if (hasLoaded) {
-                this.display();
+                if (catalogueVisibilityChanged) {
+                    this.requestCatalogueRefresh();
+                } else {
+                    this.requestPageRefresh();
+                }
             } else {
                 this.requestUpdate();
             }
@@ -486,6 +545,203 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (this.core?.replicator?.syncStatus == "CONNECTED") return true;
         if (this.core?.replicator?.syncStatus == "PAUSED") return true;
         return false;
+    }
+
+    private supportsDeclarativeSettings(): boolean {
+        return requireApiVersion("1.13.0") && typeof SettingPage === "function";
+    }
+
+    private isPageVisible(level?: ConfigLevel): boolean {
+        if (level === LEVEL_ADVANCED) {
+            return this.isConfiguredAs("useAdvancedMode", true);
+        }
+        if (level === LEVEL_POWER_USER) {
+            return this.isConfiguredAs("usePowerUserMode", true);
+        }
+        if (level === LEVEL_EDGE_CASE) {
+            return this.isConfiguredAs("useEdgeCaseMode", true);
+        }
+        return true;
+    }
+
+    private getDeclarativeSettingSpec(key: string): SettingSpec {
+        const spec = createAdvancedSettingSpecGroups({
+            isCouchDB: () => this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
+        })
+            .flatMap((group) => group.items)
+            .find((candidate) => candidate.key === key);
+        if (!spec) {
+            throw new Error(`Unknown declarative setting key: ${key}`);
+        }
+        return spec;
+    }
+
+    override getControlValue(key: string): unknown {
+        const spec = this.getDeclarativeSettingSpec(key);
+        return this.editingSettings[spec.key];
+    }
+
+    override async setControlValue(key: string, value: unknown): Promise<void> {
+        const spec = this.getDeclarativeSettingSpec(key);
+        if (!isValidSettingSpecValue(spec, value)) {
+            throw new TypeError(`Invalid value for declarative setting ${key}`);
+        }
+        Reflect.set(this.editingSettings, spec.key, value);
+        await this.saveSettings([spec.key]);
+    }
+
+    private createRebuildRequiredAction(): SettingDefinitionAction {
+        return {
+            name: $msg("obsidianLiveSyncSettingTab.optionApply"),
+            desc: $msg("obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied"),
+            visible: () => this.isNeedRebuildLocal() || this.isNeedRebuildRemote(),
+            action: () => fireAndForget(async () => await this.confirmRebuild()),
+        };
+    }
+
+    private renderRebuildRequiredAction(parentEl: HTMLElement): void {
+        this.createEl(
+            parentEl,
+            "div",
+            { cls: "sls-setting-menu-buttons" },
+            (el) => {
+                el.createEl("label", { text: $msg("obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied") });
+                void this.addEl(
+                    el,
+                    "button",
+                    { text: $msg("obsidianLiveSyncSettingTab.optionApply"), cls: "mod-warning" },
+                    (buttonEl) => {
+                        buttonEl.addEventListener("click", () =>
+                            fireAndForget(async () => await this.confirmRebuild())
+                        );
+                    }
+                );
+            },
+            visibleOnly(() => this.isNeedRebuildLocal() || this.isNeedRebuildRemote())
+        );
+    }
+
+    private addPanel(
+        parentEl: HTMLElement,
+        title: string,
+        callback?: (el: HTMLDivElement) => void,
+        func?: OnUpdateFunc,
+        level?: ConfigLevel
+    ): DeferredPageElement {
+        const owner = this.lifetimeComponent;
+        const el = this.createEl(parentEl, "div", { text: "" }, callback, func);
+        setLevelClass(el, level);
+        this.createEl(el, "h4", { text: title, cls: "sls-setting-panel-title" });
+        return this.resolveWithinRenderScope(el, owner);
+    }
+
+    /** Run delayed pane construction only while the requesting page still owns the render scope. */
+    private resolveWithinRenderScope<T extends HTMLElement>(value: T, owner: Component): DeferredPageElement<T> {
+        return {
+            then: (callback) => {
+                queueMicrotask(() => {
+                    if (this._lifetimeComponent === owner) {
+                        callback(value);
+                    }
+                });
+            },
+        };
+    }
+
+    private renderCustomPage(page: SettingPage, entry: SettingsPageEntry): Component {
+        if (requireApiVersion("1.13.0")) {
+            const component = this.beginRenderScope(() => page.display());
+            this.isShown = true;
+            page.title = entry.name();
+            page.containerEl.empty();
+            page.containerEl.addClass("sls-setting");
+            setStyle(page.containerEl, "menu-setting-poweruser", () => this.isConfiguredAs("usePowerUserMode", true));
+            setStyle(page.containerEl, "menu-setting-advanced", () => this.isConfiguredAs("useAdvancedMode", true));
+            setStyle(page.containerEl, "menu-setting-edgecase", () => this.isConfiguredAs("useEdgeCaseMode", true));
+            this.renderRebuildRequiredAction(page.containerEl);
+
+            const addPane: PageFunctions["addPane"] = (parentEl, title, _icon, _order, level) => {
+                const paneEl = this.createEl(parentEl, "div", { text: "" });
+                setLevelClass(paneEl, level);
+                new Setting(paneEl).setName(title).setHeading().setClass("sls-setting-pane-title");
+                return this.resolveWithinRenderScope(paneEl, component);
+            };
+            entry.legacy.call(this, page.containerEl, {
+                addPane,
+                addPanel: this.addPanel.bind(this),
+            });
+            this.requestUpdate();
+            return component;
+        }
+        throw new Error("Custom settings pages require Obsidian 1.13.0 or later");
+    }
+
+    private createCustomSettingPage(entry: SettingsPageEntry): SettingPage {
+        if (requireApiVersion("1.13.0") && typeof SettingPage === "function") {
+            const renderCustomPage = this.renderCustomPage.bind(this);
+            const disposeRenderScope = this.disposeRenderScope.bind(this);
+            return new (class extends SettingPage {
+                private scope?: Component;
+                override title = entry.name();
+
+                override display(): void {
+                    this.scope = renderCustomPage(this, entry);
+                }
+
+                override hide(): void {
+                    disposeRenderScope(this.scope);
+                    this.scope = undefined;
+                    super.hide();
+                }
+            })();
+        }
+        throw new Error("Custom settings pages require Obsidian 1.13.0 or later");
+    }
+
+    override getSettingDefinitions(): SettingDefinitionItem[] {
+        if (!this.supportsDeclarativeSettings()) {
+            return [];
+        }
+        return createSettingsPageCatalogue().map((entry): SettingDefinitionPage => {
+            const page: SettingDefinitionPage = {
+                type: "page",
+                name: entry.name(),
+                visible: () => this.isPageVisible(entry.level),
+            };
+            if (entry.content === "native") {
+                page.items = [
+                    this.createRebuildRequiredAction(),
+                    ...createAdvancedSettingDefinitionGroups({
+                        isCouchDB: () => this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
+                    }),
+                ];
+            } else {
+                page.page = () => this.createCustomSettingPage(entry);
+            }
+            return page;
+        });
+    }
+
+    private beginRenderScope(refresh: () => void): Component {
+        this.disposeRenderScope();
+        const component = new Component();
+        this._lifetimeComponent = component;
+        this.activePageRefresh = refresh;
+        this.settingComponents.length = 0;
+        this.controlledElementFunc.length = 0;
+        component.load();
+        return component;
+    }
+
+    private disposeRenderScope(owner?: Component): void {
+        if (owner && this._lifetimeComponent !== owner) {
+            return;
+        }
+        this._lifetimeComponent?.unload();
+        this._lifetimeComponent = undefined;
+        this.activePageRefresh = undefined;
+        this.settingComponents.length = 0;
+        this.controlledElementFunc.length = 0;
     }
 
     enableOnlySyncDisabled = enableOnly(() => !this.isAnySyncEnabled());
@@ -631,14 +887,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
+    // The imperative renderer remains required by the declared Obsidian 1.7.2 minimum version.
     override display(): void {
+        this.displayImperative();
+    }
+
+    private displayImperative(): void {
         const changeDisplay = this.changeDisplay.bind(this);
-        // Make sure lifetime component is loaded for markdown rendering in panes.
-        this._lifetimeComponent.load();
+        // Make sure the page-owned component is loaded for markdown rendering in panes.
+        this.beginRenderScope(() => this.displayImperative());
         const { containerEl } = this;
-        this.settingComponents.length = 0;
-        this.controlledElementFunc.length = 0;
-        this.onSavedHandlers.length = 0;
         this.screenElements = {};
         if (this._editingSettings == undefined || this.initialSettings == undefined) {
             this.reloadAllSettings();
@@ -666,28 +924,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.menuEl.addClass("sls-setting-menu");
         const menuTabs = this.menuEl.querySelectorAll(".sls-setting-label");
 
-        this.createEl(
-            menuWrapper,
-            "div",
-            { cls: "sls-setting-menu-buttons" },
-            (el) => {
-                el.createEl("label", { text: $msg("obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied") });
-                void this.addEl(
-                    el,
-                    "button",
-                    { text: $msg("obsidianLiveSyncSettingTab.optionApply"), cls: "mod-warning" },
-                    (buttonEl) => {
-                        buttonEl.addEventListener("click", () =>
-                            fireAndForget(async () => await this.confirmRebuild())
-                        );
-                    }
-                );
-            },
-            visibleOnly(() => this.isNeedRebuildLocal() || this.isNeedRebuildRemote())
-        );
+        this.renderRebuildRequiredAction(menuWrapper);
 
         // let paneNo = 0;
         const addPane = (parentEl: HTMLElement, title: string, icon: string, order: number, level?: ConfigLevel) => {
+            const owner = this.lifetimeComponent;
             const el = this.createEl(parentEl, "div", { text: "" });
 
             setLevelClass(el, level);
@@ -711,30 +952,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 });
             }
             this.addScreenElement(`${order}`, el);
-            const p = Promise.resolve(el);
-            // fireAndForget
-            // p.finally(() => {
-            //     // Recap at the end.
-            // });
-            return p;
+            return this.resolveWithinRenderScope(el, owner);
         };
         // const panelNoMap = {} as { [key: string]: number };
-        const addPanel = (
-            parentEl: HTMLElement,
-            title: string,
-            callback?: (el: HTMLDivElement) => void,
-            func?: OnUpdateFunc,
-            level?: ConfigLevel
-        ) => {
-            const el = this.createEl(parentEl, "div", { text: "" }, callback, func);
-            setLevelClass(el, level);
-            this.createEl(el, "h4", { text: title, cls: "sls-setting-panel-title" });
-            const p = Promise.resolve(el);
-            // p.finally(() => {
-            //     // Recap at the end.
-            // })
-            return p;
-        };
+        const addPanel = this.addPanel.bind(this);
 
         menuTabs.forEach((element) => {
             const e = element.querySelector(".sls-setting-tab");
@@ -762,30 +983,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         // Add panes
 
-        // TODO: Refactor to new API style.
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100).then(
-            bindPane(paneChangeLog)
-        );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110).then(bindPane(paneSetup));
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20).then(
-            bindPane(paneGeneral)
-        );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0).then(
-            bindPane(paneRemoteConfig)
-        );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30).then(
-            bindPane(paneSyncSettings)
-        );
-        void addPane(containerEl, "Selector", "🚦", 33, LEVEL_ADVANCED).then(bindPane(paneSelector));
-        void addPane(containerEl, "Customization sync", "🔌", 60, LEVEL_ADVANCED).then(bindPane(paneCustomisationSync));
-
-        void addPane(containerEl, "Hatch", "🧰", 50).then(bindPane(paneHatch));
-        void addPane(containerEl, "Advanced", "🔧", 46, LEVEL_ADVANCED).then(bindPane(paneAdvanced));
-        void addPane(containerEl, "Power users", "💪", 47, LEVEL_POWER_USER).then(bindPane(panePowerUsers));
-
-        void addPane(containerEl, "Patches", "🩹", 51, LEVEL_EDGE_CASE).then(bindPane(panePatches));
-
-        void addPane(containerEl, "Maintenance", "🎛️", 70).then(bindPane(paneMaintenance));
+        for (const entry of createSettingsPageCatalogue()) {
+            void addPane(containerEl, entry.name(), entry.icon, entry.order, entry.level).then(bindPane(entry.legacy));
+        }
 
         void yieldNextAnimationFrame().then(() => {
             if (this.selectedScreen == "") {

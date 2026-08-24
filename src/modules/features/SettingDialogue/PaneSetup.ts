@@ -9,8 +9,7 @@ import {
     eventHub,
 } from "@/common/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
-import type { PageFunctions } from "./SettingPane.ts";
-import { visibleOnly } from "./SettingPane.ts";
+import { setButtonDestructiveState, visibleOnly, type PageFunctions } from "./SettingPane.ts";
 import { request } from "@/deps.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
@@ -86,7 +85,8 @@ export function paneSetup(
         new Setting(paneEl)
             .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
             .addButton((text) => {
-                text.setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
+                setButtonDestructiveState(text)
+                    .setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
                     .onClick(async () => {
                         if (
                             (await this.core.confirm.askYesNoDialog(
@@ -102,8 +102,7 @@ export function paneSetup(
                             // await this.plugin.initializeDatabase();
                             this.services.appLifecycle.askRestart();
                         }
-                    })
-                    .setWarning();
+                    });
             })
             .addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)));
     });
@@ -114,12 +113,17 @@ export function paneSetup(
         new Setting(paneEl).autoWireToggle("usePowerUserMode");
         new Setting(paneEl).autoWireToggle("useEdgeCaseMode");
 
-        this.addOnSaved("useAdvancedMode", () => this.display());
-        this.addOnSaved("usePowerUserMode", () => this.display());
-        this.addOnSaved("useEdgeCaseMode", () => this.display());
+        this.addOnSaved("useAdvancedMode", () => this.requestCatalogueRefresh());
+        this.addOnSaved("usePowerUserMode", () => this.requestCatalogueRefresh());
+        this.addOnSaved("useEdgeCaseMode", () => this.requestCatalogueRefresh());
     });
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleOnlineTips")).then((paneEl) => {
+        const lifetimeComponent = this.lifetimeComponent;
+        let pageDisposed = false;
+        lifetimeComponent.register(() => {
+            pageDisposed = true;
+        });
         // this.createEl(paneEl, "h3", { text: $msg("obsidianLiveSyncSettingTab.titleOnlineTips") });
         const repo = "vrtmrz/obsidian-livesync";
         const topPath = $msg("obsidianLiveSyncSettingTab.linkTroubleshooting");
@@ -152,6 +156,7 @@ export function paneSetup(
                 const err = LiveSyncError.fromError(ex);
                 remoteTroubleShootMDSrc = `${$msg("obsidianLiveSyncSettingTab.logErrorOccurred")}\n${err.toString()}`;
             }
+            if (pageDisposed) return;
             const remoteTroubleShootMD = remoteTroubleShootMDSrc.replace(
                 /\((.*?(.png)|(.jpg))\)/g,
                 `(${rawRepoURI}${basePath}/$1)`
@@ -162,8 +167,9 @@ export function paneSetup(
                 `<a class='sls-troubleshoot-anchor'></a> [${$msg("obsidianLiveSyncSettingTab.linkTipsAndTroubleshooting")}](${topPath}) [${$msg("obsidianLiveSyncSettingTab.linkPageTop")}](${filename})\n\n${remoteTroubleShootMD}`,
                 troubleShootEl,
                 `${rawRepoURI}`,
-                this.lifetimeComponent
+                lifetimeComponent
             );
+            if (pageDisposed) return;
             // Menu
             troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({
                 position: "sticky",

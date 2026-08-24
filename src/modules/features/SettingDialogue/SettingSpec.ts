@@ -169,6 +169,18 @@ function numberIsOutOfRange(value: number, control: NumberSettingSpec["control"]
     return control.min !== undefined && value < control.min;
 }
 
+/** Check a value at the settings-tab persistence boundary against its shared control specification. */
+export function isValidSettingSpecValue(spec: SettingSpec, value: unknown): boolean {
+    switch (spec.control.type) {
+        case "toggle":
+            return typeof value === "boolean";
+        case "number":
+            return typeof value === "number" && !numberIsOutOfRange(value, spec.control);
+        case "dropdown":
+            return typeof value === "string" && Object.prototype.hasOwnProperty.call(spec.control.options(), value);
+    }
+}
+
 /**
  * Convert one shared specification to a declarative Obsidian control.
  *

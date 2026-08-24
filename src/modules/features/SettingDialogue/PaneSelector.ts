@@ -2,7 +2,7 @@ import { LEVEL_ADVANCED, type CustomRegExpSource } from "@vrtmrz/livesync-common
 import { constructCustomRegExpList, splitCustomRegExpList } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import MultipleRegExpControl from "./MultipleRegExpControl.svelte";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
-import { mount } from "svelte";
+import { mount, unmount } from "svelte";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
@@ -13,7 +13,7 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             .setDesc(
                 "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files."
             );
-        mount(MultipleRegExpControl, {
+        const syncFilesControl = mount(MultipleRegExpControl, {
             target: syncFilesSetting.controlEl,
             props: {
                 patterns: splitCustomRegExpList(this.editingSettings.syncOnlyRegEx, "|[]|"),
@@ -21,16 +21,17 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                 apply: async (newPatterns: CustomRegExpSource[]) => {
                     this.editingSettings.syncOnlyRegEx = constructCustomRegExpList(newPatterns, "|[]|");
                     await this.saveAllDirtySettings();
-                    this.display();
+                    this.requestPageRefresh();
                 },
             },
         });
+        this.lifetimeComponent.register(() => void unmount(syncFilesControl));
 
         const nonSyncFilesSetting = new Setting(paneEl)
             .setName("Non-Synchronising files")
             .setDesc("(RegExp) If this is set, any changes to local and remote files that match this will be skipped.");
 
-        mount(MultipleRegExpControl, {
+        const nonSyncFilesControl = mount(MultipleRegExpControl, {
             target: nonSyncFilesSetting.controlEl,
             props: {
                 patterns: splitCustomRegExpList(this.editingSettings.syncIgnoreRegEx, "|[]|"),
@@ -38,10 +39,11 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                 apply: async (newPatterns: CustomRegExpSource[]) => {
                     this.editingSettings.syncIgnoreRegEx = constructCustomRegExpList(newPatterns, "|[]|");
                     await this.saveAllDirtySettings();
-                    this.display();
+                    this.requestPageRefresh();
                 },
             },
         });
+        this.lifetimeComponent.register(() => void unmount(nonSyncFilesControl));
         new Setting(paneEl).autoWireNumeric("syncMaxSizeInMB", { clampMin: 0 });
 
         new Setting(paneEl).autoWireToggle("useIgnoreFiles");
@@ -54,7 +56,7 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             .setName("Target patterns")
             .setDesc("Patterns to match files for syncing");
         const patTarget = splitCustomRegExpList(this.editingSettings.syncInternalFilesTargetPatterns, ",");
-        mount(MultipleRegExpControl, {
+        const targetPatternControl = mount(MultipleRegExpControl, {
             target: targetPatternSetting.controlEl,
             props: {
                 patterns: patTarget,
@@ -62,10 +64,11 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                 apply: async (newPatterns: CustomRegExpSource[]) => {
                     this.editingSettings.syncInternalFilesTargetPatterns = constructCustomRegExpList(newPatterns, ",");
                     await this.saveAllDirtySettings();
-                    this.display();
+                    this.requestPageRefresh();
                 },
             },
         });
+        this.lifetimeComponent.register(() => void unmount(targetPatternControl));
 
         const defaultSkipPattern = "\\/node_modules\\/, \\/\\.git\\/, ^\\.git\\/, \\/obsidian-livesync\\/";
         const defaultSkipPatternXPlat =
@@ -74,7 +77,7 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         const pat = splitCustomRegExpList(this.editingSettings.syncInternalFilesIgnorePatterns, ",");
         const patSetting = new Setting(paneEl).setName("Ignore patterns").setDesc("");
 
-        mount(MultipleRegExpControl, {
+        const ignorePatternControl = mount(MultipleRegExpControl, {
             target: patSetting.controlEl,
             props: {
                 patterns: pat,
@@ -82,10 +85,11 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                 apply: async (newPatterns: CustomRegExpSource[]) => {
                     this.editingSettings.syncInternalFilesIgnorePatterns = constructCustomRegExpList(newPatterns, ",");
                     await this.saveAllDirtySettings();
-                    this.display();
+                    this.requestPageRefresh();
                 },
             },
         });
+        this.lifetimeComponent.register(() => void unmount(ignorePatternControl));
 
         const addDefaultPatterns = async (patterns: string) => {
             const oldList = splitCustomRegExpList(this.editingSettings.syncInternalFilesIgnorePatterns, ",");
@@ -96,7 +100,7 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             const allSet = new Set<CustomRegExpSource>([...oldList, ...newList]);
             this.editingSettings.syncInternalFilesIgnorePatterns = constructCustomRegExpList([...allSet], ",");
             await this.saveAllDirtySettings();
-            this.display();
+            this.requestPageRefresh();
         };
 
         new Setting(paneEl)
@@ -116,7 +120,7 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
             .setName("Overwrite patterns")
             .setDesc("Patterns to match files for overwriting instead of merging");
         const patTarget2 = splitCustomRegExpList(this.editingSettings.syncInternalFileOverwritePatterns, ",");
-        mount(MultipleRegExpControl, {
+        const overwritePatternControl = mount(MultipleRegExpControl, {
             target: overwritePatterns.controlEl,
             props: {
                 patterns: patTarget2,
@@ -127,9 +131,10 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
                         ","
                     );
                     await this.saveAllDirtySettings();
-                    this.display();
+                    this.requestPageRefresh();
                 },
             },
         });
+        this.lifetimeComponent.register(() => void unmount(overwritePatternControl));
     });
 }

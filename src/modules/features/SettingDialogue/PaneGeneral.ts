@@ -15,7 +15,7 @@ export function paneGeneral(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         new Setting(paneEl).autoWireDropDown("displayLanguage", {
             options: languages,
         });
-        this.addOnSaved("displayLanguage", () => this.display());
+        this.addOnSaved("displayLanguage", () => this.requestCatalogueRefresh());
         new Setting(paneEl).autoWireToggle("showStatusOnEditor");
         this.addOnSaved("showStatusOnEditor", () => {
             eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);

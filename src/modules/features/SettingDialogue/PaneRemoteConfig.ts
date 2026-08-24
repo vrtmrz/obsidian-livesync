@@ -11,7 +11,7 @@ import { Menu, type ButtonComponent } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
-import type { PageFunctions } from "./SettingPane.ts";
+import { setButtonDestructiveState, type PageFunctions } from "./SettingPane.ts";
 // import { visibleOnly } from "./SettingPane.ts";
 import InfoPanel from "./InfoPanel.svelte";
 import { writable } from "svelte/store";
@@ -103,11 +103,12 @@ export function paneRemoteConfig(
             });
         };
         void addPanel(paneEl, "E2EE Configuration", () => {}).then((paneEl) => {
-            new SveltePanel(InfoPanel, paneEl, E2EESummaryWritable);
+            const infoPanel = new SveltePanel(InfoPanel, paneEl, E2EESummaryWritable);
+            this.lifetimeComponent.register(() => infoPanel.destroy());
             const setupButton = new Setting(paneEl).setName("Configure E2EE");
             setupButton
                 .addButton((button) =>
-                    button
+                    setButtonDestructiveState(button)
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
@@ -115,10 +116,9 @@ export function paneRemoteConfig(
                             updateE2EESummary();
                         })
                         .setButtonText("Configure")
-                        .setWarning()
                 )
                 .addButton((button) =>
-                    button
+                    setButtonDestructiveState(button)
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
@@ -126,7 +126,6 @@ export function paneRemoteConfig(
                             updateE2EESummary();
                         })
                         .setButtonText("Configure And Change Remote")
-                        .setWarning()
                 );
             updateE2EESummary();
         });

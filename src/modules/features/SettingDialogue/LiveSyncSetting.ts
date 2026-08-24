@@ -8,7 +8,12 @@ import {
     type ValueComponent,
 } from "@/deps.ts";
 import { unique } from "octagonal-wheels/collection";
-import { LEVEL_ADVANCED, LEVEL_POWER_USER, statusDisplay, type ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    LEVEL_ADVANCED,
+    LEVEL_POWER_USER,
+    statusDisplay,
+    type ConfigurationItem,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { type ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
     type AllSettingItemKey,
@@ -19,7 +24,7 @@ import {
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
 import { $msg } from "@/common/translation";
-import { wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
+import { setButtonDestructiveState, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;
@@ -307,12 +312,7 @@ export class LiveSyncSetting extends Setting {
                         {
                             const component = this.autoWiredComponent;
                             if (component instanceof ButtonComponent) {
-                                if (newConf[k]) {
-                                    component.setWarning();
-                                } else {
-                                    //TODO:IMPLEMENT
-                                    // component.removeCta();
-                                }
+                                setButtonDestructiveState(component, newConf[k] ?? false);
                             }
                             this.prevStatus[k] = newConf[k];
                         }

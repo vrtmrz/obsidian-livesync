@@ -104,10 +104,19 @@ of two native content forms:
 type SettingsPageEntry = {
     id: string;
     name: () => string;
+    icon: string;
+    order: number;
+    level?: ConfigLevel;
+    content: "native" | "custom";
     legacy: PaneRenderer;
-    native: { items: () => SettingDefinitionItem[] } | { page: () => SettingPage };
 };
 ```
+
+In Stage C1, `native` identifies the Advanced proof page, whose definitions are
+supplied by the adapter, and `custom` selects the shared lazy custom-page
+factory. The catalogue will gain a per-page native factory only when a second
+native page requires one; Stage C1 does not introduce that abstraction in
+advance.
 
 A native `items` page may mix groups of `SettingSpec` controls with Obsidian's
 direct action, render, list, and nested-page definitions. A native custom
@@ -124,15 +133,21 @@ This makes page names and visibility consistent without requiring every page
 to migrate at once. Page names must be unique because Obsidian uses them for
 nested navigation.
 
-The custom `SettingPage` adapter will be created lazily from the 1.13-or-later
-path. It must feature-detect the runtime API and must not instantiate or
-subclass `SettingPage` while the module is loading on an older supported
-Obsidian version. The adapter sets `title` from the catalogue and renders pane
-content into the host-provided `containerEl`. Its `hide()` boundary will unload
-the page-owned `Component`, unmount Svelte and markdown content, and remove
-page-owned update handlers. The parent tab's `hide()` remains a final cleanup
-boundary because Obsidian does not guarantee a page-level `hide()` call when
-the host window is destroyed.
+The custom `SettingPage` adapter class will be constructed lazily from the
+1.13-or-later path. `SettingPage` may remain a normal runtime import because the
+bundle reads Obsidian exports through its namespace object, but the import must
+not be subclassed or instantiated while the module is loading. The factory
+will first use `requireApiVersion("1.13.0")`, then verify that `SettingPage` is
+available. Older supported Obsidian versions therefore continue to call the
+imperative `display()` fallback without requiring a dynamic import or a
+polyfill for host behaviour which does not exist in those versions.
+
+The adapter sets `title` from the catalogue and renders pane content into the
+host-provided `containerEl`. Its `hide()` boundary will unload the page-owned
+`Component`, unmount Svelte and markdown content, and remove page-owned update
+handlers. The parent tab's `hide()` remains a final cleanup boundary because
+Obsidian does not guarantee a page-level `hide()` call when the host window is
+destroyed.
 
 Custom pages receive only the current page's `containerEl` and the existing
 `addPanel` helper. They do not recreate the old top-level tab menu inside each
@@ -299,6 +314,10 @@ Each imperative render will therefore receive a small page scope containing:
 The legacy `display()` fallback uses one scope for the complete old tab. A
 custom declarative page creates one scope when opened and disposes it when
 hidden. This scope is renderer state and is not part of `SettingSpec`.
+Pane-construction callbacks which are queued by the existing helpers run only
+whilst the scope which requested them remains current. Closing or replacing a
+page therefore cannot attach delayed controls or cleanup callbacks to its
+successor.
 
 Saved-setting effects remain owned by the tab session, not by a DOM page. The
 existing handlers are unique by setting key, so `addOnSaved()` will replace the
@@ -354,10 +373,11 @@ language re-renders the interface and other controls emit status events after
 saving. Those effects should remain imperative until the standard binding has
 been proven.
 
-At Stage C, other pages use native groups and searchable rows where their
-existing panels divide cleanly. Only the remaining full custom pages are limited
-to page-level search. A later, focused migration can split those workflows into
-standard, action, or rendered rows without changing the page catalogue.
+The first native activation does not also divide other pages into searchable
+rows. It exposes their established pane renderers as custom pages, limited to
+page-level search. A later, optional migration can replace an individual custom
+page with standard, action, or rendered rows without changing the page
+catalogue.
 
 ## Implementation Stages and Checkpoint
 
@@ -382,21 +402,42 @@ shared model can express a real page without first taking ownership of every
 page's lifetime. Returning an empty definition array merely to silence review
 output is not an outcome of this stage.
 
-### Stage C: activate native pages
+### Stage C1: activate the native catalogue
 
 Activation is a separate checkpoint because it is the first cross-cutting
 change. It will add the page catalogue, custom `SettingPage` adapter, scoped
 imperative lifetime, renderer-neutral refresh operation, declarative control
 read and write overrides, and non-empty definitions on Obsidian 1.13 or later.
-It will expose each remaining pane through native groups and rendered rows where
-the existing panels divide cleanly, use a full custom native page only as a
-fallback, and retain the imperative renderer for older Obsidian versions.
+
+The non-empty definition array replaces `display()` completely. Partial
+activation is therefore not safe: all 12 existing pages must enter the native
+catalogue together. Advanced is the only page represented by native groups in
+this stage. The other 11 pages use their existing pane renderers inside lazy
+custom pages. Obsidian versions before 1.13 retain the complete imperative
+renderer and its menu.
+
+The existing rebuild-required action remains available while navigating native
+pages. Custom pages render the established action at their page boundary, and
+the Advanced definition includes an equivalent action item whose visibility is
+derived from the same dirty-state predicate. Both forms call the existing
+`confirmRebuild()` owner rather than introducing another apply workflow.
 
 This stage necessarily touches direct `display()` callers, saved-handler
-ownership, and cleanup for Svelte and markdown content. Review its measured
-patch and focused test plan with the maintainer before implementation. Do not
-expand `SettingSpec` to absorb those concerns merely to make activation appear
+ownership, and cleanup for Svelte and markdown content. It does not expand
+`SettingSpec` to absorb those concerns merely to make activation appear
 smaller.
+
+### Stage C2: improve search coverage selectively
+
+After activation, an individual custom page may be replaced with native groups,
+actions, and rendered rows where the existing panel boundary maps cleanly to
+Obsidian's definitions. This is optional follow-up work rather than a condition
+of Stage C1. Complex workflows may remain custom pages indefinitely.
+
+Stage C2 must not introduce a general action or lifecycle language. Each page
+conversion should be justified by useful settings-search coverage and retain
+the catalogue, persistence owner, and refresh boundaries established by Stage
+C1.
 
 ## Verification
 
@@ -413,14 +454,19 @@ Stage B focused unit tests will verify:
 - rendering the Advanced specifications through `LiveSyncSetting` preserves
   the current save behaviour.
 
-Stage C focused unit tests will verify:
+Stage C1 focused unit tests will verify:
 
-- the page catalogue has stable, unique identifiers and names;
+- the page catalogue contains all 12 existing pages with stable, unique
+  identifiers and names;
+- Advanced is the only native-items page, while the other 11 pages retain
+  custom factories;
 - every standard setting key is registered once;
 - reads use the editing buffer;
-- writes use `saveSettings([key])` and never `plugin.settings`; and
-- custom pages remain custom rather than being flattened into incomplete
-  definitions.
+- writes use `saveSettings([key])` and never `plugin.settings`;
+- custom pages dispose their page-owned resources and do not duplicate saved
+  handlers when reopened; and
+- importing and opening the imperative fallback does not evaluate or require
+  `SettingPage` on Obsidian before 1.13.
 
 Real-Obsidian verification on 1.13 or later will confirm:
 
@@ -429,7 +475,8 @@ Real-Obsidian verification on 1.13 or later will confirm:
 - Advanced values persist and are restored after reopening settings;
 - CouchDB-dependent controls and Advanced-mode visibility update correctly;
 - a representative custom page, including its cleanup, still works;
-- page and catalogue refreshes preserve native navigation; and
+- page and catalogue refreshes preserve native navigation and the
+  rebuild-required action; and
 - no duplicate save, update handler, or saved-setting effect occurs after
   leaving and reopening a page.
 

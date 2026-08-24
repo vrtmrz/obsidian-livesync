@@ -237,7 +237,7 @@ export function paneSyncSettings(
                     button.setButtonText($msg("obsidianLiveSyncSettingTab.btnDisable")).onClick(async () => {
                         this.editingSettings.syncInternalFiles = false;
                         await this.saveAllDirtySettings();
-                        this.display();
+                        this.requestPageRefresh();
                     });
                 });
         } else {
