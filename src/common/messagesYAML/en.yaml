@@ -129,6 +129,7 @@ Check and convert non-path-obfuscated files: Check and convert non-path-obfuscat
 Check for documents that have not been converted to path-obfuscated IDs and convert them if necessary.:
     Check for documents that have not been converted to path-obfuscated IDs and
     convert them if necessary.
+Check server requirements: Check server requirements
 Checking connection... Please wait.: Checking connection... Please wait.
 Chunks: Chunks
 Close: Close
@@ -158,6 +159,7 @@ Configure And Change Remote: Configure And Change Remote
 Configure E2EE: Configure E2EE
 Configure Remote: Configure Remote
 Connect: Connect
+Connect to existing database and continue: Connect to existing database and continue
 "Connected to Signaling Server (as Peer ID: ${peerId})": "Connected to Signaling Server (as Peer ID: ${peerId})"
 "Connected:": "Connected:"
 Connection Settings: Connection Settings
@@ -167,7 +169,11 @@ Copy: Copy
 Copy Report to clipboard: Copy Report to clipboard
 CouchDB Configuration: CouchDB Configuration
 CouchDB Connection Tweak: CouchDB Connection Tweak
+CouchDB validates the database name when you connect. The name must not be empty.:
+    CouchDB validates the database name when you connect. The name must not be
+    empty.
 Create P2P remote: Create P2P remote
+Create or connect to database and continue: Create or connect to database and continue
 Cross-platform: Cross-platform
 "Current adapter: {adapter}": "Current adapter: {adapter}"
 Custom Headers: Custom Headers
@@ -340,6 +346,7 @@ Encryption phassphrase. If changed, you should overwrite the server's database w
 End-to-End Encryption: End-to-End Encryption
 Endpoint URL: Endpoint URL
 Enhance chunk size: Enhance chunk size
+Enter a complete HTTP or HTTPS URL.: Enter a complete HTTP or HTTPS URL.
 Enter a folder prefix (optional): Enter a folder prefix (optional)
 Enter Setup URI: Enter Setup URI
 Enter TURN credential: Enter TURN credential
@@ -1518,7 +1525,11 @@ Save and Apply: Save and Apply
 Save settings to a markdown file. You will be notified when new settings arrive. You can set different files by the platform.:
     Save settings to a markdown file. You will be notified when new settings
     arrive. You can set different files by the platform.
+Save without connecting: Save without connecting
 Saving will be performed forcefully after this number of seconds.: Saving will be performed forcefully after this number of seconds.
+Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.:
+    Saving without a successful connection test keeps this profile, but
+    automatic synchronisation may fail until the connection is corrected.
 Scan changes: Scan changes
 Scan changes on customization sync: Scan changes on customization sync
 Scan customization automatically: Scan customization automatically
@@ -1780,6 +1791,7 @@ Sync: Sync
 Sync once: Sync once
 Syncing...: Syncing...
 Test Settings and Continue: Test Settings and Continue
+Test connection and save: Test connection and save
 The connection to the server has been configured successfully. As the next step,:
     The connection to the server has been configured successfully. As the next
     step,
@@ -1906,9 +1918,17 @@ This can isolate your connections between devices. Use the same Room ID for the 
     the same devices.
 This device: This device
 This device name: This device name
+This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.:
+    This first setup has several short steps because it confirms encryption,
+    the connection method, and which device provides the initial data. Once it
+    is complete, additional devices can reuse a Setup URI.
 This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.:
     This is an extremely powerful operation. We strongly recommend that you copy
     your Vault folder to a safe location.
+This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.:
+    This optional check uses Obsidian's internal request API and sends the
+    credentials above to the CouchDB server. Use it only with a server you
+    trust; administrator access may be required.
 This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.:
     This passphrase will not be copied to another device. It will be set to
     `Default` until you configure it again.
@@ -2054,6 +2074,7 @@ Unless you are certain, selecting this options is bit dangerous. It assumes that
     Unless you are certain, selecting this options is bit dangerous. It assumes
     that the server configuration is compatible with this device. If this is not
     the case, data loss may occur. Please ensure you know what you are doing.
+updated: updated
 Updating list...: Updating list...
 URL: URL
 Use a custom passphrase: Use a custom passphrase
@@ -2426,6 +2447,7 @@ Ui:
             Title: Choose a synchronisation remote
 
 You can configure in the Obsidian Plugin Settings.: You can configure in the Obsidian Plugin Settings.
+"you wanted(Thank you)!": "you wanted(Thank you)!"
 
 You should create a new synchronisation destination and rebuild your data there.:
     You should create a new synchronisation destination and rebuild your data

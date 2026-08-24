@@ -740,6 +740,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "检查尚未转换为路径混淆 ID 的文档，并在需要时将其转换。",
         "zh-tw": "檢查尚未轉換為路徑混淆 ID 的文件，並在需要時進行轉換。",
     },
+    "Check server requirements": {
+        def: "Check server requirements",
+        es: "Comprobar los requisitos del servidor",
+    },
     "Checking connection... Please wait.": {
         def: "Checking connection... Please wait.",
         es: "Comprobando la conexión... Espera un momento.",
@@ -993,6 +997,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "연결",
         "zh-tw": "連線",
     },
+    "Connect to existing database and continue": {
+        def: "Connect to existing database and continue",
+        es: "Conectar a la base de datos existente y continuar",
+    },
     "Connected to Signaling Server (as Peer ID: ${peerId})": {
         def: "Connected to Signaling Server (as Peer ID: ${peerId})",
         es: "Conectado al servidor de señalización (como ID de par: ${peerId})",
@@ -1093,6 +1101,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Настройки подключения CouchDB",
         zh: "CouchDB 连接调优",
         "zh-tw": "CouchDB 連線調校",
+    },
+    "CouchDB validates the database name when you connect. The name must not be empty.": {
+        def: "CouchDB validates the database name when you connect. The name must not be empty.",
+        es: "CouchDB valida el nombre de la base de datos al conectar. El nombre no puede estar vacío.",
+    },
+    "Create or connect to database and continue": {
+        def: "Create or connect to database and continue",
+        es: "Crear o conectar a la base de datos y continuar",
     },
     "Create P2P remote": {
         def: "Create P2P remote",
@@ -1433,7 +1449,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "dialog.yourLanguageAvailable": {
         def: "Self-hosted LiveSync had translations for your language, so the %{Display language} setting was enabled.\n\nNote: Not all messages are translated. We are waiting for your contributions!\nNote 2: If you create an Issue, **please revert to Default** and then take screenshots, messages and logs. This can be done in the setting dialogue.\nMay you find it easy to use!",
-        es: "Self-hosted LiveSync tenía traducciones para tu idioma, así que se ha activado el ajuste %{Display language}.\n\nNota: no todos los mensajes están traducidos. ¡Esperamos tus contribuciones!\nNota 2: si abres una incidencia, **vuelve antes a Predeterminado** y luego haz las capturas de pantalla y recoge los mensajes y registros. Puedes hacerlo desde el diálogo de ajustes.\n¡Que lo disfrutes!",
+        es: "Self-hosted LiveSync tenía traducciones para tu idioma, así que se ha activado el ajuste Idioma de visualización.\n\nNota: no todos los mensajes están traducidos. ¡Esperamos tus contribuciones!\nNota 2: si abres una incidencia, **vuelve antes a Predeterminado** y luego haz las capturas de pantalla y recoge los mensajes y registros. Puedes hacerlo desde el diálogo de ajustes.\n¡Que lo disfrutes!",
         fr: "Self-hosted LiveSync dispose d'une traduction pour votre langue, le paramètre %{Display language} a donc été activé.\n\nNote : Tous les messages ne sont pas traduits. Nous attendons vos contributions !\nNote 2 : Si vous créez un ticket, **veuillez revenir à Par défaut** puis prendre des captures d'écran, messages et journaux. Cela peut être fait dans la boîte de dialogue des paramètres.\nBonne utilisation !",
         he: "ל-Self-hosted LiveSync יש תרגום לשפתך, ולכן הגדרת %{Display language} הופעלה.\n\nהערה: לא כל ההודעות מתורגמות. אנחנו ממתינים לתרומותיך!\nהערה 2: אם אתה פותח Issue, **אנא חזור ל-%{lang-def}** ואז צלם צילומי מסך, הודעות ויומנים. ניתן לעשות זאת בדיאלוג ההגדרות.\nנקווה שתמצא/י את הפלאגין נוח לשימוש!",
         ja: "Self-hosted LiveSync に設定されている言語の翻訳がありましたので、インターフェースの表示言語が適用されました。\n\n注意： 全てのメッセージは翻訳されていません。あなたの貢献をお待ちしています！\nGithubにIssueを作成する際には、 インターフェースの表示言語 を一旦 Default に戻してから、スクショやメッセージ、ログを収集してください。これは設定から変更できます。\n\n便利に使用できれば幸いです。",
@@ -2034,6 +2050,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Улучшить размер чанка",
         zh: "增大块大小",
         "zh-tw": "擴大 chunk 大小",
+    },
+    "Enter a complete HTTP or HTTPS URL.": {
+        def: "Enter a complete HTTP or HTTPS URL.",
+        es: "Introduce una URL HTTP o HTTPS completa.",
     },
     "Enter a folder prefix (optional)": {
         def: "Enter a folder prefix (optional)",
@@ -5513,7 +5533,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.logConfiguredLiveSync": {
         def: "Configured synchronization mode: LiveSync",
-        es: "Modo de sincronización configurado: Sincronización en Vivo",
+        es: "Modo de sincronización configurado: Sincronización en vivo",
         fr: "Mode de synchronisation configuré : LiveSync",
         he: "מצב סנכרון שהוגדר: LiveSync",
         ja: "設定された同期モード: LiveSync",
@@ -6147,7 +6167,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.nameTestDatabaseConnection": {
         def: "Test Database Connection",
-        es: "Probar Conexión de Base de Datos",
+        es: "Probar conexión de base de datos",
         fr: "Tester la connexion à la base de données",
         he: "בדוק חיבור למסד נתונים",
         ja: "データベース接続テスト",
@@ -6158,7 +6178,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.nameValidateDatabaseConfig": {
         def: "Validate Database Configuration",
-        es: "Validar Configuración de la Base de Datos",
+        es: "Validar configuración de la base de datos",
         fr: "Valider la configuration de la base de données",
         he: "אמת תצורת מסד נתונים",
         ja: "データベース設定を検証",
@@ -6466,7 +6486,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.panelGeneralSettings": {
         def: "General Settings",
-        es: "Configuraciones Generales",
+        es: "Configuraciones generales",
         fr: "Paramètres généraux",
         he: "הגדרות כלליות",
         ja: "一般設定",
@@ -6477,7 +6497,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.panelPrivacyEncryption": {
         def: "Privacy & Encryption",
-        es: "Privacidad y Cifrado",
+        es: "Privacidad y cifrado",
         fr: "Confidentialité et chiffrement",
         he: "פרטיות והצפנה",
         ja: "プライバシーと暗号化",
@@ -6796,7 +6816,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.titleSyncSettings": {
         def: "Sync Settings",
-        es: "Configuraciones de Sincronización",
+        es: "Configuraciones de sincronización",
         fr: "Paramètres de synchronisation",
         he: "הגדרות סנכרון",
         ja: "同期設定",
@@ -8540,6 +8560,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             zh: "将设置保存到一个 Markdown 文件中。当新设置到达时,您将收到通知。您可以根据平台设置不同的文件 ",
             "zh-tw": "將設定儲存到 Markdown 檔案中。有新設定送達時會通知你，可依平台設定不同的檔案。",
         },
+    "Save without connecting": {
+        def: "Save without connecting",
+        es: "Guardar sin conectar",
+    },
     "Saving will be performed forcefully after this number of seconds.": {
         def: "Saving will be performed forcefully after this number of seconds.",
         es: "Guardado forzado tras esta cantidad de segundos",
@@ -8551,6 +8575,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "在此秒数后将强制执行保存 ",
         "zh-tw": "經過這個秒數後，會強制執行儲存。",
     },
+    "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.":
+        {
+            def: "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.",
+            es: "Guardar sin una prueba de conexión correcta conserva este perfil, pero la sincronización automática puede fallar hasta que se corrija la conexión.",
+        },
     "Scan a QR Code (Recommended for mobile)": {
         def: "Scan a QR Code (Recommended for mobile)",
         es: "Escanear un código QR (recomendado para móviles)",
@@ -9929,6 +9958,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "目标模式",
         "zh-tw": "目標模式",
     },
+    "Test connection and save": {
+        def: "Test connection and save",
+        es: "Probar la conexión y guardar",
+    },
     "Test Settings and Continue": {
         def: "Test Settings and Continue",
         es: "Probar los ajustes y continuar",
@@ -10150,6 +10183,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。",
         },
+    "This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.":
+        {
+            def: "This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.",
+            es: "Esta primera configuración consta de varios pasos breves, ya que confirma el cifrado, el método de conexión y qué dispositivo aporta los datos iniciales. Una vez completada, los demás dispositivos podrán reutilizar un Setup URI.",
+        },
     "This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": {
         def: "This is an advanced option for users who do not have a URI or who wish to configure detailed settings.",
         es: "Esta es una opción avanzada para usuarios que no disponen de un URI o que desean configurar parámetros detallados。",
@@ -10175,6 +10213,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Это наиболее подходящий для данной архитектуры способ синхронизации. Доступны все функции. Необходимо заранее развернуть экземпляр CouchDB。",
             zh: "这是最符合当前设计的同步方式，所有功能均可用。你需要事先部署好 CouchDB 实例。",
             "zh-tw": "這是最符合目前設計的同步方式，所有功能皆可使用。你需要事先部署好 CouchDB 實例。",
+        },
+    "This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.":
+        {
+            def: "This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.",
+            es: "Esta comprobación opcional usa la API interna de solicitudes de Obsidian y envía las credenciales anteriores al servidor CouchDB. Utilízala solo con un servidor de confianza; puede requerir acceso de administrador.",
         },
     "This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.": {
         def: "This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.",
@@ -12401,6 +12444,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "除非你很確定，否則選擇此選項有一定風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解自己在做什麼。",
         },
+    updated: {
+        def: "updated",
+        es: "una actualización",
+    },
     "Updating list...": {
         def: "Updating list...",
         es: "Actualizando lista...",
@@ -12770,6 +12817,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "只有在特殊情況下才應執行此操作，例如伺服器資料已完全損毀、其他所有裝置上的變更都已不再需要，或資料庫大小相對於 Vault 大小已變得異常龐大時。",
         },
+    "you wanted(Thank you)!": {
+        def: "you wanted(Thank you)!",
+        es: "tu solicitud (¡gracias!)",
+    },
     "Compute revisions for chunks (Previous behaviour)": {
         es: "Calcular revisiones para chunks (comportamiento anterior)",
     },

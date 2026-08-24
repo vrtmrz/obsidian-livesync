@@ -51,7 +51,11 @@ export class ModuleMigration extends AbstractModule<LiveSyncCore> {
         super(core);
     }
 
-    async migrateUsingDoctor(skipRebuild: boolean = false, activateReason = "updated", forceRescan = false) {
+    async migrateUsingDoctor(
+        skipRebuild: boolean = false,
+        activateReason: string = $msg("updated"),
+        forceRescan = false
+    ) {
         const { shouldRebuild, shouldRebuildLocal, isModified, settings } = await performDoctorConsultation(
             {
                 confirm: this.core.confirm,

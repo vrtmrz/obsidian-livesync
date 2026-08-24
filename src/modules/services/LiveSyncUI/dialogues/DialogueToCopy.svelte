@@ -50,7 +50,7 @@
     Your {title || "data"} has been copied to the clipboard.
 </InfoNote>
 <UserDecisions>
-    <Decision title="OK" important={true} {commit} />
+    <Decision title={translateMessage("Ok")} important={true} {commit} />
 </UserDecisions>
 
 <style>
