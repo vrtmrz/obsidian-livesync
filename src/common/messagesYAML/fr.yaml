@@ -384,7 +384,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: Afficher le journal
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
   fix0256:
     buttons:
       checkItLater: Vérifier plus tard
@@ -482,31 +481,6 @@ moduleMigration:
 
     ___Note 2 : Les fragments sont complètement immuables, nous ne pouvons
     récupérer que les métadonnées et les différences.___
-  msgInitialSetup: >-
-    Votre appareil n'a **pas encore été configuré**. Laissez-moi vous guider
-    dans le processus de configuration.
-
-
-    Veuillez noter que chaque contenu de boîte de dialogue peut être copié
-    dans le presse-papiers. Si vous souhaitez vous y référer plus tard, vous
-    pouvez le coller dans une note d'Obsidian. Vous pouvez également le
-    traduire dans votre langue via un outil de traduction.
-
-
-    Tout d'abord, disposez-vous d'une **URI de configuration** ?
-
-
-    Note : Si vous ne savez pas ce que c'est, consultez la
-    [documentation](${URI_DOC}).
-  msgRecommendSetupUri: >-
-    Nous recommandons vivement de générer une URI de configuration et de
-    l'utiliser.
-
-    Si vous ne connaissez pas, veuillez consulter la
-    [documentation](${URI_DOC}) (Désolé encore, mais c'est important).
-
-
-    Comment souhaitez-vous effectuer la configuration manuellement ?
   msgSinceV02321: >-
     Depuis la v0.23.21, Self-hosted LiveSync a modifié son comportement par
     défaut et la structure de sa base. Les changements suivants ont été
@@ -539,18 +513,10 @@ moduleMigration:
   optionEnableBoth: Activer les deux
   optionEnableFilenameCaseInsensitive: "Activer seulement #1"
   optionEnableFixedRevisionForChunks: "Activer seulement #2"
-  optionHaveSetupUri: Oui, j'en ai une
   optionKeepPreviousBehaviour: Conserver le comportement précédent
-  optionManualSetup: Tout configurer manuellement
   optionNoAskAgain: Non, demandez à nouveau
-  optionNoSetupUri: Non, je n'en ai pas
-  optionRemindNextLaunch: Me rappeler au prochain lancement
-  optionSetupViaP2P: Utiliser %{short_p2p_sync} pour configurer
-  optionSetupWizard: Ouvrir l'assistant de configuration
   optionYesFetchAgain: Oui, récupérer à nouveau
   titleCaseSensitivity: Sensibilité à la casse
-  titleRecommendSetupUri: Recommandation d'utilisation de l'URI de configuration
-  titleWelcome: Bienvenue dans Self-hosted LiveSync
 moduleObsidianMenu:
   replicate: Répliquer
 Move remotely deleted files to the trash, instead of deleting.: Déplacer les fichiers supprimés à distance vers la corbeille, au lieu de les supprimer.
@@ -574,12 +540,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: Activer
   btnFix: Corriger
   btnGotItAndUpdated: J'ai compris et mis à jour.
-  btnNext: Suivant
   btnStart: Démarrer
   btnTest: Tester
   btnUse: Utiliser
   buttonFetch: Récupérer
-  buttonNext: Suivant
   defaultLanguage: Par défaut
   descConnectSetupURI: Méthode recommandée pour configurer Self-hosted LiveSync
     avec une URI de configuration.
@@ -653,7 +617,6 @@ obsidianLiveSyncSettingTab:
     de bout en bout et l'obfuscation des chemins. Êtes-vous sûr de vouloir
     continuer sans chiffrement ?
   msgFetchConfigFromRemote: Voulez-vous récupérer la configuration depuis le serveur distant ?
-  msgGenerateSetupURI: Tout est prêt ! Voulez-vous générer une URI de configuration pour configurer d'autres appareils ?
   msgIfConfigNotPersistent: Si la configuration du serveur n'est pas persistante
     (par ex. fonctionnant sur Docker), les valeurs peuvent changer. Une fois la
     connexion établie, mettez à jour les paramètres dans le local.ini du
@@ -736,7 +699,6 @@ obsidianLiveSyncSettingTab:
     Ne stocker que les paramètres. **Attention : cela peut entraîner une
     corruption des données** ; une reconstruction de la base est généralement
     nécessaire.
-  msgSelectAndApplyPreset: Veuillez sélectionner et appliquer un préréglage pour terminer l'assistant.
   msgSetCorsCredentials: Définir cors.credentials
   msgSetCorsOrigins: Définir cors.origins
   msgSetMaxDocSize: Définir couchdb.max_document_size
@@ -797,7 +759,6 @@ obsidianLiveSyncSettingTab:
   titleActiveRemoteServer: Serveur distant actif
   titleAppearance: Apparence
   titleConflictResolution: Résolution des conflits
-  titleCongratulations: Félicitations !
   titleCouchDB: CouchDB
   titleDeletionPropagation: Propagation des suppressions
   titleEncryptionNotEnabled: Le chiffrement n'est pas activé

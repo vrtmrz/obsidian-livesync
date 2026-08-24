@@ -413,7 +413,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: Показать лог
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
   fix0256:
     buttons:
       checkItLater: Проверить позже
@@ -441,8 +440,6 @@ moduleMigration:
   logSetupCancelled: Настройка отменена, Self-hosted LiveSync ожидает вашей настройки!
   msgFetchRemoteAgain: Удалённая база данных, похоже, уже была мигрирована.
     Конфигурация этого устройства несовместима.
-  msgInitialSetup: Ваше устройство ещё не настроено. У вас есть Setup URI?
-  msgRecommendSetupUri: Мы рекомендуем сгенерировать Setup URI.
   msgSinceV02321: Начиная с v0.23.21, self-hosted LiveSync изменил поведение и
     структуру базы данных.
   optionAdjustRemote: Настроить под удалённую
@@ -450,18 +447,10 @@ moduleMigration:
   optionEnableBoth: Включить оба
   optionEnableFilenameCaseInsensitive: "Включить только #1"
   optionEnableFixedRevisionForChunks: "Включить только #2"
-  optionHaveSetupUri: Да, есть
   optionKeepPreviousBehaviour: Сохранить предыдущее поведение
-  optionManualSetup: Настроить всё вручную
   optionNoAskAgain: Нет, спросить снова
-  optionNoSetupUri: Нет, нет
-  optionRemindNextLaunch: Напомнить при следующем запуске
-  optionSetupViaP2P: Использовать short_p2p_sync для настройки
-  optionSetupWizard: Перейти в мастер настройки
   optionYesFetchAgain: Да, загрузить снова
   titleCaseSensitivity: Чувствительность к регистру
-  titleRecommendSetupUri: Рекомендация использовать Setup URI
-  titleWelcome: Добро пожаловать в Self-hosted LiveSync
 moduleObsidianMenu:
   replicate: Реплицировать
 More actions: Другие действия
@@ -492,12 +481,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: Включить
   btnFix: Исправить
   btnGotItAndUpdated: Понял и обновил.
-  btnNext: Далее
   btnStart: Старт
   btnTest: Тест
   btnUse: Использовать
   buttonFetch: Загрузить
-  buttonNext: Далее
   defaultLanguage: По умолчанию
   descConnectSetupURI: Это рекомендуемый способ настройки Self-hosted LiveSync с помощью Setup URI.
   descCopySetupURI: Идеально подходит для настройки нового устройства!
@@ -562,7 +549,6 @@ obsidianLiveSyncSettingTab:
   msgEnableEncryptionRecommendation: Мы рекомендуем включить сквозное шифрование.
     Вы уверены, что хотите продолжить без шифрования?
   msgFetchConfigFromRemote: Вы хотите загрузить конфигурацию с удалённого сервера?
-  msgGenerateSetupURI: Всё готово! Вы хотите сгенерировать Setup URI для настройки других устройств?
   msgIfConfigNotPersistent: Если конфигурация сервера непостоянна, значения здесь могут измениться.
   msgInvalidPassphrase: Ваша парольная фраза шифрования может быть недействительна.
   msgNewVersionNote: Вы пришли из-за уведомления об обновлении? Просмотрите историю версий.
@@ -572,7 +558,6 @@ obsidianLiveSyncSettingTab:
   msgObjectStorageWarning: "ПРЕДУПРЕЖДЕНИЕ: Эта функция в разработке."
   msgOriginCheck: "Проверка origin: org"
   msgRebuildRequired: Требуется перестроение баз данных для применения изменений.
-  msgSelectAndApplyPreset: Выберите и примените любой пресет для завершения мастера.
   msgSetCorsCredentials: Установить cors.credentials
   msgSetCorsOrigins: Установить cors.origins
   msgSetMaxDocSize: Установить couchdb.max_document_size
@@ -629,7 +614,6 @@ obsidianLiveSyncSettingTab:
   titleActiveRemoteServer: Активный удалённый сервер
   titleAppearance: Внешний вид
   titleConflictResolution: Разрешение конфликтов
-  titleCongratulations: Поздравляем!
   titleCouchDB: Сервер CouchDB
   titleDeletionPropagation: Распространение удалений
   titleEncryptionNotEnabled: Шифрование не включено

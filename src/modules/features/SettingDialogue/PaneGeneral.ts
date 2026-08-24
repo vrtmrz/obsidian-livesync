@@ -6,11 +6,7 @@ import type { PageFunctions } from "./SettingPane.ts";
 import { visibleOnly } from "./SettingPane.ts";
 import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
 import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-export function paneGeneral(
-    this: ObsidianLiveSyncSettingTab,
-    paneEl: HTMLElement,
-    { addPanel, addPane }: PageFunctions
-): void {
+export function paneGeneral(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleAppearance")).then((paneEl) => {
         const languages = Object.fromEntries([
             // ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
@@ -41,20 +37,10 @@ export function paneGeneral(
         });
     });
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
-        paneEl.addClass("wizardHidden");
-
         new Setting(paneEl).autoWireToggle("lessInformationInLog");
 
         new Setting(paneEl).autoWireToggle("showVerboseLog", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("lessInformationInLog", false)),
         });
     });
-    new Setting(paneEl).setClass("wizardOnly").addButton((button) =>
-        button
-            .setButtonText($msg("obsidianLiveSyncSettingTab.btnNext"))
-            .setCta()
-            .onClick(() => {
-                this.changeDisplay("0");
-            })
-    );
 }

@@ -16,17 +16,16 @@ import { migrateDatabases } from "./settingUtils.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("deleteMetadataOfDeletedFiles");
+        new Setting(paneEl).autoWireToggle("deleteMetadataOfDeletedFiles");
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("automaticallyDeleteMetadataOfDeletedFiles", {
+        new Setting(paneEl).autoWireNumeric("automaticallyDeleteMetadataOfDeletedFiles", {
             onUpdate: visibleOnly(() => this.isConfiguredAs("deleteMetadataOfDeletedFiles", true)),
         });
     });
 
     void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
-        paneEl.addClass("wizardHidden");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("disableMarkdownAutoMerge");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("writeDocumentsIfConflicted");
+        new Setting(paneEl).autoWireToggle("disableMarkdownAutoMerge");
+        new Setting(paneEl).autoWireToggle("writeDocumentsIfConflicted");
     });
 
     void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
@@ -113,7 +112,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 });
             }
         }
-        new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true }).setClass("wizardHidden");
+        new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true });
     });
 
     void addPanel(paneEl, "Compatibility (Internal API Usage)").then((paneEl) => {
@@ -158,7 +157,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     });
     void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
         new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("doNotDeleteFolder");
+        new Setting(paneEl).autoWireToggle("doNotDeleteFolder");
         new Setting(paneEl).autoWireToggle("processSizeMismatchedFiles");
     });
 

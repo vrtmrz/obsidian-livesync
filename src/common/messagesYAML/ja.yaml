@@ -356,7 +356,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: ログを表示
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
   fix0256:
     buttons:
       checkItLater: 後で確認する
@@ -416,19 +415,6 @@ moduleMigration:
 
     ___注意: 設定が変更され、データベースが再フェッチされるまで同期できません。___
     ___注意2: チャンクは完全に不変なので、メタデータと差分のみフェッチできます。___
-  msgInitialSetup: |-
-    このデバイスは**まだセットアップされていません**。セットアッププロセスをご案内します。
-
-    すべてのダイアログの内容はクリップボードにコピーできます。後で参照する必要があれば、Obsidianのノートに貼り付けてください。翻訳ツールを使ってお使いの言語に翻訳することもできます。
-
-    まず、**セットアップURI**をお持ちですか？
-
-    注意: それが何か分からない場合は、[documentation](${URI_DOC})を参照してください。
-  msgRecommendSetupUri: |-
-    セットアップURIを生成して使用することを強くお勧めします。
-    これについて知識がない場合は、[documentation](${URI_DOC})を参照してください（重要です）。
-
-    手動でセットアップしますか？
   msgSinceV02321: |-
     v0.23.21以降、self-hosted LiveSyncはデフォルトの動作とデータベース構造を変更しました。以下の変更が行われました：
 
@@ -449,18 +435,10 @@ moduleMigration:
   optionEnableBoth: 両方を有効にする
   optionEnableFilenameCaseInsensitive: "#1のみ有効にする"
   optionEnableFixedRevisionForChunks: "#2のみ有効にする"
-  optionHaveSetupUri: はい、持っています
   optionKeepPreviousBehaviour: 以前の動作を維持
-  optionManualSetup: すべて手動でセットアップ
   optionNoAskAgain: いいえ、後で確認する
-  optionNoSetupUri: いいえ、持っていません
-  optionRemindNextLaunch: 次回起動時にリマインド
-  optionSetupViaP2P: "%{short_p2p_sync}を使ってセットアップ"
-  optionSetupWizard: セットアップウィザードへ
   optionYesFetchAgain: はい、再フェッチする
   titleCaseSensitivity: 大文字小文字の区別
-  titleRecommendSetupUri: セットアップURIの使用を推奨
-  titleWelcome: Self-hosted LiveSyncへようこそ
 moduleObsidianMenu:
   replicate: レプリケート
 More actions: その他の操作
@@ -486,12 +464,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: 有効化
   btnFix: 修正
   btnGotItAndUpdated: 理解しました、更新しました。
-  btnNext: 次へ
   btnStart: 開始
   btnTest: テスト
   btnUse: 使用
   buttonFetch: フェッチ
-  buttonNext: 次へ
   defaultLanguage: デフォルト
   descConnectSetupURI: セットアップURIを使用してSelf-hosted LiveSyncをセットアップする推奨方法です。
   descCopySetupURI: 新しいデバイスのセットアップにおすすめ！
@@ -556,7 +532,6 @@ obsidianLiveSyncSettingTab:
   msgEnableCorsChttpd: chttpd.enable_corsを設定
   msgEnableEncryptionRecommendation: エンドツーエンド暗号化とパス難読化を有効にすることをお勧めします。暗号化なしで続行してもよろしいですか？
   msgFetchConfigFromRemote: リモートサーバーから設定を取得しますか？
-  msgGenerateSetupURI: 完了！他のデバイスをセットアップするためのセットアップURIを生成しますか？
   msgIfConfigNotPersistent: "サーバー設定が永続的でない場合（例:
     Dockerで実行中）、ここの値は変更される可能性があります。接続できるようになったら、サーバーのlocal.iniの設定を更新してください。"
   msgInvalidPassphrase: 暗号化パスフレーズが無効かもしれません。続行してもよろしいですか？
@@ -599,7 +574,6 @@ obsidianLiveSyncSettingTab:
     リモートデータベースを再構築した場合も含まれます。
     ## ${OPTION_ONLY_SETTING}
     設定のみを保存します。**注意: データ破損につながる可能性があります**。通常、データベースの再構築が必要です。
-  msgSelectAndApplyPreset: ウィザードを完了するには、プリセット項目を選択して適用してください。
   msgSetCorsCredentials: cors.credentialsを設定
   msgSetCorsOrigins: cors.originsを設定
   msgSetMaxDocSize: couchdb.max_document_sizeを設定
@@ -656,7 +630,6 @@ obsidianLiveSyncSettingTab:
   titleActiveRemoteServer: アクティブなリモートサーバー
   titleAppearance: 外観
   titleConflictResolution: 競合解決
-  titleCongratulations: おめでとうございます！
   titleCouchDB: CouchDB サーバー
   titleDeletionPropagation: 削除の伝播
   titleEncryptionNotEnabled: 暗号化が有効になっていません

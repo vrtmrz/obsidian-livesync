@@ -299,14 +299,6 @@ body {
     border-radius: 4px;
 }
 
-.isWizard .wizardHidden {
-    display: none;
-}
-
-.sls-setting:not(.isWizard) .wizardOnly {
-    display: none;
-}
-
 .sls-item-dirty::before {
     content: "✏";
 }

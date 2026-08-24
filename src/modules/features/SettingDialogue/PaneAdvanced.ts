@@ -9,8 +9,6 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
         // new Setting(paneEl).autoWireNumeric("hashCacheMaxAmount", { clampMin: 1 });
     });
     void addPanel(paneEl, "Local Database Tweak").then((paneEl) => {
-        paneEl.addClass("wizardHidden");
-
         const items = ChunkAlgorithmNames;
         new Setting(paneEl).autoWireDropDown("chunkSplitterVersion", {
             options: items,
@@ -19,35 +17,27 @@ export function paneAdvanced(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
     });
 
     void addPanel(paneEl, "Transfer Tweak").then((paneEl) => {
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireToggle("readChunksOnline", { onUpdate: this.onlyOnCouchDB });
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireToggle("useOnlyLocalChunk", { onUpdate: this.onlyOnCouchDB });
+        new Setting(paneEl).autoWireToggle("readChunksOnline", { onUpdate: this.onlyOnCouchDB });
+        new Setting(paneEl).autoWireToggle("useOnlyLocalChunk", { onUpdate: this.onlyOnCouchDB });
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("concurrencyOfReadChunksOnline", {
+        new Setting(paneEl).autoWireNumeric("concurrencyOfReadChunksOnline", {
             clampMin: 10,
             onUpdate: this.onlyOnCouchDB,
         });
 
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("minimumIntervalOfReadChunksOnline", {
+        new Setting(paneEl).autoWireNumeric("minimumIntervalOfReadChunksOnline", {
             clampMin: 10,
             onUpdate: this.onlyOnCouchDB,
         });
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireToggle("autoAcceptCompatibleTweak", { defaultToggleValue: true });
+        new Setting(paneEl).autoWireToggle("autoAcceptCompatibleTweak", { defaultToggleValue: true });
         // new Setting(paneEl)
-        //     .setClass("wizardHidden")
         //     .autoWireToggle("sendChunksBulk", { onUpdate: onlyOnCouchDB })
         // new Setting(paneEl)
-        //     .setClass("wizardHidden")
         //     .autoWireNumeric("sendChunksBulkMaxSize", {
         //         clampMax: 100, clampMin: 1, onUpdate: onlyOnCouchDB
         //     })
     });
     void addPanel(paneEl, "Remote Database Tweak").then((paneEl) => {
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("enableCompression");
+        new Setting(paneEl).autoWireToggle("enableCompression");
     });
 }

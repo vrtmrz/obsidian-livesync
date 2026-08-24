@@ -92,8 +92,6 @@ Normal Files: Normale Dateien
 obsidianLiveSyncSettingTab:
   btnApply: Anwenden
   btnDisable: Deaktivieren
-  btnNext: Weiter
-  buttonNext: Weiter
   defaultLanguage: Standardsprache
   labelDisabled: "⏹️ : Deaktiviert"
   labelEnabled: "🔁 : Aktiviert"
@@ -106,12 +104,8 @@ obsidianLiveSyncSettingTab:
     und Pfadverschleierung zu aktivieren. Möchten Sie wirklich ohne
     Verschlüsselung fortfahren?
   msgFetchConfigFromRemote: Möchten Sie die Konfiguration vom Remote-Server abrufen?
-  msgGenerateSetupURI: Alles fertig! Möchten Sie eine Setup-URI erzeugen, um
-    andere Geräte einzurichten?
   msgInvalidPassphrase: Ihre Verschlüsselungs-Passphrase könnte ungültig sein.
     Möchten Sie wirklich fortfahren?
-  msgSelectAndApplyPreset: Bitte wählen und übernehmen Sie eine beliebige
-    Voreinstellung, um den Assistenten abzuschließen.
   nameDisableHiddenFileSync: Synchronisation versteckter Dateien deaktivieren
   nameEnableHiddenFileSync: Synchronisation versteckter Dateien aktivieren
   nameHiddenFileSynchronization: Synchronisation versteckter Dateien
@@ -122,7 +116,6 @@ obsidianLiveSyncSettingTab:
   optionPeriodicWithBatch: Periodisch mit Stapelverarbeitung
   titleAppearance: Darstellung
   titleConflictResolution: Konfliktbehandlung
-  titleCongratulations: Glückwunsch!
   titleCouchDB: CouchDB-Server
   titleDeletionPropagation: Weitergabe von Löschungen
   titleEncryptionNotEnabled: Verschlüsselung ist nicht aktiviert

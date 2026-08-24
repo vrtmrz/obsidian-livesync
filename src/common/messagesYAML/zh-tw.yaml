@@ -745,27 +745,6 @@ moduleMigration:
   optionNoAskAgain: 不，請稍後再問我
   optionYesFetchAgain: 是，再次抓取
   titleCaseSensitivity: 大小寫敏感性
-  msgInitialSetup: |-
-    你的裝置**尚未完成設定**。讓我引導你完成設定流程。
-
-    請記得，每個對話框的內容都可以複製到剪貼簿。如果日後需要參考，可以貼到 Obsidian 的筆記中，也可以用翻譯工具翻成你的語言。
-
-    首先，你有 **Setup URI** 嗎？
-
-    注意：如果你不知道那是什麼，請參閱[說明文件](${URI_DOC})。
-  msgRecommendSetupUri: |-
-    我們強烈建議你產生 Setup URI 並使用它。
-    如果你對此不熟悉，請參閱[說明文件](${URI_DOC})（再次抱歉，但這很重要）。
-
-    你想要如何手動設定？
-  optionHaveSetupUri: 有，我有
-  optionManualSetup: 全部手動設定
-  optionNoSetupUri: 沒有，我沒有
-  optionRemindNextLaunch: 下次啟動時提醒我
-  optionSetupViaP2P: 使用「%{short_p2p_sync}」進行設定
-  optionSetupWizard: 帶我進入設定精靈
-  titleRecommendSetupUri: 建議使用 Setup URI
-  titleWelcome: 歡迎使用 Self-hosted LiveSync
 moduleObsidianMenu:
   replicate: 複寫
 More actions: 更多操作
@@ -786,9 +765,7 @@ obsidianLiveSyncSettingTab:
   btnTest: 測試
   buttonFetch: 抓取
   btnFix: 修正
-  btnNext: 下一步
   btnUse: 使用
-  buttonNext: 下一步
   defaultLanguage: 預設語言
   descConnectSetupURI: 這是使用 Setup URI 設定 Self-hosted LiveSync 的建議方式。
   descCopySetupURI: 設定新裝置時非常方便！
@@ -868,7 +845,6 @@ obsidianLiveSyncSettingTab:
   msgEnableCorsChttpd: 設定 chttpd.enable_cors
   msgEnableEncryptionRecommendation: 我們建議啟用端對端加密與路徑混淆。你確定要在未加密的情況下繼續嗎？
   msgFetchConfigFromRemote: 要從遠端伺服器抓取設定嗎？
-  msgGenerateSetupURI: 全部完成！要產生 Setup URI 以便設定其他裝置嗎？
   msgIfConfigNotPersistent: 如果伺服器設定並非持久保存（例如在 Docker 上執行），這裡的值可能會變動。一旦能夠連線，請更新伺服器 local.ini 中的設定。
   msgInvalidPassphrase: 你的加密密語可能無效。你確定要繼續嗎？
   msgNotice: "---注意---"
@@ -898,7 +874,6 @@ obsidianLiveSyncSettingTab:
     這也涵蓋你已重建遠端資料庫的情況。
     ## ${OPTION_ONLY_SETTING}
     僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。
-  msgSelectAndApplyPreset: 請選擇並套用任一預設項目以完成精靈。
   msgSetCorsCredentials: 設定 cors.credentials
   msgSetCorsOrigins: 設定 cors.origins
   msgSetMaxDocSize: 設定 couchdb.max_document_size
@@ -951,7 +926,6 @@ obsidianLiveSyncSettingTab:
   titleFetchConfigFromRemote: 從遠端伺服器抓取設定
   titleFetchSettings: 抓取設定
   titleConflictResolution: 衝突處理
-  titleCongratulations: 恭喜！
   titleCouchDB: CouchDB 伺服器
   titleDeletionPropagation: 刪除傳播
   titleEncryptionNotEnabled: 尚未啟用加密

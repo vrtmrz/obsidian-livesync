@@ -275,8 +275,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     controlledElementFunc = [] as UpdateFunction[];
     onSavedHandlers = [] as OnSavedHandler<AllSettingItemKey>[];
 
-    inWizard: boolean = false;
-
     constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
         super(app, plugin);
         this.plugin = plugin;
@@ -435,20 +433,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             });
         }
         this.selectedScreen = screen;
-    }
-    async enableMinimalSetup() {
-        this.editingSettings.liveSync = false;
-        this.editingSettings.periodicReplication = false;
-        this.editingSettings.syncOnSave = false;
-        this.editingSettings.syncOnEditorSave = false;
-        this.editingSettings.syncOnStart = false;
-        this.editingSettings.syncOnFileOpen = false;
-        this.editingSettings.syncAfterMerge = false;
-        this.core.replicator.closeReplication();
-        await this.saveAllDirtySettings();
-        this.containerEl.addClass("isWizard");
-        this.inWizard = true;
-        this.changeDisplay("20");
     }
     menuEl?: HTMLElement;
 
@@ -667,7 +651,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         containerEl.addClass("sls-setting");
-        containerEl.removeClass("isWizard");
 
         setStyle(containerEl, "menu-setting-poweruser", () => this.isConfiguredAs("usePowerUserMode", true));
         setStyle(containerEl, "menu-setting-advanced", () => this.isConfiguredAs("useAdvancedMode", true));
@@ -688,7 +671,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             "div",
             { cls: "sls-setting-menu-buttons" },
             (el) => {
-                el.addClass("wizardHidden");
                 el.createEl("label", { text: $msg("obsidianLiveSyncSettingTab.msgChangesNeedToBeApplied") });
                 void this.addEl(
                     el,
@@ -705,39 +687,28 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
 
         // let paneNo = 0;
-        const addPane = (
-            parentEl: HTMLElement,
-            title: string,
-            icon: string,
-            order: number,
-            wizardHidden: boolean,
-            level?: ConfigLevel
-        ) => {
+        const addPane = (parentEl: HTMLElement, title: string, icon: string, order: number, level?: ConfigLevel) => {
             const el = this.createEl(parentEl, "div", { text: "" });
 
             setLevelClass(el, level);
             new Setting(el).setName(title).setHeading().setClass("sls-setting-pane-title");
             if (this.menuEl) {
-                this.menuEl.createEl(
-                    "label",
-                    { cls: `sls-setting-label c-${order} ${wizardHidden ? "wizardHidden" : ""}` },
-                    (el) => {
-                        setLevelClass(el, level);
-                        const inputEl = el.createEl("input", {
-                            type: "radio",
-                            name: "disp",
-                            value: `${order}`,
-                            cls: "sls-setting-tab",
-                        } as DomElementInfo);
-                        el.createDiv({
-                            cls: "sls-setting-menu-btn",
-                            text: icon,
-                            title: title,
-                        });
-                        inputEl.addEventListener("change", (evt) => this.selectPane(evt));
-                        inputEl.addEventListener("click", (evt) => this.selectPane(evt));
-                    }
-                );
+                this.menuEl.createEl("label", { cls: `sls-setting-label c-${order}` }, (el) => {
+                    setLevelClass(el, level);
+                    const inputEl = el.createEl("input", {
+                        type: "radio",
+                        name: "disp",
+                        value: `${order}`,
+                        cls: "sls-setting-tab",
+                    } as DomElementInfo);
+                    el.createDiv({
+                        cls: "sls-setting-menu-btn",
+                        text: icon,
+                        title: title,
+                    });
+                    inputEl.addEventListener("change", (evt) => this.selectPane(evt));
+                    inputEl.addEventListener("click", (evt) => this.selectPane(evt));
+                });
             }
             this.addScreenElement(`${order}`, el);
             const p = Promise.resolve(el);
@@ -792,33 +763,29 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         // Add panes
 
         // TODO: Refactor to new API style.
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100, false).then(
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelChangeLog"), "💬", 100).then(
             bindPane(paneChangeLog)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110, false).then(
-            bindPane(paneSetup)
-        );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20, false).then(
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelSetup"), "🧙‍♂️", 110).then(bindPane(paneSetup));
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"), "⚙️", 20).then(
             bindPane(paneGeneral)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0, false).then(
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.panelRemoteConfiguration"), "🛰️", 0).then(
             bindPane(paneRemoteConfig)
         );
-        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30, false).then(
+        void addPane(containerEl, $msg("obsidianLiveSyncSettingTab.titleSyncSettings"), "🔄", 30).then(
             bindPane(paneSyncSettings)
         );
-        void addPane(containerEl, "Selector", "🚦", 33, false, LEVEL_ADVANCED).then(bindPane(paneSelector));
-        void addPane(containerEl, "Customization sync", "🔌", 60, false, LEVEL_ADVANCED).then(
-            bindPane(paneCustomisationSync)
-        );
+        void addPane(containerEl, "Selector", "🚦", 33, LEVEL_ADVANCED).then(bindPane(paneSelector));
+        void addPane(containerEl, "Customization sync", "🔌", 60, LEVEL_ADVANCED).then(bindPane(paneCustomisationSync));
 
-        void addPane(containerEl, "Hatch", "🧰", 50, true).then(bindPane(paneHatch));
-        void addPane(containerEl, "Advanced", "🔧", 46, false, LEVEL_ADVANCED).then(bindPane(paneAdvanced));
-        void addPane(containerEl, "Power users", "💪", 47, true, LEVEL_POWER_USER).then(bindPane(panePowerUsers));
+        void addPane(containerEl, "Hatch", "🧰", 50).then(bindPane(paneHatch));
+        void addPane(containerEl, "Advanced", "🔧", 46, LEVEL_ADVANCED).then(bindPane(paneAdvanced));
+        void addPane(containerEl, "Power users", "💪", 47, LEVEL_POWER_USER).then(bindPane(panePowerUsers));
 
-        void addPane(containerEl, "Patches", "🩹", 51, false, LEVEL_EDGE_CASE).then(bindPane(panePatches));
+        void addPane(containerEl, "Patches", "🩹", 51, LEVEL_EDGE_CASE).then(bindPane(panePatches));
 
-        void addPane(containerEl, "Maintenance", "🎛️", 70, true).then(bindPane(paneMaintenance));
+        void addPane(containerEl, "Maintenance", "🎛️", 70).then(bindPane(paneMaintenance));
 
         void yieldNextAnimationFrame().then(() => {
             if (this.selectedScreen == "") {
