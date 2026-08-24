@@ -25,6 +25,7 @@ type LiveSyncTestPlugin = {
                     useAdvancedMode: boolean;
                     usePowerUserMode: boolean;
                     useEdgeCaseMode: boolean;
+                    hashCacheMaxCount: number;
                 };
                 getSmallConfig(key: string): string | null;
             };
@@ -294,6 +295,22 @@ async function verifyEffectiveSettings(): Promise<void> {
             undefined,
             { timeout: uiTimeoutMs }
         );
+
+        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Advanced"]').click();
+        const cacheSizeSetting = liveSyncSettings.locator(".setting-item").filter({
+            has: page.getByText("Memory cache size (by total items)", { exact: true }),
+        });
+        await cacheSizeSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await cacheSizeSetting.locator('input[type="number"]').fill("321");
+        await page.waitForFunction(
+            () => {
+                const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+                return plugin?.core.services.setting.currentSettings().hashCacheMaxCount === 321;
+            },
+            undefined,
+            { timeout: uiTimeoutMs }
+        );
+
         await liveSyncSettings.locator('.sls-setting-menu-btn[title="Sync Settings"]').click();
 
         const deletionPanel = liveSyncSettings

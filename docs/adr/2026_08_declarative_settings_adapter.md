@@ -172,7 +172,7 @@ every complex pane.
 properties:
 
 - one explicit persisted setting key, excluding keys from `OnDialogSettings`;
-- one standard toggle, text, textarea, number, or dropdown control;
+- one standard toggle, number, or dropdown control in the first proof page;
 - a value which is read from the current editing buffer;
 - a change which can be persisted immediately through the existing
   `saveSettings([key])` path; and
@@ -196,15 +196,13 @@ type SettingSpecBase<K extends PersistedSettingKey, C> = {
 
 type SettingSpec =
     | SettingSpecBase<PersistedBooleanSettingKey, { type: "toggle"; defaultValue?: boolean }>
-    | SettingSpecBase<PersistedStringSettingKey, { type: "text"; placeholder?: string }>
-    | SettingSpecBase<PersistedStringSettingKey, { type: "textarea"; placeholder?: string; rows?: number }>
     | SettingSpecBase<
           PersistedNumericSettingKey,
           {
               type: "number";
               min?: number;
               max?: number;
-              validate?: (value: number) => string | void;
+              allowZero?: boolean;
           }
       >
     | SettingSpecBase<
@@ -216,16 +214,25 @@ type SettingSpec =
       >;
 ```
 
-Names, descriptions, maturity labels, placeholders, and configuration levels
-come from the translated Commonlib setting metadata by default. The native
-renderer appends the existing maturity marker to `name`, maps the description
-and placeholder directly, and combines the metadata level with the
-specification's `visible` predicate. The specification may override a label
-only where the current interface already uses a deliberate product-specific
-label. Options remain LiveSync owned because they can depend on the active
-remote, platform, or language. A control which needs the current obsolete-row
-styling remains custom because the native definition does not provide an
-equivalent per-row class contract.
+The initial union contains only the three control types used by the Advanced
+proof page. Text and textarea controls will be added when a migrated page
+provides a concrete use for them. Number validation is derived from `min`,
+`max`, and `allowZero`, so the native and imperative renderers enforce the same
+constraints without introducing an arbitrary validation language.
+
+Names, descriptions, maturity labels, and placeholders come from the translated
+Commonlib setting metadata by default. The native renderer appends the existing
+maturity marker to `name`, and maps the description and supported placeholder
+directly. Configuration level remains a page and renderer concern: the legacy
+renderer retains its existing DOM classes, while the native page catalogue owns
+page-level visibility. A mixed-level native group must provide an explicit
+visibility predicate at that boundary rather than inferring one in the pure
+control converter. The specification may override a label only where the
+current interface already uses a deliberate product-specific label. Options
+remain LiveSync owned because they can depend on the active remote, platform,
+or language. A control which needs the current obsolete-row styling remains
+custom because the native definition does not provide an equivalent per-row
+class contract.
 
 The catalogue explicitly lists each exposed key. It does not enumerate
 `SettingInformation` automatically.
