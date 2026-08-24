@@ -52,13 +52,6 @@
 <Guidance>{translateMessage("Please configure your end-to-end encryption settings.")}</Guidance>
 <InputRow label={translateMessage("End-to-End Encryption")}>
     <input type="checkbox" bind:checked={encryptionSettings.encrypt} />
-    <Password
-        name="e2ee-passphrase"
-        placeholder={translateMessage("Enter your passphrase")}
-        bind:value={encryptionSettings.passphrase}
-        disabled={!encryptionSettings.encrypt}
-        required={encryptionSettings.encrypt}
-    />
 </InputRow>
 <InfoNote title={translateMessage("Strongly Recommended")}>
     {translateMessage(
@@ -69,22 +62,29 @@
         "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future."
     )}
 </InfoNote>
-<InfoNote warning>
-    {translateMessage("This setting must be the same even when connecting to multiple synchronisation destinations.")}
-</InfoNote>
-<InputRow label={translateMessage("Obfuscate Properties")}>
-    <input
-        type="checkbox"
-        bind:checked={encryptionSettings.usePathObfuscation}
-        disabled={!encryptionSettings.encrypt}
-    />
-</InputRow>
-
-<InfoNote>
-    {translateMessage(
-        "Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data."
-    )}
-</InfoNote>
+{#if encryptionSettings.encrypt}
+    <InputRow label={translateMessage("Passphrase")}>
+        <Password
+            name="e2ee-passphrase"
+            placeholder={translateMessage("Enter your passphrase")}
+            bind:value={encryptionSettings.passphrase}
+            required
+        />
+    </InputRow>
+    <InfoNote warning>
+        {translateMessage(
+            "This setting must be the same even when connecting to multiple synchronisation destinations."
+        )}
+    </InfoNote>
+    <InputRow label={translateMessage("Obfuscate Properties")}>
+        <input type="checkbox" bind:checked={encryptionSettings.usePathObfuscation} />
+    </InputRow>
+    <InfoNote>
+        {translateMessage(
+            "Obfuscating properties (e.g., path of file, size, creation and modification dates) adds an additional layer of security by making it harder to identify the structure and names of your files and folders on the remote server. This helps protect your privacy and makes it more difficult for unauthorized users to infer information about your data."
+        )}
+    </InfoNote>
+{/if}
 
 <ExtraItems title={translateMessage("Advanced")}>
     <InputRow label={translateMessage("Encryption Algorithm")}>

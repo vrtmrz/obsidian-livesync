@@ -353,6 +353,12 @@ body {
 }
 
 .sls-onboarding-invitation-action {
+    display: inline;
+}
+
+/* Touch devices need a larger tap target; on desktop this would just pad the
+   link with blank space and make it look like a misplaced button. */
+body.is-mobile .sls-onboarding-invitation-action {
     display: inline-flex;
     min-width: 44px;
     min-height: 44px;

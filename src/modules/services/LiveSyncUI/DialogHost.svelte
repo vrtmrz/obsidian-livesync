@@ -110,7 +110,7 @@
 
     .dialog-host :global(label > span) {
         display: block;
-        width: 8em;
+        min-width: 8em;
     }
 
     .dialog-host :global(.note),

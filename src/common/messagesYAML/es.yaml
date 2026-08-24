@@ -425,6 +425,7 @@ Hidden file synchronization have been temporarily disabled. Please enable them a
 Hidden Files: Archivos ocultos
 Hide completely: Ocultar por completo
 Hide not applicable items: Ocultar elementos no aplicables
+Hide password: Ocultar contraseña
 Higher (${local} > ${remote}): Superior (${local} > ${remote})
 Highlight diff: Resaltar las diferencias
 How to display network errors when the sync server is unreachable.:
@@ -1950,6 +1951,7 @@ Show full banner: Mostrar banner completo
 Show history: Mostrar el historial
 Show icon only: Mostrar solo el icono
 Show only notifications: Mostrar solo notificaciones
+Show password: Mostrar contraseña
 Show status as icons only: Mostrar estado solo con íconos
 Show status icon instead of file warnings banner: Mostrar icono de estado en lugar del banner de advertencia de archivos
 Show status inside the editor: Mostrar estado dentro del editor

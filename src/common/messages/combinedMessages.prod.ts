@@ -2530,6 +2530,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "해당 없는 항목 숨기기",
         "zh-tw": "隱藏不適用的項目",
     },
+    "Hide password": {
+        def: "Hide password",
+        es: "Ocultar contraseña",
+    },
     "Higher (${local} > ${remote})": {
         def: "Higher (${local} > ${remote})",
         es: "Superior (${local} > ${remote})",
@@ -9569,6 +9573,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Показывать только уведомления",
         zh: "仅显示通知",
         "zh-tw": "僅顯示通知",
+    },
+    "Show password": {
+        def: "Show password",
+        es: "Mostrar contraseña",
     },
     "Show status as icons only": {
         def: "Show status as icons only",
