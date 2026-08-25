@@ -50,6 +50,54 @@ export type SettingsPageEntry = {
     legacy: SettingsPaneRenderer;
 };
 
+export type SettingsRootGroupEntry = {
+    icon: string;
+    name: () => string;
+};
+
+/** Root groups used only by Obsidian's declarative settings landing page. */
+const SETTINGS_ROOT_GROUP_CATALOGUE = {
+    "quick-setup": {
+        icon: "🧙‍♂️",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleQuickSetup"),
+    },
+    synchronisation: {
+        icon: "🔄",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleSynchronisation"),
+    },
+    "general-settings": {
+        icon: "⚙️",
+        name: () => $msg("obsidianLiveSyncSettingTab.panelGeneralSettings"),
+    },
+    "setup-other-devices": {
+        icon: "📲",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleSetupOtherDevices"),
+    },
+    "maintenance-and-recovery": {
+        icon: "🛠️",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleMaintenanceAndRecovery"),
+    },
+    "extra-features": {
+        icon: "🧩",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleExtraFeaturesGroup"),
+    },
+    "advanced-settings": {
+        icon: "🔧",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleAdvancedSettings"),
+    },
+    "help-and-information": {
+        icon: "ℹ️",
+        name: () => $msg("obsidianLiveSyncSettingTab.titleHelpAndInformation"),
+    },
+} as const satisfies Record<string, SettingsRootGroupEntry>;
+
+export type SettingsRootGroupId = keyof typeof SETTINGS_ROOT_GROUP_CATALOGUE;
+
+/** Resolve a late-translated root-group label while keeping its icon separate until the Obsidian API boundary. */
+export function getSettingsRootGroupEntry(id: SettingsRootGroupId): SettingsRootGroupEntry {
+    return SETTINGS_ROOT_GROUP_CATALOGUE[id];
+}
+
 /**
  * Build the explicit page list in the same order as the existing settings tab.
  *

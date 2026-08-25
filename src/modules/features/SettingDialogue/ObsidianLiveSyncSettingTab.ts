@@ -64,7 +64,9 @@ import {
     createExtraMenuSettingDefinitions,
     createGeneralSettingDefinitionGroups,
     createSettingsPageCatalogue,
+    getSettingsRootGroupEntry,
     type SettingsPageEntry,
+    type SettingsRootGroupId,
 } from "./SettingsPageCatalogue.ts";
 import { createAdvancedSettingSpecGroups } from "./AdvancedSettingSpecs.ts";
 import { isValidSettingSpecValue, type SettingSpec } from "./SettingSpec.ts";
@@ -73,6 +75,7 @@ import type {
     SettingDefinitionGroup,
     SettingDefinitionItem,
     SettingDefinitionPage,
+    SettingGroupItem,
 } from "obsidian";
 import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
@@ -785,7 +788,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (!appearance || !logging) {
             throw new Error("General settings must define Appearance and Logging groups");
         }
-        return this.createPageGroup(`⚙️ ${$msg("obsidianLiveSyncSettingTab.panelGeneralSettings")}`, [
+        return this.createRootGroup("general-settings", [
             {
                 type: "page",
                 name: `🎨 ${appearance.heading}`,
@@ -809,53 +812,44 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     private createQuickSetupGroup(): SettingDefinitionGroup {
-        return {
-            type: "group",
-            heading: `🧙‍♂️ ${$msg("obsidianLiveSyncSettingTab.titleQuickSetup")}`,
-            items: [
-                {
-                    name: $msg("obsidianLiveSyncSettingTab.nameConnectSetupURI"),
-                    desc: $msg("obsidianLiveSyncSettingTab.descConnectSetupURI"),
-                    action: () => this.requestOpenSetupURI(),
-                },
-                {
-                    name: $msg("Rerun Onboarding Wizard"),
-                    desc: $msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."),
-                    action: () => fireAndForget(async () => await this.rerunOnboardingWizard()),
-                },
-                {
-                    name: $msg("obsidianLiveSyncSettingTab.nameEnableLiveSync"),
-                    desc: $msg("obsidianLiveSyncSettingTab.descEnableLiveSync"),
-                    visible: () => !this.isConfiguredAs("isConfigured", true),
-                    action: () => fireAndForget(async () => await this.enableLiveSyncFromSettings()),
-                },
-            ],
-        };
+        return this.createRootGroup("quick-setup", [
+            {
+                name: $msg("obsidianLiveSyncSettingTab.nameConnectSetupURI"),
+                desc: $msg("obsidianLiveSyncSettingTab.descConnectSetupURI"),
+                action: () => this.requestOpenSetupURI(),
+            },
+            {
+                name: $msg("Rerun Onboarding Wizard"),
+                desc: $msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."),
+                action: () => fireAndForget(async () => await this.rerunOnboardingWizard()),
+            },
+            {
+                name: $msg("obsidianLiveSyncSettingTab.nameEnableLiveSync"),
+                desc: $msg("obsidianLiveSyncSettingTab.descEnableLiveSync"),
+                visible: () => !this.isConfiguredAs("isConfigured", true),
+                action: () => fireAndForget(async () => await this.enableLiveSyncFromSettings()),
+            },
+        ]);
     }
 
-    private createSynchronisationGroup(pages: SettingDefinitionPage[]): SettingDefinitionGroup {
-        return this.createPageGroup(`🔄 ${$msg("obsidianLiveSyncSettingTab.titleSynchronisation")}`, pages);
-    }
-
-    private createPageGroup(
-        heading: string,
-        pages: SettingDefinitionPage[],
+    private createRootGroup(
+        id: SettingsRootGroupId,
+        items: SettingGroupItem[],
         visible?: () => boolean
     ): SettingDefinitionGroup {
+        const { icon, name } = getSettingsRootGroupEntry(id);
         return {
             type: "group",
-            heading,
-            items: pages,
+            heading: `${icon} ${name()}`,
+            items,
             ...(visible ? { visible } : {}),
         };
     }
 
     private createSetupOtherDevicesGroup(): SettingDefinitionGroup {
-        return {
-            type: "group",
-            heading: `📲 ${$msg("obsidianLiveSyncSettingTab.titleSetupOtherDevices")}`,
-            visible: () => this.isConfiguredAs("isConfigured", true),
-            items: [
+        return this.createRootGroup(
+            "setup-other-devices",
+            [
                 {
                     name: $msg("obsidianLiveSyncSettingTab.nameCopySetupURI"),
                     desc: $msg("obsidianLiveSyncSettingTab.descCopySetupURI"),
@@ -867,7 +861,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     action: () => this.requestShowSetupQRCode(),
                 },
             ],
-        };
+            () => this.isConfiguredAs("isConfigured", true)
+        );
     }
 
     override getSettingDefinitions(): SettingDefinitionItem[] {
@@ -882,34 +877,34 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             return this.createDeclarativePage(entry);
         };
-        const synchronisation = this.createSynchronisationGroup([
+        const synchronisation = this.createRootGroup("synchronisation", [
             getPage("remote-configuration"),
             getPage("synchronisation"),
         ]);
         const generalSettings = this.createGeneralSettingsGroup();
         const quickSetup = this.createQuickSetupGroup();
         const setupOtherDevices = this.createSetupOtherDevicesGroup();
-        const maintenance = this.createPageGroup(
-            `🛠️ ${$msg("obsidianLiveSyncSettingTab.titleMaintenanceAndRecovery")}`,
-            [getPage("maintenance"), getPage("hatch")]
-        );
-        const extraFeatures = this.createPageGroup(
-            `🧩 ${$msg("obsidianLiveSyncSettingTab.titleExtraFeaturesGroup")}`,
+        const maintenance = this.createRootGroup("maintenance-and-recovery", [
+            getPage("maintenance"),
+            getPage("hatch"),
+        ]);
+        const extraFeatures = this.createRootGroup(
+            "extra-features",
             [getPage("selector"), getPage("customisation-sync")],
             () => this.isPageVisible(LEVEL_ADVANCED)
         );
-        const advancedSettings = this.createPageGroup(
-            `🔧 ${$msg("obsidianLiveSyncSettingTab.titleAdvancedSettings")}`,
+        const advancedSettings = this.createRootGroup(
+            "advanced-settings",
             [getPage("advanced"), getPage("power-users"), getPage("patches")],
             () =>
                 this.isPageVisible(LEVEL_ADVANCED) ||
                 this.isPageVisible(LEVEL_POWER_USER) ||
                 this.isPageVisible(LEVEL_EDGE_CASE)
         );
-        const helpAndInformation = this.createPageGroup(
-            `ℹ️ ${$msg("obsidianLiveSyncSettingTab.titleHelpAndInformation")}`,
-            [getPage("help"), getPage("change-log")]
-        );
+        const helpAndInformation = this.createRootGroup("help-and-information", [
+            getPage("help"),
+            getPage("change-log"),
+        ]);
         const laterGroups = [setupOtherDevices, maintenance, extraFeatures, advancedSettings, helpAndInformation];
 
         if (this.isAnySyncEnabled()) {

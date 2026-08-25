@@ -18,9 +18,34 @@ vi.mock("./PanePowerUsers.ts", () => ({ panePowerUsers: vi.fn() }));
 vi.mock("./PanePatches.ts", () => ({ panePatches: vi.fn() }));
 vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 
-import { createAdvancedSettingDefinitionGroups, createSettingsPageCatalogue } from "./SettingsPageCatalogue.ts";
+import {
+    createAdvancedSettingDefinitionGroups,
+    createSettingsPageCatalogue,
+    getSettingsRootGroupEntry,
+    type SettingsRootGroupId,
+} from "./SettingsPageCatalogue.ts";
+
+const EXPECTED_ROOT_GROUPS = [
+    ["quick-setup", "🧙‍♂️", "obsidianLiveSyncSettingTab.titleQuickSetup"],
+    ["synchronisation", "🔄", "obsidianLiveSyncSettingTab.titleSynchronisation"],
+    ["general-settings", "⚙️", "obsidianLiveSyncSettingTab.panelGeneralSettings"],
+    ["setup-other-devices", "📲", "obsidianLiveSyncSettingTab.titleSetupOtherDevices"],
+    ["maintenance-and-recovery", "🛠️", "obsidianLiveSyncSettingTab.titleMaintenanceAndRecovery"],
+    ["extra-features", "🧩", "obsidianLiveSyncSettingTab.titleExtraFeaturesGroup"],
+    ["advanced-settings", "🔧", "obsidianLiveSyncSettingTab.titleAdvancedSettings"],
+    ["help-and-information", "ℹ️", "obsidianLiveSyncSettingTab.titleHelpAndInformation"],
+] as const satisfies readonly (readonly [SettingsRootGroupId, string, string])[];
 
 describe("settings page catalogue", () => {
+    it("keeps each declarative root-group icon separate from its late-translated name", () => {
+        expect(
+            EXPECTED_ROOT_GROUPS.map(([id]) => {
+                const { icon, name } = getSettingsRootGroupEntry(id);
+                return [id, icon, name()];
+            })
+        ).toEqual(EXPECTED_ROOT_GROUPS);
+    });
+
     it("registers every existing page once and keeps only Advanced native", () => {
         const catalogue = createSettingsPageCatalogue();
 

@@ -140,6 +140,12 @@ by the catalogue, while the imperative renderer continues to pass the same
 emoji to its existing menu button. This preserves the established visual
 identity without adding host-DOM manipulation.
 
+`SettingDefinitionGroup` likewise exposes only a string heading. Root groups
+therefore have semantic identifiers whose catalogue entries keep their emoji
+and late-translated names separate. The adapter combines those fields only
+when constructing the Obsidian definition, so callers select a group by its
+identifier instead of repeating presentation strings.
+
 ### Compose the native landing page around common tasks
 
 The declarative root is a composition of native groups and catalogue pages,
