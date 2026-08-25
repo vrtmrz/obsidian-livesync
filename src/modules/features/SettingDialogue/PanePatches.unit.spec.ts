@@ -12,11 +12,13 @@ const remediationHarness = vi.hoisted(() => {
         onChange: vi.fn(),
         setValue: vi.fn(),
     };
+    const setClass = vi.fn();
 
     return {
         createSpan,
         dateElement,
         inputEl,
+        setClass,
         textComponent,
     };
 });
@@ -33,6 +35,11 @@ vi.mock("./LiveSyncSetting.ts", () => ({
         }
 
         setAuto(): this {
+            return this;
+        }
+
+        setClass(value: string): this {
+            remediationHarness.setClass(value);
             return this;
         }
 
@@ -93,5 +100,6 @@ describe("panePatches remediation setting", () => {
         expect(createSpan).not.toHaveBeenCalled();
         expect(remediationHarness.createSpan).toHaveBeenCalledOnce();
         expect(remediationHarness.dateElement.textContent).toBe("No limit configured");
+        expect(remediationHarness.setClass).toHaveBeenCalledWith("sls-setting-mobile-wrap-controls");
     });
 });

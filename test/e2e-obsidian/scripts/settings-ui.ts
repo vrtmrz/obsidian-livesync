@@ -1,8 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
-import { waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
-import { assertMobileDialogueLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
+import { createE2eObsidianDeviceLocalState, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
+import {
+    assertMobileDialogueLayout,
+    setObsidianMobileTestMode,
+    setObsidianMobileTestModeBeforePluginStart,
+} from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import {
     allowPendingObsidianTestVaultOpenAction,
@@ -160,39 +164,206 @@ async function setConfiguredStateForLandingInspection(page: Page, configured: bo
     }, configured);
 }
 
-async function captureDeclarativeMobileLanding(): Promise<string | undefined> {
+async function captureDeclarativeMobileSettings(): Promise<
+    | {
+          landingPage: string;
+          maintenance: string;
+          patches: string;
+          remoteConfiguration: string;
+      }
+    | undefined
+> {
     const port = obsidianRemoteDebuggingPort();
-    await setObsidianMobileTestMode(port, true, uiTimeoutMs);
-    try {
-        return await withObsidianPage(port, async (page) => {
-            const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
-            if (settingsNavigator.renderer !== "declarative") {
-                await settingsNavigator.close();
-                return undefined;
-            }
-            await settingsNavigator.returnToCatalogue();
-            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue, true);
-            await assertDeclarativeLandingOrder(settingsNavigator.dialogue, true);
-            const remoteConfiguration = settingsNavigator.dialogue
-                .locator(".setting-item-name")
-                .filter({ hasText: "Remote Configuration" })
-                .first();
-            await remoteConfiguration.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            const path = `${diagnosticsDirectory}/settings-declarative-landing-mobile.png`;
-            await settingsNavigator.dialogue.screenshot({ ...settingsScreenshotOptions, path });
-            const remotePosition = await remoteConfiguration.evaluate((element) => {
-                const bounds = element.getBoundingClientRect();
-                return { top: bounds.top, bottom: bounds.bottom, viewportHeight: window.innerHeight };
-            });
-            if (remotePosition.top < 0 || remotePosition.bottom > remotePosition.viewportHeight) {
-                throw new Error("Remote Configuration was not visible at the top of the mobile settings landing page.");
-            }
+    return await withObsidianPage(port, async (page) => {
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        if (settingsNavigator.renderer !== "declarative") {
             await settingsNavigator.close();
-            return path;
+            return undefined;
+        }
+        await settingsNavigator.returnToCatalogue();
+        await scrollDeclarativeLandingToTop(settingsNavigator.dialogue, true);
+        await assertDeclarativeLandingOrder(settingsNavigator.dialogue, true);
+        const remoteConfiguration = settingsNavigator.dialogue
+            .locator(".setting-item-name")
+            .filter({ hasText: "Remote Configuration" })
+            .first();
+        await remoteConfiguration.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const path = `${diagnosticsDirectory}/settings-declarative-landing-mobile.png`;
+        await settingsNavigator.dialogue.screenshot({ ...settingsScreenshotOptions, path });
+        const remotePosition = await remoteConfiguration.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            return { top: bounds.top, bottom: bounds.bottom, viewportHeight: window.innerHeight };
         });
-    } finally {
-        await setObsidianMobileTestMode(port, false, uiTimeoutMs);
-    }
+        if (remotePosition.top < 0 || remotePosition.bottom > remotePosition.viewportHeight) {
+            throw new Error("Remote Configuration was not visible at the top of the mobile settings landing page.");
+        }
+
+        const remotePage = await settingsNavigator.openPage("Remote Configuration");
+        const e2eeHeading = remotePage
+            .locator("h4.sls-setting-panel-title")
+            .filter({ hasText: "E2EE Configuration" })
+            .first();
+        const e2eeActions = remotePage.locator(".setting-item").filter({
+            has: settingsNavigator.page.getByText("Configure E2EE", { exact: true }),
+        });
+        await e2eeHeading.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await e2eeActions.waitFor({ state: "visible", timeout: uiTimeoutMs });
+
+        const layoutFailures: string[] = [];
+        const actionLayout = await e2eeActions.evaluate((setting) => {
+            const control = setting.querySelector<HTMLElement>(".setting-item-control");
+            if (control === null) throw new Error("The E2EE action row did not contain a control group.");
+            const settingBounds = setting.getBoundingClientRect();
+            const buttonBounds = Array.from(control.querySelectorAll("button")).map((button) =>
+                button.getBoundingClientRect()
+            );
+            return {
+                controlClientWidth: control.clientWidth,
+                controlScrollWidth: control.scrollWidth,
+                rightmostButton: Math.max(...buttonBounds.map((bounds) => bounds.right)),
+                settingRight: settingBounds.right,
+            };
+        });
+        if (
+            actionLayout.controlScrollWidth > actionLayout.controlClientWidth + 1 ||
+            actionLayout.rightmostButton > actionLayout.settingRight + 1
+        ) {
+            layoutFailures.push(`the E2EE actions overflowed their setting row (${JSON.stringify(actionLayout)})`);
+        }
+
+        await remotePage.evaluate((content) => {
+            content.scrollTop = content.scrollHeight - content.clientHeight;
+            content.dispatchEvent(new Event("scroll", { bubbles: true }));
+        });
+        await settingsNavigator.page.waitForTimeout(50);
+        const panelLayout = await e2eeHeading.evaluate((heading) => {
+            const infoPanel = heading.parentElement?.querySelector<HTMLElement>(".info-panel");
+            if (infoPanel === null || infoPanel === undefined) {
+                throw new Error("The E2EE section did not contain its information panel.");
+            }
+            const modalHeader = heading.closest(".modal.mod-settings")?.querySelector<HTMLElement>(".modal-header");
+            if (modalHeader === null || modalHeader === undefined) {
+                throw new Error("The mobile settings page did not contain its native header.");
+            }
+            const headingBounds = heading.getBoundingClientRect();
+            const infoBounds = infoPanel.getBoundingClientRect();
+            return {
+                headingBottom: headingBounds.bottom,
+                headingPosition: getComputedStyle(heading).position,
+                headingTop: headingBounds.top,
+                infoBottom: infoBounds.bottom,
+                infoTop: infoBounds.top,
+                modalHeaderBackground: getComputedStyle(modalHeader).backgroundColor,
+            };
+        });
+        if (
+            panelLayout.headingBottom > panelLayout.infoTop + 1 &&
+            panelLayout.headingTop < panelLayout.infoBottom - 1
+        ) {
+            layoutFailures.push(`the E2EE section heading overlapped its contents (${JSON.stringify(panelLayout)})`);
+        }
+        if (
+            panelLayout.modalHeaderBackground === "transparent" ||
+            panelLayout.modalHeaderBackground === "rgba(0, 0, 0, 0)"
+        ) {
+            layoutFailures.push("the native mobile settings header remained transparent over scrolling content");
+        }
+
+        const remotePath = `${diagnosticsDirectory}/settings-declarative-remote-mobile.png`;
+        await settingsNavigator.dialogue.screenshot({ ...settingsScreenshotOptions, path: remotePath });
+        if (layoutFailures.length > 0) {
+            throw new Error(`The mobile Remote Configuration layout was invalid: ${layoutFailures.join("; ")}.`);
+        }
+
+        const maintenancePage = await settingsNavigator.openPage("Maintenance");
+        const markResolvedButton = maintenancePage
+            .locator(".op-warn button")
+            .filter({ hasText: "I've made a backup, mark this device 'resolved'" })
+            .first();
+        await markResolvedButton.evaluate((button) => {
+            const warning = button.closest<HTMLElement>(".op-warn");
+            if (warning === null) throw new Error("The Maintenance recovery action had no warning container.");
+            warning.removeClass("sls-setting-hidden");
+        });
+        await markResolvedButton.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await markResolvedButton.scrollIntoViewIfNeeded();
+        const maintenanceLayout = await markResolvedButton.evaluate((button) => {
+            const content = button.closest<HTMLElement>(".vertical-tab-content");
+            if (content === null) throw new Error("The Maintenance button was outside the settings content.");
+            const buttonBounds = button.getBoundingClientRect();
+            const contentBounds = content.getBoundingClientRect();
+            return {
+                buttonLeft: buttonBounds.left,
+                buttonRight: buttonBounds.right,
+                contentLeft: contentBounds.left,
+                contentRight: contentBounds.right,
+                rootClientWidth: document.documentElement.clientWidth,
+                rootScrollWidth: document.documentElement.scrollWidth,
+            };
+        });
+        const maintenancePath = `${diagnosticsDirectory}/settings-declarative-maintenance-mobile.png`;
+        await settingsNavigator.dialogue.screenshot({ ...settingsScreenshotOptions, path: maintenancePath });
+        if (
+            maintenanceLayout.buttonLeft < maintenanceLayout.contentLeft - 1 ||
+            maintenanceLayout.buttonRight > maintenanceLayout.contentRight + 1 ||
+            maintenanceLayout.rootScrollWidth > maintenanceLayout.rootClientWidth + 1
+        ) {
+            layoutFailures.push(
+                `the Maintenance recovery action overflowed the settings pane (${JSON.stringify(maintenanceLayout)})`
+            );
+        }
+
+        const patchesPage = await settingsNavigator.openPage("Patches");
+        const remediationSetting = patchesPage.locator(".setting-item").filter({
+            has: settingsNavigator.page.locator('input[type="datetime-local"]'),
+        });
+        await remediationSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await remediationSetting.scrollIntoViewIfNeeded();
+        const patchesLayout = await remediationSetting.evaluate((setting) => {
+            const content = setting.closest<HTMLElement>(".vertical-tab-content");
+            const control = setting.querySelector<HTMLElement>(".setting-item-control");
+            if (content === null || control === null) {
+                throw new Error("The Patches remediation row was incomplete.");
+            }
+            const applyButton = control.querySelector<HTMLElement>("button");
+            if (applyButton === null) throw new Error("The Patches remediation row did not contain Apply.");
+            const settingBounds = setting.getBoundingClientRect();
+            const contentBounds = content.getBoundingClientRect();
+            const buttonBounds = applyButton.getBoundingClientRect();
+            return {
+                buttonRight: buttonBounds.right,
+                contentRight: contentBounds.right,
+                controlClientWidth: control.clientWidth,
+                controlScrollWidth: control.scrollWidth,
+                rootClientWidth: document.documentElement.clientWidth,
+                rootScrollWidth: document.documentElement.scrollWidth,
+                settingRight: settingBounds.right,
+            };
+        });
+        const patchesPath = `${diagnosticsDirectory}/settings-declarative-patches-mobile.png`;
+        await settingsNavigator.dialogue.screenshot({ ...settingsScreenshotOptions, path: patchesPath });
+        if (
+            patchesLayout.buttonRight > patchesLayout.settingRight + 1 ||
+            patchesLayout.buttonRight > patchesLayout.contentRight + 1 ||
+            patchesLayout.controlScrollWidth > patchesLayout.controlClientWidth + 1 ||
+            patchesLayout.rootScrollWidth > patchesLayout.rootClientWidth + 1
+        ) {
+            layoutFailures.push(
+                `the Patches remediation actions overflowed their setting row (${JSON.stringify(patchesLayout)})`
+            );
+        }
+
+        if (layoutFailures.length > 0) {
+            throw new Error(`The mobile settings layout was invalid: ${layoutFailures.join("; ")}.`);
+        }
+        await settingsNavigator.close();
+        return {
+            landingPage: path,
+            maintenance: maintenancePath,
+            patches: patchesPath,
+            remoteConfiguration: remotePath,
+        };
+    });
 }
 
 async function openSettingsInitialisationDialogueForInspection(isP2P: boolean): Promise<void> {
@@ -795,6 +966,72 @@ async function verifyPendingSettingsInitialisationFlow(): Promise<{ choice: stri
     });
 }
 
+function createSettingsPluginData(settingsOnlyRun: boolean): Record<string, unknown> {
+    return {
+        doctorProcessedVersion: settingsOnlyRun ? "1.0.0" : "0.25.27",
+        isConfigured: true,
+        liveSync: false,
+        versionUpFlash: settingsOnlyRun ? "" : compatibilityReviewMessage,
+        notifyThresholdOfRemoteStorageSize: 0,
+        syncOnStart: false,
+        syncOnSave: false,
+        syncOnEditorSave: false,
+        syncOnFileOpen: false,
+        syncAfterMerge: false,
+        periodicReplication: false,
+        handleFilenameCaseSensitive: false,
+        useAdvancedMode: false,
+        usePowerUserMode: false,
+        useEdgeCaseMode: false,
+    };
+}
+
+async function captureDeclarativeMobileSettingsInFreshSession(
+    binary: string,
+    cliBinary: string
+): Promise<
+    | {
+          landingPage: string;
+          maintenance: string;
+          patches: string;
+          remoteConfiguration: string;
+      }
+    | undefined
+> {
+    // Enter mobile mode before LiveSync first loads so Obsidian fires the
+    // mobile settings-registration lifecycle used by a real mobile start-up.
+    const vault = await createTemporaryVault();
+    let session: ObsidianLiveSyncSession | undefined;
+    try {
+        session = await startObsidianLiveSyncSession({
+            binary,
+            cliBinary,
+            vault,
+            startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+            pluginData: {
+                ...createSettingsPluginData(true),
+                useAdvancedMode: true,
+                useEdgeCaseMode: true,
+                usePowerUserMode: true,
+            },
+            localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
+            lifecycle: {
+                beforePluginStart: async ({ remoteDebuggingPort }) => {
+                    await setObsidianMobileTestModeBeforePluginStart(remoteDebuggingPort, true, uiTimeoutMs);
+                },
+            },
+        });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        await resumePendingCompatibilityReviewForSettings();
+        return await captureDeclarativeMobileSettings();
+    } finally {
+        if (session) {
+            await session.app.stop();
+        }
+        await vault.dispose();
+    }
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -804,29 +1041,14 @@ async function main(): Promise<void> {
     const vault = await createTemporaryVault();
     await mkdir(diagnosticsDirectory, { recursive: true });
     let session: ObsidianLiveSyncSession | undefined;
+    let settingsRenderer: "declarative" | "imperative" | undefined;
     try {
         session = await startObsidianLiveSyncSession({
             binary,
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-            pluginData: {
-                doctorProcessedVersion: settingsOnly ? "1.0.0" : "0.25.27",
-                isConfigured: true,
-                liveSync: false,
-                versionUpFlash: settingsOnly ? "" : compatibilityReviewMessage,
-                notifyThresholdOfRemoteStorageSize: 0,
-                syncOnStart: false,
-                syncOnSave: false,
-                syncOnEditorSave: false,
-                syncOnFileOpen: false,
-                syncAfterMerge: false,
-                periodicReplication: false,
-                handleFilenameCaseSensitive: false,
-                useAdvancedMode: false,
-                usePowerUserMode: false,
-                useEdgeCaseMode: false,
-            },
+            pluginData: createSettingsPluginData(settingsOnly),
             lifecycle: settingsOnly
                 ? {
                       afterLaunch: async ({ remoteDebuggingPort }) => {
@@ -843,11 +1065,9 @@ async function main(): Promise<void> {
             await verifyCompatibilityReview();
             await verifyConfigDoctorFollowsCompatibilityReview();
         }
-        const settingsRenderer = await verifyEffectiveSettings();
+        settingsRenderer = await verifyEffectiveSettings();
         const initialisation = await verifyPendingSettingsInitialisationFlow();
         const p2pInitialisation = await captureP2PSettingsInitialisationDialogue();
-        const mobileLanding = settingsRenderer === "declarative" ? await captureDeclarativeMobileLanding() : undefined;
-        if (mobileLanding) console.log(`Declarative mobile settings landing page: ${mobileLanding}`);
         console.log(
             `Pending-settings initialisation screenshots: ${initialisation.choice}, ${initialisation.fallback}, ${p2pInitialisation}`
         );
@@ -857,6 +1077,17 @@ async function main(): Promise<void> {
             await session.app.stop();
         }
         await vault.dispose();
+    }
+
+    const mobileSettings =
+        settingsRenderer === "declarative"
+            ? await captureDeclarativeMobileSettingsInFreshSession(binary, cli.binary)
+            : undefined;
+    if (mobileSettings) {
+        console.log(`Declarative mobile settings landing page: ${mobileSettings.landingPage}`);
+        console.log(`Declarative mobile Remote Configuration page: ${mobileSettings.remoteConfiguration}`);
+        console.log(`Declarative mobile Maintenance page: ${mobileSettings.maintenance}`);
+        console.log(`Declarative mobile Patches page: ${mobileSettings.patches}`);
     }
 }
 

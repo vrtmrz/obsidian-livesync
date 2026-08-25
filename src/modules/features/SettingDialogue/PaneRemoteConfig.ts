@@ -105,7 +105,9 @@ export function paneRemoteConfig(
         void addPanel(paneEl, "E2EE Configuration", () => {}).then((paneEl) => {
             const infoPanel = new SveltePanel(InfoPanel, paneEl, E2EESummaryWritable);
             this.lifetimeComponent.register(() => infoPanel.destroy());
-            const setupButton = new Setting(paneEl).setName("Configure E2EE");
+            const setupButton = new Setting(paneEl)
+                .setName("Configure E2EE")
+                .setClass("sls-setting-mobile-wrap-controls");
             setupButton
                 .addButton((button) =>
                     setButtonDestructiveState(button)

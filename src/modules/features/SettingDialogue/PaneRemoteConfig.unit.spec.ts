@@ -30,6 +30,10 @@ vi.mock("./LiveSyncSetting.ts", () => ({
             return this;
         }
 
+        setClass() {
+            return this;
+        }
+
         addButton() {
             return this;
         }

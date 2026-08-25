@@ -177,7 +177,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
     });
     void addPanel(paneEl, "Remediation").then((paneEl) => {
-        const setting = new Setting(paneEl);
+        const setting = new Setting(paneEl).setClass("sls-setting-mobile-wrap-controls");
         const dateEl = setting.controlEl.createSpan();
         setting
             .addText((text) => {
