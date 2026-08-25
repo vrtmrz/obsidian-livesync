@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 25th August, 2026
 
+I had grown quite fond of the settings screen, but it seems that a simpler, healthier life is called for.
+
 ### Interface and translation
 
 #### Fixed
@@ -24,7 +26,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Improved
 
-- Settings page names, General controls, Quick Setup actions, and Advanced controls now use Obsidian 1.13's native settings interface and global search, while retaining their familiar icons. The landing page keeps Remote Configuration and Sync Settings together, places Appearance, Logging, and Extra menus under General Settings, and groups maintenance, optional features, advanced settings, and help by purpose. Earlier supported Obsidian versions continue to use the pane-based interface.
+- Settings page names, controls in General Settings, Quick Setup actions, and Advanced controls now use Obsidian 1.13's native settings interface and global search, while retaining their familiar icons. The landing page keeps Remote Configuration and Sync Settings together, places Appearance, Logging, and Extra menus under General Settings, and groups maintenance, optional features, advanced settings, and help by purpose. Earlier supported Obsidian versions continue to use the pane-based interface.
 - Settings changes which require database initialisation now use a focused Setup Manager dialogue to choose between existing synchronisation data and the files in the current Vault. The selected reset or rebuild is reserved before the settings are saved, while cancelling offers a separate, explicit settings-only fallback.
 
 ## 1.0.18
@@ -92,45 +94,3 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Improved
 
 - The Traditional Chinese translation catalogue has been completed and polished for broader coverage and more natural, consistent terminology (PR #1106). Thank you to @nimula for the contribution!
-
-## 1.0.14
-
-14th August, 2026
-
-Thank you for your patience. At last, it looks as though we can clear some of the Community Review warnings.
-
-### Synchronisation and storage
-
-#### Fixed
-
-- CouchDB operations which run to completion now close their temporary remote database connections after use across both Commonlib and LiveSync, including Setup Wizard and settings probes, command-line milestone verification, database maintenance, Security Seed refreshes, status queries, and retry and error paths (Commonlib PR #112).
-    - This covers every temporary connection currently identified as a possible contributor to the long-running resource growth tracked in #1034. Validation over extended sessions is continuing.
-    - Thank you to @apple-ouyang for the contribution!
-
-## 1.0.13
-
-13th August, 2026
-
-### Conflict handling and recovery
-
-#### Improved
-
-- **Inspect conflicts and file/database differences** now reports local Metadata whose stored document ID does not match the ID derived from its recorded path. Ordinary scans leave unresolved entries and their corresponding Vault paths unchanged, while allowing consistently addressed Metadata for the same logical path to proceed normally.
-    - When the current winner has no conflict leaves and has an unambiguous target, its wrench menu can repair that one local Metadata document after separate confirmation. The target is written and verified before the mismatched source ID is removed; ambiguous or otherwise unsafe entries remain read-only.
-
-#### Fixed
-
-- Fast Fetch now writes deletion tombstones to the local database without attempting to decrypt them. A tombstone has no encrypted payload, and decryption previously aborted the whole fetch at the first deleted document. New devices could not complete their initial sync on vaults that contain old deletions (Commonlib PR #108).
-    - Thank you to @KennethLloyd for the contribution!
-
-## 1.0.12
-
-11th August, 2026
-
-### Synchronisation and storage
-
-#### Fixed
-
-- One-shot CouchDB replication now closes its temporary remote database after each run and before retrying, preventing inactive PouchDB instances from accumulating during long-running periodic synchronisation (Commonlib PR #75). Thank you to @apple-ouyang for the contribution!
-- Start-up and recovery scans now keep failed database-to-Vault writes retryable instead of recording them as successful and later mistaking the still-missing file for a local deletion (Commonlib PR #106).
-    - Files over the size limit or in conflict remain deliberately skipped, while actual write failures are reported to Fast Setup, CLI mirror, and daemon callers.
