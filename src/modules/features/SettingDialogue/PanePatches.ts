@@ -13,6 +13,7 @@ import { visibleOnly } from "./SettingPane.ts";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { migrateDatabases } from "./settingUtils.ts";
+import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
@@ -74,7 +75,8 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             }
         };
         {
-            const infoClass = this.editingSettings.useIndexedDBAdapter ? "op-warn" : "op-warn-info";
+            const useIndexedDBAdapter = usesLegacyIndexedDBAdapter(this.editingSettings);
+            const infoClass = useIndexedDBAdapter ? "op-warn" : "op-warn-info";
             paneEl.createDiv({
                 text: "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.",
                 cls: infoClass,
@@ -87,8 +89,8 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 .setName("Database Adapter")
                 .setDesc("Select the database adapter to use. ");
             const el = setting.controlEl.createDiv({});
-            el.setText(`Current adapter: ${this.editingSettings.useIndexedDBAdapter ? "IndexedDB" : "IDB"}`);
-            if (!this.editingSettings.useIndexedDBAdapter) {
+            el.setText(`Current adapter: ${useIndexedDBAdapter ? "IndexedDB" : "IDB"}`);
+            if (!useIndexedDBAdapter) {
                 setting.addButton((button) => {
                     button.setButtonText("Switch to IndexedDB").onClick(async () => {
                         Logger("Migrating all data to IndexedDB...", LOG_LEVEL_NOTICE);

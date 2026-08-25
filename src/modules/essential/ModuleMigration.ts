@@ -24,6 +24,7 @@ import {
     runConfiguredStartupLifecycle,
     runStartupEntryLifecycle,
 } from "@/serviceFeatures/configuredStartupLifecycle.ts";
+import { disableLegacyBulkChunkPreSend } from "@/common/compatibilitySettings.ts";
 
 type ErrorInfo = {
     path: string;
@@ -77,10 +78,8 @@ export class ModuleMigration extends AbstractModule<LiveSyncCore> {
     }
 
     async migrateDisableBulkSend() {
-        if (this.settings.sendChunksBulk) {
+        if (disableLegacyBulkChunkPreSend(this.settings)) {
             this._log($msg("moduleMigration.logBulkSendCorrupted"), LOG_LEVEL_NOTICE);
-            this.settings.sendChunksBulk = false;
-            this.settings.sendChunksBulkMaxSize = 1;
             await this.saveSettings();
         }
     }

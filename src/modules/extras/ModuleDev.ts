@@ -2,12 +2,9 @@ import { delay } from "octagonal-wheels/promises";
 import { __onMissingTranslation } from "@/common/translation";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-// import { enableTestFunction } from "./devUtil/testUtils.ts";
-import { TestPaneView, VIEW_TYPE_TEST } from "./devUtil/TestPaneView.ts";
 import { writable } from "svelte/store";
 import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncCore } from "@/main.ts";
-import type { WorkspaceLeaf } from "@/deps.ts";
 export class ModuleDev extends AbstractObsidianModule {
     _everyOnloadStart(): Promise<boolean> {
         __onMissingTranslation(() => {});
@@ -35,25 +32,8 @@ export class ModuleDev extends AbstractObsidianModule {
         }
     }
 
-    private _everyOnloadAfterLoadSettings(): Promise<boolean> {
-        if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        this.registerView(VIEW_TYPE_TEST, (leaf: WorkspaceLeaf) => new TestPaneView(leaf, this.plugin, this));
-        this.addCommand({
-            id: "view-test",
-            name: "Open Test dialogue",
-            callback: () => {
-                void this.services.API.showWindow(VIEW_TYPE_TEST);
-            },
-        });
-        return Promise.resolve(true);
-    }
-
     async _everyOnLayoutReady(): Promise<boolean> {
         if (!this.settings.enableDebugTools) return Promise.resolve(true);
-        // if (await this.core.storageAccess.isExistsIncludeHidden("_SHOWDIALOGAUTO.md")) {
-        //     void this.core.$$showView(VIEW_TYPE_TEST);
-        // }
-
         this.addCommand({
             id: "test-create-conflict",
             name: "Create conflict",
@@ -110,7 +90,6 @@ export class ModuleDev extends AbstractObsidianModule {
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
         services.appLifecycle.onLayoutReady.addHandler(this._everyOnLayoutReady.bind(this));
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
-        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
         services.test.test.addHandler(this._everyModuleTest.bind(this));
         services.test.addTestResult.setHandler(this._addTestResult.bind(this));
     }

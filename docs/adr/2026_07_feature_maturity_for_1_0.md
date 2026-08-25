@@ -34,7 +34,7 @@ Version 1.0 needs to distinguish supported opt-in features from previews and fro
 - `xxhash64` is the current hash contract. Other hash algorithms remain available for existing databases and edge-case recovery, not as experimental alternatives for new Vaults.
 - Eden chunks remain accepted at runtime and in transported settings, but are not offered in the settings interface.
 - `doNotUseFixedRevisionForChunks` remains an inert compatibility input. Chunk revisions are always content-derived.
-- The deprecated cleaned-database reconciliation callback remains internal while an old IndexedDB client may still encounter that remote state. It is not a user-selectable maintenance action and is omitted from the settings reference.
+- The cleaned-database compatibility path remains internal while an old IndexedDB client may still encounter that remote state. It is not a user-selectable maintenance action and is omitted from the settings reference.
 
 ### Already removed
 
