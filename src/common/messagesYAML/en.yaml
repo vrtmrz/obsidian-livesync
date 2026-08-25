@@ -725,7 +725,6 @@ moduleLocalDatabase:
 moduleLog:
     showLog: Show Log
 moduleMigration:
-    docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
     fix0256:
         buttons:
             checkItLater: Check it later
@@ -819,30 +818,6 @@ moduleMigration:
 
         ___Note2: The chunks are completely immutable, we can fetch only the
         metadata and difference.___
-    msgInitialSetup: >-
-        Your device has **not been set up yet**. Let me guide you through the setup
-        process.
-
-
-        Please keep in mind that every dialogue content can be copied to the
-        clipboard. If you need to refer to it later, you can paste it into a note in
-        Obsidian. You can also translate it into your language using a translation
-        tool.
-
-
-        First, do you have **Setup URI**?
-
-
-        Note: If you do not know what it is, please refer to the
-        [documentation](${URI_DOC}).
-    msgRecommendSetupUri: >-
-        We strongly recommend that you generate a set-up URI and use it.
-
-        If you do not have knowledge about it, please refer to the
-        [documentation](${URI_DOC}) (Sorry again, but it is important).
-
-
-        How do you want to set it up manually?
     msgSinceV02321: >-
         Since v0.23.21, the self-hosted LiveSync has changed the default behaviour
         and database structure. The following changes have been made:
@@ -874,18 +849,10 @@ moduleMigration:
     optionEnableBoth: Enable both
     optionEnableFilenameCaseInsensitive: "Enable only #1"
     optionEnableFixedRevisionForChunks: "Enable only #2"
-    optionHaveSetupUri: Yes, I have
     optionKeepPreviousBehaviour: Keep previous behaviour
-    optionManualSetup: Set it up all manually
     optionNoAskAgain: No, please ask again
-    optionNoSetupUri: No, I do not have
-    optionRemindNextLaunch: Remind me at the next launch
-    optionSetupViaP2P: Use %{short_p2p_sync} to set up
-    optionSetupWizard: Take me into the setup wizard
     optionYesFetchAgain: Yes, fetch again
     titleCaseSensitivity: Case Sensitivity
-    titleRecommendSetupUri: Recommendation to use Setup URI
-    titleWelcome: Welcome to Self-hosted LiveSync
 moduleObsidianMenu:
     replicate: Replicate
 More actions: More actions
@@ -940,12 +907,10 @@ obsidianLiveSyncSettingTab:
     btnEnable: Enable
     btnFix: Fix
     btnGotItAndUpdated: I got it and updated.
-    btnNext: Next
     btnStart: Start
     btnTest: Test
     btnUse: Use
     buttonFetch: Fetch
-    buttonNext: Next
     defaultLanguage: Default
     descConnectSetupURI: This is the recommended method to set up Self-hosted
         LiveSync with a Setup URI.
@@ -1018,7 +983,6 @@ obsidianLiveSyncSettingTab:
     msgEnableEncryptionRecommendation: We recommend enabling End-To-End Encryption,
         and Path Obfuscation. Are you sure you want to continue without encryption?
     msgFetchConfigFromRemote: Do you want to fetch the config from the remote server?
-    msgGenerateSetupURI: All done! Do you want to generate a setup URI to set up other devices?
     msgIfConfigNotPersistent: If the server configuration is not persistent (e.g.,
         running on docker), the values here may change. Once you are able to
         connect, please update the settings in the server's local.ini.
@@ -1098,7 +1062,6 @@ obsidianLiveSyncSettingTab:
 
         Store only the settings. **Caution: This may lead to data corruption**;
         database reconstruction is generally necessary.
-    msgSelectAndApplyPreset: Please select and apply any preset item to complete the wizard.
     msgSetCorsCredentials: Set cors.credentials
     msgSetCorsOrigins: Set cors.origins
     msgSetMaxDocSize: Set couchdb.max_document_size
@@ -1158,12 +1121,17 @@ obsidianLiveSyncSettingTab:
     titleActiveRemoteServer: Active Remote Server
     titleAppearance: Appearance
     titleConflictResolution: Conflict resolution
-    titleCongratulations: Congratulations!
     titleCouchDB: CouchDB
     titleDeletionPropagation: Deletion Propagation
     titleEncryptionNotEnabled: Encryption is not enabled
     titleEncryptionPassphraseInvalid: Encryption Passphrase Invalid
     titleExtraFeatures: Enable extra and advanced features
+    titleExtraFeaturesGroup: Extra features
+    titleExtraMenus: Extra menus
+    titleHelpAndInformation: Help and information
+    titleHelpAndTroubleshooting: Help and troubleshooting
+    titleMaintenanceAndRecovery: Maintenance and recovery
+    titleAdvancedSettings: Advanced settings
     titleFetchConfig: Fetch Config
     titleFetchConfigFromRemote: Fetch config from remote server
     titleFetchSettings: Fetch Settings
@@ -1177,7 +1145,8 @@ obsidianLiveSyncSettingTab:
     titleRemoteConfigCheckFailed: Remote Configuration Check Failed
     titleRemoteServer: Remote Server
     titleReset: Reset
-    titleSetupOtherDevices: To setup other devices
+    titleSetupOtherDevices: Set up other devices
+    titleSynchronisation: Synchronisation
     titleSynchronizationMethod: Synchronization Method
     titleSynchronizationPreset: Synchronization Preset
     titleSyncSettings: Sync Settings
@@ -1469,8 +1438,8 @@ Replicator:
         InitialiseFatalError: No replicator is available, this is the fatal error.
         Pending: Some file events are pending. Replication has been cancelled.
         SomeModuleFailed: Replication has been cancelled by some module failure
-        VersionUpFlash: An update has been detected. Please open the Settings dialogue
-            and check the Change Log. Replication has been cancelled.
+        VersionUpFlash: Remote synchronisation is paused for compatibility review. Run the
+            'Review why synchronisation is paused' command for details and available actions.
 Requires restart of Obsidian: Requires restart of Obsidian
 Requires restart of Obsidian.: Requires restart of Obsidian.
 Rerun Onboarding Wizard: Rerun Onboarding Wizard
@@ -2340,6 +2309,29 @@ Ui:
             Fetch: Fetch
             Overwrite: Overwrite
     SetupWizard:
+        ApplySettingsInitialisation:
+            ApplyWithoutInitialisation: Apply without Initialisation
+            Back: Review another way to apply these settings
+            BypassGuidance: Applying these settings alone can make this device incompatible with its existing synchronisation data. Use this only when you have confirmed that reconstruction is unnecessary.
+            BypassTitle: Apply Settings without Initialisation?
+            ContinueFetch: Continue with Fetch
+            FetchOption: Reset Synchronisation on This Device
+            FetchOptionDesc: After restarting, rebuild this device's local database from the current remote synchronisation data. Files in the Vault will then be reconciled with that data.
+            FetchOptionP2PDesc: After restarting, select an online source device. This device's local LiveSync database will be rebuilt from that source.
+            Guidance: These setting changes alter how synchronisation data is interpreted. Apply them together with an initialisation operation after restart.
+            KeepEditing: Keep Editing
+            ProceedFetch: Restart and Fetch Synchronisation Data
+            ProceedFetchP2P: Restart and Select a Source Device
+            ProceedRebuild: Restart and Overwrite Server Data
+            ProceedRebuildP2P: Restart and Prepare This Device
+            Question: Which existing data should be used after restart?
+            RebuildOption: Overwrite Server Data with This Device's Files
+            RebuildOptionDesc: Rebuild the local and remote databases from the files currently in this Vault. Other synchronising devices must reset their local synchronisation afterwards.
+            RebuildOptionP2P: Prepare This Device from This Vault
+            RebuildOptionP2PDesc: Rebuild this device's local LiveSync database from the files currently in this Vault. This does not overwrite another device.
+            RemoteVerificationGuidance: The configured remote could not be verified with the current credentials and encryption settings. Continuing may make the Fetch fail after restart.
+            RemoteVerificationTitle: Remote Synchronisation Data Could Not Be Verified
+            Title: Apply Settings and Reinitialise Synchronisation
         Common:
             Back: No, please take me back
             Cancel: Cancel

@@ -9,8 +9,6 @@ export function panePowerUsers(
     { addPanel }: PageFunctions
 ): void {
     void addPanel(paneEl, "CouchDB Connection Tweak", undefined, this.onlyOnCouchDB).then((paneEl) => {
-        paneEl.addClass("wizardHidden");
-
         this.createEl(
             paneEl,
             "div",
@@ -19,16 +17,14 @@ export function panePowerUsers(
             },
             undefined,
             this.onlyOnCouchDB
-        ).addClass("wizardHidden");
+        );
 
-        new Setting(paneEl)
-            .setClass("wizardHidden")
-            .autoWireNumeric("batch_size", { clampMin: 2, onUpdate: this.onlyOnCouchDB });
-        new Setting(paneEl).setClass("wizardHidden").autoWireNumeric("batches_limit", {
+        new Setting(paneEl).autoWireNumeric("batch_size", { clampMin: 2, onUpdate: this.onlyOnCouchDB });
+        new Setting(paneEl).autoWireNumeric("batches_limit", {
             clampMin: 2,
             onUpdate: this.onlyOnCouchDB,
         });
-        new Setting(paneEl).setClass("wizardHidden").autoWireToggle("useTimeouts", { onUpdate: this.onlyOnCouchDB });
+        new Setting(paneEl).autoWireToggle("useTimeouts", { onUpdate: this.onlyOnCouchDB });
     });
     void addPanel(paneEl, "Configuration Encryption").then((paneEl) => {
         const passphrase_options: Record<ConfigPassphraseStore, string> = {
@@ -42,18 +38,14 @@ export function panePowerUsers(
             .autoWireDropDown("configPassphraseStore", {
                 options: passphrase_options,
                 holdValue: true,
-            })
-            .setClass("wizardHidden");
+            });
 
-        new Setting(paneEl)
-            .autoWireText("configPassphrase", { isPassword: true, holdValue: true })
-            .setClass("wizardHidden")
-            .addOnUpdate(() => ({
-                disabled: !this.isConfiguredAs("configPassphraseStore", "LOCALSTORAGE"),
-            }));
-        new Setting(paneEl).addApplyButton(["configPassphrase", "configPassphraseStore"]).setClass("wizardHidden");
+        new Setting(paneEl).autoWireText("configPassphrase", { isPassword: true, holdValue: true }).addOnUpdate(() => ({
+            disabled: !this.isConfiguredAs("configPassphraseStore", "LOCALSTORAGE"),
+        }));
+        new Setting(paneEl).addApplyButton(["configPassphrase", "configPassphraseStore"]);
     });
     void addPanel(paneEl, "Developer").then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("enableDebugTools").setClass("wizardHidden");
+        new Setting(paneEl).autoWireToggle("enableDebugTools");
     });
 }

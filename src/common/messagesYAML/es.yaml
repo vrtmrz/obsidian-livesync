@@ -751,7 +751,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: Mostrar registro
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README_ES.md#how-to-use
   logBulkSendCorrupted: El envío de fragmentos en bloque se ha habilitado, sin
     embargo, esta función se ha corrompido. Disculpe las molestias.
     Deshabilitado automáticamente.
@@ -782,30 +781,6 @@ moduleMigration:
 
     ___Nota2: Los fragmentos son completamente inmutables, solo podemos obtener
     los metadatos y diferencias.___
-  msgInitialSetup: >-
-    Tu dispositivo **aún no ha sido configurado**. Permíteme guiarte a través
-    del proceso de configuración.
-
-
-    Ten en cuenta que todo el contenido del diálogo se puede copiar al
-    portapapeles. Si necesitas consultarlo más tarde, puedes pegarlo en una nota
-    en Obsidian. También puedes traducirlo a tu idioma utilizando una
-    herramienta de traducción.
-
-
-    Primero, ¿tienes **URI de configuración**?
-
-
-    Nota: Si no sabes qué es, consulta la [documentación](${URI_DOC}).
-  msgRecommendSetupUri: >-
-    Te recomendamos encarecidamente que generes una URI de configuración y la
-    utilices.
-
-    Si no tienes conocimientos al respecto, consulta la
-    [documentación](${URI_DOC}) (Lo siento de nuevo, pero es importante).
-
-
-    ¿Cómo quieres configurarlo manualmente?
   msgSinceV02321: >-
     Desde la versión v0.23.21, Self-hosted LiveSync ha cambiado el
     comportamiento predeterminado y la estructura de la base de datos. Se han
@@ -838,9 +813,7 @@ moduleMigration:
   optionEnableBoth: Habilitar ambos
   optionEnableFilenameCaseInsensitive: "Habilitar solo #1"
   optionEnableFixedRevisionForChunks: "Habilitar solo #2"
-  optionHaveSetupUri: Sí, tengo
   optionKeepPreviousBehaviour: Mantener comportamiento anterior
-  optionManualSetup: Configurarlo todo manualmente
   optionNoAskAgain: No, por favor pregúntame de nuevo
   fix0256:
     buttons:
@@ -909,14 +882,8 @@ moduleMigration:
       Nota 2: reconstruir todo y obtener los datos consume algo de tiempo y de
       tráfico; hazlo en horas de poco uso y con una conexión de red estable.
     title: ¡Se han encontrado chunks no seguros!
-  optionNoSetupUri: No, no tengo
-  optionRemindNextLaunch: Recordármelo en el próximo inicio
-  optionSetupViaP2P: Usar %{short_p2p_sync} para configurarlo
-  optionSetupWizard: Llévame al asistente de configuración
   optionYesFetchAgain: Sí, obtener de nuevo
   titleCaseSensitivity: Distinción de mayúsculas y minúsculas
-  titleRecommendSetupUri: Recomendación de usar un Setup URI
-  titleWelcome: Bienvenido a Self-hosted LiveSync
 "Mostly Complete: Decision Required": "Casi terminado: se requiere una decisión"
 My remote server is already set up. I want to join this device.: Mi servidor remoto ya está configurado. Quiero añadir este dispositivo.
 Name: Nombre
@@ -1506,12 +1473,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: Activar
   btnFix: Corregir
   btnGotItAndUpdated: Lo entendí y actualicé.
-  btnNext: Siguiente
   btnStart: Iniciar
   btnTest: Probar
   btnUse: Usar
   buttonFetch: Obtener
-  buttonNext: Siguiente
   defaultLanguage: Predeterminado
   descConnectSetupURI: Este es el método recomendado para configurar Self-hosted
     LiveSync con una URI de configuración.
@@ -1585,8 +1550,6 @@ obsidianLiveSyncSettingTab:
     a extremo y la obfuscación de ruta. ¿Estás seguro de querer continuar sin
     cifrado?
   msgFetchConfigFromRemote: ¿Quieres obtener la configuración del servidor remoto?
-  msgGenerateSetupURI: ¡Todo listo! ¿Quieres generar un URI de configuración para
-    configurar otros dispositivos?
   msgIfConfigNotPersistent: Si la configuración del servidor no es persistente
     (por ejemplo, ejecutándose en docker), los valores aquí pueden cambiar. Una
     vez que puedas conectarte, por favor actualiza las configuraciones en el
@@ -1670,8 +1633,6 @@ obsidianLiveSyncSettingTab:
 
     Almacena solo la configuración. **Precaución: esto puede provocar corrupción
     de datos**; generalmente es necesario reconstruir la base de datos.
-  msgSelectAndApplyPreset: Por favor, selecciona y aplica cualquier elemento
-    preestablecido para completar el asistente.
   msgSetCorsCredentials: Configurar cors.credentials
   msgSetCorsOrigins: Configurar cors.origins
   msgSetMaxDocSize: Configurar couchdb.max_document_size
@@ -1729,7 +1690,6 @@ obsidianLiveSyncSettingTab:
   panelSetup: Configuración
   titleAppearance: Apariencia
   titleConflictResolution: Resolución de conflictos
-  titleCongratulations: ¡Felicidades!
   titleCouchDB: Servidor CouchDB
   titleDeletionPropagation: Propagación de eliminación
   titleEncryptionNotEnabled: El cifrado no está habilitado

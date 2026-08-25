@@ -1,20 +1,43 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 const negotiationMocks = vi.hoisted(() => ({
     checkSyncInfo: vi.fn(async () => true),
 }));
+const settingsInitialisationMocks = vi.hoisted(() => ({
+    applySettingsWithInitialisationChoice: vi.fn(),
+}));
 
 vi.mock("@/deps.ts", () => ({
     App: class {},
-    Component: class {},
+    Component: class {
+        load = vi.fn();
+        unload = vi.fn();
+        register = vi.fn();
+    },
     PluginSettingTab: class {},
+    SettingPage: undefined,
+    requireApiVersion: vi.fn(() => false),
 }));
 vi.mock("@/main.ts", () => ({ default: class {} }));
-vi.mock("@/common/events.ts", () => ({
-    EVENT_REQUEST_RELOAD_SETTING_TAB: "request-reload-setting-tab",
-    eventHub: { onEvent: vi.fn() },
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
+    getLanguage: vi.fn(() => "en"),
+    compatGlobal: {
+        localStorage: {
+            getItem: vi.fn(() => null),
+            setItem: vi.fn(),
+        },
+    },
 }));
+vi.mock("@/common/events.ts", () => ({
+    EVENT_ON_UNRESOLVED_ERROR: "on-unresolved-error",
+    EVENT_REQUEST_COPY_SETUP_URI: "request-copy-setup-uri",
+    EVENT_REQUEST_OPEN_SETUP_URI: "request-open-setup-uri",
+    EVENT_REQUEST_RELOAD_SETTING_TAB: "request-reload-setting-tab",
+    EVENT_REQUEST_SHOW_SETUP_QR: "request-show-setup-qr",
+    eventHub: { emitEvent: vi.fn(), onEvent: vi.fn() },
+}));
+vi.mock("@/modules/features/SetupManager.ts", () => ({ SetupManager: class {} }));
 vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation", () => negotiationMocks);
 vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
     LiveSyncCouchDBReplicator: class {},
@@ -27,7 +50,8 @@ vi.mock("./SettingPane.ts", () => ({
     visibleOnly: vi.fn(() => vi.fn()),
 }));
 vi.mock("./PaneChangeLog.ts", () => ({ paneChangeLog: vi.fn() }));
-vi.mock("./PaneSetup.ts", () => ({ paneSetup: vi.fn() }));
+vi.mock("./PaneQuickSetup.ts", () => ({ paneQuickSetup: vi.fn() }));
+vi.mock("./PaneHelp.ts", () => ({ paneHelp: vi.fn() }));
 vi.mock("./PaneGeneral.ts", () => ({ paneGeneral: vi.fn() }));
 vi.mock("./PaneRemoteConfig.ts", () => ({ paneRemoteConfig: vi.fn() }));
 vi.mock("./PaneSelector.ts", () => ({ paneSelector: vi.fn() }));
@@ -41,6 +65,10 @@ vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
+
+beforeEach(() => {
+    settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockReset();
+});
 
 describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
     it("closes the finite remote connection after checking synchronisation information", async () => {
@@ -71,5 +99,213 @@ describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
 
         expect(negotiationMocks.checkSyncInfo).toHaveBeenCalledWith(remoteDatabase);
         expect(remoteDatabase.close).toHaveBeenCalledOnce();
+    });
+});
+
+describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
+    function createSettingsTab() {
+        const saveSettingData = vi.fn(async () => undefined);
+        const confirmWithMessage = vi.fn();
+        const plugin = {
+            app: {},
+            core: {
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    handleFilenameCaseSensitive: false,
+                },
+                getModule: vi.fn(() => settingsInitialisationMocks),
+                confirm: {
+                    confirmWithMessage,
+                },
+                services: {
+                    setting: {
+                        saveSettingData,
+                        getDeviceAndVaultName: vi.fn(() => ""),
+                    },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                handleFilenameCaseSensitive: true,
+            },
+            initialSettings: {
+                ...DEFAULT_SETTINGS,
+                handleFilenameCaseSensitive: false,
+            },
+        });
+        vi.spyOn(tab, "isPassphraseValid").mockResolvedValue(true);
+        vi.spyOn(tab, "checkWorkingPassphrase").mockResolvedValue(true);
+        const closeSetting = vi.spyOn(tab, "closeSetting").mockImplementation(() => undefined);
+        return { tab, saveSettingData, confirmWithMessage, closeSetting };
+    }
+
+    it("keeps pending settings in the editing buffer when initialisation and the fallback are cancelled", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "cancelled",
+        });
+        confirmWithMessage.mockResolvedValueOnce("Keep Editing");
+
+        await tab.confirmRebuild();
+
+        expect(settingsInitialisationMocks.applySettingsWithInitialisationChoice).toHaveBeenCalledOnce();
+        expect(confirmWithMessage).toHaveBeenCalledWith(
+            "Apply Settings without Initialisation?",
+            expect.any(String),
+            ["Apply without Initialisation", "Keep Editing"],
+            "Keep Editing"
+        );
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(tab.editingSettings.handleFilenameCaseSensitive).toBe(true);
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(false);
+        expect(closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("applies pending settings only after a separately confirmed initialisation bypass", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "cancelled",
+        });
+        confirmWithMessage.mockResolvedValueOnce("Apply without Initialisation");
+
+        await tab.confirmRebuild();
+
+        expect(settingsInitialisationMocks.applySettingsWithInitialisationChoice).toHaveBeenCalledOnce();
+        expect(saveSettingData).toHaveBeenCalledOnce();
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(true);
+        expect(closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("closes settings only after initialisation has been scheduled", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockImplementationOnce(
+            async ({ applySettings }: { applySettings: () => Promise<void> }) => {
+                await applySettings();
+                return { result: "scheduled", mode: "rebuild" };
+            }
+        );
+
+        await tab.confirmRebuild();
+
+        expect(saveSettingData).toHaveBeenCalledOnce();
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(closeSetting).toHaveBeenCalledOnce();
+    });
+
+    it("does not offer the settings-only fallback after an initialisation failure", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "failed",
+            mode: "fetch",
+        });
+
+        await tab.confirmRebuild();
+
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(tab.editingSettings.handleFilenameCaseSensitive).toBe(true);
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(false);
+        expect(closeSetting).not.toHaveBeenCalled();
+    });
+});
+
+describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
+    function createSettingsTab() {
+        const saveSettingData = vi.fn(async () => undefined);
+        const plugin = {
+            app: {},
+            core: {
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    hashCacheMaxCount: 300,
+                    displayLanguage: "",
+                },
+                services: {
+                    setting: {
+                        saveSettingData,
+                        getDeviceAndVaultName: vi.fn(() => ""),
+                    },
+                },
+            },
+        };
+        Object.defineProperty(plugin, "settings", {
+            get: () => {
+                throw new Error("The declarative adapter must not use plugin.settings");
+            },
+        });
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                hashCacheMaxCount: 300,
+                displayLanguage: "",
+            },
+            initialSettings: {
+                ...DEFAULT_SETTINGS,
+                hashCacheMaxCount: 300,
+                displayLanguage: "",
+            },
+        });
+        return { tab, saveSettingData };
+    }
+
+    it("loads the imperative fallback without a SettingPage runtime export", () => {
+        const { tab } = createSettingsTab();
+
+        expect(tab.display).toBeTypeOf("function");
+        expect(tab.getSettingDefinitions()).toEqual([]);
+    });
+
+    it("reads and writes registered controls through the editing buffer and existing save owner", async () => {
+        const { tab } = createSettingsTab();
+        const saveSettings = vi.spyOn(tab, "saveSettings").mockResolvedValue(undefined);
+
+        expect(tab.getControlValue("hashCacheMaxCount")).toBe(300);
+
+        await tab.setControlValue("hashCacheMaxCount", 321);
+
+        expect(tab.editingSettings.hashCacheMaxCount).toBe(321);
+        expect(saveSettings).toHaveBeenCalledOnce();
+        expect(saveSettings).toHaveBeenCalledWith(["hashCacheMaxCount"]);
+    });
+
+    it("rejects unregistered declarative control keys", async () => {
+        const { tab } = createSettingsTab();
+
+        expect(() => tab.getControlValue("couchDB_PASSWORD")).toThrow(/Unknown declarative setting key/u);
+        await expect(tab.setControlValue("couchDB_PASSWORD", "secret")).rejects.toThrow(
+            /Unknown declarative setting key/u
+        );
+    });
+
+    it("rejects declarative values outside the registered control contract", async () => {
+        const { tab } = createSettingsTab();
+        const saveSettings = vi.spyOn(tab, "saveSettings").mockResolvedValue(undefined);
+
+        await expect(tab.setControlValue("hashCacheMaxCount", 9)).rejects.toThrow(
+            /Invalid value for declarative setting/u
+        );
+        await expect(tab.setControlValue("chunkSplitterVersion", "unknown-splitter")).rejects.toThrow(
+            /Invalid value for declarative setting/u
+        );
+
+        expect(saveSettings).not.toHaveBeenCalled();
+    });
+
+    it("replaces a saved-setting handler when a page is rendered again", async () => {
+        const { tab } = createSettingsTab();
+        const first = vi.fn();
+        const replacement = vi.fn();
+        tab.addOnSaved("displayLanguage", first);
+        tab.addOnSaved("displayLanguage", replacement);
+        tab.editingSettings.displayLanguage = "ja";
+
+        await tab.saveSettings(["displayLanguage"]);
+
+        expect(first).not.toHaveBeenCalled();
+        expect(replacement).toHaveBeenCalledOnce();
     });
 });

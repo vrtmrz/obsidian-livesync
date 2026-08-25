@@ -18,9 +18,12 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/utils", async (importOriginal)
 });
 vi.mock("@/features/LiveSyncCommands", () => ({
     LiveSyncCommands: class LiveSyncCommands {
-        core!: { settings: unknown };
+        core!: { settings: unknown; services: unknown };
         get settings() {
             return this.core.settings;
+        }
+        get services() {
+            return this.core.services;
         }
     },
 }));
@@ -76,11 +79,13 @@ describe("LocalDatabaseMaintenance prerequisites", () => {
         };
         const maintenance = Object.create(LocalDatabaseMaintenance.prototype) as LocalDatabaseMaintenance;
         Object.assign(maintenance, {
-            plugin: {
-                addCommand: vi.fn((command) => commands.push(command)),
-            },
             core: {
                 settings,
+                services: {
+                    API: {
+                        addCommand: vi.fn((command) => commands.push(command)),
+                    },
+                },
             },
             _isDatabaseReady: vi.fn(() => true),
         });

@@ -571,7 +571,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: 로그 표시
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
   fix0256:
     buttons:
       checkItLater: 나중에 확인
@@ -631,19 +630,6 @@ moduleMigration:
 
     ___참고: 설정이 변경되고 데이터베이스를 다시 불러오기 전까지는 동기화가 불가능합니다.___
     ___참고2: 청크는 변경이 불가능한 구조이므로, 메타데이터와 차이점만 가져올 수 있습니다.___
-  msgInitialSetup: |-
-    이 기기는 **아직 초기 설정이 완료되지 않았습니다**. 지금부터 설정 과정을 안내해 드리겠습니다.
-
-    모든 대화 내용은 클립보드에 복사할 수 있습니다. 나중에 참고하려면 Obsidian 노트에 붙여넣거나 번역 도구를 활용해 번역하셔도 됩니다.
-
-    먼저, **Setup URI**를 가지고 계신가요?
-
-    참고: Setup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요.
-  msgRecommendSetupUri: |-
-    Setup URI를 생성해 사용하는 것을 강력히 권장합니다.
-    Setup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요. 중요한 내용이니 꼭 확인하시기 바랍니다.
-
-    직접 수동 설정을 진행하시겠습니까?
   msgSinceV02321: |-
     v0.23.21부터 Self-hosted LiveSync의 기본 동작 방식과 데이터베이스 구조가 변경되었습니다. 변경 내용은 다음과 같습니다:
 
@@ -664,18 +650,10 @@ moduleMigration:
   optionEnableBoth: 둘 다 활성화
   optionEnableFilenameCaseInsensitive: "#1만 활성화"
   optionEnableFixedRevisionForChunks: "#2만 활성화"
-  optionHaveSetupUri: 예, 있습니다
   optionKeepPreviousBehaviour: 이전 동작 유지
-  optionManualSetup: 모든 것을 수동으로 설정
   optionNoAskAgain: 아니요 (나중에 다시 물어보기)
-  optionNoSetupUri: 아니요, 없습니다
-  optionRemindNextLaunch: 다음 시작 시 알림
-  optionSetupViaP2P: "%{short_p2p_sync}를 사용하여 설정"
-  optionSetupWizard: 설정 마법사로 안내
   optionYesFetchAgain: 예 (다시 가져오기)
   titleCaseSensitivity: 대소문자 구분
-  titleRecommendSetupUri: Setup URI 사용 권장
-  titleWelcome: Self-hosted LiveSync에 오신 것을 환영합니다
 moduleObsidianMenu:
   replicate: 복제
 More actions: 추가 작업
@@ -722,12 +700,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: 활성화
   btnFix: 수정
   btnGotItAndUpdated: 알겠습니다. 업데이트했습니다.
-  btnNext: 다음
   btnStart: 시작
   btnTest: 테스트
   btnUse: 사용
   buttonFetch: 가져오기
-  buttonNext: 다음
   defaultLanguage: 기본값
   descConnectSetupURI: 이것은 Setup URI로 Self-hosted LiveSync를 설정하는 권장 방법입니다.
   descCopySetupURI: 새 기기 설정에 완벽합니다!
@@ -793,7 +769,6 @@ obsidianLiveSyncSettingTab:
   msgEnableCorsChttpd: chttpd.enable_cors 설정
   msgEnableEncryptionRecommendation: 종단 간 암호화와 경로 난독화를 활성화하는 것을 권장합니다. 정말로 암호화 없이 계속하시겠습니까?
   msgFetchConfigFromRemote: 원격 서버에서 구성을 가져오시겠습니까?
-  msgGenerateSetupURI: 모든 작업이 완료되었습니다! 다른 기기를 설정하기 위해 Setup URI를 생성하시겠습니까?
   msgIfConfigNotPersistent: "서버 설정이 영구적으로 저장되지 않는 환경(예: Docker에서 실행 중)에서는 이곳의 값들이 변경될 수 있습니다. 연결이 가능해지면 서버의 local.ini 파일에서 설정을 수동으로 업데이트해 주세요."
   msgInvalidPassphrase: 암호화 패스프레이즈가 유효하지 않을 수 있습니다. 정말로 계속하시겠습니까?
   msgNewVersionNote: 업그레이드 알림으로 여기에 오셨나요? 버전 기록을 검토해 주세요. 만족하신다면 버튼을 클릭하세요. 새로운 업데이트 시 다시 안내됩니다.
@@ -835,7 +810,6 @@ obsidianLiveSyncSettingTab:
     원격 데이터베이스를 이미 재구축한 경우도 여기에 해당합니다.
     ## ${OPTION_ONLY_SETTING}
     설정만 저장합니다. **주의: 데이터가 손상될 수 있습니다.** 일반적으로는 데이터베이스 재구축이 필요합니다.
-  msgSelectAndApplyPreset: 마법사를 완료하려면 프리셋 항목을 선택하고 적용해 주세요.
   msgSetCorsCredentials: cors.credentials 설정
   msgSetCorsOrigins: cors.origins 설정
   msgSetMaxDocSize: couchdb.max_document_size 설정
@@ -892,7 +866,6 @@ obsidianLiveSyncSettingTab:
   titleActiveRemoteServer: 활성 원격 서버
   titleAppearance: 모양
   titleConflictResolution: 충돌 해결
-  titleCongratulations: 축하합니다!
   titleCouchDB: CouchDB
   titleDeletionPropagation: 삭제 전파
   titleEncryptionNotEnabled: 암호화가 활성화되지 않음

@@ -8,7 +8,6 @@ import {
     type FilePathWithPrefix,
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "@/main.ts";
 // import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks";
@@ -16,13 +15,9 @@ import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/ser
 
 let noticeIndex = 0;
 export abstract class LiveSyncCommands {
-    /**
-     * @deprecated This class is deprecated. Please use core
-     */
-    plugin: ObsidianLiveSyncPlugin;
     core: LiveSyncCore;
     get app() {
-        return this.plugin.app;
+        return this.services.context.app;
     }
     get settings() {
         return this.core.settings;
@@ -34,9 +29,6 @@ export abstract class LiveSyncCommands {
         return this.core.services;
     }
 
-    // id2path(id: DocumentID, entry?: EntryHasPath, stripPrefix?: boolean): FilePathWithPrefix {
-    //     return this.plugin.$$id2path(id, entry, stripPrefix);
-    // }
     async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
         return await this.services.path.path2id(filename, prefix);
     }
@@ -45,8 +37,7 @@ export abstract class LiveSyncCommands {
         return this.services.path.getPath(entry);
     }
 
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore) {
-        this.plugin = plugin;
+    constructor(core: LiveSyncCore) {
         this.core = core;
         this.onBindFunction(this.core, this.core.services);
         this._log = createInstanceLogFunction(this.constructor.name, this.services.API);

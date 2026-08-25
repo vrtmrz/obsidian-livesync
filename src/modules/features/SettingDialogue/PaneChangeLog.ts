@@ -6,7 +6,8 @@ const updateInformation: string = UPDATE_INFO || "";
 
 export function paneChangeLog(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement): void {
     const informationDivEl = this.createEl(paneEl, "div", { text: "" });
+    const lifetimeComponent = this.lifetimeComponent;
     fireAndForget(() =>
-        MarkdownRenderer.render(this.plugin.app, updateInformation, informationDivEl, "/", this.lifetimeComponent)
+        MarkdownRenderer.render(this.plugin.app, updateInformation, informationDivEl, "/", lifetimeComponent)
     );
 }

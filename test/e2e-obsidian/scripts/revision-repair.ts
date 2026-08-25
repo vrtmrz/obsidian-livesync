@@ -6,7 +6,7 @@ import {
     waitForLocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { captureObsidianElement, withObsidianPage } from "../runner/ui.ts";
+import { captureObsidianElement, openLiveSyncSettings, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 import type { Locator, Page } from "playwright";
 
@@ -33,17 +33,6 @@ type RevisionTree = {
 type VaultWinnerState = {
     matches: boolean;
     winnerRevision: string;
-};
-
-type ObsidianSettingsController = {
-    open(): void;
-    openTabById(tabId: string): void;
-};
-
-type ObsidianTestGlobal = typeof globalThis & {
-    app?: {
-        setting?: ObsidianSettingsController;
-    };
 };
 
 async function createAndOpenBaseFile(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
@@ -359,17 +348,10 @@ async function main(): Promise<void> {
         }
 
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
-            await page.evaluate(() => {
-                const setting = (globalThis as ObsidianTestGlobal).app?.setting;
-                if (setting === undefined) throw new Error("Obsidian settings are unavailable");
-                setting.open();
-                setting.openTabById("obsidian-livesync");
-            });
-            const settings = page.locator(".sls-setting");
-            await settings.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await settings.locator('.sls-setting-menu-btn[title="Hatch"]').click({ timeout: uiTimeoutMs });
+            const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+            const settings = await settingsNavigator.openPage("Hatch");
             const verifySetting = settings.locator(".setting-item").filter({
-                has: page.getByText("Inspect conflicts and file/database differences", {
+                has: settingsNavigator.page.getByText("Inspect conflicts and file/database differences", {
                     exact: true,
                 }),
             });

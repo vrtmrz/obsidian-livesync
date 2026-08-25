@@ -4206,16 +4206,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "显示日志",
         "zh-tw": "顯示日誌",
     },
-    "moduleMigration.docUri": {
-        def: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
-        es: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README_ES.md#how-to-use",
-        fr: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
-        he: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
-        ja: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
-        ko: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
-        ru: "https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use",
-        zh: "https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/zh/README_zh.md#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8",
-    },
     "moduleMigration.fix0256.buttons.checkItLater": {
         def: "Check it later",
         es: "Comprobarlo más tarde",
@@ -4451,30 +4441,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw":
             "你可能已經知道，Self-hosted LiveSync 變更了預設行為與資料庫結構。\n\n值得慶幸的是，在你的努力下，遠端資料庫似乎已經完成遷移。恭喜！\n\n不過，還需要再多做一點。此裝置的設定與遠端資料庫不相容，我們需要再次從遠端資料庫抓取。現在要再次從遠端抓取嗎？\n\n___注意：在變更設定並再次抓取資料庫之前，我們無法進行同步。___\n___注意 2：chunks 完全不可變，我們只需要抓取中繼資料與差異部分。___",
     },
-    "moduleMigration.msgInitialSetup": {
-        def: "Your device has **not been set up yet**. Let me guide you through the setup process.\n\nPlease keep in mind that every dialogue content can be copied to the clipboard. If you need to refer to it later, you can paste it into a note in Obsidian. You can also translate it into your language using a translation tool.\n\nFirst, do you have **Setup URI**?\n\nNote: If you do not know what it is, please refer to the [documentation](${URI_DOC}).",
-        es: "Tu dispositivo **aún no ha sido configurado**. Permíteme guiarte a través del proceso de configuración.\n\nTen en cuenta que todo el contenido del diálogo se puede copiar al portapapeles. Si necesitas consultarlo más tarde, puedes pegarlo en una nota en Obsidian. También puedes traducirlo a tu idioma utilizando una herramienta de traducción.\n\nPrimero, ¿tienes **URI de configuración**?\n\nNota: Si no sabes qué es, consulta la [documentación](${URI_DOC}).",
-        fr: "Votre appareil n'a **pas encore été configuré**. Laissez-moi vous guider dans le processus de configuration.\n\nVeuillez noter que chaque contenu de boîte de dialogue peut être copié dans le presse-papiers. Si vous souhaitez vous y référer plus tard, vous pouvez le coller dans une note d'Obsidian. Vous pouvez également le traduire dans votre langue via un outil de traduction.\n\nTout d'abord, disposez-vous d'une **URI de configuration** ?\n\nNote : Si vous ne savez pas ce que c'est, consultez la [documentation](${URI_DOC}).",
-        he: "המכשיר שלך **טרם הוגדר**. אנחנו כאן לעזור לך בתהליך ההגדרה.\n\nשים לב שניתן להעתיק את תוכן כל דיאלוג ללוח. אם צריך לחזור אליו מאוחר יותר, ניתן להדביק אותו כפתק ב-Obsidian. ניתן גם לתרגם לשפתך בעזרת כלי תרגום.\n\nראשית, האם יש לך **Setup URI**?\n\nהערה: אם אינך יודע מהו, אנא עיין ב[תיעוד](${URI_DOC}).",
-        ja: "このデバイスは**まだセットアップされていません**。セットアッププロセスをご案内します。\n\nすべてのダイアログの内容はクリップボードにコピーできます。後で参照する必要があれば、Obsidianのノートに貼り付けてください。翻訳ツールを使ってお使いの言語に翻訳することもできます。\n\nまず、**セットアップURI**をお持ちですか？\n\n注意: それが何か分からない場合は、[documentation](${URI_DOC})を参照してください。",
-        ko: "이 기기는 **아직 초기 설정이 완료되지 않았습니다**. 지금부터 설정 과정을 안내해 드리겠습니다.\n\n모든 대화 내용은 클립보드에 복사할 수 있습니다. 나중에 참고하려면 Obsidian 노트에 붙여넣거나 번역 도구를 활용해 번역하셔도 됩니다.\n\n먼저, **Setup URI**를 가지고 계신가요?\n\n참고: Setup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요.",
-        ru: "Ваше устройство ещё не настроено. У вас есть Setup URI?",
-        zh: "您的设备**尚未设置**。让我引导您完成设置过程。\n\n请记住,每个对话框内容都可以复制到剪贴板。如果以后需要参考,可以将其粘贴到 Obsidian 的笔记中。您也可以使用翻译工具将其翻译成您的语言。\n\n首先,您有**设置 URI** 吗？\n\n注意:如果您不知道这是什么,请参阅[文档](${URI_DOC})",
-        "zh-tw":
-            "你的裝置**尚未完成設定**。讓我引導你完成設定流程。\n\n請記得，每個對話框的內容都可以複製到剪貼簿。如果日後需要參考，可以貼到 Obsidian 的筆記中，也可以用翻譯工具翻成你的語言。\n\n首先，你有 **Setup URI** 嗎？\n\n注意：如果你不知道那是什麼，請參閱[說明文件](${URI_DOC})。",
-    },
-    "moduleMigration.msgRecommendSetupUri": {
-        def: "We strongly recommend that you generate a set-up URI and use it.\nIf you do not have knowledge about it, please refer to the [documentation](${URI_DOC}) (Sorry again, but it is important).\n\nHow do you want to set it up manually?",
-        es: "Te recomendamos encarecidamente que generes una URI de configuración y la utilices.\nSi no tienes conocimientos al respecto, consulta la [documentación](${URI_DOC}) (Lo siento de nuevo, pero es importante).\n\n¿Cómo quieres configurarlo manualmente?",
-        fr: "Nous recommandons vivement de générer une URI de configuration et de l'utiliser.\nSi vous ne connaissez pas, veuillez consulter la [documentation](${URI_DOC}) (Désolé encore, mais c'est important).\n\nComment souhaitez-vous effectuer la configuration manuellement ?",
-        he: "אנו ממליצים בחום לייצר Setup URI ולהשתמש בו.\nאם אין לך ידע בנושא, אנא עיין ב[תיעוד](${URI_DOC}) (מתנצלים שוב, אך זה חשוב).\n\nכיצד ברצונך להגדיר ידנית?",
-        ja: "セットアップURIを生成して使用することを強くお勧めします。\nこれについて知識がない場合は、[documentation](${URI_DOC})を参照してください（重要です）。\n\n手動でセットアップしますか？",
-        ko: "Setup URI를 생성해 사용하는 것을 강력히 권장합니다.\nSetup URI가 무엇인지 잘 모르시겠다면 [문서](${URI_DOC})를 참고해 주세요. 중요한 내용이니 꼭 확인하시기 바랍니다.\n\n직접 수동 설정을 진행하시겠습니까?",
-        ru: "Мы рекомендуем сгенерировать Setup URI.",
-        zh: "我们强烈建议您生成一个设置 URI 并使用它。\n如果您对此不了解,请参阅[文档](${URI_DOC})(再次抱歉,但这很重要)。\n\n您想如何手动设置?",
-        "zh-tw":
-            "我們強烈建議你產生 Setup URI 並使用它。\n如果你對此不熟悉，請參閱[說明文件](${URI_DOC})（再次抱歉，但這很重要）。\n\n你想要如何手動設定？",
-    },
     "moduleMigration.msgSinceV02321": {
         def: "Since v0.23.21, the self-hosted LiveSync has changed the default behaviour and database structure. The following changes have been made:\n\n1. **Case sensitivity of filenames**\n   The handling of filenames is now case-insensitive. This is a beneficial change for most platforms, other than Linux and iOS, which do not manage filename case sensitivity effectively.\n   (On These, a warning will be displayed for files with the same name but different cases).\n\n2. **Revision handling of the chunks**\n   Chunks are immutable, which allows their revisions to be fixed. This change will enhance the performance of file saving.\n\n___However, to enable either of these changes, both remote and local databases need to be rebuilt. This process takes a few minutes, and we recommend doing it when you have ample time.___\n\n- If you wish to maintain the previous behaviour, you can skip this process by using `${KEEP}`.\n- If you do not have enough time, please choose `${DISMISS}`. You will be prompted again later.\n- If you have rebuilt the database on another device, please select `${DISMISS}` and try synchronizing again. Since a difference has been detected, you will be prompted again.",
         es: "Desde la versión v0.23.21, Self-hosted LiveSync ha cambiado el comportamiento predeterminado y la estructura de la base de datos. Se han realizado los siguientes cambios:\n\n1. **Sensibilidad a mayúsculas de los nombres de archivo**\n    El manejo de los nombres de archivo ahora no distingue entre mayúsculas y minúsculas. Este cambio es beneficioso para la mayoría de las plataformas, excepto Linux y iOS, que no gestionan efectivamente la sensibilidad a mayúsculas de los nombres de archivo.\n    (En estos, se mostrará una advertencia para archivos con el mismo nombre pero diferentes mayúsculas).\n\n2. **Manejo de revisiones de los fragmentos**\n    Los fragmentos son inmutables, lo que permite que sus revisiones sean fijas. Este cambio mejorará el rendimiento al guardar archivos.\n\n___Sin embargo, para habilitar cualquiera de estos cambios, es necesario reconstruir tanto las bases de datos remota como la local. Este proceso toma unos minutos, y recomendamos hacerlo cuando tengas tiempo suficiente.___\n\n- Si deseas mantener el comportamiento anterior, puedes omitir este proceso usando `${KEEP}`.\n- Si no tienes suficiente tiempo, por favor elige `${DISMISS}`. Se te pedirá nuevamente más tarde.\n- Si has reconstruido la base de datos en otro dispositivo, selecciona `${DISMISS}` e intenta sincronizar nuevamente. Dado que se ha detectado una diferencia, se te solicitará nuevamente.",
@@ -4542,17 +4508,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "仅启用 #2",
         "zh-tw": "僅啟用",
     },
-    "moduleMigration.optionHaveSetupUri": {
-        def: "Yes, I have",
-        es: "Sí, tengo",
-        fr: "Oui, j'en ai une",
-        he: "כן, יש לי",
-        ja: "はい、持っています",
-        ko: "예, 있습니다",
-        ru: "Да, есть",
-        zh: "是的,我有",
-        "zh-tw": "有，我有",
-    },
     "moduleMigration.optionKeepPreviousBehaviour": {
         def: "Keep previous behaviour",
         es: "Mantener comportamiento anterior",
@@ -4564,17 +4519,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "保持以前的行为",
         "zh-tw": "保留先前的行為",
     },
-    "moduleMigration.optionManualSetup": {
-        def: "Set it up all manually",
-        es: "Configurarlo todo manualmente",
-        fr: "Tout configurer manuellement",
-        he: "הגדר הכל ידנית",
-        ja: "すべて手動でセットアップ",
-        ko: "모든 것을 수동으로 설정",
-        ru: "Настроить всё вручную",
-        zh: "全部手动设置",
-        "zh-tw": "全部手動設定",
-    },
     "moduleMigration.optionNoAskAgain": {
         def: "No, please ask again",
         es: "No, por favor pregúntame de nuevo",
@@ -4585,50 +4529,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Нет, спросить снова",
         zh: "不,请稍后再次询问",
         "zh-tw": "不，請稍後再問我",
-    },
-    "moduleMigration.optionNoSetupUri": {
-        def: "No, I do not have",
-        es: "No, no tengo",
-        fr: "Non, je n'en ai pas",
-        he: "לא, אין לי",
-        ja: "いいえ、持っていません",
-        ko: "아니요, 없습니다",
-        ru: "Нет, нет",
-        zh: "不,我没有",
-        "zh-tw": "沒有，我沒有",
-    },
-    "moduleMigration.optionRemindNextLaunch": {
-        def: "Remind me at the next launch",
-        es: "Recordármelo en el próximo inicio",
-        fr: "Me rappeler au prochain lancement",
-        he: "הזכר לי בהפעלה הבאה",
-        ja: "次回起動時にリマインド",
-        ko: "다음 시작 시 알림",
-        ru: "Напомнить при следующем запуске",
-        zh: "下次启动时提醒我",
-        "zh-tw": "下次啟動時提醒我",
-    },
-    "moduleMigration.optionSetupViaP2P": {
-        def: "Use P2P Sync to set up",
-        es: "Usar Sincronización P2P para configurarlo",
-        fr: "Utiliser Sync P2P pour configurer",
-        he: "השתמש ב-%{short_p2p_sync} להגדרה",
-        ja: "P2P Sync (試験機能)を使ってセットアップ",
-        ko: "P2P 동기화를 사용하여 설정",
-        ru: "Использовать short_p2p_sync для настройки",
-        zh: "Use P2P同步(实验性) to set up",
-        "zh-tw": "使用「P2P 同步」進行設定",
-    },
-    "moduleMigration.optionSetupWizard": {
-        def: "Take me into the setup wizard",
-        es: "Llévame al asistente de configuración",
-        fr: "Ouvrir l'assistant de configuration",
-        he: "קח אותי לאשף ההגדרה",
-        ja: "セットアップウィザードへ",
-        ko: "설정 마법사로 안내",
-        ru: "Перейти в мастер настройки",
-        zh: "带我进入设置向导",
-        "zh-tw": "帶我進入設定精靈",
     },
     "moduleMigration.optionYesFetchAgain": {
         def: "Yes, fetch again",
@@ -4651,28 +4551,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Чувствительность к регистру",
         zh: "大小写敏感性",
         "zh-tw": "大小寫敏感性",
-    },
-    "moduleMigration.titleRecommendSetupUri": {
-        def: "Recommendation to use Setup URI",
-        es: "Recomendación de usar un Setup URI",
-        fr: "Recommandation d'utilisation de l'URI de configuration",
-        he: "המלצה לשימוש ב-Setup URI",
-        ja: "セットアップURIの使用を推奨",
-        ko: "Setup URI 사용 권장",
-        ru: "Рекомендация использовать Setup URI",
-        zh: "推荐使用设置 URI",
-        "zh-tw": "建議使用 Setup URI",
-    },
-    "moduleMigration.titleWelcome": {
-        def: "Welcome to Self-hosted LiveSync",
-        es: "Bienvenido a Self-hosted LiveSync",
-        fr: "Bienvenue dans Self-hosted LiveSync",
-        he: "ברוך הבא ל-Self-hosted LiveSync",
-        ja: "Self-hosted LiveSyncへようこそ",
-        ko: "Self-hosted LiveSync에 오신 것을 환영합니다",
-        ru: "Добро пожаловать в Self-hosted LiveSync",
-        zh: "欢迎使用 Self-hosted LiveSync",
-        "zh-tw": "歡迎使用 Self-hosted LiveSync",
     },
     "moduleObsidianMenu.replicate": {
         def: "Replicate",
@@ -5061,17 +4939,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "我明白了并且已更新",
         "zh-tw": "我知道了，且已更新。",
     },
-    "obsidianLiveSyncSettingTab.btnNext": {
-        def: "Next",
-        es: "Siguiente",
-        fr: "Suivant",
-        he: "הבא",
-        ja: "次へ",
-        ko: "다음",
-        ru: "Далее",
-        zh: "下一步",
-        "zh-tw": "下一步",
-    },
     "obsidianLiveSyncSettingTab.btnStart": {
         def: "Start",
         es: "Iniciar",
@@ -5115,17 +4982,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Загрузить",
         zh: "获取",
         "zh-tw": "抓取",
-    },
-    "obsidianLiveSyncSettingTab.buttonNext": {
-        def: "Next",
-        es: "Siguiente",
-        fr: "Suivant",
-        he: "הבא",
-        ja: "次へ",
-        ko: "다음",
-        ru: "Далее",
-        zh: "下一步",
-        "zh-tw": "下一步",
     },
     "obsidianLiveSyncSettingTab.defaultLanguage": {
         def: "Default",
@@ -5812,17 +5668,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "要从远端服务器获取配置吗？",
         "zh-tw": "要從遠端伺服器抓取設定嗎？",
     },
-    "obsidianLiveSyncSettingTab.msgGenerateSetupURI": {
-        def: "All done! Do you want to generate a setup URI to set up other devices?",
-        es: "¡Todo listo! ¿Quieres generar un URI de configuración para configurar otros dispositivos?",
-        fr: "Tout est prêt ! Voulez-vous générer une URI de configuration pour configurer d'autres appareils ?",
-        he: "הכל מוכן! האם ברצונך לייצר Setup URI להגדרת מכשירים אחרים?",
-        ja: "完了！他のデバイスをセットアップするためのセットアップURIを生成しますか？",
-        ko: "모든 작업이 완료되었습니다! 다른 기기를 설정하기 위해 Setup URI를 생성하시겠습니까?",
-        ru: "Всё готово! Вы хотите сгенерировать Setup URI для настройки других устройств?",
-        zh: "全部完成！要生成设置 URI 以便配置其他设备吗？",
-        "zh-tw": "全部完成！要產生 Setup URI 以便設定其他裝置嗎？",
-    },
     "obsidianLiveSyncSettingTab.msgIfConfigNotPersistent": {
         def: "If the server configuration is not persistent (e.g., running on docker), the values here may change. Once you are able to connect, please update the settings in the server's local.ini.",
         es: "Si la configuración del servidor no es persistente (por ejemplo, ejecutándose en docker), los valores aquí pueden cambiar. Una vez que puedas conectarte, por favor actualiza las configuraciones en el local.ini del servidor.",
@@ -5924,17 +5769,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "需要重建数据库以应用更改。请选择应用更改的方法。\n\n<details>\n<summary>图例</summary>\n\n| 符号 | 含义 |\n|: ------ :| ------- |\n| ⇔ | 最新 |\n| ⇄ | 同步以平衡 |\n| ⇐,⇒ | 传输以覆盖 |\n| ⇠,⇢ | 从另一侧传输以覆盖 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概览:📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n使用此设备的现有文件重建本地和远程数据库。\n这将导致其他设备被锁定,并且它们需要执行获取操作。\n## ${OPTION_FETCH}\n概览:📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本地数据库并使用从远程数据库获取的数据重建它。\n这种情况包括您已经重建了远程数据库的情况。\n## ${OPTION_ONLY_SETTING}\n仅存储设置。**注意：这可能导致数据损坏**；通常需要重建数据库",
         "zh-tw":
             "需要重建資料庫才能套用變更。請選擇套用變更的方式。\n\n<details>\n<summary>圖例</summary>\n\n| 符號 | 含意 |\n|: ------ :| ------- |\n| ⇔ | 已是最新 |\n| ⇄ | 同步以取得一致 |\n| ⇐,⇒ | 傳輸並覆寫 |\n| ⇠,⇢ | 從另一端傳輸並覆寫 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概覽： 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n以此裝置上現有的檔案重建本機與遠端資料庫。\n這會鎖定其他裝置，它們必須執行抓取。\n## ${OPTION_FETCH}\n概覽： 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本機資料庫，並以從遠端資料庫抓取的資料重建。\n這也涵蓋你已重建遠端資料庫的情況。\n## ${OPTION_ONLY_SETTING}\n僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。",
-    },
-    "obsidianLiveSyncSettingTab.msgSelectAndApplyPreset": {
-        def: "Please select and apply any preset item to complete the wizard.",
-        es: "Por favor, selecciona y aplica cualquier elemento preestablecido para completar el asistente.",
-        fr: "Veuillez sélectionner et appliquer un préréglage pour terminer l'assistant.",
-        he: "אנא בחר והחל פריט קבוע מראש כלשהו להשלמת האשף.",
-        ja: "ウィザードを完了するには、プリセット項目を選択して適用してください。",
-        ko: "마법사를 완료하려면 프리셋 항목을 선택하고 적용해 주세요.",
-        ru: "Выберите и примените любой пресет для завершения мастера.",
-        zh: "请选择并应用任一预设项以完成向导。",
-        "zh-tw": "請選擇並套用任一預設項目以完成精靈。",
     },
     "obsidianLiveSyncSettingTab.msgSetCorsCredentials": {
         def: "Set cors.credentials",
@@ -6530,6 +6364,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "活动远程服务器",
         "zh-tw": "使用中的遠端伺服器",
     },
+    "obsidianLiveSyncSettingTab.titleAdvancedSettings": {
+        def: "Advanced settings",
+    },
     "obsidianLiveSyncSettingTab.titleAppearance": {
         def: "Appearance",
         es: "Apariencia",
@@ -6551,17 +6388,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Разрешение конфликтов",
         zh: "冲突处理",
         "zh-tw": "衝突處理",
-    },
-    "obsidianLiveSyncSettingTab.titleCongratulations": {
-        def: "Congratulations!",
-        es: "¡Felicidades!",
-        fr: "Félicitations !",
-        he: "מזל טוב!",
-        ja: "おめでとうございます！",
-        ko: "축하합니다!",
-        ru: "Поздравляем!",
-        zh: "恭喜！",
-        "zh-tw": "恭喜！",
     },
     "obsidianLiveSyncSettingTab.titleCouchDB": {
         def: "CouchDB",
@@ -6618,6 +6444,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "启用额外和高级功能",
         "zh-tw": "啟用額外與進階功能",
     },
+    "obsidianLiveSyncSettingTab.titleExtraFeaturesGroup": {
+        def: "Extra features",
+    },
+    "obsidianLiveSyncSettingTab.titleExtraMenus": {
+        def: "Extra menus",
+    },
     "obsidianLiveSyncSettingTab.titleFetchConfig": {
         def: "Fetch Config",
         es: "Obtener configuración",
@@ -6651,6 +6483,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "获取设置",
         "zh-tw": "抓取設定",
     },
+    "obsidianLiveSyncSettingTab.titleHelpAndInformation": {
+        def: "Help and information",
+    },
+    "obsidianLiveSyncSettingTab.titleHelpAndTroubleshooting": {
+        def: "Help and troubleshooting",
+    },
     "obsidianLiveSyncSettingTab.titleHiddenFiles": {
         def: "Hidden Files",
         es: "Archivos ocultos",
@@ -6672,6 +6510,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Логирование",
         zh: "日志",
         "zh-tw": "記錄",
+    },
+    "obsidianLiveSyncSettingTab.titleMaintenanceAndRecovery": {
+        def: "Maintenance and recovery",
     },
     "obsidianLiveSyncSettingTab.titleMinioS3R2": {
         def: "Minio,S3,R2",
@@ -6762,7 +6603,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw": "重設",
     },
     "obsidianLiveSyncSettingTab.titleSetupOtherDevices": {
-        def: "To setup other devices",
+        def: "Set up other devices",
         es: "Para configurar otros dispositivos",
         fr: "Pour configurer d'autres appareils",
         he: "להגדרת מכשירים אחרים",
@@ -6771,6 +6612,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Для настройки других устройств",
         zh: "设置其他设备",
         "zh-tw": "設定其他裝置",
+    },
+    "obsidianLiveSyncSettingTab.titleSynchronisation": {
+        def: "Synchronisation",
     },
     "obsidianLiveSyncSettingTab.titleSynchronizationMethod": {
         def: "Synchronization Method",
@@ -8187,7 +8031,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw": "複寫因某個模組失敗而取消",
     },
     "Replicator.Message.VersionUpFlash": {
-        def: "An update has been detected. Please open the Settings dialogue and check the Change Log. Replication has been cancelled.",
+        def: "Remote synchronisation is paused for compatibility review. Run the 'Review why synchronisation is paused' command for details and available actions.",
         es: "Se ha detectado una actualización. Abre el diálogo de ajustes y consulta el registro de cambios. La replicación se ha cancelado.",
         fr: "Une mise à jour a été détectée. Veuillez ouvrir la boîte de dialogue des paramètres et consulter le journal des modifications. La réplication a été annulée.",
         he: "זוהה עדכון. אנא פתח את דיאלוג ההגדרות ובדוק את יומן השינויים. השכפול בוטל.",
@@ -11870,6 +11714,72 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "덮어쓰기",
         zh: "覆盖",
         "zh-tw": "覆寫",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ApplyWithoutInitialisation": {
+        def: "Apply without Initialisation",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Back": {
+        def: "Review another way to apply these settings",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.BypassGuidance": {
+        def: "Applying these settings alone can make this device incompatible with its existing synchronisation data. Use this only when you have confirmed that reconstruction is unnecessary.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.BypassTitle": {
+        def: "Apply Settings without Initialisation?",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ContinueFetch": {
+        def: "Continue with Fetch",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.FetchOption": {
+        def: "Reset Synchronisation on This Device",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.FetchOptionDesc": {
+        def: "After restarting, rebuild this device's local database from the current remote synchronisation data. Files in the Vault will then be reconciled with that data.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.FetchOptionP2PDesc": {
+        def: "After restarting, select an online source device. This device's local LiveSync database will be rebuilt from that source.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Guidance": {
+        def: "These setting changes alter how synchronisation data is interpreted. Apply them together with an initialisation operation after restart.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.KeepEditing": {
+        def: "Keep Editing",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedFetch": {
+        def: "Restart and Fetch Synchronisation Data",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedFetchP2P": {
+        def: "Restart and Select a Source Device",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedRebuild": {
+        def: "Restart and Overwrite Server Data",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedRebuildP2P": {
+        def: "Restart and Prepare This Device",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Question": {
+        def: "Which existing data should be used after restart?",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOption": {
+        def: "Overwrite Server Data with This Device's Files",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionDesc": {
+        def: "Rebuild the local and remote databases from the files currently in this Vault. Other synchronising devices must reset their local synchronisation afterwards.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionP2P": {
+        def: "Prepare This Device from This Vault",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionP2PDesc": {
+        def: "Rebuild this device's local LiveSync database from the files currently in this Vault. This does not overwrite another device.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationGuidance": {
+        def: "The configured remote could not be verified with the current credentials and encryption settings. Continuing may make the Fetch fail after restart.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationTitle": {
+        def: "Remote Synchronisation Data Could Not Be Verified",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Title": {
+        def: "Apply Settings and Reinitialise Synchronisation",
     },
     "Ui.SetupWizard.Common.Back": {
         def: "No, please take me back",

@@ -70,9 +70,7 @@ async function applyObsidianMobileTestMode(
             await mkdir(outputDirectory, { recursive: true });
             const screenshotPath = join(
                 outputDirectory,
-                waitForLiveSync
-                    ? "mobile-mode-transition.failure.png"
-                    : "mobile-mode-before-plugin-start.failure.png"
+                waitForLiveSync ? "mobile-mode-transition.failure.png" : "mobile-mode-before-plugin-start.failure.png"
             );
             await page.screenshot({ path: screenshotPath, fullPage: true });
             const detail = error instanceof Error ? error.message : String(error);
@@ -108,7 +106,8 @@ export async function setObsidianMobileTestMode(port: number, enabled: boolean, 
 
 export async function assertMobileDialogueLayout(page: Page, container: Locator, label: string): Promise<void> {
     const dialogue = container.locator(".modal").last();
-    const closeButton = dialogue.locator(".modal-close-button");
+    // Obsidian 1.13 moved and renamed the mobile close control; both selectors remain supported runtime contracts.
+    const closeButton = container.locator(".modal-close-button, .modal-header-button").last();
     await assertLocatorWithinViewport(page, dialogue, { label });
     await assertNoHorizontalOverflow(page, dialogue, { label });
     await assertLocatorWithinSafeArea(page, dialogue, {

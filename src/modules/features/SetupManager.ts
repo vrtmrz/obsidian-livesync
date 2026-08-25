@@ -19,6 +19,7 @@ import UseSetupURI from "./SetupWizard/dialogs/UseSetupURI.svelte";
 import OutroNewUser from "./SetupWizard/dialogs/OutroNewUser.svelte";
 import OutroExistingUser from "./SetupWizard/dialogs/OutroExistingUser.svelte";
 import OutroAskUserMode from "./SetupWizard/dialogs/OutroAskUserMode.svelte";
+import ApplySettingsInitialisation from "./SetupWizard/dialogs/ApplySettingsInitialisation.svelte";
 import SetupRemote from "./SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "./SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "./SetupWizard/dialogs/SetupRemoteBucket.svelte";
@@ -38,10 +39,13 @@ import type {
     SetupRemoteP2PResultType,
     SetupRemoteResultType,
     UseSetupURIResultType,
+    ApplySettingsInitialisationResultType,
+    ApplySettingsInitialisationInitialData,
 } from "./SetupWizard/dialogs/setupDialogTypes.ts";
 import {
     applySettingsAndFetchOnActivation,
     applySettingsWithScheduledInitialisation,
+    type SetupInitialisationMode,
 } from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
 
@@ -75,6 +79,17 @@ export const enum UserMode {
     Update = "unknown", // Alias for Unknown for better readability
 }
 
+export type SettingsInitialisationApplicationResult =
+    | { result: "scheduled"; mode: SetupInitialisationMode }
+    | { result: "cancelled" }
+    | { result: "failed"; mode: SetupInitialisationMode };
+
+export type ApplySettingsWithInitialisationChoiceOptions = {
+    applySettings: () => Promise<void>;
+    isP2P: boolean;
+    validateChoice?: (mode: SetupInitialisationMode) => Promise<boolean>;
+};
+
 /**
  * Setup Manager to handle onboarding and configuration setup
  */
@@ -85,6 +100,32 @@ export class SetupManager extends AbstractModule {
     // private dialogManager: SvelteDialogManager = new SvelteDialogManager(this.plugin);
     get dialogManager() {
         return this.services.UI.dialogManager;
+    }
+
+    /**
+     * Ask which existing data should be authoritative for pending setting changes,
+     * then reserve the matching next-start operation before applying them.
+     *
+     * Cancellation and reservation failure remain distinct so the caller may
+     * offer an explicit settings-only fallback only after a user cancellation.
+     */
+    async applySettingsWithInitialisationChoice({
+        applySettings,
+        isP2P,
+        validateChoice = () => Promise.resolve(true),
+    }: ApplySettingsWithInitialisationChoiceOptions): Promise<SettingsInitialisationApplicationResult> {
+        const mode = await this.dialogManager.openWithExplicitCancel<
+            ApplySettingsInitialisationResultType,
+            ApplySettingsInitialisationInitialData
+        >(ApplySettingsInitialisation, { isP2P });
+        if (mode === "cancelled") {
+            return { result: "cancelled" };
+        }
+        if (!(await validateChoice(mode))) {
+            return { result: "failed", mode };
+        }
+        const scheduled = await applySettingsWithScheduledInitialisation(this.core.rebuilder, mode, applySettings);
+        return scheduled ? { result: "scheduled", mode } : { result: "failed", mode };
     }
 
     /**

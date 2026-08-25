@@ -22,6 +22,7 @@ import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/servic
 import { clearHandlers } from "@vrtmrz/livesync-commonlib/compat/replication/SyncParamsHandler";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { MARK_LOG_NETWORK_ERROR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -145,10 +146,12 @@ export class ModuleReplicator extends AbstractModule {
     }
 
     /**
-     * Reconciles local chunks when an older IndexedDB client reports that the remote database was cleaned.
-     * This compatibility path remains reachable while those clients can still set `remoteCleaned`.
-     * @deprecated v0.24.17
-     * @param showMessage If true, show message to the user.
+     * Reconciles an IndexedDB-backed local database after replication reports that the remote was cleaned.
+     *
+     * The remote milestone remains a supported compatibility signal. The user can either fetch the remote
+     * database again, or purge unreferenced local chunks before accepting this device again.
+     *
+     * @param showMessage Whether to show the recovery choices as user-facing notices.
      */
     async cleaned(showMessage: boolean) {
         Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
@@ -230,7 +233,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             await this.services.tweakValue.askResolvingMismatched(activeReplicator.preferredTweakValue);
         } else {
             if (activeReplicator.remoteLockedAndDeviceNotAccepted) {
-                if (activeReplicator.remoteCleaned && this.settings.useIndexedDBAdapter) {
+                if (activeReplicator.remoteCleaned && usesLegacyIndexedDBAdapter(this.settings)) {
                     await this.cleaned(showMessage);
                 } else {
                     const message = $msg("Replicator.Dialogue.Locked.Message");

@@ -16,6 +16,7 @@ export {
     requestUrl,
     sanitizeHTMLToDom,
     Setting,
+    SettingPage,
     stringifyYaml,
     TAbstractFile,
     TextAreaComponent,

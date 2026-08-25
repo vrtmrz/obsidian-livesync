@@ -9,7 +9,13 @@ import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { assertMobileDialogueLayout, iPhoneSafeArea, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { captureObsidianDialogue, obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
+import {
+    captureObsidianDialogue,
+    obsidianRemoteDebuggingPort,
+    openLiveSyncSettings,
+    waitForVisibleObsidianDialogue,
+    withObsidianPage,
+} from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_ONBOARDING_TIMEOUT_MS ?? 15000);
@@ -24,15 +30,6 @@ type UnconfiguredStartupEvidence = {
         handleFilenameCaseSensitive: boolean;
     };
 };
-
-type ObsidianTestApp = {
-    setting?: {
-        open(): void;
-        openTabById(tabId: string): void;
-    };
-};
-
-type ObsidianTestGlobal = typeof globalThis & { app?: ObsidianTestApp };
 
 async function writeMarker(vaultPath: string): Promise<void> {
     const fullPath = join(vaultPath, markerPath);
@@ -158,25 +155,24 @@ async function captureAndCloseIntro(filename: string, mobile: boolean): Promise<
 
 async function openOnboardingFromSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        await page.evaluate(() => {
-            const setting = (globalThis as ObsidianTestGlobal).app?.setting;
-            if (setting === undefined) throw new Error("Obsidian settings are unavailable");
-            setting.open();
-            setting.openTabById("obsidian-livesync");
-        });
-
-        const liveSyncSettings = page.locator(".sls-setting");
-        await liveSyncSettings.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await liveSyncSettings.locator('.sls-setting-menu-btn[title="Setup"]').click({ timeout: uiTimeoutMs });
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        const liveSyncSettings =
+            settingsNavigator.renderer === "declarative"
+                ? (await settingsNavigator.returnToCatalogue(), settingsNavigator.dialogue)
+                : await settingsNavigator.openPage("Quick Setup");
 
         const onboardingSetting = liveSyncSettings.locator(".setting-item").filter({
-            has: page.locator(".setting-item-name").filter({ hasText: "Rerun Onboarding Wizard" }),
+            has: settingsNavigator.page.locator(".setting-item-name").filter({ hasText: "Rerun Onboarding Wizard" }),
         });
         await onboardingSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await onboardingSetting
-            .getByRole("button", { name: "Rerun Wizard", exact: true })
-            .click({ timeout: uiTimeoutMs });
-        await onboardingDialogue(page).waitFor({ state: "visible", timeout: uiTimeoutMs });
+        if (settingsNavigator.renderer === "declarative") {
+            await onboardingSetting.click({ timeout: uiTimeoutMs });
+        } else {
+            await onboardingSetting
+                .getByRole("button", { name: "Rerun Wizard", exact: true })
+                .click({ timeout: uiTimeoutMs });
+        }
+        await waitForVisibleObsidianDialogue(settingsNavigator.page, "Welcome to Self-hosted LiveSync", uiTimeoutMs);
     });
 }
 
@@ -197,11 +193,8 @@ async function dismissVisibleNotices(): Promise<void> {
 
 async function closeSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        const settingsContainer = page.locator(".modal-container").filter({
-            has: page.locator(".sls-setting"),
-        });
-        await settingsContainer.locator(".modal-close-button").click({ timeout: uiTimeoutMs });
-        await settingsContainer.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        await settingsNavigator.close();
     });
 }
 

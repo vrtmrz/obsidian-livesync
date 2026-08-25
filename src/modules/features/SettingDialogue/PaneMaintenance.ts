@@ -1,11 +1,16 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
+import { $msg } from "@/common/translation";
+import {
+    createCoreSettingsAfterFullReset,
+    createEditingSettingsAfterFullReset,
+} from "@/serviceFeatures/setupObsidian/settingsReset.ts";
 import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { FlagFilesHumanReadable, FLAGMD_REDFLAG } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import { visibleOnly, type PageFunctions } from "./SettingPane";
+import { setButtonDestructiveState, visibleOnly, type PageFunctions } from "./SettingPane";
 export function paneMaintenance(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -33,7 +38,7 @@ export function paneMaintenance(
                     e.addEventListener("click", () => {
                         fireAndForget(async () => {
                             await this.services.replication.markResolved();
-                            this.display();
+                            this.requestPageRefresh();
                         });
                     });
                 }
@@ -60,7 +65,7 @@ export function paneMaintenance(
                     e.addEventListener("click", () => {
                         fireAndForget(async () => {
                             await this.services.replication.markUnlocked();
-                            this.display();
+                            this.requestPageRefresh();
                         });
                     });
                 }
@@ -73,10 +78,9 @@ export function paneMaintenance(
             .setName("Lock Server")
             .setDesc("Lock the remote server to prevent synchronization with other devices.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Lock")
                     .setDisabled(false)
-                    .setWarning()
                     .onClick(async () => {
                         await this.services.replication.markLocked();
                     })
@@ -87,12 +91,11 @@ export function paneMaintenance(
             .setName("Emergency restart")
             .setDesc("Disables all synchronization and restart.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Flag and restart")
                     .setDisabled(false)
-                    .setWarning()
                     .onClick(async () => {
-                        await this.core.storageAccess.writeFileAuto(FLAGMD_REDFLAG, "");
+                        await this.core.storageAccess.writeFileAuto(FlagFilesOriginal.SUSPEND_ALL, "");
                         this.services.appLifecycle.performRestart();
                     })
             );
@@ -132,9 +135,8 @@ export function paneMaintenance(
             .setName("Resend")
             .setDesc("Resend all chunks to the remote.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Send chunks")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
@@ -150,9 +152,8 @@ export function paneMaintenance(
                 "Initialise journal received history. On the next sync, every item except this device sent will be downloaded again."
             )
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Reset received")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
@@ -171,9 +172,8 @@ export function paneMaintenance(
                 "Initialise journal sent history. On the next sync, every item except this device received will be sent again."
             )
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Reset sent history")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
@@ -314,9 +314,8 @@ export function paneMaintenance(
             .setName("Overwrite remote")
             .setDesc("Overwrite remote with local DB and passphrase.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Send")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.rebuildDB("remoteOnly");
@@ -327,9 +326,8 @@ export function paneMaintenance(
             .setName("Reset all journal counter")
             .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Reset all")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().resetCheckpointInfo();
@@ -342,9 +340,8 @@ export function paneMaintenance(
             .setName("Purge all journal counter")
             .setDesc("Purge all download/upload cache.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Reset all")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(() => {
                         this.getMinioJournalSyncClient().resetAllCaches();
@@ -357,9 +354,8 @@ export function paneMaintenance(
             .setName("Fresh Start Wipe")
             .setDesc("Delete all data on the remote server.")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Delete")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
@@ -379,11 +375,34 @@ export function paneMaintenance(
 
     void addPanel(paneEl, "Reset").then((paneEl) => {
         new Setting(paneEl)
+            .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
+            .addButton((button) => {
+                setButtonDestructiveState(button)
+                    .setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
+                    .onClick(async () => {
+                        if (
+                            (await this.core.confirm.askYesNoDialog(
+                                $msg("obsidianLiveSyncSettingTab.msgDiscardConfirmation"),
+                                { defaultOption: "No" }
+                            )) !== "yes"
+                        ) {
+                            return;
+                        }
+                        this.editingSettings = createEditingSettingsAfterFullReset(this.editingSettings);
+                        await this.saveAllDirtySettings();
+                        this.core.settings = createCoreSettingsAfterFullReset();
+                        await this.services.setting.saveSettingData();
+                        await this.services.database.resetDatabase();
+                        this.services.appLifecycle.askRestart();
+                    });
+            })
+            .addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)));
+
+        new Setting(paneEl)
             .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Delete")
-                    .setWarning()
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.services.database.resetDatabase();

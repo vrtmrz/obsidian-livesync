@@ -28,6 +28,10 @@ export const TYPE_COMPATIBLE_EXISTING = "compatible-existing-user";
 // OutroExistingUser
 export const TYPE_APPLY = "apply";
 
+// Applying pending settings which require database initialisation
+export const TYPE_FETCH = "fetch";
+export const TYPE_REBUILD = "rebuild";
+
 // Select methods
 export const TYPE_USE_SETUP_URI = "use-setup-uri";
 export const TYPE_SCAN_QR_CODE = "scan-qr-code";
@@ -81,6 +85,12 @@ export type OutroAskUserModeResultType =
 export type OutroExistingUserResultType = typeof TYPE_APPLY | typeof TYPE_CANCELLED;
 
 export type OutroNewUserResultType = typeof TYPE_APPLY | typeof TYPE_CANCELLED;
+
+export type ApplySettingsInitialisationResultType = typeof TYPE_FETCH | typeof TYPE_REBUILD | typeof TYPE_CANCELLED;
+
+export type ApplySettingsInitialisationInitialData = {
+    isP2P: boolean;
+};
 
 export type SelectMethodNewUserResultType =
     | typeof TYPE_USE_SETUP_URI

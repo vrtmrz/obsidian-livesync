@@ -7,7 +7,7 @@ import {
     type DatabaseConnectingStatus,
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { cancelTask, scheduleTask } from "octagonal-wheels/concurrency/task";
+import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { fireAndForget, isDirty, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     collectingChunks,
@@ -119,7 +119,7 @@ export class ModuleLog extends AbstractObsidianModule {
     statusBarLabels!: ReactiveValue<{ message: string; status: string }>;
     statusLog = reactiveSource("");
     activeFileStatus = reactiveSource("");
-    notifies: { [key: string]: { notice: Notice; count: number } } = {};
+    notifies: { [key: string]: { count: number } } = {};
     p2pLogCollector = new P2PLogCollector(this.services.context.events);
 
     observeForLogs() {
@@ -407,6 +407,10 @@ export class ModuleLog extends AbstractObsidianModule {
     }
 
     private _allStartOnUnload(): Promise<boolean> {
+        for (const key of Object.keys(this.notifies)) {
+            this.services.context.notices.hide(`log:${key}`);
+        }
+        this.notifies = {};
         if (this.statusDiv) {
             this.statusDiv.remove();
         }
@@ -559,35 +563,26 @@ ${stringifyYaml(info)}
         if (level >= LOG_LEVEL_NOTICE) {
             if (!key) key = messageContent;
             if (key in this.notifies) {
-                // @ts-ignore
-                const isShown = this.notifies[key].notice.noticeEl?.isShown();
-                if (!isShown) {
-                    this.notifies[key].notice = new Notice(messageContent, 0);
-                }
-                cancelTask(`notify-${key}`);
                 if (key == messageContent) {
                     this.notifies[key].count++;
-                    this.notifies[key].notice.setMessage(`(${this.notifies[key].count}):${messageContent}`);
-                } else {
-                    this.notifies[key].notice.setMessage(`${messageContent}`);
                 }
             } else {
-                const notify = new Notice(messageContent, 0);
                 this.notifies[key] = {
                     count: 0,
-                    notice: notify,
                 };
             }
             const timeout = 5000;
-            if (!key.startsWith("keepalive-") || messageContent.indexOf(MARK_DONE) !== -1) {
+            const shouldExpire = !key.startsWith("keepalive-") || messageContent.indexOf(MARK_DONE) !== -1;
+            const noticeMessage =
+                key == messageContent && this.notifies[key].count > 0
+                    ? `(${this.notifies[key].count}):${messageContent}`
+                    : messageContent;
+            this.services.context.notices.show(`log:${key}`, noticeMessage, {
+                durationMs: shouldExpire ? timeout : false,
+            });
+            if (shouldExpire) {
                 scheduleTask(`notify-${key}`, timeout, () => {
-                    const notify = this.notifies[key].notice;
                     delete this.notifies[key];
-                    try {
-                        notify.hide();
-                    } catch {
-                        // NO OP
-                    }
                 });
             }
         }

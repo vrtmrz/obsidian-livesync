@@ -24,7 +24,7 @@ import {
 import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
-import type { PageFunctions } from "./SettingPane.ts";
+import { setButtonDestructiveState, type PageFunctions } from "./SettingPane.ts";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import {
     chooseAndCopyFileDatabaseInfo,
@@ -1097,10 +1097,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setName("Check and convert non-path-obfuscated files")
             .setDesc("")
             .addButton((button) =>
-                button
+                setButtonDestructiveState(button)
                     .setButtonText("Perform")
                     .setDisabled(false)
-                    .setWarning()
                     .onClick(async () => {
                         for await (const docName of this.core.localDatabase.findAllDocNames()) {
                             if (!docName.startsWith("f:")) {
@@ -1185,10 +1184,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
         );
 
         new Setting(paneEl).setName("Delete all customization sync data").addButton((button) =>
-            button
+            setButtonDestructiveState(button)
                 .setButtonText("Delete")
                 .setDisabled(false)
-                .setWarning()
                 .onClick(async () => {
                     Logger(`Deleting customization sync data`, LOG_LEVEL_NOTICE);
                     const entriesToDelete = await this.core.localDatabase.allDocsRaw({

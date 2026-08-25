@@ -4,6 +4,19 @@ NOTE: This document not completed. I'll improve this doc in a while. but your co
 
 There are many settings in Self-hosted LiveSync. This document describes each setting in detail (not how-to). Configuration and settings are divided into several categories and indicated by icons. The icon is as follows:
 
+On Obsidian 1.13 or later, the root settings page is organised by task. When synchronisation is inactive, **Quick Setup** appears first. Once any synchronisation mode is active, **Synchronisation** and **General Settings** move ahead of **Quick Setup**. **Set up other devices** appears after this plug-in has been configured. Earlier supported Obsidian versions retain a pane-based interface with the same controls.
+
+| Icon | Root group               | Contents or availability                                      |
+| :--: | ------------------------ | ------------------------------------------------------------- |
+|  🧙‍♂️  | Quick Setup              | Setup URI, onboarding, and enable actions                     |
+|  🔄  | Synchronisation          | Remote Configuration and Sync Settings                        |
+|  ⚙️  | General Settings         | Appearance, Logging, and Extra menus                          |
+|  📲  | Set up other devices     | Copy a Setup URI or show its QR code after configuration      |
+|  🛠️  | Maintenance and recovery | Maintenance and Hatch                                         |
+|  🧩  | Extra features           | Selector and Customisation sync when advanced features appear |
+|  🔧  | Advanced settings        | Advanced, Power users, and Patches when their modes appear    |
+|  ℹ️  | Help and information     | Help and troubleshooting, and Change Log                      |
+
 ## Feature maturity for 1.0
 
 The following status applies to optional and compatibility features in the 1.0 line:
@@ -15,10 +28,32 @@ The following status applies to optional and compatibility features in the 1.0 l
 | Beta or experimental | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 for CouchDB                                     | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
 | Compatibility only   | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
 
+### Apply changes which require initialisation
+
+Some compatibility settings are not saved immediately. They remain pending
+until **Apply** is selected. The Apply action remains visible on the root
+settings page and on the relevant child page. The following dialogue asks which
+existing data should be used after restarting:
+
+- **Reset Synchronisation on This Device** reconstructs this device's local
+  database from the configured remote. For P2P, an online source device is
+  selected after restart.
+- **Overwrite Server Data with This Device's Files** reconstructs the local and
+  remote databases from this Vault. The P2P equivalent prepares only this
+  device from its current Vault files.
+- **Review another way to apply these settings** returns to a separate choice
+  between keeping the changes pending and applying them without initialisation.
+  Applying them alone is an advanced compatibility fallback and can make the
+  device incompatible with its existing synchronisation data.
+
+LiveSync reserves the selected next-start operation before saving the pending
+settings. If validation or that reservation fails, the settings remain
+unapplied and the settings-only fallback is not offered.
+
 | Icon | Description                                                        |
 | :--: | ------------------------------------------------------------------ |
 |  💬  | [0. Change Log](#0-change-log)                                     |
-|  🧙‍♂️  | [1. Setup](#1-setup)                                               |
+|  🧙‍♂️  | [1. Quick Setup and Extra menus](#1-quick-setup-and-extra-menus)   |
 |  ⚙️  | [2. General Settings](#2-general-settings)                         |
 |  🛰️  | [3. Remote Configuration](#3-remote-configuration)                 |
 |  🔄  | [4. Sync Settings](#4-sync-settings)                               |
@@ -34,17 +69,19 @@ The following status applies to optional and compatibility features in the 1.0 l
 
 This pane always shows the current release history. It does not track whether a particular plug-in version has been read and does not open automatically after an ordinary update.
 
-Internal database or settings compatibility reviews use a separate safety dialogue, not this pane. The dialogue explains why remote synchronisation has been paused and preserves the automatic synchronisation choices which were configured before the update. A configured Vault which was copied, restored, or opened in a new Obsidian profile can require this review because its device-local acknowledgement is not part of the Vault data. An empty local database is not accepted as evidence that it is safe to continue. An existing unconfigured Vault remains in onboarding without this synchronisation warning; its missing acknowledgement is not filled in automatically, so it is evaluated if the Vault is configured later. Closing the dialogue keeps synchronisation paused. When the detected state can be handled by the running version, the explicit resume action records the current internal database version and restores the configured behaviour. A persistent Notice and the `Review why synchronisation is paused` command reopen the review. An older installation cannot dismiss a pause caused by a newer database or settings version.
+Internal database or settings compatibility reviews use a separate safety dialogue, not this pane. After the Obsidian layout is ready, a pending review opens as **Synchronisation paused for compatibility review**. The dialogue explains why remote synchronisation has been paused and preserves the automatic synchronisation choices which were configured before the update. Closing it or selecting **Keep synchronisation paused** leaves synchronisation paused. Use the persistent Notice's **Review why** link, or run the `Review why synchronisation is paused` command, to reopen it. Opening **Change Log** does not acknowledge the review.
 
-## 1. Setup
+A configured Vault which was copied, restored, or opened in a new Obsidian profile can require this review because its device-local acknowledgement is not part of the Vault data. An empty local database is not accepted as evidence that it is safe to continue. An existing unconfigured Vault remains in onboarding without this synchronisation warning; its missing acknowledgement is not filled in automatically, so it is evaluated if the Vault is configured later. When the detected state can be handled by the running version, **Resume synchronisation** records the current internal database version and restores the configured behaviour. An older installation cannot dismiss a pause caused by a newer database or settings version.
 
-This pane is used for setting up Self-hosted LiveSync. There are several options to set up Self-hosted LiveSync.
+## 1. Quick Setup and Extra menus
 
-An unconfigured installation does not open the onboarding dialogue automatically or scan the Vault into the local database. A long-lived Notice offers the onboarding action. If the Notice is dismissed, open **Self-hosted LiveSync settings** → **Setup** → **Rerun Onboarding Wizard**.
+Quick Setup contains the actions used to configure Self-hosted LiveSync. On Obsidian 1.13 or later these actions appear on the root settings page. In the pane-based interface, they remain available together on the **Quick Setup** pane.
+
+An unconfigured installation does not open the onboarding dialogue automatically or scan the Vault into the local database. A long-lived Notice offers the onboarding action. If the Notice is dismissed, use **Rerun Onboarding Wizard** in the root **Quick Setup** group on Obsidian 1.13 or later. On earlier supported Obsidian versions, open **Self-hosted LiveSync settings** → **Quick Setup** → **Rerun Onboarding Wizard**.
 
 Choose the new-device path when this device owns the files which should initialise synchronisation. Choose the existing-device path when it should receive an established remote state. The wizard reserves Rebuild or Fetch respectively before enabling the settings and requesting a restart, so the selected initialisation runs before the ordinary start-up scan.
 
-### 1. Quick Setup
+### 1. Setup actions
 
 Most preferred method to setup Self-hosted LiveSync. You can setup Self-hosted LiveSync with a few clicks.
 
@@ -64,22 +101,15 @@ Completing manual CouchDB, Object Storage, or P2P setup creates the correspondin
 
 This button only appears when the setup was not completed. If you have completed the setup manually, you can enable LiveSync on this device by this button.
 
-### 2. To setup other devices
+### 2. Set up other devices
 
 #### Copy the current settings to a Setup URI
 
 You can copy the current settings as a new setup URI. And this URI can be used to setup the other devices as [Use the copied setup URI](#use-the-copied-setup-uri).
 
-### 3. Reset
+### 3. Extra menus
 
-#### Discard existing settings and databases
-
-Reset the Self-hosted LiveSync settings and databases.
-**Hazardous operation. Please be careful when using this.**
-
-### 4. Enable extra and advanced features
-
-To keep the set-up dialogue simple, some panes are hidden in default. You can enable them here.
+To keep the settings dialogue concise, some menus and features are hidden by default. On Obsidian 1.13 or later, enable them through **General Settings** → **Extra menus**. In the pane-based interface, the same controls appear in General Settings.
 
 #### Enable advanced features
 
@@ -1084,5 +1114,9 @@ Garbage Collection V3 identifies Chunk documents which are not reachable from an
 Use it only when the Vault, local database, and remote are healthy, and every relevant device has synchronised. It can make an ordinary superseded file revision unreadable when no current state still needs its Chunks. It does not repair corruption or replace a deliberate rebuild. See the [Garbage Collection V3 specification](specs_garbage_collection.md).
 
 ### 7. Reset
+
+#### Discard existing settings and databases
+
+Reset the Self-hosted LiveSync settings and local database. This is a hazardous operation; make a backup before using it.
 
 #### Delete local database to reset or uninstall Self-hosted LiveSync

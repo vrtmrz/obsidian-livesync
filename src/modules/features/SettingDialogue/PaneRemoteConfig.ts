@@ -11,7 +11,7 @@ import { Menu, type ButtonComponent } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
-import type { PageFunctions } from "./SettingPane.ts";
+import { setButtonDestructiveState, type PageFunctions } from "./SettingPane.ts";
 // import { visibleOnly } from "./SettingPane.ts";
 import InfoPanel from "./InfoPanel.svelte";
 import { writable } from "svelte/store";
@@ -89,7 +89,7 @@ function suggestRemoteConfigurationName(parsed: RemoteConfigurationResult): stri
 export function paneRemoteConfig(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
-    { addPanel, addPane }: PageFunctions
+    { addPanel }: PageFunctions
 ): void {
     {
         /* E2EE */
@@ -103,11 +103,12 @@ export function paneRemoteConfig(
             });
         };
         void addPanel(paneEl, "E2EE Configuration", () => {}).then((paneEl) => {
-            new SveltePanel(InfoPanel, paneEl, E2EESummaryWritable);
+            const infoPanel = new SveltePanel(InfoPanel, paneEl, E2EESummaryWritable);
+            this.lifetimeComponent.register(() => infoPanel.destroy());
             const setupButton = new Setting(paneEl).setName("Configure E2EE");
             setupButton
                 .addButton((button) =>
-                    button
+                    setButtonDestructiveState(button)
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
@@ -115,10 +116,9 @@ export function paneRemoteConfig(
                             updateE2EESummary();
                         })
                         .setButtonText("Configure")
-                        .setWarning()
                 )
                 .addButton((button) =>
-                    button
+                    setButtonDestructiveState(button)
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
@@ -126,7 +126,6 @@ export function paneRemoteConfig(
                             updateE2EESummary();
                         })
                         .setButtonText("Configure And Change Remote")
-                        .setWarning()
                 );
             updateE2EESummary();
         });
@@ -553,83 +552,6 @@ export function paneRemoteConfig(
     //     );
 
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleNotification"), () => {}).then((paneEl) => {
-        paneEl.addClass("wizardHidden");
-        new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {}).setClass("wizardHidden");
+        new Setting(paneEl).autoWireNumeric("notifyThresholdOfRemoteStorageSize", {});
     });
-
-    // new Setting(paneEl).setClass("wizardOnly").addButton((button) =>
-    //     button
-    //         .setButtonText($msg("obsidianLiveSyncSettingTab.buttonNext"))
-    //         .setCta()
-    //         .setDisabled(false)
-    //         .onClick(async () => {
-    //             if (!(await checkConfig(checkResultDiv))) {
-    //                 if (
-    //                     (await this.plugin.confirm.askYesNoDialog(
-    //                         $msg("obsidianLiveSyncSettingTab.msgConfigCheckFailed"),
-    //                         {
-    //                             defaultOption: "No",
-    //                             title: $msg("obsidianLiveSyncSettingTab.titleRemoteConfigCheckFailed"),
-    //                         }
-    //                     )) == "no"
-    //                 ) {
-    //                     return;
-    //                 }
-    //             }
-    //             const isEncryptionFullyEnabled =
-    //                 !this.editingSettings.encrypt || !this.editingSettings.usePathObfuscation;
-    //             if (isEncryptionFullyEnabled) {
-    //                 if (
-    //                     (await this.plugin.confirm.askYesNoDialog(
-    //                         $msg("obsidianLiveSyncSettingTab.msgEnableEncryptionRecommendation"),
-    //                         {
-    //                             defaultOption: "No",
-    //                             title: $msg("obsidianLiveSyncSettingTab.titleEncryptionNotEnabled"),
-    //                         }
-    //                     )) == "no"
-    //                 ) {
-    //                     return;
-    //                 }
-    //             }
-    //             if (!this.editingSettings.encrypt) {
-    //                 this.editingSettings.passphrase = "";
-    //             }
-    //             if (!(await this.isPassphraseValid())) {
-    //                 if (
-    //                     (await this.plugin.confirm.askYesNoDialog(
-    //                         $msg("obsidianLiveSyncSettingTab.msgInvalidPassphrase"),
-    //                         {
-    //                             defaultOption: "No",
-    //                             title: $msg("obsidianLiveSyncSettingTab.titleEncryptionPassphraseInvalid"),
-    //                         }
-    //                     )) == "no"
-    //                 ) {
-    //                     return;
-    //                 }
-    //             }
-    //             if (isCloudantURI(this.editingSettings.couchDB_URI)) {
-    //                 this.editingSettings = { ...this.editingSettings, ...PREFERRED_SETTING_CLOUDANT };
-    //             } else if (this.editingSettings.remoteType == REMOTE_MINIO) {
-    //                 this.editingSettings = { ...this.editingSettings, ...PREFERRED_JOURNAL_SYNC };
-    //             } else {
-    //                 this.editingSettings = { ...this.editingSettings, ...PREFERRED_SETTING_SELF_HOSTED };
-    //             }
-    //             if (
-    //                 (await this.plugin.confirm.askYesNoDialog(
-    //                     $msg("obsidianLiveSyncSettingTab.msgFetchConfigFromRemote"),
-    //                     { defaultOption: "Yes", title: $msg("obsidianLiveSyncSettingTab.titleFetchConfig") }
-    //                 )) == "yes"
-    //             ) {
-    //                 const trialSetting = { ...this.initialSettings, ...this.editingSettings };
-    //                 const newTweaks = await this.services.tweakValue.checkAndAskUseRemoteConfiguration(trialSetting);
-    //                 if (newTweaks.result !== false) {
-    //                     this.editingSettings = { ...this.editingSettings, ...newTweaks.result };
-    //                     this.requestUpdate();
-    //                 } else {
-    //                     // Messages should be already shown.
-    //                 }
-    //             }
-    //             this.changeDisplay("30");
-    //         })
-    // );
 }

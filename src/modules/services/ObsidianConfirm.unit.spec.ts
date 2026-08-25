@@ -32,7 +32,6 @@ vi.mock("@/deps", () => ({
 }));
 
 import { EVENT_PLUGIN_UNLOADED } from "@/common/events";
-import { memoObject, retrieveMemoObject } from "@/common/utils";
 import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { ObsidianServiceContext } from "./ObsidianServiceContext";
@@ -41,8 +40,12 @@ function createConfirm() {
     const app = { id: "app" };
     const plugin = { app };
     const events = createLiveSyncEventHub();
-    const context = { app, plugin, events } as unknown as ObsidianServiceContext;
-    return { confirm: new ObsidianConfirm(context), events, app, plugin };
+    const notices = {
+        show: vi.fn(),
+        hide: vi.fn(),
+    };
+    const context = { app, plugin, events, notices } as unknown as ObsidianServiceContext;
+    return { confirm: new ObsidianConfirm(context), events, app, plugin, notices };
 }
 
 beforeEach(() => {
@@ -259,19 +262,46 @@ describe("ObsidianConfirm Fancy Kit adapter", () => {
         expect(observedSignal?.aborted).toBe(true);
     });
 
-    it("closes an active Notice when the plug-in unload event is emitted", () => {
-        const { confirm, events } = createConfirm();
+    it("routes popup display and expiry through the context-owned keyed Notice manager", async () => {
+        vi.useFakeTimers();
         const popupKey = "popup-remote-size-exceeded";
-        const popup = {
-            hide: vi.fn(),
-            noticeEl: { isShown: vi.fn(() => true) },
+        const fragment = {} as DocumentFragment;
+        const anchor = { addEventListener: vi.fn() } as unknown as HTMLAnchorElement;
+        const span = {
+            appendText: vi.fn(),
+            appendChild: vi.fn(),
+            createEl: vi.fn((_tag, _options, callback: (element: HTMLAnchorElement) => void) => {
+                callback(anchor);
+                return anchor;
+            }),
         };
-        memoObject(popupKey, popup);
+        vi.stubGlobal("createFragment", (callback: (document: unknown) => void) => {
+            callback({
+                createSpan: (_options: unknown, build: (element: typeof span) => void) => build(span),
+            });
+            return fragment;
+        });
+        const { confirm, notices } = createConfirm();
+
+        try {
+            confirm.askInPopup("remote-size-exceeded", "Review {HERE} details", vi.fn(), 20_000);
+            await vi.advanceTimersByTimeAsync(1_000);
+
+            expect(notices.show).toHaveBeenCalledWith(popupKey, fragment, { durationMs: 20_000 });
+        } finally {
+            await vi.runAllTimersAsync();
+            vi.useRealTimers();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("closes an owned keyed Notice when the plug-in unload event is emitted", () => {
+        const { confirm, events, notices } = createConfirm();
+        const popupKey = "popup-remote-size-exceeded";
         (confirm as unknown as { popupKeys: Set<string> }).popupKeys.add(popupKey);
 
         events.emitEvent(EVENT_PLUGIN_UNLOADED);
 
-        expect(popup.hide).toHaveBeenCalledOnce();
-        expect(retrieveMemoObject(popupKey)).toBe(false);
+        expect(notices.hide).toHaveBeenCalledWith(popupKey);
     });
 });

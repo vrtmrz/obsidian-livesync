@@ -26,14 +26,16 @@ import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
 import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups";
+import { KeyedNoticeManager } from "@vrtmrz/obsidian-plugin-kit/notice";
 import { setLang } from "@/common/translation";
 
 // InjectableServiceHub
 
 export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceContext> {
     constructor(plugin: ObsidianLiveSyncPlugin) {
+        const notices = new KeyedNoticeManager();
         const noticeGroups = new ObsidianNoticeGroupManager();
-        const context = new ObsidianServiceContext(plugin.app, plugin, plugin, noticeGroups);
+        const context = new ObsidianServiceContext(plugin.app, plugin, plugin, notices, noticeGroups);
 
         const API = new ObsidianAPIService(context);
         const conflict = new ObsidianConflictService(context);
@@ -66,6 +68,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const screenWakeLock = createScreenWakeLockManager();
         appLifecycle.onUnload.addHandler(async () => {
             await screenWakeLock.dispose();
+            notices.dispose();
             noticeGroups.dispose();
             return true;
         });

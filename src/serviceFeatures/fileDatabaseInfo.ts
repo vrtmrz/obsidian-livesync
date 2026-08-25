@@ -1,4 +1,5 @@
 import { $msg } from "@/common/translation";
+import type PouchDB from "pouchdb-core";
 import type {
     FilePath,
     FilePathWithPrefix,

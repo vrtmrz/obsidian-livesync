@@ -27,6 +27,12 @@ describe("LiveSync-owned translation catalogue", () => {
         expect(translateLiveSyncMessage("Active Remote Type")).toBe(englishMessageTranslator("Active Remote Type"));
     });
 
+    it("directs a compatibility pause to the dedicated review workflow", () => {
+        expect(translateLiveSyncMessage("Replicator.Message.VersionUpFlash")).toBe(
+            "Remote synchronisation is paused for compatibility review. Run the 'Review why synchronisation is paused' command for details and available actions."
+        );
+    });
+
     it("uses LiveSync-owned provisional English without extending Commonlib's message contract", () => {
         expect($msg("This file has unresolved conflicts.")).toBe("This file has unresolved conflicts.");
         expect($msg("More actions for ${DEVICE}", { DEVICE: "phone" })).toBe("More actions for phone");

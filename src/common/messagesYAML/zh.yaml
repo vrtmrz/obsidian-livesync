@@ -358,7 +358,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: 显示日志
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/zh/README_zh.md#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8
   fix0256:
     buttons:
       checkItLater: 稍后检查
@@ -420,19 +419,6 @@ moduleMigration:
 
     ___注意:在更改配置并再次获取数据库之前,我们无法进行同步。___
     ___注意2:chunks 是完全不可变的,我们只能获取元数据和差异
-  msgInitialSetup: |-
-    您的设备**尚未设置**。让我引导您完成设置过程。
-
-    请记住,每个对话框内容都可以复制到剪贴板。如果以后需要参考,可以将其粘贴到 Obsidian 的笔记中。您也可以使用翻译工具将其翻译成您的语言。
-
-    首先,您有**设置 URI** 吗？
-
-    注意:如果您不知道这是什么,请参阅[文档](${URI_DOC})
-  msgRecommendSetupUri: |-
-    我们强烈建议您生成一个设置 URI 并使用它。
-    如果您对此不了解,请参阅[文档](${URI_DOC})(再次抱歉,但这很重要)。
-
-    您想如何手动设置?
   msgSinceV02321: |-
     自 v0.23.21 起,Self-hosted LiveSync 更改了默认行为和数据库结构。进行了以下更改：
 
@@ -453,18 +439,10 @@ moduleMigration:
   optionEnableBoth: 启用两者
   optionEnableFilenameCaseInsensitive: "仅启用 #1"
   optionEnableFixedRevisionForChunks: "仅启用 #2"
-  optionHaveSetupUri: 是的,我有
   optionKeepPreviousBehaviour: 保持以前的行为
-  optionManualSetup: 全部手动设置
   optionNoAskAgain: 不,请稍后再次询问
-  optionNoSetupUri: 不,我没有
-  optionRemindNextLaunch: 下次启动时提醒我
-  optionSetupViaP2P: Use %{short_p2p_sync} to set up
-  optionSetupWizard: 带我进入设置向导
   optionYesFetchAgain: 是的,再次获取
   titleCaseSensitivity: 大小写敏感性
-  titleRecommendSetupUri: 推荐使用设置 URI
-  titleWelcome: 欢迎使用 Self-hosted LiveSync
 moduleObsidianMenu:
   replicate: 复制
 More actions: 更多操作
@@ -490,12 +468,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: 启用
   btnFix: 修复
   btnGotItAndUpdated: 我明白了并且已更新
-  btnNext: 下一步
   btnStart: 开始
   btnTest: 测试
   btnUse: 使用
   buttonFetch: 获取
-  buttonNext: 下一步
   defaultLanguage: 默认语言
   descConnectSetupURI: 这是使用设置 URI 设置 Self-hosted LiveSync 的推荐方法
   descCopySetupURI: 非常适合设置新设备！
@@ -560,7 +536,6 @@ obsidianLiveSyncSettingTab:
   msgEnableCorsChttpd: 设置 chttpd.enable_cors
   msgEnableEncryptionRecommendation: 建议启用端到端加密和路径混淆。你确定要在未加密的情况下继续吗？
   msgFetchConfigFromRemote: 要从远端服务器获取配置吗？
-  msgGenerateSetupURI: 全部完成！要生成设置 URI 以便配置其他设备吗？
   msgIfConfigNotPersistent: 如果服务器配置不是持久的(例如,在 docker 上运行),此处的值可能会更改。一旦能够连接,请更新服务器 local.ini 中的设置
   msgInvalidPassphrase: 你的加密密码短语可能无效。你确定要继续吗？
   msgNewVersionNote: 因为升级通知来到这里？请查看版本历史。如果您满意,请点击按钮。新的更新将再次提示此信息
@@ -602,7 +577,6 @@ obsidianLiveSyncSettingTab:
     这种情况包括您已经重建了远程数据库的情况。
     ## ${OPTION_ONLY_SETTING}
     仅存储设置。**注意：这可能导致数据损坏**；通常需要重建数据库
-  msgSelectAndApplyPreset: 请选择并应用任一预设项以完成向导。
   msgSetCorsCredentials: 设置 cors.credentials
   msgSetCorsOrigins: 设置 cors.origins
   msgSetMaxDocSize: 设置 couchdb.max_document_size
@@ -659,7 +633,6 @@ obsidianLiveSyncSettingTab:
   titleActiveRemoteServer: 活动远程服务器
   titleAppearance: 外观
   titleConflictResolution: 冲突处理
-  titleCongratulations: 恭喜！
   titleCouchDB: CouchDB 服务器
   titleDeletionPropagation: 删除传播
   titleEncryptionNotEnabled: 尚未启用加密

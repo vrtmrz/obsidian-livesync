@@ -344,7 +344,6 @@ moduleLocalDatabase:
 moduleLog:
   showLog: הצג יומן
 moduleMigration:
-  docUri: https://github.com/vrtmrz/obsidian-livesync/blob/main/README.md#how-to-use
   fix0256:
     buttons:
       checkItLater: בדוק מאוחר יותר
@@ -430,25 +429,6 @@ moduleMigration:
 
     ___הערה 2: הנתחים הם בלתי-ניתנים לשינוי לחלוטין, ניתן למשוך רק את המטה-נתונים
     וההפרש.___
-  msgInitialSetup: >-
-    המכשיר שלך **טרם הוגדר**. אנחנו כאן לעזור לך בתהליך ההגדרה.
-
-
-    שים לב שניתן להעתיק את תוכן כל דיאלוג ללוח. אם צריך לחזור אליו מאוחר יותר,
-    ניתן להדביק אותו כפתק ב-Obsidian. ניתן גם לתרגם לשפתך בעזרת כלי תרגום.
-
-
-    ראשית, האם יש לך **Setup URI**?
-
-
-    הערה: אם אינך יודע מהו, אנא עיין ב[תיעוד](${URI_DOC}).
-  msgRecommendSetupUri: >-
-    אנו ממליצים בחום לייצר Setup URI ולהשתמש בו.
-
-    אם אין לך ידע בנושא, אנא עיין ב[תיעוד](${URI_DOC}) (מתנצלים שוב, אך זה חשוב).
-
-
-    כיצד ברצונך להגדיר ידנית?
   msgSinceV02321: >-
     מאז גרסה 0.23.21, Self-hosted LiveSync שינה את התנהגות ברירת המחדל ומבנה מסד
     הנתונים. השינויים הבאים בוצעו:
@@ -478,18 +458,10 @@ moduleMigration:
   optionEnableBoth: הפעל את שניהם
   optionEnableFilenameCaseInsensitive: "הפעל רק #1"
   optionEnableFixedRevisionForChunks: "הפעל רק #2"
-  optionHaveSetupUri: כן, יש לי
   optionKeepPreviousBehaviour: שמור על התנהגות קודמת
-  optionManualSetup: הגדר הכל ידנית
   optionNoAskAgain: לא, אנא שאל שוב
-  optionNoSetupUri: לא, אין לי
-  optionRemindNextLaunch: הזכר לי בהפעלה הבאה
-  optionSetupViaP2P: השתמש ב-%{short_p2p_sync} להגדרה
-  optionSetupWizard: קח אותי לאשף ההגדרה
   optionYesFetchAgain: כן, משוך שוב
   titleCaseSensitivity: תלות רישיות
-  titleRecommendSetupUri: המלצה לשימוש ב-Setup URI
-  titleWelcome: ברוך הבא ל-Self-hosted LiveSync
 moduleObsidianMenu:
   replicate: שכפל
 Move remotely deleted files to the trash, instead of deleting.: העבר קבצים שנמחקו מרחוק לאשפה, במקום למחוק.
@@ -512,12 +484,10 @@ obsidianLiveSyncSettingTab:
   btnEnable: הפעל
   btnFix: תקן
   btnGotItAndUpdated: הבנתי ועדכנתי.
-  btnNext: הבא
   btnStart: התחל
   btnTest: בדוק
   btnUse: השתמש
   buttonFetch: משוך
-  buttonNext: הבא
   defaultLanguage: ברירת מחדל
   descConnectSetupURI: זוהי השיטה המומלצת להגדרת Self-hosted LiveSync עם Setup URI.
   descCopySetupURI: מושלם להגדרת מכשיר חדש!
@@ -586,7 +556,6 @@ obsidianLiveSyncSettingTab:
   msgEnableEncryptionRecommendation: אנו ממליצים להפעיל הצפנה מקצה לקצה ואת ערפול
     הנתיב. האם אתה בטוח שברצונך להמשיך ללא הצפנה?
   msgFetchConfigFromRemote: האם ברצונך למשוך את התצורה מהשרת המרוחד?
-  msgGenerateSetupURI: הכל מוכן! האם ברצונך לייצר Setup URI להגדרת מכשירים אחרים?
   msgIfConfigNotPersistent: אם תצורת השרת אינה קבועה (למשל, פועלת ב-docker), הערכים
     כאן עשויים להשתנות. לאחר שתצליח להתחבר, אנא עדכן את ההגדרות ב-local.ini של השרת.
   msgInvalidPassphrase: ביטוי הסיסמה להצפנה שלך עשוי להיות לא תקין. האם אתה בטוח
@@ -659,7 +628,6 @@ obsidianLiveSyncSettingTab:
 
     שמור רק את ההגדרות. **זהירות: עלול לגרום לפגיעה בנתונים**; בנייה מחדש של מסד
     הנתונים נדרשת בדרך כלל.
-  msgSelectAndApplyPreset: אנא בחר והחל פריט קבוע מראש כלשהו להשלמת האשף.
   msgSetCorsCredentials: הגדר cors.credentials
   msgSetCorsOrigins: הגדר cors.origins
   msgSetMaxDocSize: הגדר couchdb.max_document_size
@@ -718,7 +686,6 @@ obsidianLiveSyncSettingTab:
   titleActiveRemoteServer: שרת מרוחד פעיל
   titleAppearance: מראה
   titleConflictResolution: פתרון קונפליקטים
-  titleCongratulations: מזל טוב!
   titleCouchDB: CouchDB
   titleDeletionPropagation: הפצת מחיקות
   titleEncryptionNotEnabled: ההצפנה אינה מופעלת
