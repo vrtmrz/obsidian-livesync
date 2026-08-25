@@ -40,7 +40,6 @@ import {
     eventHub,
 } from "@/common/events.ts";
 import {
-    enableOnly,
     // findAttrFromParent,
     // getLevelStr,
     setLevelClass,
@@ -587,19 +586,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             "encrypt",
         ]);
     }
-    isAnySyncEnabled() {
-        if (this.isConfiguredAs("isConfigured", false)) return false;
-        if (this.isConfiguredAs("liveSync", true)) return true;
-        if (this.isConfiguredAs("periodicReplication", true)) return true;
-        if (this.isConfiguredAs("syncOnFileOpen", true)) return true;
-        if (this.isConfiguredAs("syncOnSave", true)) return true;
-        if (this.isConfiguredAs("syncOnEditorSave", true)) return true;
-        if (this.isConfiguredAs("syncOnStart", true)) return true;
-        if (this.isConfiguredAs("syncAfterMerge", true)) return true;
-        if (this.isConfiguredAs("syncOnFileOpen", true)) return true;
-        if (this.core?.replicator?.syncStatus == "CONNECTED") return true;
-        if (this.core?.replicator?.syncStatus == "PAUSED") return true;
-        return false;
+    isLiveSyncConfigured() {
+        return this.isConfiguredAs("isConfigured", true);
     }
 
     private supportsDeclarativeSettings(): boolean {
@@ -905,13 +893,20 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             getPage("help"),
             getPage("change-log"),
         ]);
-        const laterGroups = [setupOtherDevices, maintenance, extraFeatures, advancedSettings, helpAndInformation];
+        const laterGroups = [maintenance, extraFeatures, advancedSettings, helpAndInformation];
 
         const pendingInitialisation = this.createRebuildRequiredAction();
-        if (this.isAnySyncEnabled()) {
-            return [pendingInitialisation, synchronisation, generalSettings, quickSetup, ...laterGroups];
+        if (this.isLiveSyncConfigured()) {
+            return [
+                pendingInitialisation,
+                synchronisation,
+                generalSettings,
+                setupOtherDevices,
+                quickSetup,
+                ...laterGroups,
+            ];
         }
-        return [pendingInitialisation, quickSetup, synchronisation, generalSettings, ...laterGroups];
+        return [pendingInitialisation, quickSetup, synchronisation, generalSettings, setupOtherDevices, ...laterGroups];
     }
 
     private beginRenderScope(refresh: () => void): Component {
@@ -935,8 +930,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.settingComponents.length = 0;
         this.controlledElementFunc.length = 0;
     }
-
-    enableOnlySyncDisabled = enableOnly(() => !this.isAnySyncEnabled());
 
     onlyOnP2POrCouchDB = () =>
         ({
@@ -1184,7 +1177,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
         void yieldNextAnimationFrame().then(() => {
             if (this.selectedScreen == "") {
-                if (this.isAnySyncEnabled()) {
+                if (this.isLiveSyncConfigured()) {
                     changeDisplay("20");
                 } else {
                     changeDisplay("110");

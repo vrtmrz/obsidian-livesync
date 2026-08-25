@@ -245,6 +245,12 @@ export class ModuleExample extends AbstractObsidianModule {
 
 - Settings are defined by Commonlib (`ObsidianLiveSyncSettings`)
 - Configuration metadata is supplied by the Commonlib settings exports
+- Obsidian may request declarative definitions immediately from
+  `Plugin.addSettingTab()`. Register a settings tab which reads persisted values
+  from the sequential `onSettingLoaded` lifecycle, seed its editing snapshot
+  before registration, and keep definition construction independent of local
+  database and replicator readiness. See
+  [the declarative settings adapter ADR](docs/adr/2026_08_declarative_settings_adapter.md).
 - Use `this.services.setting.saveSettingData()` instead of using plugin methods directly
 
 ### Database Operations
