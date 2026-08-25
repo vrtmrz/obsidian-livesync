@@ -14,25 +14,18 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## 1.0.20
 
-25th August, 2026
-
-### Interface and translation
-
-#### Fixed
-
-- Obsidian 1.13 settings discovery now waits until persisted settings have loaded and no longer queries the active replicator before database initialisation, preventing a spurious start-up warning.
-
-## 1.0.19
+~~1.0.19~~ was cancelled because prerelease validation exposed an incorrect warning at start-up.
 
 25th August, 2026
 
-I had grown quite fond of the settings screen, but it seems that a simpler, healthier life is called for.
+I know this is the second time I have said it, but I had grown quite fond of the settings screen. It seems, however, that a simpler, healthier life is called for.
 
 ### Interface and translation
 
 #### Fixed
 
 - Compatibility pause warnings now direct you to the dedicated compatibility review instead of the Change Log.
+- The Obsidian 1.13 settings page now waits for saved settings before choosing its initial layout. This prevents a spurious missing-replicator warning at start-up, keeps configured devices on the Synchronisation-first layout even when automatic synchronisation triggers are disabled, and keeps Quick Setup first on unconfigured devices.
 
 #### Improved
 
