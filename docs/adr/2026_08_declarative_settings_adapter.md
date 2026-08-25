@@ -13,6 +13,9 @@ Accepted and implemented through Stage C1 and two bounded Stage C2
 landing-page improvements. The shared specification remains deliberately
 limited to one-key, immediately persisted controls. Complex pages retain their
 existing renderers instead of being forced through a general abstraction.
+Settings pending application which require database initialisation now delegate
+their decision, scheduling, and restart boundary to `SetupManager` and
+`Rebuilder`.
 
 ## Context
 
@@ -502,6 +505,29 @@ conversion should be justified by useful settings-search coverage and retain
 the catalogue, persistence owner, and refresh boundaries established by Stage
 C1.
 
+### Centralise initialisation for settings pending application
+
+Settings which cannot take effect safely through immediate persistence remain
+in the settings tab's editing buffer. Their Apply action delegates to a focused
+`SetupManager` dialogue which asks whether the next start should use existing
+synchronisation data or the files in the current Vault. `SetupManager` reports
+user cancellation and validation or reservation failure distinctly instead of
+collapsing them into a boolean setup outcome. A settings-persistence exception
+still propagates after `Rebuilder` removes the reserved flag.
+
+`Rebuilder.scheduleFetch()` and `Rebuilder.scheduleRebuild()` are the only
+owners of the corresponding flag files. They reserve the next-start operation
+before the callback persists the edited settings, remove the flag if that
+callback fails, and request the restart only after preparation succeeds. The
+settings tab must not write those flag files or request the restart directly.
+
+A user cancellation returns to a separate confirmation which offers either to
+keep editing or to apply the settings without initialisation. This preserves
+the former advanced fallback without presenting it as an equal data-source
+choice. A validation or flag-reservation failure is not a cancellation and
+must not offer that bypass. The pending action is present on the native root
+settings page as well as within custom and native child pages.
+
 ## Verification
 
 Stage A runs the maintained onboarding E2E scenario and an ordinary settings
@@ -533,6 +559,12 @@ Stage C1 and the landing-page focused unit tests verify:
 - the three Extra menus controls are registered once and refresh page
   visibility after persistence;
 - every standard setting key is registered once;
+- a setting pending application exposes its Apply action on the native root
+  page;
+- cancelling the initialisation choice preserves the editing buffer, while the
+  separately confirmed settings-only path persists it;
+- Fetch and Rebuild reserve their flag through `Rebuilder` before pending
+  settings are persisted, and a reservation failure leaves them unapplied;
 - reads use the editing buffer;
 - writes use `saveSettings([key])` and never `plugin.settings`;
 - custom pages dispose their page-owned resources and do not duplicate saved
@@ -555,6 +587,13 @@ Real-Obsidian verification on 1.13 or later confirms:
   rebuild-required action; and
 - no duplicate save, update handler, or saved-setting effect occurs after
   leaving and reopening a page.
+
+The maintained real-Obsidian settings scenario also changes a setting which
+remains pending until initialisation, captures the source-choice and
+settings-only fallback dialogues, and confirms that keeping the setting
+pending does not persist it. It mounts the P2P variant directly to confirm that
+it offers a source device and local Vault preparation without presenting a
+central-server overwrite operation.
 
 Because the manifest continues to support earlier Obsidian versions, a
 pre-1.13 real-runtime smoke test must confirm that the imperative fallback

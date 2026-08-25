@@ -28,6 +28,28 @@ The following status applies to optional and compatibility features in the 1.0 l
 | Beta or experimental | JWT authentication, ignore files, automatic newer-file conflict resolution, and Garbage Collection V3 for CouchDB                                     | Retained for explicit testing and specialised use. They remain disabled by default and are not part of the minimum supported setup.                                             |
 | Compatibility only   | V1 dynamic iteration counts, the old IndexedDB adapter, non-current hash algorithms, Eden chunks, and the stored `doNotUseFixedRevisionForChunks` key | Existing settings and data remain readable. New Vaults use the current defaults, and compatibility controls are shown only where a migration or recovery path still needs them. |
 
+### Apply changes which require initialisation
+
+Some compatibility settings are not saved immediately. They remain pending
+until **Apply** is selected. The Apply action remains visible on the root
+settings page and on the relevant child page. The following dialogue asks which
+existing data should be used after restarting:
+
+- **Reset Synchronisation on This Device** reconstructs this device's local
+  database from the configured remote. For P2P, an online source device is
+  selected after restart.
+- **Overwrite Server Data with This Device's Files** reconstructs the local and
+  remote databases from this Vault. The P2P equivalent prepares only this
+  device from its current Vault files.
+- **Review another way to apply these settings** returns to a separate choice
+  between keeping the changes pending and applying them without initialisation.
+  Applying them alone is an advanced compatibility fallback and can make the
+  device incompatible with its existing synchronisation data.
+
+LiveSync reserves the selected next-start operation before saving the pending
+settings. If validation or that reservation fails, the settings remain
+unapplied and the settings-only fallback is not offered.
+
 | Icon | Description                                                        |
 | :--: | ------------------------------------------------------------------ |
 |  💬  | [0. Change Log](#0-change-log)                                     |

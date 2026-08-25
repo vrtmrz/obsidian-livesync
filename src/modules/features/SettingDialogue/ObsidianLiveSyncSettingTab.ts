@@ -3,7 +3,6 @@ import {
     type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
     LOG_LEVEL_NOTICE,
-    FlagFilesHumanReadable,
     REMOTE_COUCHDB,
     REMOTE_MINIO,
     type ConfigLevel,
@@ -79,6 +78,7 @@ import type {
 } from "obsidian";
 import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
+import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -907,10 +907,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         ]);
         const laterGroups = [setupOtherDevices, maintenance, extraFeatures, advancedSettings, helpAndInformation];
 
+        const pendingInitialisation = this.createRebuildRequiredAction();
         if (this.isAnySyncEnabled()) {
-            return [synchronisation, generalSettings, quickSetup, ...laterGroups];
+            return [pendingInitialisation, synchronisation, generalSettings, quickSetup, ...laterGroups];
         }
-        return [quickSetup, synchronisation, generalSettings, ...laterGroups];
+        return [pendingInitialisation, quickSetup, synchronisation, generalSettings, ...laterGroups];
     }
 
     private beginRenderScope(refresh: () => void): Component {
@@ -1031,50 +1032,53 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             Logger(`Passphrase is not valid, please fix it.`, LOG_LEVEL_NOTICE);
             return;
         }
-        const OPTION_FETCH = $msg("obsidianLiveSyncSettingTab.optionFetchFromRemote");
-        const OPTION_REBUILD_BOTH = $msg("obsidianLiveSyncSettingTab.optionRebuildBoth");
-        const OPTION_ONLY_SETTING = $msg("obsidianLiveSyncSettingTab.optionSaveOnlySettings");
-        const OPTION_CANCEL = $msg("obsidianLiveSyncSettingTab.optionCancel");
-        const title = $msg("obsidianLiveSyncSettingTab.titleRebuildRequired");
-        const note = $msg("obsidianLiveSyncSettingTab.msgRebuildRequired", {
-            OPTION_REBUILD_BOTH,
-            OPTION_FETCH,
-            OPTION_ONLY_SETTING,
+        const keepEditing = $msg("Ui.SetupWizard.ApplySettingsInitialisation.KeepEditing");
+        const setupManager = this.core.getModule(SetupManager);
+        const result = await setupManager.applySettingsWithInitialisationChoice({
+            isP2P: isP2PMainRemote(this.editingSettings),
+            validateChoice: async (mode) => {
+                if (mode !== "fetch" || (await this.checkWorkingPassphrase())) {
+                    return true;
+                }
+                const continueFetch = $msg("Ui.SetupWizard.ApplySettingsInitialisation.ContinueFetch");
+                return (
+                    (await this.core.confirm.confirmWithMessage(
+                        $msg("Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationTitle"),
+                        $msg("Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationGuidance"),
+                        [continueFetch, keepEditing],
+                        keepEditing
+                    )) === continueFetch
+                );
+            },
+            applySettings: async () => {
+                if (!this.editingSettings.encrypt) {
+                    this.editingSettings.passphrase = "";
+                }
+                await this.saveAllDirtySettings();
+            },
         });
-        const buttons = [
-            OPTION_FETCH,
-            OPTION_REBUILD_BOTH, // OPTION_REBUILD_REMOTE,
-            OPTION_ONLY_SETTING,
-            OPTION_CANCEL,
-        ];
-        const result = await this.core.confirm.confirmWithMessage(title, note, buttons, OPTION_CANCEL);
-        if (result == OPTION_CANCEL) return;
-        if (result == OPTION_FETCH) {
-            if (!(await this.checkWorkingPassphrase())) {
-                if (
-                    (await this.core.confirm.askYesNoDialog($msg("obsidianLiveSyncSettingTab.msgAreYouSureProceed"), {
-                        defaultOption: "No",
-                    })) != "yes"
-                )
-                    return;
+        if (result.result === "scheduled") {
+            this.closeSetting();
+            return;
+        }
+        if (result.result === "failed") {
+            return;
+        }
+
+        const applyWithoutInitialisation = $msg(
+            "Ui.SetupWizard.ApplySettingsInitialisation.ApplyWithoutInitialisation"
+        );
+        const fallback = await this.core.confirm.confirmWithMessage(
+            $msg("Ui.SetupWizard.ApplySettingsInitialisation.BypassTitle"),
+            $msg("Ui.SetupWizard.ApplySettingsInitialisation.BypassGuidance"),
+            [applyWithoutInitialisation, keepEditing],
+            keepEditing
+        );
+        if (fallback === applyWithoutInitialisation) {
+            if (!this.editingSettings.encrypt) {
+                this.editingSettings.passphrase = "";
             }
-        }
-        if (!this.editingSettings.encrypt) {
-            this.editingSettings.passphrase = "";
-        }
-        await this.saveAllDirtySettings();
-        await Promise.resolve(this.applyAllSettings());
-        if (result == OPTION_FETCH) {
-            await this.core.storageAccess.writeFileAuto(FlagFilesHumanReadable.FETCH_ALL, "");
-            this.services.appLifecycle.scheduleRestart();
-            this.closeSetting();
-            // await rebuildDB("localOnly");
-        } else if (result == OPTION_REBUILD_BOTH) {
-            await this.core.storageAccess.writeFileAuto(FlagFilesHumanReadable.REBUILD_ALL, "");
-            this.services.appLifecycle.scheduleRestart();
-            this.closeSetting();
-        } else if (result == OPTION_ONLY_SETTING) {
-            await this.services.setting.saveSettingData();
+            await this.saveAllDirtySettings();
         }
     }
 

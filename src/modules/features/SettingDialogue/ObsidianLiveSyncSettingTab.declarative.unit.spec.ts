@@ -121,6 +121,10 @@ function isGroup(item: SettingDefinitionItem): item is SettingDefinitionGroup {
     return "type" in item && item.type === "group";
 }
 
+function isAction(item: SettingDefinitionItem): item is Extract<SettingDefinitionItem, { action: unknown }> {
+    return "action" in item && typeof item.action === "function";
+}
+
 function itemLabel(item: SettingDefinitionItem): string {
     if (isPage(item)) return item.name;
     if (isGroup(item)) return item.heading ?? "";
@@ -179,7 +183,7 @@ beforeEach(() => {
 describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
     it("keeps Quick Setup first while synchronisation is inactive and separates synchronisation pages from it", () => {
         const tab = createSettingsTab();
-        const definitions = tab.getSettingDefinitions();
+        const definitions = tab.getSettingDefinitions().filter(isGroup);
 
         expect(definitions.slice(0, 3).map(itemLabel)).toEqual([
             "🧙‍♂️ Quick Setup",
@@ -191,13 +195,23 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
     it("keeps the synchronisation group first and orders General Settings before Quick Setup while synchronisation is active", () => {
         const tab = createSettingsTab();
         tab.editingSettings.liveSync = true;
-        const definitions = tab.getSettingDefinitions();
+        const definitions = tab.getSettingDefinitions().filter(isGroup);
 
         expect(definitions.slice(0, 3).map(itemLabel)).toEqual([
             "🔄 Synchronisation",
             "⚙️ General Settings",
             "🧙‍♂️ Quick Setup",
         ]);
+    });
+
+    it("keeps the pending initialisation action visible on the root settings page", () => {
+        const tab = createSettingsTab();
+        tab.editingSettings.handleFilenameCaseSensitive = !tab.initialSettings!.handleFilenameCaseSensitive;
+
+        const action = tab.getSettingDefinitions().find(isAction);
+
+        expect(action?.name).toBe("Apply");
+        expect(typeof action?.visible === "function" ? action.visible() : action?.visible).toBe(true);
     });
 
     it("keeps Remote Configuration and Sync Settings as native pages inside the Synchronisation group", () => {

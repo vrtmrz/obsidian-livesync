@@ -19,6 +19,7 @@ import type { Locator } from "playwright";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_SETTINGS_TIMEOUT_MS ?? 10000);
 const settingsOnly = process.env.E2E_OBSIDIAN_SETTINGS_ONLY === "true";
 const diagnosticsDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+const settingsInitialisationRunStateKey = "__livesyncE2ESettingsInitialisation";
 const settingsScreenshotOptions = {
     animations: "disabled" as const,
     style: ".notice-container { visibility: hidden !important; }",
@@ -27,6 +28,16 @@ const compatibilityReviewMessage = "Review the internal database compatibility c
 
 type LiveSyncTestPlugin = {
     core: {
+        modules: {
+            constructor: { name: string };
+            applySettingsWithInitialisationChoice?: (options: {
+                applySettings: () => Promise<void>;
+                isP2P: boolean;
+            }) => Promise<unknown>;
+        }[];
+        settings: {
+            handleFilenameCaseSensitive: boolean;
+        };
         services: {
             setting: {
                 currentSettings(): {
@@ -42,6 +53,12 @@ type LiveSyncTestPlugin = {
             };
         };
     };
+};
+
+type SettingsInitialisationRunState = {
+    done: boolean;
+    error?: string;
+    result?: unknown;
 };
 
 type ObsidianTestApp = {
@@ -153,6 +170,96 @@ async function captureDeclarativeMobileLanding(): Promise<string | undefined> {
     } finally {
         await setObsidianMobileTestMode(port, false, uiTimeoutMs);
     }
+}
+
+async function openSettingsInitialisationDialogueForInspection(isP2P: boolean): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.evaluate(
+            ({ stateKey, isP2P }) => {
+                const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+                if (plugin === undefined) throw new Error("Self-hosted LiveSync is unavailable");
+                const manager = plugin.core.modules.find((module) => module.constructor.name === "SetupManager");
+                if (typeof manager?.applySettingsWithInitialisationChoice !== "function") {
+                    throw new Error("Could not find the pending-settings initialisation workflow");
+                }
+                const state: SettingsInitialisationRunState = { done: false };
+                (globalThis as unknown as Record<string, SettingsInitialisationRunState>)[stateKey] = state;
+                void manager
+                    .applySettingsWithInitialisationChoice({
+                        isP2P,
+                        applySettings: Promise.resolve.bind(Promise),
+                    })
+                    .then(
+                        (result) => {
+                            state.result = result;
+                            state.done = true;
+                        },
+                        (error: unknown) => {
+                            state.error = error instanceof Error ? error.message : String(error);
+                            state.done = true;
+                        }
+                    );
+            },
+            { stateKey: settingsInitialisationRunStateKey, isP2P }
+        );
+    });
+}
+
+async function assertSettingsInitialisationRunCancelled(): Promise<void> {
+    const state = await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.waitForFunction(
+            (stateKey) =>
+                (globalThis as unknown as Record<string, SettingsInitialisationRunState | undefined>)[stateKey]
+                    ?.done === true,
+            settingsInitialisationRunStateKey,
+            { timeout: uiTimeoutMs }
+        );
+        return await page.evaluate(
+            (stateKey) =>
+                (globalThis as unknown as Record<string, SettingsInitialisationRunState | undefined>)[stateKey],
+            settingsInitialisationRunStateKey
+        );
+    });
+    if (!state) throw new Error("The pending-settings initialisation dialogue did not record its result.");
+    if (state.error) throw new Error(`The pending-settings initialisation dialogue failed: ${state.error}`);
+    if (JSON.stringify(state.result) !== JSON.stringify({ result: "cancelled" })) {
+        throw new Error(`The pending-settings initialisation dialogue returned ${JSON.stringify(state.result)}.`);
+    }
+}
+
+async function captureP2PSettingsInitialisationDialogue(): Promise<string> {
+    await openSettingsInitialisationDialogueForInspection(true);
+    const path = `${diagnosticsDirectory}/settings-initialisation-p2p.png`;
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const dialogue = await waitForVisibleObsidianDialogue(
+            page,
+            "Apply Settings and Reinitialise Synchronisation",
+            uiTimeoutMs
+        );
+        await dialogue.getByText("Prepare This Device from This Vault", { exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        await dialogue.getByText("Reset Synchronisation on This Device", { exact: true }).click({
+            timeout: uiTimeoutMs,
+        });
+        await dialogue.getByRole("button", { name: "Restart and Select a Source Device", exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        if (
+            (await dialogue.getByText("Overwrite Server Data with This Device's Files", { exact: true }).count()) !== 0
+        ) {
+            throw new Error("The P2P initialisation dialogue exposed the central-server overwrite operation.");
+        }
+        await dialogue.screenshot({ ...settingsScreenshotOptions, path });
+        await dialogue
+            .getByRole("button", { name: "Review another way to apply these settings", exact: true })
+            .click({ timeout: uiTimeoutMs });
+        await dialogue.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+    await assertSettingsInitialisationRunCancelled();
+    return path;
 }
 
 async function resumePendingCompatibilityReviewForSettings(): Promise<void> {
@@ -544,6 +651,105 @@ async function verifyEffectiveSettings(): Promise<void> {
     });
 }
 
+async function verifyPendingSettingsInitialisationFlow(): Promise<{ choice: string; fallback: string }> {
+    return await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        if (settingsNavigator.renderer === "imperative") {
+            const general = await settingsNavigator.openPage("General Settings");
+            const edgeCaseMode = general.locator(".setting-item").filter({
+                has: settingsNavigator.page.getByText("Enable edge case treatment features", { exact: true }),
+            });
+            await edgeCaseMode.locator(".checkbox-container").click({ timeout: uiTimeoutMs });
+            await page.waitForFunction(
+                () => {
+                    const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+                    return plugin?.core.services.setting.currentSettings().useEdgeCaseMode === true;
+                },
+                undefined,
+                { timeout: uiTimeoutMs }
+            );
+        }
+
+        const patches = await settingsNavigator.openPage("Patches");
+        const caseSensitiveSetting = patches.locator(".setting-item").filter({
+            has: settingsNavigator.page.getByText("Handle files as Case-Sensitive", { exact: true }),
+        });
+        await caseSensitiveSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const toggle = caseSensitiveSetting.locator(".checkbox-container");
+        if ((await toggle.evaluate((element) => element.classList.contains("is-enabled"))) === true) {
+            throw new Error("The pending-settings fixture expected case-sensitive file handling to be disabled.");
+        }
+        await toggle.click({ timeout: uiTimeoutMs });
+
+        if (settingsNavigator.renderer === "declarative") {
+            await settingsNavigator.returnToCatalogue();
+        }
+        const applySetting = settingsNavigator.dialogue
+            .locator(settingsNavigator.renderer === "declarative" ? ".setting-item" : ".sls-setting-menu-buttons")
+            .filter({
+                has: settingsNavigator.page.getByText("Changes need to be applied!", { exact: true }),
+            });
+        await applySetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await applySetting.getByRole("button", { name: "Apply", exact: true }).click({ timeout: uiTimeoutMs });
+
+        const choiceDialogue = await waitForVisibleObsidianDialogue(
+            settingsNavigator.page,
+            "Apply Settings and Reinitialise Synchronisation",
+            uiTimeoutMs
+        );
+        await choiceDialogue.getByText("Reset Synchronisation on This Device", { exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        await choiceDialogue
+            .getByText("Overwrite Server Data with This Device's Files", { exact: true })
+            .waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await choiceDialogue.getByText("Reset Synchronisation on This Device", { exact: true }).click({
+            timeout: uiTimeoutMs,
+        });
+        await choiceDialogue
+            .getByRole("button", { name: "Restart and Fetch Synchronisation Data", exact: true })
+            .waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const choice = `${diagnosticsDirectory}/settings-initialisation-choice.png`;
+        await choiceDialogue.screenshot({ ...settingsScreenshotOptions, path: choice });
+        await choiceDialogue
+            .getByRole("button", { name: "Review another way to apply these settings", exact: true })
+            .click({ timeout: uiTimeoutMs });
+        await choiceDialogue.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+
+        const fallbackDialogue = await waitForVisibleObsidianDialogue(
+            settingsNavigator.page,
+            "Apply Settings without Initialisation?",
+            uiTimeoutMs
+        );
+        await fallbackDialogue
+            .getByRole("button", { name: "Apply without Initialisation", exact: true })
+            .waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await fallbackDialogue.getByRole("button", { name: "Keep Editing", exact: true }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        const fallback = `${diagnosticsDirectory}/settings-initialisation-fallback.png`;
+        await fallbackDialogue.screenshot({ ...settingsScreenshotOptions, path: fallback });
+        await fallbackDialogue.getByRole("button", { name: "Keep Editing", exact: true }).click({
+            timeout: uiTimeoutMs,
+        });
+        await fallbackDialogue.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+
+        const persistedCaseSensitivity = await page.evaluate(() => {
+            const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+            if (plugin === undefined) throw new Error("Self-hosted LiveSync is unavailable");
+            return plugin.core.settings.handleFilenameCaseSensitive;
+        });
+        if (persistedCaseSensitivity !== false) {
+            throw new Error("Cancelling initialisation unexpectedly persisted the pending case-sensitivity setting.");
+        }
+        await applySetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await settingsNavigator.close();
+        return { choice, fallback };
+    });
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -593,8 +799,13 @@ async function main(): Promise<void> {
             await verifyConfigDoctorFollowsCompatibilityReview();
         }
         await verifyEffectiveSettings();
+        const initialisation = await verifyPendingSettingsInitialisationFlow();
+        const p2pInitialisation = await captureP2PSettingsInitialisationDialogue();
         const mobileLanding = await captureDeclarativeMobileLanding();
         if (mobileLanding) console.log(`Declarative mobile settings landing page: ${mobileLanding}`);
+        console.log(
+            `Pending-settings initialisation screenshots: ${initialisation.choice}, ${initialisation.fallback}, ${p2pInitialisation}`
+        );
         console.log("Compatibility review and settings expose only effective user controls.");
     } finally {
         if (session) {

@@ -11715,6 +11715,72 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "覆盖",
         "zh-tw": "覆寫",
     },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ApplyWithoutInitialisation": {
+        def: "Apply without Initialisation",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Back": {
+        def: "Review another way to apply these settings",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.BypassGuidance": {
+        def: "Applying these settings alone can make this device incompatible with its existing synchronisation data. Use this only when you have confirmed that reconstruction is unnecessary.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.BypassTitle": {
+        def: "Apply Settings without Initialisation?",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ContinueFetch": {
+        def: "Continue with Fetch",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.FetchOption": {
+        def: "Reset Synchronisation on This Device",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.FetchOptionDesc": {
+        def: "After restarting, rebuild this device's local database from the current remote synchronisation data. Files in the Vault will then be reconciled with that data.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.FetchOptionP2PDesc": {
+        def: "After restarting, select an online source device. This device's local LiveSync database will be rebuilt from that source.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Guidance": {
+        def: "These setting changes alter how synchronisation data is interpreted. Apply them together with an initialisation operation after restart.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.KeepEditing": {
+        def: "Keep Editing",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedFetch": {
+        def: "Restart and Fetch Synchronisation Data",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedFetchP2P": {
+        def: "Restart and Select a Source Device",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedRebuild": {
+        def: "Restart and Overwrite Server Data",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.ProceedRebuildP2P": {
+        def: "Restart and Prepare This Device",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Question": {
+        def: "Which existing data should be used after restart?",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOption": {
+        def: "Overwrite Server Data with This Device's Files",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionDesc": {
+        def: "Rebuild the local and remote databases from the files currently in this Vault. Other synchronising devices must reset their local synchronisation afterwards.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionP2P": {
+        def: "Prepare This Device from This Vault",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionP2PDesc": {
+        def: "Rebuild this device's local LiveSync database from the files currently in this Vault. This does not overwrite another device.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationGuidance": {
+        def: "The configured remote could not be verified with the current credentials and encryption settings. Continuing may make the Fetch fail after restart.",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationTitle": {
+        def: "Remote Synchronisation Data Could Not Be Verified",
+    },
+    "Ui.SetupWizard.ApplySettingsInitialisation.Title": {
+        def: "Apply Settings and Reinitialise Synchronisation",
+    },
     "Ui.SetupWizard.Common.Back": {
         def: "No, please take me back",
         es: "No, volver atrás",

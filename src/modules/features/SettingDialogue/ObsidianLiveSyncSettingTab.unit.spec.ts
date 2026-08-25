@@ -1,8 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 const negotiationMocks = vi.hoisted(() => ({
     checkSyncInfo: vi.fn(async () => true),
+}));
+const settingsInitialisationMocks = vi.hoisted(() => ({
+    applySettingsWithInitialisationChoice: vi.fn(),
 }));
 
 vi.mock("@/deps.ts", () => ({
@@ -63,6 +66,10 @@ vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 
+beforeEach(() => {
+    settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockReset();
+});
+
 describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
     it("closes the finite remote connection after checking synchronisation information", async () => {
         const remoteDatabase = {
@@ -92,6 +99,116 @@ describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
 
         expect(negotiationMocks.checkSyncInfo).toHaveBeenCalledWith(remoteDatabase);
         expect(remoteDatabase.close).toHaveBeenCalledOnce();
+    });
+});
+
+describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
+    function createSettingsTab() {
+        const saveSettingData = vi.fn(async () => undefined);
+        const confirmWithMessage = vi.fn();
+        const plugin = {
+            app: {},
+            core: {
+                settings: {
+                    ...DEFAULT_SETTINGS,
+                    handleFilenameCaseSensitive: false,
+                },
+                getModule: vi.fn(() => settingsInitialisationMocks),
+                confirm: {
+                    confirmWithMessage,
+                },
+                services: {
+                    setting: {
+                        saveSettingData,
+                        getDeviceAndVaultName: vi.fn(() => ""),
+                    },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                handleFilenameCaseSensitive: true,
+            },
+            initialSettings: {
+                ...DEFAULT_SETTINGS,
+                handleFilenameCaseSensitive: false,
+            },
+        });
+        vi.spyOn(tab, "isPassphraseValid").mockResolvedValue(true);
+        vi.spyOn(tab, "checkWorkingPassphrase").mockResolvedValue(true);
+        const closeSetting = vi.spyOn(tab, "closeSetting").mockImplementation(() => undefined);
+        return { tab, saveSettingData, confirmWithMessage, closeSetting };
+    }
+
+    it("keeps pending settings in the editing buffer when initialisation and the fallback are cancelled", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "cancelled",
+        });
+        confirmWithMessage.mockResolvedValueOnce("Keep Editing");
+
+        await tab.confirmRebuild();
+
+        expect(settingsInitialisationMocks.applySettingsWithInitialisationChoice).toHaveBeenCalledOnce();
+        expect(confirmWithMessage).toHaveBeenCalledWith(
+            "Apply Settings without Initialisation?",
+            expect.any(String),
+            ["Apply without Initialisation", "Keep Editing"],
+            "Keep Editing"
+        );
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(tab.editingSettings.handleFilenameCaseSensitive).toBe(true);
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(false);
+        expect(closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("applies pending settings only after a separately confirmed initialisation bypass", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "cancelled",
+        });
+        confirmWithMessage.mockResolvedValueOnce("Apply without Initialisation");
+
+        await tab.confirmRebuild();
+
+        expect(settingsInitialisationMocks.applySettingsWithInitialisationChoice).toHaveBeenCalledOnce();
+        expect(saveSettingData).toHaveBeenCalledOnce();
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(true);
+        expect(closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("closes settings only after initialisation has been scheduled", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockImplementationOnce(
+            async ({ applySettings }: { applySettings: () => Promise<void> }) => {
+                await applySettings();
+                return { result: "scheduled", mode: "rebuild" };
+            }
+        );
+
+        await tab.confirmRebuild();
+
+        expect(saveSettingData).toHaveBeenCalledOnce();
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(closeSetting).toHaveBeenCalledOnce();
+    });
+
+    it("does not offer the settings-only fallback after an initialisation failure", async () => {
+        const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "failed",
+            mode: "fetch",
+        });
+
+        await tab.confirmRebuild();
+
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(tab.editingSettings.handleFilenameCaseSensitive).toBe(true);
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(false);
+        expect(closeSetting).not.toHaveBeenCalled();
     });
 });
 

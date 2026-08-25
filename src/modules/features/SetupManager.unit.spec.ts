@@ -17,6 +17,7 @@ vi.mock("./SetupWizard/dialogs/UseSetupURI.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/OutroNewUser.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/OutroExistingUser.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/OutroAskUserMode.svelte", () => ({ default: {} }));
+vi.mock("./SetupWizard/dialogs/ApplySettingsInitialisation.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemote.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteCouchDB.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }));
@@ -271,6 +272,64 @@ describe("SetupManager", () => {
         expect(core.rebuilder.scheduleRebuild).toHaveBeenCalledWith(expect.any(Function));
         expect(applyExternalSettings).not.toHaveBeenCalled();
         expect(setting.currentSettings().isConfigured).toBe(false);
+    });
+
+    it("reports cancellation separately when applying settings which require initialisation", async () => {
+        const { manager, dialogManager, core } = createSetupManager();
+        const applySettings = vi.fn(async () => undefined);
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
+
+        const result = await manager.applySettingsWithInitialisationChoice({ applySettings, isP2P: true });
+
+        expect(result).toEqual({ result: "cancelled" });
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenCalledWith(expect.anything(), { isP2P: true });
+        expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
+        expect(core.rebuilder.scheduleRebuild).not.toHaveBeenCalled();
+        expect(applySettings).not.toHaveBeenCalled();
+    });
+
+    it("reserves the selected initialisation before applying pending settings", async () => {
+        const { manager, dialogManager, core } = createSetupManager();
+        const applySettings = vi.fn(async () => undefined);
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("fetch");
+
+        const result = await manager.applySettingsWithInitialisationChoice({ applySettings, isP2P: false });
+
+        expect(result).toEqual({ result: "scheduled", mode: "fetch" });
+        expect(core.rebuilder.scheduleFetch).toHaveBeenCalledWith(expect.any(Function));
+        expect(core.rebuilder.scheduleFetch.mock.invocationCallOrder[0]).toBeLessThan(
+            applySettings.mock.invocationCallOrder[0]
+        );
+    });
+
+    it("reports a failed reservation without applying pending settings", async () => {
+        const { manager, dialogManager, core } = createSetupManager();
+        const applySettings = vi.fn(async () => undefined);
+        core.rebuilder.scheduleRebuild.mockResolvedValueOnce(false);
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("rebuild");
+
+        const result = await manager.applySettingsWithInitialisationChoice({ applySettings, isP2P: false });
+
+        expect(result).toEqual({ result: "failed", mode: "rebuild" });
+        expect(applySettings).not.toHaveBeenCalled();
+    });
+
+    it("does not reserve initialisation when the selected source cannot be validated", async () => {
+        const { manager, dialogManager, core } = createSetupManager();
+        const applySettings = vi.fn(async () => undefined);
+        const validateChoice = vi.fn(async () => false);
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("fetch");
+
+        const result = await manager.applySettingsWithInitialisationChoice({
+            applySettings,
+            isP2P: false,
+            validateChoice,
+        });
+
+        expect(result).toEqual({ result: "failed", mode: "fetch" });
+        expect(validateChoice).toHaveBeenCalledWith("fetch");
+        expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
+        expect(applySettings).not.toHaveBeenCalled();
     });
 
     it("preserves modern profiles, display names, and the active selection from a Setup URI", async () => {

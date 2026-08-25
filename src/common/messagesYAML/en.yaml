@@ -2309,6 +2309,29 @@ Ui:
             Fetch: Fetch
             Overwrite: Overwrite
     SetupWizard:
+        ApplySettingsInitialisation:
+            ApplyWithoutInitialisation: Apply without Initialisation
+            Back: Review another way to apply these settings
+            BypassGuidance: Applying these settings alone can make this device incompatible with its existing synchronisation data. Use this only when you have confirmed that reconstruction is unnecessary.
+            BypassTitle: Apply Settings without Initialisation?
+            ContinueFetch: Continue with Fetch
+            FetchOption: Reset Synchronisation on This Device
+            FetchOptionDesc: After restarting, rebuild this device's local database from the current remote synchronisation data. Files in the Vault will then be reconciled with that data.
+            FetchOptionP2PDesc: After restarting, select an online source device. This device's local LiveSync database will be rebuilt from that source.
+            Guidance: These setting changes alter how synchronisation data is interpreted. Apply them together with an initialisation operation after restart.
+            KeepEditing: Keep Editing
+            ProceedFetch: Restart and Fetch Synchronisation Data
+            ProceedFetchP2P: Restart and Select a Source Device
+            ProceedRebuild: Restart and Overwrite Server Data
+            ProceedRebuildP2P: Restart and Prepare This Device
+            Question: Which existing data should be used after restart?
+            RebuildOption: Overwrite Server Data with This Device's Files
+            RebuildOptionDesc: Rebuild the local and remote databases from the files currently in this Vault. Other synchronising devices must reset their local synchronisation afterwards.
+            RebuildOptionP2P: Prepare This Device from This Vault
+            RebuildOptionP2PDesc: Rebuild this device's local LiveSync database from the files currently in this Vault. This does not overwrite another device.
+            RemoteVerificationGuidance: The configured remote could not be verified with the current credentials and encryption settings. Continuing may make the Fetch fail after restart.
+            RemoteVerificationTitle: Remote Synchronisation Data Could Not Be Verified
+            Title: Apply Settings and Reinitialise Synchronisation
         Common:
             Back: No, please take me back
             Cancel: Cancel
