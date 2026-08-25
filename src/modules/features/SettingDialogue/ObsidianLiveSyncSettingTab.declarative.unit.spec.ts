@@ -145,21 +145,35 @@ function findPage(tab: ObsidianLiveSyncSettingTab, name: string): SettingDefinit
     return page;
 }
 
-function createSettingsTab(): ObsidianLiveSyncSettingTab {
-    const plugin = {
-        app: {},
-        core: {
-            settings: { ...DEFAULT_SETTINGS, useAdvancedMode: true },
-            confirm: {
-                askInPopup: vi.fn(),
+type SettingsTabOptions = {
+    activeReplicatorGetter?: () => { syncStatus: "CONNECTED" | "PAUSED" } | undefined;
+    replicationStatus?: "CLOSED" | "CONNECTED" | "PAUSED";
+};
+
+function createSettingsTab(options: SettingsTabOptions = {}): ObsidianLiveSyncSettingTab {
+    const core = {
+        settings: { ...DEFAULT_SETTINGS, useAdvancedMode: true },
+        confirm: {
+            askInPopup: vi.fn(),
+        },
+        services: {
+            setting: {
+                getDeviceAndVaultName: vi.fn(() => ""),
+                saveSettingData: vi.fn(async () => undefined),
             },
-            services: {
-                setting: {
-                    getDeviceAndVaultName: vi.fn(() => ""),
-                    saveSettingData: vi.fn(async () => undefined),
+            replicator: {
+                replicationStatics: {
+                    value: { syncStatus: options.replicationStatus ?? "CLOSED" },
                 },
             },
         },
+    };
+    Object.defineProperty(core, "replicator", {
+        get: options.activeReplicatorGetter ?? (() => undefined),
+    });
+    const plugin = {
+        app: {},
+        core,
     };
     const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
     Object.assign(tab, {
@@ -181,8 +195,27 @@ beforeEach(() => {
 });
 
 describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
-    it("keeps Quick Setup first while synchronisation is inactive and separates synchronisation pages from it", () => {
+    it("builds definitions before database readiness without requesting the active replicator", () => {
+        const activeReplicatorGetter = vi.fn(() => {
+            throw new Error("The active replicator is not ready");
+        });
+        const tab = createSettingsTab({ activeReplicatorGetter });
+
+        expect(() => tab.getSettingDefinitions()).not.toThrow();
+        expect(activeReplicatorGetter).not.toHaveBeenCalled();
+    });
+
+    it("keeps Quick Setup first while LiveSync is not configured, regardless of transient replication status", () => {
+        const tab = createSettingsTab({ replicationStatus: "CONNECTED" });
+        tab.editingSettings.isConfigured = false;
+        const definitions = tab.getSettingDefinitions().filter(isGroup);
+
+        expect(definitions[0]?.heading).toBe("🧙‍♂️ Quick Setup");
+    });
+
+    it("keeps Quick Setup first while LiveSync is not configured and separates synchronisation pages from it", () => {
         const tab = createSettingsTab();
+        tab.editingSettings.isConfigured = false;
         const definitions = tab.getSettingDefinitions().filter(isGroup);
 
         expect(definitions.slice(0, 3).map(itemLabel)).toEqual([
@@ -192,14 +225,15 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         ]);
     });
 
-    it("keeps the synchronisation group first and orders General Settings before Quick Setup while synchronisation is active", () => {
+    it("keeps the synchronisation group first for a configured device with automatic triggers disabled", () => {
         const tab = createSettingsTab();
-        tab.editingSettings.liveSync = true;
+        tab.editingSettings.isConfigured = true;
         const definitions = tab.getSettingDefinitions().filter(isGroup);
 
-        expect(definitions.slice(0, 3).map(itemLabel)).toEqual([
+        expect(definitions.slice(0, 4).map(itemLabel)).toEqual([
             "🔄 Synchronisation",
             "⚙️ General Settings",
+            "📲 Set up other devices",
             "🧙‍♂️ Quick Setup",
         ]);
     });

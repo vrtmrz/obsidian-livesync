@@ -14,7 +14,7 @@ import {
     withObsidianPage,
 } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
-import type { Locator } from "playwright";
+import type { Locator, Page } from "playwright";
 
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_SETTINGS_TIMEOUT_MS ?? 10000);
 const settingsOnly = process.env.E2E_OBSIDIAN_SETTINGS_ONLY === "true";
@@ -34,6 +34,11 @@ type LiveSyncTestPlugin = {
                 applySettings: () => Promise<void>;
                 isP2P: boolean;
             }) => Promise<unknown>;
+            settingTab?: {
+                editingSettings: { isConfigured: boolean };
+                initialSettings?: { isConfigured: boolean };
+                requestCatalogueRefresh(): void;
+            };
         }[];
         settings: {
             handleFilenameCaseSensitive: boolean;
@@ -84,17 +89,14 @@ const settingsPageNames = [
     "Change Log",
 ] as const;
 
-async function assertDeclarativeLandingOrder(root: Locator): Promise<void> {
+async function assertDeclarativeLandingOrder(root: Locator, configured: boolean): Promise<void> {
+    const synchronisation = ["Synchronisation", "Remote Configuration", "Sync Settings"];
+    const generalSettings = ["General Settings", "Appearance", "Logging", "Extra menus"];
+    const setup = configured
+        ? [...synchronisation, ...generalSettings, "📲 Set up other devices", "Quick Setup"]
+        : ["Quick Setup", ...synchronisation, ...generalSettings, "📲 Set up other devices"];
     const labels = [
-        "Quick Setup",
-        "Synchronisation",
-        "Remote Configuration",
-        "Sync Settings",
-        "General Settings",
-        "Appearance",
-        "Logging",
-        "Extra menus",
-        "📲 Set up other devices",
+        ...setup,
         "Maintenance and recovery",
         "Maintenance",
         "Hatch",
@@ -131,10 +133,31 @@ async function assertDeclarativeLandingOrder(root: Locator): Promise<void> {
         }, labels);
 }
 
-async function scrollDeclarativeLandingToTop(root: Locator): Promise<void> {
-    const quickSetupHeading = root.locator(".setting-item-heading").filter({ hasText: "Quick Setup" }).first();
-    await quickSetupHeading.waitFor({ state: "visible", timeout: uiTimeoutMs });
-    await quickSetupHeading.scrollIntoViewIfNeeded();
+async function scrollDeclarativeLandingToTop(root: Locator, configured: boolean): Promise<void> {
+    const firstHeading = root
+        .locator(".setting-item-heading")
+        .filter({ hasText: configured ? "Synchronisation" : "Quick Setup" })
+        .first();
+    await firstHeading.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    await firstHeading.scrollIntoViewIfNeeded();
+}
+
+async function setConfiguredStateForLandingInspection(page: Page, configured: boolean): Promise<void> {
+    await page.evaluate((nextConfigured) => {
+        const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+        if (plugin === undefined) throw new Error("Self-hosted LiveSync is unavailable");
+        const settingDialogue = plugin.core.modules.find(
+            (module) => module.constructor.name === "ModuleObsidianSettingDialogue"
+        );
+        if (settingDialogue?.settingTab === undefined) {
+            throw new Error("The Self-hosted LiveSync setting tab is unavailable");
+        }
+        settingDialogue.settingTab.editingSettings.isConfigured = nextConfigured;
+        if (settingDialogue.settingTab.initialSettings !== undefined) {
+            settingDialogue.settingTab.initialSettings.isConfigured = nextConfigured;
+        }
+        settingDialogue.settingTab.requestCatalogueRefresh();
+    }, configured);
 }
 
 async function captureDeclarativeMobileLanding(): Promise<string | undefined> {
@@ -148,8 +171,8 @@ async function captureDeclarativeMobileLanding(): Promise<string | undefined> {
                 return undefined;
             }
             await settingsNavigator.returnToCatalogue();
-            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue);
-            await assertDeclarativeLandingOrder(settingsNavigator.dialogue);
+            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue, true);
+            await assertDeclarativeLandingOrder(settingsNavigator.dialogue, true);
             const remoteConfiguration = settingsNavigator.dialogue
                 .locator(".setting-item-name")
                 .filter({ hasText: "Remote Configuration" })
@@ -437,8 +460,8 @@ async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<void> {
     });
 }
 
-async function verifyEffectiveSettings(): Promise<void> {
-    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+async function verifyEffectiveSettings(): Promise<"declarative" | "imperative"> {
+    return await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const sleepPreferences = await page.evaluate(() => {
             const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
             if (plugin === undefined) throw new Error("Self-hosted LiveSync is unavailable");
@@ -462,6 +485,12 @@ async function verifyEffectiveSettings(): Promise<void> {
         }
 
         let settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        if (settingsNavigator.renderer === "imperative") {
+            await settingsNavigator.dialogue.screenshot({
+                ...settingsScreenshotOptions,
+                path: `${diagnosticsDirectory}/settings-imperative-landing.png`,
+            });
+        }
         for (const hiddenPage of ["Selector", "Customisation sync", "Advanced", "Power users", "Patches"]) {
             if (await settingsNavigator.isPageListed(hiddenPage)) {
                 throw new Error(`${hiddenPage} was visible before its feature level was enabled.`);
@@ -568,12 +597,22 @@ async function verifyEffectiveSettings(): Promise<void> {
 
         if (settingsNavigator.renderer === "declarative") {
             await settingsNavigator.returnToCatalogue();
-            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue);
+            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue, true);
             await settingsNavigator.dialogue.screenshot({
                 ...settingsScreenshotOptions,
                 path: `${diagnosticsDirectory}/settings-declarative-landing.png`,
             });
-            await assertDeclarativeLandingOrder(settingsNavigator.dialogue);
+            await assertDeclarativeLandingOrder(settingsNavigator.dialogue, true);
+            await setConfiguredStateForLandingInspection(page, false);
+            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue, false);
+            await assertDeclarativeLandingOrder(settingsNavigator.dialogue, false);
+            await settingsNavigator.dialogue.screenshot({
+                ...settingsScreenshotOptions,
+                path: `${diagnosticsDirectory}/settings-declarative-landing-unconfigured.png`,
+            });
+            await setConfiguredStateForLandingInspection(page, true);
+            await scrollDeclarativeLandingToTop(settingsNavigator.dialogue, true);
+            await assertDeclarativeLandingOrder(settingsNavigator.dialogue, true);
             const rerunOnboarding = settingsNavigator.dialogue
                 .locator(".setting-item-name")
                 .filter({ hasText: "Rerun Onboarding Wizard" })
@@ -647,7 +686,9 @@ async function verifyEffectiveSettings(): Promise<void> {
             }
         }
 
+        const renderer = settingsNavigator.renderer;
         await settingsNavigator.close();
+        return renderer;
     });
 }
 
@@ -690,7 +731,11 @@ async function verifyPendingSettingsInitialisationFlow(): Promise<{ choice: stri
                 has: settingsNavigator.page.getByText("Changes need to be applied!", { exact: true }),
             });
         await applySetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await applySetting.getByRole("button", { name: "Apply", exact: true }).click({ timeout: uiTimeoutMs });
+        if (settingsNavigator.renderer === "declarative") {
+            await applySetting.click({ timeout: uiTimeoutMs });
+        } else {
+            await applySetting.getByRole("button", { name: "Apply", exact: true }).click({ timeout: uiTimeoutMs });
+        }
 
         const choiceDialogue = await waitForVisibleObsidianDialogue(
             settingsNavigator.page,
@@ -798,10 +843,10 @@ async function main(): Promise<void> {
             await verifyCompatibilityReview();
             await verifyConfigDoctorFollowsCompatibilityReview();
         }
-        await verifyEffectiveSettings();
+        const settingsRenderer = await verifyEffectiveSettings();
         const initialisation = await verifyPendingSettingsInitialisationFlow();
         const p2pInitialisation = await captureP2PSettingsInitialisationDialogue();
-        const mobileLanding = await captureDeclarativeMobileLanding();
+        const mobileLanding = settingsRenderer === "declarative" ? await captureDeclarativeMobileLanding() : undefined;
         if (mobileLanding) console.log(`Declarative mobile settings landing page: ${mobileLanding}`);
         console.log(
             `Pending-settings initialisation screenshots: ${initialisation.choice}, ${initialisation.fallback}, ${p2pInitialisation}`

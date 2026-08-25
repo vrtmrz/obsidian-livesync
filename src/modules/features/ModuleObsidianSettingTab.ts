@@ -8,8 +8,9 @@ import { openObsidianSettings } from "@/common/obsidianSettings.ts";
 export class ModuleObsidianSettingDialogue extends AbstractObsidianModule {
     settingTab!: ObsidianLiveSyncSettingTab;
 
-    _everyOnloadStart(): Promise<boolean> {
+    _everyOnloadAfterLoadSettings(): Promise<boolean> {
         this.settingTab = new ObsidianLiveSyncSettingTab(this.app, this.plugin);
+        this.settingTab.reloadAllSettings(true);
         this.plugin.addSettingTab(this.settingTab);
         eventHub.onEvent(EVENT_REQUEST_OPEN_SETTINGS, () => this.openSetting());
 
@@ -24,6 +25,6 @@ export class ModuleObsidianSettingDialogue extends AbstractObsidianModule {
         return `${"appId" in this.app ? this.app.appId : ""}`;
     }
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
+        services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
     }
 }

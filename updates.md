@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Interface and translation
+
+#### Fixed
+
+- Obsidian 1.13 settings discovery now waits until persisted settings have loaded and no longer queries the active replicator before database initialisation, preventing a spurious start-up warning.
+
 ## 1.0.19
 
 25th August, 2026
