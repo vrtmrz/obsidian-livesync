@@ -32,7 +32,14 @@ import {
 import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import { fireAndForget, yieldNextAnimationFrame } from "octagonal-wheels/promises";
-import { EVENT_REQUEST_RELOAD_SETTING_TAB, eventHub } from "@/common/events.ts";
+import {
+    EVENT_ON_UNRESOLVED_ERROR,
+    EVENT_REQUEST_COPY_SETUP_URI,
+    EVENT_REQUEST_OPEN_SETUP_URI,
+    EVENT_REQUEST_RELOAD_SETTING_TAB,
+    EVENT_REQUEST_SHOW_SETUP_QR,
+    eventHub,
+} from "@/common/events.ts";
 import {
     enableOnly,
     // findAttrFromParent,
@@ -54,12 +61,21 @@ import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replicati
 import { closeObsidianSettings } from "@/common/obsidianSettings.ts";
 import {
     createAdvancedSettingDefinitionGroups,
+    createExtraMenuSettingDefinitions,
+    createGeneralSettingDefinitionGroups,
     createSettingsPageCatalogue,
     type SettingsPageEntry,
 } from "./SettingsPageCatalogue.ts";
 import { createAdvancedSettingSpecGroups } from "./AdvancedSettingSpecs.ts";
 import { isValidSettingSpecValue, type SettingSpec } from "./SettingSpec.ts";
-import type { SettingDefinitionAction, SettingDefinitionItem, SettingDefinitionPage } from "obsidian";
+import type {
+    SettingDefinitionAction,
+    SettingDefinitionGroup,
+    SettingDefinitionItem,
+    SettingDefinitionPage,
+} from "obsidian";
+import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
+import { SetupManager } from "@/modules/features/SetupManager.ts";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -312,6 +328,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
             this.requestReload();
         });
+        this.addOnSaved("displayLanguage", () => this.requestCatalogueRefresh());
+        this.addOnSaved("showStatusOnEditor", () => eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR));
+        this.addOnSaved("networkWarningStyle", () => eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR));
+        this.addOnSaved("useAdvancedMode", () => this.requestCatalogueRefresh());
+        this.addOnSaved("usePowerUserMode", () => this.requestCatalogueRefresh());
+        this.addOnSaved("useEdgeCaseMode", () => this.requestCatalogueRefresh());
     }
 
     async testConnection(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<void> {
@@ -337,6 +359,29 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     closeSetting() {
         closeObsidianSettings(this.plugin.app);
+    }
+
+    requestOpenSetupURI(): void {
+        this.closeSetting();
+        eventHub.emitEvent(EVENT_REQUEST_OPEN_SETUP_URI);
+    }
+
+    async rerunOnboardingWizard(): Promise<void> {
+        await this.core.getModule(SetupManager).startOnBoarding();
+    }
+
+    async enableLiveSyncFromSettings(): Promise<void> {
+        this.editingSettings.isConfigured = true;
+        await this.saveAllDirtySettings();
+        this.services.appLifecycle.askRestart();
+    }
+
+    requestCopySetupURI(): void {
+        eventHub.emitEvent(EVENT_REQUEST_COPY_SETUP_URI);
+    }
+
+    requestShowSetupQRCode(): void {
+        eventHub.emitEvent(EVENT_REQUEST_SHOW_SETUP_QR);
     }
 
     handleElement(element: HTMLElement, func: OnUpdateFunc) {
@@ -409,7 +454,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             key === "displayLanguage" ||
             key === "useAdvancedMode" ||
             key === "usePowerUserMode" ||
-            key === "useEdgeCaseMode"
+            key === "useEdgeCaseMode" ||
+            key === "isConfigured" ||
+            key === "liveSync" ||
+            key === "periodicReplication" ||
+            key === "syncOnSave" ||
+            key === "syncOnEditorSave" ||
+            key === "syncOnStart" ||
+            key === "syncOnFileOpen" ||
+            key === "syncAfterMerge"
         );
     }
 
@@ -564,9 +617,16 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     }
 
     private getDeclarativeSettingSpec(key: string): SettingSpec {
-        const spec = createAdvancedSettingSpecGroups({
-            isCouchDB: () => this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
-        })
+        const spec = [
+            ...createGeneralSettingSpecGroups({
+                showEditorStatusDetails: () => this.isConfiguredAs("showStatusOnEditor", true),
+                showVerboseLog: () => this.isConfiguredAs("lessInformationInLog", false),
+            }),
+            createExtraMenuSettingSpecGroup(),
+            ...createAdvancedSettingSpecGroups({
+                isCouchDB: () => this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
+            }),
+        ]
             .flatMap((group) => group.items)
             .find((candidate) => candidate.key === key);
         if (!spec) {
@@ -697,28 +757,165 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         throw new Error("Custom settings pages require Obsidian 1.13.0 or later");
     }
 
+    private createDeclarativePage(entry: SettingsPageEntry): SettingDefinitionPage {
+        const page: SettingDefinitionPage = {
+            type: "page",
+            name: `${entry.icon} ${entry.name()}`,
+            visible: () => this.isPageVisible(entry.level),
+        };
+        if (entry.content === "native") {
+            page.items = [
+                this.createRebuildRequiredAction(),
+                ...createAdvancedSettingDefinitionGroups({
+                    isCouchDB: () => this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
+                }),
+            ];
+        } else {
+            page.page = () => this.createCustomSettingPage(entry);
+        }
+        return page;
+    }
+
+    private createGeneralSettingsGroup(): SettingDefinitionGroup {
+        const groups = createGeneralSettingDefinitionGroups({
+            showEditorStatusDetails: () => this.isConfiguredAs("showStatusOnEditor", true),
+            showVerboseLog: () => this.isConfiguredAs("lessInformationInLog", false),
+        });
+        const [appearance, logging] = groups;
+        if (!appearance || !logging) {
+            throw new Error("General settings must define Appearance and Logging groups");
+        }
+        return this.createPageGroup(`⚙️ ${$msg("obsidianLiveSyncSettingTab.panelGeneralSettings")}`, [
+            {
+                type: "page",
+                name: `🎨 ${appearance.heading}`,
+                items: appearance.items,
+            },
+            {
+                type: "page",
+                name: `📝 ${logging.heading}`,
+                items: logging.items,
+            },
+            this.createExtraMenusPage(),
+        ]);
+    }
+
+    private createExtraMenusPage(): SettingDefinitionPage {
+        return {
+            type: "page",
+            name: `🎚️ ${$msg("obsidianLiveSyncSettingTab.titleExtraMenus")}`,
+            items: createExtraMenuSettingDefinitions(),
+        };
+    }
+
+    private createQuickSetupGroup(): SettingDefinitionGroup {
+        return {
+            type: "group",
+            heading: `🧙‍♂️ ${$msg("obsidianLiveSyncSettingTab.titleQuickSetup")}`,
+            items: [
+                {
+                    name: $msg("obsidianLiveSyncSettingTab.nameConnectSetupURI"),
+                    desc: $msg("obsidianLiveSyncSettingTab.descConnectSetupURI"),
+                    action: () => this.requestOpenSetupURI(),
+                },
+                {
+                    name: $msg("Rerun Onboarding Wizard"),
+                    desc: $msg("Rerun the onboarding wizard to set up Self-hosted LiveSync again."),
+                    action: () => fireAndForget(async () => await this.rerunOnboardingWizard()),
+                },
+                {
+                    name: $msg("obsidianLiveSyncSettingTab.nameEnableLiveSync"),
+                    desc: $msg("obsidianLiveSyncSettingTab.descEnableLiveSync"),
+                    visible: () => !this.isConfiguredAs("isConfigured", true),
+                    action: () => fireAndForget(async () => await this.enableLiveSyncFromSettings()),
+                },
+            ],
+        };
+    }
+
+    private createSynchronisationGroup(pages: SettingDefinitionPage[]): SettingDefinitionGroup {
+        return this.createPageGroup(`🔄 ${$msg("obsidianLiveSyncSettingTab.titleSynchronisation")}`, pages);
+    }
+
+    private createPageGroup(
+        heading: string,
+        pages: SettingDefinitionPage[],
+        visible?: () => boolean
+    ): SettingDefinitionGroup {
+        return {
+            type: "group",
+            heading,
+            items: pages,
+            ...(visible ? { visible } : {}),
+        };
+    }
+
+    private createSetupOtherDevicesGroup(): SettingDefinitionGroup {
+        return {
+            type: "group",
+            heading: `📲 ${$msg("obsidianLiveSyncSettingTab.titleSetupOtherDevices")}`,
+            visible: () => this.isConfiguredAs("isConfigured", true),
+            items: [
+                {
+                    name: $msg("obsidianLiveSyncSettingTab.nameCopySetupURI"),
+                    desc: $msg("obsidianLiveSyncSettingTab.descCopySetupURI"),
+                    action: () => this.requestCopySetupURI(),
+                },
+                {
+                    name: $msg("Setup.ShowQRCode"),
+                    desc: $msg("Setup.ShowQRCode.Desc"),
+                    action: () => this.requestShowSetupQRCode(),
+                },
+            ],
+        };
+    }
+
     override getSettingDefinitions(): SettingDefinitionItem[] {
         if (!this.supportsDeclarativeSettings()) {
             return [];
         }
-        return createSettingsPageCatalogue().map((entry): SettingDefinitionPage => {
-            const page: SettingDefinitionPage = {
-                type: "page",
-                name: `${entry.icon} ${entry.name()}`,
-                visible: () => this.isPageVisible(entry.level),
-            };
-            if (entry.content === "native") {
-                page.items = [
-                    this.createRebuildRequiredAction(),
-                    ...createAdvancedSettingDefinitionGroups({
-                        isCouchDB: () => this.isConfiguredAs("remoteType", REMOTE_COUCHDB),
-                    }),
-                ];
-            } else {
-                page.page = () => this.createCustomSettingPage(entry);
+        const catalogue = createSettingsPageCatalogue();
+        const getPage = (id: string): SettingDefinitionPage => {
+            const entry = catalogue.find((candidate) => candidate.id === id);
+            if (!entry) {
+                throw new Error(`Unknown settings page: ${id}`);
             }
-            return page;
-        });
+            return this.createDeclarativePage(entry);
+        };
+        const synchronisation = this.createSynchronisationGroup([
+            getPage("remote-configuration"),
+            getPage("synchronisation"),
+        ]);
+        const generalSettings = this.createGeneralSettingsGroup();
+        const quickSetup = this.createQuickSetupGroup();
+        const setupOtherDevices = this.createSetupOtherDevicesGroup();
+        const maintenance = this.createPageGroup(
+            `🛠️ ${$msg("obsidianLiveSyncSettingTab.titleMaintenanceAndRecovery")}`,
+            [getPage("maintenance"), getPage("hatch")]
+        );
+        const extraFeatures = this.createPageGroup(
+            `🧩 ${$msg("obsidianLiveSyncSettingTab.titleExtraFeaturesGroup")}`,
+            [getPage("selector"), getPage("customisation-sync")],
+            () => this.isPageVisible(LEVEL_ADVANCED)
+        );
+        const advancedSettings = this.createPageGroup(
+            `🔧 ${$msg("obsidianLiveSyncSettingTab.titleAdvancedSettings")}`,
+            [getPage("advanced"), getPage("power-users"), getPage("patches")],
+            () =>
+                this.isPageVisible(LEVEL_ADVANCED) ||
+                this.isPageVisible(LEVEL_POWER_USER) ||
+                this.isPageVisible(LEVEL_EDGE_CASE)
+        );
+        const helpAndInformation = this.createPageGroup(
+            `ℹ️ ${$msg("obsidianLiveSyncSettingTab.titleHelpAndInformation")}`,
+            [getPage("help"), getPage("change-log")]
+        );
+        const laterGroups = [setupOtherDevices, maintenance, extraFeatures, advancedSettings, helpAndInformation];
+
+        if (this.isAnySyncEnabled()) {
+            return [synchronisation, generalSettings, quickSetup, ...laterGroups];
+        }
+        return [quickSetup, synchronisation, generalSettings, ...laterGroups];
     }
 
     private beginRenderScope(refresh: () => void): Component {

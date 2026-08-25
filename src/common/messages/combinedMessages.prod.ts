@@ -6364,6 +6364,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "活动远程服务器",
         "zh-tw": "使用中的遠端伺服器",
     },
+    "obsidianLiveSyncSettingTab.titleAdvancedSettings": {
+        def: "Advanced settings",
+    },
     "obsidianLiveSyncSettingTab.titleAppearance": {
         def: "Appearance",
         es: "Apariencia",
@@ -6441,6 +6444,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "启用额外和高级功能",
         "zh-tw": "啟用額外與進階功能",
     },
+    "obsidianLiveSyncSettingTab.titleExtraFeaturesGroup": {
+        def: "Extra features",
+    },
+    "obsidianLiveSyncSettingTab.titleExtraMenus": {
+        def: "Extra menus",
+    },
     "obsidianLiveSyncSettingTab.titleFetchConfig": {
         def: "Fetch Config",
         es: "Obtener configuración",
@@ -6474,6 +6483,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "获取设置",
         "zh-tw": "抓取設定",
     },
+    "obsidianLiveSyncSettingTab.titleHelpAndInformation": {
+        def: "Help and information",
+    },
+    "obsidianLiveSyncSettingTab.titleHelpAndTroubleshooting": {
+        def: "Help and troubleshooting",
+    },
     "obsidianLiveSyncSettingTab.titleHiddenFiles": {
         def: "Hidden Files",
         es: "Archivos ocultos",
@@ -6495,6 +6510,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Логирование",
         zh: "日志",
         "zh-tw": "記錄",
+    },
+    "obsidianLiveSyncSettingTab.titleMaintenanceAndRecovery": {
+        def: "Maintenance and recovery",
     },
     "obsidianLiveSyncSettingTab.titleMinioS3R2": {
         def: "Minio,S3,R2",
@@ -6585,7 +6603,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw": "重設",
     },
     "obsidianLiveSyncSettingTab.titleSetupOtherDevices": {
-        def: "To setup other devices",
+        def: "Set up other devices",
         es: "Para configurar otros dispositivos",
         fr: "Pour configurer d'autres appareils",
         he: "להגדרת מכשירים אחרים",
@@ -6594,6 +6612,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Для настройки других устройств",
         zh: "设置其他设备",
         "zh-tw": "設定其他裝置",
+    },
+    "obsidianLiveSyncSettingTab.titleSynchronisation": {
+        def: "Synchronisation",
     },
     "obsidianLiveSyncSettingTab.titleSynchronizationMethod": {
         def: "Synchronization Method",
@@ -8010,7 +8031,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw": "複寫因某個模組失敗而取消",
     },
     "Replicator.Message.VersionUpFlash": {
-        def: "An update has been detected. Please open the Settings dialogue and check the Change Log. Replication has been cancelled.",
+        def: "Remote synchronisation is paused for compatibility review. Run the 'Review why synchronisation is paused' command for details and available actions.",
         es: "Se ha detectado una actualización. Abre el diálogo de ajustes y consulta el registro de cambios. La replicación se ha cancelado.",
         fr: "Une mise à jour a été détectée. Veuillez ouvrir la boîte de dialogue des paramètres et consulter le journal des modifications. La réplication a été annulée.",
         he: "זוהה עדכון. אנא פתח את דיאלוג ההגדרות ובדוק את יומן השינויים. השכפול בוטל.",

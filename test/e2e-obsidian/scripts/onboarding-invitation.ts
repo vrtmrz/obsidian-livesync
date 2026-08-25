@@ -13,6 +13,7 @@ import {
     captureObsidianDialogue,
     obsidianRemoteDebuggingPort,
     openLiveSyncSettings,
+    waitForVisibleObsidianDialogue,
     withObsidianPage,
 } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
@@ -155,16 +156,23 @@ async function captureAndCloseIntro(filename: string, mobile: boolean): Promise<
 async function openOnboardingFromSettings(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
-        const liveSyncSettings = await settingsNavigator.openPage("Setup");
+        const liveSyncSettings =
+            settingsNavigator.renderer === "declarative"
+                ? (await settingsNavigator.returnToCatalogue(), settingsNavigator.dialogue)
+                : await settingsNavigator.openPage("Quick Setup");
 
         const onboardingSetting = liveSyncSettings.locator(".setting-item").filter({
             has: settingsNavigator.page.locator(".setting-item-name").filter({ hasText: "Rerun Onboarding Wizard" }),
         });
         await onboardingSetting.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await onboardingSetting
-            .getByRole("button", { name: "Rerun Wizard", exact: true })
-            .click({ timeout: uiTimeoutMs });
-        await onboardingDialogue(settingsNavigator.page).waitFor({ state: "visible", timeout: uiTimeoutMs });
+        if (settingsNavigator.renderer === "declarative") {
+            await onboardingSetting.click({ timeout: uiTimeoutMs });
+        } else {
+            await onboardingSetting
+                .getByRole("button", { name: "Rerun Wizard", exact: true })
+                .click({ timeout: uiTimeoutMs });
+        }
+        await waitForVisibleObsidianDialogue(settingsNavigator.page, "Welcome to Self-hosted LiveSync", uiTimeoutMs);
     });
 }
 

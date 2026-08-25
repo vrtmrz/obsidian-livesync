@@ -27,9 +27,14 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
     },
 }));
 vi.mock("@/common/events.ts", () => ({
+    EVENT_ON_UNRESOLVED_ERROR: "on-unresolved-error",
+    EVENT_REQUEST_COPY_SETUP_URI: "request-copy-setup-uri",
+    EVENT_REQUEST_OPEN_SETUP_URI: "request-open-setup-uri",
     EVENT_REQUEST_RELOAD_SETTING_TAB: "request-reload-setting-tab",
-    eventHub: { onEvent: vi.fn() },
+    EVENT_REQUEST_SHOW_SETUP_QR: "request-show-setup-qr",
+    eventHub: { emitEvent: vi.fn(), onEvent: vi.fn() },
 }));
+vi.mock("@/modules/features/SetupManager.ts", () => ({ SetupManager: class {} }));
 vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation", () => negotiationMocks);
 vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
     LiveSyncCouchDBReplicator: class {},
@@ -42,7 +47,8 @@ vi.mock("./SettingPane.ts", () => ({
     visibleOnly: vi.fn(() => vi.fn()),
 }));
 vi.mock("./PaneChangeLog.ts", () => ({ paneChangeLog: vi.fn() }));
-vi.mock("./PaneSetup.ts", () => ({ paneSetup: vi.fn() }));
+vi.mock("./PaneQuickSetup.ts", () => ({ paneQuickSetup: vi.fn() }));
+vi.mock("./PaneHelp.ts", () => ({ paneHelp: vi.fn() }));
 vi.mock("./PaneGeneral.ts", () => ({ paneGeneral: vi.fn() }));
 vi.mock("./PaneRemoteConfig.ts", () => ({ paneRemoteConfig: vi.fn() }));
 vi.mock("./PaneSelector.ts", () => ({ paneSelector: vi.fn() }));

@@ -11,17 +11,23 @@ import { toObsidianSettingDefinition, type PersistedSettingKey, type SettingSpec
 import { getConfig } from "./settingConstants.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
+import {
+    createExtraMenuSettingSpecGroup,
+    createGeneralSettingSpecGroups,
+    type GeneralSettingSpecContext,
+} from "./GeneralSettingSpecs.ts";
 import { paneAdvanced } from "./PaneAdvanced.ts";
 import { paneChangeLog } from "./PaneChangeLog.ts";
 import { paneCustomisationSync } from "./PaneCustomisationSync.ts";
 import { paneGeneral } from "./PaneGeneral.ts";
 import { paneHatch } from "./PaneHatch.ts";
 import { paneMaintenance } from "./PaneMaintenance.ts";
+import { paneHelp } from "./PaneHelp.ts";
 import { panePatches } from "./PanePatches.ts";
 import { panePowerUsers } from "./PanePowerUsers.ts";
 import { paneRemoteConfig } from "./PaneRemoteConfig.ts";
 import { paneSelector } from "./PaneSelector.ts";
-import { paneSetup } from "./PaneSetup.ts";
+import { paneQuickSetup } from "./PaneQuickSetup.ts";
 import { paneSyncSettings } from "./PaneSyncSettings.ts";
 
 /** The existing pane renderer used by the imperative settings tab and custom pages. */
@@ -62,13 +68,13 @@ export function createSettingsPageCatalogue(): SettingsPageEntry[] {
             legacy: paneChangeLog,
         },
         {
-            id: "setup",
-            name: () => $msg("obsidianLiveSyncSettingTab.panelSetup"),
+            id: "quick-setup",
+            name: () => $msg("obsidianLiveSyncSettingTab.titleQuickSetup"),
             icon: "🧙‍♂️",
             order: 110,
             level: undefined,
             content: "custom",
-            legacy: paneSetup,
+            legacy: paneQuickSetup,
         },
         {
             id: "general",
@@ -160,6 +166,15 @@ export function createSettingsPageCatalogue(): SettingsPageEntry[] {
             content: "custom",
             legacy: paneMaintenance,
         },
+        {
+            id: "help",
+            name: () => $msg("obsidianLiveSyncSettingTab.titleHelpAndTroubleshooting"),
+            icon: "❓",
+            order: 90,
+            level: undefined,
+            content: "custom",
+            legacy: paneHelp,
+        },
     ];
 }
 
@@ -169,7 +184,7 @@ const numberRangeMessage = ({ min, max }: { min?: number; max?: number }): strin
         max: max === undefined ? "~" : `${max}`,
     });
 
-function toAdvancedSettingDefinition(spec: SettingSpec): ReturnType<typeof toObsidianSettingDefinition> {
+function toSettingDefinition(spec: SettingSpec): ReturnType<typeof toObsidianSettingDefinition> {
     const metadata = getConfig(spec.key);
     if (!metadata) {
         throw new Error(`Missing translated setting metadata for ${spec.key}`);
@@ -186,6 +201,22 @@ export function createAdvancedSettingDefinitionGroups(
     return createAdvancedSettingSpecGroups(context).map((group) => ({
         type: "group",
         heading: group.heading,
-        items: group.items.map(toAdvancedSettingDefinition),
+        items: group.items.map(toSettingDefinition),
     }));
+}
+
+/** Convert the shared General specifications to native Obsidian groups. */
+export function createGeneralSettingDefinitionGroups(
+    context: GeneralSettingSpecContext
+): SettingDefinitionGroup<PersistedSettingKey>[] {
+    return createGeneralSettingSpecGroups(context).map((group) => ({
+        type: "group",
+        heading: group.heading,
+        items: group.items.map(toSettingDefinition),
+    }));
+}
+
+/** Convert the Extra menus feature-level controls to native Obsidian settings. */
+export function createExtraMenuSettingDefinitions(): ReturnType<typeof toObsidianSettingDefinition>[] {
+    return createExtraMenuSettingSpecGroup().items.map(toSettingDefinition);
 }

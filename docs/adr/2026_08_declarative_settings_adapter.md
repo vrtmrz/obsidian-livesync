@@ -1,5 +1,5 @@
 ---
-date: 2026-08-24
+date: 2026-08-25
 commonlib-version: "0.1.19"
 self-hosted-livesync-version: "1.0.18"
 status: accepted
@@ -9,10 +9,10 @@ status: accepted
 
 ## Status
 
-Accepted and implemented through Stage C1. The implementation is deliberately
-limited to one-key, immediately persisted controls and one proof page. It does
-not attempt to describe every existing settings interaction through a new
-abstraction. Stage C2 remains an optional, page-by-page improvement.
+Accepted and implemented through Stage C1 and two bounded Stage C2
+landing-page improvements. The shared specification remains deliberately
+limited to one-key, immediately persisted controls. Complex pages retain their
+existing renderers instead of being forced through a general abstraction.
 
 ## Context
 
@@ -42,7 +42,7 @@ responsibilities:
   which run after a successful save.
 
 These responsibilities are not all declarative setting data. In particular,
-Remote Configuration, Hatch, Maintenance, Setup, and Selector contain dynamic
+Remote Configuration, Hatch, Maintenance, Help, and Selector contain dynamic
 lists, Svelte components, diagnostic results, multi-step actions, and
 destructive confirmations. Encoding those interactions in a general settings
 DSL would increase the abstraction before a second renderer had proved which
@@ -139,6 +139,51 @@ renderer therefore prefixes each native page name with the emoji already held
 by the catalogue, while the imperative renderer continues to pass the same
 emoji to its existing menu button. This preserves the established visual
 identity without adding host-DOM manipulation.
+
+### Compose the native landing page around common tasks
+
+The declarative root is a composition of native groups and catalogue pages,
+not a second flat copy of the legacy tab menu. General Settings contains the
+native Appearance, Logging, and Extra menus child pages. Their standard
+`SettingSpec` controls remain searchable without crowding the root. The small
+Quick Setup actions are native action rows on the root. The old Setup child
+page is not retained: its feature-level controls move to Extra menus, its full
+reset moves to Maintenance, and its online guidance becomes Help and
+troubleshooting. The pane-based interface exposes Quick Setup as a pane and
+renders the same controls within General Settings.
+
+Remote Configuration and Sync Settings remain catalogue pages. Obsidian's
+native group contract permits navigable pages as group items, so both pages are
+placed inside an explicit Synchronisation group. This keeps them near the top
+for narrow mobile displays while preventing the unheaded page entries from
+appearing to continue the preceding Quick Setup group. The root order reflects
+the current task:
+
+| Current state               | First root sections                                                                 |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| Synchronisation is inactive | Quick Setup, Synchronisation (Remote Configuration and Sync Settings), then General |
+| Synchronisation is active   | Synchronisation (Remote Configuration and Sync Settings), General, then Quick Setup |
+
+Set up other devices follows the Quick Setup and General groups when the
+plug-in is configured. The remaining destinations are grouped explicitly:
+
+| Group                    | Pages                                    |
+| ------------------------ | ---------------------------------------- |
+| Maintenance and recovery | Maintenance and Hatch                    |
+| Extra features           | Selector and Customisation sync          |
+| Advanced settings        | Advanced, Power users, and Patches       |
+| Help and information     | Help and troubleshooting, and Change Log |
+
+This prevents Obsidian from presenting them as one undifferentiated 'Detailed
+settings' continuation. Changing a setting which can move or reveal a page
+requests a catalogue refresh after persistence. External setting reloads use
+the same boundary. Constructing the definitions still performs no persistence,
+service, file, database, or network operation.
+
+The imperative renderer retains its existing default-page selection: Quick Setup for
+an inactive configuration and General for an active configuration. The landing
+composition is therefore a native 1.13 improvement rather than a behaviour
+change for earlier supported Obsidian versions.
 
 The custom `SettingPage` adapter class will be constructed lazily from the
 1.13-or-later path. `SettingPage` may remain a normal runtime import because the
@@ -267,8 +312,7 @@ custom row or custom page:
 - password inputs;
 - a control which maps one displayed value to several stored keys, such as
   `syncMode`;
-- a control with an `onSaved` service, event, restart, rebuild, or re-render
-  effect;
+- a control whose save effect cannot remain an explicit tab-owned handler;
 - button clusters, dynamic lists, Svelte components, rich diagnostic output,
   or destructive actions; and
 - styling which exists only to support the old wizard or tab menu.
@@ -375,10 +419,11 @@ unrelated workflows:
 - configuration-level page visibility.
 
 It has no current `onSaved` handler, Svelte component, staged Apply group, or
-destructive action. General is not the first proof because changing the display
-language re-renders the interface and other controls emit status events after
-saving. Those effects should remain imperative until the standard binding has
-been proven.
+destructive action. General was not the first proof because changing the
+display language re-renders the interface and other controls emit status events
+after saving. After the standard binding was proven, these effects remained
+explicit, tab-owned saved handlers while their one-key controls adopted
+`SettingSpec`.
 
 The first native activation does not also divide other pages into searchable
 rows. It exposes their established pane renderers as custom pages, limited to
@@ -438,8 +483,13 @@ smaller.
 
 After activation, an individual custom page may be replaced with native groups,
 actions, and rendered rows where the existing panel boundary maps cleanly to
-Obsidian's definitions. This is optional follow-up work rather than a condition
-of Stage C1. Complex workflows may remain custom pages indefinitely.
+Obsidian's definitions. The bounded improvement converts the General and
+Logging controls and the simple Quick Setup actions, then organises Appearance,
+Logging, and Extra menus as child pages of General Settings. It also removes
+the now-misleading Setup child page and assigns its remaining responsibilities
+to their existing owners: Extra menus, Maintenance, and Help and
+troubleshooting. Further conversions remain optional follow-up work rather than
+a condition of Stage C1. Complex workflows may remain custom pages indefinitely.
 
 Stage C2 must not introduce a general action or lifecycle language. Each page
 conversion should be justified by useful settings-search coverage and retain
@@ -461,12 +511,21 @@ Stage B focused unit tests verify:
 - rendering the Advanced specifications through `LiveSyncSetting` preserves
   the current save behaviour.
 
-Stage C1 focused unit tests verify:
+Stage C1 and the landing-page focused unit tests verify:
 
-- the page catalogue contains all 12 existing pages with stable, unique
+- the page catalogue contains all 13 pane-based destinations with stable, unique
   identifiers and names;
-- Advanced is the only native-items page, while the other 11 pages retain
-  custom factories;
+- Appearance, Logging, Extra menus, and Advanced are native-items child pages,
+  and ten child pages retain custom factories;
+- inactive and active configurations use their specified landing-page order;
+- Remote Configuration and Sync Settings remain native navigable pages inside
+  the separate Synchronisation group;
+- maintenance, extra features, advanced settings, and help have explicit page
+  groups, and the old Setup child page is absent;
+- all eight General and Logging controls are registered once, with their
+  existing conditional visibility;
+- the three Extra menus controls are registered once and refresh page
+  visibility after persistence;
 - every standard setting key is registered once;
 - reads use the editing buffer;
 - writes use `saveSettings([key])` and never `plugin.settings`;
@@ -477,7 +536,11 @@ Stage C1 focused unit tests verify:
 
 Real-Obsidian verification on 1.13 or later confirms:
 
-- native page navigation opens every page;
+- the common landing controls and actions render before native page navigation;
+- the Quick Setup action opens the maintained onboarding dialogue;
+- Remote Configuration remains visible without initial scrolling in mobile
+  test mode;
+- native page navigation opens every remaining child page;
 - Advanced controls appear in global settings search;
 - Advanced values persist and are restored after reopening settings;
 - CouchDB-dependent controls and Advanced-mode visibility update correctly;
@@ -506,7 +569,7 @@ runtime and accessible native page names on 1.13 or later. Individual scenarios
 must not duplicate version checks or retain selectors for a menu which the
 declarative renderer does not create.
 
-The accepted implementation was exercised against the official Obsidian
+The initial Stage C1 implementation was exercised against the official Obsidian
 1.13.4 arm64 AppImage with SHA-256
 `20d0b13c6d40bb3d7e73d9b4be6d2e21dfcc145b2106a747d0c1b81e651dabfe`.
 That run opened all 12 pages from the native page catalogue, found the Advanced
@@ -517,6 +580,18 @@ compatibility review, mobile layout, imperative page navigation, and immediate
 persistence of the same Advanced value. The shared E2E navigator owns both the
 separate settings renderer used by Obsidian 1.13 and the legacy
 `.sls-setting-menu-btn` interface.
+
+The Stage C2 landing composition was then exercised on Obsidian 1.13.4. With
+synchronisation inactive, the real interface rendered Quick Setup, a separate
+Synchronisation group containing Remote Configuration and Sync Settings, and a
+General Settings group containing Appearance, Logging, and Extra menus in the
+specified order. It opened all 14 nested settings pages, found the Advanced
+control through global settings search, and restored its saved value after
+reopening settings. In mobile test mode, Remote Configuration remained inside
+the initial viewport below the two Quick Setup actions and the Synchronisation
+heading. The complete scenario also passed with the same bundle on Obsidian
+1.12.7, confirming that the imperative fallback retained its navigation and
+save behaviour.
 
 ## Expansion Checkpoints
 
@@ -529,7 +604,7 @@ following:
 - a replacement for the current onboarding workflow;
 - a Commonlib setting metadata contract change;
 - a minimum Obsidian version increase; or
-- conversion of Remote Configuration, Hatch, Maintenance, Setup, or the
+- further conversion of Remote Configuration, Hatch, Maintenance, Help, or the
   Svelte-based Selector controls.
 
 These may become worthwhile after the first proof, but none is required to

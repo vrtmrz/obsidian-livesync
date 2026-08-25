@@ -95,6 +95,7 @@ export function paneSyncSettings(
 
             await this.saveAllDirtySettings();
             await this.services.control.applySettings();
+            this.requestCatalogueRefresh();
         });
     });
     void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleSynchronizationMethod")).then((paneEl) => {
@@ -129,6 +130,7 @@ export function paneSyncSettings(
             await this.saveSettings(["liveSync", "periodicReplication"]);
 
             await this.services.control.applySettings();
+            this.requestCatalogueRefresh();
         });
 
         new Setting(paneEl).autoWireNumeric("periodicReplicationInterval", {
@@ -144,6 +146,15 @@ export function paneSyncSettings(
         new Setting(paneEl).autoWireToggle("syncOnFileOpen", { onUpdate: onlyOnNonLiveSync });
         new Setting(paneEl).autoWireToggle("syncOnStart", { onUpdate: onlyOnNonLiveSync });
         new Setting(paneEl).autoWireToggle("syncAfterMerge", { onUpdate: onlyOnNonLiveSync });
+        for (const key of [
+            "syncOnSave",
+            "syncOnEditorSave",
+            "syncOnFileOpen",
+            "syncOnStart",
+            "syncAfterMerge",
+        ] as const) {
+            this.addOnSaved(key, () => this.requestCatalogueRefresh());
+        }
         // Desktop app only, and only for the sync modes that keep a background replication channel
         // (LiveSync and Periodic). Ignored on mobile, where suspending preserves battery. The
         // visibility predicate mirrors the runtime guard in ModuleObsidianEvents.

@@ -47,6 +47,14 @@ Do not switch to P2P or reset the database as the first response. Check:
 
 If the remote is healthy but one device's local database is not, use [Reset Synchronisation on This Device](recovery.md#reset-synchronisation-on-this-device) only after backing up unsynchronised local files.
 
+## Synchronisation is paused for compatibility review
+
+A compatibility review is separate from the Change Log. It can appear after an internal database or settings-format change, or when a configured Vault is copied, restored, or opened in a new Obsidian profile without its device-local acknowledgement.
+
+The **Synchronisation paused for compatibility review** dialogue opens after the Obsidian layout is ready. If it has been closed, use the persistent Notice's **Review why** link, or run `Review why synchronisation is paused` from the command palette. Opening **Change Log** does not clear the pause.
+
+Review the stated reason before continuing. When **Resume synchronisation** is available, first update every synchronising device, then use that action to record the current internal database version and restore the configured synchronisation behaviour. If the action is unavailable, the running installation is older than the recorded database or settings format. Update that installation instead of resetting the database merely to remove the warning.
+
 ## Files are missing or excluded
 
 Check Obsidian's `Detect all file extensions`, LiveSync selectors, ignore files, file-size limits, modification-time limits, and Hidden File Sync rules. A filtered file is different from a file which reached the database but could not be reconstructed from its chunks.

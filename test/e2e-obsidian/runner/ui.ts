@@ -67,6 +67,19 @@ export async function captureObsidianDialogue(
     return await captureObsidianPage(port, filename, assertReady);
 }
 
+/** Wait for a visible Obsidian dialogue, including one opened outside the settings window. */
+export async function waitForVisibleObsidianDialogue(page: Page, text: string, timeoutMs = 10_000): Promise<Locator> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        for (const candidate of page.context().pages()) {
+            const dialogue = candidate.locator(".modal-container").filter({ hasText: text }).last();
+            if (await dialogue.isVisible().catch(() => false)) return dialogue;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`Obsidian did not open the expected dialogue: ${text}`);
+}
+
 function declarativePageEntry(dialogue: Locator, name: string): Locator {
     return dialogue
         .locator(".setting-item.mod-navigable")
@@ -85,7 +98,19 @@ function escapeRegExp(value: string): string {
  * owns that renderer difference for both supported settings implementations.
  */
 export async function openLiveSyncSettings(page: Page, timeoutMs = 10_000): Promise<LiveSyncSettingsNavigator> {
-    await page.evaluate(() => {
+    let hostPage: Page | undefined;
+    for (const candidate of page.context().pages()) {
+        const hasSettingsHost = await candidate
+            .evaluate(() => (globalThis as ObsidianSettingsHost).app?.setting !== undefined)
+            .catch(() => false);
+        if (hasSettingsHost) {
+            hostPage = candidate;
+            break;
+        }
+    }
+    if (hostPage === undefined) throw new Error("Obsidian settings are unavailable");
+
+    await hostPage.evaluate(() => {
         const host = globalThis as ObsidianSettingsHost;
         const setting = host.app?.setting;
         if (setting === undefined) throw new Error("Obsidian settings are unavailable");
@@ -164,14 +189,14 @@ export async function openLiveSyncSettings(page: Page, timeoutMs = 10_000): Prom
     };
 
     const close = async (): Promise<void> => {
-        await page
+        await hostPage
             .evaluate(() => {
                 const setting = (globalThis as ObsidianSettingsHost).app?.setting;
                 if (setting === undefined) throw new Error("Obsidian settings are unavailable");
                 setTimeout(() => setting.close(), 0);
             })
             .catch((error: unknown) => {
-                if (!page.isClosed() && !settingsPage.isClosed()) throw error;
+                if (!hostPage.isClosed() && !settingsPage.isClosed()) throw error;
             });
         await Promise.race([
             dialogue.waitFor({ state: "hidden", timeout: timeoutMs }),

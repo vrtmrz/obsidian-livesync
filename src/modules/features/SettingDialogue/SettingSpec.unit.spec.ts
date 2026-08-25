@@ -9,6 +9,7 @@ import {
     type SettingSpec,
 } from "./SettingSpec.ts";
 import { createAdvancedSettingSpecGroups } from "./AdvancedSettingSpecs.ts";
+import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
 
 const rangeMessages = {
     valueShouldBeInRange: ({ min, max }: { min?: number; max?: number }) => `${min ?? "~"}..${max ?? "~"}`,
@@ -71,6 +72,52 @@ describe("Advanced setting specifications", () => {
             const definition = toObsidianSettingDefinition(spec, metadata, rangeMessages);
             expect(definition.name).toBe(`${metadata.name}${statusDisplay(metadata.status)}`);
         }
+    });
+});
+
+describe("General setting specifications", () => {
+    it("shares every General and Logging control between the imperative and declarative renderers", () => {
+        const groups = createGeneralSettingSpecGroups({
+            showEditorStatusDetails: () => true,
+            showVerboseLog: () => true,
+        });
+
+        expect(groups.map(({ heading }) => heading)).toEqual(["Appearance", "Logging"]);
+        expect(groups.flatMap(({ items }) => items.map(({ key }) => key))).toEqual([
+            "displayLanguage",
+            "showStatusOnEditor",
+            "showOnlyIconsOnEditor",
+            "showStatusOnStatusbar",
+            "hideFileWarningNotice",
+            "networkWarningStyle",
+            "lessInformationInLog",
+            "showVerboseLog",
+        ]);
+    });
+
+    it("keeps the three feature-level controls together under Extra menus", () => {
+        const group = createExtraMenuSettingSpecGroup();
+
+        expect(group.heading).toBe("Extra menus");
+        expect(group.items.map(({ key }) => key)).toEqual(["useAdvancedMode", "usePowerUserMode", "useEdgeCaseMode"]);
+    });
+
+    it("retains the two conditional visibility rules", () => {
+        let editorDetails = false;
+        let verboseLog = false;
+        const specs = createGeneralSettingSpecGroups({
+            showEditorStatusDetails: () => editorDetails,
+            showVerboseLog: () => verboseLog,
+        }).flatMap(({ items }) => items);
+        const editorIcons = specs.find(({ key }) => key === "showOnlyIconsOnEditor");
+        const verbose = specs.find(({ key }) => key === "showVerboseLog");
+
+        expect(editorIcons?.visible?.()).toBe(false);
+        expect(verbose?.visible?.()).toBe(false);
+        editorDetails = true;
+        verboseLog = true;
+        expect(editorIcons?.visible?.()).toBe(true);
+        expect(verbose?.visible?.()).toBe(true);
     });
 });
 

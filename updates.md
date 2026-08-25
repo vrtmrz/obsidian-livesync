@@ -14,9 +14,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Interface and translation
 
+#### Fixed
+
+- Compatibility pause warnings now direct you to the dedicated compatibility review instead of the Change Log.
+
 #### Improved
 
-- Settings pages and Advanced controls now use Obsidian 1.13's native page navigation and global settings search, while retaining their familiar icons. Earlier supported Obsidian versions continue to use the existing settings interface.
+- Settings pages, General controls, Quick Setup actions, and Advanced controls now use Obsidian 1.13's native settings interface and global search, while retaining their familiar icons. The landing page keeps Remote Configuration and Sync Settings together, places Appearance, Logging, and Extra menus under General Settings, and groups maintenance, optional features, advanced settings, and help by purpose. Earlier supported Obsidian versions continue to use the pane-based interface.
 
 ## 1.0.18
 

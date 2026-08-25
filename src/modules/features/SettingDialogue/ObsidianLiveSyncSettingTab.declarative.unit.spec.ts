@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { SettingDefinitionItem, SettingDefinitionPage } from "obsidian";
+import type { SettingDefinitionGroup, SettingDefinitionItem, SettingDefinitionPage } from "obsidian";
 import type { PageFunctions } from "./SettingPane.ts";
 
 const runtime = vi.hoisted(() => ({
@@ -9,7 +9,7 @@ const runtime = vi.hoisted(() => ({
         unload: ReturnType<typeof vi.fn>;
         callbacks: Array<() => unknown>;
     }>,
-    paneGeneral: vi.fn(),
+    paneChangeLog: vi.fn(),
     pageCleanup: vi.fn(),
     savedEffect: vi.fn(),
     superHide: vi.fn(),
@@ -73,9 +73,14 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
     },
 }));
 vi.mock("@/common/events.ts", () => ({
+    EVENT_ON_UNRESOLVED_ERROR: "on-unresolved-error",
+    EVENT_REQUEST_COPY_SETUP_URI: "request-copy-setup-uri",
+    EVENT_REQUEST_OPEN_SETUP_URI: "request-open-setup-uri",
     EVENT_REQUEST_RELOAD_SETTING_TAB: "request-reload-setting-tab",
-    eventHub: { onEvent: vi.fn() },
+    EVENT_REQUEST_SHOW_SETUP_QR: "request-show-setup-qr",
+    eventHub: { emitEvent: vi.fn(), onEvent: vi.fn() },
 }));
+vi.mock("@/modules/features/SetupManager.ts", () => ({ SetupManager: class {} }));
 vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation", () => ({ checkSyncInfo: vi.fn() }));
 vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
     LiveSyncCouchDBReplicator: class {},
@@ -91,9 +96,10 @@ vi.mock("./SettingPane.ts", () => ({
     setStyle: vi.fn(),
     visibleOnly: vi.fn((condition: () => boolean) => () => ({ visibility: condition() })),
 }));
-vi.mock("./PaneChangeLog.ts", () => ({ paneChangeLog: vi.fn() }));
-vi.mock("./PaneSetup.ts", () => ({ paneSetup: vi.fn() }));
-vi.mock("./PaneGeneral.ts", () => ({ paneGeneral: runtime.paneGeneral }));
+vi.mock("./PaneChangeLog.ts", () => ({ paneChangeLog: runtime.paneChangeLog }));
+vi.mock("./PaneQuickSetup.ts", () => ({ paneQuickSetup: vi.fn() }));
+vi.mock("./PaneHelp.ts", () => ({ paneHelp: vi.fn() }));
+vi.mock("./PaneGeneral.ts", () => ({ paneGeneral: vi.fn() }));
 vi.mock("./PaneRemoteConfig.ts", () => ({ paneRemoteConfig: vi.fn() }));
 vi.mock("./PaneSelector.ts", () => ({ paneSelector: vi.fn() }));
 vi.mock("./PaneSyncSettings.ts", () => ({ paneSyncSettings: vi.fn() }));
@@ -109,6 +115,30 @@ import { createSettingsPageCatalogue } from "./SettingsPageCatalogue.ts";
 
 function isPage(item: SettingDefinitionItem): item is SettingDefinitionPage {
     return "type" in item && item.type === "page";
+}
+
+function isGroup(item: SettingDefinitionItem): item is SettingDefinitionGroup {
+    return "type" in item && item.type === "group";
+}
+
+function itemLabel(item: SettingDefinitionItem): string {
+    if (isPage(item)) return item.name;
+    if (isGroup(item)) return item.heading ?? "";
+    return item.name;
+}
+
+function collectPages(items: readonly SettingDefinitionItem[]): SettingDefinitionPage[] {
+    return items.flatMap((item) => {
+        if (isPage(item)) return [item, ...collectPages(item.items ?? [])];
+        if (isGroup(item)) return collectPages(item.items ?? []);
+        return [];
+    });
+}
+
+function findPage(tab: ObsidianLiveSyncSettingTab, name: string): SettingDefinitionPage {
+    const page = collectPages(tab.getSettingDefinitions()).find((candidate) => candidate.name.endsWith(` ${name}`));
+    if (!page) throw new Error(`${name} custom page is unavailable`);
+    return page;
 }
 
 function createSettingsTab(): ObsidianLiveSyncSettingTab {
@@ -137,8 +167,8 @@ function createSettingsTab(): ObsidianLiveSyncSettingTab {
 
 beforeEach(() => {
     runtime.components.length = 0;
-    runtime.paneGeneral.mockClear();
-    runtime.paneGeneral.mockImplementation(function (this: ObsidianLiveSyncSettingTab) {
+    runtime.paneChangeLog.mockClear();
+    runtime.paneChangeLog.mockImplementation(function (this: ObsidianLiveSyncSettingTab) {
         this.lifetimeComponent.register(runtime.pageCleanup);
     });
     runtime.pageCleanup.mockClear();
@@ -147,36 +177,175 @@ beforeEach(() => {
 });
 
 describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
-    it("returns all catalogue pages and keeps Advanced as native items", () => {
+    it("keeps Quick Setup first while synchronisation is inactive and separates synchronisation pages from it", () => {
         const tab = createSettingsTab();
-        const pages = tab.getSettingDefinitions().filter(isPage);
+        const definitions = tab.getSettingDefinitions();
 
-        expect(pages).toHaveLength(12);
-        expect(pages.map(({ name }) => name)).toEqual(
-            createSettingsPageCatalogue().map((entry) => `${entry.icon} ${entry.name()}`)
+        expect(definitions.slice(0, 3).map(itemLabel)).toEqual([
+            "🧙‍♂️ Quick Setup",
+            "🔄 Synchronisation",
+            "⚙️ General Settings",
+        ]);
+    });
+
+    it("keeps the synchronisation group first and orders General Settings before Quick Setup while synchronisation is active", () => {
+        const tab = createSettingsTab();
+        tab.editingSettings.liveSync = true;
+        const definitions = tab.getSettingDefinitions();
+
+        expect(definitions.slice(0, 3).map(itemLabel)).toEqual([
+            "🔄 Synchronisation",
+            "⚙️ General Settings",
+            "🧙‍♂️ Quick Setup",
+        ]);
+    });
+
+    it("keeps Remote Configuration and Sync Settings as native pages inside the Synchronisation group", () => {
+        const tab = createSettingsTab();
+        const definitions = tab.getSettingDefinitions();
+        const synchronisation = definitions.find(
+            (item): item is SettingDefinitionGroup => isGroup(item) && item.heading === "🔄 Synchronisation"
         );
+
+        expect(synchronisation?.items?.filter(isPage).map(({ name }) => name)).toEqual([
+            "🛰️ Remote Configuration",
+            "🔄 Sync Settings",
+        ]);
+        expect(
+            definitions
+                .filter(isPage)
+                .map(({ name }) => name)
+                .filter((name) => name.endsWith(" Remote Configuration") || name.endsWith(" Sync Settings"))
+        ).toEqual([]);
+    });
+
+    it("groups secondary pages by purpose instead of exposing a flat Detailed settings list", () => {
+        const tab = createSettingsTab();
+        const definitions = tab.getSettingDefinitions();
+        const groups = definitions.filter(isGroup);
+
+        expect(groups.map(({ heading }) => heading)).toEqual([
+            "🧙‍♂️ Quick Setup",
+            "🔄 Synchronisation",
+            "⚙️ General Settings",
+            "📲 Set up other devices",
+            "🛠️ Maintenance and recovery",
+            "🧩 Extra features",
+            "🔧 Advanced settings",
+            "ℹ️ Help and information",
+        ]);
+        expect(
+            groups
+                .find(({ heading }) => heading === "🛠️ Maintenance and recovery")
+                ?.items?.filter(isPage)
+                .map(({ name }) => name)
+        ).toEqual(["🎛️ Maintenance", "🧰 Hatch"]);
+        expect(
+            groups
+                .find(({ heading }) => heading === "🧩 Extra features")
+                ?.items?.filter(isPage)
+                .map(({ name }) => name)
+        ).toEqual(["🚦 Selector", "🔌 Customisation sync"]);
+        expect(
+            groups
+                .find(({ heading }) => heading === "🔧 Advanced settings")
+                ?.items?.filter(isPage)
+                .map(({ name }) => name)
+        ).toEqual(["🔧 Advanced", "💪 Power users", "🩹 Patches"]);
+        expect(
+            groups
+                .find(({ heading }) => heading === "ℹ️ Help and information")
+                ?.items?.filter(isPage)
+                .map(({ name }) => name)
+        ).toEqual(["❓ Help and troubleshooting", "💬 Change Log"]);
+        expect(
+            groups.find(({ heading }) => heading === "📲 Set up other devices")?.items?.map(({ name }) => name)
+        ).toEqual(["Copy the current settings to a Setup URI", "Show QR code"]);
+    });
+
+    it("keeps Appearance, Logging, and Extra menus inside General Settings", () => {
+        const tab = createSettingsTab();
+        const definitions = tab.getSettingDefinitions();
+        const general = definitions.find(
+            (item): item is SettingDefinitionGroup => isGroup(item) && item.heading === "⚙️ General Settings"
+        );
+        const generalPages = general?.items?.filter(isPage);
+        const appearance = generalPages?.find(({ name }) => name === "🎨 Appearance");
+        const logging = generalPages?.find(({ name }) => name === "📝 Logging");
+        const extraMenus = general?.items?.find(
+            (item): item is SettingDefinitionPage => isPage(item) && item.name === "🎚️ Extra menus"
+        );
+
+        expect(generalPages?.map(({ name }) => name)).toEqual(["🎨 Appearance", "📝 Logging", "🎚️ Extra menus"]);
+        expect(
+            appearance?.items?.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
+        ).toEqual([
+            "displayLanguage",
+            "showStatusOnEditor",
+            "showOnlyIconsOnEditor",
+            "showStatusOnStatusbar",
+            "hideFileWarningNotice",
+            "networkWarningStyle",
+        ]);
+        expect(
+            logging?.items?.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
+        ).toEqual(["lessInformationInLog", "showVerboseLog"]);
+        expect(
+            extraMenus?.items?.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
+        ).toEqual(["useAdvancedMode", "usePowerUserMode", "useEdgeCaseMode"]);
+    });
+
+    it("omits the old Setup child page and keeps standard General and Advanced pages native", () => {
+        const tab = createSettingsTab();
+        const pages = collectPages(tab.getSettingDefinitions());
+
+        expect(pages).toHaveLength(14);
+        expect(pages.map(({ name }) => name)).toEqual(
+            expect.arrayContaining(
+                createSettingsPageCatalogue()
+                    .filter(({ id }) => id !== "general" && id !== "quick-setup")
+                    .map((entry) => `${entry.icon} ${entry.name()}`)
+            )
+        );
+        expect(pages.some(({ name }) => name.endsWith(" General Settings"))).toBe(false);
+        expect(pages.some(({ name }) => name.endsWith(" Setup"))).toBe(false);
         const advanced = pages.find(({ name }) => name.endsWith(" Advanced"));
         expect(advanced?.items?.filter((item) => "type" in item && item.type === "group")).toHaveLength(4);
         expect(advanced?.items?.filter((item) => "action" in item && typeof item.action === "function")).toHaveLength(
             1
         );
         expect(advanced?.page).toBeUndefined();
-        expect(pages.filter(({ page }) => page !== undefined)).toHaveLength(11);
+        expect(pages.filter(({ page }) => page !== undefined)).toHaveLength(10);
+    });
+
+    it("keeps simple setup actions on the landing page without a second Setup destination", () => {
+        const tab = createSettingsTab();
+        const definitions = tab.getSettingDefinitions();
+        const quickSetup = definitions.find(
+            (item): item is SettingDefinitionGroup => isGroup(item) && item.heading === "🧙‍♂️ Quick Setup"
+        );
+
+        expect(quickSetup?.items?.map(({ name }) => name)).toEqual([
+            "Connect with Setup URI",
+            "Rerun Onboarding Wizard",
+            "Enable LiveSync",
+        ]);
+        expect(collectPages(definitions).some(({ name }) => name.endsWith(" Setup"))).toBe(false);
     });
 
     it("constructs custom page state only when opened and disposes each rendered scope", () => {
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
 
         expect(runtime.components).toHaveLength(0);
-        const page = general.page();
+        const page = changeLog.page();
         expect(runtime.components).toHaveLength(0);
 
         page.display();
-        expect(runtime.paneGeneral).toHaveBeenCalledOnce();
+        expect(runtime.paneChangeLog).toHaveBeenCalledOnce();
         expect(runtime.components).toHaveLength(1);
         expect(runtime.components[0].load).toHaveBeenCalledOnce();
 
@@ -192,7 +361,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
     });
 
     it("does not run delayed pane work after its page scope has been disposed", async () => {
-        runtime.paneGeneral.mockImplementation(function (
+        runtime.paneChangeLog.mockImplementation(function (
             this: ObsidianLiveSyncSettingTab,
             _paneEl: HTMLElement,
             { addPanel }: Pick<PageFunctions, "addPanel">
@@ -202,12 +371,12 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
             });
         });
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
 
-        const page = general.page();
+        const page = changeLog.page();
         page.display();
         page.hide();
         await Promise.resolve();
@@ -216,7 +385,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
     });
 
     it("runs a delayed pane callback inside its active scope before a queued hide", async () => {
-        runtime.paneGeneral.mockImplementation(function (
+        runtime.paneChangeLog.mockImplementation(function (
             this: ObsidianLiveSyncSettingTab,
             _paneEl: HTMLElement,
             { addPanel }: Pick<PageFunctions, "addPanel">
@@ -226,12 +395,12 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
             });
         });
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
 
-        const page = general.page();
+        const page = changeLog.page();
         page.display();
         queueMicrotask(() => page.hide());
         await Promise.resolve();
@@ -242,11 +411,11 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
 
     it("rebuilds the catalogue when an externally loaded setting changes page visibility", () => {
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
-        general.page().display();
+        changeLog.page().display();
         tab.core.settings.usePowerUserMode = !tab.editingSettings.usePowerUserMode;
 
         tab.requestReload();
@@ -254,13 +423,22 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         expect(tab.update).toHaveBeenCalledOnce();
     });
 
+    it("rebuilds the catalogue after an Extra menus feature level is saved", async () => {
+        const tab = createSettingsTab();
+        tab.editingSettings.usePowerUserMode = true;
+
+        await tab.saveSettings(["usePowerUserMode"]);
+
+        expect(tab.update).toHaveBeenCalledOnce();
+    });
+
     it("rebuilds translated catalogue names when the display language changes externally", () => {
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
-        general.page().display();
+        changeLog.page().display();
         tab.core.settings.displayLanguage = "ja";
 
         tab.requestReload();
@@ -270,11 +448,11 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
 
     it("rebuilds the catalogue after accepting an external page-visibility setting over a dirty value", () => {
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
-        general.page().display();
+        changeLog.page().display();
         tab.initialSettings!.usePowerUserMode = false;
         tab.editingSettings.usePowerUserMode = true;
         tab.core.settings.usePowerUserMode = true;
@@ -298,30 +476,30 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
 
     it("does not reopen a custom page when a catalogue update has already hidden it", () => {
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
-        const page = general.page();
+        const page = changeLog.page();
         page.display();
         vi.mocked(tab.update).mockImplementation(() => page.hide());
 
         tab.requestCatalogueRefresh();
 
-        expect(runtime.paneGeneral).toHaveBeenCalledOnce();
+        expect(runtime.paneChangeLog).toHaveBeenCalledOnce();
     });
 
     it("keeps saved-setting effects owned by the tab after a custom page closes", async () => {
-        runtime.paneGeneral.mockImplementation(function (this: ObsidianLiveSyncSettingTab) {
+        runtime.paneChangeLog.mockImplementation(function (this: ObsidianLiveSyncSettingTab) {
             this.addOnSaved("displayLanguage", runtime.savedEffect);
         });
         const tab = createSettingsTab();
-        const general = tab.getSettingDefinitions().filter(isPage)[2];
-        if (!general?.page) {
-            throw new Error("General custom page is unavailable");
+        const changeLog = findPage(tab, "Change Log");
+        if (!changeLog.page) {
+            throw new Error("Change Log custom page is unavailable");
         }
 
-        const page = general.page();
+        const page = changeLog.page();
         page.display();
         page.hide();
         tab.editingSettings.displayLanguage = "ja";

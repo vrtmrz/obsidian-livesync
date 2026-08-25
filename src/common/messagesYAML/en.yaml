@@ -1126,6 +1126,12 @@ obsidianLiveSyncSettingTab:
     titleEncryptionNotEnabled: Encryption is not enabled
     titleEncryptionPassphraseInvalid: Encryption Passphrase Invalid
     titleExtraFeatures: Enable extra and advanced features
+    titleExtraFeaturesGroup: Extra features
+    titleExtraMenus: Extra menus
+    titleHelpAndInformation: Help and information
+    titleHelpAndTroubleshooting: Help and troubleshooting
+    titleMaintenanceAndRecovery: Maintenance and recovery
+    titleAdvancedSettings: Advanced settings
     titleFetchConfig: Fetch Config
     titleFetchConfigFromRemote: Fetch config from remote server
     titleFetchSettings: Fetch Settings
@@ -1139,7 +1145,8 @@ obsidianLiveSyncSettingTab:
     titleRemoteConfigCheckFailed: Remote Configuration Check Failed
     titleRemoteServer: Remote Server
     titleReset: Reset
-    titleSetupOtherDevices: To setup other devices
+    titleSetupOtherDevices: Set up other devices
+    titleSynchronisation: Synchronisation
     titleSynchronizationMethod: Synchronization Method
     titleSynchronizationPreset: Synchronization Preset
     titleSyncSettings: Sync Settings
@@ -1431,8 +1438,8 @@ Replicator:
         InitialiseFatalError: No replicator is available, this is the fatal error.
         Pending: Some file events are pending. Replication has been cancelled.
         SomeModuleFailed: Replication has been cancelled by some module failure
-        VersionUpFlash: An update has been detected. Please open the Settings dialogue
-            and check the Change Log. Replication has been cancelled.
+        VersionUpFlash: Remote synchronisation is paused for compatibility review. Run the
+            'Review why synchronisation is paused' command for details and available actions.
 Requires restart of Obsidian: Requires restart of Obsidian
 Requires restart of Obsidian.: Requires restart of Obsidian.
 Rerun Onboarding Wizard: Rerun Onboarding Wizard

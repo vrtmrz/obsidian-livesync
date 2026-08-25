@@ -1,4 +1,9 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
+import { $msg } from "@/common/translation";
+import {
+    createCoreSettingsAfterFullReset,
+    createEditingSettingsAfterFullReset,
+} from "@/serviceFeatures/setupObsidian/settingsReset.ts";
 import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -369,6 +374,30 @@ export function paneMaintenance(
     });
 
     void addPanel(paneEl, "Reset").then((paneEl) => {
+        new Setting(paneEl)
+            .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
+            .addButton((button) => {
+                setButtonDestructiveState(button)
+                    .setButtonText($msg("obsidianLiveSyncSettingTab.btnDiscard"))
+                    .onClick(async () => {
+                        if (
+                            (await this.core.confirm.askYesNoDialog(
+                                $msg("obsidianLiveSyncSettingTab.msgDiscardConfirmation"),
+                                { defaultOption: "No" }
+                            )) !== "yes"
+                        ) {
+                            return;
+                        }
+                        this.editingSettings = createEditingSettingsAfterFullReset(this.editingSettings);
+                        await this.saveAllDirtySettings();
+                        this.core.settings = createCoreSettingsAfterFullReset();
+                        await this.services.setting.saveSettingData();
+                        await this.services.database.resetDatabase();
+                        this.services.appLifecycle.askRestart();
+                    });
+            })
+            .addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)));
+
         new Setting(paneEl)
             .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
             .addButton((button) =>

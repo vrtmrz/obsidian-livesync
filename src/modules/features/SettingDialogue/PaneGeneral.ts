@@ -1,46 +1,22 @@
-import { $msg, $t } from "@/common/translation";
-import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { visibleOnly } from "./SettingPane.ts";
-import { EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
-import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-export function paneGeneral(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleAppearance")).then((paneEl) => {
-        const languages = Object.fromEntries([
-            // ["", $msg("obsidianLiveSyncSettingTab.defaultLanguage")],
-            ...SUPPORTED_I18N_LANGS.map((e) => [e, $t(`lang-${e}`)]),
-        ]) as Record<I18N_LANGS, string>;
-        new Setting(paneEl).autoWireDropDown("displayLanguage", {
-            options: languages,
-        });
-        this.addOnSaved("displayLanguage", () => this.requestCatalogueRefresh());
-        new Setting(paneEl).autoWireToggle("showStatusOnEditor");
-        this.addOnSaved("showStatusOnEditor", () => {
-            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
-        });
-        new Setting(paneEl).autoWireToggle("showOnlyIconsOnEditor", {
-            onUpdate: visibleOnly(() => this.isConfiguredAs("showStatusOnEditor", true)),
-        });
-        new Setting(paneEl).autoWireToggle("showStatusOnStatusbar");
-        new Setting(paneEl).autoWireToggle("hideFileWarningNotice");
-        new Setting(paneEl).autoWireDropDown("networkWarningStyle", {
-            options: {
-                [NetworkWarningStyles.BANNER]: "Show full banner",
-                [NetworkWarningStyles.ICON]: "Show icon only",
-                [NetworkWarningStyles.HIDDEN]: "Hide completely",
-            },
-        });
-        this.addOnSaved("networkWarningStyle", () => {
-            eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
-        });
-    });
-    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleLogging")).then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("lessInformationInLog");
+import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
+import { renderLegacySettingSpec } from "./SettingSpec.ts";
 
-        new Setting(paneEl).autoWireToggle("showVerboseLog", {
-            onUpdate: visibleOnly(() => this.isConfiguredAs("lessInformationInLog", false)),
+export function paneGeneral(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
+    const groups = [
+        ...createGeneralSettingSpecGroups({
+            showEditorStatusDetails: () => this.isConfiguredAs("showStatusOnEditor", true),
+            showVerboseLog: () => this.isConfiguredAs("lessInformationInLog", false),
+        }),
+        createExtraMenuSettingSpecGroup(),
+    ];
+    for (const group of groups) {
+        void addPanel(paneEl, group.heading).then((panelEl) => {
+            for (const spec of group.items) {
+                renderLegacySettingSpec(new Setting(panelEl), spec);
+            }
         });
-    });
+    }
 }

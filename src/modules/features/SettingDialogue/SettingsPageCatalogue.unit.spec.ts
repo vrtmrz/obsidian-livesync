@@ -5,7 +5,8 @@ vi.mock("@/common/translation", () => ({
     translateLiveSyncMessage: (key: string) => key,
 }));
 vi.mock("./PaneChangeLog.ts", () => ({ paneChangeLog: vi.fn() }));
-vi.mock("./PaneSetup.ts", () => ({ paneSetup: vi.fn() }));
+vi.mock("./PaneQuickSetup.ts", () => ({ paneQuickSetup: vi.fn() }));
+vi.mock("./PaneHelp.ts", () => ({ paneHelp: vi.fn() }));
 vi.mock("./PaneGeneral.ts", () => ({ paneGeneral: vi.fn() }));
 vi.mock("./PaneRemoteConfig.ts", () => ({ paneRemoteConfig: vi.fn() }));
 vi.mock("./PaneSelector.ts", () => ({ paneSelector: vi.fn() }));
@@ -25,7 +26,7 @@ describe("settings page catalogue", () => {
 
         expect(catalogue.map(({ id }) => id)).toEqual([
             "change-log",
-            "setup",
+            "quick-setup",
             "general",
             "remote-configuration",
             "synchronisation",
@@ -36,11 +37,18 @@ describe("settings page catalogue", () => {
             "power-users",
             "patches",
             "maintenance",
+            "help",
         ]);
         expect(new Set(catalogue.map(({ id }) => id)).size).toBe(catalogue.length);
         expect(new Set(catalogue.map(({ name }) => name())).size).toBe(catalogue.length);
         expect(catalogue.filter(({ content }) => content === "native").map(({ id }) => id)).toEqual(["advanced"]);
-        expect(catalogue.filter(({ content }) => content === "custom")).toHaveLength(11);
+        expect(catalogue.filter(({ content }) => content === "custom")).toHaveLength(12);
+        expect(catalogue.find(({ id }) => id === "quick-setup")?.name()).toBe(
+            "obsidianLiveSyncSettingTab.titleQuickSetup"
+        );
+        expect(catalogue.find(({ id }) => id === "help")?.name()).toBe(
+            "obsidianLiveSyncSettingTab.titleHelpAndTroubleshooting"
+        );
     });
 
     it("registers each Advanced control key exactly once", () => {
