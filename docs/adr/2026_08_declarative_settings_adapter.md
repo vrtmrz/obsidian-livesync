@@ -1,7 +1,7 @@
 ---
 date: 2026-08-25
 commonlib-version: "0.1.19"
-self-hosted-livesync-version: "1.0.18"
+self-hosted-livesync-version: "1.0.20"
 status: accepted
 ---
 
@@ -15,7 +15,8 @@ limited to one-key, immediately persisted controls. Complex pages retain their
 existing renderers instead of being forced through a general abstraction.
 Settings pending application which require database initialisation now delegate
 their decision, scheduling, and restart boundary to `SetupManager` and
-`Rebuilder`.
+`Rebuilder`. Setting-tab registration and definition construction also follow
+the persisted-settings lifecycle rather than transient runtime readiness.
 
 ## Context
 
@@ -24,6 +25,15 @@ Obsidian 1.13 introduced declarative plug-in settings through
 native rendering, validation, navigation, and global settings search. When the
 method returns a non-empty array, Obsidian does not call the existing
 `display()` implementation.
+
+Obsidian may call `getSettingDefinitions()` as soon as a tab is passed to
+`Plugin.addSettingTab()`. Registering the tab during initialisation therefore
+allowed definition construction to observe constructor defaults before
+persisted settings had loaded. The former landing-page predicate also inspected
+the active replicator, although the local database and replicator are created
+only after the settings-loaded lifecycle. On start-up this ordering could emit
+a spurious missing-replicator warning and produce a landing-page order from
+transient state.
 
 Self-hosted LiveSync still supports Obsidian versions before 1.13 through its
 `minAppVersion` of 1.7.2. It must therefore retain an imperative `display()`
@@ -168,13 +178,13 @@ for narrow mobile displays while preventing the unheaded page entries from
 appearing to continue the preceding Quick Setup group. The root order reflects
 the current task:
 
-| Current state               | First root sections                                                                 |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| Synchronisation is inactive | Quick Setup, Synchronisation (Remote Configuration and Sync Settings), then General |
-| Synchronisation is active   | Synchronisation (Remote Configuration and Sync Settings), General, then Quick Setup |
+| Configuration state | First root sections                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| Unconfigured        | Quick Setup, Synchronisation (Remote Configuration and Sync Settings), then General                       |
+| Configured          | Synchronisation (Remote Configuration and Sync Settings), General, Set up other devices, then Quick Setup |
 
-Set up other devices follows the Quick Setup and General groups when the
-plug-in is configured. The remaining destinations are grouped explicitly:
+Set up other devices is hidden until the plug-in is configured. The remaining
+destinations are grouped explicitly:
 
 | Group                    | Pages                                    |
 | ------------------------ | ---------------------------------------- |
@@ -189,10 +199,11 @@ requests a catalogue refresh after persistence. External setting reloads use
 the same boundary. Constructing the definitions still performs no persistence,
 service, file, database, or network operation.
 
-The imperative renderer retains its existing default-page selection: Quick Setup for
-an inactive configuration and General for an active configuration. The landing
-composition is therefore a native 1.13 improvement rather than a behaviour
-change for earlier supported Obsidian versions.
+The imperative renderer uses the same stable distinction for its default-page
+selection: Quick Setup for an unconfigured installation and General for a
+configured installation. The landing composition is therefore a native 1.13
+improvement rather than a separate interpretation of synchronisation state on
+earlier supported Obsidian versions.
 
 The custom `SettingPage` adapter class will be constructed lazily from the
 1.13-or-later path. `SettingPage` may remain a normal runtime import because the
@@ -354,6 +365,23 @@ Specification construction and `getSettingDefinitions()` must remain cheap
 and side-effect free. Obsidian calls the method during search indexing and
 again on updates; it must perform no file, database, network, or settings
 write.
+
+### Register the setting tab after persisted settings load
+
+The settings module registers its `PluginSettingTab` from the sequential
+`onSettingLoaded` lifecycle, not from `onInitialise`. Immediately before
+registration, it seeds the tab's editing and initial snapshots through
+`reloadAllSettings(true)`. Skipping the update request is intentional because
+the tab is not yet owned by Obsidian; `addSettingTab()` may request definitions
+immediately after this seeding step.
+
+This lifecycle still precedes local database opening and replicator activation.
+Definition construction must therefore depend only on the seeded setting
+snapshot, static catalogue data, and translations. In particular, root-page
+ordering is based on the persisted `isConfigured` value. It must not inspect
+automatic synchronisation triggers, the active replicator, replication status,
+database readiness, files, or the network. Runtime operations remain explicit
+actions which run after the user selects them.
 
 ### Give imperative pages an explicit lifetime and refresh boundary
 
@@ -549,7 +577,12 @@ Stage C1 and the landing-page focused unit tests verify:
   identifiers and names;
 - Appearance, Logging, Extra menus, and Advanced are native-items child pages,
   and ten child pages retain custom factories;
-- inactive and active configurations use their specified landing-page order;
+- configured and unconfigured installations use their specified landing-page
+  order regardless of transient replication status;
+- definition construction does not request the active replicator before the
+  database is ready;
+- the settings tab is registered only after persisted settings load, and its
+  editing snapshot is seeded before registration without requesting a render;
 - Remote Configuration and Sync Settings remain native navigable pages inside
   the separate Synchronisation group;
 - maintenance, extra features, advanced settings, and help have explicit page
@@ -626,17 +659,27 @@ persistence of the same Advanced value. The shared E2E navigator owns both the
 separate settings renderer used by Obsidian 1.13 and the legacy
 `.sls-setting-menu-btn` interface.
 
-The Stage C2 landing composition was then exercised on Obsidian 1.13.4. With
-synchronisation inactive, the real interface rendered Quick Setup, a separate
-Synchronisation group containing Remote Configuration and Sync Settings, and a
-General Settings group containing Appearance, Logging, and Extra menus in the
-specified order. It opened all 14 nested settings pages, found the Advanced
-control through global settings search, and restored its saved value after
-reopening settings. In mobile test mode, Remote Configuration remained inside
-the initial viewport below the two Quick Setup actions and the Synchronisation
-heading. The complete scenario also passed with the same bundle on Obsidian
-1.12.7, confirming that the imperative fallback retained its navigation and
-save behaviour.
+Before the start-up lifecycle correction, the Stage C2 landing composition was
+exercised on Obsidian 1.13.4 with a configured installation whose automatic
+synchronisation triggers were disabled. Under the former predicate, the real
+interface rendered Quick Setup, a separate Synchronisation group containing
+Remote Configuration and Sync Settings, and a General Settings group containing
+Appearance, Logging, and Extra menus in that order. It opened all 14 nested
+settings pages, found the Advanced control through global settings search, and
+restored its saved value after reopening settings. In mobile test mode, Remote
+Configuration remained inside the initial viewport below the two Quick Setup
+actions and the Synchronisation heading. The complete scenario also passed with
+the same bundle on Obsidian 1.12.7, confirming that the imperative fallback
+retained its navigation and save behaviour.
+
+The start-up lifecycle correction was subsequently exercised with the same
+official Obsidian 1.13.4 build. The settings scenario captured and verified the
+exact configured and unconfigured root-group orders, including Set up other
+devices before Quick Setup for a configured installation. The same bundle
+opened General Settings by default through the imperative fallback on Obsidian
+1.12.7. Focused unit tests own the earlier lifecycle boundary: persisted
+settings are copied before registration, and definition construction does not
+request an active replicator.
 
 ## Expansion Checkpoints
 

@@ -4,7 +4,7 @@ NOTE: This document not completed. I'll improve this doc in a while. but your co
 
 There are many settings in Self-hosted LiveSync. This document describes each setting in detail (not how-to). Configuration and settings are divided into several categories and indicated by icons. The icon is as follows:
 
-On Obsidian 1.13 or later, the root settings page is organised by task. When synchronisation is inactive, **Quick Setup** appears first. Once any synchronisation mode is active, **Synchronisation** and **General Settings** move ahead of **Quick Setup**. **Set up other devices** appears after this plug-in has been configured. Earlier supported Obsidian versions retain a pane-based interface with the same controls.
+On Obsidian 1.13 or later, the root settings page is organised by task. On an unconfigured installation, **Quick Setup** appears first, followed by **Synchronisation** and **General Settings**. Once this plug-in has been configured, **Synchronisation** and **General Settings** appear first, followed by **Set up other devices** and **Quick Setup**. Earlier supported Obsidian versions retain a pane-based interface with the same controls; they open **Quick Setup** when unconfigured and **General Settings** when configured.
 
 | Icon | Root group               | Contents or availability                                      |
 | :--: | ------------------------ | ------------------------------------------------------------- |
