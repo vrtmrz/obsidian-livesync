@@ -6,7 +6,6 @@ import {
     type ConfigLevel,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
-import type { ButtonComponent, Setting } from "@/deps.ts";
 
 export const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {
     return () => ({
@@ -37,37 +36,6 @@ export function setStyle(el: HTMLElement, styleHead: string, condition: () => bo
         el.addClass(`${styleHead}-disabled`);
         el.removeClass(`${styleHead}-enabled`);
     }
-}
-
-/**
- * Applies destructive-action styling without requiring Obsidian 1.13 at
- * runtime. Older supported versions used the `mod-warning` class for the same
- * presentation.
- */
-export function setButtonDestructiveState(button: ButtonComponent, isDestructive = true): ButtonComponent {
-    const compatibleButton = button as unknown as {
-        setDestructive?: () => ButtonComponent;
-        removeDestructive?: () => ButtonComponent;
-    };
-    const updateNativeStyle = isDestructive ? compatibleButton.setDestructive : compatibleButton.removeDestructive;
-    if (typeof updateNativeStyle === "function") {
-        updateNativeStyle.call(button);
-    } else {
-        button.buttonEl.classList.toggle("mod-warning", isDestructive);
-    }
-    return button;
-}
-
-/** Marks a setting row whose selected action buttons may wrap onto separate lines. */
-export function markSettingRowWithSubsequentButtons<T extends Setting>(setting: T): T {
-    setting.setClass("sls-setting-row-with-subsequent-buttons");
-    return setting;
-}
-
-/** Marks an action button which may wrap onto a later line in its setting row. */
-export function markSubsequentButton(button: ButtonComponent): ButtonComponent {
-    button.buttonEl.addClass("sls-setting-subsequent-button");
-    return button;
 }
 
 export function visibleOnly(cond: () => boolean): OnUpdateFunc {

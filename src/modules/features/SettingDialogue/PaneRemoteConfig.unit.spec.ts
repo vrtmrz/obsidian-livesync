@@ -23,6 +23,13 @@ vi.mock("@/common/translation", () => ({
 vi.mock("./LiveSyncSetting.ts", () => ({
     LiveSyncSetting: class {
         nameEl = { addClass: vi.fn(), appendText: vi.fn() };
+        settingEl = {
+            classList: {
+                toggle: (value: string, enabled: boolean) => {
+                    if (enabled) runtime.settingClasses.push(value);
+                },
+            },
+        };
 
         setName() {
             return this;
@@ -32,16 +39,17 @@ vi.mock("./LiveSyncSetting.ts", () => ({
             return this;
         }
 
-        setClass(value: string) {
-            runtime.settingClasses.push(value);
-            return this;
-        }
-
         addButton(callback: (button: unknown) => void) {
             const button = {
                 buttonEl: {
-                    addClass: (value: string) => runtime.buttonClasses.push(value),
-                    classList: { toggle: vi.fn() },
+                    classList: {
+                        toggle: (value: string, enabled: boolean) => {
+                            if (enabled) runtime.buttonClasses.push(value);
+                        },
+                    },
+                },
+                setDestructive() {
+                    return this;
                 },
                 onClick() {
                     return this;
@@ -133,8 +141,8 @@ describe("paneRemoteConfig", () => {
 
         paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
         await vi.waitFor(() => expect(runtime.panels).toHaveLength(1));
-        expect(runtime.settingClasses).toContain("sls-setting-row-with-subsequent-buttons");
-        expect(runtime.buttonClasses).toEqual(["sls-setting-subsequent-button", "sls-setting-subsequent-button"]);
+        expect(runtime.settingClasses).toContain("sls-setting-with-additional-actions");
+        expect(runtime.buttonClasses).toEqual(["sls-setting-additional-action"]);
 
         lifetimeComponent.unload();
 

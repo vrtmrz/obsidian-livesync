@@ -24,7 +24,8 @@ import {
     type AllBooleanItemKey,
 } from "./settingConstants.ts";
 import { $msg } from "@/common/translation";
-import { setButtonDestructiveState, wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
+import { wrapMemo, type AutoWireOption, type OnUpdateResult } from "./SettingPane.ts";
+import { setButtonDestructiveState } from "./settingComponentStyles.ts";
 
 export class LiveSyncSetting extends Setting {
     autoWiredComponent?: TextComponent | ToggleComponent | DropdownComponent | ButtonComponent | TextAreaComponent;

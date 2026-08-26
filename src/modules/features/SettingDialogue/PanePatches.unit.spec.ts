@@ -12,15 +12,15 @@ const remediationHarness = vi.hoisted(() => {
         onChange: vi.fn(),
         setValue: vi.fn(),
     };
-    const addButtonClass = vi.fn();
-    const setClass = vi.fn();
+    const setButtonClassState = vi.fn();
+    const setSettingClassState = vi.fn();
 
     return {
-        addButtonClass,
         createSpan,
         dateElement,
         inputEl,
-        setClass,
+        setButtonClassState,
+        setSettingClassState,
         textComponent,
     };
 });
@@ -29,7 +29,14 @@ vi.mock("./LiveSyncSetting.ts", () => ({
     LiveSyncSetting: class LiveSyncSetting {
         applyButtonComponent = {
             buttonEl: {
-                addClass: remediationHarness.addButtonClass,
+                classList: {
+                    toggle: remediationHarness.setButtonClassState,
+                },
+            },
+        };
+        settingEl = {
+            classList: {
+                toggle: remediationHarness.setSettingClassState,
             },
         };
         controlEl = {
@@ -42,11 +49,6 @@ vi.mock("./LiveSyncSetting.ts", () => ({
         }
 
         setAuto(): this {
-            return this;
-        }
-
-        setClass(value: string): this {
-            remediationHarness.setClass(value);
             return this;
         }
 
@@ -107,7 +109,10 @@ describe("panePatches remediation setting", () => {
         expect(createSpan).not.toHaveBeenCalled();
         expect(remediationHarness.createSpan).toHaveBeenCalledOnce();
         expect(remediationHarness.dateElement.textContent).toBe("No limit configured");
-        expect(remediationHarness.setClass).toHaveBeenCalledWith("sls-setting-row-with-subsequent-buttons");
-        expect(remediationHarness.addButtonClass).toHaveBeenCalledWith("sls-setting-subsequent-button");
+        expect(remediationHarness.setSettingClassState).toHaveBeenCalledWith(
+            "sls-setting-with-additional-actions",
+            true
+        );
+        expect(remediationHarness.setButtonClassState).toHaveBeenCalledWith("sls-setting-additional-action", true);
     });
 });

@@ -12,11 +12,11 @@ import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import {
-    markSettingRowWithSubsequentButtons,
-    markSubsequentButton,
+    setButtonAdditionalActionState,
     setButtonDestructiveState,
-    type PageFunctions,
-} from "./SettingPane.ts";
+    setSettingAdditionalActionsState,
+} from "./settingComponentStyles.ts";
+import type { PageFunctions } from "./SettingPane.ts";
 // import { visibleOnly } from "./SettingPane.ts";
 import InfoPanel from "./InfoPanel.svelte";
 import { writable } from "svelte/store";
@@ -110,10 +110,10 @@ export function paneRemoteConfig(
         void addPanel(paneEl, "E2EE Configuration", () => {}).then((paneEl) => {
             const infoPanel = new SveltePanel(InfoPanel, paneEl, E2EESummaryWritable);
             this.lifetimeComponent.register(() => infoPanel.destroy());
-            const setupButton = markSettingRowWithSubsequentButtons(new Setting(paneEl).setName("Configure E2EE"));
+            const setupButton = setSettingAdditionalActionsState(new Setting(paneEl).setName("Configure E2EE"));
             setupButton
                 .addButton((button) =>
-                    setButtonDestructiveState(markSubsequentButton(button))
+                    setButtonDestructiveState(button)
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
@@ -123,7 +123,7 @@ export function paneRemoteConfig(
                         .setButtonText("Configure")
                 )
                 .addButton((button) =>
-                    setButtonDestructiveState(markSubsequentButton(button))
+                    setButtonDestructiveState(setButtonAdditionalActionState(button))
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);

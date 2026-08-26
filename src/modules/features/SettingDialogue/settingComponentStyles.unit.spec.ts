@@ -1,6 +1,10 @@
 import type { ButtonComponent, Setting } from "@/deps.ts";
 import { describe, expect, it, vi } from "vitest";
-import { markSettingRowWithSubsequentButtons, markSubsequentButton, setButtonDestructiveState } from "./SettingPane.ts";
+import {
+    setButtonAdditionalActionState,
+    setButtonDestructiveState,
+    setSettingAdditionalActionsState,
+} from "./settingComponentStyles.ts";
 
 type CompatibleButton = ButtonComponent & {
     setDestructive?: () => ButtonComponent;
@@ -10,7 +14,6 @@ type CompatibleButton = ButtonComponent & {
 function createButton(overrides: Partial<CompatibleButton> = {}): CompatibleButton {
     return {
         buttonEl: {
-            addClass: vi.fn(),
             classList: {
                 toggle: vi.fn(),
             },
@@ -21,25 +24,41 @@ function createButton(overrides: Partial<CompatibleButton> = {}): CompatibleButt
 
 function createSetting(): Setting {
     return {
-        setClass: vi.fn().mockReturnThis(),
+        settingEl: {
+            classList: {
+                toggle: vi.fn(),
+            },
+        },
     } as unknown as Setting;
 }
 
-describe("markSettingRowWithSubsequentButtons", () => {
-    it("marks only the supplied setting row as containing subsequent actions", () => {
+describe("setSettingAdditionalActionsState", () => {
+    it("sets whether the supplied setting row contains additional actions", () => {
         const setting = createSetting();
 
-        expect(markSettingRowWithSubsequentButtons(setting)).toBe(setting);
-        expect(setting.setClass).toHaveBeenCalledWith("sls-setting-row-with-subsequent-buttons");
+        expect(setSettingAdditionalActionsState(setting, true)).toBe(setting);
+        expect(setSettingAdditionalActionsState(setting, false)).toBe(setting);
+        expect(setting.settingEl.classList.toggle).toHaveBeenNthCalledWith(
+            1,
+            "sls-setting-with-additional-actions",
+            true
+        );
+        expect(setting.settingEl.classList.toggle).toHaveBeenNthCalledWith(
+            2,
+            "sls-setting-with-additional-actions",
+            false
+        );
     });
 });
 
-describe("markSubsequentButton", () => {
-    it("marks only the supplied button as a subsequent action", () => {
+describe("setButtonAdditionalActionState", () => {
+    it("sets whether the supplied button is an additional action", () => {
         const button = createButton();
 
-        expect(markSubsequentButton(button)).toBe(button);
-        expect(button.buttonEl.addClass).toHaveBeenCalledWith("sls-setting-subsequent-button");
+        expect(setButtonAdditionalActionState(button, true)).toBe(button);
+        expect(setButtonAdditionalActionState(button, false)).toBe(button);
+        expect(button.buttonEl.classList.toggle).toHaveBeenNthCalledWith(1, "sls-setting-additional-action", true);
+        expect(button.buttonEl.classList.toggle).toHaveBeenNthCalledWith(2, "sls-setting-additional-action", false);
     });
 });
 

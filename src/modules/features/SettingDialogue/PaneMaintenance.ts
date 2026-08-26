@@ -10,7 +10,8 @@ import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
-import { setButtonDestructiveState, visibleOnly, type PageFunctions } from "./SettingPane";
+import { visibleOnly, type PageFunctions } from "./SettingPane";
+import { setButtonDestructiveState } from "./settingComponentStyles.ts";
 export function paneMaintenance(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
