@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
+    buttonClasses: [] as string[],
     panels: [] as Array<{ destroy: ReturnType<typeof vi.fn> }>,
     settingClasses: [] as string[],
 }));
@@ -36,7 +37,20 @@ vi.mock("./LiveSyncSetting.ts", () => ({
             return this;
         }
 
-        addButton() {
+        addButton(callback: (button: unknown) => void) {
+            const button = {
+                buttonEl: {
+                    addClass: (value: string) => runtime.buttonClasses.push(value),
+                    classList: { toggle: vi.fn() },
+                },
+                onClick() {
+                    return this;
+                },
+                setButtonText() {
+                    return this;
+                },
+            };
+            callback(button);
             return this;
         }
 
@@ -91,6 +105,7 @@ function createPanelElement(): HTMLElement {
 }
 
 afterEach(() => {
+    runtime.buttonClasses.length = 0;
     runtime.panels.length = 0;
     runtime.settingClasses.length = 0;
     vi.clearAllMocks();
@@ -103,7 +118,13 @@ describe("paneRemoteConfig", () => {
             register: vi.fn((callback: () => unknown) => callbacks.push(callback)),
             unload: vi.fn(() => callbacks.splice(0).forEach((callback) => callback())),
         };
-        const addPanel = vi.fn((_parent: HTMLElement, _heading: string) => Promise.resolve(createPanelElement()));
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "E2EE Configuration") {
+                    callback(createPanelElement());
+                }
+            },
+        }));
         const host = {
             editingSettings: { remoteConfigurations: {} },
             core: { settings: { remoteConfigurations: {} } },
@@ -112,7 +133,8 @@ describe("paneRemoteConfig", () => {
 
         paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
         await vi.waitFor(() => expect(runtime.panels).toHaveLength(1));
-        expect(runtime.settingClasses).toContain("sls-setting-subsequent-buttons");
+        expect(runtime.settingClasses).toContain("sls-setting-row-with-subsequent-buttons");
+        expect(runtime.buttonClasses).toEqual(["sls-setting-subsequent-button", "sls-setting-subsequent-button"]);
 
         lifetimeComponent.unload();
 

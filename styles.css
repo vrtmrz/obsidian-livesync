@@ -547,17 +547,17 @@ body.is-mobile .sls-setting button {
     white-space: normal;
 }
 
-body.is-mobile .sls-setting-subsequent-buttons {
+body.is-mobile .sls-setting-row-with-subsequent-buttons {
     flex-wrap: wrap;
 }
 
-body.is-mobile .sls-setting-subsequent-buttons .setting-item-control {
+body.is-mobile .sls-setting-row-with-subsequent-buttons .setting-item-control {
     min-width: 0;
     flex: 1 1 100%;
     flex-wrap: wrap;
 }
 
-body.is-mobile .sls-setting-subsequent-buttons .setting-item-control > button {
+body.is-mobile .sls-setting .sls-setting-subsequent-button {
     flex: 1 1 12rem;
 }
 

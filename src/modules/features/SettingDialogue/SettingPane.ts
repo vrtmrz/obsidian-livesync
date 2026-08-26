@@ -6,7 +6,7 @@ import {
     type ConfigLevel,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
-import type { ButtonComponent } from "@/deps.ts";
+import type { ButtonComponent, Setting } from "@/deps.ts";
 
 export const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {
     return () => ({
@@ -55,6 +55,18 @@ export function setButtonDestructiveState(button: ButtonComponent, isDestructive
     } else {
         button.buttonEl.classList.toggle("mod-warning", isDestructive);
     }
+    return button;
+}
+
+/** Marks a setting row whose selected action buttons may wrap onto separate lines. */
+export function markSettingRowWithSubsequentButtons<T extends Setting>(setting: T): T {
+    setting.setClass("sls-setting-row-with-subsequent-buttons");
+    return setting;
+}
+
+/** Marks an action button which may wrap onto a later line in its setting row. */
+export function markSubsequentButton(button: ButtonComponent): ButtonComponent {
+    button.buttonEl.addClass("sls-setting-subsequent-button");
     return button;
 }
 

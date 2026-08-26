@@ -9,7 +9,7 @@ import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
-import { visibleOnly } from "./SettingPane.ts";
+import { markSettingRowWithSubsequentButtons, markSubsequentButton, visibleOnly } from "./SettingPane.ts";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { migrateDatabases } from "./settingUtils.ts";
@@ -177,7 +177,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
     });
     void addPanel(paneEl, "Remediation").then((paneEl) => {
-        const setting = new Setting(paneEl).setClass("sls-setting-subsequent-buttons");
+        const setting = markSettingRowWithSubsequentButtons(new Setting(paneEl));
         const dateEl = setting.controlEl.createSpan();
         setting
             .addText((text) => {
@@ -215,6 +215,9 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             })
             .setAuto("maxMTimeForReflectEvents")
             .addApplyButton(["maxMTimeForReflectEvents"]);
+        if (setting.applyButtonComponent) {
+            markSubsequentButton(setting.applyButtonComponent);
+        }
 
         this.addOnSaved("maxMTimeForReflectEvents", async (key) => {
             const buttons = ["Restart Now", "Later"] as const;

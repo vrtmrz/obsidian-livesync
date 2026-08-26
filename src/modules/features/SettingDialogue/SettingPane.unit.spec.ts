@@ -1,6 +1,6 @@
-import type { ButtonComponent } from "@/deps.ts";
+import type { ButtonComponent, Setting } from "@/deps.ts";
 import { describe, expect, it, vi } from "vitest";
-import { setButtonDestructiveState } from "./SettingPane.ts";
+import { markSettingRowWithSubsequentButtons, markSubsequentButton, setButtonDestructiveState } from "./SettingPane.ts";
 
 type CompatibleButton = ButtonComponent & {
     setDestructive?: () => ButtonComponent;
@@ -10,6 +10,7 @@ type CompatibleButton = ButtonComponent & {
 function createButton(overrides: Partial<CompatibleButton> = {}): CompatibleButton {
     return {
         buttonEl: {
+            addClass: vi.fn(),
             classList: {
                 toggle: vi.fn(),
             },
@@ -17,6 +18,30 @@ function createButton(overrides: Partial<CompatibleButton> = {}): CompatibleButt
         ...overrides,
     } as unknown as CompatibleButton;
 }
+
+function createSetting(): Setting {
+    return {
+        setClass: vi.fn().mockReturnThis(),
+    } as unknown as Setting;
+}
+
+describe("markSettingRowWithSubsequentButtons", () => {
+    it("marks only the supplied setting row as containing subsequent actions", () => {
+        const setting = createSetting();
+
+        expect(markSettingRowWithSubsequentButtons(setting)).toBe(setting);
+        expect(setting.setClass).toHaveBeenCalledWith("sls-setting-row-with-subsequent-buttons");
+    });
+});
+
+describe("markSubsequentButton", () => {
+    it("marks only the supplied button as a subsequent action", () => {
+        const button = createButton();
+
+        expect(markSubsequentButton(button)).toBe(button);
+        expect(button.buttonEl.addClass).toHaveBeenCalledWith("sls-setting-subsequent-button");
+    });
+});
 
 describe("setButtonDestructiveState", () => {
     it("uses the native destructive-button API when it is available", () => {
