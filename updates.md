@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 26th August, 2026
 
+It is becoming more 'ordinary' with each release, but please let me know if anything has become less convenient.
+
 ### Interface and translation
 
 #### Fixed
@@ -91,19 +93,3 @@ I know this is the second time I have said it, but I had grown quite fond of the
 
 - One-shot CouchDB synchronisation now releases stalled web-compatible connection checks before replication starts, so a later synchronisation can make a fresh attempt (Commonlib 0.1.16).
     - The 60-second safeguard applies only to pre-replication checks. It does not limit ordinary synchronisation, and the **Use Internal API** path is unchanged.
-
-## 1.0.15
-
-15th August, 2026
-
-### Synchronisation and storage
-
-#### Improved
-
-- Start-up offline scanning is now faster, especially for larger Vaults using path obfuscation (Commonlib 0.1.15).
-
-### Interface and translation
-
-#### Improved
-
-- The Traditional Chinese translation catalogue has been completed and polished for broader coverage and more natural, consistent terminology (PR #1106). Thank you to @nimula for the contribution!
