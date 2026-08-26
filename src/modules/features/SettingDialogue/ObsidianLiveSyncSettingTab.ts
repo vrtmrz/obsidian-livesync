@@ -82,14 +82,6 @@ import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
 // For creating a document
 // const toc = new Set<string>();
 
-function registerLiveSyncSettingsModal(component: Component, containerEl: HTMLElement | undefined): void {
-    if (!containerEl) return;
-    const modalEl = containerEl.closest<HTMLElement>(".modal.mod-settings");
-    if (!modalEl) return;
-    modalEl.addClass("sls-setting-modal");
-    component.register(() => modalEl.removeClass("sls-setting-modal"));
-}
-
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
     private _lifetimeComponent?: Component;
@@ -709,7 +701,6 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     private renderCustomPage(page: SettingPage, entry: SettingsPageEntry): Component {
         if (requireApiVersion("1.13.0")) {
             const component = this.beginRenderScope(() => page.display());
-            registerLiveSyncSettingsModal(component, this.containerEl);
             this.isShown = true;
             page.title = entry.name();
             page.containerEl.empty();
@@ -1092,9 +1083,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     private displayImperative(): void {
         const changeDisplay = this.changeDisplay.bind(this);
         // Make sure the page-owned component is loaded for markdown rendering in panes.
-        const component = this.beginRenderScope(() => this.displayImperative());
+        this.beginRenderScope(() => this.displayImperative());
         const { containerEl } = this;
-        registerLiveSyncSettingsModal(component, containerEl);
         this.screenElements = {};
         if (this._editingSettings == undefined || this.initialSettings == undefined) {
             this.reloadAllSettings();

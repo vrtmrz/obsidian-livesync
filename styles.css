@@ -547,22 +547,18 @@ body.is-mobile .sls-setting button {
     white-space: normal;
 }
 
-body.is-mobile .sls-setting-mobile-wrap-controls {
+body.is-mobile .sls-setting-subsequent-buttons {
     flex-wrap: wrap;
 }
 
-body.is-mobile .sls-setting-mobile-wrap-controls .setting-item-control {
+body.is-mobile .sls-setting-subsequent-buttons .setting-item-control {
     min-width: 0;
     flex: 1 1 100%;
     flex-wrap: wrap;
 }
 
-body.is-mobile .sls-setting-mobile-wrap-controls .setting-item-control > button {
+body.is-mobile .sls-setting-subsequent-buttons .setting-item-control > button {
     flex: 1 1 12rem;
-}
-
-body.is-mobile .modal.mod-settings.sls-setting-modal .modal-header {
-    background-color: var(--background-primary);
 }
 
 .active-pane .sls-setting-panel-title {

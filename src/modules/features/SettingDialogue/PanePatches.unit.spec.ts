@@ -100,6 +100,6 @@ describe("panePatches remediation setting", () => {
         expect(createSpan).not.toHaveBeenCalled();
         expect(remediationHarness.createSpan).toHaveBeenCalledOnce();
         expect(remediationHarness.dateElement.textContent).toBe("No limit configured");
-        expect(remediationHarness.setClass).toHaveBeenCalledWith("sls-setting-mobile-wrap-controls");
+        expect(remediationHarness.setClass).toHaveBeenCalledWith("sls-setting-subsequent-buttons");
     });
 });

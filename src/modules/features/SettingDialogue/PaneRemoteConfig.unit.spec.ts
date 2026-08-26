@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
     panels: [] as Array<{ destroy: ReturnType<typeof vi.fn> }>,
+    settingClasses: [] as string[],
 }));
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/common/types", () => ({
@@ -30,7 +31,8 @@ vi.mock("./LiveSyncSetting.ts", () => ({
             return this;
         }
 
-        setClass() {
+        setClass(value: string) {
+            runtime.settingClasses.push(value);
             return this;
         }
 
@@ -90,6 +92,7 @@ function createPanelElement(): HTMLElement {
 
 afterEach(() => {
     runtime.panels.length = 0;
+    runtime.settingClasses.length = 0;
     vi.clearAllMocks();
 });
 
@@ -109,6 +112,7 @@ describe("paneRemoteConfig", () => {
 
         paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
         await vi.waitFor(() => expect(runtime.panels).toHaveLength(1));
+        expect(runtime.settingClasses).toContain("sls-setting-subsequent-buttons");
 
         lifetimeComponent.unload();
 

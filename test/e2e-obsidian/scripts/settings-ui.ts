@@ -241,10 +241,6 @@ async function captureDeclarativeMobileSettings(): Promise<
             if (infoPanel === null || infoPanel === undefined) {
                 throw new Error("The E2EE section did not contain its information panel.");
             }
-            const modalHeader = heading.closest(".modal.mod-settings")?.querySelector<HTMLElement>(".modal-header");
-            if (modalHeader === null || modalHeader === undefined) {
-                throw new Error("The mobile settings page did not contain its native header.");
-            }
             const headingBounds = heading.getBoundingClientRect();
             const infoBounds = infoPanel.getBoundingClientRect();
             return {
@@ -253,7 +249,6 @@ async function captureDeclarativeMobileSettings(): Promise<
                 headingTop: headingBounds.top,
                 infoBottom: infoBounds.bottom,
                 infoTop: infoBounds.top,
-                modalHeaderBackground: getComputedStyle(modalHeader).backgroundColor,
             };
         });
         if (
@@ -262,13 +257,6 @@ async function captureDeclarativeMobileSettings(): Promise<
         ) {
             layoutFailures.push(`the E2EE section heading overlapped its contents (${JSON.stringify(panelLayout)})`);
         }
-        if (
-            panelLayout.modalHeaderBackground === "transparent" ||
-            panelLayout.modalHeaderBackground === "rgba(0, 0, 0, 0)"
-        ) {
-            layoutFailures.push("the native mobile settings header remained transparent over scrolling content");
-        }
-
         const remotePath = `${diagnosticsDirectory}/settings-declarative-remote-mobile.png`;
         await settingsNavigator.dialogue.screenshot({ ...settingsScreenshotOptions, path: remotePath });
         if (layoutFailures.length > 0) {
