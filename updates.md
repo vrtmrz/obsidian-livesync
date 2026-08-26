@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Interface and translation
+
+#### Fixed
+
+- Remote Configuration section headings no longer overlap their contents when scrolling on mobile. Action buttons in Remote Configuration, Maintenance, and Patches now remain inside the settings pane on narrow screens.
+
 ## 1.0.20
 
 ~~1.0.19~~ was cancelled because prerelease validation exposed an incorrect warning at start-up.

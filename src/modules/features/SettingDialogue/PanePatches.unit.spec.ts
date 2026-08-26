@@ -12,17 +12,33 @@ const remediationHarness = vi.hoisted(() => {
         onChange: vi.fn(),
         setValue: vi.fn(),
     };
+    const setButtonClassState = vi.fn();
+    const setSettingClassState = vi.fn();
 
     return {
         createSpan,
         dateElement,
         inputEl,
+        setButtonClassState,
+        setSettingClassState,
         textComponent,
     };
 });
 
 vi.mock("./LiveSyncSetting.ts", () => ({
     LiveSyncSetting: class LiveSyncSetting {
+        applyButtonComponent = {
+            buttonEl: {
+                classList: {
+                    toggle: remediationHarness.setButtonClassState,
+                },
+            },
+        };
+        settingEl = {
+            classList: {
+                toggle: remediationHarness.setSettingClassState,
+            },
+        };
         controlEl = {
             createSpan: remediationHarness.createSpan,
         };
@@ -93,5 +109,10 @@ describe("panePatches remediation setting", () => {
         expect(createSpan).not.toHaveBeenCalled();
         expect(remediationHarness.createSpan).toHaveBeenCalledOnce();
         expect(remediationHarness.dateElement.textContent).toBe("No limit configured");
+        expect(remediationHarness.setSettingClassState).toHaveBeenCalledWith(
+            "sls-setting-with-additional-actions",
+            true
+        );
+        expect(remediationHarness.setButtonClassState).toHaveBeenCalledWith("sls-setting-additional-action", true);
     });
 });

@@ -536,12 +536,29 @@ div.workspace-leaf-content[data-type="bases"] .livesync-status {
 }
 
 .sls-setting-panel-title {
-    position: sticky;
     font-size: medium;
-    top: 2.5em;
     background-color: var(--background-secondary-alt);
     border-radius: 10px;
     padding: 0.5em 1em;
+}
+
+body.is-mobile .sls-setting button {
+    max-width: 100%;
+    white-space: normal;
+}
+
+body.is-mobile .sls-setting-with-additional-actions {
+    flex-wrap: wrap;
+}
+
+body.is-mobile .sls-setting-with-additional-actions .setting-item-control {
+    min-width: 0;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+}
+
+body.is-mobile .sls-setting .sls-setting-additional-action {
+    flex: 1 1 12rem;
 }
 
 .active-pane .sls-setting-panel-title {

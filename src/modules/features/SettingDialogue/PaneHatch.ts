@@ -24,7 +24,8 @@ import {
 import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
-import { setButtonDestructiveState, type PageFunctions } from "./SettingPane.ts";
+import type { PageFunctions } from "./SettingPane.ts";
+import { setButtonDestructiveState } from "./settingComponentStyles.ts";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import {
     chooseAndCopyFileDatabaseInfo,

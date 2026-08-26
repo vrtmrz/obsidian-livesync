@@ -6,7 +6,6 @@ import {
     type ConfigLevel,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { AllSettingItemKey, AllSettings } from "./settingConstants";
-import type { ButtonComponent } from "@/deps.ts";
 
 export const combineOnUpdate = (func1: OnUpdateFunc, func2: OnUpdateFunc): OnUpdateFunc => {
     return () => ({
@@ -37,25 +36,6 @@ export function setStyle(el: HTMLElement, styleHead: string, condition: () => bo
         el.addClass(`${styleHead}-disabled`);
         el.removeClass(`${styleHead}-enabled`);
     }
-}
-
-/**
- * Applies destructive-action styling without requiring Obsidian 1.13 at
- * runtime. Older supported versions used the `mod-warning` class for the same
- * presentation.
- */
-export function setButtonDestructiveState(button: ButtonComponent, isDestructive = true): ButtonComponent {
-    const compatibleButton = button as unknown as {
-        setDestructive?: () => ButtonComponent;
-        removeDestructive?: () => ButtonComponent;
-    };
-    const updateNativeStyle = isDestructive ? compatibleButton.setDestructive : compatibleButton.removeDestructive;
-    if (typeof updateNativeStyle === "function") {
-        updateNativeStyle.call(button);
-    } else {
-        button.buttonEl.classList.toggle("mod-warning", isDestructive);
-    }
-    return button;
 }
 
 export function visibleOnly(cond: () => boolean): OnUpdateFunc {
