@@ -89,7 +89,7 @@ export class ModuleBasicMenu extends AbstractModule {
             checkCallback: (checking) => {
                 if (!this.settings.useAdvancedMode) return false;
                 if (!checking) {
-                    this.core.replicator.terminateSync();
+                    fireAndForget(() => this.services.replication.stopActiveTransfer());
                 }
                 return true;
             },

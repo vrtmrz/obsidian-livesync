@@ -26,6 +26,7 @@ function createFixture() {
         },
         replication: {
             replicateUserInitiated: vi.fn(async () => ({ status: "completed" as const })),
+            stopActiveTransfer: vi.fn(async () => ({ status: "completed" as const })),
         },
         vault: {
             getActiveFilePath: vi.fn((): string | null => "note.md"),
@@ -134,6 +135,19 @@ describe("ModuleBasicMenu command palette", () => {
         fixture.settings.useAdvancedMode = true;
         expect(fixture.getCommand("livesync-scan-files").checkCallback?.(true)).toBe(true);
         expect(fixture.getCommand("livesync-abortsync").checkCallback?.(true)).toBe(true);
+    });
+
+    it("routes an explicit stop through the active provider capability", async () => {
+        const fixture = createFixture();
+        fixture.settings.useAdvancedMode = true;
+
+        await fixture.module._everyOnloadStart();
+
+        expect(fixture.getCommand("livesync-abortsync").checkCallback?.(false)).toBe(true);
+        await vi.waitFor(() => {
+            expect(fixture.services.replication.stopActiveTransfer).toHaveBeenCalledOnce();
+        });
+        expect(fixture.core.replicator.terminateSync).not.toHaveBeenCalled();
     });
 
     it("keeps active-file database information available and opens it in a copy dialogue", async () => {

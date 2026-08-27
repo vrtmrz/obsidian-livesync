@@ -41,6 +41,7 @@ import {
     supportedOpenReplicationContinuous,
     supportedOpenReplicationOneShot,
     supportedOpenReplicationUnattended,
+    supportedStopActiveTransfer,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
@@ -165,6 +166,7 @@ export class LiveSyncBaseCore<
                 userInitiatedOneShot: supportedOpenReplicationOneShot(),
                 unattendedOneShot: supportedOpenReplicationUnattended(),
                 continuous: supportedOpenReplicationContinuous(),
+                stopActiveTransfer: supportedStopActiveTransfer(),
             },
             [REMOTE_MINIO]: {
                 kind: REMOTE_MINIO,
@@ -175,6 +177,7 @@ export class LiveSyncBaseCore<
                 userInitiatedOneShot: supportedOpenReplicationOneShot(),
                 unattendedOneShot: supportedOpenReplicationUnattended(),
                 continuous: CAPABILITY_NOT_APPLICABLE,
+                stopActiveTransfer: supportedStopActiveTransfer(),
             },
         });
         this.services.replicator.registerReplicatorProviderDefinitions(definitions);
