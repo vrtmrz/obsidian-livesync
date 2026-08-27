@@ -12444,10 +12444,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "除非你很確定，否則選擇此選項有一定風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解自己在做什麼。",
         },
-    updated: {
-        def: "updated",
-        es: "una actualización",
-    },
     "Updating list...": {
         def: "Updating list...",
         es: "Actualizando lista...",

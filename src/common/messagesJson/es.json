@@ -1457,7 +1457,6 @@
     "Ui.SetupWizard.SetupRemote.Title": "Elige un remoto de sincronización",
     "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.": "Nombre único entre dispositivos sincronizados. Para editarlo, desactive sincronización de personalización",
     "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing.": "Si no estás seguro, elegir esta opción es algo arriesgado. Da por supuesto que la configuración del servidor es compatible con este dispositivo. Si no lo es, puede haber pérdida de datos. Asegúrate de saber lo que haces.",
-    "updated": "una actualización",
     "Updating list...": "Actualizando lista...",
     "URL": "URL",
     "Use a custom passphrase": "Usar una frase de contraseña personalizada",
