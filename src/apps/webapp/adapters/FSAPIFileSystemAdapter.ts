@@ -20,6 +20,15 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     readonly vault: FSAPIVaultAdapter;
 
     private fileCache = new Map<string, FSAPIFile>();
+    /**
+     * Whether a full directory scan has completed at least once.
+     *
+     * This must not be inferred from `fileCache.size`: the cache is also
+     * populated one entry at a time by `refreshFile()`, so a single
+     * incidental entry would suppress the initial scan and make
+     * `getFiles()` silently return a truncated listing.
+     */
+    private hasScannedFully = false;
     private handleCache = new Map<string, FileSystemFileHandle>();
 
     constructor(
@@ -110,8 +119,9 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
     }
 
     async getFiles(): Promise<FSAPIFile[]> {
-        if (this.fileCache.size === 0) {
+        if (!this.hasScannedFully) {
             await this.scanDirectory();
+            this.hasScannedFully = true;
         }
         return Array.from(this.fileCache.values());
     }
