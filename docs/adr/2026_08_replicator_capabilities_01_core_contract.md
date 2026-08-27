@@ -331,6 +331,12 @@ initialisation, reset, lock, unlock, and resolution settle only after their
 defined remote write succeeds; a Rebuilder must not continue after an ignored
 mutation failure.
 
+`cancelled` means that the requested finite operation did not reach its normal
+completion boundary. It does not promise rollback. A provider may retain
+documents and checkpoints from batches which had already settled before the
+cancellation signal was observed, and a later operation resumes from that
+durable state.
+
 ### Distinguish observation from an identity result only when required
 
 Capability availability and operation results are separate. A supported
@@ -367,17 +373,22 @@ active -> retiring -> disposed -> replacement published
 ```
 
 Acquisitions wait for the transition and receive only the replacement. A fenced
-old handle cannot start work. Disposal stops Continuous activity, awaits work
-which cannot be cancelled, and settles or reports every operation owned by the
-active adapter before publication. If bounded retirement cannot settle,
-replacement fails visibly and no new handle is published; the old handle is
-disposed when late work settles.
+old handle cannot start work. Disposal stops Continuous activity, requests
+cancellation of work which supports it, awaits work which cannot be cancelled,
+and settles or reports every operation owned by the active adapter before
+publication. If bounded retirement cannot settle, replacement fails visibly
+and no new handle is published; the old handle is disposed when late work
+settles.
 
 The generic stop role is an idempotent request to stop a provider transfer after
 transport work begins. It does not promise cancellation of readiness checks,
 Security Seed acquisition, or external storage calls which do not consume a
-cancellation signal. P2P declares this role `not-implemented` until its lower
-level transfer and RPC work have a real stop path.
+cancellation signal. P2P implements this role through its room-session owner:
+the request aborts the current finite-operation scopes without closing the room
+or disabling later transfers. Its RPC request, incoming `reqSync`, and
+replication batch loop consume the same effective signal. An already-started
+atomic database operation may settle before cancellation completes, but no new
+batch is started afterwards.
 
 `getNewReplicator()` is not a general temporary-instance API. Setup and settings
 flows request narrow probes, such as connection, preferred-tweak, or isolated
@@ -426,7 +437,7 @@ support states.
 | Remote storage status                   | S       | S              | NA  |
 | Compromised-Chunk inspection            | S       | NA             | NA  |
 | Central-remote Security Seed            | S       | S              | NA  |
-| Request to stop active transfer         | S       | S              | NI  |
+| Request to stop active transfer         | S       | S              | S   |
 
 P2P unattended OneShot means a role exists which uses configured target names
 without opening a dialogue. Peer-room, watch, acceptance, and broadcast roles

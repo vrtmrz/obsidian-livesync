@@ -65,7 +65,8 @@ A **P2P room session** is one active room membership and every resource whose
 validity depends on that membership:
 
 - the Trystero room, RPC actions, and `RpcRoom`;
-- its internal session epoch and cancellation signal;
+- its internal session epoch, session controller, and finite-operation
+  registry;
 - advertisement state and temporary peer decisions;
 - peer-bound RPC clients and remote database proxies;
 - connection, diagnostic, and platform-event subscriptions; and
@@ -147,11 +148,31 @@ dialogue. Persisted or automatic acceptance may authorise an unattended path;
 it cannot create local interaction authority implicitly.
 
 Every finite operation which needs a room obtains its own internal,
-session-epoch-bound demand. Acquiring another demand does not open another
-session. Releasing it never closes a session still required by AutoStart,
-another finite operation, or another host consumer. Demand bookkeeping is
-internal to the service and is not a general consumer contract; it cannot turn
-a finite transfer into persistent transport policy.
+session-epoch-bound demand and operation controller. The operation consumes an
+effective signal composed from the room session, its operation controller, and
+any narrower caller or incoming-RPC signal. The room-session owner, rather than
+the adapter or UI consumer, owns every controller and operation settlement.
+
+Acquiring another demand does not open another session. Releasing it never
+closes a session still required by AutoStart, another finite operation, or
+another host consumer. A request to stop active transfer aborts the registered
+finite-operation controllers but does not abort the room-session controller;
+the room remains usable and later transfers obtain fresh operation controllers.
+Retiring the room session aborts its session controller, which cancels every
+remaining child operation. Demand and controller bookkeeping is internal to the
+service and is not a general consumer contract; it cannot turn a finite transfer
+into persistent transport policy.
+
+Cancellation is cooperative and does not roll back durable work. Pull,
+requested push, and bidirectional synchronisation propagate the effective
+signal through the initiating RPC, incoming `reqSync`, the reverse database RPC
+calls, and the replication batch loop. An atomic PouchDB read or write which has
+already begun may settle. If a batch write has begun, the operation processes
+its successful writes and records the batch checkpoint only after every
+required revision has settled successfully. Cancellation before the write does
+not advance that checkpoint. The operation then reports a cancelled result and
+does not start another batch. Session retirement awaits that settlement before
+releasing RPC and room resources.
 
 ### Reconcile session settings atomically
 
@@ -173,19 +194,18 @@ client, or policy demand remains reachable after replacement.
 Reconciliation is serialised with room lifecycle operations:
 
 1. fence new session work;
-2. allow already-started finite transfers to settle, because the current lower
-   level transfer may not yet have a real cancellation contract;
+2. abort the old session's finite-operation scopes and await their cooperative
+   settlement;
 3. close and leave the old room in transport-owned order;
 4. open and validate the candidate session; and
 5. publish the replacement only after it has opened successfully.
 
-The service never exposes a partly initialised candidate or silently interrupts
-a transfer without a cancellation contract. If bounded settlement or candidate
-opening fails, reconciliation reports the failure and publishes no mixed old
-and new session. A candidate-open failure leaves one observable disconnected
-state with policy demands unsatisfied; it does not revive the fenced session or
-start an unbounded retry loop. A later lifecycle trigger or explicit connect may
-retry.
+The service never exposes a partly initialised candidate or treats a cancellation
+request as rollback. If bounded settlement or candidate opening fails,
+reconciliation reports the failure and publishes no mixed old and new session.
+A candidate-open failure leaves one observable disconnected state with policy
+demands unsatisfied; it does not revive the fenced session or start an unbounded
+retry loop. A later lifecycle trigger or explicit connect may retry.
 
 ### Order local database replacement across both owners
 
@@ -257,6 +277,15 @@ relay sockets, a probe must either allocate isolated transport resources or the
 host must reject concurrent probing while the active service uses those
 sockets. It must not pause or close active relay sockets as a side effect of a
 short-lived check.
+
+The probe owns the same kind of lifetime controller as a room session, and
+`dispose()` aborts and settles its work before releasing its own room. This
+makes probe retirement bounded, but it does not turn process-global Trystero
+relay state into isolated state. Runtime acquisition therefore reuses or
+observes a compatible active session where the probe requires no second room,
+allows a separately owned logical room only when the effective relay binding is
+compatible, and otherwise returns a blocked result. It does not silently retire
+the active service to make an incompatible probe possible.
 
 ### Keep provider composition explicit
 

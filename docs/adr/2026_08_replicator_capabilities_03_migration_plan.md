@@ -116,10 +116,14 @@ Preserve RTC diagnostics through `P2PDiagnostics`, rather than retaining
 `rawHost`. The compatibility facade may delegate during this stage, but new
 consumers cannot receive it.
 
-Separate active-adapter release, room-session leave, and the stop request. Keep
-the P2P stop role `not-implemented` until a lower-level operation exists. Add
-internal session-demand ownership for finite operations and policy-held
-AutoStart without exposing that bookkeeping as a general consumer API.
+Separate active-adapter release, room-session leave, and the stop request.
+Implement the lower-level cooperative cancellation path before declaring the
+P2P stop role supported: caller abort through RPC request cancellation,
+incoming-handler signal propagation, signal-bound reverse database RPC calls,
+and safe batch-boundary termination in `replicateShim`. Add room-session and
+operation controllers beside internal session-demand ownership for finite
+operations and policy-held AutoStart, without exposing that bookkeeping as a
+general consumer API.
 
 Add ownership regressions immediately before implementation:
 
@@ -132,7 +136,19 @@ Add ownership regressions immediately before implementation:
   advertisements do not;
 - local database replacement retires database-bound feeds and publication;
 - repeated replacement does not retain platform-event subscriptions;
-- policy-only change waits for an already-started finite transfer to settle;
+- an active-transfer stop aborts finite operations without closing the room,
+  while a later operation can use the same room;
+- room retirement aborts both locally initiated and incoming `reqSync` work,
+  waits for an already-started atomic database operation to settle, and starts
+  no later batch;
+- RPC cancellation, timeout, peer departure, and room close abort a
+  cancellation-aware handler rather than only discarding its eventual result;
+- the inbound request context exists before request admission begins, so a
+  cancellation received while admission waits cannot be lost;
+- cancellation retains already-settled documents and checkpoints and reports
+  `cancelled`, rather than claiming rollback or completion;
+- a per-document batch-write failure does not advance the replication
+  checkpoint past the failed revision;
 - explicit disconnect suppresses AutoStart and relay reconnection until
   explicit connect; and
 - database replacement fences both active-provider and P2P work before
