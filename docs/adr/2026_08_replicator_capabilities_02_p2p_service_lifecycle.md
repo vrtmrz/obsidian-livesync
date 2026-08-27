@@ -73,10 +73,10 @@ validity depends on that membership:
 - RPC publication, the watch set, database and broadcast change feeds, and
   in-flight finite-transfer de-duplication bound to the local database.
 
-A **session epoch** is an internal fence for one room session. It is not a
-public capability, a persisted profile identifier, or a synonym for the
-logical room. Every callback, snapshot, and operation token carrying
-session-bound state is checked against the current epoch.
+A **session epoch** is the internal identity and fence of one room-session
+object. It is not a public capability, a persisted profile identifier, or a
+synonym for the logical room. Peer callbacks and finite-operation tokens carry
+that identity and cannot be routed into a replacement session.
 
 Closing or replacing a session fences its epoch, stops new operations, settles
 or fails in-flight work, closes RPC and client resources, and leaves the room
@@ -110,11 +110,15 @@ pull, push, and bidirectional transfer remain under one transfer owner. A
 consumer which needs more than one view receives those views explicitly; it
 does not receive a general P2P context or service locator.
 
-The views resolve the current published session at invocation. An operation
-which carries an old epoch returns a stale or blocked result rather than
-dispatching into a replacement. The epoch remains internal. The active P2P
-Replicator is a non-owning adapter over the views, and its disposal cannot
-implicitly leave the service-owned room.
+The views resolve the current published session at invocation. Finite transfer
+work which carries an old epoch is rejected or cancelled rather than dispatched
+into a replacement. A configuration or diagnostic request which was already
+admitted may settle against its originating session, while persisted peer
+admission decisions intentionally settle independently of room replacement.
+These operations are outside active-transfer cancellation and cannot publish
+the former session's peer callbacks or status into its replacement. The epoch
+remains internal. The active P2P Replicator is a non-owning adapter over the
+views, and its disposal cannot implicitly leave the service-owned room.
 
 ### Make explicit disconnect a veto, not another policy demand
 
@@ -133,6 +137,11 @@ explicit disconnect veto. This is a lifecycle veto, not the opposite of
 `InteractionAuthority`: local interaction authority is the upper bound used by
 operations, as specified in Part 1. An operation may impose a stricter veto,
 but an unattended operation cannot gain permission to open a dialogue.
+
+`EVENT_DATABASE_REBUILT` is a separately authorised continuation of the owning
+Rebuilder workflow, not an AutoStart demand. After the replacement database is
+ready, that continuation may request a room independently of the AutoStart
+veto. It does not clear the veto for later automatic-start events.
 
 ### Separate automation policy from room ownership
 
@@ -191,6 +200,12 @@ while persisted peer decisions survive. AutoStart reconnects when it remains
 enabled and no explicit-disconnect veto is active. No old listener, credential,
 client, or policy demand remains reachable after replacement.
 
+The candidate captures its settings, device identity, and local database object
+when it is constructed. The owner re-reads the effective binding after the room
+has opened and publishes the candidate only when it still matches. A setting or
+database change during open therefore retires the stale candidate rather than
+making it current.
+
 Reconciliation is serialised with room lifecycle operations:
 
 1. fence new session work;
@@ -222,7 +237,12 @@ the P2P service:
 7. let the Rebuilder request its separately authorised reopen.
 
 Each service serialises its own resources. The database transition owns the
-cross-service ordering rather than introducing one transport-wide lock.
+cross-service ordering rather than introducing one transport-wide lock. Reset
+preparation and explicit database close both await service-owned room
+retirement before database managers are torn down and the old physical handle
+is destroyed or closed. Explicit close settles every registered cleanup handler
+sequentially, even when an earlier cleanup fails; its aggregate result is
+diagnostic rather than a close veto.
 
 ### De-duplicate by logical lifecycle, not by room epoch
 

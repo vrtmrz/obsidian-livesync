@@ -134,7 +134,10 @@ Add ownership regressions immediately before implementation:
   the active main remote;
 - persisted peer decisions survive replacement, while temporary decisions and
   advertisements do not;
-- local database replacement retires database-bound feeds and publication;
+- local database replacement retires database-bound feeds and publication
+  before manager teardown;
+- explicit database close settles every dependent cleanup owner before closing
+  the physical handle, even when an earlier cleanup reports failure;
 - repeated replacement does not retain platform-event subscriptions;
 - an active-transfer stop aborts finite operations without closing the room,
   while a later operation can use the same room;
@@ -150,7 +153,10 @@ Add ownership regressions immediately before implementation:
 - a per-document batch-write failure does not advance the replication
   checkpoint past the failed revision;
 - explicit disconnect suppresses AutoStart and relay reconnection until
-  explicit connect; and
+  explicit connect, while a separately authorised rebuild continuation can
+  reopen the room without clearing that automatic-start veto;
+- a candidate whose settings, device identity, or database binding changes
+  while it opens is retired instead of published; and
 - database replacement fences both active-provider and P2P work before
   publishing the new database identity, while a failed candidate leaves one
   observable disconnected state without reviving the fenced session.
