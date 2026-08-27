@@ -201,10 +201,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 );
                 waitForCompatibilityReview = () => compatibilityReview.openReview();
                 useReviewHarness(core, this, replicator, compatibilityReview);
-                // p2pReplicatorResult = useP2PReplicator(core, [
-                //     VIEW_TYPE_P2P,
-                //     (leaf: any) => new P2PReplicatorPaneView(leaf, core, p2pReplicatorResult!),
-                // ]);
             }
         );
     }
