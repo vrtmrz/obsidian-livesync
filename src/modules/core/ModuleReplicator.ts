@@ -23,6 +23,7 @@ import { clearHandlers } from "@vrtmrz/livesync-commonlib/compat/replication/Syn
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { MARK_LOG_NETWORK_ERROR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
+import { NO_INTERACTION, type ReplicationInteraction } from "@vrtmrz/livesync-commonlib/replication";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -108,7 +109,12 @@ export class ModuleReplicator extends AbstractModule {
         this._normalFileReflectionFilterSignature = this.getNormalFileReflectionFilterSignature(this.settings);
         eventHub.onEvent(EVENT_FILE_SAVED, () => {
             if (this.settings.syncOnSave && !this.core.services.appLifecycle.isSuspended()) {
-                scheduleTask("perform-replicate-after-save", 250, () => this.services.replication.replicateByEvent());
+                scheduleTask("perform-replicate-after-save", 250, () =>
+                    this.services.replication.replicateUnattendedByEvent({
+                        trigger: "database-event",
+                        interaction: NO_INTERACTION,
+                    })
+                );
             }
         });
         eventHub.onEvent(EVENT_SETTING_SAVED, (setting) => {
@@ -223,10 +229,28 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         });
     }
 
-    private async onReplicationFailed(showMessage: boolean = false): Promise<boolean> {
+    private async onReplicationFailed(
+        showMessageOrInteraction: boolean | ReplicationInteraction = false,
+        interaction?: ReplicationInteraction
+    ): Promise<boolean> {
+        // The typed ReplicationService passes the legacy visibility flag first
+        // and the authority second. The authority is the source of truth for
+        // recovery dialogues when it is present; retain the legacy boolean for
+        // older callers which do not provide one.
+        const showMessage = interaction
+            ? interaction.kind === "permitted" && interaction.permissions.failureRecovery
+            : typeof showMessageOrInteraction === "boolean"
+              ? showMessageOrInteraction
+              : showMessageOrInteraction.kind === "permitted" && showMessageOrInteraction.permissions.failureRecovery;
         const activeReplicator = this.services.replicator.getActiveReplicator();
         if (!activeReplicator) {
             Logger(`No active replicator found`, LOG_LEVEL_INFO);
+            return false;
+        }
+        if (!showMessage) {
+            // Automatic requests may report the failure, but they must never
+            // enter tweak, lock, fetch, unlock, or cleanup dialogues.
+            Logger(`Replication failed on an unattended path.`, LOG_LEVEL_INFO);
             return false;
         }
         if (activeReplicator.tweakSettingsMismatched && activeReplicator.preferredTweakValue) {

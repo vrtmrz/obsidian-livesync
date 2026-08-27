@@ -1,15 +1,27 @@
 import { PeriodicProcessor } from "@/common/PeriodicProcessor";
 import type { LiveSyncCore } from "@/main";
 import { AbstractModule } from "@/modules/AbstractModule";
+import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
+import { getReplicationSchedulingControl } from "./ReplicationScheduling";
 
 export class ModulePeriodicProcess extends AbstractModule {
-    periodicSyncProcessor = new PeriodicProcessor(this.core, async () => await this.services.replication.replicate());
+    private readonly schedulingControl = getReplicationSchedulingControl(this.core);
+    periodicSyncProcessor = new PeriodicProcessor(this.core, async () => {
+        await this.services.replication.replicateUnattended({
+            trigger: "periodic",
+            interaction: NO_INTERACTION,
+        });
+    });
 
     disablePeriodic() {
         this.periodicSyncProcessor?.disable();
         return Promise.resolve(true);
     }
     resumePeriodic() {
+        if (this.schedulingControl.externalPolling || this.schedulingControl.continuousOwnsRecurring) {
+            void this.disablePeriodic();
+            return Promise.resolve(true);
+        }
         this.periodicSyncProcessor.enable(
             this.settings.periodicReplication ? this.settings.periodicReplicationInterval * 1000 : 0
         );
@@ -32,6 +44,15 @@ export class ModulePeriodicProcess extends AbstractModule {
     }
 
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
+        this.schedulingControl.disablePeriodic = () => {
+            void this.disablePeriodic();
+        };
+        this.schedulingControl.refreshPeriodic = () => {
+            void this.resumePeriodic();
+        };
+        if (this.schedulingControl.externalPolling || this.schedulingControl.continuousOwnsRecurring) {
+            void this.disablePeriodic();
+        }
         services.appLifecycle.onUnload.addHandler(this._allOnUnload.bind(this));
         services.setting.onBeforeRealiseSetting.addHandler(this._everyBeforeRealizeSetting.bind(this));
         services.setting.onSettingRealised.addHandler(this._everyAfterRealizeSetting.bind(this));

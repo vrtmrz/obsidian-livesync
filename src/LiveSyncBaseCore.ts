@@ -1,7 +1,13 @@
 import { LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import type PouchDB from "pouchdb-core";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+    type HasSettings,
+    type ObsidianLiveSyncSettings,
+    type EntryDoc,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
@@ -20,8 +26,7 @@ import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/ser
 import { AbstractModule } from "./modules/AbstractModule";
 import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator";
-import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB";
-import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO";
+import { ModuleReplicationLifecycle } from "./modules/core/ModuleReplicationLifecycle";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
@@ -30,6 +35,15 @@ import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interface
 import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
 import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
+import {
+    CAPABILITY_NOT_APPLICABLE,
+    defineReplicatorProviderDefinitions,
+    supportedOpenReplicationContinuous,
+    supportedOpenReplicationOneShot,
+    supportedOpenReplicationUnattended,
+} from "@vrtmrz/livesync-commonlib/replication";
+import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
@@ -77,6 +91,7 @@ export class LiveSyncBaseCore<
         featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => void
     ) {
         this._services = serviceHub;
+        this.registerReplicatorProviders();
         this._serviceModules = serviceModuleInitialiser(this, serviceHub);
         const extraModules = extraModuleInitialiser(this);
         this.registerModules(extraModules);
@@ -136,12 +151,40 @@ export class LiveSyncBaseCore<
         this.modules.push(module);
     }
 
+    /** Compose the current central providers before any lifecycle event can acquire one. */
+    private registerReplicatorProviders() {
+        const definitions = defineReplicatorProviderDefinitions([REMOTE_COUCHDB, REMOTE_MINIO] as const, {
+            [REMOTE_COUCHDB]: {
+                kind: REMOTE_COUCHDB,
+                diagnosticName: "CouchDB",
+                isConfigured: (settings) =>
+                    settings.remoteType === REMOTE_COUCHDB &&
+                    !!settings.couchDB_URI?.trim() &&
+                    !!settings.couchDB_DBNAME?.trim(),
+                create: (_settings) => Promise.resolve(new LiveSyncCouchDBReplicator(this)),
+                userInitiatedOneShot: supportedOpenReplicationOneShot(),
+                unattendedOneShot: supportedOpenReplicationUnattended(),
+                continuous: supportedOpenReplicationContinuous(),
+            },
+            [REMOTE_MINIO]: {
+                kind: REMOTE_MINIO,
+                diagnosticName: "Object Storage",
+                isConfigured: (settings) =>
+                    settings.remoteType === REMOTE_MINIO && !!settings.endpoint?.trim() && !!settings.bucket?.trim(),
+                create: (_settings) => Promise.resolve(new LiveSyncJournalReplicator(this)),
+                userInitiatedOneShot: supportedOpenReplicationOneShot(),
+                unattendedOneShot: supportedOpenReplicationUnattended(),
+                continuous: CAPABILITY_NOT_APPLICABLE,
+            },
+        });
+        this.services.replicator.registerReplicatorProviderDefinitions(definitions);
+    }
+
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
         this._registerModule(new ModuleConflictChecker(this));
-        this._registerModule(new ModuleReplicatorMinIO(this));
-        this._registerModule(new ModuleReplicatorCouchDB(this));
         this._registerModule(new ModuleReplicator(this));
+        this._registerModule(new ModuleReplicationLifecycle(this));
         this._registerModule(new ModuleConflictResolver(this));
         this._registerModule(new ModulePeriodicProcess(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));

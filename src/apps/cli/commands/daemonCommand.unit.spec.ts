@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
 
@@ -18,6 +19,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager"
 }));
 
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import { getReplicationSchedulingControl } from "@/modules/core/ReplicationScheduling";
 
 function createCoreMock() {
     const standardIo = {
@@ -38,7 +40,7 @@ function createCoreMock() {
                 currentSettings: vi.fn(() => ({ liveSync: true, syncOnStart: false })),
             },
             replication: {
-                replicate: vi.fn(async () => true),
+                replicateUnattended: vi.fn(async () => ({ status: "completed" as const })),
             },
             appLifecycle: {
                 onUnload: {
@@ -123,6 +125,7 @@ describe("daemon command", () => {
         await runCommand(makeDaemonOptions(30), { ...baseContext, core });
 
         expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+        expect(getReplicationSchedulingControl(core).externalPolling).toBe(true);
         // Interval should be in milliseconds (30s → 30000ms)
         expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30000);
     });
@@ -194,9 +197,9 @@ describe("daemon command", () => {
     it("calls replicate before performFullScan", async () => {
         const core = createCoreMock();
         const callOrder: string[] = [];
-        core.services.replication.replicate = vi.fn(async () => {
+        core.services.replication.replicateUnattended = vi.fn(async () => {
             callOrder.push("replicate");
-            return true;
+            return { status: "completed" as const };
         });
         vi.mocked(offlineScanner.performFullScan).mockImplementation(async () => {
             callOrder.push("performFullScan");
@@ -206,11 +209,19 @@ describe("daemon command", () => {
         await runCommand(makeDaemonOptions(), { ...baseContext, core });
 
         expect(callOrder).toEqual(["replicate", "performFullScan"]);
+        expect(core.services.replication.replicateUnattended).toHaveBeenCalledWith({
+            trigger: "daemon",
+            interaction: NO_INTERACTION,
+        });
+        expect(getReplicationSchedulingControl(core).initialOneShotSatisfied).toBe(true);
     });
 
     it("returns false when initial replication fails", async () => {
         const core = createCoreMock();
-        core.services.replication.replicate = vi.fn(async () => false);
+        core.services.replication.replicateUnattended = vi.fn(async () => ({
+            status: "failed" as const,
+            error: new Error("initial replication failed"),
+        }));
         vi.mocked(offlineScanner.performFullScan).mockClear();
 
         const result = await runCommand(makeDaemonOptions(), { ...baseContext, core });
@@ -218,6 +229,10 @@ describe("daemon command", () => {
         expect(result).toBe(false);
         // performFullScan should NOT have been called
         expect(offlineScanner.performFullScan).not.toHaveBeenCalled();
+        expect(core.services.replication.replicateUnattended).toHaveBeenCalledWith({
+            trigger: "daemon",
+            interaction: NO_INTERACTION,
+        });
     });
 
     it("polling mode: registers onUnload handler that clears timeout", async () => {
@@ -242,11 +257,11 @@ describe("daemon command", () => {
 
         // startup replicate (call 1) succeeds; poll calls 2–7 fail; call 8 succeeds.
         let callCount = 0;
-        core.services.replication.replicate = vi.fn(async () => {
+        core.services.replication.replicateUnattended = vi.fn(async () => {
             callCount++;
-            if (callCount === 1) return true; // initial startup replicate
+            if (callCount === 1) return { status: "completed" as const }; // initial startup replicate
             if (callCount <= 7) throw new Error("network failure");
-            return true; // recovery
+            return { status: "completed" as const }; // recovery
         });
 
         const baseMs = 30 * 1000;
@@ -297,9 +312,9 @@ describe("daemon command", () => {
 
         // Make replicate succeed on the initial call (startup), then fail on the poll.
         let callCount = 0;
-        core.services.replication.replicate = vi.fn(async () => {
+        core.services.replication.replicateUnattended = vi.fn(async () => {
             callCount++;
-            if (callCount === 1) return true; // startup replicate
+            if (callCount === 1) return { status: "completed" as const }; // startup replicate
             throw new Error("network failure");
         });
 

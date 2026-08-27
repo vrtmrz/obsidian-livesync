@@ -25,7 +25,7 @@ function createFixture() {
             registerProtocolHandler: vi.fn(),
         },
         replication: {
-            replicate: vi.fn(async () => undefined),
+            replicateUserInitiated: vi.fn(async () => ({ status: "completed" as const })),
         },
         vault: {
             getActiveFilePath: vi.fn((): string | null => "note.md"),

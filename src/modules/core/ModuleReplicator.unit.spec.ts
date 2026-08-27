@@ -114,6 +114,60 @@ describe("ModuleReplicator", () => {
             eventHub.offAll();
         }
     });
+
+    it("only permits recovery dialogue when the authority grants failure recovery", async () => {
+        const askResolvingMismatched = vi.fn(async () => undefined);
+        const activeReplicator = {
+            tweakSettingsMismatched: true,
+            preferredTweakValue: { customChunkSize: 60 },
+        };
+        const services = {
+            context: createServiceContext(),
+            API: {
+                addLog: vi.fn(),
+                addCommand: vi.fn(),
+                registerWindow: vi.fn(),
+                addRibbonIcon: vi.fn(),
+                registerProtocolHandler: vi.fn(),
+            },
+            appLifecycle: {
+                getUnresolvedMessages: { addHandler: vi.fn() },
+            },
+            replicator: { getActiveReplicator: vi.fn(() => activeReplicator) },
+            tweakValue: { askResolvingMismatched },
+        };
+        const core = {
+            _services: services,
+            services,
+            settings: {},
+        } as any;
+        const module = new ModuleReplicator(core);
+
+        await (module as any).onReplicationFailed(false);
+        expect(askResolvingMismatched).not.toHaveBeenCalled();
+
+        await (module as any).onReplicationFailed(true, {
+            kind: "permitted",
+            permissions: {
+                peerSelection: true,
+                localPeerAdmission: true,
+                configurationExchange: true,
+                failureRecovery: false,
+            },
+        });
+        expect(askResolvingMismatched).not.toHaveBeenCalled();
+
+        await (module as any).onReplicationFailed(true, {
+            kind: "permitted",
+            permissions: {
+                peerSelection: true,
+                localPeerAdmission: true,
+                configurationExchange: true,
+                failureRecovery: true,
+            },
+        });
+        expect(askResolvingMismatched).toHaveBeenCalledOnce();
+    });
 });
 
 describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", () => {

@@ -72,6 +72,18 @@ Replace the factory-registration-only responsibilities of
 definitions. Retain a module only for separately identified stateful
 behaviour; do not retain an instance merely to add a construction handler.
 
+Serialise active initialisation, replacement, and disposal. Publish the active
+provider and Replicator as one context after initialisation, clear that context
+before retiring the old adapter, and keep each typed dispatch on one context
+snapshot. This is the minimum publication fence for this stage. Waiting for
+in-flight adapter work and making acquisitions wait for replacement settlement
+remain part of the later active-construction migration.
+
+The lifecycle coordinator coalesces its network work internally, but an
+`onResumed` handler settles once that work has been scheduled. It does not hold
+later resume consumers until a OneShot transfer or Continuous start has
+settled.
+
 At this boundary, existing P2P AutoSync, AutoWatch, and incoming-request
 entry points receive the same non-interactive readiness and accepted-peer gate.
 The no-interaction authority reaches counterpart RPC authorisation and

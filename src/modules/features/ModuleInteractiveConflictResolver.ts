@@ -18,6 +18,7 @@ import type { LiveSyncCore } from "@/main.ts";
 import { EVENT_CONFLICT_CANCELLED, EVENT_ON_UNRESOLVED_ERROR, eventHub } from "@/common/events.ts";
 import { $msg } from "@/common/translation.ts";
 import type { Editor, MarkdownFileInfo, MarkdownView } from "@/deps.ts";
+import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
 
 export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
     private postponedConflictEpisodes = new Set<FilePathWithPrefix>();
@@ -182,7 +183,10 @@ export class ModuleInteractiveConflictResolver extends AbstractObsidianModule {
             // So we have to run replication if configured.
             // TODO: Make this is as a event request
             if (this.settings.syncAfterMerge && !this.services.appLifecycle.isSuspended()) {
-                await this.services.replication.replicateByEvent();
+                await this.services.replication.replicateUnattendedByEvent({
+                    trigger: "merge",
+                    interaction: NO_INTERACTION,
+                });
             }
             // And, check it again.
             await this.services.conflict.queueCheckFor(filename);

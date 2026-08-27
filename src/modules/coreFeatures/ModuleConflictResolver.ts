@@ -19,6 +19,7 @@ import { stripAllPrefixes, isPlainText } from "@vrtmrz/livesync-commonlib/compat
 import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
+import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
 
 export class ModuleConflictResolver extends AbstractModule {
     private async _resolveConflictByDeletingRev(
@@ -142,7 +143,10 @@ export class ModuleConflictResolver extends AbstractModule {
                 //auto resolved, but need check again;
                 if (this.settings.syncAfterMerge && !this.services.appLifecycle.isSuspended()) {
                     //Wait for the running replication, if not running replication, run it once.
-                    await this.services.replication.replicateByEvent();
+                    await this.services.replication.replicateUnattendedByEvent({
+                        trigger: "merge",
+                        interaction: NO_INTERACTION,
+                    });
                 }
                 this._log("[conflict] Automatically merged, but we have to check it again");
                 await this.services.conflict.queueCheckFor(filename);

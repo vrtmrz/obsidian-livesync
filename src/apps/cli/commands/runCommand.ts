@@ -26,6 +26,12 @@ import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
+import {
+    isReplicationCompleted,
+    NO_INTERACTION,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
+import { markInitialOneShotSatisfied, setExternalPollingMode } from "@/modules/core/ReplicationScheduling";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -95,19 +101,28 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "daemon") {
         const log = (msg: unknown) => writeStderrLine(standardIo, `[Daemon] ${String(msg)}`);
 
+        // The daemon owns its own recurring poller. Suppress the application
+        // resume starter and generic periodic timer before restoring settings.
+        setExternalPollingMode(core, !!options.interval);
+
         // Skip the config mismatch dialog — the daemon cannot resolve it interactively
         // and the default "Dismiss" action would block replication. The daemon should
         // accept whatever configuration the remote has.
         await core.services.setting.applyPartial({ disableCheckingConfigMismatch: true }, true);
 
-        // 1. Replicate CouchDB → local PouchDB so the mirror scan has content to work with.
-        log("Replicating from CouchDB...");
-        const replResult = await core.services.replication.replicate(true);
-        if (!replResult) {
-            writeStderrLine(standardIo, "[Daemon] Initial CouchDB replication failed, cannot continue");
+        // 1. Replicate the configured remote into the local database so the
+        // mirror scan has content to work with.
+        log("Replicating from remote...");
+        const replResult = await core.services.replication.replicateUnattended({
+            trigger: "daemon",
+            interaction: NO_INTERACTION,
+        });
+        if (!isReplicationCompleted(replResult)) {
+            writeStderrLine(standardIo, "[Daemon] Initial replication failed, cannot continue");
             return false;
         }
-        log("CouchDB replication complete");
+        markInitialOneShotSatisfied(core);
+        log("Initial replication complete");
 
         // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
@@ -129,8 +144,9 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 true
             );
             // applySettings fires the full lifecycle: onSuspending → onResumed.
-            // ModuleReplicatorCouchDB starts continuous replication on onResumed
-            // via fireAndForget.
+            // The provider-independent lifecycle coordinator owns any eligible
+            // Continuous start; the daemon marker suppresses a duplicate
+            // sync-on-start OneShot.
             await core.services.control.applySettings();
             // Lifecycle events (onSuspending) may re-enable suspension flags.
             // Clear them explicitly after the lifecycle completes. applyPartial
@@ -153,7 +169,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
             const poll = async () => {
                 try {
-                    await core.services.replication.replicate(true);
+                    const result = await core.services.replication.replicateUnattended({
+                        trigger: "daemon",
+                        interaction: NO_INTERACTION,
+                    });
+                    if (!isReplicationCompleted(result)) {
+                        throw new Error(`Daemon polling replication did not complete (${result.status}).`);
+                    }
                     if (consecutiveFailures > 0) {
                         consecutiveFailures--;
                         currentIntervalMs = Math.max(currentIntervalMs / 2, baseIntervalMs);
@@ -182,11 +204,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 return true;
             });
         } else {
-            log("LiveSync mode: restoring sync settings and starting _changes feed");
+            log("LiveSync mode: restoring sync settings and starting continuous synchronisation where supported");
             await restoreSyncSettings();
-            // The applySettings() lifecycle fires onResumed → ModuleReplicatorCouchDB which
-            // starts continuous replication via fireAndForget(openReplication). Don't call
-            // openReplication directly — it races with the handler and causes dedup/termination.
+            // The applySettings() lifecycle fires onResumed → the provider-
+            // independent lifecycle coordinator, which starts Continuous when
+            // supported. Do not call a concrete Replicator directly.
             log("LiveSync active");
             const currentSettings = core.services.setting.currentSettings();
             if (!currentSettings.liveSync && !currentSettings.syncOnStart) {
@@ -204,8 +226,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     if (options.command === "sync") {
         writeStdoutLine(standardIo, "[Command] sync");
-        const result = await core.services.replication.replicate(true);
-        if (!result) {
+        const result = await core.services.replication.replicateUserInitiated({
+            trigger: "manual",
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+        if (!isReplicationCompleted(result)) {
             // TODO: Standardise the logic for identifying the cause of replication
             // failure so that every reason (locked DB, version mismatch, network
             // error, etc.) is surfaced with a CLI-specific actionable message.
@@ -218,7 +243,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 );
             }
         }
-        return !!result;
+        return isReplicationCompleted(result);
     }
 
     if (options.command === "p2p-peers") {
