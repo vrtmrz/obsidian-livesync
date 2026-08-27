@@ -252,7 +252,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[0], "p2p-peers");
         writeStderrLine(standardIo, `[Command] p2p-peers timeout=${timeoutSec}s`);
-        const peers = await collectPeers(core, timeoutSec);
+        const peers = await collectPeers(core, context.p2pReplicator, timeoutSec);
         if (peers.length > 0) {
             standardIo.writeStdout(peers.map((peer) => `[peer]\t${peer.peerId}\t${peer.name}`).join("\n") + "\n");
         }
@@ -269,14 +269,14 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[1], "p2p-sync");
         writeStderrLine(standardIo, `[Command] p2p-sync peer=${peerToken} timeout=${timeoutSec}s`);
-        const peer = await syncWithPeer(core, peerToken, timeoutSec);
+        const peer = await syncWithPeer(core, context.p2pReplicator, peerToken, timeoutSec);
         writeStderrLine(standardIo, `[Done] P2P sync completed with ${peer.name} (${peer.peerId})`);
         return true;
     }
 
     if (options.command === "p2p-host") {
         writeStderrLine(standardIo, "[Command] p2p-host");
-        await openP2PHost(core);
+        await openP2PHost(core, context.p2pReplicator);
         writeStderrLine(standardIo, "[Ready] P2P host is running. Press Ctrl+C to stop.");
         await new Promise(() => {});
         return true;
