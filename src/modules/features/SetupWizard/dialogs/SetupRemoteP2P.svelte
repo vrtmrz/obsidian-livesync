@@ -143,7 +143,7 @@
                 return "";
             } finally {
                 try {
-                    await replicator.close();
+                    await replicator.dispose();
                     await dummyPouch.destroy();
                 } catch (e) {
                     Logger(e, LOG_LEVEL_VERBOSE, "setup-p2p-cleanup");
