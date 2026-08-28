@@ -129,34 +129,30 @@ Changes spanning both repositories must first produce a packed Commonlib artefac
 
 ## Architecture
 
-### Module System
+### Service composition and legacy modules
 
-The plugin uses a dynamic module system to reduce coupling and improve maintainability:
+The application is composed from Services, ServiceModules, serviceFeatures, and a legacy module layer:
 
-- **Service Hub**: Central registry for services using dependency injection
-    - Services are registered, and accessed via `this.services` (in most modules)
-- **Module Loading**: All modules extend `AbstractModule` or `AbstractObsidianModule` (which extends `AbstractModule`). These modules are loaded in main.ts and some modules.
-- **Module Categories** (by directory):
-    - `core/` - Platform-independent core functionality
-    - `coreObsidian/` - Obsidian-specific core (e.g., `ModuleFileAccessObsidian`)
-    - `essential/` - Required modules (e.g., `ModuleMigration`, `ModuleKeyValueDB`)
-    - `features/` - Optional features (e.g., `ModuleLog`, `ModuleObsidianSettings`)
-    - `extras/` - Development/testing tools (e.g., `ModuleDev`, ~~`ModuleIntegratedTest`~~)
-- **Services**: Core services (e.g., `database`, `replicator`, `storageAccess`) are registered in `ServiceHub` and accessed by modules. They provide an extension point for add new behaviour without modifying existing code.
-    - For example, checks before the replication can be added to the `replication.onBeforeReplicate` handler, and the handlers can be return `false` to prevent replication-starting. `vault.isTargetFile` also can be used to prevent processing specific files.
-- **ServiceModule**: A new type of module that directly depends on services.
+- **Service Hub**: the long-lived registry of service contracts. A simple extension, such as a check before replication, belongs in an existing Service handler.
+- **ServiceModule**: a host-created, long-lived stateful or resource-owning capability shared through the typed `ServiceModules` record. Current examples include storage access, file handling, and database rebuilding.
+- **serviceFeature**: a typed composition function which accepts only its declared Services and ServiceModules. It registers lifecycle handlers, commands, UI bindings, or other host glue, and may return a focused view or controller. It is not a runtime registry entry.
+- **AbstractModule** and **AbstractObsidianModule**: the legacy application module layer. Existing modules are loaded by the application and bound after the Service graph has been composed; this broad core access is not the preferred dependency boundary for new orchestration.
 
-#### Note on Module vs Service
+The normal composition order is the Service Hub, replicator-provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
 
-After v0.25.44 refactoring, the Service will henceforth, as a rule, cease to use setHandler, that is to say, simple lazy binding. - They will be implemented directly in the service. - However, not everything will be middlewarised. Modules that maintain state or make decisions based on the results of multiple handlers are permitted.
+Mutable state is permitted in a serviceFeature. State alone is not a reason to create a ServiceModule or retain an AbstractModule. Separate the component which owns state, transitions, and invariants from the surrounding function which registers lifecycle handlers and connects downstream effects. Give the stateful component narrow collaborators rather than `LiveSyncBaseCore`. Use a ServiceModule when the same operational capability or resource lifecycle must be shared explicitly by several consumers.
 
-Hence, the new feature should be implemented as follows:
+Commonlib's `targetFilter.ts` and `prepareDatabaseForUse.ts` demonstrate the intended split: focused factories or operations own their private state and behaviour, while the corresponding `use...` function composes dependencies and registers handlers. The P2P composition follows the same direction at a larger scale by separating durable policy and room-session ownership from host lifecycle and UI wiring. Existing modules do not apply this boundary consistently; improve the affected boundary when changing their behaviour rather than performing an unrelated mechanical conversion.
 
-- If it is a simple extension point (e.g., adding a check before replication), it should be implemented as a handler in the service (e.g., `replication.onBeforeReplicate`).
-- If it requires maintaining state or making decisions based on multiple handlers, it should be implemented as a serviceModule dependent on the relevant services explicitly.
-- If you have to implement a new feature without much modification, you can extent existing modules, but it is recommended to implement a new module or serviceModule for better maintainability.
-- Refactoring existing modules to services is also always welcome!
-- Please write tests for new features, you will notice that the simple handler approach is quite testable.
+Use interaction-based, London School unit tests for the composition boundary. Verify collaborator calls, ordering, failure short-circuiting, and handler registration, then test the focused state owner for its transitions and invariants. If a test needs a broad core fixture, deep mock chains, or unrelated Services, treat that friction as a design-review signal before adding more test machinery.
+
+Legacy modules remain grouped by directory:
+
+- `core/` contains platform-independent core behaviour;
+- `coreObsidian/` contains Obsidian-specific core behaviour;
+- `essential/` contains required modules;
+- `features/` contains optional features; and
+- `extras/` contains development and testing tools.
 
 ### Key Architectural Components
 
