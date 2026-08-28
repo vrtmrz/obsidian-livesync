@@ -31,7 +31,6 @@ import {
     NO_INTERACTION,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
-import { markInitialOneShotSatisfied, setExternalPollingMode } from "@/modules/core/ReplicationScheduling";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -93,7 +92,7 @@ async function verifyRemoteState(
 }
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
-    const { databasePath, core, settingsPath } = context;
+    const { databasePath, core, replicationScheduling, settingsPath } = context;
     const { standardIo } = core.services.context;
     const vaultPath = context.vaultPath || databasePath;
 
@@ -103,7 +102,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         // The daemon owns its own recurring poller. Suppress the application
         // resume starter and generic periodic timer before restoring settings.
-        setExternalPollingMode(core, !!options.interval);
+        replicationScheduling.setExternalPollingMode(!!options.interval);
 
         // Skip the config mismatch dialog — the daemon cannot resolve it interactively
         // and the default "Dismiss" action would block replication. The daemon should
@@ -121,7 +120,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             writeStderrLine(standardIo, "[Daemon] Initial replication failed, cannot continue");
             return false;
         }
-        markInitialOneShotSatisfied(core);
+        replicationScheduling.markInitialOneShotSatisfied();
         log("Initial replication complete");
 
         // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
@@ -144,7 +143,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 true
             );
             // applySettings fires the full lifecycle: onSuspending → onResumed.
-            // The provider-independent lifecycle coordinator owns any eligible
+            // The provider-independent scheduling feature owns any eligible
             // Continuous start; the daemon marker suppresses a duplicate
             // sync-on-start OneShot.
             await core.services.control.applySettings();
@@ -207,7 +206,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             log("LiveSync mode: restoring sync settings and starting continuous synchronisation where supported");
             await restoreSyncSettings();
             // The applySettings() lifecycle fires onResumed → the provider-
-            // independent lifecycle coordinator, which starts Continuous when
+            // independent scheduling feature, which starts Continuous when
             // supported. Do not call a concrete Replicator directly.
             log("LiveSync active");
             const currentSettings = core.services.setting.currentSettings();

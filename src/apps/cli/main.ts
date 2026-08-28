@@ -24,6 +24,7 @@ import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
 import { useP2PReplicatorFeature, type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
+import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
 import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
@@ -477,6 +478,7 @@ export async function main(
 
     // Create LiveSync core
     let p2pReplicator: UseP2PReplicatorResult | undefined;
+    let replicationScheduling: ReplicationSchedulingControl | undefined;
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
@@ -484,7 +486,8 @@ export async function main(
         },
         (core) => [],
         () => [], // No add-ons
-        (core) => {
+        (core, coreFeatureViews) => {
+            replicationScheduling = coreFeatureViews.replicationScheduling;
             // Register P2P replicator feature.
             p2pReplicator = useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
@@ -516,6 +519,9 @@ export async function main(
             }
         }
     );
+    if (!replicationScheduling) {
+        throw new Error("Replication scheduling was not provided during core feature composition.");
+    }
 
     // Setup signal handlers for graceful shutdown
     const shutdown = async (signal: string) => {
@@ -622,6 +628,7 @@ export async function main(
                 databasePath,
                 vaultPath,
                 core,
+                replicationScheduling,
                 p2pReplicator,
                 settingsPath,
                 originalSyncSettings,

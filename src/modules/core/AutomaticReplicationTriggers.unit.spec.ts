@@ -16,8 +16,12 @@ vi.mock("octagonal-wheels/concurrency/task", () => taskMocks);
 
 import { ModuleConflictResolver } from "../coreFeatures/ModuleConflictResolver";
 import { ModuleObsidianEvents } from "../essentialObsidian/ModuleObsidianEvents";
-import { ModulePeriodicProcess } from "./ModulePeriodicProcess";
-import { ModuleReplicationLifecycle } from "./ModuleReplicationLifecycle";
+import {
+    createReplicationSchedulingContext,
+    realiseReplicationScheduling,
+    resumeReplicationScheduling,
+    runPeriodicReplication,
+} from "@/serviceFeatures/replicationScheduling";
 import { ModuleReplicator } from "./ModuleReplicator";
 
 function createApi() {
@@ -97,11 +101,20 @@ describe("automatic replication triggers while P2P is active", () => {
         const core = {
             _services: services,
             services,
-            settings: p2pSettings({ periodicReplication: true }),
+            settings: p2pSettings({ periodicReplication: true, syncOnStart: false }),
         } as any;
-        const module = new ModulePeriodicProcess(core);
+        const context = createReplicationSchedulingContext({
+            isReady: vi.fn(() => true),
+            isSuspended: vi.fn(() => false),
+            currentSettings: vi.fn(() => core.settings),
+            replicateUnattended,
+            startContinuous: vi.fn(async () => ({ status: "completed" as const })),
+            timer: { enable: vi.fn(), disable: vi.fn() },
+            log: vi.fn(),
+        });
 
-        await module.periodicSyncProcessor.process();
+        resumeReplicationScheduling(context);
+        await runPeriodicReplication(context);
 
         expect(replicateUnattended).toHaveBeenCalledOnce();
         expect(replicateUnattended).toHaveBeenCalledWith({
@@ -203,8 +216,6 @@ describe("recurring replication scheduling precedence", () => {
     });
 
     function createRecurringSchedulingHarness() {
-        const resumeHandlers: Array<() => Promise<boolean>> = [];
-        const settingRealisedHandlers: Array<() => Promise<boolean>> = [];
         let resolveContinuous!: (
             outcome: { status: "completed" } | { status: "blocked"; reason: "capability-not-applicable" }
         ) => void;
@@ -225,42 +236,36 @@ describe("recurring replication scheduling precedence", () => {
             periodicReplication: true,
             periodicReplicationInterval: 60,
         };
-        const services = {
-            API,
-            appLifecycle: {
-                isReady: vi.fn(() => true),
-                isSuspended: vi.fn(() => false),
-                onResumed: { addHandler: vi.fn((handler: () => Promise<boolean>) => resumeHandlers.push(handler)) },
-                onSuspending: { addHandler: vi.fn() },
-                onUnload: { addHandler: vi.fn() },
-            },
-            control: { hasUnloaded: vi.fn(() => false) },
-            replication: {
-                startContinuous,
-                replicateUnattended: vi.fn(async () => ({ status: "completed" as const })),
-            },
-            setting: {
-                currentSettings: vi.fn(() => settings),
-                onBeforeRealiseSetting: { addHandler: vi.fn() },
-                onSettingRealised: {
-                    addHandler: vi.fn((handler: () => Promise<boolean>) => settingRealisedHandlers.push(handler)),
+        const context = createReplicationSchedulingContext({
+            isReady: vi.fn(() => true),
+            isSuspended: vi.fn(() => false),
+            currentSettings: vi.fn(() => settings),
+            startContinuous,
+            replicateUnattended: vi.fn(async () => ({ status: "completed" as const })),
+            timer: {
+                enable: (interval) => {
+                    API.setInterval(vi.fn(), interval);
+                },
+                disable: () => {
+                    API.clearInterval(0);
                 },
             },
-        };
-        const core = { _services: services, services, settings } as any;
-        const lifecycle = new ModuleReplicationLifecycle(core);
-        const periodic = new ModulePeriodicProcess(core);
-        lifecycle.onBindFunction(core, services as never);
-        periodic.onBindFunction(core, services as never);
+            log: vi.fn(),
+        });
 
         return {
             API,
             resolveContinuous: (
                 outcome: { status: "completed" } | { status: "blocked"; reason: "capability-not-applicable" }
             ) => resolveContinuous(outcome),
-            resume: async () => await Promise.all(resumeHandlers.map(async (handler) => await handler())),
-            realiseSettings: async () =>
-                await Promise.all(settingRealisedHandlers.map(async (handler) => await handler())),
+            resume: async () => {
+                resumeReplicationScheduling(context);
+                await Promise.resolve();
+            },
+            realiseSettings: async () => {
+                realiseReplicationScheduling(context);
+                await Promise.resolve();
+            },
         };
     }
 

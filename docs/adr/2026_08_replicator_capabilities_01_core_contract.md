@@ -131,38 +131,41 @@ that request can be performed. A provider module must not subscribe to the
 application resume lifecycle merely because it can construct a transport.
 
 Self-hosted LiveSync will compose one LiveSync-owned serviceFeature as the
-replication scheduling boundary. The serviceFeature constructs one private
-scheduling controller and connects it to `AppLifecycleService`, settings
-lifecycle events, and the periodic timer. The controller owns only scheduling
-state and transitions: external-poller ownership, Continuous ownership of
-recurring work, the daemon's satisfied initial OneShot marker, resume
-coalescing, and periodic-timer reconciliation. It does not register handlers
-or acquire `LiveSyncBaseCore`.
+replication scheduling boundary. The serviceFeature creates one private
+scheduling context and passes it to module-level transition functions. The
+context contains only scheduling state and narrow collaborators; the functions
+implement external-poller ownership, Continuous ownership of recurring work,
+the daemon's satisfied initial OneShot marker, resume coalescing, and
+periodic-timer reconciliation. They do not register handlers or acquire
+`LiveSyncBaseCore`.
 
-The controller receives narrow collaborators for readiness and suspension
-queries, current settings, `ReplicationService`, periodic-timer control, and
-diagnostic logging. The surrounding serviceFeature owns lifecycle registration
-and adapts those Services to the controller. It returns a focused control view
-containing only the daemon operations to select external polling and mark the
-initial OneShot as satisfied. The host may retain that view for the CLI, but
-must not expose the controller's mutable state or recover it from a core-keyed
-global or `WeakMap`.
+The context receives narrow collaborators for readiness and suspension queries,
+current settings, `ReplicationService`, periodic-timer control, and diagnostic
+logging. The surrounding serviceFeature owns the context lifetime, lifecycle
+registration, and adaptation from those Services. It returns a focused control
+view containing only the daemon operations to select external polling and mark
+the initial OneShot as satisfied. Core construction passes a frozen bundle of
+built-in feature views to host composition, without retaining those views as
+public `LiveSyncBaseCore` properties. The CLI injects the scheduling view into
+its command context; other hosts may ignore it. No host may expose the context's
+mutable state or recover it from a core-keyed global or `WeakMap`.
 
 This boundary is not a ServiceModule merely because it owns state. It neither
 owns a shared external resource nor supplies a general operational capability
 to several unrelated consumers. If a future consumer needs a stable shared
 scheduling capability beyond the focused CLI view, that ownership decision
-must be reviewed explicitly rather than widening the controller implicitly.
+must be reviewed explicitly rather than widening the returned view implicitly.
 
-The scheduling controller uses persisted settings, `ReplicationService`, and
-the active support declaration. It does not branch on `remoteType` or use
+The scheduling functions use persisted settings, `ReplicationService`, and
+the active support declaration. They do not branch on `remoteType` or use
 `instanceof` as a capability test. Commonlib owns the trigger-aware replication
 contract; the host owns application lifecycle wiring.
 
 The existing `onResumed` event remains the eligible-resume boundary after
 initial readiness, settings application, and visibility recovery. It is not
-redefined as a once-per-process event. The controller coalesces duplicate work
-within one lifecycle generation and preserves readiness and suspension gates:
+redefined as a once-per-process event. The context-backed functions coalesce
+duplicate work within one lifecycle generation and preserve readiness and
+suspension gates:
 
 - configured Continuous replication starts only through an active Continuous
   role;
@@ -177,7 +180,7 @@ within one lifecycle generation and preserves readiness and suspension gates:
 `ReplicationService` remains responsible for readiness checks, bounded finite
 activity, failure processing, and replication timing. It exposes distinct
 user-initiated and unattended entry points, or a typed request which carries
-interaction authority. The scheduling controller never calls a concrete
+interaction authority. The scheduling functions never call a concrete
 Replicator's `openReplication()` directly.
 
 `P2P_AutoStart` remains a separate P2P room policy. It is not central
@@ -199,16 +202,28 @@ The CLI daemon owns its initial finite convergence before its mirror scan.
 Restored settings mark that convergence as satisfied for the current lifecycle
 generation, so `syncOnStart` does not repeat it. In `--interval` mode, the
 daemon poller is the sole recurring remote-poll scheduler. In changes-feed mode,
-the controller starts one configured Continuous session when supported;
-otherwise it may enable the configured generic periodic timer. Continuous has
-precedence when both are configured.
+the scheduling functions start one configured Continuous session when
+supported; otherwise they may enable the configured generic periodic timer.
+Continuous has precedence when both are configured.
 
-The controller starts resume work synchronously far enough to reserve
+The resume function starts work synchronously far enough to reserve
 Continuous ownership, then lets the lifecycle handler settle without awaiting
 network completion. Concurrent resume notifications share one internal
 operation. Periodic reconciliation therefore observes the reservation before
 it can enable a competing timer. A failed operation is logged and releases the
 coalescing slot so a later resume can retry.
+
+Coalescing applies only within one observed lifecycle generation. If the
+application suspends and resumes while an earlier operation is still settling,
+the context retains the newer generation and runs it after the earlier
+operation releases the slot. A result from the obsolete generation cannot
+change recurring-work ownership or initiate a OneShot fallback for the newer
+generation.
+
+Disabling an interval does not retract a callback which the runtime has already
+queued. Each Periodic callback therefore rechecks lifecycle eligibility,
+readiness, suspension, configuration, external-poller ownership, and
+Continuous ownership immediately before it requests replication.
 
 ### Use a fixed current-provider definition
 

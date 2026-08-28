@@ -24,9 +24,7 @@ import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/comp
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
-import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
 import { ModuleReplicator } from "./modules/core/ModuleReplicator";
-import { ModuleReplicationLifecycle } from "./modules/core/ModuleReplicationLifecycle";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
@@ -46,6 +44,12 @@ import {
 } from "@vrtmrz/livesync-commonlib/replication";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
+
+/** Focused views returned by serviceFeatures which the host may consume during composition. */
+export interface LiveSyncCoreFeatureViews {
+    readonly replicationScheduling: ReplicationSchedulingControl;
+}
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
@@ -90,15 +94,15 @@ export class LiveSyncBaseCore<
         ) => ServiceModules,
         extraModuleInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => AbstractModule[],
         addOnsInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => TCommands[],
-        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => void
+        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>, coreFeatureViews: LiveSyncCoreFeatureViews) => void
     ) {
         this._services = serviceHub;
         this.registerReplicatorProviders();
         this._serviceModules = serviceModuleInitialiser(this, serviceHub);
         const extraModules = extraModuleInitialiser(this);
         this.registerModules(extraModules);
-        this.initialiseServiceFeatures();
-        featuresInitialiser(this);
+        const coreFeatureViews = this.initialiseServiceFeatures();
+        featuresInitialiser(this, coreFeatureViews);
         const addOns = addOnsInitialiser(this);
         for (const addOn of addOns) {
             this._registerAddOn(addOn);
@@ -190,9 +194,7 @@ export class LiveSyncBaseCore<
         this._registerModule(new ModuleLiveSyncMain(this));
         this._registerModule(new ModuleConflictChecker(this));
         this._registerModule(new ModuleReplicator(this));
-        this._registerModule(new ModuleReplicationLifecycle(this));
         this._registerModule(new ModuleConflictResolver(this));
-        this._registerModule(new ModulePeriodicProcess(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleBasicMenu(this));
 
@@ -322,12 +324,15 @@ export class LiveSyncBaseCore<
      * Initialise ServiceFeatures.
      * (Please refer `serviceFeatures` for more details)
      */
-    initialiseServiceFeatures() {
+    initialiseServiceFeatures(): LiveSyncCoreFeatureViews {
         useTargetFilters(this);
         // enable target filter feature.
         usePrepareDatabaseForUse(this);
         // Migration to multiple remote configurations
         useRemoteConfigurationMigration(this);
+        return Object.freeze({
+            replicationScheduling: useReplicationScheduling(this),
+        });
     }
 }
 

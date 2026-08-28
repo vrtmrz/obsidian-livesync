@@ -19,7 +19,6 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager"
 }));
 
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { getReplicationSchedulingControl } from "@/modules/core/ReplicationScheduling";
 
 function createCoreMock() {
     const standardIo = {
@@ -89,6 +88,17 @@ const baseContext = {
     },
 } as any;
 
+function createDaemonContext(core: ReturnType<typeof createCoreMock>) {
+    return {
+        ...baseContext,
+        core,
+        replicationScheduling: {
+            setExternalPollingMode: vi.fn(),
+            markInitialOneShotSatisfied: vi.fn(),
+        },
+    } as any;
+}
+
 describe("daemon command", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
@@ -103,7 +113,7 @@ describe("daemon command", () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
 
-        await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(), createDaemonContext(core));
 
         expect(offlineScanner.performFullScan).toHaveBeenCalledTimes(1);
     });
@@ -112,7 +122,7 @@ describe("daemon command", () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(false);
 
-        const result = await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        const result = await runCommand(makeDaemonOptions(), createDaemonContext(core));
 
         expect(result).toBe(false);
     });
@@ -122,10 +132,11 @@ describe("daemon command", () => {
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
         const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-        await runCommand(makeDaemonOptions(30), { ...baseContext, core });
+        const context = createDaemonContext(core);
+        await runCommand(makeDaemonOptions(30), context);
 
         expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
-        expect(getReplicationSchedulingControl(core).externalPolling).toBe(true);
+        expect(context.replicationScheduling.setExternalPollingMode).toHaveBeenCalledWith(true);
         // Interval should be in milliseconds (30s → 30000ms)
         expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 30000);
     });
@@ -134,7 +145,7 @@ describe("daemon command", () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
 
-        await runCommand(makeDaemonOptions(10), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(10), createDaemonContext(core));
 
         expect(core.services.setting.applyPartial).toHaveBeenCalledWith(
             expect.objectContaining({ suspendFileWatching: false }),
@@ -147,7 +158,7 @@ describe("daemon command", () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
 
-        await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(), createDaemonContext(core));
 
         expect(core.services.setting.applyPartial).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -167,7 +178,7 @@ describe("daemon command", () => {
         }));
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
 
-        const result = await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        const result = await runCommand(makeDaemonOptions(), createDaemonContext(core));
 
         expect(result).toBe(true);
         const warningCalls = core.services.context.standardIo.writeStderr.mock.calls.filter(
@@ -185,7 +196,7 @@ describe("daemon command", () => {
         }));
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
 
-        await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(), createDaemonContext(core));
 
         const warningCalls = core.services.context.standardIo.writeStderr.mock.calls.filter(
             ([chunk]: [string | Uint8Array]) =>
@@ -206,14 +217,15 @@ describe("daemon command", () => {
             return true;
         });
 
-        await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        const context = createDaemonContext(core);
+        await runCommand(makeDaemonOptions(), context);
 
         expect(callOrder).toEqual(["replicate", "performFullScan"]);
         expect(core.services.replication.replicateUnattended).toHaveBeenCalledWith({
             trigger: "daemon",
             interaction: NO_INTERACTION,
         });
-        expect(getReplicationSchedulingControl(core).initialOneShotSatisfied).toBe(true);
+        expect(context.replicationScheduling.markInitialOneShotSatisfied).toHaveBeenCalledOnce();
     });
 
     it("returns false when initial replication fails", async () => {
@@ -224,7 +236,7 @@ describe("daemon command", () => {
         }));
         vi.mocked(offlineScanner.performFullScan).mockClear();
 
-        const result = await runCommand(makeDaemonOptions(), { ...baseContext, core });
+        const result = await runCommand(makeDaemonOptions(), createDaemonContext(core));
 
         expect(result).toBe(false);
         // performFullScan should NOT have been called
@@ -239,7 +251,7 @@ describe("daemon command", () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
 
-        await runCommand(makeDaemonOptions(10), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(10), createDaemonContext(core));
 
         // onUnload handler should have been registered
         expect(core.services.appLifecycle.onUnload.addHandler).toHaveBeenCalledTimes(1);
@@ -267,7 +279,7 @@ describe("daemon command", () => {
         const baseMs = 30 * 1000;
         const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
-        await runCommand(makeDaemonOptions(30), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(30), createDaemonContext(core));
 
         // After runCommand returns the first setTimeout has been scheduled.
         // setTimeoutSpy.mock.calls[0] is the initial schedule (baseMs).
@@ -319,7 +331,7 @@ describe("daemon command", () => {
         });
 
         const intervalMs = 30 * 1000;
-        await runCommand(makeDaemonOptions(30), { ...baseContext, core });
+        await runCommand(makeDaemonOptions(30), createDaemonContext(core));
 
         // Advance time to trigger the first poll callback and flush its async work.
         await vi.advanceTimersByTimeAsync(intervalMs);

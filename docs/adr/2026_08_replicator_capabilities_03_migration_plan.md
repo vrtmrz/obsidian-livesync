@@ -63,8 +63,9 @@ actual journal result.
 Add the LiveSync-owned replication scheduling serviceFeature, remove the resume
 handler from `ModuleReplicatorCouchDB`, and route CouchDB Continuous and OneShot
 Sync plus Object Storage `syncOnStart` through `ReplicationService`. Its private
-controller owns scheduling state and transition order; the serviceFeature owns
-lifecycle and settings-handler registration. Migrate every automatic caller to
+context owns scheduling state, module-level functions implement transitions,
+and the serviceFeature owns lifecycle and settings-handler registration.
+Migrate every automatic caller to
 the unattended entry point in this stage, so periodic and event calls cannot
 fall back to an interactive P2P role. Migrate manual commands to the
 user-initiated entry point.
@@ -81,12 +82,14 @@ snapshot. This is the minimum publication fence for this stage. Waiting for
 in-flight adapter work and making acquisitions wait for replacement settlement
 remain part of the later active-construction migration.
 
-The scheduling controller coalesces its network work internally, but an
+The scheduling context coalesces its network work internally, but an
 `onResumed` handler settles once that work has been scheduled. It does not hold
 later resume consumers until a OneShot transfer or Continuous start has
-settled. Compose the controller with narrow replication, settings, lifecycle,
-timer, and logging collaborators. Return only the daemon-facing control view;
-do not retain scheduling state in a core-keyed `WeakMap`.
+settled. Pass one private context with narrow replication, settings, lifecycle,
+timer, and logging collaborators to module-level functions. Return only the
+daemon-facing control view, pass it to host composition, and inject it into the
+CLI command context. Do not retain the view as a public `LiveSyncBaseCore`
+property or retain scheduling state in a core-keyed `WeakMap`.
 
 At this boundary, existing P2P AutoSync, AutoWatch, and incoming-request
 entry points receive the same non-interactive readiness and accepted-peer gate.
@@ -107,9 +110,9 @@ AutoWatch, and accepted incoming-request paths continue with the Stage 2 gate.
 This is a temporary migration state, not the target matrix in Part 1.
 
 Apply and test the CLI scheduling precedence defined in Part 1, so the daemon
-and scheduling controller cannot schedule duplicate initial or recurring work.
+and scheduling context cannot schedule duplicate initial or recurring work.
 Replace `ModuleReplicationLifecycle` and the replication-specific
-`ModulePeriodicProcess` wiring only after equivalent controller and feature-
+`ModulePeriodicProcess` wiring only after equivalent context and feature-
 binding tests pass. Reuse the existing timer implementation behind a narrow
 timer port; changing other periodic feature owners is outside this stage.
 
@@ -280,6 +283,12 @@ Cover:
 - Object Storage `syncOnStart` through resume, including a migrated profile
   which retains `liveSync: true`;
 - existing CouchDB Continuous and OneShot paths;
+- same-generation resume coalescing, a fresh attempt after a later lifecycle
+  generation, and rejection of an obsolete generation's OneShot fallback;
+- a queued Periodic callback rechecking lifecycle and recurring-work ownership
+  after its interval has been disabled;
+- the daemon's satisfied initial OneShot marker being consumed even when a
+  Continuous start throws, so a later resume may retry normally;
 - periodic, database-save, editor-save, file-open, merge, and daemon triggers
   remaining free of dialogues;
 - manual P2P and configured peer-targeted flows remaining available;

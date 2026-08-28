@@ -2,6 +2,7 @@ import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { NodeServiceContext } from "@/apps/cli/services/NodeServiceContext";
 import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
+import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
 
 export type CLICommand =
     | "daemon"
@@ -50,6 +51,8 @@ export interface CLICommandContext {
     databasePath: string;
     vaultPath: string;
     core: LiveSyncBaseCore<NodeServiceContext, never>;
+    /** Host-composition view used only to coordinate daemon-owned recurring work. */
+    replicationScheduling: ReplicationSchedulingControl;
     /** Current-result contract owned by the P2P service feature. */
     p2pReplicator?: UseP2PReplicatorResult;
     settingsPath: string;
