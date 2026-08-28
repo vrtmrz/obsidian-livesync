@@ -176,7 +176,9 @@ demand beside policy-owned AutoStart demand.
 Implement target-aware unattended P2P work without UI. Add bounded
 advertisement waiting, peer-acceptance outcomes, finite-operation demands beside
 policy demands, lifecycle-generation cancellation for delayed opens, and
-de-duplication across AutoSync, AutoWatch, and configured-target requests.
+de-duplication across AutoSync and configured-target baseline requests. Keep
+AutoWatch as the relay for later changes rather than treating it as another
+baseline transfer.
 Route P2P automation through trigger-aware readiness without central-remote
 Security Seed preflight. Add the missing finite-activity boundary to direct
 shared-pane synchronisation.
@@ -187,6 +189,11 @@ implementation evidence requires a refinement, amend Part 2 before completing
 this stage. After Stage 3 is complete, Part 2 supersedes the
 replaceable-Replicator and current-result ownership portions of the accepted
 July 2026 record; its Trystero peer and relay decisions remain unchanged.
+
+Commonlib's `docs/p2p-transport-lifecycle.md` design document records the
+implemented Stage 3 and Stage 4 ownership, demand, automation, replacement,
+and shutdown behaviour. This document remains the migration and verification
+sequence rather than a second description of the implemented state.
 
 ## Stage 5: separate active construction and flow-specific probes
 

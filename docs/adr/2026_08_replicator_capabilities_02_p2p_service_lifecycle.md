@@ -19,12 +19,15 @@ narrow contract views, automation demands, replacement fencing, and trigger
 semantics. Generic provider and capability rules are owned by Part 1; the
 implementation and verification order is owned by Part 3.
 
-The accepted [P2P Room and Transport Lifecycle](2026_07_p2p_transport_lifecycle.md)
-record remains the description of the current implementation until Stage 3 in
-Part 3 is complete. Stage 3 then supersedes only that record's replaceable
-LiveSync P2P Replicator and current-result ownership. Its decisions about
-serialised room operations, `room.leave()`, Trystero-owned physical peers, and
-relay reconnection remain in force.
+The implemented state is recorded separately in Commonlib's
+`docs/p2p-transport-lifecycle.md` design document. It supersedes the
+replaceable LiveSync P2P Replicator and current-result ownership described by
+the accepted [P2P Room and Transport Lifecycle](2026_07_p2p_transport_lifecycle.md)
+record. The accepted record's decisions about serialised room operations,
+`room.leave()`, Trystero-owned physical peers, and relay reconnection remain in
+force. This ADR remains the decision and migration target; the Commonlib
+design document records the names and ownership boundaries which actually
+landed.
 
 ## Scope and context
 
@@ -96,7 +99,8 @@ ordinary consumers. It supplies these seven views over the same owner:
 3. `P2PPeerAdmission` evaluates incoming peers and administers temporary or
    persisted acceptance decisions.
 4. `P2PTargetedTransfer` performs pull, requested push, and bidirectional
-   finite synchronisation against an explicit peer.
+   finite synchronisation against an explicit peer, and executes the persisted
+   configured-target set without interactive peer selection.
 5. `P2PChangeRelay` administers peer watch and local-change broadcast.
 6. `P2PConfigurationExchange` performs peer configuration exchange under its
    declared interaction authority.
@@ -151,16 +155,19 @@ automatic-trigger coalescing. It consumes the transport, peer, admission,
 transfer, and change-relay views but does not own their mutable state.
 
 `P2PChangeRelay` owns the actual watch set and database changes feed.
-`P2PTargetedTransfer` owns in-flight transfer de-duplication. Incoming-peer
-consent is distinct from a local caller's authority to select a peer or open a
-dialogue. Persisted or automatic acceptance may authorise an unattended path;
-it cannot create local interaction authority implicitly.
+`P2PTargetedTransfer` owns explicit finite-transfer and configured-target
+execution. The stable automation coordinator owns baseline de-duplication
+shared by AutoSync and configured-target requests. Incoming-peer consent is
+distinct from a local caller's authority to select a peer or open a dialogue.
+Persisted or automatic acceptance may authorise an unattended path; it cannot
+create local interaction authority implicitly.
 
-Every finite operation which needs a room obtains its own internal,
-session-epoch-bound demand and operation controller. The operation consumes an
-effective signal composed from the room session, its operation controller, and
-any narrower caller or incoming-RPC signal. The room-session owner, rather than
-the adapter or UI consumer, owns every controller and operation settlement.
+Every finite operation which needs a room obtains an internal demand from the
+room-session owner. Once a session admits the operation, that session owns its
+operation controller and settlement. The operation consumes an effective
+signal composed from the room session, its operation controller, and any
+narrower caller or incoming-RPC signal. Neither the adapter nor the UI consumer
+owns this bookkeeping.
 
 Acquiring another demand does not open another session. Releasing it never
 closes a session still required by AutoStart, another finite operation, or
@@ -246,15 +253,23 @@ diagnostic rather than a close veto.
 
 ### De-duplicate by logical lifecycle, not by room epoch
 
-Baseline AutoSync transfers are de-duplicated by peer and application lifecycle
-generation. Trigger provenance and session epoch are not part of the key, so a
-reconnect alone cannot repeat an in-flight or completed baseline transfer.
+Completed AutoSync baselines are scoped by normalised peer name and application
+lifecycle generation. In-flight baseline promises are indexed by normalised
+peer name until they settle. Trigger provenance and session epoch are not part
+of either lookup, so a transport-only reconnect cannot repeat an in-flight or
+completed baseline transfer.
 
-In-flight de-duplication belongs to the current room session. Completed baseline
-history belongs to the stable automation owner and survives transport-only or
-policy-only session replacement. Only completed per-peer baselines are settled;
-partial requests record completed peers only, while blocked, cancelled, failed,
-and incomplete peers remain eligible for a later bounded retry.
+Both the in-flight baseline promise and completed baseline history belong to
+the stable automation coordinator and survive transport-only or policy-only
+session replacement. The originating room session still owns cancellation and
+settlement of the actual transfer. A lifecycle or logical-identity change clears
+completed history, but does not clear an in-flight promise. A request for the
+same normalised peer name may therefore share that promise until it settles.
+Work from an older automation generation may settle, but cannot publish
+completion into the current generation. Only completed per-peer baselines are
+recorded; partial requests record completed peers only, while blocked,
+cancelled, failed, and incomplete peers remain eligible for a later bounded
+retry.
 
 The automation owner clears settled records when the logical peer namespace or
 local database identity changes. It retains them across transport-only and

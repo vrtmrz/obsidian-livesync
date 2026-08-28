@@ -165,7 +165,7 @@ Hence, the new feature should be implemented as follows:
 - **Service Hub** (`src/modules/services/`): Central service registry using dependency injection
 - **Common Library** (`@vrtmrz/livesync-commonlib`): Platform-independent synchronisation logic, shared with the CLI, WebApp, WebPeer, and external tools
 
-Commonlib owns the P2P replicator and Trystero transport lifecycle. Host commands, event handlers, and views must retain the Commonlib service-feature result and resolve its current `replicator` at the point of use. They must not snapshot an instance which can be replaced when settings or the local database change, close Trystero-owned raw peers, or install another Trystero transport generation at the application root.
+Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, directory, admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact as-built ownership and shutdown boundaries are recorded in Commonlib's `docs/p2p-transport-lifecycle.md` design document.
 
 ### Conflict Merge Policy
 
