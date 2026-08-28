@@ -96,10 +96,10 @@ export function useP2PReplicatorUI(
     };
 
     const statusFactory = (leaf: WorkspaceLeaf) => {
-        return new P2PServerStatusPaneView(leaf, core, p2pParams);
+        return new P2PServerStatusPaneView(leaf, core, replicator);
     };
     const legacyStatusFactory = (leaf: WorkspaceLeaf) => {
-        return new LegacyP2PStatusPaneView(leaf, core, p2pParams);
+        return new LegacyP2PStatusPaneView(leaf, core, replicator);
     };
     const openStatusPane = () => {
         if (api.showWindowOnRight) {
@@ -167,7 +167,7 @@ export function useP2PReplicatorUI(
                 const isAvailable =
                     hasP2PConfiguration(settings) &&
                     settings.remoteType !== REMOTE_P2P &&
-                    (replicator.replicator?.server?.isServing ?? false);
+                    replicator.transportLifecycle.isConnected;
                 if (!isAvailable) return false;
                 if (!isChecking) {
                     runOpenReplication();
@@ -183,7 +183,7 @@ export function useP2PReplicatorUI(
                 const isAvailable =
                     hasP2PConfiguration(settings) &&
                     settings.remoteType !== REMOTE_P2P &&
-                    (replicator.replicator?.server?.isServing ?? false);
+                    replicator.transportLifecycle.isConnected;
                 if (!isAvailable) return false;
                 if (!isChecking) {
                     runOpenReplication();
@@ -198,10 +198,13 @@ export function useP2PReplicatorUI(
             checkCallback: (isChecking: boolean) => {
                 const isAvailable =
                     hasP2PConfiguration(host.services.setting.currentSettings()) &&
-                    (replicator.replicator?.server?.isServing ?? false);
+                    replicator.transportLifecycle.isConnected;
                 if (!isAvailable) return false;
                 if (!isChecking) {
-                    void replicator.replicator?.replicateFromCommand(true);
+                    void host.services.replicator.runFiniteReplicationActivity(
+                        () => replicator.targetedTransfer.synchroniseConfiguredTargets(),
+                        { label: "replication" }
+                    );
                 }
                 return true;
             },

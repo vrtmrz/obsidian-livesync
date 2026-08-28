@@ -53,7 +53,7 @@ export class P2PCheckSession {
 
         try {
             await runtime.start();
-            await runtime.currentReplicator.makeSureOpened();
+            await runtime.p2p.transportLifecycle.connect();
         } catch (error) {
             await this.stop();
             throw error;

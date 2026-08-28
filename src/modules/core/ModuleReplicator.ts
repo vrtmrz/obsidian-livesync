@@ -369,7 +369,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             serviceModules: {},
         });
         services.replication.onBeforeReplicate.addHandler(isOnlineAndCanReplicateWithHost, 10);
-        services.replication.onBeforeReplicate.addHandler(canReplicateWithPBKDF2WithHost, 20);
+        services.replication.onPrepareCentralRemoteReplication.addHandler(canReplicateWithPBKDF2WithHost);
         // <-- End of handlers that can be separated.
         services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this), 100);
         services.replication.onReplicationFailed.addHandler(this.onReplicationFailed.bind(this));

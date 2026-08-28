@@ -37,6 +37,7 @@ import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serv
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
 import {
     CAPABILITY_NOT_APPLICABLE,
+    CENTRAL_REMOTE_REPLICATION_READINESS,
     defineReplicatorProviderDefinitions,
     supportedOpenReplicationContinuous,
     supportedOpenReplicationOneShot,
@@ -158,6 +159,7 @@ export class LiveSyncBaseCore<
             [REMOTE_COUCHDB]: {
                 kind: REMOTE_COUCHDB,
                 diagnosticName: "CouchDB",
+                readiness: CENTRAL_REMOTE_REPLICATION_READINESS,
                 isConfigured: (settings) =>
                     settings.remoteType === REMOTE_COUCHDB &&
                     !!settings.couchDB_URI?.trim() &&
@@ -171,6 +173,7 @@ export class LiveSyncBaseCore<
             [REMOTE_MINIO]: {
                 kind: REMOTE_MINIO,
                 diagnosticName: "Object Storage",
+                readiness: CENTRAL_REMOTE_REPLICATION_READINESS,
                 isConfigured: (settings) =>
                     settings.remoteType === REMOTE_MINIO && !!settings.endpoint?.trim() && !!settings.bucket?.trim(),
                 create: (_settings) => Promise.resolve(new LiveSyncJournalReplicator(this)),

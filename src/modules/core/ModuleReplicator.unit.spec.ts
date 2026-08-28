@@ -19,12 +19,7 @@ import { ModuleReplicator } from "./ModuleReplicator";
 describe("ModuleReplicator", () => {
     it("refreshes the remote Security Seed before replication", async () => {
         const ensurePBKDF2Salt = vi.fn(async () => true);
-        let beforeReplicate: ((showMessage: boolean) => Promise<boolean>) | undefined;
-        const addHandler = vi.fn((handler: (showMessage: boolean) => Promise<boolean>, priority?: number) => {
-            if (priority === 20) {
-                beforeReplicate = handler;
-            }
-        });
+        let prepareCentralRemoteReplication: ((showMessage: boolean) => Promise<boolean>) | undefined;
         const services = {
             API: { isOnline: true },
             replicator: {
@@ -36,7 +31,12 @@ describe("ModuleReplicator", () => {
             appLifecycle: { onSettingLoaded: { addHandler: vi.fn() } },
             replication: {
                 parseSynchroniseResult: { addHandler: vi.fn() },
-                onBeforeReplicate: { addHandler },
+                onBeforeReplicate: { addHandler: vi.fn() },
+                onPrepareCentralRemoteReplication: {
+                    addHandler: vi.fn((handler: (showMessage: boolean) => Promise<boolean>) => {
+                        prepareCentralRemoteReplication = handler;
+                    }),
+                },
                 onReplicationFailed: { addHandler: vi.fn() },
             },
         };
@@ -54,11 +54,70 @@ describe("ModuleReplicator", () => {
         };
 
         ModuleReplicator.prototype.onBindFunction.call(module, {} as never, services as never);
-        expect(beforeReplicate).toBeDefined();
+        expect(prepareCentralRemoteReplication).toBeDefined();
 
-        await beforeReplicate!(false);
+        await prepareCentralRemoteReplication!(false);
 
         expect(ensurePBKDF2Salt).toHaveBeenCalledWith({}, false, false);
+    });
+
+    it("keeps online and general pre-replication handlers for P2P while skipping central-remote Security Seed preparation", async () => {
+        const ensurePBKDF2Salt = vi.fn(async () => true);
+        const handlers = new Map<number, (...args: unknown[]) => Promise<boolean | void>>();
+        const centralRemoteHandlers: Array<(...args: unknown[]) => Promise<boolean | void>> = [];
+        const addHandler = vi.fn((handler: (...args: unknown[]) => Promise<boolean | void>, priority?: number) => {
+            handlers.set(priority ?? 0, handler);
+        });
+        const services = {
+            API: { isOnline: true },
+            replicator: {
+                onReplicatorInitialised: { addHandler: vi.fn() },
+                getActiveReplicator: () => ({ ensurePBKDF2Salt }),
+            },
+            setting: { currentSettings: () => ({}) },
+            databaseEvents: { onDatabaseInitialised: { addHandler: vi.fn() } },
+            appLifecycle: { onSettingLoaded: { addHandler: vi.fn() } },
+            replication: {
+                parseSynchroniseResult: { addHandler: vi.fn() },
+                onBeforeReplicate: { addHandler },
+                onPrepareCentralRemoteReplication: {
+                    addHandler: vi.fn((handler: (...args: unknown[]) => Promise<boolean | void>) => {
+                        centralRemoteHandlers.push(handler);
+                    }),
+                },
+                onReplicationFailed: { addHandler: vi.fn() },
+            },
+        };
+        const generalBeforeReplicate = vi.fn(async () => true);
+        const module = {
+            _unresolvedErrorManager: {
+                showError: vi.fn(),
+                clearError: vi.fn(),
+            },
+            _onReplicatorInitialised: vi.fn(),
+            _everyOnDatabaseInitialized: vi.fn(),
+            _everyOnloadAfterLoadSettings: vi.fn(),
+            _parseReplicationResult: vi.fn(),
+            _everyBeforeReplicate: generalBeforeReplicate,
+            onReplicationFailed: vi.fn(),
+        };
+
+        ModuleReplicator.prototype.onBindFunction.call(module, {} as never, services as never);
+        const online = handlers.get(10);
+        const securitySeed = centralRemoteHandlers[0];
+        const general = handlers.get(100);
+        expect(online).toBeDefined();
+        expect(securitySeed).toBeDefined();
+        expect(general).toBeDefined();
+
+        await expect(online!(false)).resolves.toBe(true);
+        await expect(general!(false)).resolves.toBe(true);
+
+        expect(generalBeforeReplicate).toHaveBeenCalledOnce();
+        expect(ensurePBKDF2Salt).not.toHaveBeenCalled();
+
+        await expect(securitySeed!(false)).resolves.toBe(true);
+        expect(ensurePBKDF2Salt).toHaveBeenCalledOnce();
     });
 
     it("reprocesses stored documents when the normal-file target filters change", async () => {

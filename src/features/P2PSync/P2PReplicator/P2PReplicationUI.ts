@@ -2,6 +2,7 @@ import type { App } from "@/deps.ts";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 
 /**
@@ -15,8 +16,8 @@ import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
  */
 export function createOpenReplicationUI(
     app: App
-): (replicator: LiveSyncTrysteroReplicator) => (showResult: boolean) => Promise<boolean | void> {
-    return (replicator: LiveSyncTrysteroReplicator) =>
+): (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
+    return (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) =>
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
@@ -57,7 +58,7 @@ export function createOpenReplicationUI(
                 };
                 const modal = new P2POpenReplicationModal(
                     app,
-                    replicator,
+                    p2p,
                     {
                         onSync: (peerId: string) => synchronise(peerId, false),
                         onSyncAndClose: (peerId: string) => synchronise(peerId, true),
@@ -85,8 +86,8 @@ export function createOpenReplicationUI(
  */
 export function createOpenRebuildUI(
     app: App
-): (replicator: LiveSyncTrysteroReplicator) => (showResult: boolean) => Promise<boolean | void> {
-    return (replicator: LiveSyncTrysteroReplicator) =>
+): (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
+    return (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) =>
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
@@ -132,7 +133,7 @@ export function createOpenRebuildUI(
 
                 const modal = new P2POpenReplicationModal(
                     app,
-                    replicator,
+                    p2p,
                     {
                         onSync: doRebuild,
                         onSyncAndClose: doRebuild,

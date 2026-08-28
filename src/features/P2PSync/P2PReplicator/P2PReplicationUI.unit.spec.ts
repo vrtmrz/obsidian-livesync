@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const modalState = vi.hoisted(() => ({
     instances: [] as Array<{
+        p2p: unknown;
         callback: {
             onSync: (peerId: string) => Promise<void>;
             onSyncAndClose: (peerId: string) => Promise<void>;
@@ -15,18 +16,20 @@ vi.mock("@/deps.ts", () => ({ App: class {} }));
 
 vi.mock("./P2POpenReplicationModal", () => ({
     P2POpenReplicationModal: class {
+        p2p;
         callback;
         onClosed;
         open = vi.fn();
 
         constructor(
             _app: unknown,
-            _replicator: unknown,
+            p2p: unknown,
             callback: (typeof modalState.instances)[number]["callback"],
             _showResult: boolean,
             _title?: string,
             onClosed?: () => void
         ) {
+            this.p2p = p2p;
             this.callback = callback;
             this.onClosed = onClosed;
             modalState.instances.push(this);
@@ -46,15 +49,21 @@ function createReplicator() {
     } as any;
 }
 
+function createP2PServiceViews() {
+    return { transportLifecycle: {}, diagnostics: {} } as any;
+}
+
 describe("createOpenReplicationUI", () => {
     beforeEach(() => {
         modalState.instances.length = 0;
     });
 
     it("settles a cancelled peer-selection session when the modal closes", async () => {
-        const session = createOpenReplicationUI({} as any)(createReplicator())(true);
+        const p2p = createP2PServiceViews();
+        const session = createOpenReplicationUI({} as any)(createReplicator(), p2p)(true);
         const modal = modalState.instances[0];
 
+        expect(modal.p2p).toBe(p2p);
         expect(modal.onClosed).toBeTypeOf("function");
         modal.onClosed?.();
 
@@ -63,7 +72,7 @@ describe("createOpenReplicationUI", () => {
 
     it("keeps repeated synchronisation inside the session boundary until the modal closes", async () => {
         const replicator = createReplicator();
-        const session = createOpenReplicationUI({} as any)(replicator)(true);
+        const session = createOpenReplicationUI({} as any)(replicator, createP2PServiceViews())(true);
         const modal = modalState.instances[0];
         let settled = false;
         void session.finally(() => {
@@ -91,7 +100,7 @@ describe("createOpenReplicationUI", () => {
                     finishPull = resolve;
                 })
         );
-        const session = createOpenReplicationUI({} as any)(replicator)(true);
+        const session = createOpenReplicationUI({} as any)(replicator, createP2PServiceViews())(true);
         const modal = modalState.instances[0];
         let settled = false;
         void session.finally(() => {
@@ -111,7 +120,7 @@ describe("createOpenReplicationUI", () => {
 
     it("closes the P2P connection after a successful sync-and-close action", async () => {
         const replicator = createReplicator();
-        const session = createOpenReplicationUI({} as any)(replicator)(true);
+        const session = createOpenReplicationUI({} as any)(replicator, createP2PServiceViews())(true);
         const modal = modalState.instances[0];
 
         await modal.callback.onSyncAndClose("peer-a");
@@ -143,7 +152,7 @@ describe("createOpenRebuildUI", () => {
                     finishPull = resolve;
                 })
         );
-        const session = createOpenRebuildUI({} as any)(replicator)(true);
+        const session = createOpenRebuildUI({} as any)(replicator, createP2PServiceViews())(true);
         const modal = modalState.instances[0];
         let settled = false;
         void session.finally(() => {
@@ -166,7 +175,7 @@ describe("createOpenRebuildUI", () => {
 
     it("does not complete Fetch when the rebuild dialogue closes without selecting a peer", async () => {
         const replicator = createReplicator();
-        const session = createOpenRebuildUI({} as any)(replicator)(true);
+        const session = createOpenRebuildUI({} as any)(replicator, createP2PServiceViews())(true);
         const modal = modalState.instances[0];
 
         modal.onClosed?.();

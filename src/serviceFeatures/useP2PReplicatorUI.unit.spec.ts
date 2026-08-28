@@ -95,6 +95,7 @@ describe("useP2PReplicatorUI commands", () => {
             },
         } as any;
         const p2p = {
+            transportLifecycle: { isConnected: true },
             replicator: {
                 server: { isServing: true },
                 openReplication,
@@ -209,6 +210,7 @@ describe("useP2PReplicatorUI commands", () => {
             remoteType: "COUCHDB",
             remoteConfigurations: {},
         };
+        const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const host = {
             services: {
                 context: createServiceContext(),
@@ -232,14 +234,18 @@ describe("useP2PReplicatorUI commands", () => {
                     currentSettings: vi.fn(() => settings),
                     onSettingSaved: { addHandler: vi.fn() },
                 },
-                replicator: { runFiniteReplicationActivity: vi.fn() },
+                replicator: { runFiniteReplicationActivity },
             },
         } as any;
+        const replicateFromCommand = vi.fn();
+        const synchroniseConfiguredTargets = vi.fn(async () => ({ status: "completed" }));
         const p2p = {
+            transportLifecycle: { isConnected: true },
+            targetedTransfer: { synchroniseConfiguredTargets },
             replicator: {
                 server: { isServing: true },
                 openReplication: vi.fn(),
-                replicateFromCommand: vi.fn(),
+                replicateFromCommand,
             },
         } as any;
 
@@ -274,6 +280,13 @@ describe("useP2PReplicatorUI commands", () => {
         ]) {
             expect(commands.find(({ id }) => id === commandId)?.checkCallback?.(true)).toBe(true);
         }
+
+        commands.find(({ id }) => id === "p2p-sync-targets")?.checkCallback?.(false);
+        await vi.waitFor(() => expect(synchroniseConfiguredTargets).toHaveBeenCalledOnce());
+        expect(replicateFromCommand).not.toHaveBeenCalled();
+        expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
+            label: "replication",
+        });
     });
 
     it("does not open the P2P status pane automatically when the workspace becomes ready", async () => {

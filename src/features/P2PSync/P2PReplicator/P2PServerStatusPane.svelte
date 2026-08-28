@@ -8,7 +8,7 @@
         EVENT_P2P_REPLICATOR_PROGRESS,
         type P2PServerInfo,
     } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
     import type { P2PReplicatorStatus, P2PReplicationReport } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
@@ -33,11 +33,11 @@
     } from "./p2pPeerSettings";
 
     interface Props {
-        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
+        p2p: P2PServiceViews;
         core: LiveSyncBaseCore;
     }
 
-    let { getLiveSyncReplicator, core }: Props = $props();
+    let { p2p, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     let decidingPeerId = $state<string | null>(null);
@@ -121,7 +121,7 @@
     }
 
     async function requestServerStatus() {
-        await getLiveSyncReplicator().requestStatus();
+        p2p.diagnostics.requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
@@ -296,7 +296,7 @@
     ) {
         decidingPeerId = peer.peerId;
         try {
-            await getLiveSyncReplicator().makeDecision({
+            await p2p.peerAdmission.makeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
                 decision,
@@ -311,7 +311,7 @@
     async function revokeDecision(peer: P2PServerInfo["knownAdvertisements"][number]) {
         decidingPeerId = peer.peerId;
         try {
-            await getLiveSyncReplicator().revokeDecision({
+            await p2p.peerAdmission.revokeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
             });
@@ -324,10 +324,7 @@
     async function startReplication(peer: P2PServerInfo["knownAdvertisements"][number]) {
         replicatingPeerId = peer.peerId;
         try {
-            const pullResult = await getLiveSyncReplicator().replicateFrom(peer.peerId, true);
-            if (pullResult?.ok) {
-                await getLiveSyncReplicator().requestSynchroniseToPeer(peer.peerId);
-            }
+            await p2p.targetedTransfer.synchroniseWithPeer(peer.peerId, true);
             await requestServerStatus();
         } finally {
             replicatingPeerId = null;
@@ -347,9 +344,9 @@
             return;
         }
         if (isWatching(peerId)) {
-            getLiveSyncReplicator().unwatchPeer(peerId);
+            p2p.changeRelay.unwatchPeer(peerId);
         } else {
-            getLiveSyncReplicator().watchPeer(peerId);
+            p2p.changeRelay.watchPeer(peerId);
         }
     }
 
@@ -455,7 +452,7 @@
         </p>
     {/if}
 
-    <P2PServerStatusCard {getLiveSyncReplicator} {core} />
+    <P2PServerStatusCard {p2p} {core} />
 
     <div class="peers-section">
         <div class="peers-header">

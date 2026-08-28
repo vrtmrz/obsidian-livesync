@@ -34,7 +34,7 @@ describe("WebPeer runtime composition", () => {
         expect(runtime.context).toBe(context);
         expect(runtime.services.context).toBe(context);
         expect(runtime.events).toBe(context.events);
-        expect(runtime.currentReplicator).toBe(runtime.p2p.replicator);
+        expect(runtime.paneHost.p2p.transportLifecycle).toBe(runtime.p2p.transportLifecycle);
         expect(runtime.paneHost.services).toBe(runtime.services);
         expect(runtime.paneHost.p2p).toBe(runtime.p2p);
         expect(runtime.paneHost.showPeerMenu).toBeTypeOf("function");
@@ -62,6 +62,34 @@ describe("WebPeer runtime composition", () => {
         expect(openDatabase).toHaveBeenCalledOnce();
         expect(markIsReady).toHaveBeenCalledOnce();
         expect(layoutReady).toHaveBeenCalledOnce();
+    });
+
+    it("delegates automatic P2P startup to the resumed lifecycle handler", async () => {
+        vi.useFakeTimers();
+        try {
+            const runtime = new WebPeerRuntime({
+                store: createMemoryStore(),
+            });
+            vi.spyOn(runtime.services.setting, "loadSettings").mockResolvedValue(undefined);
+            vi.spyOn(runtime.services.setting, "currentSettings").mockReturnValue({
+                ...DEFAULT_SETTINGS,
+                P2P_AutoStart: true,
+                P2P_Enabled: true,
+            });
+            vi.spyOn(runtime.services.database, "openDatabase").mockResolvedValue(true);
+            const onResumed = vi
+                .spyOn(runtime.services.appLifecycle, "onResumed")
+                .mockResolvedValue(true);
+            const open = vi.spyOn(runtime.p2p.transportLifecycle, "connect").mockResolvedValue(undefined);
+
+            await runtime.start();
+
+            expect(onResumed).toHaveBeenCalledOnce();
+            await vi.advanceTimersByTimeAsync(100);
+            expect(open).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("rejects start when the browser-local database cannot be opened", async () => {

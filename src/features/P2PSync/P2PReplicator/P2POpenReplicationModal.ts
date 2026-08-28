@@ -1,7 +1,7 @@
 import { App, Modal } from "@/deps.ts";
 import P2POpenReplicationPane from "./P2POpenReplicationPane.svelte";
 import { mount, unmount } from "svelte";
-import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 
 export type P2POpenReplicationModalCallback = {
     onSync: (peerId: string) => Promise<void>;
@@ -9,7 +9,7 @@ export type P2POpenReplicationModalCallback = {
 };
 
 export class P2POpenReplicationModal extends Modal {
-    liveSyncReplicator: LiveSyncTrysteroReplicator;
+    p2p: P2PServiceViews;
     callback?: P2POpenReplicationModalCallback;
     component?: ReturnType<typeof mount>;
     showResult: boolean;
@@ -19,7 +19,7 @@ export class P2POpenReplicationModal extends Modal {
 
     constructor(
         app: App,
-        liveSyncReplicator: LiveSyncTrysteroReplicator,
+        p2p: P2PServiceViews,
         callback?: P2POpenReplicationModalCallback,
         showResult: boolean = false,
         title: string = "P2P Replication",
@@ -27,7 +27,7 @@ export class P2POpenReplicationModal extends Modal {
         rebuildMode: boolean = false
     ) {
         super(app);
-        this.liveSyncReplicator = liveSyncReplicator;
+        this.p2p = p2p;
         this.callback = callback;
         this.showResult = showResult;
         this.title = title;
@@ -57,7 +57,7 @@ export class P2POpenReplicationModal extends Modal {
             this.component = mount(P2POpenReplicationPane, {
                 target: contentEl,
                 props: {
-                    liveSyncReplicator: this.liveSyncReplicator,
+                    p2p: this.p2p,
                     onSync: (peerId: string) => this.onSync(peerId),
                     onSyncAndClose: (peerId: string) => this.onSyncAndClose(peerId),
                     onClose: () => this.close(),
