@@ -20,6 +20,8 @@ import { $msg, translateIfAvailable } from "@/common/translation";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
 /**
  * Localised counterpart of Commonlib's `confName()`, which takes no translator.
@@ -271,12 +273,15 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
 
     async _fetchRemotePreferredTweakValues(trialSetting: RemoteDBSettings): Promise<RemotePreferredTweakResult> {
         try {
-            const replicator = await this.services.replicator.getNewReplicator(trialSetting);
-            if (!replicator) {
+            const probe = await this.services.replicator.createRemoteResource(
+                REMOTE_RESOURCE_KINDS.PREFERRED_TWEAK,
+                trialSetting
+            );
+            if (!probe) {
                 this._log("The remote type does not support preferred tweak values.", LOG_LEVEL_NOTICE);
                 return { status: RemotePreferredTweakStatuses.UNSUPPORTED };
             }
-            return await replicator.getRemotePreferredTweakValues(trialSetting);
+            return await withOwnedRemoteResource(probe, (ownedProbe) => ownedProbe.read());
         } catch (ex) {
             this._log("Failed to get the preferred tweak values from the remote.", LOG_LEVEL_NOTICE);
             return {

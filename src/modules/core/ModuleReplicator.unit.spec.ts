@@ -23,7 +23,7 @@ describe("ModuleReplicator", () => {
         const services = {
             API: { isOnline: true },
             replicator: {
-                onReplicatorInitialised: { addHandler: vi.fn() },
+                onBeforeReplicatorPublication: { addHandler: vi.fn() },
                 getActiveReplicator: () => ({ ensurePBKDF2Salt }),
             },
             setting: { currentSettings: () => ({}) },
@@ -45,7 +45,7 @@ describe("ModuleReplicator", () => {
                 showError: vi.fn(),
                 clearError: vi.fn(),
             },
-            _onReplicatorInitialised: vi.fn(),
+            _onBeforeReplicatorPublication: vi.fn(),
             _everyOnDatabaseInitialized: vi.fn(),
             _everyOnloadAfterLoadSettings: vi.fn(),
             _parseReplicationResult: vi.fn(),
@@ -71,7 +71,7 @@ describe("ModuleReplicator", () => {
         const services = {
             API: { isOnline: true },
             replicator: {
-                onReplicatorInitialised: { addHandler: vi.fn() },
+                onBeforeReplicatorPublication: { addHandler: vi.fn() },
                 getActiveReplicator: () => ({ ensurePBKDF2Salt }),
             },
             setting: { currentSettings: () => ({}) },
@@ -94,7 +94,7 @@ describe("ModuleReplicator", () => {
                 showError: vi.fn(),
                 clearError: vi.fn(),
             },
-            _onReplicatorInitialised: vi.fn(),
+            _onBeforeReplicatorPublication: vi.fn(),
             _everyOnDatabaseInitialized: vi.fn(),
             _everyOnloadAfterLoadSettings: vi.fn(),
             _parseReplicationResult: vi.fn(),

@@ -71,6 +71,9 @@ livesync-cli [database-path] [command] [args...]
     - `init-settings` writes its target file. `setup`, `remote-add`, `remote-rm`, `remote-set`, and `remote-activate` write their settings changes without this option.
     - All remaining commands leave the settings file unchanged by default.
     - Temporary values used to suspend synchronisation or select a remote for one command are never written.
+- `--compat-remote-admin-exit-zero`: Preserve the former zero exit code when `mark-resolved`, `lock-remote`, or `unlock-remote` returns a provider verification failure.
+    - Without this option, those commands return a non-zero exit code when verification fails.
+    - Invalid arguments, unknown remote IDs, and errors thrown while activating or mutating the remote remain errors with or without this option.
 
 ### Commands
 
@@ -95,6 +98,8 @@ livesync-cli [database-path] [command] [args...]
 - `lock-remote [remote-id]`: Lock the remote database.
 - `remote-status [remote-id]`: Show remote database status.
 - `init-settings [file]`: Create a default settings file.
+
+Remote-administration commands verify the resulting milestone state through the selected provider. The existing `[Verification]` lines remain suitable for scripts which inspect command output, while the default exit code now reflects whether that verification succeeded.
 
 ### Examples
 
@@ -338,6 +343,8 @@ Options:
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --vault <path>, -V <path>  (daemon/mirror) Path to vault directory, decoupled from database-path
   --write-settings         Write setting changes after a successful command
+  --compat-remote-admin-exit-zero
+                           Preserve the former zero exit code when remote-administration verification fails
   --help, -h              Show this help message
 
 Commands:

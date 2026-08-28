@@ -7,6 +7,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 import { setLang } from "@/common/translation";
+import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
     const askSelectStringDialogue = vi.fn(async (..._args: unknown[]): Promise<string | undefined> => undefined);
@@ -57,32 +58,56 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 describe("ModuleResolvingMismatchedTweaks", () => {
     it("returns an unconfigured remote result without a separate connection preflight", async () => {
         const { module, core } = createModule();
-        const tryConnectRemote = vi.fn(async () => true);
-        const getRemotePreferredTweakValues = vi.fn(async () => ({
+        const read = vi.fn(async () => ({
             status: "not-configured" as const,
             reason: "milestone-missing" as const,
         }));
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ read, dispose }));
         core._services.replicator = {
-            getNewReplicator: vi.fn(async () => ({ tryConnectRemote, getRemotePreferredTweakValues })),
+            createRemoteResource,
+            getNewReplicator: vi.fn(() => Promise.reject(new Error("must not borrow a Replicator"))),
         };
 
         await expect(module._fetchRemotePreferredTweakValues(core.settings)).resolves.toEqual({
             status: "not-configured",
             reason: "milestone-missing",
         });
-        expect(getRemotePreferredTweakValues).toHaveBeenCalledOnce();
-        expect(tryConnectRemote).not.toHaveBeenCalled();
+        expect(createRemoteResource).toHaveBeenCalledWith(REMOTE_RESOURCE_KINDS.PREFERRED_TWEAK, core.settings);
+        expect(read).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
+        expect(core._services.replicator.getNewReplicator).not.toHaveBeenCalled();
     });
 
     it("returns unsupported when no replicator implements the remote type", async () => {
         const { module, core } = createModule();
         core._services.replicator = {
-            getNewReplicator: vi.fn(async () => undefined),
+            createRemoteResource: vi.fn(async () => undefined),
         };
 
         await expect(module._fetchRemotePreferredTweakValues(core.settings)).resolves.toEqual({
             status: "unsupported",
         });
+    });
+
+    it("disposes the preferred-tweak probe when reading fails", async () => {
+        const { module, core } = createModule();
+        const error = new Error("remote unavailable");
+        const dispose = vi.fn(async () => undefined);
+        core._services.replicator = {
+            createRemoteResource: vi.fn(async () => ({
+                read: vi.fn(async () => {
+                    throw error;
+                }),
+                dispose,
+            })),
+        };
+
+        await expect(module._fetchRemotePreferredTweakValues(core.settings)).resolves.toEqual({
+            status: "unavailable",
+            error,
+        });
+        expect(dispose).toHaveBeenCalledOnce();
     });
 
     it("should enable and auto-accept compatible mismatches when the preference is undefined", async () => {

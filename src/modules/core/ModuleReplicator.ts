@@ -134,8 +134,8 @@ export class ModuleReplicator extends AbstractModule {
         return Promise.resolve(true);
     }
 
-    _onReplicatorInitialised(): Promise<boolean> {
-        // For now, we only need to clear the error related to replicator initialisation, but in the future, if there are more things to do when the replicator is initialised, we can add them here.
+    _onBeforeReplicatorPublication(): Promise<boolean> {
+        // Clear key-derivation handlers before the candidate Replicator becomes active.
         clearHandlers();
         return Promise.resolve(true);
     }
@@ -347,7 +347,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     // }
 
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.replicator.onReplicatorInitialised.addHandler(this._onReplicatorInitialised.bind(this));
+        services.replicator.onBeforeReplicatorPublication.addHandler(this._onBeforeReplicatorPublication.bind(this));
         services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
         services.replication.parseSynchroniseResult.addHandler(this._parseReplicationResult.bind(this));

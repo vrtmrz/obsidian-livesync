@@ -103,6 +103,8 @@ Options:
                               (defaults to database-path; allows separate PouchDB and vault dirs)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --write-settings         Write setting changes after a successful command
+  --compat-remote-admin-exit-zero
+                           Preserve the former zero exit code when remote-administration verification fails
 
 Examples:
     livesync-cli ./my-database                        Run daemon (LiveSync mode)
@@ -153,6 +155,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
     let debug = false;
     let force = false;
     let writeSettings = false;
+    let compatRemoteAdminExitZero = false;
     let interval: number | undefined;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
@@ -212,6 +215,9 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
             case "--write-settings":
                 writeSettings = true;
                 break;
+            case "--compat-remote-admin-exit-zero":
+                compatRemoteAdminExitZero = true;
+                break;
             default: {
                 if (!databasePath) {
                     if (command === "daemon" && isCLICommand(token)) {
@@ -253,6 +259,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
         debug,
         force,
         writeSettings,
+        compatRemoteAdminExitZero,
         command,
         commandArgs,
         interval,

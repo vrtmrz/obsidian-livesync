@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Command-line interface
+
+#### Fixed
+
+- `mark-resolved`, `lock-remote`, and `unlock-remote` now return a non-zero exit code when the selected provider cannot verify the requested remote state. Use `--compat-remote-admin-exit-zero` to retain the former exit code for returned verification failures; unknown remote IDs and mutation errors still fail.
+
 ## 1.0.21
 
 26th August, 2026

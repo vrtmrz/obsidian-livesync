@@ -42,6 +42,8 @@ export interface CLIOptions {
     debug?: boolean;
     force?: boolean;
     writeSettings?: boolean;
+    /** Restore the former zero exit code after a returned remote-administration verification failure. */
+    compatRemoteAdminExitZero?: boolean;
     command: CLICommand;
     commandArgs: string[];
     interval?: number;

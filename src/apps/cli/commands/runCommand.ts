@@ -2,12 +2,8 @@ import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/AP
 import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
 import {
     DEFAULT_SETTINGS,
-    MILESTONE_DOCID,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-    type EntryMilestoneInfo,
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
@@ -23,72 +19,18 @@ import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatur
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
-import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
 import {
     isReplicationCompleted,
     NO_INTERACTION,
+    REMOTE_RESOURCE_KINDS,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
+import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { isRemoteAdministrationCommand, runRemoteAdministrationCommand } from "./remoteAdministration";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
-}
-
-async function verifyRemoteState(
-    core: CLICommandContext["core"],
-    settings: ObsidianLiveSyncSettings
-): Promise<boolean> {
-    const { standardIo } = core.services.context;
-    const replicator = core.services.replicator.getActiveReplicator();
-    if (!replicator) {
-        standardIo.writeStderr("[Verification] No active replicator found\n");
-        return false;
-    }
-
-    if (!replicator.nodeid) {
-        await replicator.initializeDatabaseForReplication();
-    }
-
-    try {
-        let milestone: EntryMilestoneInfo | false | undefined = undefined;
-        if (settings.remoteType === REMOTE_COUCHDB) {
-            const dbRet = await (replicator as LiveSyncCouchDBReplicator).connectRemoteCouchDBWithSetting(
-                settings,
-                false,
-                true
-            );
-            if (typeof dbRet === "string") {
-                standardIo.writeStderr(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
-                return false;
-            }
-            try {
-                milestone = await dbRet.db.get(MILESTONE_DOCID);
-            } finally {
-                await dbRet.db.close();
-            }
-        } else if (settings.remoteType === REMOTE_MINIO) {
-            milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
-        }
-
-        if (milestone) {
-            const isLocked = !!milestone.locked;
-            const isAccepted = !!milestone.accepted_nodes?.includes(replicator.nodeid);
-            standardIo.writeStderr(`[Verification] Remote Database: ${isLocked ? "LOCKED" : "UNLOCKED"}\n`);
-            standardIo.writeStderr(
-                `[Verification] Current Device Node ID (${replicator.nodeid}): ${isAccepted ? "ACCEPTED" : "NOT ACCEPTED"}\n`
-            );
-            return true;
-        } else {
-            standardIo.writeStderr("[Verification] Milestone document not found on remote.\n");
-            return false;
-        }
-    } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        standardIo.writeStderr(`[Verification] Failed to fetch milestone document: ${message}\n`);
-        return false;
-    }
 }
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
@@ -781,88 +723,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         return true;
     }
 
-    if (options.command === "mark-resolved") {
-        const id = options.commandArgs[0]?.trim();
-        if (id) {
-            let switched = false;
-            await core.services.setting.updateSettings((currentSettings) => {
-                const activated = activateRemoteConfiguration(currentSettings, id);
-                if (activated) {
-                    switched = true;
-                    return activated;
-                }
-                return currentSettings;
-            }, false);
-
-            if (!switched) {
-                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
-                return false;
-            }
-
-            await core.services.control.applySettings();
-        }
-
-        writeStderrLine(standardIo, `[Command] mark-resolved${id ? ` ${id}` : ""}`);
-        await core.services.replication.markResolved();
-        const settings = core.services.setting.currentSettings();
-        await verifyRemoteState(core, settings);
-        return true;
-    }
-
-    if (options.command === "unlock-remote") {
-        const id = options.commandArgs[0]?.trim();
-        if (id) {
-            let switched = false;
-            await core.services.setting.updateSettings((currentSettings) => {
-                const activated = activateRemoteConfiguration(currentSettings, id);
-                if (activated) {
-                    switched = true;
-                    return activated;
-                }
-                return currentSettings;
-            }, false);
-
-            if (!switched) {
-                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
-                return false;
-            }
-
-            await core.services.control.applySettings();
-        }
-
-        writeStderrLine(standardIo, `[Command] unlock-remote${id ? ` ${id}` : ""}`);
-        await core.services.replication.markUnlocked();
-        const settings = core.services.setting.currentSettings();
-        await verifyRemoteState(core, settings);
-        return true;
-    }
-
-    if (options.command === "lock-remote") {
-        const id = options.commandArgs[0]?.trim();
-        if (id) {
-            let switched = false;
-            await core.services.setting.updateSettings((currentSettings) => {
-                const activated = activateRemoteConfiguration(currentSettings, id);
-                if (activated) {
-                    switched = true;
-                    return activated;
-                }
-                return currentSettings;
-            }, false);
-
-            if (!switched) {
-                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
-                return false;
-            }
-
-            await core.services.control.applySettings();
-        }
-
-        writeStderrLine(standardIo, `[Command] lock-remote${id ? ` ${id}` : ""}`);
-        await core.services.replication.markLocked();
-        const settings = core.services.setting.currentSettings();
-        await verifyRemoteState(core, settings);
-        return true;
+    if (isRemoteAdministrationCommand(options.command)) {
+        return await runRemoteAdministrationCommand(options, context, options.command);
     }
 
     if (options.command === "remote-status") {
@@ -887,13 +749,16 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
 
         writeStderrLine(standardIo, `[Command] remote-status${id ? ` ${id}` : ""}`);
-        const replicator = core.services.replicator.getActiveReplicator();
-        if (!replicator) {
-            standardIo.writeStderr("[Error] No active replicator found\n");
+        const settings = core.services.setting.currentSettings();
+        const resource = await core.services.replicator.createRemoteResource(
+            REMOTE_RESOURCE_KINDS.CONNECTION,
+            settings
+        );
+        if (!resource) {
+            standardIo.writeStderr("[Error] Remote status is unavailable for the current provider\n");
             return false;
         }
-        const settings = core.services.setting.currentSettings();
-        const status = await replicator.getRemoteStatus(settings);
+        const status = await withOwnedRemoteResource(resource, (ownedResource) => ownedResource.getStatus());
         if (status === false) {
             standardIo.writeStderr("[Error] Failed to fetch remote status\n");
             return false;
