@@ -130,16 +130,38 @@ The selected provider and its active Replicator decide **how**, and whether,
 that request can be performed. A provider module must not subscribe to the
 application resume lifecycle merely because it can construct a transport.
 
-Self-hosted LiveSync will have one LiveSync-owned core ServiceModule as the
-replication lifecycle coordinator. It uses `AppLifecycleService`, persisted
-settings, `ReplicationService`, and the active support declaration. It does
-not branch on `remoteType` or use `instanceof` as a capability test.
-Commonlib owns the trigger-aware replication contract; the host owns
-application lifecycle wiring.
+Self-hosted LiveSync will compose one LiveSync-owned serviceFeature as the
+replication scheduling boundary. The serviceFeature constructs one private
+scheduling controller and connects it to `AppLifecycleService`, settings
+lifecycle events, and the periodic timer. The controller owns only scheduling
+state and transitions: external-poller ownership, Continuous ownership of
+recurring work, the daemon's satisfied initial OneShot marker, resume
+coalescing, and periodic-timer reconciliation. It does not register handlers
+or acquire `LiveSyncBaseCore`.
+
+The controller receives narrow collaborators for readiness and suspension
+queries, current settings, `ReplicationService`, periodic-timer control, and
+diagnostic logging. The surrounding serviceFeature owns lifecycle registration
+and adapts those Services to the controller. It returns a focused control view
+containing only the daemon operations to select external polling and mark the
+initial OneShot as satisfied. The host may retain that view for the CLI, but
+must not expose the controller's mutable state or recover it from a core-keyed
+global or `WeakMap`.
+
+This boundary is not a ServiceModule merely because it owns state. It neither
+owns a shared external resource nor supplies a general operational capability
+to several unrelated consumers. If a future consumer needs a stable shared
+scheduling capability beyond the focused CLI view, that ownership decision
+must be reviewed explicitly rather than widening the controller implicitly.
+
+The scheduling controller uses persisted settings, `ReplicationService`, and
+the active support declaration. It does not branch on `remoteType` or use
+`instanceof` as a capability test. Commonlib owns the trigger-aware replication
+contract; the host owns application lifecycle wiring.
 
 The existing `onResumed` event remains the eligible-resume boundary after
 initial readiness, settings application, and visibility recovery. It is not
-redefined as a once-per-process event. The coordinator coalesces duplicate work
+redefined as a once-per-process event. The controller coalesces duplicate work
 within one lifecycle generation and preserves readiness and suspension gates:
 
 - configured Continuous replication starts only through an active Continuous
@@ -155,8 +177,8 @@ within one lifecycle generation and preserves readiness and suspension gates:
 `ReplicationService` remains responsible for readiness checks, bounded finite
 activity, failure processing, and replication timing. It exposes distinct
 user-initiated and unattended entry points, or a typed request which carries
-interaction authority. The coordinator never calls a concrete Replicator's
-`openReplication()` directly.
+interaction authority. The scheduling controller never calls a concrete
+Replicator's `openReplication()` directly.
 
 `P2P_AutoStart` remains a separate P2P room policy. It is not central
 Continuous replication and is not `syncOnStart`; its service lifecycle is
@@ -164,13 +186,29 @@ specified in Part 2. Reopening after `EVENT_DATABASE_REBUILT` is a
 flow-authorised continuation requested by the Rebuilder, not evidence that
 AutoStart is enabled.
 
+Correctness must not depend on the registration order of equal-priority resume
+handlers. P2P AutoStart records persistent room demand, while an unattended P2P
+OneShot records finite room demand. `P2PRoomSessionOwner` serialises both and
+retains the room while either demand remains. Provider-specific P2P lifecycle
+wiring and host replication scheduling may therefore run in either order.
+Focused owner tests cover AutoStart-before-OneShot and OneShot-before-AutoStart;
+the host feature-binding test must not encode their current registration order
+as a scheduling prerequisite.
+
 The CLI daemon owns its initial finite convergence before its mirror scan.
 Restored settings mark that convergence as satisfied for the current lifecycle
 generation, so `syncOnStart` does not repeat it. In `--interval` mode, the
 daemon poller is the sole recurring remote-poll scheduler. In changes-feed mode,
-the coordinator starts one configured Continuous session when supported;
+the controller starts one configured Continuous session when supported;
 otherwise it may enable the configured generic periodic timer. Continuous has
 precedence when both are configured.
+
+The controller starts resume work synchronously far enough to reserve
+Continuous ownership, then lets the lifecycle handler settle without awaiting
+network completion. Concurrent resume notifications share one internal
+operation. Periodic reconciliation therefore observes the reservation before
+it can enable a competing timer. A failed operation is logged and releases the
+coalescing slot so a later resume can retry.
 
 ### Use a fixed current-provider definition
 
@@ -183,7 +221,7 @@ API.
 
 CouchDB is part of every current host composition. Object Storage and P2P are
 compile-time composition choices and may be included or omitted without
-changing the generic lifecycle coordinator. Adding another current provider
+changing the generic scheduling feature. Adding another current provider
 requires a Commonlib kind and support declaration, host composition,
 Setup/profile schema handling, and provider-specific tests. It does not require
 a runtime plug-in registry or behaviour for unknown provider kinds.
