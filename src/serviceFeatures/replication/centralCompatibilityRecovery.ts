@@ -5,6 +5,7 @@ import { balanceChunkPurgedDBs, purgeUnreferencedChunks } from "@vrtmrz/livesync
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    type ReplicatorInstance,
     type ReplicationFailureRequest,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { $msg } from "@/common/translation";
@@ -21,6 +22,25 @@ interface CentralCompatibilityRecoveryContext {
     readonly localDatabase: LiveSyncBaseCore["localDatabase"];
     readonly rebuilder: LiveSyncBaseCore["rebuilder"];
     readonly services: CentralCompatibilityRecoveryServices;
+}
+
+interface PreferredRemoteTweakWriter extends ReplicatorInstance {
+    setPreferredRemoteTweakSettings(setting: ObsidianLiveSyncSettings): Promise<void>;
+}
+
+interface ResolvedRemoteWriter extends ReplicatorInstance {
+    markRemoteResolved(setting: ObsidianLiveSyncSettings): Promise<void>;
+}
+
+function canSetPreferredRemoteTweakSettings(replicator: ReplicatorInstance): replicator is PreferredRemoteTweakWriter {
+    return (
+        "setPreferredRemoteTweakSettings" in replicator &&
+        typeof replicator.setPreferredRemoteTweakSettings === "function"
+    );
+}
+
+function canMarkRemoteResolved(replicator: ReplicatorInstance): replicator is ResolvedRemoteWriter {
+    return "markRemoteResolved" in replicator && typeof replicator.markRemoteResolved === "function";
 }
 
 /**
@@ -126,11 +146,8 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                     let updated = false;
                     await context.services.replicator.runWithActiveReplicatorContext(async (activeContext) => {
                         if (activeContext !== failedContext) return;
-                        const candidate = activeContext.replicator as typeof activeContext.replicator & {
-                            setPreferredRemoteTweakSettings?: (setting: ObsidianLiveSyncSettings) => Promise<void>;
-                        };
-                        if (typeof candidate.setPreferredRemoteTweakSettings !== "function") return;
-                        await candidate.setPreferredRemoteTweakSettings({ ...effectiveSetting });
+                        if (!canSetPreferredRemoteTweakSettings(activeContext.replicator)) return;
+                        await activeContext.replicator.setPreferredRemoteTweakSettings({ ...effectiveSetting });
                         updated = true;
                     });
                     return updated;
@@ -177,11 +194,8 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
         let unlocked = false;
         await context.services.replicator.runWithActiveReplicatorContext(async (activeContext) => {
             if (activeContext !== failedContext) return;
-            const replicator = activeContext.replicator as typeof activeContext.replicator & {
-                markRemoteResolved(setting: ObsidianLiveSyncSettings): Promise<void>;
-            };
-            if (typeof replicator.markRemoteResolved !== "function") return;
-            await replicator.markRemoteResolved(setting);
+            if (!canMarkRemoteResolved(activeContext.replicator)) return;
+            await activeContext.replicator.markRemoteResolved(setting);
             unlocked = true;
         });
         if (unlocked) {

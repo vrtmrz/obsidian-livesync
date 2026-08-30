@@ -5,10 +5,10 @@ import {
     type LiveSyncCouchDBReplicatorEnv,
 } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
 import { createReplicatorDisposer, snapshotRemoteSettings, type ResourceReplicator } from "./shared";
 
-export type PreferredTweakResourceHost = LiveSyncCouchDBReplicatorEnv & LiveSyncJournalReplicatorEnv;
+/** Host environment sufficient to construct either preferred-tweak probe. */
+export type PreferredTweakResourceHost = LiveSyncCouchDBReplicatorEnv;
 
 interface PreferredTweakReplicator extends ResourceReplicator {
     getRemotePreferredTweakValues(setting: RemoteDBSettings): Promise<RemotePreferredTweakResult>;
@@ -24,7 +24,7 @@ function createPreferredTweakProbe(
     };
 }
 
-/** Build an unpublished CouchDB preferred-tweak resource for one host. */
+/** Build an unpublished, independently disposed CouchDB preferred-tweak probe. */
 export function createCouchDBPreferredTweakProbeFactory(host: PreferredTweakResourceHost): PreferredTweakProbeFactory {
     return (setting) => {
         const snapshot = snapshotRemoteSettings(setting);
@@ -32,7 +32,7 @@ export function createCouchDBPreferredTweakProbeFactory(host: PreferredTweakReso
     };
 }
 
-/** Build an unpublished Object Storage preferred-tweak resource for one host. */
+/** Build an unpublished, independently disposed Object Storage preferred-tweak probe. */
 export function createObjectStoragePreferredTweakProbeFactory(
     host: PreferredTweakResourceHost
 ): PreferredTweakProbeFactory {

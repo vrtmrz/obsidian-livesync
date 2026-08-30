@@ -13,6 +13,12 @@ type LocalApplicationActivityOwner = {
     runBoundedLocalApplicationActivity<T>(task: () => T | PromiseLike<T>, options?: { label?: string }): Promise<T>;
 };
 
+function ownsLocalApplicationActivity(value: object): value is LocalApplicationActivityOwner {
+    return (
+        "runBoundedLocalApplicationActivity" in value && typeof value.runBoundedLocalApplicationActivity === "function"
+    );
+}
+
 /**
  * Compose result application, automatic triggers, preflight, and central
  * compatibility recovery around the existing typed Services.
@@ -28,8 +34,9 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
     const { services } = core;
     // Obsidian adds an application-activity owner to its ReplicatorService.
     // Generic hosts retain the former direct-execution fallback.
-    const localApplicationActivityOwner = services.replicator as typeof services.replicator &
-        Partial<LocalApplicationActivityOwner>;
+    const localApplicationActivityOwner = ownsLocalApplicationActivity(services.replicator)
+        ? services.replicator
+        : undefined;
     const resultProcessor = new ReplicateResultProcessor({
         currentSettings: () => services.setting.currentSettings(),
         keyValueDB: services.keyValueDB.kvDB,
@@ -40,7 +47,7 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
             fireAndForget(() => services.replicator.onCloseActiveReplication());
         },
         runLocalApplicationActivity: async (task, options) =>
-            localApplicationActivityOwner.runBoundedLocalApplicationActivity
+            localApplicationActivityOwner
                 ? await localApplicationActivityOwner.runBoundedLocalApplicationActivity(task, options)
                 : await task(),
         services: {

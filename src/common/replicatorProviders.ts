@@ -21,7 +21,6 @@ import {
     type LiveSyncCouchDBReplicatorEnv,
 } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
 import {
     getCouchDBReplicatorConfigurationIdentity,
     getObjectStorageReplicatorConfigurationIdentity,
@@ -40,18 +39,19 @@ import {
     OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
 } from "./centralRemoteAdministration";
 
-export type CentralReplicatorProviderHost = LiveSyncCouchDBReplicatorEnv & LiveSyncJournalReplicatorEnv;
+/** Host environment sufficient to construct every current central provider. */
+export type CentralReplicatorProviderHost = LiveSyncCouchDBReplicatorEnv;
 
 /** Minimal operation required by both central one-shot adapters. */
 interface OneShotOutcomeReplicator extends ReplicatorInstance {
     openOneShotReplicationWithOutcome(setting: RemoteDBSettings, showResult: boolean): Promise<ReplicationOutcome>;
 }
 
-function asOneShotOutcomeReplicator(instance: ReplicatorInstance): OneShotOutcomeReplicator | undefined {
-    const candidate = instance as Partial<OneShotOutcomeReplicator>;
-    return typeof candidate.openOneShotReplicationWithOutcome === "function"
-        ? (instance as OneShotOutcomeReplicator)
-        : undefined;
+function isOneShotOutcomeReplicator(instance: ReplicatorInstance): instance is OneShotOutcomeReplicator {
+    return (
+        "openOneShotReplicationWithOutcome" in instance &&
+        typeof instance.openOneShotReplicationWithOutcome === "function"
+    );
 }
 
 async function runOneShotWithOutcome(
@@ -59,11 +59,10 @@ async function runOneShotWithOutcome(
     setting: RemoteDBSettings,
     showResult: boolean
 ): Promise<ReplicationOutcome> {
-    const replicator = asOneShotOutcomeReplicator(instance);
-    if (!replicator) {
+    if (!isOneShotOutcomeReplicator(instance)) {
         return replicationFailed(new Error("The configured provider does not implement one-shot replication."));
     }
-    return await replicator.openOneShotReplicationWithOutcome(setting, showResult);
+    return await instance.openOneShotReplicationWithOutcome(setting, showResult);
 }
 
 const couchDBUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {

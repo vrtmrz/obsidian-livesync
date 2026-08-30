@@ -15,11 +15,7 @@ import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces
 import type { LiveSyncLocalDBEnv } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
-import type {
-    LiveSyncAbstractReplicator,
-    LiveSyncReplicatorEnv,
-} from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
 import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
 import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
@@ -51,8 +47,6 @@ export class LiveSyncBaseCore<
 >
     implements
         LiveSyncLocalDBEnv,
-        LiveSyncReplicatorEnv,
-        LiveSyncJournalReplicatorEnv,
         LiveSyncCouchDBReplicatorEnv,
         HasSettings<ObsidianLiveSyncSettings>
 {

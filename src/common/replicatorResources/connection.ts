@@ -9,10 +9,10 @@ import {
     type LiveSyncCouchDBReplicatorEnv,
 } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
 import { createReplicatorDisposer, snapshotRemoteSettings } from "./shared";
 
-export type ConnectionResourceHost = LiveSyncCouchDBReplicatorEnv & LiveSyncJournalReplicatorEnv;
+/** Host environment sufficient to construct either central connection probe. */
+export type ConnectionResourceHost = LiveSyncCouchDBReplicatorEnv;
 
 function createCouchDBConnectionProbe(
     replicator: LiveSyncCouchDBReplicator,
@@ -60,7 +60,12 @@ function createObjectStorageConnectionProbe(
     };
 }
 
-/** Build an unpublished CouchDB connection resource for one host. */
+/**
+ * Build an unpublished CouchDB connection probe for one host.
+ *
+ * The probe owns both its concrete Replicator and each connection it opens. It
+ * never publishes that Replicator as the active provider instance.
+ */
 export function createCouchDBConnectionProbeFactory(host: ConnectionResourceHost): ConnectionProbeFactory {
     return (setting) => {
         const snapshot = snapshotRemoteSettings(setting);
@@ -68,7 +73,12 @@ export function createCouchDBConnectionProbeFactory(host: ConnectionResourceHost
     };
 }
 
-/** Build an unpublished Object Storage connection resource for one host. */
+/**
+ * Build an unpublished Object Storage connection probe for one host.
+ *
+ * The probe owns its concrete Replicator and never publishes or replaces the
+ * active provider instance.
+ */
 export function createObjectStorageConnectionProbeFactory(host: ConnectionResourceHost): ConnectionProbeFactory {
     return (setting) => {
         const snapshot = snapshotRemoteSettings(setting);

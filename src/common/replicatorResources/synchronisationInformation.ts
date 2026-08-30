@@ -6,7 +6,12 @@ import {
 import { checkSyncInfo } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import { createReplicatorDisposer, snapshotRemoteSettings } from "./shared";
 
-/** Build an owned CouchDB synchronisation-information verifier for one host. */
+/**
+ * Build an unpublished CouchDB synchronisation-information verifier.
+ *
+ * The resource owns its concrete Replicator and connection, and cannot replace
+ * the active provider instance.
+ */
 export function createCouchDBSynchronisationInformationResourceFactory(
     host: LiveSyncCouchDBReplicatorEnv
 ): SynchronisationInformationResourceFactory {

@@ -19,6 +19,7 @@ import {
     type CentralRemoteAdministrationReplicator,
     type CentralRemoteAdministrationResult,
     type CentralRemoteAdministrationRunner,
+    type ReplicatorInstance,
     type SupportedCapability,
 } from "@vrtmrz/livesync-commonlib/replication";
 
@@ -39,6 +40,19 @@ type CouchDBAdministrationReplicator = CentralRemoteAdministrationReplicator &
     Pick<LiveSyncCouchDBReplicator, "connectRemoteCouchDBWithSetting" | "isMobile">;
 
 type JournalAdministrationClient = Pick<LiveSyncJournalReplicator["client"], "downloadJson">;
+
+function isCentralRemoteAdministrationReplicator(
+    replicator: ReplicatorInstance
+): replicator is CentralRemoteAdministrationReplicator {
+    return (
+        "nodeid" in replicator &&
+        typeof replicator.nodeid === "string" &&
+        "markRemoteResolved" in replicator &&
+        typeof replicator.markRemoteResolved === "function" &&
+        "markRemoteLocked" in replicator &&
+        typeof replicator.markRemoteLocked === "function"
+    );
+}
 
 async function ensureLocalNodeIdentity(
     replicator: CentralRemoteAdministrationReplicator
@@ -116,8 +130,12 @@ async function runCentralRemoteAdministration(
 function requireCouchDBAdministrationOperations(
     replicator: CentralRemoteAdministrationReplicator
 ): asserts replicator is CouchDBAdministrationReplicator {
-    const candidate = replicator as Partial<CouchDBAdministrationReplicator>;
-    if (typeof candidate.connectRemoteCouchDBWithSetting !== "function" || typeof candidate.isMobile !== "function") {
+    if (
+        !("connectRemoteCouchDBWithSetting" in replicator) ||
+        typeof replicator.connectRemoteCouchDBWithSetting !== "function" ||
+        !("isMobile" in replicator) ||
+        typeof replicator.isMobile !== "function"
+    ) {
         throw new Error("The configured CouchDB administration adapter does not provide milestone access.");
     }
 }
@@ -164,14 +182,22 @@ function prepareCouchDBMilestoneReader(
     };
 }
 
+function isJournalAdministrationClient(client: unknown): client is JournalAdministrationClient {
+    return (
+        typeof client === "object" &&
+        client !== null &&
+        "downloadJson" in client &&
+        typeof client.downloadJson === "function"
+    );
+}
+
 function requireJournalAdministrationClient(
     replicator: CentralRemoteAdministrationReplicator
 ): JournalAdministrationClient {
-    const client = (replicator as { readonly client?: JournalAdministrationClient }).client;
-    if (typeof client?.downloadJson !== "function") {
+    if (!("client" in replicator) || !isJournalAdministrationClient(replicator.client)) {
         throw new Error("The configured Object Storage administration adapter does not provide milestone access.");
     }
-    return client;
+    return replicator.client;
 }
 
 function prepareObjectStorageMilestoneReader(
@@ -191,14 +217,31 @@ function prepareObjectStorageMilestoneReader(
     };
 }
 
-const runCouchDBCentralRemoteAdministration: CentralRemoteAdministrationRunner = async (replicator, setting, request) =>
-    await runCentralRemoteAdministration(replicator, setting, request, prepareCouchDBMilestoneReader);
+const runCouchDBCentralRemoteAdministration: CentralRemoteAdministrationRunner = async (
+    replicator,
+    setting,
+    request
+) => {
+    if (!isCentralRemoteAdministrationReplicator(replicator)) {
+        return centralRemoteAdministrationVerificationFailed(
+            CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CAPABILITY_NOT_APPLICABLE
+        );
+    }
+    return await runCentralRemoteAdministration(replicator, setting, request, prepareCouchDBMilestoneReader);
+};
 
 const runObjectStorageCentralRemoteAdministration: CentralRemoteAdministrationRunner = async (
     replicator,
     setting,
     request
-) => await runCentralRemoteAdministration(replicator, setting, request, prepareObjectStorageMilestoneReader);
+) => {
+    if (!isCentralRemoteAdministrationReplicator(replicator)) {
+        return centralRemoteAdministrationVerificationFailed(
+            CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CAPABILITY_NOT_APPLICABLE
+        );
+    }
+    return await runCentralRemoteAdministration(replicator, setting, request, prepareObjectStorageMilestoneReader);
+};
 
 /** CouchDB mutation and milestone postcondition verification capability. */
 export const COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY: SupportedCapability<CentralRemoteAdministrationRunner> =

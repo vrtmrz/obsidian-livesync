@@ -5,10 +5,10 @@ import {
     type LiveSyncCouchDBReplicatorEnv,
 } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
 import { createReplicatorDisposer, snapshotRemoteSettings, type ResourceReplicator } from "./shared";
 
-export type SecuritySeedResourceHost = LiveSyncCouchDBReplicatorEnv & LiveSyncJournalReplicatorEnv;
+/** Host environment sufficient to construct either Security Seed resource. */
+export type SecuritySeedResourceHost = LiveSyncCouchDBReplicatorEnv;
 
 /** Minimal private Replicator surface required by a Security Seed resource. */
 interface SecuritySeedReplicator extends ResourceReplicator {
@@ -28,12 +28,12 @@ function createSecuritySeedResourceFactory(
     };
 }
 
-/** Build an unpublished CouchDB Security Seed resource for one host. */
+/** Build an unpublished, independently disposed CouchDB Security Seed resource. */
 export function createCouchDBSecuritySeedResourceFactory(host: SecuritySeedResourceHost): SecuritySeedResourceFactory {
     return createSecuritySeedResourceFactory(() => new LiveSyncCouchDBReplicator(host));
 }
 
-/** Build an unpublished Object Storage Security Seed resource for one host. */
+/** Build an unpublished, independently disposed Object Storage Security Seed resource. */
 export function createObjectStorageSecuritySeedResourceFactory(
     host: SecuritySeedResourceHost
 ): SecuritySeedResourceFactory {

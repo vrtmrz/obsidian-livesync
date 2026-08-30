@@ -1,5 +1,12 @@
 import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
+/**
+ * Closeable surface of a concrete Replicator owned by one private resource.
+ *
+ * It deliberately exposes no active-provider controls: the resource may use
+ * the helper for one bounded operation, then must dispose it without
+ * publishing or replacing the active Replicator.
+ */
 export interface ResourceReplicator {
     closeReplication(): void | Promise<void>;
 }
