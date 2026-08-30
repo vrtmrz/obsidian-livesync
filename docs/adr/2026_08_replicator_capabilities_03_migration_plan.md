@@ -217,8 +217,8 @@ sequence rather than a second description of the implemented state.
 Make active creation a private, exhaustive `ReplicatorService` operation with
 one configuration identity and replacement policy. Migrate every non-active caller
 before restricting `getNewReplicator()`: CouchDB connection and passphrase
-checks, Object Storage connection and preferred-tweak trials, isolated P2P
-Setup, CLI commands, and other host compositions. Prove that every probe leaves
+checks, Object Storage connection and preferred-tweak trials, P2P Setup
+signalling trials, CLI commands, and other host compositions. Prove that every probe leaves
 the active main Replicator and adjunct P2P transport unchanged.
 
 Migrate Streaming Fetch to the owned CouchDB initial-transfer dependencies
@@ -236,10 +236,15 @@ decision has been made.
 
 The current host composition has migrated CouchDB and Object Storage connection
 checks, passphrase inspection, preferred-tweak reads, CLI remote status and
-administration, isolated P2P Setup, and Streaming Fetch Security Seed access to
-owned resources or focused services. Active replacement is serialised, context
-acquisition waits for a queued replacement, late candidates are fenced, and
-short-lived resources are disposed.
+administration, P2P Setup, and Streaming Fetch Security Seed access away from
+active construction and towards owned resources or focused services. Active
+replacement is serialised, context acquisition waits for a queued replacement,
+late candidates are fenced, and short-lived resources are disposed.
+
+Stage 5 made the P2P Setup trial separately owned, but did not yet arbitrate it
+against the active relay binding held by the stable P2P service. The Stage 7
+review identified and completed that remaining owner boundary; it did not
+reopen the active-construction contract.
 
 This position completes the Stage 5 construction and probe boundary. It is not
 itself a release decision: the active-publication and truthful-attempt work in
@@ -291,8 +296,12 @@ consumer-migration proposal:
   supports its real download workflow, and exposes no central facility;
 - ordinary central preparation and Streaming Fetch use owned Security Seed
   resources which dispose their unpublished compatibility instances;
-- CLI synchronisation diagnoses lock and clean rejection from the exact outcome
-  while preserving the existing success and failure return policy; and
+- CLI synchronisation diagnoses lock and clean rejection from the exact outcome.
+  Established successful output and exit behaviour are preserved. Typed
+  remote-administration verification failures return non-zero by default;
+  `--compat-remote-admin-exit-zero` restores the former zero result only for
+  returned verification failures, while thrown mutation failures remain
+  non-zero; and
 - Journal unavailable sync-parameter reads cannot enter the create-and-upload
   branch required only by explicit absence.
 
@@ -418,6 +427,49 @@ database contract, and add another abstraction only where the inventory shows
 a concrete lifetime or testability benefit. These recorded questions do not
 widen Stage 6 or make an anticipatory database abstraction part of this change.
 
+### Contracted Stage 7 review position
+
+The structural review retains the contracted service boundaries. The active
+path remains independent of `LiveSyncAbstractReplicator`; the partial
+compatibility facade, focused maintenance consumers, and in-process database
+reset remain bounded deferred work. `ReplicatorService` and
+`ReplicationService` continue to delegate their complex state and sequencing
+to the focused collaborators listed above, so another physical service split
+would add indirection without removing a current responsibility or improving a
+current test seam.
+
+The review did identify five bounded behavioural corrections inside existing
+owners:
+
+- Security Seed resources force a fresh provider read for their settings
+  snapshot instead of accepting process-cached synchronisation parameters as
+  current evidence;
+- local-database close, reset, failed-initialisation rollback, and
+  physical-database close clean-up share and await the existing
+  active-Replicator retirement for one physical database lifetime;
+- disposing an unused Journal resource does not report that replication
+  closed, while a Replicator lifecycle message is emitted only when a real
+  active publication is retired and no longer mislabels unload as database
+  reset;
+- unattended P2P no-target, authentication, tweak-mismatch, and
+  overlapping-transfer settlements retain informational diagnostics without
+  creating Notice-level presentation; and
+- P2P Setup receives the stable service's `P2PConnectionProbeAdmission` view.
+  Compatible active relay bindings are observed, an active binding which does
+  not cover the requested relay set is blocked with a stable decision code,
+  and only an idle owner runs and awaits the caller-owned raw trial.
+
+The last correction uses `P2PRoomSessionOwner`'s existing lifecycle queue and
+adds no room owner, global relay lease, reference count, or raw transport
+disposal policy. Every maintained production opening of the P2P Setup dialogue
+passes through one host-owned `SetupManager` seam, which injects the admission
+view explicitly. The decision code remains separate from the LiveSync-owned
+English presentation message.
+
+These corrections close ownership and presentation gaps found by the review;
+they do not add another generic capability, remote resource, probe framework,
+or provider role. The target matrices in Part 1 therefore remain unchanged.
+
 ## Verification
 
 ### Commonlib unit and type-contract tests
@@ -435,8 +487,9 @@ Cover:
   candidate settlement;
 - unchanged-identity retention, changed-identity replacement, idempotent
   reservation release, and close ordering;
-- probes which cannot replace the active Replicator or P2P service and dispose
-  owned resources;
+- probes which cannot replace the active Replicator or P2P service, including
+  P2P Setup observation and blocking without trial construction, and idle
+  admission which awaits complete disposal of the caller-owned trial;
 - the deliberately narrow active-transfer stop request, including work it
   does not claim to cancel;
 - CouchDB compatibility and transfer using the same owned OneShot connection;
@@ -445,9 +498,13 @@ Cover:
   and Continuous reassessment on newly opened CouchDB connections;
 - Journal synchronisation-parameter reads distinguishing explicit absence from
   unavailability and never writing after the latter;
-- cohesive central administration and its truthful mutation settlement; and
+- cohesive central administration and its truthful mutation settlement;
 - the narrow non-owning P2P active adapter, including download without a
-  synthetic upload or central facility.
+  synthetic upload or central facility;
+- local-database retirement sharing the active owner boundary across reset and
+  close paths; and
+- caller-authority preservation for unattended P2P presentation and truthful
+  Journal and active-lifecycle closure diagnostics.
 
 ### Self-hosted LiveSync unit tests
 
@@ -468,17 +525,21 @@ Cover:
 - P2P AutoStart cancellation across suspension, bounded advertisement waiting,
   accepted peers without unattended dialogues, remote-broadcast prerequisites,
   session-demand reference counts, and overlapping peer policies;
-- the seven P2P service views sharing one room owner without exposing a raw
-  host, room, or concrete Replicator;
+- the focused P2P service views sharing one room owner without exposing a raw
+  host, room, or concrete Replicator, including connection-probe admission;
 - session replacement fencing callbacks, clients, temporary decisions,
   advertisements, and database-bound feeds while retaining persisted decisions;
 - counterpart RPC authorisation and broadcast progress preserving no-dialogue
   authority;
-- Setup and settings validation through probes;
+- Setup and settings validation through owned resources or owner-arbitrated
+  P2P admission;
 - exact failed-context mismatch, unlock, and cleaned-remote recovery, including
   rejection after active replacement;
 - CLI lock diagnostics from the exact finite outcome rather than mutable fields
   on a later active Replicator;
+- CLI process exit codes for successful administration, returned verification
+  failure with and without `--compat-remote-admin-exit-zero`, and thrown
+  mutation failure;
 - first-device and additional-device initialisation for each current provider;
 - P2P as the main remote and as an adjunct transport; and
 - CLI, WebApp, and WebPeer composition against the same contracts, including
@@ -492,9 +553,11 @@ waiting for the periodic interval, ordinary CouchDB start-up, and P2P start-up
 without an unexpected selection dialogue or transport replacement. P2P
 validation also covers an accepted configured peer advertising after room open,
 a watched peer whose remote side broadcasts, and suspension before a delayed
-AutoStart callback. Object Storage validation must also confirm that a
-temporarily unavailable synchronisation-parameter read does not upload a new
-Security Seed.
+AutoStart callback. A focused P2P Setup check must also cover an active room
+with the same relay set, an attempted additional relay which is blocked without
+closing that room, and an idle trial which releases its short-lived resources.
+Object Storage validation must also confirm that a temporarily unavailable
+synchronisation-parameter read does not upload a new Security Seed.
 
 No temporary stage is a release candidate. Release readiness requires the
 target capability matrix, the contracted core and in-scope consumer migration,

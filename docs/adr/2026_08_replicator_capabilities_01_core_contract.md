@@ -393,6 +393,12 @@ same upper bound and expose only relevant permissions. An unattended path may
 use persisted or automatic acceptance policy, but cannot obtain local
 interaction authority implicitly.
 
+The same authority bounds presentation. An unattended P2P path may retain an
+informational diagnostic, but no-target, authentication, tweak-mismatch, and
+overlapping-transfer settlements must not promote themselves to a Notice.
+User-initiated paths retain their existing Notice-level presentation. This is
+a caller-authority rule, not a new process-wide presentation framework.
+
 Outcomes do not collapse failure into `void` or `boolean`:
 
 ```typescript
@@ -506,6 +512,9 @@ decision produced by one publication to its replacement.
 
 An edited-settings trial is different: it owns an independent Replicator and
 connection, never borrows the active publication, and disposes both resources.
+An owned Security Seed resource also forces a fresh provider read for its
+settings snapshot. Reusing a process-cached synchronisation parameter would
+turn an observation made for an earlier flow into current trial evidence.
 
 Application suspension is a reversible host pause, not an ownership
 transition. `ReplicatorService` orders the provider's transfer-stop request but
@@ -530,12 +539,14 @@ replication batch loop consume the same effective signal. An already-started
 atomic database operation may settle before cancellation completes, but no new
 batch is started afterwards.
 
-`getNewReplicator()` is not a general temporary-instance API. Setup and settings
-flows request narrow probes, such as connection, preferred-tweak, or isolated
-P2P signalling validation. A resource-returning factory returns an owned
-resource with idempotent asynchronous `dispose()`. Trial settings are passed
-to the probe itself and cannot silently read active settings. A probe cannot
-replace the active Replicator or the P2P service.
+`getNewReplicator()` is not a general temporary-instance API. CouchDB and
+Object Storage Setup and settings flows request narrow connection or
+preferred-tweak probes. A resource-returning factory returns an owned resource
+with idempotent asynchronous `dispose()`. Trial settings are passed to the
+probe itself and cannot silently read active settings. P2P Setup instead uses
+the stable service's connection-probe admission described in Part 2. Only its
+idle continuation constructs and disposes a short-lived raw signalling trial.
+Neither form can replace the active Replicator or the P2P service.
 
 Streaming Fetch receives an owned Security Seed resource bound to its settings
 snapshot. The current compatibility implementation may construct an
@@ -597,6 +608,13 @@ an exhaustive capability table imposed on every Replicator.
 The public contract is named `CentralRemoteAdministration*` because every
 current action, observation, failure, and postcondition belongs to that central
 milestone protocol. Established CLI command names remain unchanged.
+
+The P2P Setup signalling check is not the P2P entry in the provider-owned
+connection-probe row. P2P has no central connection resource; its
+`P2PConnectionProbeAdmission` is a focused view of the independently composed
+P2P service. It compares requested relays with the binding held by the existing
+room-session owner as specified in Part 2; it adds neither a process-global
+lease nor a second owner.
 
 The following concerns deliberately stay outside this capability matrix:
 

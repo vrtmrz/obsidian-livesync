@@ -88,27 +88,29 @@ temporary decisions, advertisements, clients, listeners, and feeds do not.
 The underlying WebRTC peer remains under Trystero's shared-peer ownership as
 specified by the accepted lifecycle record.
 
-### Expose seven narrow contract views
+### Expose narrow contract views
 
 The service does not expose a room session, raw host, or concrete Replicator to
-ordinary consumers. It supplies these seven views over the same owner:
+ordinary consumers. It supplies these views over the same owner:
 
 1. `P2PTransportLifecycle` observes room state and accepts explicit,
    user-owned connect or disconnect requests.
-2. `P2PPeerDirectory` supplies peer snapshots and peer arrival or departure.
-3. `P2PPeerAdmission` evaluates incoming peers and administers temporary or
+2. `P2PConnectionProbeAdmission` arbitrates a complete Setup signalling check
+   against the current relay binding without exposing or replacing the room.
+3. `P2PPeerDirectory` supplies peer snapshots and peer arrival or departure.
+4. `P2PPeerAdmission` evaluates incoming peers and administers temporary or
    persisted acceptance decisions.
-4. `P2PTargetedTransfer` performs pull, requested push, and bidirectional
+5. `P2PTargetedTransfer` performs pull, requested push, and bidirectional
    finite synchronisation against an explicit peer, and executes the persisted
    configured-target set without interactive peer selection.
-5. `P2PChangeRelay` administers peer watch and local-change broadcast.
-6. `P2PConfigurationExchange` performs peer configuration exchange under its
+6. `P2PChangeRelay` administers peer watch and local-change broadcast.
+7. `P2PConfigurationExchange` performs peer configuration exchange under its
    declared interaction authority.
-7. `P2PDiagnostics` supplies status and RTC diagnostics without exposing raw
+8. `P2PDiagnostics` supplies status and RTC diagnostics without exposing raw
    room or peer connections.
 
-These are stable service-level contract views, not seven wrapper allocations or
-independent state owners. One implementation may satisfy several views.
+These are stable service-level contract views, not independent wrapper or state
+owners. One implementation may satisfy several views.
 Advertisement and admission state remain under one peer-access owner, while
 pull, push, and bidirectional transfer remain under one transfer owner. A
 consumer which needs more than one view receives those views explicitly; it
@@ -303,24 +305,38 @@ the trigger-aware readiness policy rather than bypassing readiness, pending-file
 settlement, clean-up, or version gates. Fetch and Rebuild retain their
 separately authorised bypasses.
 
-### Keep probes isolated from the active service
+### Arbitrate Setup signalling checks through the room owner
 
-Setup and settings use a separately owned `P2PConnectionProbe`. It does not
-borrow or replace the current room session, and its `dispose()` cannot close the
-active service. Because the current implementation may use process-global
-relay sockets, a probe must either allocate isolated transport resources or the
-host must reject concurrent probing while the active service uses those
-sockets. It must not pause or close active relay sockets as a side effect of a
-short-lived check.
+The current Setup check establishes only whether its signalling transport can
+be opened. It does not validate peer discovery, room credentials against
+another device, or a TURN or WebRTC data path. The host therefore receives a
+`P2PConnectionProbeAdmission` view over the existing room-session owner instead
+of constructing an uncoordinated second transport.
 
-The probe owns the same kind of lifetime controller as a room session, and
-`dispose()` aborts and settles its work before releasing its own room. This
-makes probe retirement bounded, but it does not turn process-global Trystero
-relay state into isolated state. Runtime acquisition therefore reuses or
-observes a compatible active session where the probe requires no second room,
-allows a separately owned logical room only when the effective relay binding is
-compatible, and otherwise returns a blocked result. It does not silently retire
-the active service to make an incompatible probe possible.
+The admission receives the requested relay settings and a continuation which
+owns one short-lived raw signalling trial. The room owner serialises the whole
+decision on its existing lifecycle queue:
+
+- a serving room whose active relay set covers every requested relay returns
+  `observed-active` without entering the continuation;
+- a serving room which does not cover the requested relay set returns the
+  stable `active-p2p-relay-binding-conflict` decision code without entering the
+  continuation; and
+- an idle owner runs the continuation and does not settle admission until the
+  caller has disposed the raw Replicator and its temporary database.
+
+Relay admission uses the same split-and-trim projection as transport setup,
+then compares de-duplicated sets. It does not infer URI equivalence which the
+Trystero relay key does not implement. The continuation must not await another
+lifecycle transition on the same service while it holds this serialisation
+boundary.
+
+This view adds neither a second room owner nor a process-global relay lease.
+It does not change raw `TrysteroReplicator.dispose()` semantics, pause or close
+an active relay, or silently retire the active service to make an incompatible
+trial possible. A future check which genuinely needs peer-, room-, TURN-, or
+WebRTC-level evidence requires its own bounded contract rather than widening
+this signalling-only result implicitly.
 
 ### Keep provider composition explicit
 
@@ -332,8 +348,9 @@ and does not publish a second P2P lifecycle owner.
 
 ## Consequences
 
-- P2P room, peer, watch, acceptance, transfer, configuration, and diagnostics
-  have one explicit owner and seven focused contracts.
+- P2P room, signalling-check admission, peer, watch, acceptance, transfer,
+  configuration, and diagnostics have one explicit owner and focused
+  contracts.
 - Disposing an active adapter cannot close a policy-owned or adjunct room.
 - Explicit user disconnect has a clear veto boundary and cannot be undone by
   AutoStart or a finite operation.
@@ -341,7 +358,9 @@ and does not publish a second P2P lifecycle owner.
 - Settings and local database replacement cannot publish mixed-session state.
 - Reconnects do not repeat completed baseline transfers merely because the room
   epoch changed.
-- Setup probes can validate P2P without mutating the active transport.
+- Setup can observe a compatible active signalling binding or run an idle
+  trial without mutating the active transport; an incompatible active binding
+  is reported explicitly.
 
 ## Non-goals
 
