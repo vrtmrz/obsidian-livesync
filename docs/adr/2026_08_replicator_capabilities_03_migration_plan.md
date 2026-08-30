@@ -19,8 +19,8 @@ another runtime contract.
 Proposed. The stages below are an implementation and verification order, not
 independently releasable states. Commonlib and Self-hosted LiveSync must not
 publish temporary support boundaries described by an incomplete stage. A
-release follows only after the target matrix, ownership boundaries, and all
-production-consumer migrations in Parts 1 and 2 are complete.
+release follows only after the target matrix, ownership boundaries, and the
+contracted production-consumer migrations in Parts 1 and 2 are complete.
 
 ## Migration rules
 
@@ -215,7 +215,7 @@ sequence rather than a second description of the implemented state.
 ## Stage 5: separate active construction and flow-specific probes
 
 Make active creation a private, exhaustive `ReplicatorService` operation with
-an explicit same-kind rebind-or-replace policy. Migrate every non-active caller
+one configuration identity and replacement policy. Migrate every non-active caller
 before restricting `getNewReplicator()`: CouchDB connection and passphrase
 checks, Object Storage connection and preferred-tweak trials, isolated P2P
 Setup, CLI commands, and other host compositions. Prove that every probe leaves
@@ -226,32 +226,197 @@ defined in Part 1. Add replacement-fence, late-settlement,
 configuration-identity, cache-invalidation, and probe-disposal tests before
 making active construction private.
 
-## Stage 6: migrate safety-sensitive and provider-specific consumers
+### Implementation position after Stage 5
 
-Migrate Setup, Rebuilder, tweak review, remote-size inspection, on-demand Chunk
-retrieval, migration inspection, maintenance, and abort commands. Central
-mutations settle truthfully before Rebuilder continuation. Compromised-Chunk
-inspection uses `observed` or `unavailable`; an offline check is never zero.
-Object Storage and P2P no longer supply dummy integrity counts, remote Chunk
-results, or Security Seeds through the compatibility facade.
+The provider-defined active-construction path is now private to
+`ReplicatorService`. The public `getNewReplicator` handler remains as a
+compatibility surface, but current Self-hosted LiveSync production code no
+longer calls it. Its removal belongs to Stage 7 after any external compatibility
+decision has been made.
 
-Move local node identity initialisation out of the provider facade. Add
-idempotent asynchronous disposal and settlement tests, same-kind profile
-rebind-or-replace tests, and bounded activity around the host-owned garbage-
-collection workflow's CouchDB OneShots. Each consumer migration removes the
-corresponding generic `remoteType` or `instanceof` feature branch and adds a
-focused test.
+The current host composition has migrated CouchDB and Object Storage connection
+checks, passphrase inspection, preferred-tweak reads, CLI remote status and
+administration, isolated P2P Setup, and Streaming Fetch Security Seed access to
+owned resources or focused services. Active replacement is serialised, context
+acquisition waits for a queued replacement, late candidates are fenced, and
+short-lived resources are disposed.
 
-Transport-specific settings may continue to display provider kind. Provider
-identity is valid for labels and provider-specific configuration; it is not a
-generic feature test.
+This position completes the Stage 5 construction and probe boundary. It is not
+itself a release decision: the active-publication and truthful-attempt work in
+Stage 6 remains required. Complete retirement of the compatibility facade is
+not a prerequisite for issue 1140.
 
-## Stage 7: retire the giant compatibility facade
+## Stage 6: harden the active lifecycle and exact attempt outcome
 
-After every current consumer has migrated, stop requiring unsupported methods
-on `LiveSyncAbstractReplicator`. Retain or remove compatibility exports at the
-next Commonlib compatibility boundary. Do not retain dummy methods only because
-the former abstract base declared them.
+Replace the active dependency on `LiveSyncAbstractReplicator` with the small
+`ReplicatorInstance` contract. Retain a publication only while its provider and
+private configuration identity are unchanged. Every changed identity fences
+new admission, requests supported transfer cancellation, drains admitted work,
+closes the old instance, and only then constructs and publishes a replacement.
+
+Reserve the exact publication around typed finite dispatch and the currently
+required workflow-local directional attempts. Release before recovery or a
+dialogue. CouchDB and Journal record an immutable compatibility decision inside
+the attempt which owns the connection or borrowed client, and a later mutation
+must re-admit that failed context. Retry and Continuous paths reassess on each
+new CouchDB connection without adding another logical connection.
+
+Preserve Journal storage read states through `getSyncParameters()`. Only an
+explicit `not-found` result permits `SyncParamsHandler` to create and upload new
+synchronisation parameters. An unavailable read becomes a fetch failure and
+must not regenerate the shared Security Seed. This fixes issue 1147 within the
+owned-observation boundary rather than adding another Replicator capability.
+
+### Contracted Stage 6 implementation position
+
+The retained implementation is deliberately smaller than the earlier complete
+consumer-migration proposal:
+
+- `ReplicatorInstance` contains only initialisation, `openReplication`,
+  transfer termination, and close;
+- provider definitions retain user-initiated and unattended OneShot runners,
+  an explicit Continuous support decision, readiness, transfer stop, the four
+  owned remote resources, and one optional cohesive central-remote administration
+  runner;
+- every changed configuration identity replaces the active instance; there is
+  no same-instance rebind policy;
+- typed finite dispatch reserves the exact readiness-tested publication and
+  releases it before failure recovery;
+- CouchDB and Journal carry only a rejected attempt-local compatibility
+  decision into the failure outcome, so a transport failure cannot reuse old
+  mutable fields;
+- mismatch updates, unlock, and cleaned-remote reconciliation re-admit the
+  failed publication before remote mutation;
+- P2P uses a narrow non-owning active adapter, takes the same typed finite path,
+  supports its real download workflow, and exposes no central facility;
+- ordinary central preparation and Streaming Fetch use owned Security Seed
+  resources which dispose their unpublished compatibility instances;
+- CLI synchronisation diagnoses lock and clean rejection from the exact outcome
+  while preserving the existing success and failure return policy; and
+- Journal unavailable sync-parameter reads cannot enter the create-and-upload
+  branch required only by explicit absence.
+
+The active path no longer depends on the giant facade. Existing maintenance,
+remote-size, on-demand Chunk, migration-inspection, and compatibility consumers
+may still use focused structural checks or the legacy facade. Their complete
+migration, local-node-identity redesign, generic milestone extraction, and
+in-process local-database reset redesign are deferred unless a separate bounded
+change proves that they are required.
+
+Each production correction has a focused regression. The verification section
+distinguishes local source and packed-consumer evidence from registry,
+real-runtime, and release validation.
+
+### Active-publication quiescing boundary
+
+Commonlib implements the publication-scoped callback reservation defined in
+Part 1 for finite provider dispatch, central-remote administration, exact
+recovery mutation, and the workflow-local directional attempts which use the
+active instance. Invocation queues its admission decision in the same order as
+replacement and disposal. The publication object is its private generation
+identity. Once admitted, release is idempotent, private, and independent of
+that queue so quiescing cannot prevent the operation which allows its own drain
+to settle.
+
+Every switch follows the same order: fence admission, request supported
+transfer cancellation, drain admitted callbacks, close, then publish another
+context. An unchanged provider and configuration identity keeps the existing
+publication.
+
+The first implementation regressions cover:
+
+- replacement waiting for an admitted exact-context task while ignoring an
+  unrelated bounded activity;
+- context acquisition waiting for a queued replacement rather than returning a
+  stale or intermediate publication;
+- rejecting central-remote administration releasing its reservation before
+  replacement continues;
+- finite failure recovery starting only after publication release;
+- directional workflow retry releasing and then re-admitting the same context;
+  and
+- terminal unload draining admitted work before Replicator and local-database
+  close, while reversible suspension retains the publication.
+
+Keep readiness, failure presentation, dialogue, independently owned trial
+resources, P2P room-session demand, and Continuous replication outside this
+reservation. The callback TSDoc forbids awaiting a lifecycle transition which
+would wait for the same admission to settle.
+
+## Stage 7: perform a bounded structural review
+
+Confirm that the contracted core is minimum and robust before a commit or
+release decision. The active path must stay independent of
+`LiveSyncAbstractReplicator`, but complete migration of every compatibility
+consumer is separate work. Remove a dummy or abstract requirement only when
+its current callers have a truthful alternative; do not turn facade retirement
+into a condition for issue 1140.
+
+The retained compatibility surface includes the broad
+`LiveSyncBaseCore.replicator` view and concrete central adapters required by
+maintenance and migration code. It is explicitly a partial compatibility view,
+not the active provider contract. P2P's active adapter does not inherit it.
+
+CouchDB and Object Storage Journal both have a real central milestone document,
+but that fact alone does not justify a generic store. Extract a focused contract
+only when a second current caller demonstrates the same ownership and mutation
+semantics. P2P has no central milestone document and must not receive a stub or
+synthetic implementation.
+
+The final structural review retains the following minimum boundaries:
+
+- central provider definitions remain outside `LiveSyncBaseCore`; its thin
+  registration method remains as the construction-order composition boundary;
+- P2P registration remains with the feature which owns the stable P2P service;
+- `ReplicatorService` and `ReplicationService` remain cohesive services. Their
+  complex state and policy already reside in `ActiveReplicatorState`,
+  `TypedReplicationCoordinator`, the readiness evaluator,
+  `RemoteResourceResolver`, and `CentralRemoteAdministrationCoordinator`, so
+  another split would not improve the current test seams;
+- every provider explicitly declares Continuous support or inapplicability;
+- `IReplicatorService` exposes only acquired or admitted active-context access.
+  A protected synchronous inspector remains for focused lifecycle tests;
+- central-compatibility statuses, recorders, and projection helpers remain
+  package-internal. Only stable rejection reason codes and public recovery
+  value types remain package-index exports; and
+- redundant recovery-kind data, unused active-state identity matching, and the
+  externally visible legacy administration lookup helper are removed.
+
+LiveSync implements its optional central-remote administration facility through one
+shared protocol executor and provider-specific milestone readers. Provider
+composition selects the reader; a reader validates only the structural
+operations required for its CouchDB connection or Journal client before any
+remote mutation. It does not impose concrete-class identity on the generic
+runner contract.
+
+The unpublished public contract, provider field, coordinator, and service
+operation use the `CentralRemoteAdministration*` name because their complete
+protocol is central-milestone-specific. The central OneShot adapters use a
+separate local structural operation instead of concrete-class identity. Stable
+capability-kind comparisons use `CAPABILITY_SUPPORT_KINDS`, and unavailable
+capabilities settle once without a redundant post-narrowing check.
+
+Provider-specific configuration identities remain explicit projections of the
+settings which bind each adapter. They are not replaced with a generic identity
+builder: the current URL normalisation and setting lists are clearer at the
+provider boundary, and changing the shared header parser is separate work.
+
+The review records, but does not prejudge, whether maintained Rebuild and Fetch
+workflows still require an in-process local-database reset. Prefer a Flag File and restart
+boundary if it can preserve user intent, CLI behaviour, failure recovery, and
+the maintained test workflows without losing a supported continuation path.
+Until that evidence exists, retain the current reset contract and its explicit
+Replicator-retirement ordering rather than assuming that every workflow has
+already moved to a restart.
+
+It also records consumers which retain `LiveSyncLocalDB`, its physical PouchDB
+handle, or its managers. If broad retention still leaks ownership after the
+consumer migrations, keep the physical handle and teardown authority in
+`LiveSyncLocalDB`, and expose only the smallest read-only view or
+generation-bound operation contract required by each consumer. Do not cache a
+detached handle snapshot across reset. Preserve the current single active
+database contract, and add another abstraction only where the inventory shows
+a concrete lifetime or testability benefit. These recorded questions do not
+widen Stage 6 or make an anticipatory database abstraction part of this change.
 
 ## Verification
 
@@ -260,21 +425,29 @@ the former abstract base declared them.
 Cover:
 
 - exhaustive host-composed definitions for CouchDB, Object Storage, and P2P;
-- complete support declarations and matching runtime roles;
+- the four-method active `ReplicatorInstance` contract and provider-owned
+  runtime roles;
 - user-initiated, unattended, blocked, partial, cancelled, and failed OneShot
   outcomes;
 - truthful Object Storage stop or transfer failure and headless P2P outcomes;
-- observed and unavailable compromised-Chunk results, including offline;
-- active, retiring, disposed, and replacement-published states, including
-  rejection of new work during retirement and late settlement;
-- same-kind rebind or replacement, configuration-identity invalidation,
-  idempotent asynchronous disposal, and settlement ordering;
+- active, quiescing, disposed, and replacement-published states, including
+  rejection of new work during retirement, acquisition waiting, and late
+  candidate settlement;
+- unchanged-identity retention, changed-identity replacement, idempotent
+  reservation release, and close ordering;
 - probes which cannot replace the active Replicator or P2P service and dispose
   owned resources;
 - the deliberately narrow active-transfer stop request, including work it
   does not claim to cancel;
-- central full-transfer and remote-administration boundaries; and
-- provider-specific P2P, CouchDB, and journal facets.
+- CouchDB compatibility and transfer using the same owned OneShot connection;
+- Journal compatibility and transfer using one settings-bound borrowed client;
+- attempt-local accepted, rejected, and not-assessed decisions, including retry
+  and Continuous reassessment on newly opened CouchDB connections;
+- Journal synchronisation-parameter reads distinguishing explicit absence from
+  unavailability and never writing after the latter;
+- cohesive central administration and its truthful mutation settlement; and
+- the narrow non-owning P2P active adapter, including download without a
+  synthetic upload or central facility.
 
 ### Self-hosted LiveSync unit tests
 
@@ -302,6 +475,10 @@ Cover:
 - counterpart RPC authorisation and broadcast progress preserving no-dialogue
   authority;
 - Setup and settings validation through probes;
+- exact failed-context mismatch, unlock, and cleaned-remote recovery, including
+  rejection after active replacement;
+- CLI lock diagnostics from the exact finite outcome rather than mutable fields
+  on a later active Replicator;
 - first-device and additional-device initialisation for each current provider;
 - P2P as the main remote and as an adjunct transport; and
 - CLI, WebApp, and WebPeer composition against the same contracts, including
@@ -315,12 +492,15 @@ waiting for the periodic interval, ordinary CouchDB start-up, and P2P start-up
 without an unexpected selection dialogue or transport replacement. P2P
 validation also covers an accepted configured peer advertising after room open,
 a watched peer whose remote side broadcasts, and suspension before a delayed
-AutoStart callback.
+AutoStart callback. Object Storage validation must also confirm that a
+temporarily unavailable synchronisation-parameter read does not upload a new
+Security Seed.
 
 No temporary stage is a release candidate. Release readiness requires the
-target capability matrix, production-consumer migration, focused downstream
-checks with the exact packed Commonlib artefact, and the real-runtime checks
-appropriate to the changed boundary.
+target capability matrix, the contracted core and in-scope consumer migration,
+focused downstream checks with the exact packed Commonlib artefact, and the
+real-runtime checks appropriate to the changed boundary. Complete legacy-facade
+retirement remains a separately reviewed compatibility change.
 
 ## References
 
@@ -330,3 +510,4 @@ appropriate to the changed boundary.
 - [P2P Transport Compatibility Controls](2026_08_p2p_transport_compatibility.md)
 - [Bounded Remote Activity](2026_07_bounded_remote_activity.md)
 - [Self-hosted LiveSync issue 1140](https://github.com/vrtmrz/obsidian-livesync/issues/1140)
+- [Self-hosted LiveSync issue 1147](https://github.com/vrtmrz/obsidian-livesync/issues/1147)

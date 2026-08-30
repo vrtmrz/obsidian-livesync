@@ -35,8 +35,9 @@ remote status, integrity inspection, and connected-device inspection.
 
 These operations do not share one support boundary:
 
-- CouchDB supports unattended OneShot Sync, Continuous replication, central
-  remote administration, and CouchDB-specific inspection and maintenance.
+- CouchDB supports unattended OneShot Sync, Continuous replication,
+  central-remote administration, and CouchDB-specific inspection and
+  maintenance.
 - Object Storage supports finite journal synchronisation, central reset and
   lock Metadata, full upload and download, and storage-size inspection. It has
   no continuous changes feed, CouchDB Chunk source, CouchDB integrity
@@ -244,12 +245,13 @@ a runtime plug-in registry or behaviour for unknown provider kinds.
 Each provider definition supplies:
 
 - canonical kind and diagnostic name;
-- complete support metadata for the current catalogue;
 - active Replicator construction;
-- provider configuration identity and an explicit same-kind rebind-or-replace
-  policy;
-- flow-specific probe and initial-transfer dependency factories; and
-- provider-specific entry points required by existing current flows.
+- a configuration predicate and private configuration identity;
+- explicit user-initiated and unattended OneShot runners;
+- readiness requirements, an explicit Continuous support decision, and a
+  transfer-stop runner;
+- the exhaustive current remote-resource catalogue; and
+- an optional cohesive central-remote administration runner.
 
 The host composes CouchDB and Object Storage definitions directly. A module is
 retained only when it owns separate state or behaviour; a factory-registration-
@@ -280,35 +282,62 @@ persistence/profile boundary. Capability selection then uses that canonical
 kind; it never infers CouchDB by truthiness or by a negative test such as
 'neither Object Storage nor P2P'.
 
-If a provider caches effective connection settings, its declared rebind or
-replacement policy keeps the active adapter current after a same-kind profile
-change. Reconciliation is serialised with active work and leaves no old
-credentials, Security Seed state, journal checkpoint, adapter cache, or
-diagnostic connection reachable from the reconciled handle.
+The private configuration identity covers every effective setting which binds
+the active adapter. The active publication is retained only while both the
+provider and identity are unchanged. Every changed identity follows the same
+serialised replacement transition; there is no same-instance rebind branch.
 
-### Separate exhaustive support metadata from narrow runtime roles
+### Keep the active contract small and compose the differing roles
 
-Every provider definition contains a required support record over the complete
-current catalogue. An active Replicator exposes only the narrow roles marked as
-supported by its definition. This gives compile-time completeness without a
-giant runtime facade or a collection of Boolean flags.
+The active object implements only the lifecycle and transport primitives which
+are real for CouchDB, Object Storage Journal, and P2P:
 
-The generic catalogue covers user-initiated and unattended OneShot Sync,
-ordinary long-lived Continuous replication, full upload and download, central
-reset and lock administration, preferred-tweak Metadata read and write,
-on-demand remote Chunk reads, remote storage status, compromised-Chunk
-inspection, central Security Seed, and a request to stop active transfer.
+```typescript
+interface ReplicatorInstance {
+    initializeDatabaseForReplication(): Promise<boolean>;
+    openReplication(
+        setting: RemoteDBSettings,
+        keepAlive: boolean,
+        showResult: boolean,
+        ignoreCleanLock: boolean
+    ): Promise<void | boolean>;
+    terminateSync(): void | Promise<void>;
+    closeReplication(): void | Promise<void>;
+}
+```
 
-Full upload/download, reset/lock, and Metadata read/write remain separate roles.
-Provider initialisation remains flow-specific: CouchDB may create a database,
-whereas Object Storage prepares its Security Seed and does not provision a
-bucket. Provider-specific CouchDB maintenance, Object Storage journal
-checkpoint maintenance, and P2P room operations are narrowed facets, not
-generic feature tests. P2P facets are defined in Part 2.
+Provider runners compose the differences in interaction authority, readiness,
+typed settlement, explicit Continuous support or inapplicability, and P2P room
+demand. Short-lived connection, preferred-tweak, Security Seed, and
+synchronisation-information operations remain caller-owned resources. Central
+administration remains one optional cohesive runner. None of those differences
+widens `ReplicatorInstance`.
 
-Local node identity initialisation is a database and Replicator lifecycle
-concern, not a remote capability. Replication statistics remain a
-`ReplicatorService` telemetry sink.
+The LiveSync central-remote administration composition shares only local-identity
+preparation, mutation ordering, milestone interpretation, and result
+settlement. Its CouchDB and Object Storage adapters retain their own milestone
+readers and connection or client ownership. The fixed provider definition has
+already selected the adapter, so those readers validate only the additional
+operations which they use; they do not rediscover capability support through a
+concrete-class `instanceof` test.
+
+The central OneShot adapters likewise require only the local structural
+`openOneShotReplicationWithOutcome()` operation. Concrete constructors remain
+at the host-composition boundary, but constructor identity is not a capability
+test. A structurally incomplete active instance settles as a failed outcome
+rather than falling back to the legacy `openReplication()` operation.
+
+Directional Fetch and Rebuild, Streaming Fetch, CouchDB on-demand Chunk reads,
+remote-size inspection, compromised-Chunk inspection, Garbage Collection,
+compaction, and journal checkpoint maintenance are workflow or
+provider-specific concerns. They do not become exhaustive provider
+capabilities merely because an application flow branches by topology.
+
+Local node identity initialisation remains at the established Replicator and
+local-database initialisation boundary for this change. A later physical
+database-lifetime review may move it only after establishing a concrete owner
+and migration benefit. Replication statistics remain a `ReplicatorService`
+telemetry sink.
 
 ### Make unattended work explicit and truthful
 
@@ -375,7 +404,11 @@ type ReplicationOutcome =
     | typeof REPLICATION_CANCELLED
     | { readonly status: "blocked"; readonly reason: ReplicationBlockReason }
     | { readonly status: "partial"; readonly detail: PartialReplicationDetail }
-    | { readonly status: "failed"; readonly error: unknown };
+    | {
+          readonly status: "failed";
+          readonly error: unknown;
+          readonly recoveryHint?: CentralCompatibilityRecoveryHint;
+      };
 ```
 
 Completed and cancelled values are shared singletons or literals. Blocked,
@@ -384,54 +417,108 @@ initialisation, reset, lock, unlock, and resolution settle only after their
 defined remote write succeeds; a Rebuilder must not continue after an ignored
 mutation failure.
 
+CouchDB and Object Storage Journal record one immutable central-compatibility
+decision inside the finite attempt which owns the connection or borrowed
+client. Only a rejection from that exact attempt becomes a recovery hint. A
+transport failure before assessment, or after an accepted assessment, cannot
+reuse mutable mismatch or lock state from an earlier attempt. P2P produces no
+central-compatibility decision. The recovery field is already specific to this
+contract, so its value carries the stable rejection reason and any preferred
+tweak value without a redundant kind discriminator.
+
 `cancelled` means that the requested finite operation did not reach its normal
 completion boundary. It does not promise rollback. A provider may retain
 documents and checkpoints from batches which had already settled before the
 cancellation signal was observed, and a later operation resumes from that
 durable state.
 
-### Distinguish observation from an identity result only when required
+### Preserve uncertainty at the boundary which owns the decision
 
 Capability availability and operation results are separate. A supported
 operation may fail, while an inapplicable operation must not be called or
-reported as a network attempt.
+reported as a network attempt. A workflow which legitimately has no step for
+its topology may complete that branch without claiming that a provider ran an
+operation.
 
-For an observation where an empty value changes a safety decision, use a tagged
-result:
+Keep uncertainty where it changes a safety decision. In particular, an Object
+Storage read distinguishes `available`, `not-found`, and `unavailable` before a
+caller decides whether creation is permitted. Only explicit `not-found` may
+create Journal synchronisation parameters; an unavailable read cannot be
+converted to a missing value or a new Security Seed.
 
-```typescript
-type RemoteObservation<T> =
-    | { readonly kind: "observed"; readonly value: T }
-    | { readonly kind: "unavailable"; readonly error?: unknown };
-```
-
-Compromised-Chunk inspection is the current example. `observed: 0` proves that
-the supported inspection found no matching entries; `unavailable` says that it
-did not complete, including while offline. A caller must handle every result
-before declaring the remote clean.
-
-Do not wrap every result. When an empty array is the safe, documented identity
-for every current caller, retain it. High-frequency Chunk, document,
-changes-feed, and queue paths keep arrays, iterators, and scalars unless a
-measurement and a safety distinction justify a tag. No wrapper is added per
-Chunk, document, changes-feed row, or queue item.
+This principle does not require one generic `RemoteObservation<T>` type or an
+active-read catalogue. Existing provider-specific inspection and maintenance
+methods may retain their current compatibility surface until their real
+consumers are migrated. When a later bounded migration needs to distinguish an
+observed zero or empty result from an unavailable inspection, that consumer
+owns the smallest explicit result type required by the decision.
 
 ### Give active ownership and probes explicit boundaries
 
-`ReplicatorService` is the sole owner of the active Replicator. Replacement is
-an atomic transition under its transition lock:
+`ReplicatorService` is the sole owner of the active Replicator. Replacement and
+disposal use one explicit quiescing transition under its transition lock:
 
 ```text
-active -> retiring -> disposed -> replacement published
+active -> quiescing -> closed -> replacement published
 ```
 
-Acquisitions wait for the transition and receive only the replacement. A fenced
-old handle cannot start work. Disposal stops Continuous activity, requests
-cancellation of work which supports it, awaits work which cannot be cancelled,
-and settles or reports every operation owned by the active adapter before
-publication. If bounded retirement cannot settle, replacement fails visibly
-and no new handle is published; the old handle is disposed when late work
-settles.
+The transition removes the old publication from `current`, rejects later
+admission, requests the provider's supported transfer cancellation, and drains
+work which was already admitted. Only then does it close the old Replicator and
+publish another active context. Acquisitions ordered after the
+transition receive only the replacement. A cancellation failure does not
+permit the physical close boundary to be skipped. If admitted work cannot
+settle, no replacement is published. If physical close fails, the quiescing
+publication remains fenced so a later transition can retry that close before
+constructing a replacement.
+
+The publication object itself is the private generation identity; no separate
+generation number or public lease is required. Its reservation count is not the
+service-wide bounded-activity count or finite-replication count: those counts
+remain status and quiescence signals and can include trials, local work, and an
+outer Rebuilder flow which itself initiates a lifecycle transition. A switch
+which waited for either global count could therefore wait for the operation
+which is awaiting that same switch.
+
+Production consumers cannot synchronously inspect an unreserved active
+context. They must acquire it or run work inside the admitted callback boundary.
+The synchronous `inspectActiveReplicatorContext()` view is protected and exists
+only for lifecycle diagnostics and focused tests.
+
+The minimum consumer surface is a callback boundary,
+`runWithActiveReplicatorContext(callback)`, rather than an exposed lease or
+release token. Admission is ordered with lifecycle transitions, the callback
+receives one exact context, and private release runs in `finally` without
+entering the transition queue.
+
+The callback must not initiate or await settings realisation, database reset or
+replacement, active Replicator retirement, or another operation which queues
+the same lifecycle transition. Such recovery or reconfiguration is staged
+after the reserved dispatch settles. A process-wide re-entrancy flag would
+both reject unrelated asynchronous work and miss re-entry after an `await`, so
+the contract is documented and tested at the owning workflows rather than
+claimed as a reliable runtime detector.
+
+Failure presentation and recovery start only after the finite reservation has
+settled. A later remote mutation re-enters through the callback boundary and
+requires reference equality with the failed context. It cannot apply the
+decision produced by one publication to its replacement.
+
+An edited-settings trial is different: it owns an independent Replicator and
+connection, never borrows the active publication, and disposes both resources.
+
+Application suspension is a reversible host pause, not an ownership
+transition. `ReplicatorService` orders the provider's transfer-stop request but
+retains the active publication, accepts later work, and does not drain or close
+the Replicator. Provider-specific transport lifecycle, including P2P room and
+relay handling, remains independently owned.
+
+Plug-in unload is terminal and reuses the same quiescing retirement as disposal;
+it does not add another public state or unload capability. The lifecycle handler
+fences admission, requests transfer cancellation, drains admitted work, and
+closes the Replicator before `ControlService` closes the local database. This
+ordering matters even when disabling the plug-in leaves the JavaScript process
+alive.
 
 The generic stop role is an idempotent request to stop a provider transfer after
 transport work begins. It does not promise cancellation of readiness checks,
@@ -450,25 +537,28 @@ resource with idempotent asynchronous `dispose()`. Trial settings are passed
 to the probe itself and cannot silently read active settings. A probe cannot
 replace the active Replicator or the P2P service.
 
-Streaming Fetch receives an owned CouchDB HTTP configuration and
-`RemoteSecuritySeed` supplier directly. The supplier is bound to the selected
-configuration identity, invalidates cached seed state on reconciliation, and
-is disposed by the initial-transfer flow. It does not construct a temporary
-full Replicator.
+Streaming Fetch receives an owned Security Seed resource bound to its settings
+snapshot. The current compatibility implementation may construct an
+unpublished Replicator internally, but the resource owns and disposes it and
+cannot replace the active publication.
 
 ### Keep initialisation workflows explicit
 
-- CouchDB and Object Storage first-device rebuilds reset and lock their central
-  remote, then perform the established convergence upload.
-- A P2P first-device rebuild prepares the local database without pretending to
-  reset, lock, or upload to a central remote.
-- CouchDB and Object Storage Fetch use their central full-download flow.
-- A P2P additional-device Fetch selects a peer and performs one full download.
-- CouchDB Streaming Fetch remains the separate initial-transfer service above.
+- Fetch, Rebuild, overwrite, and first-device setup remain application
+  workflows. Their direction, reset, lock, peer selection, local-database work,
+  and convergence passes are not one Replicator capability.
+- CouchDB and Object Storage use their established workflow-local directional
+  adapters and central administration where required.
+- A P2P first device prepares only its local state. An additional P2P device
+  selects a peer and uses the real finite download path; P2P does not emulate a
+  central reset, lock, milestone, or upload.
+- CouchDB Streaming Fetch remains a separate initial-transfer service and uses
+  only its owned Security Seed dependency.
 
-The Rebuilder requests capabilities and does not cast a generic Replicator to a
-concrete class. Its `EVENT_DATABASE_REBUILT` continuation is separately
-authorised and does not imply `syncOnStart` or P2P AutoStart.
+The `EVENT_DATABASE_REBUILT` continuation remains separately authorised and
+does not imply `syncOnStart` or P2P AutoStart. Complete Rebuilder and
+maintenance-facade migration is a later bounded change rather than a condition
+for the active Replicator core.
 
 ## Target capability matrix for current providers
 
@@ -476,21 +566,47 @@ authorised and does not imply `syncOnStart` or P2P AutoStart.
 Configuration and reachability are request preconditions or outcomes, not
 support states.
 
-| Generic role                            | CouchDB | Object Storage | P2P |
-| --------------------------------------- | ------- | -------------- | --- |
-| User-initiated OneShot Sync             | S       | S              | S   |
-| Unattended OneShot Sync without UI      | S       | S              | S   |
-| Ordinary long-lived Continuous session  | S       | NA             | NA  |
-| Full upload to a central remote         | S       | S              | NA  |
-| Full download                           | S       | S              | S   |
-| Central remote reset                    | S       | S              | NA  |
-| Central remote lock and resolution      | S       | S              | NA  |
-| Preferred-tweak Metadata read and write | S       | S              | NA  |
-| On-demand remote Chunk source           | S       | NA             | NA  |
-| Remote storage status                   | S       | S              | NA  |
-| Compromised-Chunk inspection            | S       | NA             | NA  |
-| Central-remote Security Seed            | S       | S              | NA  |
-| Request to stop active transfer         | S       | S              | S   |
+| Active provider role                   | CouchDB | Object Storage | P2P |
+| -------------------------------------- | ------- | -------------- | --- |
+| User-initiated OneShot Sync            | S       | S              | S   |
+| Unattended OneShot Sync without UI     | S       | S              | S   |
+| Ordinary long-lived Continuous session | S       | NA             | NA  |
+| Request to stop active transfer        | S       | S              | S   |
+
+Every provider definition records the Continuous row explicitly. CouchDB
+supplies its runner, while Object Storage and P2P declare the role not
+applicable; omission is not a fourth support state.
+
+The current definition also declares the finite resources and the one optional
+central facility which have real consumers:
+
+| Provider-owned facility                       | CouchDB | Object Storage | P2P    |
+| --------------------------------------------- | ------- | -------------- | ------ |
+| Connection probe                              | S       | S              | NA     |
+| Preferred-tweak probe                         | S       | S              | NA     |
+| Security Seed resource                        | S       | S              | NA     |
+| Synchronisation-information resource          | S       | NA             | NA     |
+| Cohesive central-remote administration runner | S       | S              | absent |
+
+`remoteResources` is exhaustive over its four stable machine keys, so adding a
+resource requires an explicit decision from every composed provider. The
+central-remote administration field is optional because there is no corresponding
+P2P facility. Actions within that runner are the current central protocol, not
+an exhaustive capability table imposed on every Replicator.
+
+The public contract is named `CentralRemoteAdministration*` because every
+current action, observation, failure, and postcondition belongs to that central
+milestone protocol. Established CLI command names remain unchanged.
+
+The following concerns deliberately stay outside this capability matrix:
+
+| Concern                                                          | Current owner                                                          |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Directional Fetch and Rebuild                                    | Application workflow over provider-specific adapters                   |
+| Streaming Fetch                                                  | CouchDB initial-transfer workflow plus an owned Security Seed resource |
+| On-demand remote Chunks and compromised-Chunk inspection         | CouchDB compatibility or maintenance consumers                         |
+| Remote size, Garbage Collection, compaction, and device registry | Provider-specific inspection and maintenance flows                     |
+| P2P room, relay, peer selection, admission, watch, and broadcast | Stable P2P service and room-session owner in Part 2                    |
 
 P2P unattended OneShot means a role exists which uses configured target names
 without opening a dialogue. Peer-room, watch, acceptance, and broadcast roles
@@ -578,3 +694,4 @@ only when every caller proves it to be the operation's identity.
 - [CouchDB Remote Connection Ownership](2026_08_couchdb_remote_connection_ownership.md)
 - [Package the Common Library Behind Explicit Host Boundaries](2026_07_common_library_package_boundary.md)
 - [Self-hosted LiveSync issue 1140](https://github.com/vrtmrz/obsidian-livesync/issues/1140)
+- [Self-hosted LiveSync issue 1147](https://github.com/vrtmrz/obsidian-livesync/issues/1147)
