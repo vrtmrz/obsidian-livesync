@@ -129,34 +129,28 @@ Changes spanning both repositories must first produce a packed Commonlib artefac
 
 ## Architecture
 
-### Module System
+### Service composition and legacy Modules
 
-The plugin uses a dynamic module system to reduce coupling and improve maintainability:
+The application is composed from Services, ServiceModules, serviceFeatures, add-ons, and a legacy Module layer:
 
-- **Service Hub**: Central registry for services using dependency injection
-    - Services are registered, and accessed via `this.services` (in most modules)
-- **Module Loading**: All modules extend `AbstractModule` or `AbstractObsidianModule` (which extends `AbstractModule`). These modules are loaded in main.ts and some modules.
-- **Module Categories** (by directory):
-    - `core/` - Platform-independent core functionality
-    - `coreObsidian/` - Obsidian-specific core (e.g., `ModuleFileAccessObsidian`)
-    - `essential/` - Required modules (e.g., `ModuleMigration`, `ModuleKeyValueDB`)
-    - `features/` - Optional features (e.g., `ModuleLog`, `ModuleObsidianSettings`)
-    - `extras/` - Development/testing tools (e.g., `ModuleDev`, ~~`ModuleIntegratedTest`~~)
-- **Services**: Core services (e.g., `database`, `replicator`, `storageAccess`) are registered in `ServiceHub` and accessed by modules. They provide an extension point for add new behaviour without modifying existing code.
-    - For example, checks before the replication can be added to the `replication.onBeforeReplicate` handler, and the handlers can be return `false` to prevent replication-starting. `vault.isTargetFile` also can be used to prevent processing specific files.
-- **ServiceModule**: A new type of module that directly depends on services.
+- **Service Hub**: the long-lived registry of service contracts. Add a simple extension, such as a pre-replication check, to the handler owned by the relevant Service.
+- **ServiceModule**: a host-created, long-lived operational capability shared through the typed `ServiceModules` record. Current examples include storage access, file handling, and database rebuilding.
+- **serviceFeature**: a typed composition function which accepts only its declared Services and ServiceModules. It registers lifecycle handlers, commands, user-interface bindings, or other host glue, and may return a focused view. It is not a runtime registry entry.
+- **AbstractModule** and **AbstractObsidianModule**: the legacy application Module layer. Existing Modules remain supported, but their broad core access and two-phase binding are not the preferred dependency boundary for new composition.
 
-#### Note on Module vs Service
+Mutable state is permitted in a serviceFeature. State alone is not a reason to introduce a class, ServiceModule, or legacy Module. Prefer a private context and module-level functions unless stable identity, polymorphism, shared resource ownership, replacement, abort, or disposal is part of the contract.
 
-After v0.25.44 refactoring, the Service will henceforth, as a rule, cease to use setHandler, that is to say, simple lazy binding. - They will be implemented directly in the service. - However, not everything will be middlewarised. Modules that maintain state or make decisions based on the results of multiple handlers are permitted.
+Use interaction-based, London School unit tests at the composition boundary. Verify collaborator calls, ordering, failure short-circuiting, and handler registration. If a test needs a broad core fixture, a deep mock chain, manual prototype invocation, or unrelated Services, treat that friction as a design-review signal.
 
-Hence, the new feature should be implemented as follows:
+See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary.
 
-- If it is a simple extension point (e.g., adding a check before replication), it should be implemented as a handler in the service (e.g., `replication.onBeforeReplicate`).
-- If it requires maintaining state or making decisions based on multiple handlers, it should be implemented as a serviceModule dependent on the relevant services explicitly.
-- If you have to implement a new feature without much modification, you can extent existing modules, but it is recommended to implement a new module or serviceModule for better maintainability.
-- Refactoring existing modules to services is also always welcome!
-- Please write tests for new features, you will notice that the simple handler approach is quite testable.
+Legacy Modules remain grouped by directory:
+
+- `core/` contains platform-independent core behaviour;
+- `coreObsidian/` contains Obsidian-specific core behaviour;
+- `essential/` contains required Modules;
+- `features/` contains optional features; and
+- `extras/` contains development and testing tools.
 
 ### Key Architectural Components
 
@@ -227,19 +221,20 @@ Commonlib owns the typed English fallback for messages requested by its services
 
 ## Common Patterns
 
-### Module Implementation (Now not recommended for new features, use services instead)
+### Service feature implementation
 
 ```typescript
-export class ModuleExample extends AbstractObsidianModule {
-    async _everyOnloadStart(): Promise<boolean> {
-        /* ... */
-    }
+type ExampleHost = NecessaryServices<"appLifecycle" | "API", never>;
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-    }
-}
+export const useExampleFeature = createServiceFeature((host: ExampleHost) => {
+    host.services.appLifecycle.onLoaded.addHandler(async () => {
+        host.services.API.addLog("Example feature loaded");
+        return true;
+    });
+});
 ```
+
+Existing legacy Modules continue to register their handlers in `onBindFunction()`. Follow [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) when new behaviour touches one of those Modules.
 
 ### Settings Management
 
