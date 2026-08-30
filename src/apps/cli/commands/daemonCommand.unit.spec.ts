@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import { NodeFileSystemAdapter } from "../adapters/NodeFileSystemAdapter";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
 
@@ -206,6 +210,40 @@ describe("daemon command", () => {
         await runCommand(makeDaemonOptions(), { ...baseContext, core });
 
         expect(callOrder).toEqual(["replicate", "performFullScan"]);
+    });
+
+    it("full startup scan sees every disk file after replication pre-populates only one cache entry", async () => {
+        const directory = await fs.mkdtemp(path.join(os.tmpdir(), "livesync-daemon-partial-cache-"));
+        try {
+            await fs.writeFile(path.join(directory, "existing.md"), "existing");
+            await fs.writeFile(path.join(directory, "reflected.md"), "reflected");
+
+            const storageAccess = new NodeFileSystemAdapter(directory);
+            const core = createCoreMock();
+            core.serviceModules.storageAccess = storageAccess;
+            core.services.replication.replicate = vi.fn(async () => {
+                // Models a targeted remote reflection before the mandatory full scan.
+                await storageAccess.getAbstractFileByPath("reflected.md");
+                return true;
+            });
+
+            let scannedPaths: string[] = [];
+            vi.mocked(offlineScanner.performFullScan).mockImplementation(async () => {
+                scannedPaths = (await storageAccess.getFiles()).map((file) => file.path).sort();
+                return true;
+            });
+
+            const result = await runCommand(makeDaemonOptions(), {
+                ...baseContext,
+                vaultPath: directory,
+                core,
+            });
+
+            expect(result).toBe(true);
+            expect(scannedPaths).toEqual(["existing.md", "reflected.md"]);
+        } finally {
+            await fs.rm(directory, { recursive: true, force: true });
+        }
     });
 
     it("returns false when initial replication fails", async () => {

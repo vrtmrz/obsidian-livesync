@@ -4,6 +4,30 @@ import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { NodeFileSystemAdapter } from "./NodeFileSystemAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 
+class FailingDirectoryAdapter extends NodeFileSystemAdapter {
+    constructor(
+        basePath: string,
+        private readonly failingPath: string,
+        reportDiagnostic: (message: string, error?: unknown) => void = () => undefined
+    ) {
+        super(basePath, reportDiagnostic);
+    }
+
+    protected override async readDirectory(relativePath: string): Promise<{ files: string[]; folders: string[] }> {
+        if (relativePath === this.failingPath) throw new Error(`Injected scan failure: ${relativePath}`);
+        return await super.readDirectory(relativePath);
+    }
+}
+
+class CountingDirectoryAdapter extends NodeFileSystemAdapter {
+    rootScans = 0;
+
+    protected override async readDirectory(relativePath: string): Promise<{ files: string[]; folders: string[] }> {
+        if (relativePath === "") this.rootScans++;
+        return await super.readDirectory(relativePath);
+    }
+}
+
 describe("NodeVaultAdapter.rename", () => {
     it("changes the directory entry case without changing the content", async () => {
         const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-case-rename-"));
@@ -80,6 +104,64 @@ describe("NodeVaultAdapter.rename", () => {
 });
 
 describe("NodeFileSystemAdapter path case", () => {
+    it("returns the complete vault scan when the cache was pre-populated by one reflected file", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-partial-cache-"));
+        try {
+            await fsPromises.writeFile(path.join(directory, "reflected.md"), "remote change", "utf8");
+            await fsPromises.writeFile(path.join(directory, "existing.md"), "existing content", "utf8");
+            const adapter = new NodeFileSystemAdapter(directory);
+
+            // A CouchDB replication can reflect one changed file before the daemon's
+            // startup mirror scan, leaving the adapter cache non-empty but incomplete.
+            await expect(adapter.getAbstractFileByPath("reflected.md")).resolves.toMatchObject({
+                path: "reflected.md",
+            });
+
+            expect((await adapter.getFiles()).map((file) => file.path).sort()).toEqual([
+                "existing.md",
+                "reflected.md",
+            ]);
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+        }
+    });
+
+    it("rejects an incomplete inventory when any subtree scan fails", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-failed-subtree-"));
+        const reportDiagnostic = vi.fn();
+        try {
+            await fsPromises.writeFile(path.join(directory, "visible.md"), "visible", "utf8");
+            await fsPromises.mkdir(path.join(directory, "blocked"));
+            await fsPromises.writeFile(path.join(directory, "blocked", "hidden.md"), "hidden", "utf8");
+            const adapter = new FailingDirectoryAdapter(directory, "blocked", reportDiagnostic);
+
+            await expect(adapter.getFiles()).rejects.toThrow("Injected scan failure: blocked");
+            expect(reportDiagnostic).toHaveBeenCalledWith(
+                `Error scanning directory ${path.join(directory, "blocked")}:`,
+                expect.any(Error)
+            );
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+        }
+    });
+
+    it("shares one atomic inventory across concurrent getFiles calls", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-concurrent-scan-"));
+        try {
+            await fsPromises.writeFile(path.join(directory, "a.md"), "a", "utf8");
+            await fsPromises.writeFile(path.join(directory, "b.md"), "b", "utf8");
+            const adapter = new CountingDirectoryAdapter(directory);
+
+            const [first, second] = await Promise.all([adapter.getFiles(), adapter.getFiles()]);
+            const expected = ["a.md", "b.md"];
+            expect(first.map((file) => file.path).sort()).toEqual(expected);
+            expect(second.map((file) => file.path).sort()).toEqual(expected);
+            expect(adapter.rootScans).toBe(1);
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+        }
+    });
+
     it("finds the stored case and refreshes the cache after a case-only rename", async () => {
         const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-case-cache-"));
         try {
@@ -107,12 +189,22 @@ describe("NodeFileSystemAdapter path case", () => {
         try {
             const adapter = new NodeFileSystemAdapter(missingDirectory, reportDiagnostic);
 
-            await adapter.scanDirectory();
+            await expect(adapter.scanDirectory()).rejects.toThrow(`Directory does not exist: ${missingDirectory}`);
 
             expect(reportDiagnostic).toHaveBeenCalledWith(
                 `Error scanning directory ${missingDirectory}:`,
                 expect.any(Error)
             );
+        } finally {
+            await fsPromises.rm(directory, { recursive: true, force: true });
+        }
+    });
+
+    it("rejects explicit scans outside the vault root", async () => {
+        const directory = await fsPromises.mkdtemp(path.join(os.tmpdir(), "livesync-scan-root-"));
+        try {
+            const adapter = new NodeFileSystemAdapter(directory);
+            await expect(adapter.scanDirectory("../outside")).rejects.toThrow(/outside|relative|parent|\.\./i);
         } finally {
             await fsPromises.rm(directory, { recursive: true, force: true });
         }
