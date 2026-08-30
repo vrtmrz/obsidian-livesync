@@ -4,9 +4,10 @@ import {
     DEFAULT_SETTINGS,
     REMOTE_P2P,
     type FilePathWithPrefix,
+    type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
-import { EVENT_FILE_SAVED, eventHub } from "@/common/events";
+import { EVENT_FILE_SAVED, EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 
 const taskMocks = vi.hoisted(() => ({
     scheduleTask: vi.fn((_key: string, _delay: number, task: () => unknown) => task()),
@@ -14,15 +15,15 @@ const taskMocks = vi.hoisted(() => ({
 
 vi.mock("octagonal-wheels/concurrency/task", () => taskMocks);
 
-import { ModuleConflictResolver } from "../coreFeatures/ModuleConflictResolver";
-import { ModuleObsidianEvents } from "../essentialObsidian/ModuleObsidianEvents";
+import { ModuleConflictResolver } from "@/modules/coreFeatures/ModuleConflictResolver";
+import { ModuleObsidianEvents } from "@/modules/essentialObsidian/ModuleObsidianEvents";
 import {
     createReplicationSchedulingContext,
     realiseReplicationScheduling,
     resumeReplicationScheduling,
     runPeriodicReplication,
 } from "@/serviceFeatures/replicationScheduling";
-import { ModuleReplicator } from "./ModuleReplicator";
+import { createAutomaticReplicationTriggers } from "./automaticTriggers";
 
 function createApi() {
     return {
@@ -124,24 +125,22 @@ describe("automatic replication triggers while P2P is active", () => {
     });
 
     it("keeps database-save synchronisation on the event replication boundary", async () => {
-        const replicateUnattendedByEvent = vi.fn(async () => ({ status: "completed" as const }));
+        const replicateUnattendedByEvent = vi.fn(async (_request: unknown) => ({ status: "completed" as const }));
         const settings = p2pSettings({ syncOnSave: true });
-        const services = {
-            appLifecycle: { isSuspended: vi.fn(() => false) },
-            replication: { replicateUnattendedByEvent },
-        };
-        const module = {
-            core: { services, settings },
-            services,
-            settings,
-            getNormalFileReflectionFilterSignature: (
-                ModuleReplicator.prototype as unknown as {
-                    getNormalFileReflectionFilterSignature: (value: typeof settings) => string;
-                }
-            ).getNormalFileReflectionFilterSignature,
-        };
+        const initialise = createAutomaticReplicationTriggers({
+            currentSettings: () => settings,
+            isSuspended: vi.fn(() => false),
+            replicateDatabaseEvent: () =>
+                replicateUnattendedByEvent({
+                    trigger: "database-event",
+                    interaction: NO_INTERACTION,
+                }),
+            reprocessStoredDocuments: vi.fn(async () => 0),
+            resumeResultApplication: vi.fn(),
+            suspendResultApplication: vi.fn(),
+        });
 
-        await (ModuleReplicator.prototype as any)._everyOnloadAfterLoadSettings.call(module);
+        await initialise();
         eventHub.emitEvent(EVENT_FILE_SAVED);
 
         await vi.waitFor(() => expect(replicateUnattendedByEvent).toHaveBeenCalledOnce());
@@ -149,6 +148,43 @@ describe("automatic replication triggers while P2P is active", () => {
             trigger: "database-event",
             interaction: NO_INTERACTION,
         });
+    });
+
+    it("reprocesses stored documents when normal-file target filters change", async () => {
+        const settings = {
+            ...DEFAULT_SETTINGS,
+            ignoreFiles: ".gitignore",
+            syncOnlyRegEx: "^E2E/allowed/.*",
+        } as ObsidianLiveSyncSettings;
+        const reprocessStoredDocuments = vi.fn(async () => 1);
+        const resumeResultApplication = vi.fn();
+        const suspendResultApplication = vi.fn();
+        const initialise = createAutomaticReplicationTriggers({
+            currentSettings: () => settings,
+            isSuspended: vi.fn(() => false),
+            replicateDatabaseEvent: vi.fn(async () => undefined),
+            reprocessStoredDocuments,
+            resumeResultApplication,
+            suspendResultApplication,
+        });
+
+        await initialise();
+        eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings });
+        await Promise.resolve();
+        expect(reprocessStoredDocuments).not.toHaveBeenCalled();
+        expect(resumeResultApplication).toHaveBeenCalledOnce();
+        expect(suspendResultApplication).not.toHaveBeenCalled();
+
+        eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings, suspendParseReplicationResult: true });
+        expect(suspendResultApplication).toHaveBeenCalledOnce();
+
+        Object.assign(settings, { syncOnlyRegEx: "" });
+        eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings });
+        await vi.waitFor(() => expect(reprocessStoredDocuments).toHaveBeenCalledOnce());
+
+        settings.syncMaxSizeInMB = 10;
+        eventHub.emitEvent(EVENT_SETTING_SAVED, { ...settings });
+        await vi.waitFor(() => expect(reprocessStoredDocuments).toHaveBeenCalledTimes(2));
     });
 
     it("keeps editor-save synchronisation on the event replication boundary", async () => {

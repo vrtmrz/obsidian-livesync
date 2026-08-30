@@ -26,7 +26,6 @@ import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/comp
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
-import { ModuleReplicator } from "./modules/core/ModuleReplicator";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
@@ -37,6 +36,7 @@ import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serv
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
 import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
 import { createCentralReplicatorProviderDefinitions } from "./common/replicatorProviders";
+import { useReplicationFeature } from "./serviceFeatures/replication";
 
 /** Focused views returned by serviceFeatures which the host may consume during composition. */
 export interface LiveSyncCoreFeatureViews {
@@ -101,6 +101,9 @@ export class LiveSyncBaseCore<
         for (const addOn of addOns) {
             this._registerAddOn(addOn);
         }
+        // Preserve the former ModuleReplicator lifecycle-handler order:
+        // host features and add-ons first, then replication, then legacy modules.
+        useReplicationFeature(this);
         this.bindModuleFunctions();
     }
     /**
@@ -161,7 +164,6 @@ export class LiveSyncBaseCore<
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
         this._registerModule(new ModuleConflictChecker(this));
-        this._registerModule(new ModuleReplicator(this));
         this._registerModule(new ModuleConflictResolver(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleBasicMenu(this));
