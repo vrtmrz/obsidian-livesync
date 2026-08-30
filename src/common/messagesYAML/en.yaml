@@ -362,6 +362,7 @@ Export: Export
 "Failed to connect to the server: ${reason}": "Failed to connect to the server: ${reason}"
 Failed to connect to the server. Please check your settings.: Failed to connect to the server. Please check your settings.
 "Failed to connect to the signalling relay: ${reason}": "Failed to connect to the signalling relay: ${reason}"
+The connection test cannot add a signalling relay while P2P is active. Use the active relay settings, or disconnect P2P before testing.: The connection test cannot add a signalling relay while P2P is active. Use the active relay settings, or disconnect P2P before testing.
 Failed to create replicator instance.: Failed to create replicator instance.
 Failed to parse Setup-URI.: Failed to parse Setup-URI.
 "Failed:": "Failed:"

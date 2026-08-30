@@ -33,7 +33,6 @@ import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compa
 import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
-import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import type {
     SetupRemoteCouchDBInitialData,
     SetupRemoteCouchDBResultType,
@@ -217,7 +216,7 @@ export function paneRemoteConfig(
                 }
 
                 if (targetRemoteType === REMOTE_P2P) {
-                    const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, baseSettings);
+                    const p2pConf = await setupManager.openP2PSetup(baseSettings);
                     if (p2pConf === "cancelled" || typeof p2pConf !== "object") {
                         return false;
                     }

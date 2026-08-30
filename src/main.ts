@@ -183,6 +183,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     createOpenReplicationUI(this.app),
                     createOpenRebuildUI(this.app)
                 );
+                setupManager.registerP2PSetupConnectionProbe(replicator.connectionProbe);
                 useP2PReplicatorCommands(core, replicator);
                 useP2PReplicatorUI(core, core, replicator);
                 useRemoteConfiguration(core);

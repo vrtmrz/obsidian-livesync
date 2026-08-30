@@ -8,6 +8,11 @@ import {
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import type {
+    P2PConnectionProbeAdmission,
+    P2PConnectionProbeAdmissionResult,
+    P2PConnectionProbeSettings,
+} from "@vrtmrz/livesync-commonlib/p2p";
 
 vi.mock("./SetupWizard/dialogs/Intro.svelte", () => ({ default: {} }));
 vi.mock("./SetupWizard/dialogs/SelectMethodNewUser.svelte", () => ({ default: {} }));
@@ -124,11 +129,23 @@ function createSetupManager() {
         },
     });
 
+    const p2pSetupConnectionProbe: P2PConnectionProbeAdmission = {
+        async run<T>(
+            _settings: P2PConnectionProbeSettings,
+            runOwnedTrial: () => Promise<T>
+        ): Promise<P2PConnectionProbeAdmissionResult<T>> {
+            return { status: "trial", result: await runOwnedTrial() };
+        },
+    };
+    const manager = new SetupManager(core);
+    manager.registerP2PSetupConnectionProbe(p2pSetupConnectionProbe);
+
     return {
-        manager: new SetupManager(core),
+        manager,
         setting,
         dialogManager,
         core,
+        p2pSetupConnectionProbe,
     };
 }
 
@@ -136,6 +153,19 @@ describe("SetupManager", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.restoreAllMocks();
+    });
+
+    it("opens P2P Setup with the registered owner admission", async () => {
+        const { manager, setting, dialogManager, p2pSetupConnectionProbe } = createSetupManager();
+        const settings = setting.currentSettings();
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
+
+        await expect(manager.openP2PSetup(settings)).resolves.toBe("cancelled");
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ settings, connectionProbe: p2pSetupConnectionProbe })
+        );
     });
 
     it("starts manual new-user setup from the recommended new-Vault settings", async () => {

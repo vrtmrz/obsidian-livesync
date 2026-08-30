@@ -23,7 +23,6 @@
     } from "@vrtmrz/livesync-commonlib/remote-configurations";
     import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { SetupManager } from "@/modules/features/SetupManager";
-    import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
     import { Menu } from "@/deps";
     import { $msg as translateMessage } from "@/common/translation";
     import {
@@ -213,9 +212,8 @@
 
     async function createAndSelectP2PRemote() {
         const setupManager = core.getModule(SetupManager);
-        const dialogManager = setupManager.dialogManager;
         const currentSettings = core.services.setting.currentSettings();
-        const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, currentSettings);
+        const p2pConf = await setupManager.openP2PSetup(currentSettings);
         if (p2pConf === "cancelled" || typeof p2pConf !== "object" || !p2pConf) {
             return;
         }
