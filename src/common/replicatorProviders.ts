@@ -1,16 +1,20 @@
-import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_COUCHDB, REMOTE_MINIO, type RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     CAPABILITY_NOT_APPLICABLE,
     CENTRAL_REMOTE_REPLICATION_READINESS,
+    NO_INTERACTION,
     REMOTE_RESOURCE_KINDS,
-    REPLACE_SAME_KIND_REPLICATOR,
     defineReplicatorProviderDefinitions,
     supportedOpenReplicationContinuous,
-    supportedOpenReplicationOneShot,
-    supportedOpenReplicationUnattended,
+    replicationBlocked,
+    replicationFailed,
     supportedStopActiveTransfer,
     supportedCapability,
     type ReplicatorProviderDefinitionMap,
+    type ReplicationOutcome,
+    type ReplicatorInstance,
+    type UserInitiatedOneShotRunner,
+    type UnattendedOneShotRunner,
 } from "@vrtmrz/livesync-commonlib/replication";
 import {
     LiveSyncCouchDBReplicator,
@@ -32,11 +36,61 @@ import {
     createObjectStorageSecuritySeedResourceFactory,
 } from "./replicatorResources";
 import {
-    COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY,
-    OBJECT_STORAGE_REMOTE_ADMINISTRATION_CAPABILITY,
-} from "./replicatorAdministration";
+    COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
+    OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
+} from "./centralRemoteAdministration";
 
 export type CentralReplicatorProviderHost = LiveSyncCouchDBReplicatorEnv & LiveSyncJournalReplicatorEnv;
+
+/** Minimal operation required by both central one-shot adapters. */
+interface OneShotOutcomeReplicator extends ReplicatorInstance {
+    openOneShotReplicationWithOutcome(setting: RemoteDBSettings, showResult: boolean): Promise<ReplicationOutcome>;
+}
+
+function asOneShotOutcomeReplicator(instance: ReplicatorInstance): OneShotOutcomeReplicator | undefined {
+    const candidate = instance as Partial<OneShotOutcomeReplicator>;
+    return typeof candidate.openOneShotReplicationWithOutcome === "function"
+        ? (instance as OneShotOutcomeReplicator)
+        : undefined;
+}
+
+async function runOneShotWithOutcome(
+    instance: ReplicatorInstance,
+    setting: RemoteDBSettings,
+    showResult: boolean
+): Promise<ReplicationOutcome> {
+    const replicator = asOneShotOutcomeReplicator(instance);
+    if (!replicator) {
+        return replicationFailed(new Error("The configured provider does not implement one-shot replication."));
+    }
+    return await replicator.openOneShotReplicationWithOutcome(setting, showResult);
+}
+
+const couchDBUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {
+    return await runOneShotWithOutcome(
+        instance,
+        setting,
+        request.interaction.kind === "permitted" && request.interaction.permissions.failureRecovery
+    );
+};
+
+const couchDBUnattendedOneShot: UnattendedOneShotRunner = async (instance, setting, request) => {
+    if (request.interaction.kind !== NO_INTERACTION.kind) return replicationBlocked("interaction-required");
+    return await runOneShotWithOutcome(instance, setting, false);
+};
+
+const objectStorageUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {
+    return await runOneShotWithOutcome(
+        instance,
+        setting,
+        request.interaction.kind === "permitted" && request.interaction.permissions.failureRecovery
+    );
+};
+
+const objectStorageUnattendedOneShot: UnattendedOneShotRunner = async (instance, setting, request) => {
+    if (request.interaction.kind !== NO_INTERACTION.kind) return replicationBlocked("interaction-required");
+    return await runOneShotWithOutcome(instance, setting, false);
+};
 
 /** Build the complete central-remote provider policy for one LiveSync host. */
 export function createCentralReplicatorProviderDefinitions(
@@ -52,7 +106,6 @@ export function createCentralReplicatorProviderDefinitions(
                 !!settings.couchDB_URI?.trim() &&
                 !!settings.couchDB_DBNAME?.trim(),
             configurationIdentity: getCouchDBReplicatorConfigurationIdentity,
-            sameKindReconciliation: REPLACE_SAME_KIND_REPLICATOR,
             create: () => Promise.resolve(new LiveSyncCouchDBReplicator(host)),
             remoteResources: {
                 [REMOTE_RESOURCE_KINDS.CONNECTION]: supportedCapability(createCouchDBConnectionProbeFactory(host)),
@@ -66,9 +119,9 @@ export function createCentralReplicatorProviderDefinitions(
                     createCouchDBSynchronisationInformationResourceFactory(host)
                 ),
             },
-            remoteAdministration: COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY,
-            userInitiatedOneShot: supportedOpenReplicationOneShot(),
-            unattendedOneShot: supportedOpenReplicationUnattended(),
+            centralRemoteAdministration: COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
+            userInitiatedOneShot: supportedCapability(couchDBUserInitiatedOneShot),
+            unattendedOneShot: supportedCapability(couchDBUnattendedOneShot),
             continuous: supportedOpenReplicationContinuous(),
             stopActiveTransfer: supportedStopActiveTransfer(),
         },
@@ -79,7 +132,6 @@ export function createCentralReplicatorProviderDefinitions(
             isConfigured: (settings) =>
                 settings.remoteType === REMOTE_MINIO && !!settings.endpoint?.trim() && !!settings.bucket?.trim(),
             configurationIdentity: getObjectStorageReplicatorConfigurationIdentity,
-            sameKindReconciliation: REPLACE_SAME_KIND_REPLICATOR,
             create: () => Promise.resolve(new LiveSyncJournalReplicator(host)),
             remoteResources: {
                 [REMOTE_RESOURCE_KINDS.CONNECTION]: supportedCapability(
@@ -93,9 +145,9 @@ export function createCentralReplicatorProviderDefinitions(
                 ),
                 [REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION]: CAPABILITY_NOT_APPLICABLE,
             },
-            remoteAdministration: OBJECT_STORAGE_REMOTE_ADMINISTRATION_CAPABILITY,
-            userInitiatedOneShot: supportedOpenReplicationOneShot(),
-            unattendedOneShot: supportedOpenReplicationUnattended(),
+            centralRemoteAdministration: OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
+            userInitiatedOneShot: supportedCapability(objectStorageUserInitiatedOneShot),
+            unattendedOneShot: supportedCapability(objectStorageUnattendedOneShot),
             continuous: CAPABILITY_NOT_APPLICABLE,
             stopActiveTransfer: supportedStopActiveTransfer(),
         },

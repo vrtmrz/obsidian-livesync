@@ -232,19 +232,24 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         return CHOICES[retKey];
     }
 
-    async _askResolvingMismatchedTweaks(): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
-        if (!this.core.replicator.tweakSettingsMismatched) {
-            return "OK";
-        }
-        const tweaks = this.core.replicator.preferredTweakValue;
-        if (!tweaks) {
-            return "IGNORE";
-        }
-        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(tweaks);
+    async _askResolvingMismatchedTweaks(
+        preferredSource: TweakValues,
+        updatePreferredRemote?: (setting: ObsidianLiveSyncSettings) => Promise<boolean>
+    ): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
+        const [conf, rebuildRequired] =
+            await this.services.tweakValue.checkAndAskResolvingMismatched(preferredSource);
         if (!conf) return "IGNORE";
 
+        const updateRemote = async () => {
+            if (updatePreferredRemote) return await updatePreferredRemote(this.settings);
+            const candidate = this.core.replicator;
+            if (typeof candidate.setPreferredRemoteTweakSettings !== "function") return false;
+            await candidate.setPreferredRemoteTweakSettings(this.settings);
+            return true;
+        };
+
         if (conf === true) {
-            await this.core.replicator.setPreferredRemoteTweakSettings(this.settings);
+            if (!(await updateRemote())) return "IGNORE";
             if (rebuildRequired) {
                 await this.core.rebuilder.$rebuildRemote();
             }
@@ -261,7 +266,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
                 // chunk-generation managers now so hash and splitter changes take effect before retrying.
                 await this.localDatabase.managers.reinitialise();
             }
-            await this.core.replicator.setPreferredRemoteTweakSettings(this.settings);
+            if (!(await updateRemote())) return "IGNORE";
             if (rebuildRequired) {
                 await this.core.rebuilder.$fetchLocal();
             }

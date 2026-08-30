@@ -737,7 +737,8 @@ Success: ${successCount}, Errored: ${errored}`;
     }
 
     async compactDatabase() {
-        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator as Partial<LiveSyncCouchDBReplicator>;
+        if (typeof replicator?.connectRemoteCouchDBWithSetting !== "function") return;
         const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
         if (!remote) {
             this._notice("Failed to connect to remote for compaction.", "gc-compact");
@@ -840,8 +841,14 @@ Success: ${successCount}, Errored: ${errored}`;
     //     }
     // }
     async gcv3() {
+        const replicator = this.core.replicator as Partial<LiveSyncCouchDBReplicator>;
+        if (
+            this.settings.remoteType !== REMOTE_COUCHDB ||
+            typeof replicator?.openOneShotReplication !== "function" ||
+            typeof replicator.getConnectedDeviceList !== "function"
+        )
+            return;
         if (!(await this.ensureAvailable("Garbage Collection"))) return;
-        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         // Start one-shot replication to ensure all changes are synced before GC.
         const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
         if (!r0) {
@@ -854,7 +861,7 @@ Success: ${successCount}, Errored: ${errored}`;
         // Delete the chunk, but first verify the following:
         // Fetch the list of accepted nodes from the replicator.
         const OPTION_CANCEL = "Cancel Garbage Collection";
-        const info = await this.core.replicator.getConnectedDeviceList();
+        const info = await replicator.getConnectedDeviceList();
         if (!info) {
             this._notice("No connected device information found. Cancelling Garbage Collection.");
             return;

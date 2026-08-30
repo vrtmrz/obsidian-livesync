@@ -272,13 +272,18 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         reinitialise.mockImplementation(async () => {
             calls.push("reinitialise");
         });
+        const updatePreferredRemote = vi.fn(async () => {
+            calls.push("set-preferred");
+            return true;
+        });
 
-        const result = await module._askResolvingMismatchedTweaks();
+        const result = await module._askResolvingMismatchedTweaks(preferred, updatePreferredRemote);
 
         expect(result).toBe("CHECKAGAIN");
         expect(core.settings).toBe(initialSettings);
         expect(core.settings.hashAlg).toBe("xxhash32");
         expect(calls).toEqual(["save", "reinitialise", "set-preferred"]);
+        expect(core.replicator.setPreferredRemoteTweakSettings).not.toHaveBeenCalled();
     });
 });
 

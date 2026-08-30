@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
-    REMOTE_ADMINISTRATION_ACTIONS,
-    REMOTE_ADMINISTRATION_FAILURE_REASONS,
-    REMOTE_ADMINISTRATION_OBSERVATION_KINDS,
-    REMOTE_ADMINISTRATION_RESULT_STATUSES,
+    CENTRAL_REMOTE_ADMINISTRATION_ACTIONS,
+    CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS,
+    CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS,
+    CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES,
 } from "@vrtmrz/livesync-commonlib/replication";
 import {
-    COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY,
-    OBJECT_STORAGE_REMOTE_ADMINISTRATION_CAPABILITY,
-} from "./replicatorAdministration";
+    COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
+    OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
+} from "./centralRemoteAdministration";
 
 describe("central remote administration capabilities", () => {
     it("mutates CouchDB, verifies the requested postcondition, and closes only the owned connection", async () => {
@@ -28,14 +28,14 @@ describe("central remote administration capabilities", () => {
             connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: database, close })),
         };
         const setting = { ...DEFAULT_SETTINGS, remoteType: REMOTE_COUCHDB };
-        const capability = COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY;
+        const capability = COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY;
 
         await expect(
-            capability.run(replicator as never, setting, { action: REMOTE_ADMINISTRATION_ACTIONS.LOCK })
+            capability.run(replicator as never, setting, { action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK })
         ).resolves.toEqual({
-            status: REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFIED,
+            status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFIED,
             observation: {
-                kind: REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE,
+                kind: CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE,
                 locked: true,
                 accepted: true,
                 nodeId: "node-1",
@@ -60,20 +60,20 @@ describe("central remote administration capabilities", () => {
                 close,
             })),
         };
-        const capability = COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY;
+        const capability = COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY;
 
         const result = await capability.run(
             replicator as never,
             { ...DEFAULT_SETTINGS, remoteType: REMOTE_COUCHDB },
             {
-                action: REMOTE_ADMINISTRATION_ACTIONS.LOCK,
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK,
             }
         );
 
         expect(result).toMatchObject({
-            status: REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
-            reason: REMOTE_ADMINISTRATION_FAILURE_REASONS.POSTCONDITION_MISMATCH,
-            observation: { kind: REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE, locked: false },
+            status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+            reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.POSTCONDITION_MISMATCH,
+            observation: { kind: CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE, locked: false },
         });
         expect(close).toHaveBeenCalledOnce();
     });
@@ -87,17 +87,17 @@ describe("central remote administration capabilities", () => {
             markRemoteResolved: vi.fn(async () => undefined),
             connectRemoteCouchDBWithSetting: vi.fn(async () => "must not connect"),
         };
-        const capability = COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY;
+        const capability = COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY;
 
         await expect(
             capability.run(
                 replicator as never,
                 { ...DEFAULT_SETTINGS, remoteType: REMOTE_COUCHDB },
-                { action: REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED }
+                { action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED }
             )
         ).resolves.toEqual({
-            status: REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
-            reason: REMOTE_ADMINISTRATION_FAILURE_REASONS.LOCAL_IDENTITY_UNAVAILABLE,
+            status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+            reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.LOCAL_IDENTITY_UNAVAILABLE,
         });
         expect(replicator.markRemoteResolved).not.toHaveBeenCalled();
         expect(replicator.connectRemoteCouchDBWithSetting).not.toHaveBeenCalled();
@@ -115,14 +115,14 @@ describe("central remote administration capabilities", () => {
             markRemoteResolved: vi.fn(async () => undefined),
             connectRemoteCouchDBWithSetting: vi.fn(),
         };
-        const capability = COUCHDB_REMOTE_ADMINISTRATION_CAPABILITY;
+        const capability = COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY;
 
         await expect(
             capability.run(
                 replicator as never,
                 { ...DEFAULT_SETTINGS, remoteType: REMOTE_COUCHDB },
                 {
-                    action: REMOTE_ADMINISTRATION_ACTIONS.UNLOCK,
+                    action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.UNLOCK,
                 }
             )
         ).rejects.toBe(failure);
@@ -139,14 +139,16 @@ describe("central remote administration capabilities", () => {
             client: { downloadJson },
         };
         const setting = { ...DEFAULT_SETTINGS, remoteType: REMOTE_MINIO };
-        const capability = OBJECT_STORAGE_REMOTE_ADMINISTRATION_CAPABILITY;
+        const capability = OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY;
 
         await expect(
-            capability.run(replicator as never, setting, { action: REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED })
+            capability.run(replicator as never, setting, {
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED,
+            })
         ).resolves.toEqual({
-            status: REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFIED,
+            status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFIED,
             observation: {
-                kind: REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE,
+                kind: CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE,
                 locked: false,
                 accepted: true,
                 nodeId: "node-1",
@@ -154,5 +156,44 @@ describe("central remote administration capabilities", () => {
         });
         expect(replicator.markRemoteResolved).toHaveBeenCalledWith(setting);
         expect(downloadJson).toHaveBeenCalledWith("_00000000-milestone.json");
+    });
+
+    it("rejects an incomplete CouchDB milestone adapter before mutation", async () => {
+        const markRemoteLocked = vi.fn(async () => undefined);
+        const replicator = {
+            nodeid: "node-1",
+            initializeDatabaseForReplication: vi.fn(async () => true),
+            markRemoteLocked,
+            markRemoteResolved: vi.fn(async () => undefined),
+        };
+
+        await expect(
+            COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY.run(
+                replicator as never,
+                { ...DEFAULT_SETTINGS, remoteType: REMOTE_COUCHDB },
+                { action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK }
+            )
+        ).rejects.toThrow("The configured CouchDB administration adapter does not provide milestone access.");
+        expect(markRemoteLocked).not.toHaveBeenCalled();
+    });
+
+    it("rejects an incomplete Object Storage milestone adapter before mutation", async () => {
+        const markRemoteResolved = vi.fn(async () => undefined);
+        const replicator = {
+            nodeid: "node-1",
+            initializeDatabaseForReplication: vi.fn(async () => true),
+            markRemoteLocked: vi.fn(async () => undefined),
+            markRemoteResolved,
+            client: {},
+        };
+
+        await expect(
+            OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY.run(
+                replicator as never,
+                { ...DEFAULT_SETTINGS, remoteType: REMOTE_MINIO },
+                { action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED }
+            )
+        ).rejects.toThrow("The configured Object Storage administration adapter does not provide milestone access.");
+        expect(markRemoteResolved).not.toHaveBeenCalled();
     });
 });

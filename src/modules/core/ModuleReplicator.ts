@@ -1,7 +1,7 @@
 import type PouchDB from "pouchdb-core";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "@/modules/AbstractModule";
-import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
+import { Logger, LOG_LEVEL_NOTICE, LOG_LEVEL_INFO, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
 import { purgeUnreferencedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
@@ -23,7 +23,13 @@ import { clearHandlers } from "@vrtmrz/livesync-commonlib/compat/replication/Syn
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { MARK_LOG_NETWORK_ERROR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
-import { NO_INTERACTION, type ReplicationInteraction } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    NO_INTERACTION,
+    REMOTE_RESOURCE_KINDS,
+    type ReplicationFailureRequest,
+} from "@vrtmrz/livesync-commonlib/replication";
+import { withOwnedRemoteResource } from "@/common/ownedRemoteResource.ts";
 
 function isOnlineAndCanReplicate(
     errorManager: UnresolvedErrorManager,
@@ -38,31 +44,36 @@ function isOnlineAndCanReplicate(
     errorManager.clearError(errorMessage);
     return Promise.resolve(true);
 }
-async function canReplicateWithPBKDF2(
+/** Refresh and validate the selected central provider's owned Security Seed resource. */
+async function canReplicateWithSecuritySeed(
     errorManager: UnresolvedErrorManager,
     host: NecessaryServices<"replicator" | "setting", never>,
     showMessage: boolean
 ): Promise<boolean> {
     const currentSettings = host.services.setting.currentSettings();
-    // TODO: check using PBKDF2 salt?
     const errorMessage = $msg("Replicator.Message.InitialiseFatalError");
-    const replicator = host.services.replicator.getActiveReplicator();
-    if (!replicator) {
-        errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-        return false;
-    }
-    errorManager.clearError(errorMessage);
     // Showing message is false: that because be shown here. (And it is a fatal error, no way to hide it).
     // tagged as network error at beginning for error filtering with NetworkWarningStyles
     const ensureMessage = `${MARK_LOG_NETWORK_ERROR}Failed to initialise the encryption key, preventing replication.`;
-    // A remote database rebuild replaces the Security Seed while this process may still hold the previous one.
-    const ensureResult = await replicator.ensurePBKDF2Salt(currentSettings, showMessage, false);
-    if (!ensureResult) {
+    try {
+        const resource = await host.services.replicator.createRemoteResource(
+            REMOTE_RESOURCE_KINDS.SECURITY_SEED,
+            currentSettings
+        );
+        if (!resource) {
+            errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+            return false;
+        }
+        errorManager.clearError(errorMessage);
+        const seed = await withOwnedRemoteResource(resource, (ownedResource) => ownedResource.read());
+        if (seed.length == 0) throw new Error("PBKDF2 salt (Security Seed) is empty");
+    } catch (error) {
+        Logger(error, LOG_LEVEL_VERBOSE);
         errorManager.showError(ensureMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         return false;
     }
     errorManager.clearError(ensureMessage);
-    return ensureResult; // is true.
+    return true;
 }
 
 export class ModuleReplicator extends AbstractModule {
@@ -158,8 +169,14 @@ export class ModuleReplicator extends AbstractModule {
      * database again, or purge unreferenced local chunks before accepting this device again.
      *
      * @param showMessage Whether to show the recovery choices as user-facing notices.
+     * @param setting Detached settings used by the failed attempt.
+     * @param expectedContext Publication which produced the compatibility rejection.
      */
-    async cleaned(showMessage: boolean) {
+    async cleaned(
+        showMessage: boolean,
+        setting: ObsidianLiveSyncSettings,
+        expectedContext: ReplicationFailureRequest["context"]
+    ) {
         Logger(`The remote database has been cleaned.`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         await skipIfDuplicated("cleanup", async () => {
             const count = await purgeUnreferencedChunks(this.localDatabase.localDatabase, true);
@@ -183,82 +200,97 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             }
             if (ret == CHOICE_CLEAN) {
                 await this.services.replicator.runBoundedRemoteActivity(
-                    async () => {
-                        const replicator = this.services.replicator.getActiveReplicator();
-                        if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
-                        const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
-                            this.settings,
-                            this.services.API.isMobile(),
-                            true
-                        );
-                        if (typeof remoteDB == "string") {
-                            Logger(remoteDB, LOG_LEVEL_NOTICE);
-                            return false;
-                        }
-
-                        try {
-                            await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
-                            this.localDatabase.clearCaches();
-                            // Perform the synchronisation once.
-                            const replicated = await this.services.replicator.runFiniteReplicationActivity(
-                                () => this.core.replicator.openReplication(this.settings, false, showMessage, true),
-                                { label: "replication" }
+                    () =>
+                        this.services.replicator.runWithActiveReplicatorContext(async (context) => {
+                            if (context !== expectedContext) return;
+                            const replicator = context.replicator;
+                            if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
+                            const remoteDB = await replicator.connectRemoteCouchDBWithSetting(
+                                setting,
+                                this.services.API.isMobile(),
+                                true
                             );
-                            if (replicated) {
-                                await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                            if (typeof remoteDB == "string") {
+                                Logger(remoteDB, LOG_LEVEL_NOTICE);
+                                return false;
+                            }
+
+                            try {
                                 await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
                                 this.localDatabase.clearCaches();
-                                await this.services.replicator.getActiveReplicator()?.markRemoteResolved(this.settings);
-                                Logger(
-                                    "The local database has been cleaned up.",
-                                    showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                // Perform the synchronisation once.
+                                const replicated = await this.services.replicator.runFiniteReplicationActivity(
+                                    () => replicator.openOneShotReplication(setting, showMessage, false, "sync", true),
+                                    { label: "replication" }
                                 );
-                            } else {
-                                Logger(
-                                    "Replication has been cancelled. Please try it again.",
-                                    showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
-                                );
+                                if (replicated) {
+                                    await balanceChunkPurgedDBs(this.localDatabase.localDatabase, remoteDB.db);
+                                    await purgeUnreferencedChunks(this.localDatabase.localDatabase, false);
+                                    this.localDatabase.clearCaches();
+                                    await replicator.markRemoteResolved(setting);
+                                    Logger(
+                                        "The local database has been cleaned up.",
+                                        showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                    );
+                                } else {
+                                    Logger(
+                                        "Replication has been cancelled. Please try it again.",
+                                        showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                    );
+                                }
+                            } finally {
+                                await remoteDB.close();
                             }
-                        } finally {
-                            await remoteDB.db.close();
-                        }
-                    },
+                        }),
                     { label: "database-cleanup" }
                 );
             }
         });
     }
 
-    private async onReplicationFailed(
-        showMessageOrInteraction: boolean | ReplicationInteraction = false,
-        interaction?: ReplicationInteraction
-    ): Promise<boolean> {
-        // The typed ReplicationService passes the legacy visibility flag first
-        // and the authority second. The authority is the source of truth for
-        // recovery dialogues when it is present; retain the legacy boolean for
-        // older callers which do not provide one.
-        const showMessage = interaction
-            ? interaction.kind === "permitted" && interaction.permissions.failureRecovery
-            : typeof showMessageOrInteraction === "boolean"
-              ? showMessageOrInteraction
-              : showMessageOrInteraction.kind === "permitted" && showMessageOrInteraction.permissions.failureRecovery;
-        const activeReplicator = this.services.replicator.getActiveReplicator();
-        if (!activeReplicator) {
-            Logger(`No active replicator found`, LOG_LEVEL_INFO);
-            return false;
-        }
+    private async onReplicationFailed(request: ReplicationFailureRequest): Promise<boolean> {
+        const { context, interaction, outcome, setting, showMessage } = request;
         if (!showMessage) {
             // Automatic requests may report the failure, but they must never
             // enter tweak, lock, fetch, unlock, or cleanup dialogues.
             Logger(`Replication failed on an unattended path.`, LOG_LEVEL_INFO);
             return false;
         }
-        if (activeReplicator.tweakSettingsMismatched && activeReplicator.preferredTweakValue) {
-            await this.services.tweakValue.askResolvingMismatched(activeReplicator.preferredTweakValue);
+        if (interaction.kind !== "permitted" || !interaction.permissions.failureRecovery) return false;
+        const recovery = outcome.recoveryHint;
+        if (!recovery) return false;
+        if (
+            recovery.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH &&
+            recovery.preferredTweakValue
+        ) {
+            await this.services.tweakValue.askResolvingMismatched(
+                recovery.preferredTweakValue,
+                async (effectiveSetting) => {
+                    let updated = false;
+                    await this.services.replicator.runWithActiveReplicatorContext(async (activeContext) => {
+                        if (activeContext !== context) return;
+                        const candidate = activeContext.replicator as typeof activeContext.replicator & {
+                            setPreferredRemoteTweakSettings?: (
+                                setting: ObsidianLiveSyncSettings
+                            ) => Promise<void>;
+                        };
+                        if (typeof candidate.setPreferredRemoteTweakSettings !== "function") return;
+                        await candidate.setPreferredRemoteTweakSettings({ ...effectiveSetting });
+                        updated = true;
+                    });
+                    return updated;
+                }
+            );
         } else {
-            if (activeReplicator.remoteLockedAndDeviceNotAccepted) {
-                if (activeReplicator.remoteCleaned && usesLegacyIndexedDBAdapter(this.settings)) {
-                    await this.cleaned(showMessage);
+            if (
+                recovery.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED ||
+                recovery.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED
+            ) {
+                if (
+                    recovery.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED &&
+                    usesLegacyIndexedDBAdapter(setting)
+                ) {
+                    await this.cleaned(showMessage, setting, context);
                 } else {
                     const message = $msg("Replicator.Dialogue.Locked.Message");
                     const CHOICE_FETCH = $msg("Replicator.Dialogue.Locked.Action.Fetch");
@@ -279,8 +311,19 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         this.services.appLifecycle.scheduleRestart();
                         return false;
                     } else if (ret == CHOICE_UNLOCK) {
-                        await activeReplicator.markRemoteResolved(this.settings);
-                        this._log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
+                        let unlocked = false;
+                        await this.services.replicator.runWithActiveReplicatorContext(async (activeContext) => {
+                            if (activeContext !== context) return;
+                            const replicator = activeContext.replicator as typeof activeContext.replicator & {
+                                markRemoteResolved(setting: ObsidianLiveSyncSettings): Promise<void>;
+                            };
+                            if (typeof replicator.markRemoteResolved !== "function") return;
+                            await replicator.markRemoteResolved(setting);
+                            unlocked = true;
+                        });
+                        if (unlocked) {
+                            this._log($msg("Replicator.Dialogue.Locked.Message.Unlocked"), LOG_LEVEL_NOTICE);
+                        }
                         return false;
                     }
                 }
@@ -360,16 +403,20 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             },
             serviceModules: {},
         });
-        const canReplicateWithPBKDF2WithHost = canReplicateWithPBKDF2.bind(null, this._unresolvedErrorManager, {
-            services: {
-                context: services.context,
-                replicator: services.replicator,
-                setting: services.setting,
-            },
-            serviceModules: {},
-        });
+        const canReplicateWithSecuritySeedWithHost = canReplicateWithSecuritySeed.bind(
+            null,
+            this._unresolvedErrorManager,
+            {
+                services: {
+                    context: services.context,
+                    replicator: services.replicator,
+                    setting: services.setting,
+                },
+                serviceModules: {},
+            }
+        );
         services.replication.onBeforeReplicate.addHandler(isOnlineAndCanReplicateWithHost, 10);
-        services.replication.onPrepareCentralRemoteReplication.addHandler(canReplicateWithPBKDF2WithHost);
+        services.replication.onPrepareCentralRemoteReplication.addHandler(canReplicateWithSecuritySeedWithHost);
         // <-- End of handlers that can be separated.
         services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this), 100);
         services.replication.onReplicationFailed.addHandler(this.onReplicationFailed.bind(this));

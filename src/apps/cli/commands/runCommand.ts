@@ -21,13 +21,17 @@ import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFu
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
 import {
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     isReplicationCompleted,
     NO_INTERACTION,
     REMOTE_RESOURCE_KINDS,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
-import { isRemoteAdministrationCommand, runRemoteAdministrationCommand } from "./remoteAdministration";
+import {
+    isCentralRemoteAdministrationCommand,
+    runCentralRemoteAdministrationCommand,
+} from "./centralRemoteAdministration";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
@@ -175,8 +179,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             // TODO: Standardise the logic for identifying the cause of replication
             // failure so that every reason (locked DB, version mismatch, network
             // error, etc.) is surfaced with a CLI-specific actionable message.
-            const replicator = core.services.replicator.getActiveReplicator();
-            if (replicator?.remoteLockedAndDeviceNotAccepted) {
+            const recoveryHint = result.status === "failed" ? result.recoveryHint : undefined;
+            if (
+                recoveryHint?.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED ||
+                recoveryHint?.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED
+            ) {
                 writeStderrLine(
                     standardIo,
                     `[Error] The remote database is locked and this device is not yet accepted.\n` +
@@ -723,8 +730,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         return true;
     }
 
-    if (isRemoteAdministrationCommand(options.command)) {
-        return await runRemoteAdministrationCommand(options, context, options.command);
+    if (isCentralRemoteAdministrationCommand(options.command)) {
+        return await runCentralRemoteAdministrationCommand(options, context, options.command);
     }
 
     if (options.command === "remote-status") {

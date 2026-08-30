@@ -1,27 +1,29 @@
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import {
-    REMOTE_ADMINISTRATION_ACTIONS,
-    REMOTE_ADMINISTRATION_FAILURE_REASONS,
-    REMOTE_ADMINISTRATION_OBSERVATION_KINDS,
-    isRemoteAdministrationVerified,
-    type RemoteAdministrationAction,
-    type RemoteAdministrationResult,
+    CENTRAL_REMOTE_ADMINISTRATION_ACTIONS,
+    CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS,
+    CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS,
+    isCentralRemoteAdministrationVerified,
+    type CentralRemoteAdministrationAction,
+    type CentralRemoteAdministrationResult,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { writeStderrLine } from "@/apps/cli/cliOutput";
 import type { CLICommand, CLICommandContext, CLIOptions } from "./types";
 
-const REMOTE_ADMINISTRATION_ACTION_BY_COMMAND = Object.freeze({
-    "mark-resolved": REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED,
-    "lock-remote": REMOTE_ADMINISTRATION_ACTIONS.LOCK,
-    "unlock-remote": REMOTE_ADMINISTRATION_ACTIONS.UNLOCK,
-} as const satisfies Partial<Record<CLICommand, RemoteAdministrationAction>>);
+const CENTRAL_REMOTE_ADMINISTRATION_ACTION_BY_COMMAND = Object.freeze({
+    "mark-resolved": CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED,
+    "lock-remote": CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK,
+    "unlock-remote": CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.UNLOCK,
+} as const satisfies Partial<Record<CLICommand, CentralRemoteAdministrationAction>>);
 
-export type RemoteAdministrationCommand = keyof typeof REMOTE_ADMINISTRATION_ACTION_BY_COMMAND;
+export type CentralRemoteAdministrationCommand = keyof typeof CENTRAL_REMOTE_ADMINISTRATION_ACTION_BY_COMMAND;
 
-/** Return whether a CLI command belongs to the remote-administration category. */
-export function isRemoteAdministrationCommand(command: CLICommand): command is RemoteAdministrationCommand {
-    return Object.prototype.hasOwnProperty.call(REMOTE_ADMINISTRATION_ACTION_BY_COMMAND, command);
+/** Return whether a CLI command belongs to the central-remote administration category. */
+export function isCentralRemoteAdministrationCommand(
+    command: CLICommand
+): command is CentralRemoteAdministrationCommand {
+    return Object.prototype.hasOwnProperty.call(CENTRAL_REMOTE_ADMINISTRATION_ACTION_BY_COMMAND, command);
 }
 
 function detailMessage(detail: unknown): string {
@@ -31,8 +33,8 @@ function detailMessage(detail: unknown): string {
 function reportMilestoneObservation(
     standardIo: StandardIo,
     observation: Extract<
-        RemoteAdministrationResult["observation"],
-        { kind: typeof REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE }
+        CentralRemoteAdministrationResult["observation"],
+        { kind: typeof CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE }
     >
 ): void {
     standardIo.writeStderr(`[Verification] Remote Database: ${observation.locked ? "LOCKED" : "UNLOCKED"}\n`);
@@ -42,40 +44,43 @@ function reportMilestoneObservation(
 }
 
 /** Map typed provider observations to the CLI's established verification output. */
-function reportRemoteAdministrationResult(standardIo: StandardIo, result: RemoteAdministrationResult): void {
-    if (result.observation?.kind === REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE) {
+function reportCentralRemoteAdministrationResult(
+    standardIo: StandardIo,
+    result: CentralRemoteAdministrationResult
+): void {
+    if (result.observation?.kind === CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE) {
         reportMilestoneObservation(standardIo, result.observation);
         return;
     }
-    if (isRemoteAdministrationVerified(result)) {
+    if (isCentralRemoteAdministrationVerified(result)) {
         return;
     }
 
     switch (result.reason) {
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.NO_ACTIVE_REPLICATOR:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.NO_ACTIVE_REPLICATOR:
             standardIo.writeStderr("[Verification] No active replicator found\n");
             return;
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.CONNECTION_FAILED:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CONNECTION_FAILED:
             standardIo.writeStderr(
-                `[Verification] Failed to connect to remote CouchDB: ${detailMessage(result.detail)}\n`
+                `[Verification] Failed to connect to the configured remote: ${detailMessage(result.detail)}\n`
             );
             return;
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_NOT_FOUND:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_NOT_FOUND:
             standardIo.writeStderr("[Verification] Milestone document not found on remote.\n");
             return;
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_READ_FAILED:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_READ_FAILED:
             standardIo.writeStderr(
                 `[Verification] Failed to fetch milestone document: ${detailMessage(result.detail)}\n`
             );
             return;
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.LOCAL_IDENTITY_UNAVAILABLE:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.LOCAL_IDENTITY_UNAVAILABLE:
             standardIo.writeStderr("[Verification] Failed to initialise the current device identity.\n");
             return;
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.CAPABILITY_NOT_IMPLEMENTED:
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.CAPABILITY_NOT_APPLICABLE:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CAPABILITY_NOT_IMPLEMENTED:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CAPABILITY_NOT_APPLICABLE:
             standardIo.writeStderr("[Verification] Remote administration is unavailable for this provider.\n");
             return;
-        case REMOTE_ADMINISTRATION_FAILURE_REASONS.POSTCONDITION_MISMATCH:
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.POSTCONDITION_MISMATCH:
             standardIo.writeStderr("[Verification] The requested remote state was not observed.\n");
             return;
     }
@@ -85,10 +90,10 @@ function reportRemoteAdministrationResult(standardIo: StandardIo, result: Remote
  * Apply one provider-owned mutation and map its typed verification to CLI exit policy.
  * Mutation exceptions deliberately escape this boundary.
  */
-export async function runRemoteAdministrationCommand(
+export async function runCentralRemoteAdministrationCommand(
     options: CLIOptions,
     context: CLICommandContext,
-    command: RemoteAdministrationCommand
+    command: CentralRemoteAdministrationCommand
 ): Promise<boolean> {
     const id = options.commandArgs[0]?.trim();
     if (id) {
@@ -113,8 +118,8 @@ export async function runRemoteAdministrationCommand(
     }
 
     writeStderrLine(context.core.services.context.standardIo, `[Command] ${command}${id ? ` ${id}` : ""}`);
-    const action = REMOTE_ADMINISTRATION_ACTION_BY_COMMAND[command];
-    const result = await context.core.services.replicator.runRemoteAdministration({ action });
-    reportRemoteAdministrationResult(context.core.services.context.standardIo, result);
-    return isRemoteAdministrationVerified(result) || options.compatRemoteAdminExitZero === true;
+    const action = CENTRAL_REMOTE_ADMINISTRATION_ACTION_BY_COMMAND[command];
+    const result = await context.core.services.replicator.runCentralRemoteAdministration({ action });
+    reportCentralRemoteAdministrationResult(context.core.services.context.standardIo, result);
+    return isCentralRemoteAdministrationVerified(result) || options.compatRemoteAdminExitZero === true;
 }

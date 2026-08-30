@@ -17,8 +17,8 @@ export function paneMaintenance(
     paneEl: HTMLElement,
     { addPanel }: PageFunctions
 ): void {
-    const isRemoteLockedAndDeviceNotAccepted = () => this.core?.replicator?.remoteLockedAndDeviceNotAccepted;
-    const isRemoteLocked = () => this.core?.replicator?.remoteLocked;
+    const isRemoteLockedAndDeviceNotAccepted = () => !!this.core?.replicator?.remoteLockedAndDeviceNotAccepted;
+    const isRemoteLocked = () => !!this.core?.replicator?.remoteLocked;
     // if (this.plugin?.replicator?.remoteLockedAndDeviceNotAccepted) {
     this.createEl(
         paneEl,

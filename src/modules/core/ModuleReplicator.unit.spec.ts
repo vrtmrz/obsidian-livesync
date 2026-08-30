@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    NO_INTERACTION,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+    replicationFailed,
+} from "@vrtmrz/livesync-commonlib/replication";
 
 const chunkMocks = vi.hoisted(() => ({
     purgeUnreferencedChunks: vi.fn(async (_db: unknown, countOnly: boolean) => (countOnly ? 2 : 0)),
@@ -18,13 +24,15 @@ import { ModuleReplicator } from "./ModuleReplicator";
 
 describe("ModuleReplicator", () => {
     it("refreshes the remote Security Seed before replication", async () => {
-        const ensurePBKDF2Salt = vi.fn(async () => true);
+        const read = vi.fn(async () => new Uint8Array([1]));
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ read, dispose }));
         let prepareCentralRemoteReplication: ((showMessage: boolean) => Promise<boolean>) | undefined;
         const services = {
             API: { isOnline: true },
             replicator: {
                 onBeforeReplicatorPublication: { addHandler: vi.fn() },
-                getActiveReplicator: () => ({ ensurePBKDF2Salt }),
+                createRemoteResource,
             },
             setting: { currentSettings: () => ({}) },
             databaseEvents: { onDatabaseInitialised: { addHandler: vi.fn() } },
@@ -58,11 +66,15 @@ describe("ModuleReplicator", () => {
 
         await prepareCentralRemoteReplication!(false);
 
-        expect(ensurePBKDF2Salt).toHaveBeenCalledWith({}, false, false);
+        expect(createRemoteResource).toHaveBeenCalledWith("security-seed", {});
+        expect(read).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
     });
 
     it("keeps online and general pre-replication handlers for P2P while skipping central-remote Security Seed preparation", async () => {
-        const ensurePBKDF2Salt = vi.fn(async () => true);
+        const read = vi.fn(async () => new Uint8Array([1]));
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ read, dispose }));
         const handlers = new Map<number, (...args: unknown[]) => Promise<boolean | void>>();
         const centralRemoteHandlers: Array<(...args: unknown[]) => Promise<boolean | void>> = [];
         const addHandler = vi.fn((handler: (...args: unknown[]) => Promise<boolean | void>, priority?: number) => {
@@ -72,7 +84,7 @@ describe("ModuleReplicator", () => {
             API: { isOnline: true },
             replicator: {
                 onBeforeReplicatorPublication: { addHandler: vi.fn() },
-                getActiveReplicator: () => ({ ensurePBKDF2Salt }),
+                createRemoteResource,
             },
             setting: { currentSettings: () => ({}) },
             databaseEvents: { onDatabaseInitialised: { addHandler: vi.fn() } },
@@ -114,10 +126,12 @@ describe("ModuleReplicator", () => {
         await expect(general!(false)).resolves.toBe(true);
 
         expect(generalBeforeReplicate).toHaveBeenCalledOnce();
-        expect(ensurePBKDF2Salt).not.toHaveBeenCalled();
+        expect(createRemoteResource).not.toHaveBeenCalled();
 
         await expect(securitySeed!(false)).resolves.toBe(true);
-        expect(ensurePBKDF2Salt).toHaveBeenCalledOnce();
+        expect(createRemoteResource).toHaveBeenCalledOnce();
+        expect(read).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
     });
 
     it("reprocesses stored documents when the normal-file target filters change", async () => {
@@ -174,12 +188,23 @@ describe("ModuleReplicator", () => {
         }
     });
 
-    it("only permits recovery dialogue when the authority grants failure recovery", async () => {
-        const askResolvingMismatched = vi.fn(async () => undefined);
-        const activeReplicator = {
+    it("uses the exact failed outcome and permits dialogue only with recovery authority", async () => {
+        const askResolvingMismatched = vi.fn(async (..._args: unknown[]) => undefined);
+        const failedSetPreferred = vi.fn(async (_setting: unknown) => undefined);
+        const failedReplicator = { setPreferredRemoteTweakSettings: failedSetPreferred };
+        const replacementSetPreferred = vi.fn(async (_setting: unknown) => undefined);
+        const replacementReplicator = {
             tweakSettingsMismatched: true,
-            preferredTweakValue: { customChunkSize: 60 },
+            preferredTweakValue: { customChunkSize: 99 },
+            setPreferredRemoteTweakSettings: replacementSetPreferred,
         };
+        const context = { provider: {}, replicator: failedReplicator };
+        const replacementContext = { provider: {}, replicator: replacementReplicator };
+        const preferredTweakValue = { customChunkSize: 60 };
+        const outcome = replicationFailed(new Error("mismatched"), {
+            reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
+            preferredTweakValue,
+        });
         const services = {
             context: createServiceContext(),
             API: {
@@ -192,7 +217,12 @@ describe("ModuleReplicator", () => {
             appLifecycle: {
                 getUnresolvedMessages: { addHandler: vi.fn() },
             },
-            replicator: { getActiveReplicator: vi.fn(() => activeReplicator) },
+            replicator: {
+                getActiveReplicator: vi.fn(() => replacementReplicator),
+                runWithActiveReplicatorContext: vi.fn(async (task: (context: unknown) => unknown) =>
+                    task(replacementContext)
+                ),
+            },
             tweakValue: { askResolvingMismatched },
         };
         const core = {
@@ -202,30 +232,137 @@ describe("ModuleReplicator", () => {
         } as any;
         const module = new ModuleReplicator(core);
 
-        await (module as any).onReplicationFailed(false);
+        await (module as any).onReplicationFailed({
+            context,
+            setting: {},
+            outcome,
+            showMessage: false,
+            interaction: NO_INTERACTION,
+        });
         expect(askResolvingMismatched).not.toHaveBeenCalled();
 
-        await (module as any).onReplicationFailed(true, {
-            kind: "permitted",
-            permissions: {
-                peerSelection: true,
-                localPeerAdmission: true,
-                configurationExchange: true,
-                failureRecovery: false,
+        await (module as any).onReplicationFailed({
+            context,
+            setting: {},
+            outcome,
+            showMessage: false,
+            interaction: {
+                kind: "permitted",
+                permissions: { ...USER_INITIATED_REPLICATION_AUTHORITY.permissions, failureRecovery: false },
             },
         });
         expect(askResolvingMismatched).not.toHaveBeenCalled();
 
-        await (module as any).onReplicationFailed(true, {
-            kind: "permitted",
-            permissions: {
-                peerSelection: true,
-                localPeerAdmission: true,
-                configurationExchange: true,
-                failureRecovery: true,
-            },
+        await (module as any).onReplicationFailed({
+            context,
+            setting: {},
+            outcome,
+            showMessage: true,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         });
-        expect(askResolvingMismatched).toHaveBeenCalledOnce();
+        expect(askResolvingMismatched).toHaveBeenCalledWith(preferredTweakValue, expect.any(Function));
+        const updatePreferredRemote = askResolvingMismatched.mock.calls[0][1] as (
+            setting: Record<string, unknown>
+        ) => Promise<boolean>;
+        await expect(updatePreferredRemote({ customChunkSize: 64 } as any)).resolves.toBe(false);
+        expect(failedSetPreferred).not.toHaveBeenCalled();
+        expect(replacementSetPreferred).not.toHaveBeenCalled();
+    });
+
+    it("writes a mismatch decision only through the still-active failed publication", async () => {
+        const setPreferredRemoteTweakSettings = vi.fn(async (_setting: unknown) => undefined);
+        const context = { provider: {}, replicator: { setPreferredRemoteTweakSettings } };
+        let updatePreferredRemote:
+            | ((setting: Record<string, unknown>) => Promise<boolean>)
+            | undefined;
+        const askResolvingMismatched = vi.fn(
+            async (_preferred: unknown, update: (setting: Record<string, unknown>) => Promise<boolean>) => {
+                updatePreferredRemote = update;
+            }
+        );
+        const services = {
+            context: createServiceContext(),
+            API: {
+                addLog: vi.fn(),
+                addCommand: vi.fn(),
+                registerWindow: vi.fn(),
+                addRibbonIcon: vi.fn(),
+                registerProtocolHandler: vi.fn(),
+            },
+            appLifecycle: { getUnresolvedMessages: { addHandler: vi.fn() } },
+            replicator: {
+                runWithActiveReplicatorContext: vi.fn(async (task: (activeContext: unknown) => unknown) =>
+                    task(context)
+                ),
+            },
+            tweakValue: { askResolvingMismatched },
+        };
+        const module = new ModuleReplicator({ _services: services, services, settings: {} } as any);
+
+        await (module as any).onReplicationFailed({
+            context,
+            setting: {},
+            outcome: replicationFailed(new Error("mismatched"), {
+                reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
+                preferredTweakValue: { customChunkSize: 60 },
+            }),
+            showMessage: true,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+
+        const effectiveSetting = { customChunkSize: 64 };
+        await expect(updatePreferredRemote?.(effectiveSetting)).resolves.toBe(true);
+        expect(setPreferredRemoteTweakSettings).toHaveBeenCalledWith(effectiveSetting);
+        expect(setPreferredRemoteTweakSettings.mock.calls[0][0]).not.toBe(effectiveSetting);
+    });
+
+    it("does not apply an unlock selected for a replaced failed publication", async () => {
+        const failedMarkResolved = vi.fn(async () => undefined);
+        const replacementMarkResolved = vi.fn(async () => undefined);
+        const failedContext = { provider: {}, replicator: { markRemoteResolved: failedMarkResolved } };
+        const replacementContext = { provider: {}, replicator: { markRemoteResolved: replacementMarkResolved } };
+        const runWithActiveReplicatorContext = vi.fn(async (task: (context: unknown) => unknown) =>
+            task(replacementContext)
+        );
+        const services = {
+            context: createServiceContext(),
+            API: {
+                addLog: vi.fn(),
+                addCommand: vi.fn(),
+                registerWindow: vi.fn(),
+                addRibbonIcon: vi.fn(),
+                registerProtocolHandler: vi.fn(),
+            },
+            appLifecycle: {
+                getUnresolvedMessages: { addHandler: vi.fn() },
+                scheduleRestart: vi.fn(),
+            },
+            replicator: { runWithActiveReplicatorContext },
+        };
+        const core = {
+            _services: services,
+            services,
+            settings: {},
+            confirm: {
+                askSelectStringDialogue: vi.fn(async (_message: string, choices: string[]) => choices[1]),
+            },
+            rebuilder: { scheduleFetch: vi.fn() },
+        } as any;
+        const module = new ModuleReplicator(core);
+
+        await (module as any).onReplicationFailed({
+            context: failedContext,
+            setting: {},
+            outcome: replicationFailed(new Error("locked"), {
+                reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED,
+            }),
+            showMessage: true,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+
+        expect(runWithActiveReplicatorContext).toHaveBeenCalledOnce();
+        expect(failedMarkResolved).not.toHaveBeenCalled();
+        expect(replacementMarkResolved).not.toHaveBeenCalled();
     });
 });
 
@@ -240,14 +377,20 @@ describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", (
             }
         });
         const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
-        const openReplication = vi.fn(async () => true);
+        const openOneShotReplication = vi.fn(async () => true);
         const remoteDatabase = {
             close: vi.fn(async () => undefined),
         };
+        const close = vi.fn(async () => undefined);
         const activeReplicator = Object.assign(new LiveSyncCouchDBReplicator({} as any), {
-            connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase })),
+            connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase, close })),
+            openOneShotReplication,
             markRemoteResolved: vi.fn(async () => undefined),
         });
+        const expectedContext = { provider: {}, replicator: activeReplicator };
+        const runWithActiveReplicatorContext = vi.fn(async (task: (context: unknown) => unknown) =>
+            task(expectedContext)
+        );
         const services = {
             context: createServiceContext(),
             API: {
@@ -266,6 +409,7 @@ describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", (
                 getActiveReplicator: vi.fn(() => activeReplicator),
                 runBoundedRemoteActivity,
                 runFiniteReplicationActivity,
+                runWithActiveReplicatorContext,
             },
         };
         const localDatabase = {
@@ -278,11 +422,10 @@ describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", (
             settings: {},
             localDatabase,
             confirm: { confirmWithMessage: vi.fn(async () => "Cleanup") },
-            replicator: { openReplication },
         } as any;
         const module = new ModuleReplicator(core);
 
-        await module.cleaned(true);
+        await module.cleaned(true, {} as ObsidianLiveSyncSettings, expectedContext as never);
 
         expect(runBoundedRemoteActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "database-cleanup",
@@ -290,12 +433,13 @@ describe("compatibility: cleaned-remote reconciliation for IndexedDB clients", (
         expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "replication",
         });
-        expect(openReplication).toHaveBeenCalledOnce();
-        expect(openReplication.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);
-        expect(chunkMocks.balanceChunkPurgedDBs).toHaveBeenCalledOnce();
-        expect(remoteDatabase.close).toHaveBeenCalledOnce();
-        expect(remoteDatabase.close.mock.invocationCallOrder[0]).toBeLessThan(
+        expect(runWithActiveReplicatorContext).toHaveBeenCalledOnce();
+        expect(openOneShotReplication).toHaveBeenCalledOnce();
+        expect(openOneShotReplication.mock.invocationCallOrder[0]).toBeLessThan(
             activityFinished.mock.invocationCallOrder[0]
         );
+        expect(chunkMocks.balanceChunkPurgedDBs).toHaveBeenCalledOnce();
+        expect(close).toHaveBeenCalledOnce();
+        expect(close.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);
     });
 });

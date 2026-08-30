@@ -16,7 +16,11 @@ import type { LiveSyncLocalDBEnv } from "@vrtmrz/livesync-commonlib/compat/pouch
 import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
 import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
-import type { LiveSyncReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import type {
+    LiveSyncAbstractReplicator,
+    LiveSyncReplicatorEnv,
+} from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
 import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
 import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
@@ -38,6 +42,8 @@ import { createCentralReplicatorProviderDefinitions } from "./common/replicatorP
 export interface LiveSyncCoreFeatureViews {
     readonly replicationScheduling: ReplicationSchedulingControl;
 }
+
+type CompatibilityReplicatorView = ReplicatorInstance & Partial<LiveSyncAbstractReplicator>;
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
@@ -236,10 +242,11 @@ export class LiveSyncBaseCore<
     }
 
     /**
-     * @obsolete Use services.replication.getActiveReplicator instead. Get the active replicator instance. Note that there can be multiple replicators, but only one can be active at a time.
+     * @obsolete Use the provider context or a focused service operation instead.
+     * Provider-specific members on this compatibility view are optional.
      */
-    get replicator() {
-        return this.services.replicator.getActiveReplicator()!;
+    get replicator(): CompatibilityReplicatorView {
+        return this.services.replicator.getActiveReplicator() as CompatibilityReplicatorView;
     }
 
     /**
