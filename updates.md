@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Command-line tool
+
+#### Fixed
+
+- The systemd installer now finds the repository root correctly, installs every generated bundle chunk and required production dependency, checks the installed command before activation, and reports success only when the service remains active.
+
 ## 1.0.21
 
 26th August, 2026

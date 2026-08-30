@@ -522,10 +522,12 @@ bash src/apps/cli/deploy/install.sh --system --vault /path/to/vault
 ```
 
 The script:
-1. Builds the CLI (`npm install` + `npm run build`).
-2. Installs the binary to `~/.local/bin/livesync-cli` (user) or `/usr/local/bin/livesync-cli` (system).
-3. Writes the unit file to `~/.config/systemd/user/livesync-cli.service` (user) or `/etc/systemd/system/livesync-cli.service` (system).
-4. Runs `systemctl [--user] daemon-reload && systemctl [--user] enable --now livesync-cli`.
+
+1. Installs the repository dependencies and builds the CLI.
+2. Installs the complete CLI bundle and its production dependencies under `~/.local/lib/livesync-cli` (user) or `/usr/local/lib/livesync-cli` (system), then checks that the installed CLI can start.
+3. Installs the command wrapper as `~/.local/bin/livesync-cli` (user) or `/usr/local/bin/livesync-cli` (system).
+4. Writes the unit file to `~/.config/systemd/user/livesync-cli.service` (user) or `/etc/systemd/system/livesync-cli.service` (system).
+5. Reloads systemd, enables and starts the service, and reports success only after confirming that the service remains active.
 
 **Manual setup** — if you prefer to manage the unit yourself, copy `deploy/livesync-cli.service`, replace `LIVESYNC_BIN` and `LIVESYNC_VAULT_PATH` with the actual binary path and vault path, then install to the appropriate systemd directory.
 

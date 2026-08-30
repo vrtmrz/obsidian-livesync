@@ -4,7 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=exec
 ExecStart=LIVESYNC_BIN LIVESYNC_VAULT_PATH
 Restart=on-failure
 RestartSec=10

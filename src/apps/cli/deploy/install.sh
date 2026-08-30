@@ -8,7 +8,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../../.." && pwd)"
 CLI_DIR="$REPO_ROOT/src/apps/cli"
 SERVICE_TEMPLATE="$SCRIPT_DIR/livesync-cli.service"
 
@@ -104,30 +104,70 @@ fi
 # ── Install binary ───────────────────────────────────────────────────────────
 if [[ "$INSTALL_MODE" == "user" ]]; then
     BIN_DIR="$HOME/.local/bin"
+    LIB_DIR="$HOME/.local/lib/livesync-cli"
     UNIT_DIR="$HOME/.config/systemd/user"
     SYSTEMCTL_FLAGS="--user"
 else
     BIN_DIR="/usr/local/bin"
+    LIB_DIR="/usr/local/lib/livesync-cli"
     UNIT_DIR="/etc/systemd/system"
     SYSTEMCTL_FLAGS=""
 fi
 
-mkdir -p "$BIN_DIR"
+LIB_PARENT="$(dirname -- "$LIB_DIR")"
+mkdir -p "$BIN_DIR" "$LIB_PARENT"
 
 LIVESYNC_BIN="$BIN_DIR/livesync-cli"
-LIVESYNC_JS="$BIN_DIR/livesync-cli.js"
+LIVESYNC_JS="$LIB_DIR/dist/index.cjs"
 
-# Copy the CJS bundle so the wrapper is self-contained and independent of the
-# build directory location.
-cp "$BUILT_CJS" "$LIVESYNC_JS"
+# Build a complete runtime payload before replacing any previous installation.
+# The Vite output contains hashed sibling chunks, while some Node dependencies
+# deliberately remain external and must be installed next to the bundle.
+PAYLOAD_STAGING="$(mktemp -d "$LIB_PARENT/.livesync-cli.install.XXXXXX")"
+cleanup_payload() {
+    if [[ -n "$PAYLOAD_STAGING" ]] && [[ -e "$PAYLOAD_STAGING" ]]; then
+        rm -rf -- "$PAYLOAD_STAGING"
+    fi
+}
+trap cleanup_payload EXIT
 
-# Write a bash wrapper that invokes node on the installed bundle.
+cp "$CLI_DIR/package.json" "$PAYLOAD_STAGING/package.json"
+npm install --omit=dev --no-audit --no-fund --prefix "$PAYLOAD_STAGING"
+cp -R "$CLI_DIR/dist" "$PAYLOAD_STAGING/dist"
+
+if ! node "$PAYLOAD_STAGING/dist/index.cjs" --help >/dev/null; then
+    echo "Error: installed CLI failed its start-up check" >&2
+    exit 1
+fi
+
+PAYLOAD_BACKUP=""
+if [[ -e "$LIB_DIR" ]] || [[ -L "$LIB_DIR" ]]; then
+    PAYLOAD_BACKUP="$(mktemp -d "$LIB_PARENT/.livesync-cli.backup.XXXXXX")"
+    rmdir "$PAYLOAD_BACKUP"
+    mv -- "$LIB_DIR" "$PAYLOAD_BACKUP"
+fi
+
+if ! mv -- "$PAYLOAD_STAGING" "$LIB_DIR"; then
+    if [[ -n "$PAYLOAD_BACKUP" ]]; then
+        mv -- "$PAYLOAD_BACKUP" "$LIB_DIR"
+    fi
+    echo "Error: failed to install the CLI files at $LIB_DIR" >&2
+    exit 1
+fi
+PAYLOAD_STAGING=""
+
+if [[ -n "$PAYLOAD_BACKUP" ]]; then
+    rm -rf -- "$PAYLOAD_BACKUP"
+fi
+trap - EXIT
+
+# Write a bash wrapper that invokes Node.js on the installed payload.
 cat > "$LIVESYNC_BIN" <<WRAPPER
 #!/usr/bin/env bash
 exec node "$LIVESYNC_JS" "\$@"
 WRAPPER
 chmod +x "$LIVESYNC_BIN"
-echo "[INFO] Installed bundle:  $LIVESYNC_JS"
+echo "[INFO] Installed CLI files: $LIB_DIR"
 echo "[INFO] Installed binary: $LIVESYNC_BIN"
 
 # ── Write systemd unit ───────────────────────────────────────────────────────
@@ -179,6 +219,15 @@ fi
 systemctl $SYSTEMCTL_FLAGS daemon-reload
 # shellcheck disable=SC2086
 systemctl $SYSTEMCTL_FLAGS enable --now livesync-cli
+
+sleep 1
+# shellcheck disable=SC2086
+if ! systemctl $SYSTEMCTL_FLAGS is-active --quiet livesync-cli; then
+    echo "Error: livesync-cli service did not remain active after startup." >&2
+    # shellcheck disable=SC2086
+    systemctl $SYSTEMCTL_FLAGS status livesync-cli --no-pager || true
+    exit 1
+fi
 
 echo ""
 echo "[Done] livesync-cli service installed and started."
