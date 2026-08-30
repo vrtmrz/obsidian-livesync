@@ -22,7 +22,7 @@ function createSecuritySeedResourceFactory(
         const snapshot = snapshotRemoteSettings(setting);
         const replicator = createReplicator();
         return Promise.resolve({
-            read: () => replicator.getReplicationPBKDF2Salt(snapshot),
+            read: () => replicator.getReplicationPBKDF2Salt(snapshot, true),
             dispose: createReplicatorDisposer(replicator),
         });
     };

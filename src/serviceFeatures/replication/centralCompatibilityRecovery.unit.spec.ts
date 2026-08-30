@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { defaultLogger, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     NO_INTERACTION,
@@ -21,6 +22,40 @@ import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/rep
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 
 describe("central compatibility recovery", () => {
+    it("characterises unattended central failure handling as one INFO log without a NOTICE", async () => {
+        const log = vi.fn((_message: unknown, _level?: number, _key?: string) => undefined);
+        setGlobalLogFunction(log);
+        try {
+            const recovery = createCentralCompatibilityRecovery({
+                confirm: {},
+                localDatabase: {},
+                rebuilder: {},
+                services: {
+                    appLifecycle: {},
+                    API: {},
+                    replicator: {},
+                    tweakValue: {},
+                },
+            } as never);
+
+            await expect(
+                recovery.handleReplicationFailure({
+                    context: { provider: {}, replicator: {} },
+                    setting: {},
+                    outcome: replicationFailed(new Error("provider failed")),
+                    showMessage: false,
+                    interaction: NO_INTERACTION,
+                } as never)
+            ).resolves.toBe(false);
+
+            expect(log).toHaveBeenCalledOnce();
+            expect(log).toHaveBeenCalledWith("Replication failed on an unattended path.", LOG_LEVEL_INFO, undefined);
+            expect(log.mock.calls.map(([, level]) => level)).not.toContain(LOG_LEVEL_NOTICE);
+        } finally {
+            setGlobalLogFunction(defaultLogger);
+        }
+    });
+
     it("uses the exact failed outcome and permits dialogue only with recovery authority", async () => {
         const askResolvingMismatched = vi.fn(async (..._arguments: unknown[]) => undefined);
         const failedSetPreferred = vi.fn(async (_setting: unknown) => undefined);

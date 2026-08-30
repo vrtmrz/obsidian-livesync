@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { DEFAULT_SETTINGS, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { NO_INTERACTION, type ReplicationOutcome } from "@vrtmrz/livesync-commonlib/replication";
 import {
     createReplicationSchedulingContext,
@@ -22,6 +22,7 @@ function createDeferred<T>() {
 
 function createControllerHarness(
     overrides: Partial<{
+        remoteType: typeof DEFAULT_SETTINGS.remoteType;
         liveSync: boolean;
         syncOnStart: boolean;
         periodicReplication: boolean;
@@ -109,6 +110,26 @@ describe("replication scheduling context", () => {
 
         await vi.waitFor(() => expect(replicateUnattended).toHaveBeenCalledOnce());
         expect(timer.enable).toHaveBeenCalledWith(45_000);
+    });
+
+    it("schedules migrated Object Storage syncOnStart through unattended OneShot", async () => {
+        const { context, replicateUnattended, startContinuous } = createControllerHarness({
+            remoteType: REMOTE_MINIO,
+            liveSync: true,
+            syncOnStart: true,
+        });
+        startContinuous.mockResolvedValue({
+            status: "blocked",
+            reason: "capability-not-applicable",
+        });
+
+        resumeReplicationScheduling(context);
+
+        await vi.waitFor(() => expect(replicateUnattended).toHaveBeenCalledOnce());
+        expect(replicateUnattended).toHaveBeenCalledWith({
+            trigger: "resume",
+            interaction: NO_INTERACTION,
+        });
     });
 
     it("does not run a finite fallback after Continuous starts successfully", async () => {

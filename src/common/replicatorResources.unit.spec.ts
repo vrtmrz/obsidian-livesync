@@ -224,8 +224,8 @@ describe("replicator probe factories", () => {
         objectSettings.endpoint = "https://changed.example.test";
         await expect(couchResource.read()).resolves.toBe(couchSeed);
         await expect(objectResource.read()).resolves.toBe(objectSeed);
-        expect(couchReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledWith(couchSnapshot);
-        expect(objectReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledWith(objectSnapshot);
+        expect(couchReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledWith(couchSnapshot, true);
+        expect(objectReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledWith(objectSnapshot, true);
 
         await Promise.all([couchResource.dispose(), objectResource.dispose()]);
         expect(couchReplicator.closeReplication).toHaveBeenCalledOnce();
