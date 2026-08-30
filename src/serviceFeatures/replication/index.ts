@@ -39,8 +39,8 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
         : undefined;
     const resultProcessor = new ReplicateResultProcessor({
         currentSettings: () => services.setting.currentSettings(),
-        keyValueDB: services.keyValueDB.kvDB,
-        localDatabase: core.localDatabase,
+        getKeyValueDB: () => services.keyValueDB.kvDB,
+        getLocalDatabase: () => core.localDatabase,
         requestActiveReplicatorRetirement: () => {
             // Do not await a retirement transition from result application: it
             // may be draining the replication work which delivered this item.
@@ -81,7 +81,7 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
     const securitySeedPreflight = createSecuritySeedPreflight(unresolvedErrorManager, preflightContext);
     const centralCompatibilityRecovery = createCentralCompatibilityRecovery({
         confirm: core.confirm,
-        localDatabase: core.localDatabase,
+        getLocalDatabase: () => core.localDatabase,
         rebuilder: core.rebuilder,
         services: {
             API: services.API,

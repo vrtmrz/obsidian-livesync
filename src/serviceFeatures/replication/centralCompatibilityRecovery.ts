@@ -17,9 +17,11 @@ type CentralCompatibilityRecoveryServices = Pick<
     "API" | "appLifecycle" | "replicator" | "tweakValue"
 >;
 
+/** Collaborators for applying a compatibility decision to its failed publication. */
 interface CentralCompatibilityRecoveryContext {
     readonly confirm: LiveSyncBaseCore["confirm"];
-    readonly localDatabase: LiveSyncBaseCore["localDatabase"];
+    /** Obtain the database only when recovery runs, after initialisation or reset. */
+    readonly getLocalDatabase: () => LiveSyncBaseCore["localDatabase"];
     readonly rebuilder: LiveSyncBaseCore["rebuilder"];
     readonly services: CentralCompatibilityRecoveryServices;
 }
@@ -56,7 +58,7 @@ export function createCentralCompatibilityRecovery(context: CentralCompatibility
     ) {
         Logger("The remote database has been cleaned.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         await skipIfDuplicated("cleanup", async () => {
-            const count = await purgeUnreferencedChunks(context.localDatabase.localDatabase, true);
+            const count = await purgeUnreferencedChunks(context.getLocalDatabase().localDatabase, true);
             const message = `The remote database has been cleaned up.
 To synchronize, this device must be also cleaned up. ${count} chunk(s) will be erased from this device.
 However, If there are many chunks to be deleted, maybe fetching again is faster.
@@ -83,6 +85,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         if (activeContext !== expectedContext) return;
                         const replicator = activeContext.replicator;
                         if (!(replicator instanceof LiveSyncCouchDBReplicator)) return;
+                        const localDatabase = context.getLocalDatabase();
                         const remoteDatabase = await replicator.connectRemoteCouchDBWithSetting(
                             setting,
                             context.services.API.isMobile(),
@@ -94,16 +97,16 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         }
 
                         try {
-                            await purgeUnreferencedChunks(context.localDatabase.localDatabase, false);
-                            context.localDatabase.clearCaches();
+                            await purgeUnreferencedChunks(localDatabase.localDatabase, false);
+                            localDatabase.clearCaches();
                             const replicated = await context.services.replicator.runFiniteReplicationActivity(
                                 () => replicator.openOneShotReplication(setting, showMessage, false, "sync", true),
                                 { label: "replication" }
                             );
                             if (replicated) {
-                                await balanceChunkPurgedDBs(context.localDatabase.localDatabase, remoteDatabase.db);
-                                await purgeUnreferencedChunks(context.localDatabase.localDatabase, false);
-                                context.localDatabase.clearCaches();
+                                await balanceChunkPurgedDBs(localDatabase.localDatabase, remoteDatabase.db);
+                                await purgeUnreferencedChunks(localDatabase.localDatabase, false);
+                                localDatabase.clearCaches();
                                 await replicator.markRemoteResolved(setting);
                                 Logger(
                                     "The local database has been cleaned up.",

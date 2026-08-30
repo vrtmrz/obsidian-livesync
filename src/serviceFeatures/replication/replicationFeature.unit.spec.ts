@@ -6,8 +6,29 @@ import { useReplicationFeature } from "./index";
 
 type BooleanHandler = (showMessage: boolean) => Promise<boolean>;
 type ParseHandler = (documents: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<boolean>;
+type KeyValueDBFixture = {
+    readonly kvDB: {
+        get: (key: string) => Promise<unknown>;
+        set: (key: string, value: unknown) => Promise<unknown>;
+    };
+};
+type SetupOptions = {
+    readonly getLocalDatabase?: () => object;
+    readonly keyValueDB?: KeyValueDBFixture;
+    readonly onCloseActiveReplication?: () => Promise<boolean>;
+};
 
-function setup(onCloseActiveReplication = vi.fn(async () => true)) {
+function setup(options: SetupOptions = {}) {
+    const {
+        getLocalDatabase = () => ({}),
+        keyValueDB = {
+            kvDB: {
+                get: vi.fn(async () => undefined),
+                set: vi.fn(async () => undefined),
+            },
+        },
+        onCloseActiveReplication = vi.fn(async () => true),
+    } = options;
     const read = vi.fn(async () => new Uint8Array([1]));
     const dispose = vi.fn(async () => undefined);
     const createRemoteResource = vi.fn(async () => ({ read, dispose }));
@@ -24,12 +45,7 @@ function setup(onCloseActiveReplication = vi.fn(async () => true)) {
         },
         context: createServiceContext(),
         databaseEvents: { onDatabaseInitialised: { addHandler: vi.fn() } },
-        keyValueDB: {
-            kvDB: {
-                get: vi.fn(async () => undefined),
-                set: vi.fn(async () => undefined),
-            },
-        },
+        keyValueDB,
         path: { getPath: vi.fn((entry: { path: string }) => entry.path) },
         replication: {
             onBeforeReplicate: {
@@ -59,7 +75,9 @@ function setup(onCloseActiveReplication = vi.fn(async () => true)) {
     };
     const core = {
         confirm: {},
-        localDatabase: {},
+        get localDatabase() {
+            return getLocalDatabase();
+        },
         rebuilder: {},
         services,
     };
@@ -80,6 +98,42 @@ function setup(onCloseActiveReplication = vi.fn(async () => true)) {
 }
 
 describe("replication serviceFeature composition", () => {
+    it("does not acquire the local database while composing result handlers", () => {
+        const acquireLocalDatabase = vi.fn(() => {
+            throw new Error("Local database is not ready yet");
+        });
+
+        expect(() => setup({ getLocalDatabase: acquireLocalDatabase })).not.toThrow();
+        expect(acquireLocalDatabase).not.toHaveBeenCalled();
+    });
+
+    it("acquires the current key-value database only when snapshot recovery starts", async () => {
+        const backingDatabase = {
+            get: vi.fn(async () => undefined),
+            set: vi.fn(async () => undefined),
+        };
+        let isReady = false;
+        const acquireKeyValueDB = vi.fn(() => {
+            if (!isReady) throw new Error("KeyValueDB is not initialized yet");
+            return backingDatabase;
+        });
+        const keyValueDB = {
+            get kvDB() {
+                return acquireKeyValueDB();
+            },
+        };
+
+        const { beforeReplicateHandlers } = setup({ keyValueDB });
+
+        expect(acquireKeyValueDB).not.toHaveBeenCalled();
+        isReady = true;
+        const restoreSnapshot = beforeReplicateHandlers.get(100);
+        expect(restoreSnapshot).toBeDefined();
+        await expect(restoreSnapshot!(false)).resolves.toBe(true);
+        expect(acquireKeyValueDB).toHaveBeenCalledOnce();
+        expect(backingDatabase.get).toHaveBeenCalledOnce();
+    });
+
     it("refreshes and disposes the remote Security Seed before central replication", async () => {
         const { centralRemoteHandlers, createRemoteResource, dispose, read } = setup();
 
@@ -109,7 +163,7 @@ describe("replication serviceFeature composition", () => {
     it("requests owner retirement without awaiting the transition from result application", async () => {
         const retirement = promiseWithResolvers<boolean>();
         const onCloseActiveReplication = vi.fn(() => retirement.promise);
-        const harness = setup(onCloseActiveReplication);
+        const harness = setup({ onCloseActiveReplication });
         const versionInfo = {
             _id: "versioninfo",
             _rev: "1-test",

@@ -28,7 +28,7 @@ describe("central compatibility recovery", () => {
         try {
             const recovery = createCentralCompatibilityRecovery({
                 confirm: {},
-                localDatabase: {},
+                getLocalDatabase: () => ({}),
                 rebuilder: {},
                 services: {
                     appLifecycle: {},
@@ -75,7 +75,7 @@ describe("central compatibility recovery", () => {
         });
         const recovery = createCentralCompatibilityRecovery({
             confirm: {},
-            localDatabase: {},
+            getLocalDatabase: () => ({}),
             rebuilder: {},
             services: {
                 appLifecycle: {},
@@ -137,7 +137,7 @@ describe("central compatibility recovery", () => {
         );
         const recovery = createCentralCompatibilityRecovery({
             confirm: {},
-            localDatabase: {},
+            getLocalDatabase: () => ({}),
             rebuilder: {},
             services: {
                 appLifecycle: {},
@@ -180,7 +180,7 @@ describe("central compatibility recovery", () => {
             confirm: {
                 askSelectStringDialogue: vi.fn(async (_message: string, choices: string[]) => choices[1]),
             },
-            localDatabase: {},
+            getLocalDatabase: () => ({}),
             rebuilder: {},
             services: {
                 appLifecycle: { scheduleRestart: vi.fn() },
@@ -228,9 +228,10 @@ describe("central compatibility recovery", () => {
             task(expectedContext)
         );
         const localDatabase = { localDatabase: {}, clearCaches: vi.fn() };
+        const getLocalDatabase = vi.fn(() => localDatabase);
         const recovery = createCentralCompatibilityRecovery({
             confirm: { confirmWithMessage: vi.fn(async () => "Cleanup") },
-            localDatabase,
+            getLocalDatabase,
             rebuilder: {},
             services: {
                 appLifecycle: {},
@@ -258,6 +259,7 @@ describe("central compatibility recovery", () => {
             activityFinished.mock.invocationCallOrder[0]
         );
         expect(chunkMocks.balanceChunkPurgedDBs).toHaveBeenCalledOnce();
+        expect(getLocalDatabase).toHaveBeenCalledTimes(2);
         expect(close).toHaveBeenCalledOnce();
         expect(close.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);
     });

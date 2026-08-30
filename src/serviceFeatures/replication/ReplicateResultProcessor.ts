@@ -44,11 +44,16 @@ type ReplicateResultProcessorServices = Pick<
  * awaiting it. Result application can still be running inside work admitted by
  * that owner, so awaiting retirement here could make each side wait for the
  * other to finish.
+ *
+ * Runtime databases are deliberately obtained through operation-time
+ * accessors. Feature composition precedes their initialisation, and database
+ * reset may replace their backing instances, so retaining an earlier concrete
+ * database would be invalid.
  */
 interface ReplicateResultProcessorContext {
     readonly currentSettings: () => ReplicateResultProcessorSettings;
-    readonly keyValueDB: LiveSyncBaseCore["kvDB"];
-    readonly localDatabase: LiveSyncBaseCore["localDatabase"];
+    readonly getKeyValueDB: () => LiveSyncBaseCore["kvDB"];
+    readonly getLocalDatabase: () => LiveSyncBaseCore["localDatabase"];
     readonly requestActiveReplicatorRetirement: () => void;
     readonly runLocalApplicationActivity: <T>(
         task: () => T | PromiseLike<T>,
@@ -77,7 +82,7 @@ export class ReplicateResultProcessor {
     constructor(private readonly context: ReplicateResultProcessorContext) {}
 
     private get localDatabase() {
-        return this.context.localDatabase;
+        return this.context.getLocalDatabase();
     }
     private get services() {
         return this.context.services;
@@ -119,7 +124,7 @@ export class ReplicateResultProcessor {
             queued: this._queuedChanges.slice(),
             processing: this._processingChanges.slice(),
         } satisfies ReplicateResultProcessorState;
-        await this.context.keyValueDB.set(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT, snapshot);
+        await this.context.getKeyValueDB().set(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT, snapshot);
         this.log(
             `Snapshot taken. Queued: ${snapshot.queued.length}, Processing: ${snapshot.processing.length}`,
             LOG_LEVEL_DEBUG
@@ -141,9 +146,9 @@ export class ReplicateResultProcessor {
      * Restore from snapshot.
      */
     public async restoreFromSnapshot() {
-        const snapshot = await this.context.keyValueDB.get<ReplicateResultProcessorState>(
-            KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT
-        );
+        const snapshot = await this.context
+            .getKeyValueDB()
+            .get<ReplicateResultProcessorState>(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT);
         if (snapshot) {
             // Restoring the snapshot re-runs processing for both queued and processing items.
             const newQueue = [...snapshot.processing, ...snapshot.queued, ...this._queuedChanges];

@@ -56,8 +56,8 @@ function setup(options: SetupOptions = {}) {
     };
     const processor = new ReplicateResultProcessor({
         currentSettings: () => ({ maxMTimeForReflectEvents: 0, suspendParseReplicationResult: false }),
-        keyValueDB: core.kvDB,
-        localDatabase: core.localDatabase,
+        getKeyValueDB: () => core.kvDB,
+        getLocalDatabase: () => core.localDatabase,
         requestActiveReplicatorRetirement: () => {
             void onCloseActiveReplication();
         },
@@ -95,14 +95,16 @@ describe("ReplicateResultProcessor", () => {
         const findAllNormalDocs = vi.fn(async function* () {
             yield* documents;
         });
+        const getLocalDatabase = vi.fn(() => ({ findAllNormalDocs }));
         const processor = new ReplicateResultProcessor({
-            localDatabase: { findAllNormalDocs },
+            getLocalDatabase,
         } as never);
         const enqueueAll = vi.spyOn(processor, "enqueueAll").mockImplementation(() => undefined);
 
         await expect(processor.reprocessStoredDocuments()).resolves.toBe(2);
 
         expect(findAllNormalDocs).toHaveBeenCalledOnce();
+        expect(getLocalDatabase).toHaveBeenCalledOnce();
         expect(enqueueAll).toHaveBeenCalledOnce();
         expect(enqueueAll).toHaveBeenCalledWith(documents);
     });
