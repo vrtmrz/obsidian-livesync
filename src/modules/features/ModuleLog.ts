@@ -22,10 +22,19 @@ import {
     EVENT_LAYOUT_READY,
     EVENT_LEAF_ACTIVE_CHANGED,
     EVENT_ON_UNRESOLVED_ERROR,
+    EVENT_SETTING_SAVED,
     eventHub,
 } from "@/common/events.ts";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
-import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
+import { addIcon, debounce, normalizePath, Notice, setIcon, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
+import {
+    MINIMAL_STATUS_LINGER_MS,
+    StatusStyles,
+    deriveMinimalState,
+    formatMinimalCounters,
+    getStatusStyle,
+    type MinimalStatus,
+} from "./StatusStyle.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
@@ -116,8 +125,21 @@ export class ModuleLog extends AbstractObsidianModule {
     logHistory?: HTMLDivElement;
     messageArea?: HTMLDivElement;
 
-    statusBarLabels!: ReactiveValue<{ message: string; status: string }>;
+    statusBarLabels!: ReactiveValue<{ message: string; status: string; minimal: MinimalStatus }>;
     statusLog = reactiveSource("");
+
+    // Minimal status style: the pill inside the editor and the compact status bar item.
+    minimalPill?: HTMLElement;
+    minimalPillIcon?: HTMLElement;
+    minimalPillText?: HTMLElement;
+    minimalPillRetry?: HTMLElement;
+    minimalPillDismiss?: HTMLElement;
+    minimalBarText?: HTMLElement;
+    minimalBarIconName?: string;
+    minimalPillIconName?: string;
+    /** Counters observed at the last idle moment; deltas from here are what the pill shows. */
+    minimalIdleCounters = { sent: 0, arrived: 0 };
+    minimalErrorDismissed = false;
     activeFileStatus = reactiveSource("");
     notifies: { [key: string]: { count: number } } = {};
     p2pLogCollector = new P2PLogCollector(this.services.context.events);
@@ -232,6 +254,39 @@ export class ModuleLog extends AbstractObsidianModule {
             };
         });
 
+        // Minimal style: everything that means "busy", summed into one number.
+        const pendingCount = reactive(() => {
+            const counters = [
+                this.services.replication.replicationResultCount.value,
+                this.services.replication.databaseQueueCount.value,
+                this.services.replication.storageApplyingCount.value,
+                collectingChunks.value,
+                pluginScanningCount.value,
+                hiddenFilesCount.value,
+                this.services.conflict.conflictProcessQueueCount.value,
+                this.services.fileProcessing.processing.value,
+                this.services.fileProcessing.totalQueued.value,
+                this.services.fileProcessing.batched.value,
+                trackedRequestCount.value,
+                this.services.replicator.boundedRemoteActivityCount.value,
+            ];
+            return counters.reduce((total, count) => total + Math.max(0, count), 0);
+        });
+        const minimalActivityCount = reactive(() => {
+            const e = this.services.replicator.replicationStatics.value;
+            return deriveMinimalState(e.syncStatus, pendingCount.value) === "active" ? 1 : 0;
+        });
+        // Keep the pill on screen briefly after the last transfer so short bursts are noticeable.
+        const displayedMinimalActivity = registerDisplay(
+            createMinimumVisibleActivityCount(minimalActivityCount, MINIMAL_STATUS_LINGER_MS)
+        );
+        const minimalStatus = computed<MinimalStatus>(() => {
+            const e = this.services.replicator.replicationStatics.value;
+            const rawState = deriveMinimalState(e.syncStatus, pendingCount.value);
+            const state = rawState === "error" ? "error" : displayedMinimalActivity.value > 0 ? "active" : "idle";
+            return { state, sent: e.sent, arrived: e.arrived };
+        });
+
         const statusBarLabels = reactive(() => {
             const scheduleMessage = this.services.appLifecycle.isReloadingScheduled()
                 ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n`
@@ -243,6 +298,7 @@ export class ModuleLog extends AbstractObsidianModule {
             return {
                 message: `${message}${fileStatusIcon}`,
                 status,
+                minimal: minimalStatus(),
             };
         });
         this.statusBarLabels = statusBarLabels;
@@ -366,7 +422,11 @@ export class ModuleLog extends AbstractObsidianModule {
         }
         this.nextFrameQueue = compatGlobal.requestAnimationFrame(() => {
             this.nextFrameQueue = undefined;
-            const { message, status } = this.statusBarLabels.value;
+            const { message, status, minimal } = this.statusBarLabels.value;
+            if (getStatusStyle(this.settings) === StatusStyles.MINIMAL) {
+                this.renderMinimalStatus(minimal);
+                return;
+            }
             // const recent = logMessages.value;
             const newMsg = message;
             let newLog = this.settings?.showOnlyIconsOnEditor ? "" : status;
@@ -404,6 +464,97 @@ export class ModuleLog extends AbstractObsidianModule {
         scheduleTask("log-hide", 3000, () => {
             this.statusLog.value = "";
         });
+    }
+
+    /**
+     * Apply the configured status style to the existing elements. Safe to call repeatedly;
+     * it is invoked after loading settings and whenever settings are saved.
+     */
+    applyStatusStyle() {
+        const isMinimal = getStatusStyle(this.settings) === StatusStyles.MINIMAL;
+        this.statusDiv?.toggleClass("livesync-status-minimal", isMinimal);
+        this.statusBar?.toggleClass("livesync-minimal", isMinimal);
+        // Force the compact status bar item to be rebuilt on the next render.
+        this.minimalBarIconName = undefined;
+        this.minimalPillIconName = undefined;
+        if (!isMinimal) {
+            this.minimalPill?.addClass("is-hidden");
+            this.statusBar?.removeClass("mod-idle", "mod-active", "mod-error");
+        }
+        this.applyStatusBarText();
+    }
+
+    createMinimalPill(parent: HTMLElement) {
+        const pill = parent.createDiv({ cls: "livesync-status-pill is-hidden" });
+        this.minimalPillIcon = pill.createSpan({ cls: "livesync-status-pill-icon" });
+        this.minimalPillText = pill.createSpan({ cls: "livesync-status-pill-text" });
+        this.minimalPillRetry = pill.createDiv({ cls: "livesync-status-pill-button", text: $msg("Retry") });
+        this.minimalPillDismiss = pill.createDiv({ cls: "livesync-status-pill-dismiss" });
+        setIcon(this.minimalPillDismiss, "x");
+        this.minimalPillRetry.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            this.minimalErrorDismissed = false;
+            void this.services.replication.replicate(true);
+        });
+        this.minimalPillDismiss.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            this.minimalErrorDismissed = true;
+            this.applyStatusBarText();
+        });
+        pill.addEventListener("click", () => {
+            void this.services.API.showWindow(VIEW_TYPE_LOG);
+        });
+        // The pill goes above the message area, warnings stay where they were.
+        parent.prepend(pill);
+        this.minimalPill = pill;
+    }
+
+    renderMinimalStatus(minimal: MinimalStatus) {
+        const { state } = minimal;
+        if (state === "idle") {
+            this.minimalIdleCounters = { sent: minimal.sent, arrived: minimal.arrived };
+        }
+        if (state !== "error") {
+            this.minimalErrorDismissed = false;
+        }
+        const counters = formatMinimalCounters(
+            minimal.sent - this.minimalIdleCounters.sent,
+            minimal.arrived - this.minimalIdleCounters.arrived
+        );
+        const iconName = state === "error" ? "alert-triangle" : state === "active" ? "refresh-cw" : "check";
+        const text = state === "error" ? $msg("Sync failed") : state === "active" ? counters || $msg("Syncing") : "";
+
+        // Status bar: icon + short text.
+        if (this.statusBar) {
+            this.statusBar.toggleClass("mod-idle", state === "idle");
+            this.statusBar.toggleClass("mod-active", state === "active");
+            this.statusBar.toggleClass("mod-error", state === "error");
+            if (this.minimalBarIconName !== iconName || !this.minimalBarText) {
+                this.minimalBarIconName = iconName;
+                this.statusBar.empty();
+                const icon = this.statusBar.createSpan({ cls: "livesync-minimal-icon" });
+                setIcon(icon, iconName);
+                this.minimalBarText = this.statusBar.createSpan({ cls: "livesync-minimal-text" });
+            }
+            if (isDirty("minimalBarText", text)) this.minimalBarText.setText(text);
+        }
+
+        // Pill inside the editor.
+        if (this.statusDiv) {
+            this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
+        }
+        if (!this.minimalPill || !this.settings?.showStatusOnEditor) return;
+        const visible = state === "active" || (state === "error" && !this.minimalErrorDismissed);
+        this.minimalPill.toggleClass("is-hidden", !visible);
+        this.minimalPill.toggleClass("mod-active", state === "active");
+        this.minimalPill.toggleClass("mod-error", state === "error");
+        this.minimalPillRetry?.toggleClass("is-hidden", state !== "error");
+        this.minimalPillDismiss?.toggleClass("is-hidden", state !== "error");
+        if (this.minimalPillIcon && this.minimalPillIconName !== iconName) {
+            this.minimalPillIconName = iconName;
+            setIcon(this.minimalPillIcon, iconName);
+        }
+        if (this.minimalPillText && isDirty("minimalPillText", text)) this.minimalPillText.setText(text);
     }
 
     private _allStartOnUnload(): Promise<boolean> {
@@ -483,12 +634,15 @@ ${stringifyYaml(info)}
             this.logMessage = this.statusDiv.createDiv({ cls: "livesync-status-logmessage" });
             this.logHistory = this.statusDiv.createDiv({ cls: "livesync-status-loghistory" });
             this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
+            this.createMinimalPill(this.statusDiv);
         }
         eventHub.onEvent(EVENT_LAYOUT_READY, () => this.adjustStatusDivPosition());
         if (this.settings?.showStatusOnStatusbar) {
             this.statusBar = this.services.API.addStatusBarItem();
             this.statusBar?.addClass("syncstatusbar");
         }
+        this.applyStatusStyle();
+        eventHub.onEvent(EVENT_SETTING_SAVED, () => this.applyStatusStyle());
         this.adjustStatusDivPosition();
         this._log("Log module loaded", LOG_LEVEL_INFO);
         this._log("Verbose log", LOG_LEVEL_VERBOSE);

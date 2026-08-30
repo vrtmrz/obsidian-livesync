@@ -833,3 +833,143 @@ body.is-mobile .livesync-compatibility-review-notice {
     outline-offset: 1px;
     border-radius: 2px;
 }
+
+/* ---- Minimal status style ---- */
+@keyframes livesync-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.livesync-status.livesync-status-minimal {
+    padding: 0;
+    pointer-events: none;
+}
+
+.livesync-status.livesync-status-minimal .livesync-status-statusline,
+.livesync-status.livesync-status-minimal .livesync-status-logmessage,
+.livesync-status.livesync-status-minimal .livesync-status-loghistory {
+    display: none;
+}
+
+.livesync-status .livesync-status-pill,
+.livesync-status .livesync-status-pill div {
+    opacity: 1;
+    -webkit-filter: none;
+    filter: none;
+}
+
+.livesync-status .livesync-status-pill {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-2-2);
+    height: 32px;
+    margin: var(--size-4-2) var(--size-4-3);
+    padding: 0 var(--size-4-3) 0 var(--size-4-2);
+    border-radius: 16px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    box-shadow: var(--shadow-s);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.livesync-status .livesync-status-pill.is-hidden {
+    display: none;
+}
+
+.livesync-status-pill .livesync-status-pill-icon {
+    display: flex;
+    align-items: center;
+    --icon-size: 16px;
+    color: var(--interactive-accent);
+}
+
+.livesync-status-pill.mod-active .livesync-status-pill-icon svg {
+    animation: livesync-spin 1.4s linear infinite;
+}
+
+.livesync-status .livesync-status-pill.mod-error {
+    border-color: var(--background-modifier-error);
+    background-color: rgba(var(--background-modifier-error-rgb), 0.12);
+    color: var(--text-error);
+}
+
+.livesync-status-pill.mod-error .livesync-status-pill-icon {
+    color: var(--text-error);
+}
+
+.livesync-status-pill .livesync-status-pill-button {
+    display: flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 var(--size-4-2);
+    border-radius: 12px;
+    background-color: var(--background-primary);
+    font-size: var(--font-ui-smaller);
+}
+
+.livesync-status-pill .livesync-status-pill-dismiss {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    --icon-size: 14px;
+}
+
+.livesync-status-pill .livesync-status-pill-button.is-hidden,
+.livesync-status-pill .livesync-status-pill-dismiss.is-hidden {
+    display: none;
+}
+
+/* Phones: sit in the header row, centred between the floating buttons. */
+.is-mobile.is-phone .livesync-status.livesync-status-minimal {
+    box-sizing: border-box;
+    top: var(--view-header-top-offset);
+    height: var(--view-header-height);
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.is-mobile.is-phone .livesync-status .livesync-status-pill {
+    margin: 0;
+}
+
+/* Status bar item */
+.status-bar-item.syncstatusbar.livesync-minimal {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-2-1);
+}
+
+.status-bar-item.syncstatusbar.livesync-minimal .livesync-minimal-icon {
+    display: flex;
+    align-items: center;
+    --icon-size: 14px;
+}
+
+.status-bar-item.syncstatusbar.livesync-minimal.mod-idle {
+    color: var(--text-faint);
+}
+
+.status-bar-item.syncstatusbar.livesync-minimal.mod-active .livesync-minimal-icon svg {
+    animation: livesync-spin 1.4s linear infinite;
+}
+
+.status-bar-item.syncstatusbar.livesync-minimal.mod-error {
+    color: var(--text-error);
+}
+
+.status-bar-item.syncstatusbar.livesync-minimal .livesync-minimal-text:empty {
+    display: none;
+}

@@ -6287,6 +6287,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "(危险)仅保存设置",
         "zh-tw": "（危險）僅儲存設定",
     },
+    "obsidianLiveSyncSettingTab.optionStatusStyleClassic": {
+        def: "Classic (always visible)",
+    },
+    "obsidianLiveSyncSettingTab.optionStatusStyleMinimal": {
+        def: "Minimal (only while synchronising or on error)",
+    },
     "obsidianLiveSyncSettingTab.panelChangeLog": {
         def: "Change Log",
         es: "Registro de cambios",
@@ -6352,6 +6358,12 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Информация о сервере: info",
         zh: "服务器信息: ${info}",
         "zh-tw": "伺服器資訊：${info}",
+    },
+    "obsidianLiveSyncSettingTab.statusStyleDesc": {
+        def: "How synchronisation status is presented. Minimal shows nothing while idle, a small pill while synchronising, and a dismissible warning on error.",
+    },
+    "obsidianLiveSyncSettingTab.statusStyleName": {
+        def: "Status style",
     },
     "obsidianLiveSyncSettingTab.titleActiveRemoteServer": {
         def: "Active Remote Server",
@@ -9669,6 +9681,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Синхронизировать автоматически после слияния файлов",
         zh: "合并文件后自动同步",
         "zh-tw": "合併檔案後自動同步",
+    },
+    "Sync failed": {
+        def: "Sync failed",
     },
     "Sync Mode": {
         def: "Sync Mode",
