@@ -3,6 +3,7 @@ import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import {
+    CAPABILITY_UNAVAILABLE_REASONS,
     isReplicationCompleted,
     NO_INTERACTION,
     type ContinuousReplicationRequest,
@@ -60,7 +61,8 @@ interface ReplicationSchedulingContext {
 function isCapabilityUnavailable(result: ReplicationOutcome): boolean {
     return (
         result.status === "blocked" &&
-        (result.reason === "capability-not-applicable" || result.reason === "capability-not-implemented")
+        (result.reason === CAPABILITY_UNAVAILABLE_REASONS.NOT_APPLICABLE ||
+            result.reason === CAPABILITY_UNAVAILABLE_REASONS.NOT_IMPLEMENTED)
     );
 }
 

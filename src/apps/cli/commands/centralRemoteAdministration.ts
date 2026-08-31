@@ -30,6 +30,10 @@ function detailMessage(detail: unknown): string {
     return detail instanceof Error ? detail.message : String(detail);
 }
 
+function assertNeverCentralRemoteAdministrationFailureReason(reason: never): never {
+    throw new Error(`Unexpected central remote administration failure reason: ${String(reason)}`);
+}
+
 function reportMilestoneObservation(
     standardIo: StandardIo,
     observation: Extract<
@@ -56,13 +60,19 @@ function reportCentralRemoteAdministrationResult(
         return;
     }
 
-    switch (result.reason) {
+    const reason = result.reason;
+    switch (reason) {
         case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.NO_ACTIVE_REPLICATOR:
             standardIo.writeStderr("[Verification] No active replicator found\n");
             return;
         case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CONNECTION_FAILED:
             standardIo.writeStderr(
                 `[Verification] Failed to connect to the configured remote: ${detailMessage(result.detail)}\n`
+            );
+            return;
+        case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.ACTIVE_CONFIGURATION_MISMATCH:
+            standardIo.writeStderr(
+                "[Verification] The active remote configuration changed before remote administration could begin.\n"
             );
             return;
         case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_NOT_FOUND:
@@ -83,6 +93,8 @@ function reportCentralRemoteAdministrationResult(
         case CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.POSTCONDITION_MISMATCH:
             standardIo.writeStderr("[Verification] The requested remote state was not observed.\n");
             return;
+        default:
+            return assertNeverCentralRemoteAdministrationFailureReason(reason);
     }
 }
 

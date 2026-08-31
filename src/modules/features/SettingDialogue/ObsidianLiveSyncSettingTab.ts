@@ -960,6 +960,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     /**
      * Checks the edited CouchDB passphrase through an owned synchronisation-
      * information resource. A missing document may be created by the check.
+     * Incompatibility and operational failure retain their distinct existing
+     * result messages.
      */
     checkWorkingPassphrase = async (): Promise<boolean> => {
         if (this.editingSettings.remoteType == REMOTE_MINIO) return true;
@@ -980,6 +982,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 Logger($msg("obsidianLiveSyncSettingTab.logPassphraseNotCompatible"), LOG_LEVEL_NOTICE);
                 return false;
             }
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            Logger(
+                $msg("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", {
+                    db: reason,
+                }),
+                LOG_LEVEL_NOTICE
+            );
+            return false;
         } finally {
             await resource.dispose();
         }

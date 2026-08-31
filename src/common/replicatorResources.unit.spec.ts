@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 
 const mocks = vi.hoisted(() => ({
+    logger: vi.fn(),
     couchDB: [] as Array<{
         host: unknown;
         isMobile: ReturnType<typeof vi.fn>;
@@ -23,6 +24,11 @@ const mocks = vi.hoisted(() => ({
     }>,
     checkSyncInfo: vi.fn(async () => true),
 }));
+
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/logger", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/compat/common/logger")>();
+    return { ...actual, Logger: mocks.logger };
+});
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation", () => ({
     checkSyncInfo: mocks.checkSyncInfo,
@@ -87,6 +93,7 @@ describe("replicator probe factories", () => {
         mocks.couchDB.length = 0;
         mocks.objectStorage.length = 0;
         mocks.checkSyncInfo.mockReset().mockResolvedValue(true);
+        mocks.logger.mockClear();
     });
 
     it("binds a CouchDB connection probe to a shallow settings snapshot and closes its owned connection", async () => {
@@ -127,6 +134,52 @@ describe("replicator probe factories", () => {
         source.couchDB_DBNAME = "changed-vault";
         expect(await probe.getStatus()).toBe(status);
         expect(replicator.getRemoteStatus).toHaveBeenCalledWith(snapshot);
+    });
+
+    it("emits a result Notice only for an explicitly visible successful CouchDB probe", async () => {
+        const probe = await createCouchDBConnectionProbeFactory({} as never)(createSettings());
+        const replicator = mocks.couchDB[0];
+        replicator.connectRemoteCouchDBWithSetting.mockResolvedValue({
+            info: { db_name: "vault" },
+            close: vi.fn(async () => undefined),
+        });
+
+        await expect(probe.check({ showResult: true })).resolves.toEqual({ ok: true });
+
+        expect(mocks.logger).toHaveBeenCalledTimes(1);
+        expect(mocks.logger).toHaveBeenCalledWith("Connected to vault successfully", LOG_LEVEL_NOTICE);
+
+        mocks.logger.mockClear();
+        await expect(probe.check()).resolves.toEqual({ ok: true });
+        expect(mocks.logger).not.toHaveBeenCalled();
+    });
+
+    it("emits a result Notice only for an explicitly visible CouchDB connection failure", async () => {
+        const reason = "connection failed";
+        const translatedFailure = "translated CouchDB connection failure";
+        const translate = vi.fn(() => translatedFailure);
+        const settings = createSettings();
+        const probe = await createCouchDBConnectionProbeFactory({ services: { context: { translate } } } as never)(
+            settings
+        );
+        const replicator = mocks.couchDB[0];
+        replicator.connectRemoteCouchDBWithSetting.mockResolvedValue(reason);
+
+        await expect(probe.check({ showResult: true })).resolves.toEqual({ ok: false, reason });
+
+        expect(mocks.logger).toHaveBeenCalledTimes(1);
+        expect(translate).toHaveBeenCalledWith("liveSyncReplicator.couldNotConnectTo", {
+            uri: settings.couchDB_URI,
+            name: settings.couchDB_DBNAME,
+            db: reason,
+        });
+        expect(mocks.logger).toHaveBeenCalledWith(translatedFailure, LOG_LEVEL_NOTICE);
+
+        mocks.logger.mockClear();
+        translate.mockClear();
+        await expect(probe.check()).resolves.toEqual({ ok: false, reason });
+        expect(mocks.logger).not.toHaveBeenCalled();
+        expect(translate).not.toHaveBeenCalled();
     });
 
     it("creates an unpublished Object Storage replicator for each probe and normalises connection results", async () => {
@@ -250,6 +303,15 @@ describe("replicator probe factories", () => {
 
         await resource.dispose();
         expect(replicator.closeReplication).toHaveBeenCalledOnce();
+    });
+
+    it("preserves a CouchDB connection or setup failure for the settings flow to report", async () => {
+        const reason = "connection failed";
+        const resource = await createCouchDBSynchronisationInformationResourceFactory({} as never)(createSettings());
+        const replicator = mocks.couchDB[0];
+        replicator.connectRemoteCouchDBWithSetting.mockResolvedValue(reason);
+
+        await expect(resource.check()).rejects.toMatchObject({ message: reason });
     });
 
     it("closes the owned connection when synchronisation-information verification rejects", async () => {

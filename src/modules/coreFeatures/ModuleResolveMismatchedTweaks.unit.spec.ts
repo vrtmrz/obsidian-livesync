@@ -7,7 +7,12 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 import { setLang } from "@/common/translation";
-import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    REMOTE_RESOURCE_KINDS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+    type ReplicationAttemptFailure,
+} from "@vrtmrz/livesync-commonlib/replication";
 
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
     const askSelectStringDialogue = vi.fn(async (..._args: unknown[]): Promise<string | undefined> => undefined);
@@ -56,6 +61,75 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 describe("ModuleResolvingMismatchedTweaks", () => {
+    it("uses the failed attempt hint and writes only through that exact active publication", async () => {
+        const { module, core } = createModule();
+        const attemptPreferred = {
+            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            customChunkSize: 60,
+        };
+        const replacementPreferred = {
+            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            customChunkSize: 99,
+        };
+        let updatePreferredRemote: ((setting: typeof core.settings) => Promise<boolean>) | undefined;
+        const askResolvingMismatched = vi.fn(
+            async (_preferred: unknown, update: (setting: typeof core.settings) => Promise<boolean>) => {
+                updatePreferredRemote = update;
+                return "IGNORE" as const;
+            }
+        );
+        core._services.tweakValue = { askResolvingMismatched };
+        core.replicator = {
+            tweakSettingsMismatched: true,
+            preferredTweakValue: replacementPreferred,
+        };
+        const failedSetPreferred = vi.fn(async (_setting: typeof core.settings) => undefined);
+        const replacementSetPreferred = vi.fn(async (_setting: typeof core.settings) => undefined);
+        const failedContext = {
+            provider: {},
+            replicator: { setPreferredRemoteTweakSettings: failedSetPreferred },
+            configurationIdentity: "profile-a",
+        };
+        const replacementContext = {
+            provider: {},
+            replicator: { setPreferredRemoteTweakSettings: replacementSetPreferred },
+            configurationIdentity: "profile-b",
+        };
+        let activeContext = failedContext;
+        core._services.replicator = {
+            runWithActiveReplicatorContext: vi.fn(async (task: (context: typeof failedContext) => unknown) =>
+                task(activeContext)
+            ),
+        };
+        const request = {
+            context: failedContext,
+            setting: core.settings,
+            outcome: {
+                status: "failed" as const,
+                error: new Error("directional replication failed"),
+                recoveryHint: {
+                    reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
+                    preferredTweakValue: attemptPreferred,
+                },
+            },
+            showMessage: true,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        } as unknown as ReplicationAttemptFailure;
+
+        await expect(module._anyAfterConnectCheckFailed(request)).resolves.toBe(true);
+
+        expect(askResolvingMismatched).toHaveBeenCalledWith(attemptPreferred, expect.any(Function));
+        const effectiveSetting = { ...core.settings, customChunkSize: 64 };
+        await expect(updatePreferredRemote?.(effectiveSetting)).resolves.toBe(true);
+        expect(failedSetPreferred).toHaveBeenCalledWith(effectiveSetting);
+        expect(failedSetPreferred.mock.calls[0][0]).not.toBe(effectiveSetting);
+
+        activeContext = replacementContext;
+        await expect(updatePreferredRemote?.({ ...effectiveSetting, customChunkSize: 72 })).resolves.toBe(false);
+        expect(failedSetPreferred).toHaveBeenCalledOnce();
+        expect(replacementSetPreferred).not.toHaveBeenCalled();
+    });
+
     it("returns an unconfigured remote result without a separate connection preflight", async () => {
         const { module, core } = createModule();
         const read = vi.fn(async () => ({

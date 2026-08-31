@@ -20,6 +20,7 @@ function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
 }
 
 type SetupOptions = {
+    applicationReady?: boolean;
     processSynchroniseResult?: (entry: unknown) => Promise<void>;
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
 };
@@ -29,9 +30,10 @@ function setup(options: SetupOptions = {}) {
     const setSnapshot = vi.fn(options.setSnapshot ?? (async () => undefined));
     const runBoundedLocalApplicationActivity = vi.fn(async (task: () => Promise<void>) => await task());
     const onCloseActiveReplication = vi.fn(async () => true);
+    const isReady = vi.fn(() => options.applicationReady ?? true);
     const core = {
         services: {
-            appLifecycle: { isReady: true, isSuspended: () => false },
+            appLifecycle: { isReady, isSuspended: () => false },
             path: { getPath: (entry: { path: string }) => entry.path },
             replication: {
                 databaseQueueCount: reactiveSource(0),
@@ -65,6 +67,7 @@ function setup(options: SetupOptions = {}) {
         services: core.services,
     } as never);
     return {
+        isReady,
         onCloseActiveReplication,
         processor,
         processSynchroniseResult,
@@ -73,6 +76,13 @@ function setup(options: SetupOptions = {}) {
 }
 
 describe("ReplicateResultProcessor", () => {
+    it("suspends result application while the application is not ready", () => {
+        const { isReady, processor } = setup({ applicationReady: false });
+
+        expect(processor.isSuspended).toBe(true);
+        expect(isReady).toHaveBeenCalledOnce();
+    });
+
     it("retires active ownership when a newer remote version is observed", async () => {
         const { onCloseActiveReplication, processor } = setup();
         const versionInfo = {

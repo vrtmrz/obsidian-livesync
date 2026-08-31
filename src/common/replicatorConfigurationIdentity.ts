@@ -2,6 +2,12 @@ import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/
 
 type EndpointProjection = readonly [kind: "url" | "invalid-url", value: string];
 
+/**
+ * Compare the effective endpoint rather than inconsequential URI spelling.
+ * Fragments are not sent, query order is immaterial, and redundant trailing
+ * slashes do not bind a different adapter. Invalid input is retained verbatim
+ * and tagged so comparison remains deterministic and fails closed.
+ */
 function projectEndpoint(value: string): EndpointProjection {
     try {
         const endpoint = new URL(value);
@@ -16,6 +22,11 @@ function projectEndpoint(value: string): EndpointProjection {
     }
 }
 
+/**
+ * Mirror the effective custom-header parser: trim each first name/value pair,
+ * ignore incomplete lines, and let the last duplicate name win. Sorting the
+ * resulting entries prevents line order alone from replacing a Replicator.
+ */
 function projectHeaders(value: string): readonly (readonly [name: string, value: string])[] {
     const headers = new Map<string, string>();
     for (const line of value.split("\n")) {

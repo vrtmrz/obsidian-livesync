@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
 const settingsInitialisationMocks = vi.hoisted(() => ({
     applySettingsWithInitialisationChoice: vi.fn(),
+}));
+const loggerMocks = vi.hoisted(() => ({
+    Logger: vi.fn(),
 }));
 
 vi.mock("@/deps.ts", () => ({
@@ -18,6 +21,14 @@ vi.mock("@/deps.ts", () => ({
     requireApiVersion: vi.fn(() => false),
 }));
 vi.mock("@/main.ts", () => ({ default: class {} }));
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/logger", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/compat/common/logger")>();
+    return { ...actual, Logger: loggerMocks.Logger };
+});
+vi.mock("@/common/translation", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/common/translation")>();
+    return { ...actual, $msg: vi.fn(actual.$msg) };
+});
 vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
     getLanguage: vi.fn(() => "en"),
     compatGlobal: {
@@ -58,9 +69,12 @@ vi.mock("./PanePatches.ts", () => ({ panePatches: vi.fn() }));
 vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
+import { $msg } from "@/common/translation";
 
 beforeEach(() => {
     settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockReset();
+    loggerMocks.Logger.mockClear();
+    vi.mocked($msg).mockClear();
 });
 
 describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
@@ -119,6 +133,70 @@ describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
         await expect(tab.checkWorkingPassphrase()).resolves.toBe(true);
 
         expect(getNewReplicator).not.toHaveBeenCalled();
+    });
+
+    it("reports a CouchDB connection or setup failure with the connection-failure message", async () => {
+        const failure = new Error("remote unavailable");
+        const check = vi.fn(async () => {
+            throw failure;
+        });
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ check, dispose }));
+        const plugin = {
+            app: {},
+            core: {
+                services: {
+                    replicator: { createRemoteResource },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                remoteType: REMOTE_COUCHDB,
+            },
+        });
+
+        await expect(tab.checkWorkingPassphrase()).resolves.toBe(false);
+
+        expect(vi.mocked($msg)).toHaveBeenCalledWith("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", {
+            db: failure.message,
+        });
+        expect(vi.mocked($msg)).not.toHaveBeenCalledWith("obsidianLiveSyncSettingTab.logPassphraseNotCompatible");
+        expect(loggerMocks.Logger).toHaveBeenCalledWith(expect.any(String), LOG_LEVEL_NOTICE);
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+
+    it("reports an actual synchronisation-information mismatch with the incompatibility message", async () => {
+        const check = vi.fn(async () => false);
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ check, dispose }));
+        const plugin = {
+            app: {},
+            core: {
+                services: {
+                    replicator: { createRemoteResource },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                remoteType: REMOTE_COUCHDB,
+            },
+        });
+
+        await expect(tab.checkWorkingPassphrase()).resolves.toBe(false);
+
+        expect(vi.mocked($msg)).toHaveBeenCalledWith("obsidianLiveSyncSettingTab.logPassphraseNotCompatible");
+        expect(vi.mocked($msg)).not.toHaveBeenCalledWith(
+            "obsidianLiveSyncSettingTab.logCheckPassphraseFailed",
+            expect.anything()
+        );
+        expect(loggerMocks.Logger).toHaveBeenCalledWith(expect.any(String), LOG_LEVEL_NOTICE);
+        expect(dispose).toHaveBeenCalledOnce();
     });
 });
 

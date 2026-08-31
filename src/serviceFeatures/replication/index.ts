@@ -25,8 +25,7 @@ function ownsLocalApplicationActivity(value: object): value is LocalApplicationA
  *
  * Registration order is observable for equal-priority handlers. The host must
  * call this after host serviceFeatures and add-ons are composed, but before
- * legacy modules are bound. This preserves the former ModuleReplicator
- * lifecycle-handler order without retaining a public module identity.
+ * legacy modules are bound, so lifecycle handlers observe the required order.
  */
 export function useReplicationFeature<TContext extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(
     core: LiveSyncBaseCore<TContext, TCommands>

@@ -23,14 +23,24 @@ import {
     type SupportedCapability,
 } from "@vrtmrz/livesync-commonlib/replication";
 
+/**
+ * Central milestone administration shared by the two central providers.
+ *
+ * The provider definition selects a reader before mutation. CouchDB then owns
+ * a fresh verification connection, while Object Storage borrows the active
+ * Journal client. Local node identity is established before either mutation.
+ */
 const JOURNAL_MILESTONE_PATH = "_00000000-milestone.json";
 
+/** A provider read result, including failures which settled without a throw. */
 type CentralMilestoneReadResult =
     | { readonly milestone: EntryMilestoneInfo | false | undefined }
     | { readonly failureReason: CentralRemoteAdministrationFailureReason; readonly detail?: unknown };
 
+/** A settings-bound postcondition reader prepared before remote mutation. */
 type PreparedCentralMilestoneReader = () => Promise<CentralMilestoneReadResult>;
 
+/** Select and validate the provider-specific reader without performing I/O. */
 type CentralMilestoneReaderPreparer = (
     replicator: CentralRemoteAdministrationReplicator,
     setting: RemoteDBSettings
@@ -39,7 +49,7 @@ type CentralMilestoneReaderPreparer = (
 type CouchDBAdministrationReplicator = CentralRemoteAdministrationReplicator &
     Pick<LiveSyncCouchDBReplicator, "connectRemoteCouchDBWithSetting" | "isMobile">;
 
-type JournalAdministrationClient = Pick<LiveSyncJournalReplicator["client"], "downloadJson">;
+type JournalAdministrationClient = Pick<LiveSyncJournalReplicator["client"], "downloadJsonWithResult">;
 
 function isCentralRemoteAdministrationReplicator(
     replicator: ReplicatorInstance
@@ -147,6 +157,8 @@ function prepareCouchDBMilestoneReader(
     requireCouchDBAdministrationOperations(replicator);
 
     return async () => {
+        // This verification connection is fresh and owned by this read. It is
+        // always closed here rather than retained by the active Replicator.
         let connection: Awaited<ReturnType<CouchDBAdministrationReplicator["connectRemoteCouchDBWithSetting"]>>;
         try {
             connection = await replicator.connectRemoteCouchDBWithSetting(setting, replicator.isMobile(), true);
@@ -186,8 +198,8 @@ function isJournalAdministrationClient(client: unknown): client is JournalAdmini
     return (
         typeof client === "object" &&
         client !== null &&
-        "downloadJson" in client &&
-        typeof client.downloadJson === "function"
+        "downloadJsonWithResult" in client &&
+        typeof client.downloadJsonWithResult === "function"
     );
 }
 
@@ -200,14 +212,33 @@ function requireJournalAdministrationClient(
     return replicator.client;
 }
 
+function assertNeverJournalStorageRead(result: never): never {
+    throw new Error(`Unexpected Journal storage read result: ${String(result)}`);
+}
+
 function prepareObjectStorageMilestoneReader(
     replicator: CentralRemoteAdministrationReplicator
 ): PreparedCentralMilestoneReader {
+    // The Journal client belongs to the active Replicator. This reader borrows
+    // it for the provider's distinct milestone path and must not dispose it.
     const client = requireJournalAdministrationClient(replicator);
 
     return async () => {
         try {
-            return { milestone: await client.downloadJson<EntryMilestoneInfo>(JOURNAL_MILESTONE_PATH) };
+            const result = await client.downloadJsonWithResult<EntryMilestoneInfo>(JOURNAL_MILESTONE_PATH);
+            switch (result.status) {
+                case "available":
+                    return { milestone: result.value };
+                case "not-found":
+                    return { milestone: undefined };
+                case "unavailable":
+                    return {
+                        failureReason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_READ_FAILED,
+                        detail: result.error,
+                    };
+                default:
+                    return assertNeverJournalStorageRead(result);
+            }
         } catch (error) {
             return {
                 failureReason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.MILESTONE_READ_FAILED,

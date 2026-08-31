@@ -786,6 +786,29 @@ describe("runCommand abnormal cases", () => {
             expect(verificationOutput).not.toContain("CouchDB");
         });
 
+        it("reports when the active remote configuration changes before administration begins", async () => {
+            const core = createCoreMock();
+            core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({
+                status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+                reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.ACTIVE_CONFIGURATION_MISMATCH,
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(false);
+            const verificationOutput = core.services.context.standardIo.writeStderr.mock.calls
+                .map(([chunk]: [string | Uint8Array]) =>
+                    typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
+                )
+                .join("");
+            expect(verificationOutput).toContain(
+                "[Verification] The active remote configuration changed before remote administration could begin.\n"
+            );
+        });
+
         it("fails by default when remote administration cannot verify its postcondition", async () => {
             const core = createCoreMock();
             core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({

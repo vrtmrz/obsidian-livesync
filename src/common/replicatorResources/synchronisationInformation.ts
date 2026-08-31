@@ -10,7 +10,9 @@ import { createReplicatorDisposer, snapshotRemoteSettings } from "./shared";
  * Build an unpublished CouchDB synchronisation-information verifier.
  *
  * The resource owns its concrete Replicator and connection, and cannot replace
- * the active provider instance.
+ * the active provider instance. Its check resolves to `false` only for observed
+ * incompatibility; connection, setup, and verification failures reject so the
+ * caller can report an operational failure separately.
  */
 export function createCouchDBSynchronisationInformationResourceFactory(
     host: LiveSyncCouchDBReplicatorEnv
@@ -26,7 +28,7 @@ export function createCouchDBSynchronisationInformationResourceFactory(
                     true
                 );
                 if (typeof connection === "string") {
-                    return false;
+                    throw new Error(connection);
                 }
                 try {
                     return await checkSyncInfo(connection.db);

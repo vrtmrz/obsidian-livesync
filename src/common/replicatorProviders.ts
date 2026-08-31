@@ -47,6 +47,7 @@ interface OneShotOutcomeReplicator extends ReplicatorInstance {
     openOneShotReplicationWithOutcome(setting: RemoteDBSettings, showResult: boolean): Promise<ReplicationOutcome>;
 }
 
+/** Narrow structurally so the shared adapter does not depend on either concrete provider class. */
 function isOneShotOutcomeReplicator(instance: ReplicatorInstance): instance is OneShotOutcomeReplicator {
     return (
         "openOneShotReplicationWithOutcome" in instance &&
@@ -65,6 +66,8 @@ async function runOneShotWithOutcome(
     return await instance.openOneShotReplicationWithOutcome(setting, showResult);
 }
 
+// Manual and unattended wrappers share the provider transfer operation, but
+// keep interaction authority and result presentation explicit at this boundary.
 const couchDBUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {
     return await runOneShotWithOutcome(
         instance,
@@ -91,7 +94,10 @@ const objectStorageUnattendedOneShot: UnattendedOneShotRunner = async (instance,
     return await runOneShotWithOutcome(instance, setting, false);
 };
 
-/** Build the complete central-remote provider policy for one LiveSync host. */
+/**
+ * Build the complete, deliberately concrete central-provider matrix for one
+ * LiveSync host. This closed composition is not a runtime provider registry.
+ */
 export function createCentralReplicatorProviderDefinitions(
     host: CentralReplicatorProviderHost
 ): ReplicatorProviderDefinitionMap {

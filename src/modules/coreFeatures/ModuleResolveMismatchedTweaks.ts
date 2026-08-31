@@ -21,7 +21,23 @@ import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/ser
 import type { LiveSyncCore } from "@/main.ts";
 import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
-import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    REMOTE_RESOURCE_KINDS,
+    type ReplicationAttemptFailure,
+    type ReplicatorInstance,
+} from "@vrtmrz/livesync-commonlib/replication";
+
+interface PreferredRemoteTweakWriter extends ReplicatorInstance {
+    setPreferredRemoteTweakSettings(setting: ObsidianLiveSyncSettings): Promise<void>;
+}
+
+function canSetPreferredRemoteTweakSettings(replicator: ReplicatorInstance): replicator is PreferredRemoteTweakWriter {
+    return (
+        "setPreferredRemoteTweakSettings" in replicator &&
+        typeof replicator.setPreferredRemoteTweakSettings === "function"
+    );
+}
 
 /**
  * Localised counterpart of Commonlib's `confName()`, which takes no translator.
@@ -114,11 +130,27 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         });
     }
 
-    async _anyAfterConnectCheckFailed(): Promise<boolean | "CHECKAGAIN" | undefined> {
-        if (!this.core.replicator.tweakSettingsMismatched && !this.core.replicator.preferredTweakValue) return false;
-        const preferred = this.core.replicator.preferredTweakValue;
-        if (!preferred) return false;
-        const ret = await this.services.tweakValue.askResolvingMismatched(preferred);
+    async _anyAfterConnectCheckFailed(failure: ReplicationAttemptFailure): Promise<boolean | "CHECKAGAIN" | undefined> {
+        const recovery = failure.outcome.recoveryHint;
+        if (
+            recovery?.reason !== CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH ||
+            !recovery.preferredTweakValue
+        ) {
+            return false;
+        }
+        const ret = await this.services.tweakValue.askResolvingMismatched(
+            { ...recovery.preferredTweakValue },
+            async (setting) => {
+                let updated = false;
+                await this.services.replicator.runWithActiveReplicatorContext(async (activeContext) => {
+                    if (activeContext !== failure.context) return;
+                    if (!canSetPreferredRemoteTweakSettings(activeContext.replicator)) return;
+                    await activeContext.replicator.setPreferredRemoteTweakSettings({ ...setting });
+                    updated = true;
+                });
+                return updated;
+            }
+        );
         if (ret == "OK") return false;
         if (ret == "CHECKAGAIN") return "CHECKAGAIN";
         if (ret == "IGNORE") return true;
@@ -236,8 +268,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         preferredSource: TweakValues,
         updatePreferredRemote?: (setting: ObsidianLiveSyncSettings) => Promise<boolean>
     ): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
-        const [conf, rebuildRequired] =
-            await this.services.tweakValue.checkAndAskResolvingMismatched(preferredSource);
+        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(preferredSource);
         if (!conf) return "IGNORE";
 
         const updateRemote = async () => {

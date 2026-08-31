@@ -95,8 +95,8 @@ export class LiveSyncBaseCore<
         for (const addOn of addOns) {
             this._registerAddOn(addOn);
         }
-        // Preserve the former ModuleReplicator lifecycle-handler order:
-        // host features and add-ons first, then replication, then legacy modules.
+        // Register host features and add-ons before replication, then bind
+        // legacy modules so lifecycle handlers observe the required order.
         useReplicationFeature(this);
         this.bindModuleFunctions();
     }

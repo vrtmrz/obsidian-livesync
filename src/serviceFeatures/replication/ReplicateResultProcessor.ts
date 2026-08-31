@@ -109,7 +109,7 @@ export class ReplicateResultProcessor {
     public get isSuspended() {
         return (
             this._suspended ||
-            !this.services.appLifecycle.isReady ||
+            !this.services.appLifecycle.isReady() ||
             this.context.currentSettings().suspendParseReplicationResult ||
             this.services.appLifecycle.isSuspended()
         );

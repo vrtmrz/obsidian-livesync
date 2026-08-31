@@ -8,6 +8,7 @@ import {
     LiveSyncCouchDBReplicator,
     type LiveSyncCouchDBReplicatorEnv,
 } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import { createReplicatorDisposer, snapshotRemoteSettings } from "./shared";
 
@@ -16,7 +17,8 @@ export type ConnectionResourceHost = LiveSyncCouchDBReplicatorEnv;
 
 function createCouchDBConnectionProbe(
     replicator: LiveSyncCouchDBReplicator,
-    snapshot: RemoteDBSettings
+    snapshot: RemoteDBSettings,
+    host: ConnectionResourceHost
 ): RemoteConnectionProbe {
     const dispose = createReplicatorDisposer(replicator);
     return {
@@ -28,9 +30,22 @@ function createCouchDBConnectionProbe(
                 false
             );
             if (typeof connection === "string") {
+                if (options.showResult) {
+                    Logger(
+                        host.services.context.translate("liveSyncReplicator.couldNotConnectTo", {
+                            uri: snapshot.couchDB_URI,
+                            name: snapshot.couchDB_DBNAME,
+                            db: connection,
+                        }),
+                        LOG_LEVEL_NOTICE
+                    );
+                }
                 return { ok: false, reason: connection };
             }
             try {
+                if (options.showResult) {
+                    Logger(`Connected to ${connection.info.db_name} successfully`, LOG_LEVEL_NOTICE);
+                }
                 return { ok: true };
             } finally {
                 await connection.close();
@@ -64,12 +79,14 @@ function createObjectStorageConnectionProbe(
  * Build an unpublished CouchDB connection probe for one host.
  *
  * The probe owns both its concrete Replicator and each connection it opens. It
- * never publishes that Replicator as the active provider instance.
+ * never publishes that Replicator as the active provider instance. A caller
+ * may request the established result Notice explicitly; ordinary probes remain
+ * silent.
  */
 export function createCouchDBConnectionProbeFactory(host: ConnectionResourceHost): ConnectionProbeFactory {
     return (setting) => {
         const snapshot = snapshotRemoteSettings(setting);
-        return Promise.resolve(createCouchDBConnectionProbe(new LiveSyncCouchDBReplicator(host), snapshot));
+        return Promise.resolve(createCouchDBConnectionProbe(new LiveSyncCouchDBReplicator(host), snapshot, host));
     };
 }
 
