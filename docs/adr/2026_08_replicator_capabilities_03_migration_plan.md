@@ -285,8 +285,16 @@ consumer-migration proposal:
   runner;
 - every changed configuration identity replaces the active instance; there is
   no same-instance rebind policy;
+- the atomic active context retains that private identity, and every
+  settings-bearing dispatch checks its captured settings against the admitted
+  publication immediately before calling provider code;
 - typed finite dispatch reserves the exact readiness-tested publication and
   releases it before failure recovery;
+- the bounded Continuous startup call and explicit stop request re-admit their
+  exact publication, while a registered long-lived task remains outside a
+  lifetime reservation;
+- directional transfer and central-remote administration stop active transfer
+  work inside the same admission before beginning their exclusive operation;
 - CouchDB and Journal carry only a rejected attempt-local compatibility
   decision into the failure outcome, so a transport failure cannot reuse old
   mutable fields;
@@ -347,9 +355,10 @@ The first implementation regressions cover:
   close, while reversible suspension retains the publication.
 
 Keep readiness, failure presentation, dialogue, independently owned trial
-resources, P2P room-session demand, and Continuous replication outside this
-reservation. The callback TSDoc forbids awaiting a lifecycle transition which
-would wait for the same admission to settle.
+resources, P2P room-session demand, and the lifetime of Continuous replication
+outside this reservation. Re-admit only its bounded startup call and the
+bounded explicit stop request. The callback TSDoc forbids awaiting a lifecycle
+transition which would wait for the same admission to settle.
 
 ## Stage 7: perform a bounded structural review
 
@@ -377,13 +386,19 @@ The final structural review retains the following minimum boundaries:
   registration method remains as the construction-order composition boundary;
 - P2P registration remains with the feature which owns the stable P2P service;
 - `ReplicatorService` and `ReplicationService` remain cohesive services. Their
-  complex state and policy already reside in `ActiveReplicatorState`,
-  `TypedReplicationCoordinator`, the readiness evaluator,
-  `RemoteResourceResolver`, and `CentralRemoteAdministrationCoordinator`, so
-  another split would not improve the current test seams;
+  complex state and policy already reside in the focused
+  `ReplicatorService.activeReplicatorState`,
+  `ReplicationService.typedReplication`, `ReplicationService.readiness`,
+  `ReplicatorService.remoteResourceResolver`, and
+  `ReplicatorService.centralRemoteAdministration` collaborators, so another
+  split would not improve the current test seams;
 - every provider explicitly declares Continuous support or inapplicability;
-- `IReplicatorService` exposes only acquired or admitted active-context access.
-  A protected synchronous inspector remains for focused lifecycle tests;
+- new typed work uses only acquired or admitted active-context access. The
+  public legacy Replicator getter remains temporarily for named compatibility
+  consumers, while one side-effect-free presence predicate classifies a legacy
+  active instance without returning it or emitting its missing-active Notice.
+  A protected synchronous context inspector remains for focused lifecycle
+  tests;
 - central-compatibility statuses, recorders, and projection helpers remain
   package-internal. Only stable rejection reason codes and public recovery
   value types remain package-index exports; and
@@ -438,6 +453,17 @@ to the focused collaborators listed above, so another physical service split
 would add indirection without removing a current responsibility or improving a
 current test seam.
 
+One concrete compatibility risk remains deferred with that maintenance work.
+Journal `tryResetRemoteDatabase()` and `tryCreateRemoteDatabase()` synchronously
+close and replace their lazy client without first awaiting the transfer
+settlement owned by `terminateSync()`. CouchDB awaits its corresponding close.
+Maintained reset and rebuild workflows normally stop ordinary synchronisation
+before destructive remote work, but the Journal compatibility methods neither
+encode nor independently test that precondition. A later bounded change must
+first reproduce the race, then choose workflow-owned suspension, admitted
+maintenance, or same-instance transfer settlement. It must not add a generic
+provider capability merely to retire the compatibility facade.
+
 The review did identify five bounded behavioural corrections inside existing
 owners:
 
@@ -470,6 +496,69 @@ These corrections close ownership and presentation gaps found by the review;
 they do not add another generic capability, remote resource, probe framework,
 or provider role. The target matrices in Part 1 therefore remain unchanged.
 
+A subsequent falsification and quality pass found further bounded corrections
+inside the same owners:
+
+- directional failures retain the immutable compatibility hint from their
+  exact admitted attempt, and recovery re-admits that failed context;
+- settings-bearing dispatches correlate their snapshot with the active
+  configuration identity, while bounded Continuous startup and explicit stop
+  re-admit the exact publication;
+- directional transfer and central-remote administration stop active transfer
+  work before their exclusive operation;
+- readiness calls the application lifecycle method, rather than testing the
+  method object;
+- cancelled or incomplete P2P pull and push outcomes are not reported as
+  success by the CLI or Obsidian UI, and ordinary UI transfer uses the stable
+  targeted-transfer view rather than the compatibility Replicator. The
+  retained compatibility entry opens that ordinary UI only; it does not
+  perform the transfer;
+- Journal stop does not construct an unused client, and waits for the transfer
+  promises admitted at its stop boundary, including synchronous setup re-entry;
+  and
+- remote-size inspection uses one settings snapshot and preserves an observed
+  zero rather than treating it as absence.
+
+These are lifecycle, settlement, and compatibility-consumer corrections. They
+do not expand the capability or facility tables.
+
+A later contract reconciliation found four more bounded truthfulness gaps
+inside the same existing owners:
+
+- Object Storage central milestone mutation and postcondition verification
+  preserve `available`, `not-found`, and `unavailable`; only explicit absence
+  can initialise a document, and unavailability cannot upload or become a
+  missing-milestone result;
+- an enabled P2P provider with no configured targets preserves the Replicator's
+  `blocked/no-targets` result instead of reporting provider absence;
+- typed active acquisition classifies expected absence through a non-owning,
+  side-effect-free presence predicate rather than the Notice-producing legacy
+  getter; and
+- the CLI prints a stable explanation when central administration is rejected
+  because the active configuration changed before admission.
+
+These corrections require no new capability, resource family, state machine,
+or presentation framework.
+
+A subsequent lifecycle and diagnostic falsification found four further regressions
+at those established boundaries:
+
+- CouchDB synchronisation-information inspection now distinguishes an observed
+  incompatibility from connection, setup, or verification failure, so the
+  settings flow retains its separate existing messages;
+- an explicitly visible CouchDB connection probe retains its established
+  success or failure Notice, while silent probe consumers remain silent;
+- a private Journal Stop generation prevents a connectivity preflight which
+  crossed a later Stop boundary from starting a client transfer; and
+- host P2P lifecycle closure establishes a private reversible gate which
+  settings reconciliation and finite views cannot clear. Explicit connect,
+  database-rebuild continuation, and resumed AutoStart scheduling remain the
+  declared reopen boundaries.
+
+These corrections refine existing resource, transfer-stop, and P2P lifecycle
+semantics. They add no provider capability, resource kind, public state, or
+presentation framework, so the Part 1 matrices remain unchanged.
+
 ## Verification
 
 ### Commonlib unit and type-contract tests
@@ -486,25 +575,39 @@ Cover:
   rejection of new work during retirement, acquisition waiting, and late
   candidate settlement;
 - unchanged-identity retention, changed-identity replacement, idempotent
-  reservation release, and close ordering;
+  reservation release, settings-bearing dispatch correlation, and close
+  ordering;
 - probes which cannot replace the active Replicator or P2P service, including
   P2P Setup observation and blocking without trial construction, and idle
   admission which awaits complete disposal of the caller-owned trial;
-- the deliberately narrow active-transfer stop request, including work it
-  does not claim to cancel;
+- the deliberately narrow active-transfer stop request, including exact
+  admission, bounded Continuous startup, exclusive-operation ordering, and work
+  it does not claim to cancel;
 - CouchDB compatibility and transfer using the same owned OneShot connection;
 - Journal compatibility and transfer using one settings-bound borrowed client;
 - attempt-local accepted, rejected, and not-assessed decisions, including retry
   and Continuous reassessment on newly opened CouchDB connections;
 - Journal synchronisation-parameter reads distinguishing explicit absence from
   unavailability and never writing after the latter;
+- Journal central milestone mutation rejecting unavailable reads without an
+  upload, and Object Storage postcondition verification preserving the same
+  read failure and diagnostic detail;
+- Journal stop avoiding lazy resource construction, settling the transfer
+  promises admitted at its stop boundary, and preventing a deferred
+  connectivity preflight from entering a client transfer after Stop;
 - cohesive central administration and its truthful mutation settlement;
 - the narrow non-owning P2P active adapter, including download without a
   synthetic upload or central facility;
 - local-database retirement sharing the active owner boundary across reset and
-  close paths; and
+  close paths;
 - caller-authority preservation for unattended P2P presentation and truthful
-  Journal and active-lifecycle closure diagnostics.
+  Journal and active-lifecycle closure diagnostics;
+- remote-size inspection retaining one settings snapshot and reporting a zero
+  estimate as an observation;
+- P2P configured-target execution preserving `blocked/no-targets`; and
+- P2P host lifecycle closure blocking settings reconciliation and finite room
+  demand until explicit connect, rebuild continuation, or resumed AutoStart;
+- expected typed absence producing no legacy missing-active Notice.
 
 ### Self-hosted LiveSync unit tests
 
@@ -522,6 +625,8 @@ Cover:
 - periodic, database-save, editor-save, file-open, merge, and daemon triggers
   remaining free of dialogues;
 - manual P2P and configured peer-targeted flows remaining available;
+- ordinary Obsidian P2P transfer using the stable targeted-transfer view, with
+  cancelled or incomplete pull and push outcomes remaining non-successful;
 - P2P AutoStart cancellation across suspension, bounded advertisement waiting,
   accepted peers without unattended dialogues, remote-broadcast prerequisites,
   session-demand reference counts, and overlapping peer policies;
@@ -532,14 +637,17 @@ Cover:
 - counterpart RPC authorisation and broadcast progress preserving no-dialogue
   authority;
 - Setup and settings validation through owned resources or owner-arbitrated
-  P2P admission;
+  P2P admission, including distinct CouchDB incompatibility and operational
+  failure messages, explicit visible probe Notices, and silent ordinary
+  probes;
+- readiness invoking the application lifecycle predicate;
 - exact failed-context mismatch, unlock, and cleaned-remote recovery, including
   rejection after active replacement;
 - CLI lock diagnostics from the exact finite outcome rather than mutable fields
   on a later active Replicator;
 - CLI process exit codes for successful administration, returned verification
   failure with and without `--compat-remote-admin-exit-zero`, and thrown
-  mutation failure;
+  mutation failure, including a diagnostic for active-configuration mismatch;
 - first-device and additional-device initialisation for each current provider;
 - P2P as the main remote and as an adjunct transport; and
 - CLI, WebApp, and WebPeer composition against the same contracts, including
@@ -556,8 +664,44 @@ a watched peer whose remote side broadcasts, and suspension before a delayed
 AutoStart callback. A focused P2P Setup check must also cover an active room
 with the same relay set, an attempted additional relay which is blocked without
 closing that room, and an idle trial which releases its short-lived resources.
-Object Storage validation must also confirm that a temporarily unavailable
+Deterministic verification must also confirm that a temporarily unavailable
 synchronisation-parameter read does not upload a new Security Seed.
+
+The verification report must identify which boundary each real-runtime
+scenario deliberately exercised. A broad passing suite is not direct evidence
+for Object Storage `syncOnStart`, an injected unavailable read, P2P automatic
+scheduling, or active-relay Setup arbitration unless that scenario caused the
+boundary. Deterministic unavailable-read fault injection may remain at the
+owned contract-test seam when no reliable real-runtime injection exists; the
+remaining runtime limitation must then be stated rather than represented as a
+passing end-to-end scenario.
+
+The maintained Object Storage Setup URI workflow now exercises the migrated
+start-up combination deliberately. It persists `liveSync: true` and
+`syncOnStart: true` on the first device, keeps Periodic replication disabled,
+stops that device before the second device writes the return note, and then
+restarts it. The workflow waits for that note without requesting manual
+replication. Object Storage declares Continuous not applicable, so a successful
+return journey directly exercises the unattended OneShot fallback owned by
+start-up scheduling. A settings-save reconciliation before the first device
+stops cannot satisfy the assertion because the return note does not yet exist.
+
+The maintained real-Obsidian P2P Setup URI workflow directly exercises Setup
+URI application, initial Fetch, peer approval and actions, explicit disconnect
+and reconnect, and bidirectional note transfer. It does not deliberately
+exercise accepted configured-peer advertising, watched-peer broadcast,
+suspension before a delayed AutoStart callback, or active-room relay
+arbitration during P2P Setup. Those exact boundaries retain deterministic unit
+or contract evidence and are not represented as direct real-runtime proof.
+
+The maintained MinIO harness has no existing seam which can make exactly one
+synchronisation-parameter or milestone read unavailable. Stopping MinIO or
+using invalid credentials fails the preceding bucket-availability check,
+rather than the owned control-document read. The issue 1147 unavailable-read
+case therefore remains deterministic at the storage adapter, Journal core,
+and Replicator contract-test seams, where the assertions preserve
+`unavailable` and forbid creation or upload. It is not represented as a
+successful real-Obsidian fault-injection scenario.
 
 No temporary stage is a release candidate. Release readiness requires the
 target capability matrix, the contracted core and in-scope consumer migration,

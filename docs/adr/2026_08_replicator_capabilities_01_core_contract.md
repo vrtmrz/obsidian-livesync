@@ -452,6 +452,12 @@ caller decides whether creation is permitted. Only explicit `not-found` may
 create Journal synchronisation parameters; an unavailable read cannot be
 converted to a missing value or a new Security Seed.
 
+The same rule applies to central milestone mutation and verification. A
+milestone mutation may merge an available document or initialise one after an
+explicit `not-found` result. An unavailable read rejects before upload. A
+postcondition reader reports that unavailability as a read failure with its
+diagnostic detail; it does not report that the milestone is missing.
+
 This principle does not require one generic `RemoteObservation<T>` type or an
 active-read catalogue. Existing provider-specific inspection and maintenance
 methods may retain their current compatibility surface until their real
@@ -486,10 +492,24 @@ outer Rebuilder flow which itself initiates a lifecycle transition. A switch
 which waited for either global count could therefore wait for the operation
 which is awaiting that same switch.
 
-Production consumers cannot synchronously inspect an unreserved active
-context. They must acquire it or run work inside the admitted callback boundary.
-The synchronous `inspectActiveReplicatorContext()` view is protected and exists
-only for lifecycle diagnostics and focused tests.
+The active context atomically carries the provider, Replicator, and private
+configuration identity. A settings-bearing operation captures one effective
+settings snapshot, then reprojects and compares its identity inside admission
+immediately before provider dispatch. A mismatch settles without combining a
+new setting with an earlier Replicator. An explicit stop request acts on the
+exact active owner and therefore does not require a settings comparison.
+
+New typed production work cannot synchronously inspect an unreserved active
+context. It must acquire the context or run inside the admitted callback
+boundary. The synchronous `inspectActiveReplicatorContext()` view is protected
+and exists only for lifecycle diagnostics and focused tests.
+
+The public `getActiveReplicator()` remains temporarily for named compatibility
+consumers and retains its established missing-active diagnostic. It is not a
+typed ownership path. A separate side-effect-free `hasActiveReplicator()`
+predicate may distinguish a compatibility Replicator whose provider was not
+composed from complete absence. It returns neither the Replicator nor its
+context, and cannot be used to dispatch work.
 
 The minimum consumer surface is a callback boundary,
 `runWithActiveReplicatorContext(callback)`, rather than an exposed lease or
@@ -539,6 +559,21 @@ replication batch loop consume the same effective signal. An already-started
 atomic database operation may settle before cancellation completes, but no new
 batch is started afterwards.
 
+A Journal connectivity preflight is not itself cancelled by this role. The
+Replicator instead records a private Stop generation when that preflight begins
+and checks it again before entering `sync()`, `sendLocalJournal()`, or
+`receiveRemoteJournal()`. A Stop admitted while the preflight is pending can
+therefore wait for the attempt to settle without allowing a new client transfer
+to start afterwards.
+
+The bounded Continuous startup call and an explicit stop request are admitted
+against their exact publication. Continuous admission ends when the provider
+has registered ownership and settled startup; it is never retained for the
+lifetime of the long-lived task. Directional transfer and central-remote
+administration stop the admitted publication's active transfer before their
+exclusive operation begins. An unavailable or failed stop prevents that
+operation rather than allowing transfer and mutation to overlap.
+
 `getNewReplicator()` is not a general temporary-instance API. CouchDB and
 Object Storage Setup and settings flows request narrow connection or
 preferred-tweak probes. A resource-returning factory returns an owned resource
@@ -547,6 +582,13 @@ probe itself and cannot silently read active settings. P2P Setup instead uses
 the stable service's connection-probe admission described in Part 2. Only its
 idle continuation constructs and disposes a short-lived raw signalling trial.
 Neither form can replace the active Replicator or the P2P service.
+
+The CouchDB synchronisation-information resource resolves `false` only when it
+observes incompatible synchronisation information. Connection, setup, and
+verification failures reject so a settings caller can report operational
+failure separately from incompatibility. Connection-probe result presentation
+is likewise explicit: `showResult` retains the established CouchDB success or
+failure Notice, while an ordinary silent probe emits neither result Notice.
 
 Streaming Fetch receives an owned Security Seed resource bound to its settings
 snapshot. The current compatibility implementation may construct an
@@ -668,9 +710,10 @@ service make ownership explicit.
 
 ### Treat neutral compatibility results as supported operations
 
-Dummy zero counts, empty Security Seeds, false values, and silent mutations
-lose distinctions required for safety and recovery. A neutral value remains
-only when every caller proves it to be the operation's identity.
+Dummy zero counts, empty Security Seeds, false values which collapse an
+operational failure into incompatibility or absence, and silent mutations lose
+distinctions required for safety and recovery. A neutral value remains only
+when every caller proves it to be the operation's identity.
 
 ## Consequences
 

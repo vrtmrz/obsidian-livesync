@@ -149,6 +149,19 @@ Rebuilder workflow, not an AutoStart demand. After the replacement database is
 ready, that continuation may request a room independently of the AutoStart
 veto. It does not clear the veto for later automatic-start events.
 
+Host lifecycle closure has a second, private, reversible state. The host sets
+that state before it cancels delayed automation and closes the room. While it
+is set, settings reconciliation and finite stable-view operations cannot add a
+room demand. Only explicit connect, database-rebuild continuation, or the
+AutoStart schedule established by a resumed host lifecycle clears it; merely
+reconciling saved settings does not.
+
+This state does not replace or clear the explicit-disconnect veto. Explicit
+connect clears both states, resumed AutoStart still observes the user's veto,
+and Rebuild remains the separately authorised continuation described above.
+The distinction is private service policy, not another public capability or
+room owner.
+
 ### Separate automation policy from room ownership
 
 P2P automation is a composed service feature. It owns `P2P_AutoStart`,
@@ -194,20 +207,23 @@ releasing RPC and room resources.
 
 ### Reconcile session settings atomically
 
-The effective P2P session binding is derived from the selected profile, all
-settings which affect transport or session-bound automation, and the current
-local database identity. It is not a new persisted profile identifier or a
-device-local override. The service reconciles this binding independently of
-the selected main provider, so an adjunct room can be replaced while CouchDB
-or Object Storage remains active.
+The effective P2P session binding is derived from the selected profile, the
+settings which affect transport, the device identity, and the current local
+database identity. It is not a new persisted profile identifier or a
+device-local override. Automation and admission policy is reconciled on the
+current room. The service reconciles the binding independently of the selected
+main provider, so an adjunct room can be replaced while CouchDB or Object
+Storage remains active.
 
 A change to any binding input retires the whole room session and opens a
-replacement when policy still requires one. Replacing a policy-only setting
-may cause a temporary disconnect, but it preserves one atomic listener and
-policy boundary: advertisements and temporary peer decisions are reacquired,
-while persisted peer decisions survive. AutoStart reconnects when it remains
-enabled and no explicit-disconnect veto is active. No old listener, credential,
-client, or policy demand remains reachable after replacement.
+replacement when policy still requires one. A profile-selection or policy-only
+change which preserves the effective binding keeps the room and reconciles its
+current policy. A real replacement preserves one atomic listener and policy
+boundary: advertisements and temporary peer decisions are reacquired, while
+persisted peer decisions survive. AutoStart reconnects when it remains enabled,
+host lifecycle closure has been resumed, and no explicit-disconnect veto is
+active. No old listener, credential, client, or policy demand remains reachable
+after replacement.
 
 The candidate captures its settings, device identity, and local database object
 when it is constructed. The owner re-reads the effective binding after the room
@@ -280,15 +296,15 @@ not immediately repeat a completed baseline transfer.
 
 ### Define the P2P trigger matrix
 
-| Trigger                 | Required preconditions                                                | Effect                                       |
-| ----------------------- | --------------------------------------------------------------------- | -------------------------------------------- |
-| `P2P_AutoStart`         | P2P enabled, active lifecycle generation, and no user disconnect veto | Open room; do not itself transfer files      |
-| `P2P_AutoSyncPeers`     | Open room, matching advertisement, and accepted peer policy           | Run one bidirectional finite synchronisation |
-| `P2P_AutoWatchPeers`    | Open room, matching accepted advertisement, and remote broadcasting   | Pull later announced updates                 |
-| `P2P_AutoBroadcast`     | Open room and local broadcasting enabled                              | Announce later local database changes        |
-| `P2P_SyncOnReplication` | Configured names and advertisements received within a bounded wait    | Run target-aware unattended OneShot Sync     |
-| Explicit peer command   | Supplied peer target and accepted connection                          | Run user-owned finite synchronisation        |
-| Incoming `reqSync`      | Accepted peer and ordinary readiness                                  | Pull from requesting peer                    |
+| Trigger                 | Required preconditions                                                                               | Effect                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `P2P_AutoStart`         | P2P enabled, resumed lifecycle, cleared host closure, and no user disconnect veto                    | Open room; do not itself transfer files      |
+| `P2P_AutoSyncPeers`     | Open room, matching advertisement, and accepted peer policy                                          | Run one bidirectional finite synchronisation |
+| `P2P_AutoWatchPeers`    | Open room, matching accepted advertisement, and remote broadcasting                                  | Pull later announced updates                 |
+| `P2P_AutoBroadcast`     | Open room and local broadcasting enabled                                                             | Announce later local database changes        |
+| `P2P_SyncOnReplication` | Cleared host closure, no disconnect veto, configured names, and advertisements within a bounded wait | Run target-aware unattended OneShot Sync     |
+| Explicit peer command   | Supplied peer target and accepted connection                                                         | Run user-owned finite synchronisation        |
+| Incoming `reqSync`      | Accepted peer and ordinary readiness                                                                 | Pull from requesting peer                    |
 
 `P2P_AutoStart` is a transport policy, not central Continuous replication and
 not `syncOnStart`. AutoSync, AutoWatch, and accepted incoming requests remain
@@ -297,6 +313,8 @@ request waits for advertisement for a bounded period; it does not inspect a
 possibly stale snapshot immediately after opening. Missing, undiscovered,
 unaccepted, or partly successful targets are explicit operation results. An
 unknown peer never opens an acceptance dialogue on an unattended path.
+An enabled P2P provider with an empty configured target set settles as
+`blocked/no-targets`; it is not reported as an unconfigured provider.
 
 Delayed opens belong to the lifecycle generation which scheduled them.
 Suspension cancels them or makes them harmless, and the callback rechecks
@@ -354,6 +372,8 @@ and does not publish a second P2P lifecycle owner.
 - Disposing an active adapter cannot close a policy-owned or adjunct room.
 - Explicit user disconnect has a clear veto boundary and cannot be undone by
   AutoStart or a finite operation.
+- Host lifecycle closure cannot be undone by settings reconciliation or a
+  finite operation before an explicit resume boundary.
 - Finite operations can request a room without changing persistent room policy.
 - Settings and local database replacement cannot publish mixed-session state.
 - Reconnects do not repeat completed baseline transfers merely because the room
