@@ -177,6 +177,7 @@ describe("packaged Commonlib compatibility gate", () => {
             databaseService: {},
             fileProcessingService: { commitPendingFileEvents: vi.fn().mockResolvedValue(true) },
             replicatorService: {
+                acquireActiveReplicatorContext: vi.fn().mockResolvedValue(undefined),
                 getActiveReplicator: () => ({ openReplication }),
                 runFiniteReplicationActivity,
             },
