@@ -8,7 +8,9 @@ import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 /**
  * Creates an openReplicationUI factory for Obsidian environments.
  * Returns a per-replicator closure that opens the P2P Replication modal
- * and performs bidirectional sync (pull then push on success).
+ * and performs bidirectional sync (pull then push on success) through the
+ * stable targeted-transfer view. The compatibility Replicator argument is
+ * intentionally unused here and remains available only to the rebuild factory.
  *
  * Usage:
  *   const factory = createOpenReplicationUI(app);
@@ -17,7 +19,7 @@ import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 export function createOpenReplicationUI(
     app: App
 ): (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
-    return (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) =>
+    return (_replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) =>
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
@@ -37,20 +39,25 @@ export function createOpenReplicationUI(
                     activeSynchronisations++;
                     try {
                         // Pull first, then push only when the pull succeeds.
-                        const pullResult = await replicator.replicateFrom(peerId, showResult);
-                        if (!pullResult?.ok) {
+                        const pullResult = await p2p.targetedTransfer.pullFromPeer(peerId, {
+                            showNotice: showResult,
+                        });
+                        if (pullResult.status !== "completed" || !pullResult.ok) {
                             sessionResult = false;
-                            return;
+                            return false;
                         }
-                        const pushResult = await replicator.requestSynchroniseToPeer(peerId);
-                        sessionResult = pushResult?.ok ?? true;
-                        if (sessionResult && closeConnection) await replicator.close();
+                        const pushResult = await p2p.targetedTransfer.requestPushToPeer(peerId);
+                        const completed = pushResult.status === "completed" && pushResult.ok === true;
+                        sessionResult = completed;
+                        if (completed && closeConnection) await p2p.transportLifecycle.disconnect();
+                        return completed;
                     } catch (e) {
                         Logger(
                             `Error in bidirectional sync with ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
                             logLevel
                         );
                         sessionResult = false;
+                        return false;
                     } finally {
                         activeSynchronisations--;
                         settleClosedSession();
@@ -114,12 +121,14 @@ export function createOpenRebuildUI(
                         Logger(`Rebuilding from peer ${peerId}`, logLevel);
                         const result = await replicator.replicateFrom(peerId, showResult, true);
                         sessionResult = result?.ok ?? false;
+                        return sessionResult;
                     } catch (e) {
                         Logger(
                             `Error in rebuild from ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
                             logLevel
                         );
                         sessionResult = false;
+                        return false;
                     } finally {
                         try {
                             replicator.clearOnSetup();

@@ -16,8 +16,8 @@
 
     interface Props {
         p2p: P2PServiceViews;
-        onSync: (_peerId: string) => Promise<void>;
-        onSyncAndClose: (_peerId: string) => Promise<void>;
+        onSync: (_peerId: string) => Promise<boolean>;
+        onSyncAndClose: (_peerId: string) => Promise<boolean>;
         onClose: () => void;
         showResult: boolean;
         rebuildMode?: boolean;
@@ -49,8 +49,8 @@
         try {
             syncingPeerId = peerId;
             Logger(`Starting sync with ${peerId}`, logLevel);
-            await onSync(peerId);
-            Logger(`Sync completed with ${peerId}`, logLevel);
+            const completed = await onSync(peerId);
+            if (completed) Logger(`Sync completed with ${peerId}`, logLevel);
         } catch (e) {
             Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
         } finally {
@@ -61,8 +61,8 @@
         try {
             syncingPeerId = peerId;
             Logger(`Starting sync with ${peerId}`, logLevel);
-            await onSyncAndClose(peerId);
-            Logger(`Sync completed with ${peerId}`, logLevel);
+            const completed = await onSyncAndClose(peerId);
+            if (completed) Logger(`Sync completed with ${peerId}`, logLevel);
         } catch (e) {
             Logger(`Error during sync: ${e instanceof Error ? e.message : String(e)}`, logLevel);
         } finally {

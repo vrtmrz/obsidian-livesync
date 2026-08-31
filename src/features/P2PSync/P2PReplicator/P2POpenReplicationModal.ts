@@ -3,9 +3,13 @@ import P2POpenReplicationPane from "./P2POpenReplicationPane.svelte";
 import { mount, unmount } from "svelte";
 import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 
+/**
+ * Reports action completion so the pane does not infer success merely from a
+ * settled Promise.
+ */
 export type P2POpenReplicationModalCallback = {
-    onSync: (peerId: string) => Promise<void>;
-    onSyncAndClose: (peerId: string) => Promise<void>;
+    onSync: (peerId: string) => Promise<boolean>;
+    onSyncAndClose: (peerId: string) => Promise<boolean>;
 };
 
 export class P2POpenReplicationModal extends Modal {
@@ -35,17 +39,20 @@ export class P2POpenReplicationModal extends Modal {
         this.rebuildMode = rebuildMode;
     }
 
-    async onSync(peerId: string) {
+    async onSync(peerId: string): Promise<boolean> {
         if (this.callback?.onSync) {
-            await this.callback.onSync(peerId);
+            return await this.callback.onSync(peerId);
         }
+        return false;
     }
 
-    async onSyncAndClose(peerId: string) {
+    async onSyncAndClose(peerId: string): Promise<boolean> {
+        let completed = false;
         if (this.callback?.onSyncAndClose) {
-            await this.callback.onSyncAndClose(peerId);
+            completed = await this.callback.onSyncAndClose(peerId);
         }
         this.close();
+        return completed;
     }
 
     override onOpen() {

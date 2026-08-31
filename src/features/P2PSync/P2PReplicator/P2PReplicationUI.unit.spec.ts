@@ -4,8 +4,8 @@ const modalState = vi.hoisted(() => ({
     instances: [] as Array<{
         p2p: unknown;
         callback: {
-            onSync: (peerId: string) => Promise<void>;
-            onSyncAndClose: (peerId: string) => Promise<void>;
+            onSync: (peerId: string) => Promise<boolean>;
+            onSyncAndClose: (peerId: string) => Promise<boolean>;
         };
         onClosed?: () => void;
         open: ReturnType<typeof vi.fn>;
@@ -41,8 +41,8 @@ import { createOpenRebuildUI, createOpenReplicationUI } from "./P2PReplicationUI
 
 function createReplicator() {
     return {
-        replicateFrom: vi.fn(async () => ({ ok: true })),
-        requestSynchroniseToPeer: vi.fn(async () => ({ ok: true })),
+        replicateFrom: vi.fn(async () => ({ status: "completed" as const, ok: true as const })),
+        requestSynchroniseToPeer: vi.fn(async () => ({ status: "completed" as const, ok: true as const })),
         close: vi.fn(async () => undefined),
         setOnSetup: vi.fn(),
         clearOnSetup: vi.fn(),
@@ -50,7 +50,16 @@ function createReplicator() {
 }
 
 function createP2PServiceViews() {
-    return { transportLifecycle: {}, diagnostics: {} } as any;
+    return {
+        transportLifecycle: {
+            disconnect: vi.fn(async () => undefined),
+        },
+        targetedTransfer: {
+            pullFromPeer: vi.fn(async () => ({ status: "completed" as const, ok: true as const })),
+            requestPushToPeer: vi.fn(async () => ({ status: "completed" as const, ok: true as const })),
+        },
+        diagnostics: {},
+    } as any;
 }
 
 describe("createOpenReplicationUI", () => {
@@ -72,35 +81,53 @@ describe("createOpenReplicationUI", () => {
 
     it("keeps repeated synchronisation inside the session boundary until the modal closes", async () => {
         const replicator = createReplicator();
-        const session = createOpenReplicationUI({} as any)(replicator, createP2PServiceViews())(true);
+        const p2p = createP2PServiceViews();
+        const session = createOpenReplicationUI({} as any)(replicator, p2p)(true);
         const modal = modalState.instances[0];
         let settled = false;
         void session.finally(() => {
             settled = true;
         });
 
-        await modal.callback.onSync("peer-a");
+        await expect(modal.callback.onSync("peer-a")).resolves.toBe(true);
         await Promise.resolve();
 
         expect(settled).toBe(false);
         await modal.callback.onSync("peer-b");
-        expect(replicator.replicateFrom).toHaveBeenCalledTimes(2);
-        expect(replicator.requestSynchroniseToPeer).toHaveBeenCalledTimes(2);
+        expect(p2p.targetedTransfer.pullFromPeer).toHaveBeenCalledTimes(2);
+        expect(p2p.targetedTransfer.requestPushToPeer).toHaveBeenCalledTimes(2);
 
         modal.onClosed?.();
         await expect(session).resolves.toBe(true);
     });
 
-    it("waits for an in-flight synchronisation when the modal closes", async () => {
-        let finishPull!: (value: { ok: boolean }) => void;
+    it("routes ordinary peer transfer through the stable targeted-transfer view", async () => {
         const replicator = createReplicator();
-        replicator.replicateFrom.mockImplementation(
+        const p2p = createP2PServiceViews();
+        const session = createOpenReplicationUI({} as any)(replicator, p2p)(true);
+        const modal = modalState.instances[0];
+
+        await modal.callback.onSync("peer-a");
+        modal.onClosed?.();
+        await expect(session).resolves.toBe(true);
+
+        expect(p2p.targetedTransfer.pullFromPeer).toHaveBeenCalledWith("peer-a", { showNotice: true });
+        expect(p2p.targetedTransfer.requestPushToPeer).toHaveBeenCalledWith("peer-a");
+        expect(replicator.replicateFrom).not.toHaveBeenCalled();
+        expect(replicator.requestSynchroniseToPeer).not.toHaveBeenCalled();
+    });
+
+    it("waits for an in-flight synchronisation when the modal closes", async () => {
+        let finishPull!: (value: { status: "completed"; ok: true }) => void;
+        const replicator = createReplicator();
+        const p2p = createP2PServiceViews();
+        p2p.targetedTransfer.pullFromPeer.mockImplementation(
             async () =>
-                await new Promise<{ ok: boolean }>((resolve) => {
+                await new Promise<{ status: "completed"; ok: true }>((resolve) => {
                     finishPull = resolve;
                 })
         );
-        const session = createOpenReplicationUI({} as any)(replicator, createP2PServiceViews())(true);
+        const session = createOpenReplicationUI({} as any)(replicator, p2p)(true);
         const modal = modalState.instances[0];
         let settled = false;
         void session.finally(() => {
@@ -113,19 +140,21 @@ describe("createOpenReplicationUI", () => {
 
         expect(settled).toBe(false);
 
-        finishPull({ ok: true });
+        finishPull({ status: "completed", ok: true });
         await synchronisation;
         await expect(session).resolves.toBe(true);
     });
 
     it("closes the P2P connection after a successful sync-and-close action", async () => {
         const replicator = createReplicator();
-        const session = createOpenReplicationUI({} as any)(replicator, createP2PServiceViews())(true);
+        const p2p = createP2PServiceViews();
+        const session = createOpenReplicationUI({} as any)(replicator, p2p)(true);
         const modal = modalState.instances[0];
 
         await modal.callback.onSyncAndClose("peer-a");
 
-        expect(replicator.close).toHaveBeenCalledOnce();
+        expect(p2p.transportLifecycle.disconnect).toHaveBeenCalledOnce();
+        expect(replicator.close).not.toHaveBeenCalled();
         let settled = false;
         void session.finally(() => {
             settled = true;
@@ -136,6 +165,20 @@ describe("createOpenReplicationUI", () => {
         modal.onClosed?.();
         await expect(session).resolves.toBe(true);
     });
+
+    it("returns a cancelled peer push as non-success to the presentation boundary", async () => {
+        const replicator = createReplicator();
+        const p2p = createP2PServiceViews();
+        p2p.targetedTransfer.requestPushToPeer.mockResolvedValue({ status: "cancelled" } as never);
+        const session = createOpenReplicationUI({} as any)(replicator, p2p)(true);
+        const modal = modalState.instances[0];
+
+        const actionResult = await modal.callback.onSync("peer-a");
+        modal.onClosed?.();
+
+        expect(actionResult).toBe(false);
+        await expect(session).resolves.toBe(false);
+    });
 });
 
 describe("createOpenRebuildUI", () => {
@@ -144,11 +187,11 @@ describe("createOpenRebuildUI", () => {
     });
 
     it("waits for an in-flight rebuild when the modal closes", async () => {
-        let finishPull!: (value: { ok: boolean }) => void;
+        let finishPull!: (value: { status: "completed"; ok: true }) => void;
         const replicator = createReplicator();
         replicator.replicateFrom.mockImplementation(
             async () =>
-                await new Promise<{ ok: boolean }>((resolve) => {
+                await new Promise<{ status: "completed"; ok: true }>((resolve) => {
                     finishPull = resolve;
                 })
         );
@@ -165,8 +208,8 @@ describe("createOpenRebuildUI", () => {
 
         expect(settled).toBe(false);
 
-        finishPull({ ok: true });
-        await rebuild;
+        finishPull({ status: "completed", ok: true });
+        await expect(rebuild).resolves.toBe(true);
         await expect(session).resolves.toBe(true);
         expect(replicator.setOnSetup).toHaveBeenCalledOnce();
         expect(replicator.replicateFrom).toHaveBeenCalledWith("peer-a", true, true);

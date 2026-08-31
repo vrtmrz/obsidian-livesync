@@ -111,6 +111,8 @@ export function useP2PReplicatorUI(
         const activeReplicator = replicator.replicator;
         if (!activeReplicator) return;
         const settings = host.services.setting.currentSettings();
+        // The deprecated compatibility result only opens the ordinary UI; the
+        // actual transfer runs through the stable targeted-transfer view.
         void host.services.replicator.runFiniteReplicationActivity(
             () => activeReplicator.openReplication(settings, false, true, false),
             { label: "replication" }

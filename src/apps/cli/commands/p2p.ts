@@ -17,6 +17,7 @@ function delay(ms: number): Promise<void> {
     return new Promise((resolve) => compatGlobal.setTimeout(resolve, ms));
 }
 
+/** Parse a CLI timeout expressed as a finite, non-negative number of seconds. */
 export function parseTimeoutSeconds(value: string, commandName: string): number {
     const timeoutSec = Number(value);
     if (!Number.isFinite(timeoutSec) || timeoutSec < 0) {
@@ -54,6 +55,7 @@ function getSortedPeers(service: Pick<P2PServiceViews, "peerDirectory">): CLIP2P
         .sort((a, b) => a.peerId.localeCompare(b.peerId));
 }
 
+/** Connect for a bounded discovery interval, return a stable peer ordering, and disconnect. */
 export async function collectPeers(
     core: LiveSyncBaseCore<ServiceContext, never>,
     p2pService: CLIP2PService | undefined,
@@ -137,6 +139,7 @@ export function createPeerConnectionStatsPayload(
     return payload;
 }
 
+/** Resolve one peer token, complete pull then push, and disconnect on every settlement. */
 export async function syncWithPeer(
     core: LiveSyncBaseCore<ServiceContext, never>,
     p2pService: CLIP2PService | undefined,
@@ -167,6 +170,9 @@ export async function syncWithPeer(
         if (pullResult && "error" in pullResult && pullResult.error) {
             throw pullResult.error instanceof Error ? pullResult.error : LiveSyncError.fromError(pullResult.error);
         }
+        if (!pullResult || pullResult.status !== "completed") {
+            throw LiveSyncError.fromError("P2P sync failed while pulling from peer");
+        }
         const pushResult = await service.targetedTransfer.requestPushToPeer(targetPeer.peerId);
         if (!pushResult || pushResult.ok !== true) {
             const err: unknown = pushResult && "error" in pushResult ? pushResult.error : undefined;
@@ -182,6 +188,7 @@ export async function syncWithPeer(
     }
 }
 
+/** Connect the headless P2P host and transfer transport ownership to the caller. */
 export async function openP2PHost(
     core: LiveSyncBaseCore<ServiceContext, never>,
     p2pService: CLIP2PService | undefined

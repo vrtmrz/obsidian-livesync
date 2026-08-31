@@ -14,8 +14,8 @@ function createCore() {
 function createP2PService() {
     const connect = vi.fn(async () => undefined);
     const disconnect = vi.fn(async () => undefined);
-    const pullFromPeer = vi.fn(async () => ({ ok: true }));
-    const requestPushToPeer = vi.fn(async () => ({ ok: true }));
+    const pullFromPeer = vi.fn(async () => ({ status: "completed" as const, ok: true as const }));
+    const requestPushToPeer = vi.fn(async () => ({ status: "completed" as const, ok: true as const }));
     return {
         service: {
             transportLifecycle: { isConnected: false, connect, disconnect },
@@ -70,6 +70,16 @@ describe("p2p command helpers", () => {
         });
         expect(pullFromPeer).toHaveBeenCalledWith("peer-a", { showNotice: false });
         expect(requestPushToPeer).toHaveBeenCalledWith("peer-a");
+    });
+
+    it("rejects a cancelled pull without requesting a peer push", async () => {
+        const { service, disconnect, pullFromPeer, requestPushToPeer } = createP2PService();
+        pullFromPeer.mockResolvedValue({ status: "cancelled" } as never);
+
+        await expect(syncWithPeer(createCore(), service as never, "peer-a", 0)).rejects.toBeDefined();
+
+        expect(requestPushToPeer).not.toHaveBeenCalled();
+        expect(disconnect).toHaveBeenCalledOnce();
     });
 
     it("preserves the benchmark diagnostics JSONL contract", () => {

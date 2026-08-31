@@ -106,12 +106,12 @@
                 throw new Error("The P2P Setup connection probe is not available.");
             }
             const result = await coordinateP2PSetupConnectionProbe(admission, trialRemoteSetting, async () => {
-                const map = new Map<string, string>();
+                const map = new Map<string, unknown>();
                 const store = {
                     get: (key: string) => {
                         return Promise.resolve(map.get(key) || null);
                     },
-                    set: (key: string, value: any) => {
+                    set: (key: string, value: unknown) => {
                         map.set(key, value);
                         return Promise.resolve();
                     },
@@ -125,7 +125,7 @@
                     get db() {
                         return Promise.resolve(this);
                     },
-                } as SimpleStore<any>;
+                } as SimpleStore<unknown>;
 
                 const dummyPouch = new PouchDB<EntryDoc>("dummy");
                 let replicator: TrysteroReplicator | undefined;
@@ -134,7 +134,7 @@
                         events: context.context.events,
                         translate: context.context.translate,
                         settings: trialRemoteSetting,
-                        processReplicatedDocs: async (_docs: any[]) => {
+                        processReplicatedDocs: async (_docs: PouchDB.Core.ExistingDocument<EntryDoc>[]) => {
                             return;
                         },
                         confirm: context.services.confirm,
