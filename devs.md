@@ -129,16 +129,16 @@ Changes spanning both repositories must first produce a packed Commonlib artefac
 
 ## Architecture
 
-### Service composition and legacy modules
+### Service composition and legacy Modules
 
-The application is composed from Services, ServiceModules, serviceFeatures, and a legacy module layer:
+The application is composed from Services, ServiceModules, serviceFeatures, add-ons, and a legacy Module layer:
 
-- **Service Hub**: the long-lived registry of service contracts. A simple extension, such as a check before replication, belongs in an existing Service handler.
+- **Service Hub**: the long-lived registry of service contracts. Add a simple extension, such as a pre-replication check, to the handler owned by the relevant Service.
 - **ServiceModule**: a host-created, long-lived stateful or resource-owning capability shared through the typed `ServiceModules` record. Current examples include storage access, file handling, and database rebuilding.
-- **serviceFeature**: a typed composition function which accepts only its declared Services and ServiceModules. It registers lifecycle handlers, commands, UI bindings, or other host glue, and may return a focused view. It is not a runtime registry entry.
-- **AbstractModule** and **AbstractObsidianModule**: the legacy application module layer. Existing modules are loaded by the application and bound after the Service graph has been composed; this broad core access is not the preferred dependency boundary for new orchestration.
+- **serviceFeature**: a typed composition function which accepts only its declared Services and ServiceModules. It registers lifecycle handlers, commands, user-interface bindings, or other host glue, and may return a focused view. It is not a runtime registry entry.
+- **AbstractModule** and **AbstractObsidianModule**: the legacy application Module layer. Existing Modules are loaded by the application and bound after the Service graph has been composed; this broad core access is not the preferred dependency boundary for new orchestration.
 
-The normal composition order is the Service Hub, replicator-provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
+The normal composition order is the Service Hub, replicator-provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy Module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
 
 Mutable state is permitted in a serviceFeature. State alone is not a reason to create a class, a ServiceModule, or retain an AbstractModule. Prefer one private context, with module-level functions which receive that context, when identity and polymorphism are not part of the contract. Separate the state, transitions, and invariants from the surrounding function which registers lifecycle handlers and connects downstream effects. Give the stateful boundary narrow collaborators rather than `LiveSyncBaseCore`.
 
@@ -148,15 +148,17 @@ Several narrow views over one lifetime do not require several state owners or a 
 
 When a core-owned serviceFeature returns a view needed by one host-specific consumer, pass that view through host composition instead of storing it as a public `LiveSyncBaseCore` property or promoting it to a ServiceModule. The receiving host should inject the view into the narrow command or application context which uses it.
 
-Commonlib's `targetFilter.ts` and `prepareDatabaseForUse.ts` demonstrate the intended split: focused factories or operations own their private state and behaviour, while the corresponding `use...` function composes dependencies and registers handlers. The P2P composition follows the same direction at a larger scale by separating durable policy and room-session ownership from host lifecycle and UI wiring. Existing modules do not apply this boundary consistently; improve the affected boundary when changing their behaviour rather than performing an unrelated mechanical conversion.
+Commonlib's `targetFilter.ts` and `prepareDatabaseForUse.ts` demonstrate the intended split: focused factories or operations own their private state and behaviour, while the corresponding `use...` function composes dependencies and registers handlers. The P2P composition follows the same direction at a larger scale by separating durable policy and room-session ownership from host lifecycle and user-interface wiring. Existing Modules do not apply this boundary consistently; improve the affected boundary when changing their behaviour rather than performing an unrelated mechanical conversion.
 
 Use interaction-based, London School unit tests for the composition boundary. Verify collaborator calls, ordering, failure short-circuiting, and handler registration, then test the focused state owner for its transitions and invariants. If a test needs a broad core fixture, a large class mock, deep mock chains, or unrelated Services, treat that friction as a design-review signal and consider a private context with narrower functions before adding more test machinery.
 
-Legacy modules remain grouped by directory:
+See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary.
+
+Legacy Modules remain grouped by directory:
 
 - `core/` contains platform-independent core behaviour;
 - `coreObsidian/` contains Obsidian-specific core behaviour;
-- `essential/` contains required modules;
+- `essential/` contains required Modules;
 - `features/` contains optional features; and
 - `extras/` contains development and testing tools.
 
@@ -229,19 +231,20 @@ Commonlib owns the typed English fallback for messages requested by its services
 
 ## Common Patterns
 
-### Module Implementation (Now not recommended for new features, use services instead)
+### Service feature implementation
 
 ```typescript
-export class ModuleExample extends AbstractObsidianModule {
-    async _everyOnloadStart(): Promise<boolean> {
-        /* ... */
-    }
+type ExampleHost = NecessaryServices<"appLifecycle" | "API", never>;
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-    }
-}
+export const useExampleFeature = createServiceFeature((host: ExampleHost) => {
+    host.services.appLifecycle.onLoaded.addHandler(async () => {
+        host.services.API.addLog("Example feature loaded");
+        return true;
+    });
+});
 ```
+
+Existing legacy Modules continue to register their handlers in `onBindFunction()`. Follow [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) when new behaviour touches one of those Modules.
 
 ### Settings Management
 
