@@ -237,6 +237,26 @@ describe("ObsidianLiveSyncSettingTab connection testing", () => {
     });
 });
 
+describe("ObsidianLiveSyncSettingTab Fresh Start Wipe", () => {
+    it("returns the remote wipe result and disposes its temporary Journal client", async () => {
+        const resetBucket = vi.fn(async () => false);
+        const dispose = vi.fn();
+        const tab = new ObsidianLiveSyncSettingTab(
+            {} as never,
+            {
+                app: {},
+                core: {},
+            } as never
+        );
+        vi.spyOn(tab, "getMinioJournalSyncClient").mockReturnValue({ resetBucket, dispose } as never);
+
+        await expect(tab.resetRemoteBucket()).resolves.toBe(false);
+
+        expect(resetBucket).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+});
+
 describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
     function createSettingsTab() {
         const saveSettingData = vi.fn(async () => undefined);

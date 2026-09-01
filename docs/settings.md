@@ -1113,7 +1113,11 @@ Purge all download/upload cache.
 
 #### Fresh Start Wipe
 
-Delete all data on the remote server.
+Delete all data on the remote server in batches; this operation is not
+transactional. Stop all synchronising devices before starting. If the
+operation is interrupted or reports failure, keep them stopped, rerun Fresh
+Start Wipe, and then use **Overwrite Server Data with This Device's Files**
+from an authoritative Vault.
 
 ### 6. Garbage Collection V3 (CouchDB only)
 

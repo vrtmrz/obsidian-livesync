@@ -1209,8 +1209,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             new MinioStorageAdapter(this.core.settings, this.core)
         );
     }
-    async resetRemoteBucket() {
+    /**
+     * Wipe the remote bucket through a short-lived Journal client.
+     * Journal wipes are batched and non-transactional, so a false result may
+     * leave a partial wipe which can be retried after all devices are stopped.
+     */
+    async resetRemoteBucket(): Promise<boolean> {
         const minioJournal = this.getMinioJournalSyncClient();
-        await minioJournal.resetBucket();
+        try {
+            return await minioJournal.resetBucket();
+        } finally {
+            minioJournal.dispose();
+        }
     }
 }
