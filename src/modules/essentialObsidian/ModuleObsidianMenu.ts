@@ -2,7 +2,10 @@ import { addIcon } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import type { LiveSyncCore } from "@/main.ts";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
-import { USER_INITIATED_REPLICATION_AUTHORITY } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
 // Obsidian specific menu commands.
 export class ModuleObsidianMenu extends AbstractModule {
     _everyOnloadStart(): Promise<boolean> {
@@ -20,6 +23,7 @@ export class ModuleObsidianMenu extends AbstractModule {
         this.addRibbonIcon("replicate", $msg("moduleObsidianMenu.replicate"), async () => {
             await this.services.replication.replicateUserInitiated({
                 trigger: "manual",
+                progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
                 interaction: USER_INITIATED_REPLICATION_AUTHORITY,
             });
         }).addClass("livesync-ribbon-replicate");

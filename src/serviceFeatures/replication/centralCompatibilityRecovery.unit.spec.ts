@@ -4,6 +4,7 @@ import { defaultLogger, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, setGlobalLogFunction }
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     NO_INTERACTION,
+    REPLICATION_PROGRESS_PRESENTATIONS,
     USER_INITIATED_REPLICATION_AUTHORITY,
     replicationFailed,
 } from "@vrtmrz/livesync-commonlib/replication";
@@ -43,7 +44,7 @@ describe("central compatibility recovery", () => {
                     context: { provider: {}, replicator: {} },
                     setting: {},
                     outcome: replicationFailed(new Error("provider failed")),
-                    showMessage: false,
+                    progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
                     interaction: NO_INTERACTION,
                 } as never)
             ).resolves.toBe(false);
@@ -93,7 +94,7 @@ describe("central compatibility recovery", () => {
             context: failedContext,
             setting: {},
             outcome,
-            showMessage: false,
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
             interaction: NO_INTERACTION,
         } as never);
         expect(askResolvingMismatched).not.toHaveBeenCalled();
@@ -102,7 +103,7 @@ describe("central compatibility recovery", () => {
             context: failedContext,
             setting: {},
             outcome,
-            showMessage: false,
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
             interaction: {
                 kind: "permitted",
                 permissions: { ...USER_INITIATED_REPLICATION_AUTHORITY.permissions, failureRecovery: false },
@@ -114,7 +115,7 @@ describe("central compatibility recovery", () => {
             context: failedContext,
             setting: {},
             outcome,
-            showMessage: true,
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         } as never);
         expect(askResolvingMismatched).toHaveBeenCalledWith(preferredTweakValue, expect.any(Function));
@@ -158,7 +159,7 @@ describe("central compatibility recovery", () => {
                 reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
                 preferredTweakValue: { customChunkSize: 60 },
             }),
-            showMessage: true,
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         } as never);
 
@@ -196,7 +197,7 @@ describe("central compatibility recovery", () => {
             outcome: replicationFailed(new Error("locked"), {
                 reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED,
             }),
-            showMessage: true,
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         } as never);
 

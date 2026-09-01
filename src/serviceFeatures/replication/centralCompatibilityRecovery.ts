@@ -5,6 +5,7 @@ import { balanceChunkPurgedDBs, purgeUnreferencedChunks } from "@vrtmrz/livesync
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    REPLICATION_PROGRESS_PRESENTATIONS,
     type ReplicatorInstance,
     type ReplicationFailureRequest,
 } from "@vrtmrz/livesync-commonlib/replication";
@@ -52,11 +53,11 @@ function canMarkRemoteResolved(replicator: ReplicatorInstance): replicator is Re
  */
 export function createCentralCompatibilityRecovery(context: CentralCompatibilityRecoveryContext) {
     async function reconcileCleanedRemote(
-        showMessage: boolean,
+        showProgress: boolean,
         setting: ObsidianLiveSyncSettings,
         expectedContext: ReplicationFailureRequest["context"]
     ) {
-        Logger("The remote database has been cleaned.", showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
+        Logger("The remote database has been cleaned.", showProgress ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         await skipIfDuplicated("cleanup", async () => {
             const count = await purgeUnreferencedChunks(context.getLocalDatabase().localDatabase, true);
             const message = `The remote database has been cleaned up.
@@ -100,7 +101,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                             await purgeUnreferencedChunks(localDatabase.localDatabase, false);
                             localDatabase.clearCaches();
                             const replicated = await context.services.replicator.runFiniteReplicationActivity(
-                                () => replicator.openOneShotReplication(setting, showMessage, false, "sync", true),
+                                () => replicator.openOneShotReplication(setting, showProgress, false, "sync", true),
                                 { label: "replication" }
                             );
                             if (replicated) {
@@ -110,12 +111,12 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                                 await replicator.markRemoteResolved(setting);
                                 Logger(
                                     "The local database has been cleaned up.",
-                                    showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                    showProgress ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
                                 );
                             } else {
                                 Logger(
                                     "Replication has been cancelled. Please try it again.",
-                                    showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
+                                    showProgress ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO
                                 );
                             }
                         } finally {
@@ -128,14 +129,15 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
     }
 
     async function handleReplicationFailure(request: ReplicationFailureRequest): Promise<boolean> {
-        const { context: failedContext, interaction, outcome, setting, showMessage } = request;
-        if (!showMessage) {
+        const { context: failedContext, interaction, outcome, progressPresentation, setting } = request;
+        const showProgress = progressPresentation === REPLICATION_PROGRESS_PRESENTATIONS.NOTICE;
+        if (interaction.kind === "forbidden") {
             // Automatic requests may report the failure, but must not enter
             // tweak, lock, fetch, unlock, or cleanup dialogues.
             Logger("Replication failed on an unattended path.", LOG_LEVEL_INFO);
             return false;
         }
-        if (interaction.kind !== "permitted" || !interaction.permissions.failureRecovery) return false;
+        if (!interaction.permissions.failureRecovery) return false;
         const recovery = outcome.recoveryHint;
         if (!recovery) return false;
 
@@ -169,7 +171,7 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             recovery.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED &&
             usesLegacyIndexedDBAdapter(setting)
         ) {
-            await reconcileCleanedRemote(showMessage, setting, failedContext);
+            await reconcileCleanedRemote(showProgress, setting, failedContext);
             return false;
         }
 

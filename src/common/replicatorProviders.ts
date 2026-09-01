@@ -3,6 +3,7 @@ import {
     CAPABILITY_NOT_APPLICABLE,
     CENTRAL_REMOTE_REPLICATION_READINESS,
     NO_INTERACTION,
+    REPLICATION_PROGRESS_PRESENTATIONS,
     REMOTE_RESOURCE_KINDS,
     defineReplicatorProviderDefinitions,
     supportedOpenReplicationContinuous,
@@ -72,7 +73,7 @@ const couchDBUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance,
     return await runOneShotWithOutcome(
         instance,
         setting,
-        request.interaction.kind === "permitted" && request.interaction.permissions.failureRecovery
+        request.progressPresentation === REPLICATION_PROGRESS_PRESENTATIONS.NOTICE
     );
 };
 
@@ -85,7 +86,7 @@ const objectStorageUserInitiatedOneShot: UserInitiatedOneShotRunner = async (ins
     return await runOneShotWithOutcome(
         instance,
         setting,
-        request.interaction.kind === "permitted" && request.interaction.permissions.failureRecovery
+        request.progressPresentation === REPLICATION_PROGRESS_PRESENTATIONS.NOTICE
     );
 };
 

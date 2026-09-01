@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Command } from "@/deps";
+import {
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
 import { ModuleBasicMenu } from "./ModuleBasicMenu";
 
 type RegisteredCommand = Command & {
@@ -122,6 +126,19 @@ describe("ModuleBasicMenu command palette", () => {
 
         expect(fixture.getCommand("livesync-replicate").name).toBe("Sync now");
         expect(fixture.getCommand("livesync-runbatch").name).toBe("Apply pending changes now");
+    });
+
+    it("keeps Sync now progress quiet while retaining failure-recovery authority", async () => {
+        const fixture = createFixture();
+
+        await fixture.module._everyOnloadStart();
+        await fixture.getCommand("livesync-replicate").callback?.();
+
+        expect(fixture.services.replication.replicateUserInitiated).toHaveBeenCalledWith({
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
     });
 
     it("keeps maintenance commands out of the normal palette", async () => {

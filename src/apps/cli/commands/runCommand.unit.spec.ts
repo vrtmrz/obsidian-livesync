@@ -19,6 +19,7 @@ import {
     REMOTE_RESOURCE_KINDS,
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     REPLICATION_COMPLETED,
+    REPLICATION_PROGRESS_PRESENTATIONS,
     replicationFailed,
 } from "@vrtmrz/livesync-commonlib/replication";
 
@@ -263,6 +264,21 @@ describe("runCommand abnormal cases", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    it("retains visible progress for the interactive sync command", async () => {
+        const core = createCoreMock();
+
+        await expect(
+            runCommand(makeOptions("sync", []), {
+                ...context,
+                core,
+            })
+        ).resolves.toBe(true);
+
+        expect(core.services.replication.replicateUserInitiated).toHaveBeenCalledWith(
+            expect.objectContaining({ progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE })
+        );
     });
 
     it("reports a lock from the exact sync outcome without inspecting a replacement Replicator", async () => {

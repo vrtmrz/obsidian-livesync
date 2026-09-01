@@ -4,7 +4,10 @@ import { fireAndForget } from "octagonal-wheels/promises";
 import { AbstractModule } from "@/modules/AbstractModule";
 import { $msg } from "@/common/translation";
 import { copyFileDatabaseInfo } from "@/serviceFeatures/fileDatabaseInfo";
-import { USER_INITIATED_REPLICATION_AUTHORITY } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
 // Separated Module for basic menu commands, which are not related to obsidian specific features. It is expected to be used in other platforms with minimal changes.
 // However, it is odd that it has here at all; it really ought to be in each respective feature. It will likely be moved eventually. Until now, addCommand pointed to Obsidian's version.
 export class ModuleBasicMenu extends AbstractModule {
@@ -15,6 +18,7 @@ export class ModuleBasicMenu extends AbstractModule {
             callback: async () => {
                 await this.services.replication.replicateUserInitiated({
                     trigger: "manual",
+                    progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
                     interaction: USER_INITIATED_REPLICATION_AUTHORITY,
                 });
             },

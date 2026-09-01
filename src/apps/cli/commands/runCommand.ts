@@ -24,6 +24,7 @@ import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     isReplicationCompleted,
     NO_INTERACTION,
+    REPLICATION_PROGRESS_PRESENTATIONS,
     REMOTE_RESOURCE_KINDS,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
@@ -173,6 +174,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         writeStdoutLine(standardIo, "[Command] sync");
         const result = await core.services.replication.replicateUserInitiated({
             trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         });
         if (!isReplicationCompleted(result)) {

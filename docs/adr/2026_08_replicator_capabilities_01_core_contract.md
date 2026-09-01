@@ -369,8 +369,17 @@ type InteractionAuthority =
 
 const NO_INTERACTION = { kind: "forbidden" } as const;
 
+const REPLICATION_PROGRESS_PRESENTATIONS = {
+    QUIET: "quiet",
+    NOTICE: "notice",
+} as const;
+
+type ReplicationProgressPresentation =
+    (typeof REPLICATION_PROGRESS_PRESENTATIONS)[keyof typeof REPLICATION_PROGRESS_PRESENTATIONS];
+
 interface UserInitiatedOneShotRequest {
     readonly trigger: "manual";
+    readonly progressPresentation: ReplicationProgressPresentation;
     readonly interaction: InteractionAuthority;
 }
 
@@ -393,11 +402,33 @@ same upper bound and expose only relevant permissions. An unattended path may
 use persisted or automatic acceptance policy, but cannot obtain local
 interaction authority implicitly.
 
-The same authority bounds presentation. An unattended P2P path may retain an
-informational diagnostic, but no-target, authentication, tweak-mismatch, and
-overlapping-transfer settlements must not promote themselves to a Notice.
-User-initiated paths retain their existing Notice-level presentation. This is
-a caller-authority rule, not a new process-wide presentation framework.
+Progress presentation and interaction authority are independent parts of the
+request. `quiet` suppresses routine Notice-level progress, but does not remove
+authorised peer selection or failure-recovery dialogue. `notice` permits
+routine progress, but cannot grant an interaction which the request authority
+forbids. Unattended work always uses `quiet` with `NO_INTERACTION`; it may retain
+an informational diagnostic, but no-target, authentication, tweak-mismatch,
+and overlapping-transfer settlements must not promote themselves to a Notice.
+This remains a request-local policy, not a new process-wide presentation
+framework.
+
+The ordinary typed OneShot entry points deliberately retain these established
+interaction shapes:
+
+| Entry point | Routine progress | Interaction authority | Request received while another OneShot attempt is active |
+| --- | --- | --- | --- |
+| Command-palette `Sync now` | Quiet | Peer selection and failure recovery remain permitted | Settles as `blocked: replication-in-progress` |
+| Ribbon synchronisation action | Notice | Full user-initiated authority | Settles as `blocked: replication-in-progress` |
+| Config Sync `Sync once` | Notice | Full user-initiated authority | Settles as `blocked: replication-in-progress` |
+| CLI `sync` | Notice | Full user-initiated authority, subject to the host's available interaction mechanisms | Settles as `blocked: replication-in-progress` |
+| Resume, periodic, database-event, editor-save, file-open, merge, and daemon triggers | Quiet | `NO_INTERACTION` | Settles as `blocked: replication-in-progress` |
+
+The OneShot owner is acquired before readiness evaluation and retained through
+provider acquisition, finite activity, and failure handling. A later request
+is not queued, joined to the running result, or treated as a failed transfer;
+no work starts for that request. Directional Fetch and Rebuild, P2P-specific
+commands, and other maintenance workflows remain outside this ordinary
+OneShot gate and retain their own activity ownership.
 
 Outcomes do not collapse failure into `void` or `boolean`:
 

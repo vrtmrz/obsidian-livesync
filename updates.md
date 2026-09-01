@@ -16,6 +16,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- **Sync now** once again keeps routine progress quiet, while still opening recovery dialogues when a decision is required. Repeated OneShot Sync requests received while an earlier attempt is running are now ignored instead of starting overlapping work.
 - **Sync on Startup** now runs an immediate Object Storage synchronisation after start-up or resume, including migrated profiles which retain a Continuous setting that Object Storage cannot use.
 - A temporarily unavailable Object Storage synchronisation-parameter read is no longer treated as a missing object and cannot regenerate the shared Security Seed. Flow-specific Security Seed checks also bypass an earlier process-cached result.
 - Local database reset and plug-in unload now retire active replication through its owner before closing the database, without reporting a missing active Replicator or describing unload as a database reset.

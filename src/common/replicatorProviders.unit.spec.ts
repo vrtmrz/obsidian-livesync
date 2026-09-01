@@ -5,6 +5,7 @@ import {
     CAPABILITY_SUPPORT_KINDS,
     NO_INTERACTION,
     REPLICATION_COMPLETED,
+    REPLICATION_PROGRESS_PRESENTATIONS,
     REMOTE_RESOURCE_KINDS,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
@@ -135,6 +136,7 @@ describe("central Replicator provider definitions", () => {
         await expect(
             couchDB.userInitiatedOneShot.run(couchInstance, setting, {
                 trigger: "manual",
+                progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
                 interaction: USER_INITIATED_REPLICATION_AUTHORITY,
             })
         ).resolves.toBe(REPLICATION_COMPLETED);
@@ -147,6 +149,40 @@ describe("central Replicator provider definitions", () => {
 
         expect(constructorMocks.couchDBOneShot).toHaveBeenCalledWith(setting, true);
         expect(constructorMocks.objectStorageOneShot).toHaveBeenCalledWith(setting, false);
+    });
+
+    it.each([
+        ["CouchDB", REMOTE_COUCHDB],
+        ["Object Storage", REMOTE_MINIO],
+    ] as const)("maps %s progress presentation independently of recovery authority", async (label, remoteType) => {
+        const definitions = createCentralReplicatorProviderDefinitions({} as never);
+        const definition = definitions.get(remoteType)!;
+        if (definition.userInitiatedOneShot.kind !== CAPABILITY_SUPPORT_KINDS.SUPPORTED) {
+            throw new Error(`${label} OneShot is unavailable`);
+        }
+        const setting = Object.assign(createNewVaultSettings(), { remoteType });
+        const openOneShotReplicationWithOutcome = vi.fn(async () => REPLICATION_COMPLETED);
+        const instance = {
+            initializeDatabaseForReplication: vi.fn(async () => true),
+            openReplication: vi.fn(async () => true),
+            terminateSync: vi.fn(),
+            closeReplication: vi.fn(),
+            openOneShotReplicationWithOutcome,
+        };
+
+        await definition.userInitiatedOneShot.run(instance, setting, {
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+        await definition.userInitiatedOneShot.run(instance, setting, {
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+
+        expect(openOneShotReplicationWithOutcome).toHaveBeenNthCalledWith(1, setting, false);
+        expect(openOneShotReplicationWithOutcome).toHaveBeenNthCalledWith(2, setting, true);
     });
 
     it("dispatches central finite work through the declared operation rather than constructor identity", async () => {
@@ -172,6 +208,7 @@ describe("central Replicator provider definitions", () => {
 
         const couchOutcome = await couchDB.userInitiatedOneShot.run(couchInstance, setting, {
             trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         });
         const objectStorageOutcome = await objectStorage.unattendedOneShot.run(objectStorageInstance, setting, {
@@ -201,6 +238,7 @@ describe("central Replicator provider definitions", () => {
 
         const outcome = await couchDB.userInitiatedOneShot.run(incompleteInstance, setting, {
             trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         });
 
