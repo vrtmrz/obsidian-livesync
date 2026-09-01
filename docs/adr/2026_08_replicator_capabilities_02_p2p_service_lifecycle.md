@@ -1,6 +1,6 @@
 ---
 date: 2026-08-27
-commonlib-version: "0.1.19"
+commonlib-version: "0.1.20"
 self-hosted-livesync-version: "1.0.21"
 status: proposed
 series: replicator-capabilities-and-lifecycle
