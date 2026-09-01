@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 1st September, 2026
 
+I am sorry to make this release while several pull requests are still awaiting merge, but I believe that the safeguards provided by this work are significant, so I have decided to release it. I will merge the remaining pull requests in turn. Thank you for bearing with me while I have been less active recently.
+
 ### Synchronisation and storage
 
 #### Fixed
@@ -30,6 +32,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Fixed
 
 - The P2P Setup connection test no longer interrupts an active P2P room. It observes an active compatible relay binding, blocks a test which would add another relay until P2P is disconnected, and uses a short-lived trial only while P2P is idle.
+- User-initiated P2P synchronisation now reports success only after the requested target transfer completes.
+- Optional WebApp P2P synchronisation now becomes ready after a successful local-file scan even when CouchDB remains unconfigured; failed preparation is not reported as ready.
 - Unattended P2P synchronisation no longer raises Notice-level messages for missing configured targets, authentication rejection, configuration mismatch, or an overlapping transfer. User-initiated operations retain their existing feedback.
 - P2P replication failure reasons now survive the JSON RPC boundary instead of reaching the requesting device as an empty object.
 
