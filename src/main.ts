@@ -201,7 +201,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     createObsidianCompatibilityReviewUi(core.confirm)
                 );
                 waitForCompatibilityReview = () => compatibilityReview.openReview();
-                useReviewHarness(core, this, replicator, compatibilityReview);
+                useReviewHarness(core, this, compatibilityReview);
             }
         );
     }
