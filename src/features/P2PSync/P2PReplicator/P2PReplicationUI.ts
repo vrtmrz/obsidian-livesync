@@ -6,20 +6,20 @@ import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 
 /**
- * Creates an openReplicationUI factory for Obsidian environments.
- * Returns a per-replicator closure that opens the P2P Replication modal
- * and performs bidirectional sync (pull then push on success) through the
- * stable targeted-transfer view. The compatibility Replicator argument is
- * intentionally unused here and remains available only to the rebuild factory.
+ * Create the Obsidian-owned interactive P2P entry for stable service views.
+ *
+ * Peer selection belongs to the host UI rather than the concrete compatibility
+ * Replicator. The returned operation opens the modal and performs bidirectional
+ * synchronisation, pulling before pushing, through the targeted-transfer view.
  *
  * Usage:
- *   const factory = createOpenReplicationUI(app);
- *   useP2PReplicatorFeature(core, factory);
+ *   const createInteractiveReplication = createOpenReplicationUI(app);
+ *   const openInteractiveReplication = createInteractiveReplication(p2p);
  */
 export function createOpenReplicationUI(
     app: App
-): (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
-    return (_replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) =>
+): (p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
+    return (p2p: P2PServiceViews) =>
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
@@ -89,7 +89,7 @@ export function createOpenReplicationUI(
  *
  * Usage:
  *   const factory = createOpenRebuildUI(app);
- *   useP2PReplicatorFeature(core, createOpenReplicationUI(app), factory);
+ *   useP2PReplicatorFeature(core, openReplicationUIFactory, factory);
  */
 export function createOpenRebuildUI(
     app: App

@@ -13,6 +13,8 @@ vi.mock("@/features/P2PSync/P2PReplicator/P2PServerStatusPaneView", () => ({
 
 import { useP2PReplicatorUI } from "./useP2PReplicatorUI";
 
+const noopOpenInteractiveReplication = () => Promise.resolve(false);
+
 describe("useP2PReplicatorUI commands", () => {
     it("waits for settings to load before deciding whether to show the P2P ribbon", async () => {
         let initialise: (() => Promise<unknown>) | undefined;
@@ -49,7 +51,7 @@ describe("useP2PReplicatorUI commands", () => {
             },
         } as any;
 
-        useP2PReplicatorUI(host, {} as any, { replicator: undefined } as any);
+        useP2PReplicatorUI(host, {} as any, {} as any, noopOpenInteractiveReplication);
 
         await expect(initialise?.()).resolves.toBe(true);
         expect(currentSettings).not.toHaveBeenCalled();
@@ -64,7 +66,7 @@ describe("useP2PReplicatorUI commands", () => {
     it("exposes a direct modal P2P replication command as finite replication activity", async () => {
         const commands: Array<{ id: string; checkCallback?: (isChecking: boolean) => unknown }> = [];
         let initialise: (() => Promise<unknown>) | undefined;
-        const openReplication = vi.fn(async () => true);
+        const openInteractiveReplication = vi.fn(async () => true);
         const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const host = {
             services: {
@@ -96,56 +98,16 @@ describe("useP2PReplicatorUI commands", () => {
         } as any;
         const p2p = {
             transportLifecycle: { isConnected: true },
-            replicator: {
-                server: { isServing: true },
-                openReplication,
-                replicateFromCommand: vi.fn(),
-            },
         } as any;
 
-        useP2PReplicatorUI(host, {} as any, p2p);
+        useP2PReplicatorUI(host, {} as any, p2p, openInteractiveReplication);
         await initialise?.();
         commands.find((command) => command.id === "replicate-now-by-p2p")?.checkCallback?.(false);
 
-        await vi.waitFor(() => expect(openReplication).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(openInteractiveReplication).toHaveBeenCalledWith(true));
         expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "replication",
         });
-    });
-
-    it("keeps the current replicator in the pane parameters after replacement", () => {
-        const first = { id: "first" };
-        const second = { id: "second" };
-        let current = first;
-        const p2p = {
-            get replicator() {
-                return current;
-            },
-        } as any;
-        const host = {
-            services: {
-                context: createServiceContext(),
-                API: {
-                    showWindow: vi.fn(async () => undefined),
-                    registerWindow: vi.fn(),
-                    addCommand: vi.fn(),
-                    addRibbonIcon: vi.fn(),
-                    getPlatform: vi.fn(() => "obsidian"),
-                },
-                appLifecycle: {
-                    onInitialise: { addHandler: vi.fn() },
-                    onSettingLoaded: { addHandler: vi.fn() },
-                    onLayoutReady: { addHandler: vi.fn() },
-                },
-                setting: { currentSettings: vi.fn(() => ({ remoteType: "COUCHDB" })) },
-                replicator: { runFiniteReplicationActivity: vi.fn() },
-            },
-        } as any;
-
-        const paneParams = useP2PReplicatorUI(host, {} as any, p2p);
-        current = second;
-
-        expect(paneParams.replicator).toBe(second);
     });
 
     it("retains only the current P2P status command and routes existing open requests to it", async () => {
@@ -186,9 +148,9 @@ describe("useP2PReplicatorUI commands", () => {
                 replicator: { runFiniteReplicationActivity: vi.fn() },
             },
         } as any;
-        const p2p = { replicator: undefined } as any;
+        const p2p = {} as any;
 
-        useP2PReplicatorUI(host, {} as any, p2p);
+        useP2PReplicatorUI(host, {} as any, p2p, noopOpenInteractiveReplication);
         await initialise?.();
 
         expect(commands.map((command) => command.id)).not.toContain("open-p2p-replicator");
@@ -237,19 +199,13 @@ describe("useP2PReplicatorUI commands", () => {
                 replicator: { runFiniteReplicationActivity },
             },
         } as any;
-        const replicateFromCommand = vi.fn();
         const synchroniseConfiguredTargets = vi.fn(async () => ({ status: "completed" }));
         const p2p = {
             transportLifecycle: { isConnected: true },
             targetedTransfer: { synchroniseConfiguredTargets },
-            replicator: {
-                server: { isServing: true },
-                openReplication: vi.fn(),
-                replicateFromCommand,
-            },
         } as any;
 
-        useP2PReplicatorUI(host, {} as any, p2p);
+        useP2PReplicatorUI(host, {} as any, p2p, noopOpenInteractiveReplication);
         await initialise?.();
 
         for (const commandId of [
@@ -283,7 +239,6 @@ describe("useP2PReplicatorUI commands", () => {
 
         commands.find(({ id }) => id === "p2p-sync-targets")?.checkCallback?.(false);
         await vi.waitFor(() => expect(synchroniseConfiguredTargets).toHaveBeenCalledOnce());
-        expect(replicateFromCommand).not.toHaveBeenCalled();
         expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
             label: "replication",
         });
@@ -323,7 +278,7 @@ describe("useP2PReplicatorUI commands", () => {
             },
         } as any;
 
-        useP2PReplicatorUI(host, {} as any, { replicator: undefined } as any);
+        useP2PReplicatorUI(host, {} as any, {} as any, noopOpenInteractiveReplication);
         await layoutReady?.();
 
         expect(showWindow).not.toHaveBeenCalled();
@@ -379,7 +334,7 @@ describe("useP2PReplicatorUI commands", () => {
             },
         } as any;
 
-        useP2PReplicatorUI(host, {} as any, { replicator: undefined } as any);
+        useP2PReplicatorUI(host, {} as any, {} as any, noopOpenInteractiveReplication);
         await initialise?.();
         await settingLoaded?.();
         expect(addRibbonIcon).not.toHaveBeenCalled();
@@ -453,7 +408,7 @@ describe("useP2PReplicatorUI commands", () => {
             },
         } as any;
 
-        useP2PReplicatorUI(host, {} as any, { replicator: undefined } as any);
+        useP2PReplicatorUI(host, {} as any, {} as any, noopOpenInteractiveReplication);
         await layoutReady?.();
 
         expect(legacyLeaf.setViewState).toHaveBeenCalledWith({

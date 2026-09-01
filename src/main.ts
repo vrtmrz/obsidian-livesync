@@ -178,14 +178,15 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const curriedFeature = () => featuresInitialiser(core);
                 core.services.appLifecycle.onLayoutReady.addHandler(curriedFeature);
                 const setupManager = core.getModule(SetupManager);
+                const createInteractiveP2PReplication = createOpenReplicationUI(this.app);
                 const replicator = useP2PReplicatorFeature(
                     core,
-                    createOpenReplicationUI(this.app),
+                    (_compatibilityReplicator, p2p) => createInteractiveP2PReplication(p2p),
                     createOpenRebuildUI(this.app)
                 );
                 setupManager.registerP2PSetupConnectionProbe(replicator.connectionProbe);
                 useP2PReplicatorCommands(core, replicator);
-                useP2PReplicatorUI(core, core, replicator);
+                useP2PReplicatorUI(core, core, replicator, createInteractiveP2PReplication(replicator));
                 useRemoteConfiguration(core);
 
                 useSetupProtocolFeature(core, setupManager);
