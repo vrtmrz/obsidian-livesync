@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Fixed
+
+- **Overwrite Server Data with This Device's Files** now keeps this device's synchronisation settings instead of reapplying settings from the remote database which is about to be replaced. Enabling E2EE before a rebuild therefore remains enabled and uploads encrypted data. (#1146)
+
 ## 1.0.23
 
 2nd September, 2026
