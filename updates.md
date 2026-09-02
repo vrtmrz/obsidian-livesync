@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.23
+
+2nd September, 2026
+
 ### Synchronisation and storage
 
 #### Fixed
