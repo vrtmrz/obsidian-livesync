@@ -61,4 +61,7 @@
     .sls-password-toggle:hover {
         background: var(--background-modifier-hover);
     }
+    :global(body.is-mobile) .sls-password-toggle {
+        min-width: 44px;
+    }
 </style>
