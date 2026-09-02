@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
-import { assertEqual, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
+import { assertEqual } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
@@ -75,8 +75,8 @@ async function main(): Promise<void> {
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         });
-        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
-
+        // The export is available while an unconfigured Vault remains outside
+        // application readiness; the session helper has already loaded the plug-in.
         await configureSettingMarkdown(cli.binary, session.cliEnv);
         const content = await waitForFileContaining(vault.path, settingPath, [
             (value) => value.includes("````yaml:livesync-setting"),

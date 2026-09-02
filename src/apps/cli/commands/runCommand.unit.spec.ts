@@ -2,10 +2,26 @@ import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB, REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    DEFAULT_SETTINGS,
+    REMOTE_COUCHDB,
+    REMOTE_MINIO,
+    REMOTE_P2P,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
+import {
+    CENTRAL_REMOTE_ADMINISTRATION_ACTIONS,
+    CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS,
+    CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS,
+    CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES,
+    REMOTE_RESOURCE_KINDS,
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    REPLICATION_COMPLETED,
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    replicationFailed,
+} from "@vrtmrz/livesync-commonlib/replication";
 
 function createStandardIoMock() {
     return {
@@ -44,8 +60,26 @@ function createCoreMock() {
                 markResolved: vi.fn(async () => {}),
                 markUnlocked: vi.fn(async () => {}),
                 markLocked: vi.fn(async () => {}),
+                replicateUserInitiated: vi.fn(async () => REPLICATION_COMPLETED),
             },
             replicator: {
+                runCentralRemoteAdministration: vi.fn(async ({ action }) => ({
+                    status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFIED,
+                    observation: {
+                        kind: CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE,
+                        locked: action === CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK,
+                        accepted: true,
+                        nodeId: "test-node-id",
+                    },
+                })),
+                createRemoteResource: vi.fn(async () => ({
+                    check: vi.fn(async () => ({ ok: true as const })),
+                    getStatus: vi.fn(async () => ({
+                        db_name: "test-db",
+                        doc_count: 42,
+                    })),
+                    dispose: vi.fn(async () => undefined),
+                })),
                 getActiveReplicator: vi.fn(() => ({
                     nodeid: "test-node-id",
                     initializeDatabaseForReplication: vi.fn(async () => {}),
@@ -93,6 +127,7 @@ function makeOptions(command: CLIOptions["command"], commandArgs: string[]): CLI
         databasePath: "/tmp/vault",
         verbose: false,
         force: false,
+        compatRemoteAdminExitZero: false,
     };
 }
 
@@ -229,6 +264,42 @@ describe("runCommand abnormal cases", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    it("retains visible progress for the interactive sync command", async () => {
+        const core = createCoreMock();
+
+        await expect(
+            runCommand(makeOptions("sync", []), {
+                ...context,
+                core,
+            })
+        ).resolves.toBe(true);
+
+        expect(core.services.replication.replicateUserInitiated).toHaveBeenCalledWith(
+            expect.objectContaining({ progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE })
+        );
+    });
+
+    it("reports a lock from the exact sync outcome without inspecting a replacement Replicator", async () => {
+        const core = createCoreMock();
+        core.services.replication.replicateUserInitiated.mockResolvedValue(
+            replicationFailed(new Error("locked"), {
+                reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED,
+            })
+        );
+
+        await expect(
+            runCommand(makeOptions("sync", []), {
+                ...context,
+                core,
+            })
+        ).resolves.toBe(false);
+
+        expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+            expect.stringContaining("remote database is locked")
+        );
+        expect(core.services.replicator.getActiveReplicator).not.toHaveBeenCalled();
     });
 
     it("pull returns false for non-existing path", async () => {
@@ -706,28 +777,158 @@ describe("runCommand abnormal cases", () => {
     });
 
     describe("mark-resolved and unlock-remote commands", () => {
+        it("reports a connection failure without claiming that every central remote is CouchDB", async () => {
+            const core = createCoreMock();
+            core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({
+                status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+                reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.CONNECTION_FAILED,
+                detail: new Error("remote unavailable"),
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(false);
+            const verificationOutput = core.services.context.standardIo.writeStderr.mock.calls
+                .map(([chunk]: [string | Uint8Array]) =>
+                    typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
+                )
+                .join("");
+            expect(verificationOutput).toContain(
+                "[Verification] Failed to connect to the configured remote: remote unavailable\n"
+            );
+            expect(verificationOutput).not.toContain("CouchDB");
+        });
+
+        it("reports when the active remote configuration changes before administration begins", async () => {
+            const core = createCoreMock();
+            core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({
+                status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+                reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.ACTIVE_CONFIGURATION_MISMATCH,
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(false);
+            const verificationOutput = core.services.context.standardIo.writeStderr.mock.calls
+                .map(([chunk]: [string | Uint8Array]) =>
+                    typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
+                )
+                .join("");
+            expect(verificationOutput).toContain(
+                "[Verification] The active remote configuration changed before remote administration could begin.\n"
+            );
+        });
+
+        it("fails by default when remote administration cannot verify its postcondition", async () => {
+            const core = createCoreMock();
+            core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({
+                status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+                reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.NO_ACTIVE_REPLICATOR,
+            });
+
+            const result = await runCommand(makeOptions("mark-resolved", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(false);
+        });
+
+        it("preserves the historical zero exit for returned verification failures only when requested", async () => {
+            const core = createCoreMock();
+            core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({
+                status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+                reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.NO_ACTIVE_REPLICATOR,
+            });
+
+            const result = await runCommand(
+                { ...makeOptions("mark-resolved", []), compatRemoteAdminExitZero: true },
+                {
+                    ...context,
+                    core,
+                }
+            );
+
+            expect(result).toBe(true);
+        });
+
+        it("does not hide a thrown remote mutation failure behind the compatibility option", async () => {
+            const core = createCoreMock();
+            const failure = new Error("mutation failed");
+            core.services.replicator.runCentralRemoteAdministration.mockRejectedValueOnce(failure);
+
+            await expect(
+                runCommand(
+                    { ...makeOptions("mark-resolved", []), compatRemoteAdminExitZero: true },
+                    {
+                        ...context,
+                        core,
+                    }
+                )
+            ).rejects.toBe(failure);
+        });
+
+        it("does not hide an unknown remote ID behind the compatibility option", async () => {
+            const core = createCoreMock();
+
+            const result = await runCommand(
+                { ...makeOptions("mark-resolved", ["missing-remote"]), compatRemoteAdminExitZero: true },
+                {
+                    ...context,
+                    core,
+                }
+            );
+
+            expect(result).toBe(false);
+            expect(core.services.replicator.runCentralRemoteAdministration).not.toHaveBeenCalled();
+        });
+
+        it("fails a lock command when the observed milestone remains unlocked", async () => {
+            const core = createCoreMock();
+            core.services.replicator.runCentralRemoteAdministration.mockResolvedValueOnce({
+                status: CENTRAL_REMOTE_ADMINISTRATION_RESULT_STATUSES.VERIFICATION_FAILED,
+                reason: CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS.POSTCONDITION_MISMATCH,
+                observation: {
+                    kind: CENTRAL_REMOTE_ADMINISTRATION_OBSERVATION_KINDS.MILESTONE,
+                    locked: false,
+                    accepted: true,
+                    nodeId: "test-node-id",
+                },
+            });
+
+            const result = await runCommand(makeOptions("lock-remote", []), {
+                ...context,
+                core,
+            });
+
+            expect(result).toBe(false);
+            const verificationOutput = core.services.context.standardIo.writeStderr.mock.calls
+                .map(([chunk]: [string | Uint8Array]) =>
+                    typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
+                )
+                .join("");
+            expect(verificationOutput).toContain("[Verification] Remote Database: UNLOCKED\n");
+            expect(verificationOutput).toContain("[Verification] Current Device Node ID (test-node-id): ACCEPTED\n");
+        });
+
         it("mark-resolved without args runs on active database", async () => {
             const core = createCoreMock();
-            const remoteDatabase = {
-                close: vi.fn(async () => undefined),
-                get: vi.fn(async () => ({
-                    locked: false,
-                    accepted_nodes: ["test-node-id"],
-                })),
-            };
-            core.services.replicator.getActiveReplicator.mockReturnValueOnce({
-                nodeid: "test-node-id",
-                initializeDatabaseForReplication: vi.fn(async () => undefined),
-                connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase })),
-            });
             const result = await runCommand(makeOptions("mark-resolved", []), {
                 ...context,
                 core,
             });
             expect(result).toBe(true);
-            expect(core.services.replication.markResolved).toHaveBeenCalledTimes(1);
+            expect(core.services.replicator.runCentralRemoteAdministration).toHaveBeenCalledWith({
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED,
+            });
             expect(core.services.control.applySettings).not.toHaveBeenCalled();
-            expect(remoteDatabase.close).toHaveBeenCalledOnce();
+            expect(core.services.replication.markResolved).not.toHaveBeenCalled();
         });
 
         it("mark-resolved with remote-id temporarily activates it and runs markResolved", async () => {
@@ -745,7 +946,9 @@ describe("runCommand abnormal cases", () => {
                 core,
             });
             expect(result).toBe(true);
-            expect(core.services.replication.markResolved).toHaveBeenCalledTimes(1);
+            expect(core.services.replicator.runCentralRemoteAdministration).toHaveBeenCalledWith({
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.MARK_RESOLVED,
+            });
             expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
             expect(settings.activeConfigurationId).toBe("r1");
             expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
@@ -758,7 +961,9 @@ describe("runCommand abnormal cases", () => {
                 core,
             });
             expect(result).toBe(true);
-            expect(core.services.replication.markUnlocked).toHaveBeenCalledTimes(1);
+            expect(core.services.replicator.runCentralRemoteAdministration).toHaveBeenCalledWith({
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.UNLOCK,
+            });
             expect(core.services.control.applySettings).not.toHaveBeenCalled();
         });
 
@@ -777,7 +982,9 @@ describe("runCommand abnormal cases", () => {
                 core,
             });
             expect(result).toBe(true);
-            expect(core.services.replication.markUnlocked).toHaveBeenCalledTimes(1);
+            expect(core.services.replicator.runCentralRemoteAdministration).toHaveBeenCalledWith({
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.UNLOCK,
+            });
             expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
             expect(settings.activeConfigurationId).toBe("r1");
             expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
@@ -790,7 +997,9 @@ describe("runCommand abnormal cases", () => {
                 core,
             });
             expect(result).toBe(true);
-            expect(core.services.replication.markLocked).toHaveBeenCalledTimes(1);
+            expect(core.services.replicator.runCentralRemoteAdministration).toHaveBeenCalledWith({
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK,
+            });
             expect(core.services.control.applySettings).not.toHaveBeenCalled();
         });
 
@@ -809,7 +1018,9 @@ describe("runCommand abnormal cases", () => {
                 core,
             });
             expect(result).toBe(true);
-            expect(core.services.replication.markLocked).toHaveBeenCalledTimes(1);
+            expect(core.services.replicator.runCentralRemoteAdministration).toHaveBeenCalledWith({
+                action: CENTRAL_REMOTE_ADMINISTRATION_ACTIONS.LOCK,
+            });
             expect(core.services.control.applySettings).toHaveBeenCalledTimes(1);
             expect(settings.activeConfigurationId).toBe("r1");
             expect(core.services.setting.updateSettings).toHaveBeenCalledWith(expect.any(Function), false);
@@ -817,6 +1028,17 @@ describe("runCommand abnormal cases", () => {
 
         it("remote-status without args outputs status of active remote configuration", async () => {
             const core = createCoreMock();
+            const getStatus = vi.fn(async () => ({
+                db_name: "test-db",
+                doc_count: 42,
+            }));
+            const dispose = vi.fn(async () => undefined);
+            const createRemoteResource = vi.fn(async () => ({
+                check: vi.fn(),
+                getStatus,
+                dispose,
+            }));
+            core.services.replicator.createRemoteResource = createRemoteResource;
             const stdout = captureStdout(core);
             const result = await runCommand(makeOptions("remote-status", []), {
                 ...context,
@@ -827,6 +1049,13 @@ describe("runCommand abnormal cases", () => {
             const parsedStatus = JSON.parse(fullOutput);
             expect(parsedStatus.db_name).toBe("test-db");
             expect(parsedStatus.doc_count).toBe(42);
+            expect(createRemoteResource).toHaveBeenCalledWith(
+                REMOTE_RESOURCE_KINDS.CONNECTION,
+                core.services.setting.currentSettings()
+            );
+            expect(getStatus).toHaveBeenCalledOnce();
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(core.services.replicator.getActiveReplicator).not.toHaveBeenCalled();
         });
 
         it("remote-status with remote-id temporarily activates it and outputs status", async () => {

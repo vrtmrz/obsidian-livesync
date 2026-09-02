@@ -1062,6 +1062,7 @@
     "Target patterns": "Target patterns",
     "Test Settings and Continue": "Test Settings and Continue",
     "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.": "Testing only - Resolve file conflicts by syncing newer copies of the file, this can overwrite modified files. Be Warned.",
+    "The connection test cannot add a signalling relay while P2P is active. Use the active relay settings, or disconnect P2P before testing.": "The connection test cannot add a signalling relay while P2P is active. Use the active relay settings, or disconnect P2P before testing.",
     "The connection to the server has been configured successfully. As the next step,": "The connection to the server has been configured successfully. As the next step,",
     "The delay for consecutive on-demand fetches": "The delay for consecutive on-demand fetches",
     "The files in this Vault are almost identical to the server's.": "The files in this Vault are almost identical to the server's.",

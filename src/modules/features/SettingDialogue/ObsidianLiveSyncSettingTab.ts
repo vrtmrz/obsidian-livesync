@@ -13,11 +13,10 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { delay, isObjectDifferent, sizeToHumanReadable } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import { checkSyncInfo } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
 import ObsidianLiveSyncPlugin from "@/main.ts";
 import { scheduleTask } from "@/common/utils.ts";
-import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 import {
     type AllSettingItemKey,
     type AllStringItemKey,
@@ -78,6 +77,7 @@ import type {
 import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
+import { withOwnedRemoteResource } from "@/common/ownedRemoteResource.ts";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -340,15 +340,18 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     async testConnection(settingOverride: Partial<ObsidianLiveSyncSettings> = {}): Promise<void> {
         const trialSetting = { ...this.editingSettings, ...settingOverride };
-        const replicator = await this.services.replicator.getNewReplicator(trialSetting);
-        if (!replicator) {
-            Logger("No replicator available for the current settings.", LOG_LEVEL_NOTICE);
+        const probe = await this.services.replicator.createRemoteResource(
+            REMOTE_RESOURCE_KINDS.CONNECTION,
+            trialSetting
+        );
+        if (!probe) {
+            Logger("Connection testing is unavailable for the current settings.", LOG_LEVEL_NOTICE);
             return;
         }
-        await replicator.tryConnectRemote(trialSetting);
-        const status = await replicator.getRemoteStatus(trialSetting);
-        if (status) {
-            if (status.estimatedSize) {
+        await withOwnedRemoteResource(probe, async (ownedProbe) => {
+            await ownedProbe.check({ createIfMissing: true, showResult: true });
+            const status = await ownedProbe.getStatus();
+            if (status && status.estimatedSize) {
                 Logger(
                     $msg("obsidianLiveSyncSettingTab.logEstimatedSize", {
                         size: sizeToHumanReadable(status.estimatedSize),
@@ -356,7 +359,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     LOG_LEVEL_NOTICE
                 );
             }
-        }
+        });
     }
 
     closeSetting() {
@@ -954,35 +957,42 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             visibility:
                 this.isConfiguredAs("remoteType", REMOTE_COUCHDB) || this.isConfiguredAs("remoteType", REMOTE_MINIO),
         }) as OnUpdateResult;
-    // E2EE Function
+    /**
+     * Checks the edited CouchDB passphrase through an owned synchronisation-
+     * information resource. A missing document may be created by the check.
+     * Incompatibility and operational failure retain their distinct existing
+     * result messages.
+     */
     checkWorkingPassphrase = async (): Promise<boolean> => {
         if (this.editingSettings.remoteType == REMOTE_MINIO) return true;
 
         const settingForCheck: RemoteDBSettings = {
             ...this.editingSettings,
         };
-        const replicator = this.services.replicator.getNewReplicator(settingForCheck);
-        if (!(replicator instanceof LiveSyncCouchDBReplicator)) return true;
-
-        const db = await replicator.connectRemoteCouchDBWithSetting(
-            settingForCheck,
-            this.services.API.isMobile(),
-            true
+        const resource = await this.services.replicator.createRemoteResource(
+            REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION,
+            settingForCheck
         );
-        if (typeof db === "string") {
-            Logger($msg("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", { db }), LOG_LEVEL_NOTICE);
-            return false;
-        }
+        if (!resource) return true;
         try {
-            if (await checkSyncInfo(db.db)) {
+            if (await resource.check()) {
                 // Logger($msg("obsidianLiveSyncSettingTab.logDatabaseConnected"), LOG_LEVEL_NOTICE);
                 return true;
             } else {
                 Logger($msg("obsidianLiveSyncSettingTab.logPassphraseNotCompatible"), LOG_LEVEL_NOTICE);
                 return false;
             }
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            Logger(
+                $msg("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", {
+                    db: reason,
+                }),
+                LOG_LEVEL_NOTICE
+            );
+            return false;
         } finally {
-            await db.db.close();
+            await resource.dispose();
         }
     };
     isPassphraseValid = async () => {
@@ -1199,8 +1209,17 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             new MinioStorageAdapter(this.core.settings, this.core)
         );
     }
-    async resetRemoteBucket() {
+    /**
+     * Wipe the remote bucket through a short-lived Journal client.
+     * Journal wipes are batched and non-transactional, so a false result may
+     * leave a partial wipe which can be retried after all devices are stopped.
+     */
+    async resetRemoteBucket(): Promise<boolean> {
         const minioJournal = this.getMinioJournalSyncClient();
-        await minioJournal.resetBucket();
+        try {
+            return await minioJournal.resetBucket();
+        } finally {
+            minioJournal.dispose();
+        }
     }
 }

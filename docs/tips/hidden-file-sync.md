@@ -20,7 +20,7 @@ Enabling Hidden File Sync requires an initialisation direction:
 ## Review the file selection
 
 1. Open Self-hosted LiveSync settings.
-2. Open `Setup`, find `Enable extra and advanced features`, and enable `Advanced features`.
+2. Open `General Settings` → `Extra menus`, and enable `Advanced features`.
 
    ![Advanced features enabled](../../images/hidden-file-sync/guide-hidden-file-advanced-features.png)
 

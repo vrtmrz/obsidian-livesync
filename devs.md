@@ -129,34 +129,38 @@ Changes spanning both repositories must first produce a packed Commonlib artefac
 
 ## Architecture
 
-### Module System
+### Service composition and legacy Modules
 
-The plugin uses a dynamic module system to reduce coupling and improve maintainability:
+The application is composed from Services, ServiceModules, serviceFeatures, add-ons, and a legacy Module layer:
 
-- **Service Hub**: Central registry for services using dependency injection
-    - Services are registered, and accessed via `this.services` (in most modules)
-- **Module Loading**: All modules extend `AbstractModule` or `AbstractObsidianModule` (which extends `AbstractModule`). These modules are loaded in main.ts and some modules.
-- **Module Categories** (by directory):
-    - `core/` - Platform-independent core functionality
-    - `coreObsidian/` - Obsidian-specific core (e.g., `ModuleFileAccessObsidian`)
-    - `essential/` - Required modules (e.g., `ModuleMigration`, `ModuleKeyValueDB`)
-    - `features/` - Optional features (e.g., `ModuleLog`, `ModuleObsidianSettings`)
-    - `extras/` - Development/testing tools (e.g., `ModuleDev`, ~~`ModuleIntegratedTest`~~)
-- **Services**: Core services (e.g., `database`, `replicator`, `storageAccess`) are registered in `ServiceHub` and accessed by modules. They provide an extension point for add new behaviour without modifying existing code.
-    - For example, checks before the replication can be added to the `replication.onBeforeReplicate` handler, and the handlers can be return `false` to prevent replication-starting. `vault.isTargetFile` also can be used to prevent processing specific files.
-- **ServiceModule**: A new type of module that directly depends on services.
+- **Service Hub**: the long-lived registry of service contracts. Add a simple extension, such as a pre-replication check, to the handler owned by the relevant Service.
+- **ServiceModule**: a host-created, long-lived stateful or resource-owning capability shared through the typed `ServiceModules` record. Current examples include storage access, file handling, and database rebuilding.
+- **serviceFeature**: a typed composition function which accepts only its declared Services and ServiceModules. It registers lifecycle handlers, commands, user-interface bindings, or other host glue, and may return a focused view. It is not a runtime registry entry.
+- **AbstractModule** and **AbstractObsidianModule**: the legacy application Module layer. Existing Modules are loaded by the application and bound after the Service graph has been composed; this broad core access is not the preferred dependency boundary for new orchestration.
 
-#### Note on Module vs Service
+The normal composition order is the Service Hub, replicator-provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy Module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
 
-After v0.25.44 refactoring, the Service will henceforth, as a rule, cease to use setHandler, that is to say, simple lazy binding. - They will be implemented directly in the service. - However, not everything will be middlewarised. Modules that maintain state or make decisions based on the results of multiple handlers are permitted.
+Mutable state is permitted in a serviceFeature. State alone is not a reason to create a class, a ServiceModule, or retain an AbstractModule. Prefer one private context, with module-level functions which receive that context, when identity and polymorphism are not part of the contract. Separate the state, transitions, and invariants from the surrounding function which registers lifecycle handlers and connects downstream effects. Give the stateful boundary narrow collaborators rather than `LiveSyncBaseCore`.
 
-Hence, the new feature should be implemented as follows:
+Use a class when stable object identity, replaceable implementations, or an explicit external-resource lifecycle such as serialised ownership, `dispose()`, or `abort()` is part of the contract. Use a ServiceModule when that operational capability or resource lifecycle must also be shared explicitly by several consumers. Do not introduce a class merely to group dependencies or make private functions callable.
 
-- If it is a simple extension point (e.g., adding a check before replication), it should be implemented as a handler in the service (e.g., `replication.onBeforeReplicate`).
-- If it requires maintaining state or making decisions based on multiple handlers, it should be implemented as a serviceModule dependent on the relevant services explicitly.
-- If you have to implement a new feature without much modification, you can extent existing modules, but it is recommended to implement a new module or serviceModule for better maintainability.
-- Refactoring existing modules to services is also always welcome!
-- Please write tests for new features, you will notice that the simple handler approach is quite testable.
+Several narrow views over one lifetime do not require several state owners or a public façade class. One private context may back all of those views, provided that the context remains private and each consumer receives only its declared contract. Keep actual resource owners separate when identity, serialised replacement, abort, retirement, or disposal order is part of their behaviour.
+
+When a core-owned serviceFeature returns a view needed by one host-specific consumer, pass that view through host composition instead of storing it as a public `LiveSyncBaseCore` property or promoting it to a ServiceModule. The receiving host should inject the view into the narrow command or application context which uses it.
+
+Commonlib's `targetFilter.ts` and `prepareDatabaseForUse.ts` demonstrate the intended split: focused factories or operations own their private state and behaviour, while the corresponding `use...` function composes dependencies and registers handlers. The P2P composition follows the same direction at a larger scale by separating durable policy and room-session ownership from host lifecycle and user-interface wiring. Existing Modules do not apply this boundary consistently; improve the affected boundary when changing their behaviour rather than performing an unrelated mechanical conversion.
+
+Use interaction-based, London School unit tests for the composition boundary. Verify collaborator calls, ordering, failure short-circuiting, and handler registration, then test the focused state owner for its transitions and invariants. If a test needs a broad core fixture, a large class mock, deep mock chains, or unrelated Services, treat that friction as a design-review signal and consider a private context with narrower functions before adding more test machinery.
+
+See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary.
+
+Legacy Modules remain grouped by directory:
+
+- `core/` contains platform-independent core behaviour;
+- `coreObsidian/` contains Obsidian-specific core behaviour;
+- `essential/` contains required Modules;
+- `features/` contains optional features; and
+- `extras/` contains development and testing tools.
 
 ### Key Architectural Components
 
@@ -165,7 +169,7 @@ Hence, the new feature should be implemented as follows:
 - **Service Hub** (`src/modules/services/`): Central service registry using dependency injection
 - **Common Library** (`@vrtmrz/livesync-commonlib`): Platform-independent synchronisation logic, shared with the CLI, WebApp, WebPeer, and external tools
 
-Commonlib owns the P2P replicator and Trystero transport lifecycle. Host commands, event handlers, and views must retain the Commonlib service-feature result and resolve its current `replicator` at the point of use. They must not snapshot an instance which can be replaced when settings or the local database change, close Trystero-owned raw peers, or install another Trystero transport generation at the application root.
+Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, connection-probe admission, directory, peer-admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact as-built ownership and shutdown boundaries are recorded in Commonlib's `docs/p2p-transport-lifecycle.md` design document.
 
 ### Conflict Merge Policy
 
@@ -227,19 +231,20 @@ Commonlib owns the typed English fallback for messages requested by its services
 
 ## Common Patterns
 
-### Module Implementation (Now not recommended for new features, use services instead)
+### Service feature implementation
 
 ```typescript
-export class ModuleExample extends AbstractObsidianModule {
-    async _everyOnloadStart(): Promise<boolean> {
-        /* ... */
-    }
+type ExampleHost = NecessaryServices<"appLifecycle" | "API", never>;
 
-    onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.appLifecycle.handleOnInitialise(this._everyOnloadStart.bind(this));
-    }
-}
+export const useExampleFeature = createServiceFeature((host: ExampleHost) => {
+    host.services.appLifecycle.onLoaded.addHandler(async () => {
+        host.services.API.addLog("Example feature loaded");
+        return true;
+    });
+});
 ```
+
+Existing legacy Modules continue to register their handlers in `onBindFunction()`. Follow [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) when new behaviour touches one of those Modules.
 
 ### Settings Management
 

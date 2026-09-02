@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
-const negotiationMocks = vi.hoisted(() => ({
-    checkSyncInfo: vi.fn(async () => true),
-}));
 const settingsInitialisationMocks = vi.hoisted(() => ({
     applySettingsWithInitialisationChoice: vi.fn(),
+}));
+const loggerMocks = vi.hoisted(() => ({
+    Logger: vi.fn(),
 }));
 
 vi.mock("@/deps.ts", () => ({
@@ -20,6 +21,14 @@ vi.mock("@/deps.ts", () => ({
     requireApiVersion: vi.fn(() => false),
 }));
 vi.mock("@/main.ts", () => ({ default: class {} }));
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/logger", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/compat/common/logger")>();
+    return { ...actual, Logger: loggerMocks.Logger };
+});
+vi.mock("@/common/translation", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/common/translation")>();
+    return { ...actual, $msg: vi.fn(actual.$msg) };
+});
 vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
     getLanguage: vi.fn(() => "en"),
     compatGlobal: {
@@ -38,10 +47,6 @@ vi.mock("@/common/events.ts", () => ({
     eventHub: { emitEvent: vi.fn(), onEvent: vi.fn() },
 }));
 vi.mock("@/modules/features/SetupManager.ts", () => ({ SetupManager: class {} }));
-vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation", () => negotiationMocks);
-vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
-    LiveSyncCouchDBReplicator: class {},
-}));
 vi.mock("./LiveSyncSetting.ts", () => ({ LiveSyncSetting: class {} }));
 vi.mock("./SettingPane.ts", () => ({
     enableOnly: vi.fn(() => vi.fn()),
@@ -63,27 +68,25 @@ vi.mock("./PanePowerUsers.ts", () => ({ panePowerUsers: vi.fn() }));
 vi.mock("./PanePatches.ts", () => ({ panePatches: vi.fn() }));
 vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 
-import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
+import { $msg } from "@/common/translation";
 
 beforeEach(() => {
     settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockReset();
+    loggerMocks.Logger.mockClear();
+    vi.mocked($msg).mockClear();
 });
 
 describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
-    it("closes the finite remote connection after checking synchronisation information", async () => {
-        const remoteDatabase = {
-            close: vi.fn(async () => undefined),
-        };
-        const replicator = Object.assign(new LiveSyncCouchDBReplicator({} as never), {
-            connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase })),
-        });
+    it("awaits and disposes the owned synchronisation-information resource", async () => {
+        const check = vi.fn(async () => true);
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ check, dispose }));
         const plugin = {
             app: {},
             core: {
                 services: {
-                    API: { isMobile: vi.fn(() => false) },
-                    replicator: { getNewReplicator: vi.fn(() => replicator) },
+                    replicator: { createRemoteResource },
                 },
             },
         };
@@ -97,8 +100,160 @@ describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
 
         await expect(tab.checkWorkingPassphrase()).resolves.toBe(true);
 
-        expect(negotiationMocks.checkSyncInfo).toHaveBeenCalledWith(remoteDatabase);
-        expect(remoteDatabase.close).toHaveBeenCalledOnce();
+        expect(createRemoteResource).toHaveBeenCalledWith(
+            REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION,
+            expect.objectContaining({ remoteType: REMOTE_COUCHDB })
+        );
+        expect(check).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+
+    it("does not use the general Replicator factory solely to verify synchronisation information", async () => {
+        const getNewReplicator = vi.fn(() => Promise.reject(new Error("must not construct a Replicator")));
+        const createRemoteResource = vi.fn(async () => ({
+            check: vi.fn(async () => true),
+            dispose: vi.fn(async () => undefined),
+        }));
+        const plugin = {
+            app: {},
+            core: {
+                services: {
+                    replicator: { createRemoteResource, getNewReplicator },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                remoteType: REMOTE_COUCHDB,
+            },
+        });
+
+        await expect(tab.checkWorkingPassphrase()).resolves.toBe(true);
+
+        expect(getNewReplicator).not.toHaveBeenCalled();
+    });
+
+    it("reports a CouchDB connection or setup failure with the connection-failure message", async () => {
+        const failure = new Error("remote unavailable");
+        const check = vi.fn(async () => {
+            throw failure;
+        });
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ check, dispose }));
+        const plugin = {
+            app: {},
+            core: {
+                services: {
+                    replicator: { createRemoteResource },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                remoteType: REMOTE_COUCHDB,
+            },
+        });
+
+        await expect(tab.checkWorkingPassphrase()).resolves.toBe(false);
+
+        expect(vi.mocked($msg)).toHaveBeenCalledWith("obsidianLiveSyncSettingTab.logCheckPassphraseFailed", {
+            db: failure.message,
+        });
+        expect(vi.mocked($msg)).not.toHaveBeenCalledWith("obsidianLiveSyncSettingTab.logPassphraseNotCompatible");
+        expect(loggerMocks.Logger).toHaveBeenCalledWith(expect.any(String), LOG_LEVEL_NOTICE);
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+
+    it("reports an actual synchronisation-information mismatch with the incompatibility message", async () => {
+        const check = vi.fn(async () => false);
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ check, dispose }));
+        const plugin = {
+            app: {},
+            core: {
+                services: {
+                    replicator: { createRemoteResource },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                remoteType: REMOTE_COUCHDB,
+            },
+        });
+
+        await expect(tab.checkWorkingPassphrase()).resolves.toBe(false);
+
+        expect(vi.mocked($msg)).toHaveBeenCalledWith("obsidianLiveSyncSettingTab.logPassphraseNotCompatible");
+        expect(vi.mocked($msg)).not.toHaveBeenCalledWith(
+            "obsidianLiveSyncSettingTab.logCheckPassphraseFailed",
+            expect.anything()
+        );
+        expect(loggerMocks.Logger).toHaveBeenCalledWith(expect.any(String), LOG_LEVEL_NOTICE);
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+});
+
+describe("ObsidianLiveSyncSettingTab connection testing", () => {
+    it("uses and disposes the flow-specific connection probe without borrowing a Replicator", async () => {
+        const check = vi.fn(async () => ({ ok: true as const }));
+        const getStatus = vi.fn(async () => ({ estimatedSize: 1024 }));
+        const dispose = vi.fn(async () => undefined);
+        const createRemoteResource = vi.fn(async () => ({ check, getStatus, dispose }));
+        const getNewReplicator = vi.fn(() => Promise.reject(new Error("must not borrow a Replicator")));
+        const plugin = {
+            app: {},
+            core: {
+                services: {
+                    replicator: { createRemoteResource, getNewReplicator },
+                },
+            },
+        };
+        const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
+        Object.assign(tab, {
+            _editingSettings: {
+                ...DEFAULT_SETTINGS,
+                remoteType: REMOTE_COUCHDB,
+                couchDB_DBNAME: "saved",
+            },
+        });
+
+        await expect(tab.testConnection({ couchDB_DBNAME: "trial" })).resolves.toBeUndefined();
+
+        expect(createRemoteResource).toHaveBeenCalledWith(
+            REMOTE_RESOURCE_KINDS.CONNECTION,
+            expect.objectContaining({ remoteType: REMOTE_COUCHDB, couchDB_DBNAME: "trial" })
+        );
+        expect(check).toHaveBeenCalledWith({ createIfMissing: true, showResult: true });
+        expect(getStatus).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
+        expect(getNewReplicator).not.toHaveBeenCalled();
+    });
+});
+
+describe("ObsidianLiveSyncSettingTab Fresh Start Wipe", () => {
+    it("returns the remote wipe result and disposes its temporary Journal client", async () => {
+        const resetBucket = vi.fn(async () => false);
+        const dispose = vi.fn();
+        const tab = new ObsidianLiveSyncSettingTab(
+            {} as never,
+            {
+                app: {},
+                core: {},
+            } as never
+        );
+        vi.spyOn(tab, "getMinioJournalSyncClient").mockReturnValue({ resetBucket, dispose } as never);
+
+        await expect(tab.resetRemoteBucket()).resolves.toBe(false);
+
+        expect(resetBucket).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
     });
 });
 

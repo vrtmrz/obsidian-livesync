@@ -79,7 +79,6 @@ Deno.test("benchmark cases record scope and limitations for paper use", () => {
         );
     }
 });
-
 Deno.test("CouchDB latency proxy applies half the requested RTT in each direction", async () => {
     const backendPort = getFreePort();
     const proxyPort = getFreePort();
@@ -156,8 +155,8 @@ Deno.test("compression benchmark dataset covers representative file kinds determ
         "images/quick-setup/guide-quick-setup-first-setup-uri.png",
         "package.json",
         "manifest.json",
-        "src/modules/core/ModuleReplicator.ts",
-        "src/modules/core/ReplicateResultProcessor.ts",
+        "src/serviceFeatures/replication/index.ts",
+        "src/serviceFeatures/replication/ReplicateResultProcessor.ts",
     ];
     try {
         for (const [index, relativePath] of repositoryFiles.entries()) {

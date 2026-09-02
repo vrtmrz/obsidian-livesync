@@ -536,7 +536,7 @@ async function captureHiddenFileGuideSettings(
 
     const screenshots = [
         await captureObsidianElement(port, "guide-hidden-file-advanced-features.png", (page) =>
-            liveSyncSettingPanelByTitle(page, "Setup", "Enable extra and advanced features")
+            liveSyncSettingPanelByTitle(page, "General Settings", "Extra menus")
         ),
     ];
 

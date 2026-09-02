@@ -8,7 +8,7 @@ import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
-import type { P2PPaneParams } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 export const VIEW_TYPE_P2P = "p2p-replicator";
 
 function addToList(item: string, list: string) {
@@ -31,7 +31,7 @@ function removeFromList(item: string, list: string) {
 
 export class P2PReplicatorPaneView extends SvelteItemView {
     core: LiveSyncBaseCore;
-    private _p2pResult: P2PPaneParams;
+    private _p2p: P2PServiceViews;
     override icon = "waypoints";
     title: string = "";
     override navigation = false;
@@ -39,21 +39,18 @@ export class P2PReplicatorPaneView extends SvelteItemView {
     override getIcon(): string {
         return "waypoints";
     }
-    get replicator() {
-        return this._p2pResult.replicator;
-    }
     async replicateFrom(peer: PeerStatus) {
-        await this.replicator.replicateFrom(peer.peerId);
+        await this._p2p.targetedTransfer.pullFromPeer(peer.peerId);
     }
     async replicateTo(peer: PeerStatus) {
-        await this.replicator.requestSynchroniseToPeer(peer.peerId);
+        await this._p2p.targetedTransfer.requestPushToPeer(peer.peerId);
     }
     async getRemoteConfig(peer: PeerStatus) {
         Logger(
             `Requesting remote config for ${peer.name}. Please input the passphrase on the remote device`,
             LOG_LEVEL_NOTICE
         );
-        const remoteConfig = await this.replicator.getRemoteConfig(peer.peerId);
+        const remoteConfig = await this._p2p.configurationExchange.getRemoteConfiguration(peer.peerId);
         if (remoteConfig) {
             Logger(`Remote config for ${peer.name} is retrieved successfully`);
             const DROP = "Yes, and drop local database";
@@ -122,10 +119,10 @@ And you can also drop the local database to rebuild from the remote device.`,
         await this.core.services.setting.applyPartial(currentSetting, true);
     }
     m?: Menu;
-    constructor(leaf: WorkspaceLeaf, core: LiveSyncBaseCore, p2pResult: P2PPaneParams) {
+    constructor(leaf: WorkspaceLeaf, core: LiveSyncBaseCore, p2p: P2PServiceViews) {
         super(leaf);
         this.core = core;
-        this._p2pResult = p2pResult;
+        this._p2p = p2p;
     }
 
     private showPeerMenu(peer: PeerStatus, event: MouseEvent): void {
@@ -187,7 +184,7 @@ And you can also drop the local database to rebuild from the remote device.`,
             props: {
                 host: {
                     services: this.core.services,
-                    p2p: this._p2pResult,
+                    p2p: this._p2p,
                     showPeerMenu: (peer: PeerStatus, event: MouseEvent) => this.showPeerMenu(peer, event),
                 },
             },

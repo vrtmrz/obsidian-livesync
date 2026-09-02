@@ -37,6 +37,16 @@ type ErrorInfo = {
 
 const INCOMPLETE_DOCUMENT_NOTICE_GROUP = "startup-integrity-check";
 
+interface CompromisedChunkCounter {
+    countCompromisedChunks(): Promise<number | boolean>;
+}
+
+function hasCompromisedChunkCounter(value: object | undefined): value is CompromisedChunkCounter {
+    return (
+        value !== undefined && "countCompromisedChunks" in value && typeof value.countCompromisedChunks === "function"
+    );
+}
+
 export class ModuleMigration extends AbstractModule<LiveSyncCore> {
     constructor(
         core: LiveSyncCore,
@@ -253,7 +263,10 @@ export class ModuleMigration extends AbstractModule<LiveSyncCore> {
         // Check local database for compromised chunks
         const localCompromised = await countCompromisedChunks(this.localDatabase.localDatabase);
         const remote = this.services.replicator.getActiveReplicator();
-        const remoteCompromised = this.services.API.isOnline ? await remote?.countCompromisedChunks() : 0;
+        const remoteCompromised =
+            this.services.API.isOnline && hasCompromisedChunkCounter(remote)
+                ? await remote.countCompromisedChunks()
+                : 0;
         if (localCompromised === false) {
             Logger(`Failed to count compromised chunks in local database`, LOG_LEVEL_NOTICE);
             return false;

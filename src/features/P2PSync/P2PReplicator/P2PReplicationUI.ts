@@ -2,21 +2,24 @@ import type { App } from "@/deps.ts";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_INFO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import { P2POpenReplicationModal } from "./P2POpenReplicationModal";
 
 /**
- * Creates an openReplicationUI factory for Obsidian environments.
- * Returns a per-replicator closure that opens the P2P Replication modal
- * and performs bidirectional sync (pull then push on success).
+ * Create the Obsidian-owned interactive P2P entry for stable service views.
+ *
+ * Peer selection belongs to the host UI rather than the concrete compatibility
+ * Replicator. The returned operation opens the modal and performs bidirectional
+ * synchronisation, pulling before pushing, through the targeted-transfer view.
  *
  * Usage:
- *   const factory = createOpenReplicationUI(app);
- *   useP2PReplicatorFeature(core, factory);
+ *   const createInteractiveReplication = createOpenReplicationUI(app);
+ *   const openInteractiveReplication = createInteractiveReplication(p2p);
  */
 export function createOpenReplicationUI(
     app: App
-): (replicator: LiveSyncTrysteroReplicator) => (showResult: boolean) => Promise<boolean | void> {
-    return (replicator: LiveSyncTrysteroReplicator) =>
+): (p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
+    return (p2p: P2PServiceViews) =>
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
@@ -36,20 +39,25 @@ export function createOpenReplicationUI(
                     activeSynchronisations++;
                     try {
                         // Pull first, then push only when the pull succeeds.
-                        const pullResult = await replicator.replicateFrom(peerId, showResult);
-                        if (!pullResult?.ok) {
+                        const pullResult = await p2p.targetedTransfer.pullFromPeer(peerId, {
+                            showNotice: showResult,
+                        });
+                        if (pullResult.status !== "completed" || !pullResult.ok) {
                             sessionResult = false;
-                            return;
+                            return false;
                         }
-                        const pushResult = await replicator.requestSynchroniseToPeer(peerId);
-                        sessionResult = pushResult?.ok ?? true;
-                        if (sessionResult && closeConnection) await replicator.close();
+                        const pushResult = await p2p.targetedTransfer.requestPushToPeer(peerId);
+                        const completed = pushResult.status === "completed" && pushResult.ok === true;
+                        sessionResult = completed;
+                        if (completed && closeConnection) await p2p.transportLifecycle.disconnect();
+                        return completed;
                     } catch (e) {
                         Logger(
                             `Error in bidirectional sync with ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
                             logLevel
                         );
                         sessionResult = false;
+                        return false;
                     } finally {
                         activeSynchronisations--;
                         settleClosedSession();
@@ -57,7 +65,7 @@ export function createOpenReplicationUI(
                 };
                 const modal = new P2POpenReplicationModal(
                     app,
-                    replicator,
+                    p2p,
                     {
                         onSync: (peerId: string) => synchronise(peerId, false),
                         onSyncAndClose: (peerId: string) => synchronise(peerId, true),
@@ -81,12 +89,12 @@ export function createOpenReplicationUI(
  *
  * Usage:
  *   const factory = createOpenRebuildUI(app);
- *   useP2PReplicatorFeature(core, createOpenReplicationUI(app), factory);
+ *   useP2PReplicatorFeature(core, openReplicationUIFactory, factory);
  */
 export function createOpenRebuildUI(
     app: App
-): (replicator: LiveSyncTrysteroReplicator) => (showResult: boolean) => Promise<boolean | void> {
-    return (replicator: LiveSyncTrysteroReplicator) =>
+): (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) => (showResult: boolean) => Promise<boolean | void> {
+    return (replicator: LiveSyncTrysteroReplicator, p2p: P2PServiceViews) =>
         (showResult: boolean): Promise<boolean | void> => {
             const logLevel = showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             return new Promise<boolean | void>((resolve) => {
@@ -113,12 +121,14 @@ export function createOpenRebuildUI(
                         Logger(`Rebuilding from peer ${peerId}`, logLevel);
                         const result = await replicator.replicateFrom(peerId, showResult, true);
                         sessionResult = result?.ok ?? false;
+                        return sessionResult;
                     } catch (e) {
                         Logger(
                             `Error in rebuild from ${peerId}: ${e instanceof Error ? e.message : String(e)}`,
                             logLevel
                         );
                         sessionResult = false;
+                        return false;
                     } finally {
                         try {
                             replicator.clearOnSetup();
@@ -132,7 +142,7 @@ export function createOpenRebuildUI(
 
                 const modal = new P2POpenReplicationModal(
                     app,
-                    replicator,
+                    p2p,
                     {
                         onSync: doRebuild,
                         onSyncAndClose: doRebuild,

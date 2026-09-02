@@ -29,6 +29,7 @@
     } from "./setupDialogTypes";
     import { isValidCouchDBServerURL, probeCouchDBConnection } from "./couchDBConnectionProbe";
     import { $msg as translateMessage } from "@/common/translation";
+    import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
     const default_setting = pickCouchDBSyncSettings(DEFAULT_SETTINGS);
 
@@ -73,16 +74,15 @@
         try {
             processing = true;
             const trialRemoteSetting = generateSetting();
-            const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
-            if (!replicator) {
-                return translateMessage("Failed to create replicator instance.");
+            const probe = await context.services.replicator.createRemoteResource(
+                REMOTE_RESOURCE_KINDS.CONNECTION,
+                trialRemoteSetting
+            );
+            if (!probe) {
+                return translateMessage("Failed to connect to the server. Please check your settings.");
             }
             try {
-                const result = await probeCouchDBConnection(
-                    replicator,
-                    trialRemoteSetting,
-                    setupMode === "create-or-connect"
-                );
+                const result = await probeCouchDBConnection(probe, setupMode === "create-or-connect");
                 if (result.ok) {
                     return "";
                 } else {

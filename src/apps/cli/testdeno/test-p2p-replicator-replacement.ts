@@ -39,7 +39,7 @@ async function runReplacementProbe(
     };
 }
 
-Deno.test("p2p lifecycle: replacement keeps real CLI communication on the current replicator", async () => {
+Deno.test("p2p lifecycle: active-adapter replacement keeps real CLI communication on the stable service", async () => {
     const relay = Deno.env.get("RELAY") ?? "ws://localhost:4000/";
     const peersTimeout = Number(Deno.env.get("PEERS_TIMEOUT") ?? "20");
     const syncTimeout = Number(Deno.env.get("SYNC_TIMEOUT") ?? "60");
@@ -82,11 +82,8 @@ Deno.test("p2p lifecycle: replacement keeps real CLI communication on the curren
         try {
             await host.waitUntilContains("P2P host is running", 20000);
             const probe = await runReplacementProbe(probeVault, probeSettings, hostPeerName, probeTimeoutMs);
-            assert(
-                probe.code === 0,
-                `P2P replacement probe failed\nstdout: ${probe.stdout}\nstderr: ${probe.stderr}`
-            );
-            assertStringIncludes(probe.stdout, "[Probe] P2P replicator replaced");
+            assert(probe.code === 0, `P2P replacement probe failed\nstdout: ${probe.stdout}\nstderr: ${probe.stderr}`);
+            assertStringIncludes(probe.stdout, "[Probe] The active P2P adapter was replaced");
 
             const syncResult = await runCli(
                 verifierVault,

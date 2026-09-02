@@ -8,7 +8,7 @@
         EVENT_P2P_REPLICATOR_PROGRESS,
         type P2PServerInfo,
     } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
-    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
     import type { P2PReplicatorStatus, P2PReplicationReport } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
@@ -23,7 +23,6 @@
     } from "@vrtmrz/livesync-commonlib/remote-configurations";
     import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { SetupManager } from "@/modules/features/SetupManager";
-    import SetupRemoteP2P from "@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte";
     import { Menu } from "@/deps";
     import { $msg as translateMessage } from "@/common/translation";
     import {
@@ -33,11 +32,11 @@
     } from "./p2pPeerSettings";
 
     interface Props {
-        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
+        p2p: P2PServiceViews;
         core: LiveSyncBaseCore;
     }
 
-    let { getLiveSyncReplicator, core }: Props = $props();
+    let { p2p, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     let decidingPeerId = $state<string | null>(null);
@@ -121,7 +120,7 @@
     }
 
     async function requestServerStatus() {
-        await getLiveSyncReplicator().requestStatus();
+        p2p.diagnostics.requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
@@ -213,9 +212,8 @@
 
     async function createAndSelectP2PRemote() {
         const setupManager = core.getModule(SetupManager);
-        const dialogManager = setupManager.dialogManager;
         const currentSettings = core.services.setting.currentSettings();
-        const p2pConf = await dialogManager.openWithExplicitCancel(SetupRemoteP2P, currentSettings);
+        const p2pConf = await setupManager.openP2PSetup(currentSettings);
         if (p2pConf === "cancelled" || typeof p2pConf !== "object" || !p2pConf) {
             return;
         }
@@ -296,7 +294,7 @@
     ) {
         decidingPeerId = peer.peerId;
         try {
-            await getLiveSyncReplicator().makeDecision({
+            await p2p.peerAdmission.makeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
                 decision,
@@ -311,7 +309,7 @@
     async function revokeDecision(peer: P2PServerInfo["knownAdvertisements"][number]) {
         decidingPeerId = peer.peerId;
         try {
-            await getLiveSyncReplicator().revokeDecision({
+            await p2p.peerAdmission.revokeDecision({
                 peerId: peer.peerId,
                 name: peer.name,
             });
@@ -324,10 +322,7 @@
     async function startReplication(peer: P2PServerInfo["knownAdvertisements"][number]) {
         replicatingPeerId = peer.peerId;
         try {
-            const pullResult = await getLiveSyncReplicator().replicateFrom(peer.peerId, true);
-            if (pullResult?.ok) {
-                await getLiveSyncReplicator().requestSynchroniseToPeer(peer.peerId);
-            }
+            await p2p.targetedTransfer.synchroniseWithPeer(peer.peerId, true);
             await requestServerStatus();
         } finally {
             replicatingPeerId = null;
@@ -347,9 +342,9 @@
             return;
         }
         if (isWatching(peerId)) {
-            getLiveSyncReplicator().unwatchPeer(peerId);
+            p2p.changeRelay.unwatchPeer(peerId);
         } else {
-            getLiveSyncReplicator().watchPeer(peerId);
+            p2p.changeRelay.watchPeer(peerId);
         }
     }
 
@@ -455,7 +450,7 @@
         </p>
     {/if}
 
-    <P2PServerStatusCard {getLiveSyncReplicator} {core} />
+    <P2PServerStatusCard {p2p} {core} />
 
     <div class="peers-section">
         <div class="peers-header">

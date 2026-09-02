@@ -1,7 +1,8 @@
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { NodeServiceContext } from "@/apps/cli/services/NodeServiceContext";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
+import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
 
 export type CLICommand =
     | "daemon"
@@ -41,6 +42,8 @@ export interface CLIOptions {
     debug?: boolean;
     force?: boolean;
     writeSettings?: boolean;
+    /** Restore the former zero exit code after a returned remote-administration verification failure. */
+    compatRemoteAdminExitZero?: boolean;
     command: CLICommand;
     commandArgs: string[];
     interval?: number;
@@ -50,6 +53,8 @@ export interface CLICommandContext {
     databasePath: string;
     vaultPath: string;
     core: LiveSyncBaseCore<NodeServiceContext, never>;
+    /** Host-composition view used only to coordinate daemon-owned recurring work. */
+    replicationScheduling: ReplicationSchedulingControl;
     /** Current-result contract owned by the P2P service feature. */
     p2pReplicator?: UseP2PReplicatorResult;
     settingsPath: string;

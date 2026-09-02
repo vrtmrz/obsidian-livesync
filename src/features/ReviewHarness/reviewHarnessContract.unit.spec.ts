@@ -74,7 +74,6 @@ describe("Review Harness contract", () => {
         expect(REVIEW_HARNESS_SCENARIO_IDS).toEqual([
             "settings-lifecycle",
             "compatibility-review",
-            "p2p-composition",
             "vault-round-trip",
         ]);
     });

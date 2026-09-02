@@ -6,8 +6,8 @@ import {
     type EntryLeaf,
     type LoadedEntry,
     type MetaEntry,
+    type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { ModuleReplicator } from "./ModuleReplicator";
 import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
@@ -28,12 +28,39 @@ import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheel
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 const REPROCESS_BATCH_SIZE = 100;
-type LocalApplicationActivityOwner = {
-    runBoundedLocalApplicationActivity<T>(
+type ReplicateResultProcessorSettings = Pick<
+    ObsidianLiveSyncSettings,
+    "maxMTimeForReflectEvents" | "suspendParseReplicationResult"
+>;
+type ReplicateResultProcessorServices = Pick<
+    LiveSyncBaseCore["services"],
+    "appLifecycle" | "path" | "replication" | "vault"
+>;
+
+/**
+ * Narrow collaborators for applying replicated documents.
+ *
+ * `requestActiveReplicatorRetirement` starts the owner transition without
+ * awaiting it. Result application can still be running inside work admitted by
+ * that owner, so awaiting retirement here could make each side wait for the
+ * other to finish.
+ *
+ * Runtime databases are deliberately obtained through operation-time
+ * accessors. Feature composition precedes their initialisation, and database
+ * reset may replace their backing instances, so retaining an earlier concrete
+ * database would be invalid.
+ */
+interface ReplicateResultProcessorContext {
+    readonly currentSettings: () => ReplicateResultProcessorSettings;
+    readonly getKeyValueDB: () => LiveSyncBaseCore["kvDB"];
+    readonly getLocalDatabase: () => LiveSyncBaseCore["localDatabase"];
+    readonly requestActiveReplicatorRetirement: () => void;
+    readonly runLocalApplicationActivity: <T>(
         task: () => T | PromiseLike<T>,
         options?: { label?: string }
-    ): Promise<T>;
-};
+    ) => Promise<T>;
+    readonly services: ReplicateResultProcessorServices;
+}
 type ReplicateResultProcessorState = {
     queued: PouchDB.Core.ExistingDocument<EntryDoc>[];
     processing: PouchDB.Core.ExistingDocument<EntryDoc>[];
@@ -52,20 +79,13 @@ export class ReplicateResultProcessor {
     private logError(e: unknown) {
         Logger(e, LOG_LEVEL_VERBOSE);
     }
-    private replicator: ModuleReplicator;
+    constructor(private readonly context: ReplicateResultProcessorContext) {}
 
-    constructor(replicator: ModuleReplicator) {
-        this.replicator = replicator;
+    private get localDatabase() {
+        return this.context.getLocalDatabase();
     }
-
-    get localDatabase() {
-        return this.replicator.core.localDatabase;
-    }
-    get services() {
-        return this.replicator.core.services;
-    }
-    get core(): LiveSyncBaseCore {
-        return this.replicator.core;
+    private get services() {
+        return this.context.services;
     }
 
     getPath(entry: AnyEntry): string {
@@ -89,9 +109,9 @@ export class ReplicateResultProcessor {
     public get isSuspended() {
         return (
             this._suspended ||
-            !this.core.services.appLifecycle.isReady ||
-            this.replicator.settings.suspendParseReplicationResult ||
-            this.core.services.appLifecycle.isSuspended()
+            !this.services.appLifecycle.isReady() ||
+            this.context.currentSettings().suspendParseReplicationResult ||
+            this.services.appLifecycle.isSuspended()
         );
     }
 
@@ -104,7 +124,7 @@ export class ReplicateResultProcessor {
             queued: this._queuedChanges.slice(),
             processing: this._processingChanges.slice(),
         } satisfies ReplicateResultProcessorState;
-        await this.core.kvDB.set(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT, snapshot);
+        await this.context.getKeyValueDB().set(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT, snapshot);
         this.log(
             `Snapshot taken. Queued: ${snapshot.queued.length}, Processing: ${snapshot.processing.length}`,
             LOG_LEVEL_DEBUG
@@ -126,9 +146,9 @@ export class ReplicateResultProcessor {
      * Restore from snapshot.
      */
     public async restoreFromSnapshot() {
-        const snapshot = await this.core.kvDB.get<ReplicateResultProcessorState>(
-            KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT
-        );
+        const snapshot = await this.context
+            .getKeyValueDB()
+            .get<ReplicateResultProcessorState>(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT);
         if (snapshot) {
             // Restoring the snapshot re-runs processing for both queued and processing items.
             const newQueue = [...snapshot.processing, ...snapshot.queued, ...this._queuedChanges];
@@ -231,8 +251,8 @@ export class ReplicateResultProcessor {
         if (change.type == "versioninfo") {
             this.log(`Version info document received: ${change._id}`, LOG_LEVEL_VERBOSE);
             if (change.version > VER) {
-                // Incompatible version, stop replication.
-                this.core.replicator.closeReplication();
+                // Fence and retire the active publication through its owner.
+                this.context.requestActiveReplicatorRetirement();
                 this.log(
                     `Remote database updated to incompatible version. update your Self-hosted LiveSync plugin.`,
                     LOG_LEVEL_NOTICE
@@ -277,15 +297,10 @@ export class ReplicateResultProcessor {
 
         const activityDone = promiseWithResolvers<void>();
         this._processingActivityDone = activityDone;
-        const activityOwner = this.services.replicator as typeof this.services.replicator &
-            Partial<LocalApplicationActivityOwner>;
-        this._processingActivity = (
-            activityOwner.runBoundedLocalApplicationActivity
-                ? activityOwner.runBoundedLocalApplicationActivity(() => activityDone.promise, {
-                      label: "replicated-document-application",
-                  })
-                : activityDone.promise
-        )
+        this._processingActivity = this.context
+            .runLocalApplicationActivity(() => activityDone.promise, {
+                label: "replicated-document-application",
+            })
             .catch((error) => this.logError(error))
             .finally(() => {
                 if (this._processingActivityDone === activityDone) this._processingActivityDone = undefined;
@@ -392,7 +407,7 @@ export class ReplicateResultProcessor {
         try {
             if (isAnyNote(change)) {
                 const docMtime = change.mtime ?? 0;
-                const maxMTime = this.replicator.settings.maxMTimeForReflectEvents;
+                const maxMTime = this.context.currentSettings().maxMTimeForReflectEvents;
                 if (maxMTime > 0 && docMtime > maxMTime) {
                     const docPath = this.getPath(change);
                     this.log(

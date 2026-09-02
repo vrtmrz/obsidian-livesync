@@ -9,19 +9,19 @@
         EVENT_P2P_REPLICATOR_STATUS,
     } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-    import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+    import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
     import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
     import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
-        getLiveSyncReplicator: () => LiveSyncTrysteroReplicator;
+        p2p: P2PServiceViews;
         showBroadcastToggle?: boolean;
         core?: LiveSyncBaseCore;
     }
 
-    let { getLiveSyncReplicator, showBroadcastToggle = true, core }: Props = $props();
+    let { p2p, showBroadcastToggle = true, core }: Props = $props();
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let replicatorStatus = $state<P2PReplicatorStatus | undefined>(undefined);
     // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
@@ -31,25 +31,25 @@
     let useDiagRTC = $state<boolean>(initialSettings?.P2P_useDiagRTC ?? false);
 
     async function requestServerStatus() {
-        await Promise.resolve(getLiveSyncReplicator().requestStatus());
+        p2p.diagnostics.requestStatus();
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
 
     async function onOpenConnection() {
-        await getLiveSyncReplicator().makeSureOpened();
+        await p2p.transportLifecycle.connect();
         await requestServerStatus();
     }
 
     async function onDisconnect() {
-        await getLiveSyncReplicator().close();
+        await p2p.transportLifecycle.disconnect();
         await requestServerStatus();
     }
 
     function toggleBroadcast() {
         if (replicatorStatus?.isBroadcasting) {
-            getLiveSyncReplicator().disableBroadcastChanges();
+            p2p.changeRelay.disableBroadcastChanges();
         } else {
-            getLiveSyncReplicator().enableBroadcastChanges();
+            p2p.changeRelay.enableBroadcastChanges();
         }
     }
 

@@ -12,8 +12,11 @@ import {
 } from "../runner/couchdb.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
+    assertE2eCompatibilityMarker,
     assertEqual,
     configureCouchDb,
+    createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
@@ -149,31 +152,33 @@ async function startConfiguredSession(
     vault: TemporaryVault,
     deviceName: string
 ): Promise<ObsidianLiveSyncSession> {
+    const couchDbSettings = {
+        uri: context.couchDb.uri,
+        username: context.couchDb.username,
+        password: context.couchDb.password,
+        dbName: context.dbName,
+    };
+    const customisationSettings = {
+        deviceAndVaultName: deviceName,
+        usePluginSync: true,
+        usePluginSyncV2: true,
+        autoSweepPlugins: false,
+        autoSweepPluginsPeriodic: false,
+        syncInternalFiles: false,
+    };
     const session = await startObsidianLiveSyncSession({
         binary: context.binary,
         cliBinary: context.cliBinary,
         vault,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+        // This scenario exercises Customisation Sync, not onboarding. Seed a
+        // configured Vault and its device-local compatibility acknowledgement.
+        pluginData: createE2eCouchDbPluginData(couchDbSettings, customisationSettings),
+        localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
     });
     await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
-    await configureCouchDb(
-        context.cliBinary,
-        session.cliEnv,
-        {
-            uri: context.couchDb.uri,
-            username: context.couchDb.username,
-            password: context.couchDb.password,
-            dbName: context.dbName,
-        },
-        {
-            deviceAndVaultName: deviceName,
-            usePluginSync: true,
-            usePluginSyncV2: true,
-            autoSweepPlugins: false,
-            autoSweepPluginsPeriodic: false,
-            syncInternalFiles: false,
-        }
-    );
+    await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
+    await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, customisationSettings);
     await evalObsidianJson<unknown>(
         context.cliBinary,
         [

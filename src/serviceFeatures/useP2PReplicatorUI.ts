@@ -1,8 +1,6 @@
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
-import { reactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
-import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
 import {
     P2PServerStatusPaneView,
     VIEW_TYPE_P2P_SERVER_STATUS,
@@ -20,6 +18,9 @@ class LegacyP2PStatusPaneView extends P2PServerStatusPaneView {
         return LEGACY_VIEW_TYPE_P2P;
     }
 }
+
+/** Host-owned peer-selection entry used by the two adjunct P2P commands. */
+export type OpenInteractiveP2PReplication = (showResult: boolean) => Promise<boolean | void>;
 
 export function hasP2PConfiguration(settings: Partial<ObsidianLiveSyncSettings>): boolean {
     if (
@@ -61,7 +62,8 @@ export function useP2PReplicatorUI(
         never
     >,
     core: LiveSyncCore,
-    replicator: UseP2PReplicatorResult
+    replicator: UseP2PReplicatorResult,
+    openInteractiveReplication: OpenInteractiveP2PReplication
 ) {
     const api = host.services.API as {
         showWindow: (type: string) => Promise<void>;
@@ -80,26 +82,11 @@ export function useP2PReplicatorUI(
         ) => { addClass?: (name: string) => unknown; remove?: () => void } | undefined;
     };
 
-    // const env: LiveSyncTrysteroReplicatorEnv = { services: host.services as any };
-    const getReplicator = () => replicator.replicator;
-    const p2pLogCollector = new P2PLogCollector(host.services.context.events);
-    const storeP2PStatusLine = reactiveSource("");
-    p2pLogCollector.p2pReplicationLine.onChanged((line) => {
-        storeP2PStatusLine.value = line.value;
-    });
-    const p2pParams = {
-        get replicator() {
-            return getReplicator();
-        },
-        p2pLogCollector,
-        storeP2PStatusLine,
-    };
-
     const statusFactory = (leaf: WorkspaceLeaf) => {
-        return new P2PServerStatusPaneView(leaf, core, p2pParams);
+        return new P2PServerStatusPaneView(leaf, core, replicator);
     };
     const legacyStatusFactory = (leaf: WorkspaceLeaf) => {
-        return new LegacyP2PStatusPaneView(leaf, core, p2pParams);
+        return new LegacyP2PStatusPaneView(leaf, core, replicator);
     };
     const openStatusPane = () => {
         if (api.showWindowOnRight) {
@@ -108,13 +95,11 @@ export function useP2PReplicatorUI(
         return api.showWindow(VIEW_TYPE_P2P_SERVER_STATUS);
     };
     const runOpenReplication = () => {
-        const activeReplicator = replicator.replicator;
-        if (!activeReplicator) return;
-        const settings = host.services.setting.currentSettings();
-        void host.services.replicator.runFiniteReplicationActivity(
-            () => activeReplicator.openReplication(settings, false, true, false),
-            { label: "replication" }
-        );
+        // Peer selection is a host UI concern. The injected operation opens
+        // the dialogue, while its transfer callbacks use focused P2P views.
+        void host.services.replicator.runFiniteReplicationActivity(() => openInteractiveReplication(true), {
+            label: "replication",
+        });
     };
     // Keep the retired view type registered only long enough to restore an
     // existing workspace leaf with the current status UI. Layout-ready
@@ -167,7 +152,7 @@ export function useP2PReplicatorUI(
                 const isAvailable =
                     hasP2PConfiguration(settings) &&
                     settings.remoteType !== REMOTE_P2P &&
-                    (replicator.replicator?.server?.isServing ?? false);
+                    replicator.transportLifecycle.isConnected;
                 if (!isAvailable) return false;
                 if (!isChecking) {
                     runOpenReplication();
@@ -183,7 +168,7 @@ export function useP2PReplicatorUI(
                 const isAvailable =
                     hasP2PConfiguration(settings) &&
                     settings.remoteType !== REMOTE_P2P &&
-                    (replicator.replicator?.server?.isServing ?? false);
+                    replicator.transportLifecycle.isConnected;
                 if (!isAvailable) return false;
                 if (!isChecking) {
                     runOpenReplication();
@@ -198,10 +183,13 @@ export function useP2PReplicatorUI(
             checkCallback: (isChecking: boolean) => {
                 const isAvailable =
                     hasP2PConfiguration(host.services.setting.currentSettings()) &&
-                    (replicator.replicator?.server?.isServing ?? false);
+                    replicator.transportLifecycle.isConnected;
                 if (!isAvailable) return false;
                 if (!isChecking) {
-                    void replicator.replicator?.replicateFromCommand(true);
+                    void host.services.replicator.runFiniteReplicationActivity(
+                        () => replicator.targetedTransfer.synchroniseConfiguredTargets(),
+                        { label: "replication" }
+                    );
                 }
                 return true;
             },
@@ -239,5 +227,4 @@ export function useP2PReplicatorUI(
         );
         return true;
     });
-    return p2pParams;
 }
