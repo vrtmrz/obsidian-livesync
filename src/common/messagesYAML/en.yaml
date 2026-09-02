@@ -2093,7 +2093,7 @@ xxhash64 (Fastest): xxhash64 (Fastest)
 "I am setting this up for the first time": "I am setting this up for the first time"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch."
 "I am adding a device to an existing synchronisation setup": "I am adding a device to an existing synchronisation setup"
-"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch."
+"(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup."
 "Yes, I want to set up a new synchronisation": "Yes, I want to set up a new synchronisation"
 "Yes, I want to add this device to my existing synchronisation": "Yes, I want to add this device to my existing synchronisation"
 "No, please take me back": "No, please take me back"

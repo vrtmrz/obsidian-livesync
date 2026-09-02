@@ -283,7 +283,7 @@ xxhash64 (Fastest): xxhash64 (am schnellsten)
 "I am setting this up for the first time": "Ich richte dies zum ersten Mal ein"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Wählen Sie dies, wenn Sie dieses Gerät als erstes Synchronisationsgerät einrichten.) Diese Option ist geeignet, wenn Sie LiveSync neu verwenden und von Grund auf einrichten möchten."
 "I am adding a device to an existing synchronisation setup": "Ich füge ein Gerät zu einer bestehenden Synchronisationseinrichtung hinzu"
-"(Select this if you are already using synchronisation on another computer or smartphone.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Wählen Sie dies, wenn Sie die Synchronisation bereits auf einem anderen Computer oder Smartphone verwenden.) Diese Option ist geeignet, wenn Sie dieses Gerät zu einer bestehenden LiveSync-Einrichtung hinzufügen möchten."
+"(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "(Wählen Sie dies, wenn Sie die Synchronisation bereits auf einem anderen Computer oder Smartphone verwenden.) Diese Option ist geeignet, wenn Sie dieses Gerät zu einer bestehenden LiveSync-Einrichtung hinzufügen möchten."
 "Yes, I want to set up a new synchronisation": "Ja, ich möchte eine neue Synchronisation einrichten"
 "Yes, I want to add this device to my existing synchronisation": "Ja, ich möchte dieses Gerät zu meiner bestehenden Synchronisation hinzufügen"
 "No, please take me back": "Nein, bitte zurück"
