@@ -32,6 +32,7 @@ import {
     type SetupArtifact,
 } from "../runner/setupUri.ts";
 import { captureObsidianPage, openLiveSyncSettings, withObsidianPage } from "../runner/ui.ts";
+import { dismissConfigDoctorIfShown } from "../runner/upgradeWorkflow.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
@@ -303,6 +304,7 @@ async function assertRemotePreferredE2EE(context: RunnerContext, expected: boole
 }
 
 async function scheduleRemoteOverwrite(port: number): Promise<void> {
+    await dismissConfigDoctorIfShown(port);
     await withObsidianPage(port, async (page) => {
         const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
         const maintenance = await settingsNavigator.openPage("Maintenance");

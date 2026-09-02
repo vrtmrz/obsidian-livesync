@@ -241,7 +241,11 @@ async function runScenario(): Promise<void> {
     const consoleErrors: string[] = [];
 
     try {
-        browser = await chromium.launch({ headless: true });
+        const browserExecutable = process.env.E2E_PLAYWRIGHT_CHROMIUM?.trim();
+        browser = await chromium.launch({
+            headless: true,
+            ...(browserExecutable ? { executablePath: browserExecutable } : {}),
+        });
         const firstVault = await createTemporaryVault("obsidian-livesync-p2p-check-first-e2e-");
         vaults.push(firstVault);
         const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });

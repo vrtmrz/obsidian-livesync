@@ -24,6 +24,10 @@
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     import { $msg as translateMessage } from "@/common/translation";
+    import {
+        REPLICATION_PROGRESS_PRESENTATIONS,
+        USER_INITIATED_REPLICATION_AUTHORITY,
+    } from "@vrtmrz/livesync-commonlib/replication";
     export let plugin: ObsidianLiveSyncPlugin;
     export let core :LiveSyncBaseCore;
     // $: core = plugin.core;
@@ -104,7 +108,11 @@
         await requestUpdate();
     }
     async function replicate() {
-        await core.services.replication.replicate(true);
+        await core.services.replication.replicateUserInitiated({
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
     }
     function selectAllNewest(selectMode: boolean) {
         selectNewestPulse++;

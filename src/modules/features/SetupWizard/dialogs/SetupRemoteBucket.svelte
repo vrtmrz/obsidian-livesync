@@ -20,6 +20,8 @@
     import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
     import { $msg as translateMessage } from "@/common/translation";
+    import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+    import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);
 
@@ -81,13 +83,18 @@
         try {
             processing = true;
             const trialRemoteSetting = generateSetting();
-            const replicator = await context.services.replicator.getNewReplicator(trialRemoteSetting);
-            if (!replicator) {
-                return translateMessage("Failed to create replicator instance.");
+            const probe = await context.services.replicator.createRemoteResource(
+                REMOTE_RESOURCE_KINDS.CONNECTION,
+                trialRemoteSetting
+            );
+            if (!probe) {
+                return translateMessage("Failed to connect to the server. Please check your settings.");
             }
             try {
-                const result = await replicator.tryConnectRemote(trialRemoteSetting, false);
-                if (result) {
+                const result = await withOwnedRemoteResource(probe, (ownedProbe) =>
+                    ownedProbe.check({ createIfMissing: true, showResult: false })
+                );
+                if (result.ok) {
                     return "";
                 } else {
                     return translateMessage("Failed to connect to the server. Please check your settings.");

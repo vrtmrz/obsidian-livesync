@@ -8,6 +8,7 @@ import { discoverObsidianCli, requireObsidianBinary } from "../runner/environmen
 import {
     assertEqual,
     pushLocalChanges,
+    type ConfiguredSettings,
     waitForLiveSyncCoreReady,
     waitForLocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
@@ -55,6 +56,10 @@ type RunnerContext = {
     binary: string;
     cliBinary: string;
     activeSessions: Set<ObsidianLiveSyncSession>;
+};
+
+type StartupSchedulingState = ConfiguredSettings & {
+    periodicReplication: boolean;
 };
 
 function sessionEnvironment(port: number): NodeJS.ProcessEnv {
@@ -187,6 +192,41 @@ async function waitForObjectStorageData(config: ObjectStorageConfig, prefix: str
     throw new Error(`Timed out waiting for Object Storage data under ${prefix}.`);
 }
 
+async function configureMigratedStartupScheduling(
+    cliBinary: string,
+    environment: NodeJS.ProcessEnv
+): Promise<StartupSchedulingState> {
+    return await evalObsidianJson<StartupSchedulingState>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const plugin=app.plugins.plugins['obsidian-livesync'];",
+            "const core=plugin.core;",
+            // Persist only the migration-shaped scheduling flags and leave the
+            // generated URI unchanged. Device A stops before B creates the
+            // return note, so save-triggered reconciliation cannot satisfy the
+            // later start-up assertion.
+            "await core.services.setting.applyExternalSettings({liveSync:true,syncOnStart:true,periodicReplication:false},true);",
+            "const current=core.services.setting.currentSettings();",
+            "return JSON.stringify({",
+            "isConfigured:current.isConfigured,",
+            "liveSync:current.liveSync,",
+            "syncOnStart:current.syncOnStart,",
+            "syncOnSave:current.syncOnSave,",
+            "periodicReplication:current.periodicReplication,",
+            "remoteType:current.remoteType,",
+            "couchDB_URI:current.couchDB_URI,",
+            "couchDB_DBNAME:current.couchDB_DBNAME,",
+            "endpoint:current.endpoint,",
+            "bucket:current.bucket,",
+            "bucketPrefix:current.bucketPrefix,",
+            "});",
+            "})()",
+        ].join(""),
+        environment
+    );
+}
+
 async function captureNote(port: number, path: string, text: string, filename: string): Promise<string> {
     await withObsidianPage(port, async (page) => {
         await page.evaluate((notePath) => {
@@ -254,6 +294,24 @@ async function main(): Promise<void> {
             throw new Error("The first device returned the bootstrap Setup URI instead of generating a new one.");
         }
         screenshots.push(...generated.screenshots);
+        const startupState = await configureMigratedStartupScheduling(context.cliBinary, sessionA.cliEnv);
+        assertEqual(startupState.liveSync, true, "The first device did not persist its Continuous setting.");
+        assertEqual(startupState.syncOnStart, true, "The first device did not persist syncOnStart.");
+        assertEqual(
+            startupState.periodicReplication,
+            false,
+            "Periodic replication could mask the syncOnStart return journey."
+        );
+        assertEqual(
+            startupState.endpoint,
+            objectStorage.endpoint,
+            "Enabling syncOnStart changed the Object Storage endpoint."
+        );
+        assertEqual(
+            startupState.bucketPrefix,
+            bucketPrefix,
+            "Enabling syncOnStart changed the Object Storage bucket prefix."
+        );
         await stopSession(context, sessionA);
 
         const sessionB = await startSession(context, vaultB, portB);
@@ -290,7 +348,9 @@ async function main(): Promise<void> {
         const returningSessionA = await startSession(context, vaultA, portA);
         await waitForLiveSyncCoreReady(context.cliBinary, returningSessionA.cliEnv);
         await resumeCompatibilityReviewIfShown(portA);
-        await pushLocalChanges(context.cliBinary, returningSessionA.cliEnv);
+        // Deliberately omit manual replication here. Object Storage reports
+        // Continuous as not applicable, so startup scheduling must honour the
+        // retained syncOnStart setting by running an unattended OneShot.
         await waitForPathContent(vaultA, noteFromSecond, secondContent);
         screenshots.push(
             await captureNote(

@@ -1,7 +1,11 @@
 import { LOG_LEVEL_INFO } from "octagonal-wheels/common/logger";
 import type PouchDB from "pouchdb-core";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
-import type { HasSettings, ObsidianLiveSyncSettings, EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    type HasSettings,
+    type ObsidianLiveSyncSettings,
+    type EntryDoc,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
@@ -11,17 +15,13 @@ import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces
 import type { LiveSyncLocalDBEnv } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
-import type { LiveSyncJournalReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicatorEnv";
-import type { LiveSyncReplicatorEnv } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
+import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
 import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
 import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
-import { ModulePeriodicProcess } from "./modules/core/ModulePeriodicProcess";
-import { ModuleReplicator } from "./modules/core/ModuleReplicator";
-import { ModuleReplicatorCouchDB } from "./modules/core/ModuleReplicatorCouchDB";
-import { ModuleReplicatorMinIO } from "./modules/core/ModuleReplicatorMinIO";
 import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
 import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
@@ -30,6 +30,16 @@ import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interface
 import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
 import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
+import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
+import { createCentralReplicatorProviderDefinitions } from "./common/replicatorProviders";
+import { useReplicationFeature } from "./serviceFeatures/replication";
+
+/** Focused views returned by serviceFeatures which the host may consume during composition. */
+export interface LiveSyncCoreFeatureViews {
+    readonly replicationScheduling: ReplicationSchedulingControl;
+}
+
+type CompatibilityReplicatorView = ReplicatorInstance & Partial<LiveSyncAbstractReplicator>;
 
 export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
@@ -37,8 +47,6 @@ export class LiveSyncBaseCore<
 >
     implements
         LiveSyncLocalDBEnv,
-        LiveSyncReplicatorEnv,
-        LiveSyncJournalReplicatorEnv,
         LiveSyncCouchDBReplicatorEnv,
         HasSettings<ObsidianLiveSyncSettings>
 {
@@ -74,18 +82,22 @@ export class LiveSyncBaseCore<
         ) => ServiceModules,
         extraModuleInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => AbstractModule[],
         addOnsInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => TCommands[],
-        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => void
+        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>, coreFeatureViews: LiveSyncCoreFeatureViews) => void
     ) {
         this._services = serviceHub;
+        this.registerReplicatorProviders();
         this._serviceModules = serviceModuleInitialiser(this, serviceHub);
         const extraModules = extraModuleInitialiser(this);
         this.registerModules(extraModules);
-        this.initialiseServiceFeatures();
-        featuresInitialiser(this);
+        const coreFeatureViews = this.initialiseServiceFeatures();
+        featuresInitialiser(this, coreFeatureViews);
         const addOns = addOnsInitialiser(this);
         for (const addOn of addOns) {
             this._registerAddOn(addOn);
         }
+        // Register host features and add-ons before replication, then bind
+        // legacy modules so lifecycle handlers observe the required order.
+        useReplicationFeature(this);
         this.bindModuleFunctions();
     }
     /**
@@ -136,14 +148,17 @@ export class LiveSyncBaseCore<
         this.modules.push(module);
     }
 
+    /** Compose the current central providers before any lifecycle event can acquire one. */
+    private registerReplicatorProviders() {
+        this.services.replicator.registerReplicatorProviderDefinitions(
+            createCentralReplicatorProviderDefinitions(this)
+        );
+    }
+
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
         this._registerModule(new ModuleConflictChecker(this));
-        this._registerModule(new ModuleReplicatorMinIO(this));
-        this._registerModule(new ModuleReplicatorCouchDB(this));
-        this._registerModule(new ModuleReplicator(this));
         this._registerModule(new ModuleConflictResolver(this));
-        this._registerModule(new ModulePeriodicProcess(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleBasicMenu(this));
 
@@ -223,10 +238,11 @@ export class LiveSyncBaseCore<
     }
 
     /**
-     * @obsolete Use services.replication.getActiveReplicator instead. Get the active replicator instance. Note that there can be multiple replicators, but only one can be active at a time.
+     * @obsolete Use the provider context or a focused service operation instead.
+     * Provider-specific members on this compatibility view are optional.
      */
-    get replicator() {
-        return this.services.replicator.getActiveReplicator()!;
+    get replicator(): CompatibilityReplicatorView {
+        return this.services.replicator.getActiveReplicator() as CompatibilityReplicatorView;
     }
 
     /**
@@ -273,12 +289,15 @@ export class LiveSyncBaseCore<
      * Initialise ServiceFeatures.
      * (Please refer `serviceFeatures` for more details)
      */
-    initialiseServiceFeatures() {
+    initialiseServiceFeatures(): LiveSyncCoreFeatureViews {
         useTargetFilters(this);
         // enable target filter feature.
         usePrepareDatabaseForUse(this);
         // Migration to multiple remote configurations
         useRemoteConfigurationMigration(this);
+        return Object.freeze({
+            replicationScheduling: useReplicationScheduling(this),
+        });
     }
 }
 

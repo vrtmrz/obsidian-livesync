@@ -37,7 +37,11 @@ describe("ObsidianReplicatorService", () => {
                         allowSleepDuringSynchronisationOnDesktop: false,
                     }),
                 },
-                appLifecycleService: { onSuspending: handler(), getUnresolvedMessages: handler() },
+                appLifecycleService: {
+                    onSuspending: handler(),
+                    onUnload: handler(),
+                    getUnresolvedMessages: handler(),
+                },
                 databaseEventService: {
                     onResetDatabase: handler(),
                     onDatabaseInitialisation: handler(),
@@ -73,7 +77,11 @@ describe("ObsidianReplicatorService", () => {
                         allowSleepDuringSynchronisationOnDesktop: true,
                     }),
                 },
-                appLifecycleService: { onSuspending: handler(), getUnresolvedMessages: handler() },
+                appLifecycleService: {
+                    onSuspending: handler(),
+                    onUnload: handler(),
+                    getUnresolvedMessages: handler(),
+                },
                 databaseEventService: {
                     onResetDatabase: handler(),
                     onDatabaseInitialisation: handler(),

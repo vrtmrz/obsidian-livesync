@@ -37,7 +37,7 @@ function createModule(files: FilePathWithPrefix[] = []) {
                 isSuspended: vi.fn(() => false),
             },
             replication: {
-                replicateByEvent: vi.fn(async () => true),
+                replicateUnattendedByEvent: vi.fn(async () => ({ status: "completed" as const })),
             },
             vault: {
                 getActiveFilePath: vi.fn(() => undefined),

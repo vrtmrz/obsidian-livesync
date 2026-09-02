@@ -143,8 +143,12 @@ export async function createCompressionBenchmarkDataset(options: {
     );
     await copyRepositoryFile("json", "package.json", "package.json");
     await copyRepositoryFile("json", "manifest.json", "manifest.json");
-    await copyRepositoryFile("ts", "src/modules/core/ModuleReplicator.ts", "ModuleReplicator.ts");
-    await copyRepositoryFile("ts", "src/modules/core/ReplicateResultProcessor.ts", "ReplicateResultProcessor.ts");
+    await copyRepositoryFile("ts", "src/serviceFeatures/replication/index.ts", "replicationFeature.ts");
+    await copyRepositoryFile(
+        "ts",
+        "src/serviceFeatures/replication/ReplicateResultProcessor.ts",
+        "ReplicateResultProcessor.ts"
+    );
 
     const markdownBytes = await Deno.readFile(join(repositoryRoot, "docs/settings.md"));
     const gzipPath = join(datasetRoot, "gz", "settings.md.gz");

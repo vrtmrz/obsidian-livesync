@@ -14,6 +14,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import type { LiveSyncCore } from "@/main.ts";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
 
 type MutableCommandDefinition = {
     callback?: () => void;
@@ -71,7 +72,12 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
                     } else {
                         if (this.settings.syncOnEditorSave) {
                             this._log("Sync on Editor Save.", LOG_LEVEL_VERBOSE);
-                            fireAndForget(() => this.services.replication.replicateByEvent());
+                            fireAndForget(() =>
+                                this.services.replication.replicateUnattendedByEvent({
+                                    trigger: "editor-save",
+                                    interaction: NO_INTERACTION,
+                                })
+                            );
                         }
                     }
                 });
@@ -195,11 +201,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
 
     async watchWindowVisibilityAsync() {
         if (this.settings.suspendFileWatching) {
-            if (
-                this.settings.isConfigured &&
-                this.services.appLifecycle.isReady() &&
-                this.hasBoundedActivity()
-            ) {
+            if (this.settings.isConfigured && this.services.appLifecycle.isReady() && this.hasBoundedActivity()) {
                 const isHidden = activeWindow.document.hidden;
                 this.isLastHidden = isHidden;
                 this.deferredBoundedLifecycle = isHidden ? "suspend-if-hidden" : undefined;
@@ -290,7 +292,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             return;
         }
         if (this.settings.syncOnFileOpen && !this.services.appLifecycle.isSuspended()) {
-            await this.services.replication.replicateByEvent();
+            await this.services.replication.replicateUnattendedByEvent({
+                trigger: "file-open",
+                interaction: NO_INTERACTION,
+            });
         }
         await this.services.conflict.queueCheckForIfOpen(file.path as FilePathWithPrefix);
     }

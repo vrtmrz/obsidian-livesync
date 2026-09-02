@@ -1,15 +1,19 @@
 import { App, Modal } from "@/deps.ts";
 import P2POpenReplicationPane from "./P2POpenReplicationPane.svelte";
 import { mount, unmount } from "svelte";
-import type { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 
+/**
+ * Reports action completion so the pane does not infer success merely from a
+ * settled Promise.
+ */
 export type P2POpenReplicationModalCallback = {
-    onSync: (peerId: string) => Promise<void>;
-    onSyncAndClose: (peerId: string) => Promise<void>;
+    onSync: (peerId: string) => Promise<boolean>;
+    onSyncAndClose: (peerId: string) => Promise<boolean>;
 };
 
 export class P2POpenReplicationModal extends Modal {
-    liveSyncReplicator: LiveSyncTrysteroReplicator;
+    p2p: P2PServiceViews;
     callback?: P2POpenReplicationModalCallback;
     component?: ReturnType<typeof mount>;
     showResult: boolean;
@@ -19,7 +23,7 @@ export class P2POpenReplicationModal extends Modal {
 
     constructor(
         app: App,
-        liveSyncReplicator: LiveSyncTrysteroReplicator,
+        p2p: P2PServiceViews,
         callback?: P2POpenReplicationModalCallback,
         showResult: boolean = false,
         title: string = "P2P Replication",
@@ -27,7 +31,7 @@ export class P2POpenReplicationModal extends Modal {
         rebuildMode: boolean = false
     ) {
         super(app);
-        this.liveSyncReplicator = liveSyncReplicator;
+        this.p2p = p2p;
         this.callback = callback;
         this.showResult = showResult;
         this.title = title;
@@ -35,17 +39,20 @@ export class P2POpenReplicationModal extends Modal {
         this.rebuildMode = rebuildMode;
     }
 
-    async onSync(peerId: string) {
+    async onSync(peerId: string): Promise<boolean> {
         if (this.callback?.onSync) {
-            await this.callback.onSync(peerId);
+            return await this.callback.onSync(peerId);
         }
+        return false;
     }
 
-    async onSyncAndClose(peerId: string) {
+    async onSyncAndClose(peerId: string): Promise<boolean> {
+        let completed = false;
         if (this.callback?.onSyncAndClose) {
-            await this.callback.onSyncAndClose(peerId);
+            completed = await this.callback.onSyncAndClose(peerId);
         }
         this.close();
+        return completed;
     }
 
     override onOpen() {
@@ -57,7 +64,7 @@ export class P2POpenReplicationModal extends Modal {
             this.component = mount(P2POpenReplicationPane, {
                 target: contentEl,
                 props: {
-                    liveSyncReplicator: this.liveSyncReplicator,
+                    p2p: this.p2p,
                     onSync: (peerId: string) => this.onSync(peerId),
                     onSyncAndClose: (peerId: string) => this.onSyncAndClose(peerId),
                     onClose: () => this.close(),

@@ -196,7 +196,7 @@ async function runAutomaticScenarios(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const harness = page.locator('[data-testid="review-harness"]');
         await harness.locator('[data-testid="review-harness-run-automatic"]').click({ timeout: uiTimeoutMs });
-        for (const id of ["settings-lifecycle", "p2p-composition"]) {
+        for (const id of ["settings-lifecycle"]) {
             await harness
                 .locator(`[data-testid="review-harness-result-${id}"]`)
                 .getByText("Passed:", { exact: false })

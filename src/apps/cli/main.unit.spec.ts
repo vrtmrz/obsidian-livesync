@@ -69,6 +69,7 @@ describe("CLI parseArgs", () => {
         const combined = standardIo.writeStdout.mock.calls.flat().join("");
         expect(combined).toContain("Usage:");
         expect(combined).toContain("livesync-cli <database-path> [options] <command> [command-args]");
+        expect(combined).toContain("--compat-remote-admin-exit-zero");
     });
 
     it("parses p2p-peers command and timeout", () => {
@@ -213,6 +214,15 @@ describe("CLI parseArgs", () => {
 
         expect(parsed.command).toBe("ls");
         expect(parsed.writeSettings).toBe(true);
+        expect(parsed.commandArgs).toEqual([]);
+    });
+
+    it("parses the remote-administration exit compatibility option globally", () => {
+        process.argv = ["node", "livesync-cli", "./vault", "--compat-remote-admin-exit-zero", "mark-resolved"];
+        const parsed = parseArgs();
+
+        expect(parsed.command).toBe("mark-resolved");
+        expect(parsed.compatRemoteAdminExitZero).toBe(true);
         expect(parsed.commandArgs).toEqual([]);
     });
 });

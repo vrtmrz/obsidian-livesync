@@ -25,14 +25,6 @@ export const REVIEW_HARNESS_SCENARIOS = [
         access: "device-local-state",
     },
     {
-        id: "p2p-composition",
-        title: "P2P composition",
-        description:
-            "Checks that the Obsidian host and P2P interface still resolve the current Commonlib replicator.",
-        mode: "automatic",
-        access: "read-only",
-    },
-    {
         id: "vault-round-trip",
         title: "Vault fixture round trip",
         description:

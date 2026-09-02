@@ -146,6 +146,13 @@ export class WebAppRuntime {
         return this.paneHost;
     }
 
+    /**
+     * Import local files and complete the readiness boundary needed by optional P2P.
+     *
+     * An unconfigured central remote cannot use the normal offline-scan path, so
+     * the explicit WebApp scan completes the same post-scan finalisation without
+     * treating the central remote as configured.
+     */
     async scanLocalFiles(): Promise<boolean> {
         const core = this.core;
         const fileAccess = this.platformServiceModules?.vaultAccess;
@@ -171,7 +178,17 @@ export class WebAppRuntime {
                 this.addLog(`Failed to import ${path}: ${String(error)}`, LOG_LEVEL_NOTICE, "scan");
             }
         }
-        return succeeded;
+        if (!succeeded || core.services.appLifecycle.isReady()) {
+            return succeeded;
+        }
+        if (!(await core.services.databaseEvents.onDatabaseInitialised(false))) {
+            return false;
+        }
+        if (!(await core.services.fileProcessing.commitPendingFileEvents())) {
+            return false;
+        }
+        core.services.appLifecycle.markIsReady();
+        return true;
     }
 
     async start(): Promise<void> {

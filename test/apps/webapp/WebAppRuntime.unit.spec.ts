@@ -15,13 +15,23 @@ const runtimeMocks = vi.hoisted(() => {
     const clearCache = vi.fn();
     const collectFilesOnStorage = vi.fn();
     const updateToDatabase = vi.fn();
+    const applicationReady = { value: false };
+    const isReady = vi.fn(() => applicationReady.value);
+    const markIsReady = vi.fn(() => {
+        applicationReady.value = true;
+    });
+    const onDatabaseInitialised = vi.fn();
+    const commitPendingFileEvents = vi.fn();
     const p2p = {
         replicator: {},
     };
 
     const serviceHub = {
         API: { addLog },
+        appLifecycle: { isReady, markIsReady },
         control: { onLoad, onReady, onUnload },
+        databaseEvents: { onDatabaseInitialised },
+        fileProcessing: { commitPendingFileEvents },
         setting: { currentSettings },
         vault: { scanVault },
     };
@@ -40,12 +50,17 @@ const runtimeMocks = vi.hoisted(() => {
 
     return {
         addLog,
+        applicationReady,
         options: undefined as LiveSyncBrowserServiceHubOptions<never> | undefined,
         clearCache,
         cleanup,
         collectFilesOnStorage,
+        commitPendingFileEvents,
         currentSettings,
         getFiles,
+        isReady,
+        markIsReady,
+        onDatabaseInitialised,
         onLoad,
         onReady,
         onUnload,
@@ -125,9 +140,12 @@ async function waitForMicrotasks(): Promise<void> {
 describe("WebAppRuntime lifecycle", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        runtimeMocks.applicationReady.value = false;
         runtimeMocks.options = undefined;
+        runtimeMocks.commitPendingFileEvents.mockResolvedValue(true);
         runtimeMocks.currentSettings.mockReturnValue(unconfiguredSettings);
         runtimeMocks.getFiles.mockResolvedValue([{ path: "one.md" }]);
+        runtimeMocks.onDatabaseInitialised.mockResolvedValue(true);
         runtimeMocks.onLoad.mockResolvedValue(true);
         runtimeMocks.onReady.mockResolvedValue(undefined);
         runtimeMocks.onUnload.mockResolvedValue(undefined);
@@ -174,7 +192,7 @@ describe("WebAppRuntime lifecycle", () => {
         expect(runtimeMocks.onUnload).toHaveBeenCalledOnce();
     });
 
-    it("imports local files for optional P2P while the main remote remains unconfigured", async () => {
+    it("finalises application readiness after importing local files for optional P2P", async () => {
         const runtime = new WebAppRuntime(createRootHandle());
         await runtime.start();
         vi.clearAllMocks();
@@ -203,9 +221,91 @@ describe("WebAppRuntime lifecycle", () => {
             expect.any(Function)
         );
         expect(runtimeMocks.updateToDatabase).toHaveBeenCalledOnce();
+        expect(runtimeMocks.onDatabaseInitialised).toHaveBeenCalledOnce();
+        expect(runtimeMocks.commitPendingFileEvents).toHaveBeenCalledOnce();
+        expect(runtimeMocks.markIsReady).toHaveBeenCalledOnce();
+        expect(runtimeMocks.updateToDatabase.mock.invocationCallOrder[0]).toBeLessThan(
+            runtimeMocks.onDatabaseInitialised.mock.invocationCallOrder[0]
+        );
+        expect(runtimeMocks.onDatabaseInitialised.mock.invocationCallOrder[0]).toBeLessThan(
+            runtimeMocks.commitPendingFileEvents.mock.invocationCallOrder[0]
+        );
+        expect(runtimeMocks.commitPendingFileEvents.mock.invocationCallOrder[0]).toBeLessThan(
+            runtimeMocks.markIsReady.mock.invocationCallOrder[0]
+        );
         expect(runtimeMocks.scanVault).not.toHaveBeenCalled();
         expect(runtimeMocks.currentSettings()).toBe(unconfiguredSettings);
         expect(unconfiguredSettings.isConfigured).toBe(false);
+    });
+
+    it("does not publish readiness after a partial local-file import", async () => {
+        const runtime = new WebAppRuntime(createRootHandle());
+        await runtime.start();
+        vi.clearAllMocks();
+        runtimeMocks.collectFilesOnStorage.mockResolvedValue({
+            storageFileNameMap: {
+                "one.md": {
+                    path: "one.md",
+                    stat: { ctime: 1, mtime: 1, size: 3, type: "file" },
+                },
+                "two.md": {
+                    path: "two.md",
+                    stat: { ctime: 2, mtime: 2, size: 3, type: "file" },
+                },
+            },
+            storageFileNames: ["one.md", "two.md"],
+            storageFileNameCI2CS: { "one.md": "one.md", "two.md": "two.md" },
+        });
+        runtimeMocks.updateToDatabase
+            .mockRejectedValueOnce(new Error("one.md could not be imported"))
+            .mockResolvedValueOnce(undefined);
+
+        await expect(runtime.scanLocalFiles()).resolves.toBe(false);
+
+        expect(runtimeMocks.updateToDatabase).toHaveBeenCalledTimes(2);
+        expect(runtimeMocks.onDatabaseInitialised).not.toHaveBeenCalled();
+        expect(runtimeMocks.commitPendingFileEvents).not.toHaveBeenCalled();
+        expect(runtimeMocks.markIsReady).not.toHaveBeenCalled();
+    });
+
+    it("does not publish readiness when database initialisation rejects manual preparation", async () => {
+        const runtime = new WebAppRuntime(createRootHandle());
+        await runtime.start();
+        vi.clearAllMocks();
+        runtimeMocks.onDatabaseInitialised.mockResolvedValue(false);
+
+        await expect(runtime.scanLocalFiles()).resolves.toBe(false);
+
+        expect(runtimeMocks.onDatabaseInitialised).toHaveBeenCalledOnce();
+        expect(runtimeMocks.commitPendingFileEvents).not.toHaveBeenCalled();
+        expect(runtimeMocks.markIsReady).not.toHaveBeenCalled();
+    });
+
+    it("does not publish readiness when pending file events cannot be committed", async () => {
+        const runtime = new WebAppRuntime(createRootHandle());
+        await runtime.start();
+        vi.clearAllMocks();
+        runtimeMocks.commitPendingFileEvents.mockResolvedValue(false);
+
+        await expect(runtime.scanLocalFiles()).resolves.toBe(false);
+
+        expect(runtimeMocks.onDatabaseInitialised).toHaveBeenCalledOnce();
+        expect(runtimeMocks.commitPendingFileEvents).toHaveBeenCalledOnce();
+        expect(runtimeMocks.markIsReady).not.toHaveBeenCalled();
+    });
+
+    it("does not repeat readiness finalisation after a successful manual scan", async () => {
+        const runtime = new WebAppRuntime(createRootHandle());
+        await runtime.start();
+        vi.clearAllMocks();
+
+        await expect(runtime.scanLocalFiles()).resolves.toBe(true);
+        await expect(runtime.scanLocalFiles()).resolves.toBe(true);
+
+        expect(runtimeMocks.updateToDatabase).toHaveBeenCalledTimes(2);
+        expect(runtimeMocks.onDatabaseInitialised).toHaveBeenCalledOnce();
+        expect(runtimeMocks.commitPendingFileEvents).toHaveBeenCalledOnce();
+        expect(runtimeMocks.markIsReady).toHaveBeenCalledOnce();
     });
 
     it("rejects a failed core start after cleaning up the partial runtime", async () => {

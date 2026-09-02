@@ -36,6 +36,7 @@ import type {
     SetupRemoteCouchDBResultType,
     SetupRemoteCouchDBInitialData,
     SetupRemoteE2EEResultType,
+    SetupRemoteP2PInitialData,
     SetupRemoteP2PResultType,
     SetupRemoteResultType,
     UseSetupURIResultType,
@@ -48,6 +49,7 @@ import {
     type SetupInitialisationMode,
 } from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
+import type { P2PConnectionProbeAdmission } from "@vrtmrz/livesync-commonlib/p2p";
 
 function copySettingsForRemoteProfileUpdate(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
     return {
@@ -94,12 +96,34 @@ export type ApplySettingsWithInitialisationChoiceOptions = {
  * Setup Manager to handle onboarding and configuration setup
  */
 export class SetupManager extends AbstractModule {
+    private p2pSetupConnectionProbe?: P2PConnectionProbeAdmission;
+
     // /**
     //  * Dialog manager for handling Svelte dialogs
     //  */
     // private dialogManager: SvelteDialogManager = new SvelteDialogManager(this.plugin);
     get dialogManager() {
         return this.services.UI.dialogManager;
+    }
+
+    /** Bind the stable P2P owner's probe view to host-owned Setup dialogues. */
+    registerP2PSetupConnectionProbe(connectionProbe: P2PConnectionProbeAdmission): void {
+        if (this.p2pSetupConnectionProbe && this.p2pSetupConnectionProbe !== connectionProbe) {
+            throw new Error("The P2P Setup connection probe has already been registered.");
+        }
+        this.p2pSetupConnectionProbe = connectionProbe;
+    }
+
+    /** Open P2P Setup with the owner-arbitrated connection-probe boundary. */
+    openP2PSetup(settings: P2PSyncSetting): Promise<SetupRemoteP2PResultType> {
+        const connectionProbe = this.p2pSetupConnectionProbe;
+        if (!connectionProbe) {
+            throw new Error("The P2P Setup connection probe is not available.");
+        }
+        return this.dialogManager.openWithExplicitCancel<SetupRemoteP2PResultType, SetupRemoteP2PInitialData>(
+            SetupRemoteP2P,
+            { settings, connectionProbe }
+        );
     }
 
     /**
@@ -280,10 +304,7 @@ export class SetupManager extends AbstractModule {
         currentSetting: ObsidianLiveSyncSettings,
         activate = true
     ): Promise<boolean> {
-        const p2pConf = await this.dialogManager.openWithExplicitCancel<SetupRemoteP2PResultType, P2PSyncSetting>(
-            SetupRemoteP2P,
-            currentSetting
-        );
+        const p2pConf = await this.openP2PSetup(currentSetting);
         if (p2pConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
