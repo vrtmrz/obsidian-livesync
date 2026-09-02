@@ -1,12 +1,15 @@
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { DEVICE_ID_PREFERRED, MILESTONE_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
     assertCouchDbReachable,
     deleteCouchDbDatabase,
+    fetchCouchDbDocument,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
+    putCouchDbDocument,
     waitForCouchDbDocs,
     type CouchDbConfig,
 } from "../runner/couchdb.ts";
@@ -28,7 +31,8 @@ import {
     continueWithoutRemoteSettings,
     type SetupArtifact,
 } from "../runner/setupUri.ts";
-import { captureObsidianPage, withObsidianPage } from "../runner/ui.ts";
+import { captureObsidianPage, openLiveSyncSettings, withObsidianPage } from "../runner/ui.ts";
+import { dismissConfigDoctorIfShown } from "../runner/upgradeWorkflow.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
@@ -43,6 +47,10 @@ const returnNoteContent =
 const captures = {
     scenario: "couchdb-manual-setup-workflow",
     guide: "couchdb-manual",
+} as const;
+const e2eeRebuildCaptures = {
+    scenario: "couchdb-manual-setup-workflow",
+    guide: "couchdb-manual-e2ee-rebuild",
 } as const;
 
 type RunnerContext = {
@@ -111,9 +119,7 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
     await withObsidianPage(port, async (page) => {
         const method = modalByTitle(page, "Connection Method");
         await selectRadioOption(method, "Configure a remote manually");
-        await method
-            .getByRole("button", { name: "Proceed with manual configuration" })
-            .click({ timeout: uiTimeoutMs });
+        await method.getByRole("button", { name: "Proceed with manual configuration" }).click({ timeout: uiTimeoutMs });
 
         const encryption = modalByTitle(page, "End-to-End Encryption");
         await encryption.waitFor({ state: "visible", timeout: uiTimeoutMs });
@@ -246,6 +252,112 @@ async function waitForRemoteEntry(context: RunnerContext, entry: { id: string; c
     });
 }
 
+async function assertPersistedE2EE(vault: TemporaryVault): Promise<void> {
+    const persisted = JSON.parse(
+        await readFile(join(vault.path, ".obsidian", "plugins", "obsidian-livesync", "data.json"), "utf8")
+    ) as {
+        encrypt?: unknown;
+        encryptedPassphrase?: unknown;
+        passphrase?: unknown;
+    };
+    assertEqual(persisted.encrypt, true, "Manual CouchDB setup did not persist E2EE as enabled.");
+    assertEqual(persisted.passphrase, "", "Manual CouchDB setup persisted the E2EE passphrase in plain text.");
+    if (typeof persisted.encryptedPassphrase !== "string" || persisted.encryptedPassphrase.length === 0) {
+        throw new Error("Manual CouchDB setup did not persist an encrypted E2EE passphrase.");
+    }
+}
+
+async function setRemotePreferredE2EEDisabled(context: RunnerContext): Promise<void> {
+    const milestone = await fetchCouchDbDocument(context.couchDb, context.dbName, MILESTONE_DOCID);
+    const tweakValues = milestone.tweak_values;
+    if (typeof tweakValues !== "object" || tweakValues === null || Array.isArray(tweakValues)) {
+        throw new Error("The existing CouchDB milestone did not contain synchronisation settings.");
+    }
+    const preferred = (tweakValues as Record<string, unknown>)[DEVICE_ID_PREFERRED];
+    if (typeof preferred !== "object" || preferred === null || Array.isArray(preferred)) {
+        throw new Error("The existing CouchDB milestone did not contain preferred synchronisation settings.");
+    }
+    await putCouchDbDocument(context.couchDb, context.dbName, {
+        ...milestone,
+        tweak_values: {
+            ...tweakValues,
+            [DEVICE_ID_PREFERRED]: {
+                ...(preferred as Record<string, unknown>),
+                encrypt: false,
+            },
+        },
+    });
+}
+
+async function assertRemotePreferredE2EE(context: RunnerContext, expected: boolean): Promise<void> {
+    const milestone = await fetchCouchDbDocument(context.couchDb, context.dbName, MILESTONE_DOCID);
+    const tweakValues = milestone.tweak_values;
+    const preferred =
+        typeof tweakValues === "object" && tweakValues !== null && !Array.isArray(tweakValues)
+            ? (tweakValues as Record<string, unknown>)[DEVICE_ID_PREFERRED]
+            : undefined;
+    const encrypt =
+        typeof preferred === "object" && preferred !== null && !Array.isArray(preferred)
+            ? (preferred as Record<string, unknown>).encrypt
+            : undefined;
+    assertEqual(encrypt, expected, `The remote preferred E2EE setting was not ${expected ? "enabled" : "disabled"}.`);
+}
+
+async function scheduleRemoteOverwrite(port: number): Promise<void> {
+    await dismissConfigDoctorIfShown(port);
+    await withObsidianPage(port, async (page) => {
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        const maintenance = await settingsNavigator.openPage("Maintenance");
+        const overwrite = maintenance
+            .locator(".setting-item")
+            .filter({ hasText: "Overwrite Server Data with This Device's Files" });
+        await overwrite
+            .getByRole("button", { name: "Schedule and Restart", exact: true })
+            .click({ timeout: uiTimeoutMs });
+    });
+}
+
+async function assertRemoteEntryEncrypted(
+    context: RunnerContext,
+    entry: { id: string; path: string; children: string[] },
+    plaintextPath: string,
+    plaintext: string
+): Promise<void> {
+    const remoteMetadata = await fetchCouchDbDocument(context.couchDb, context.dbName, entry.id);
+    const serialisedMetadata = JSON.stringify(remoteMetadata);
+    if (
+        !remoteMetadata._id.startsWith("f:") ||
+        typeof remoteMetadata.path !== "string" ||
+        !remoteMetadata.path.startsWith("/\\:") ||
+        remoteMetadata.path === entry.path ||
+        serialisedMetadata.includes(plaintextPath) ||
+        !Array.isArray(remoteMetadata.children) ||
+        remoteMetadata.children.length !== 0 ||
+        remoteMetadata.mtime !== 0 ||
+        remoteMetadata.ctime !== 0 ||
+        remoteMetadata.size !== 0
+    ) {
+        throw new Error("The directly fetched CouchDB Metadata document did not protect its properties.");
+    }
+
+    const childId = entry.children[0];
+    if (!childId) {
+        throw new Error("The local E2EE test entry did not reference a Chunk document.");
+    }
+    if (!childId.startsWith("h:+")) {
+        throw new Error(`The E2EE test entry used an unencrypted Chunk identifier: ${childId}`);
+    }
+    const remoteChunk = await fetchCouchDbDocument(context.couchDb, context.dbName, childId);
+    assertEqual(remoteChunk.e_, true, "The directly fetched CouchDB Chunk was not marked as encrypted.");
+    if (
+        typeof remoteChunk.data !== "string" ||
+        remoteChunk.data === plaintext ||
+        remoteChunk.data.includes(plaintext)
+    ) {
+        throw new Error("The directly fetched CouchDB Chunk contained readable Vault content.");
+    }
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -288,11 +400,37 @@ async function main(): Promise<void> {
                 1,
                 "Manual CouchDB setup did not persist exactly one remote profile."
             );
+            await assertPersistedE2EE(vaultA);
 
             await writeNoteViaObsidian(context.cliBinary, session.cliEnv, notePath, noteContent);
             const entry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, notePath);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForRemoteEntry(context, entry);
+        } catch (error) {
+            await captureFailure(session, "first-device");
+            throw error;
+        } finally {
+            await stopTrackedSession(context, session);
+        }
+
+        await setRemotePreferredE2EEDisabled(context);
+        await assertRemotePreferredE2EE(context, false);
+
+        session = await startUnconfiguredSession(context, vaultA);
+        try {
+            await scheduleRemoteOverwrite(session.remoteDebuggingPort);
+            screenshots.push(await confirmRebuild(session.remoteDebuggingPort, e2eeRebuildCaptures));
+            screenshots.push(
+                await acknowledgeDisabledOptionalFeatures(session.remoteDebuggingPort, e2eeRebuildCaptures)
+            );
+            await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
+            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await assertPersistedE2EE(vaultA);
+
+            const rebuiltEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, notePath);
+            await waitForRemoteEntry(context, rebuiltEntry);
+            await assertRemoteEntryEncrypted(context, rebuiltEntry, notePath, noteContent);
+            await assertRemotePreferredE2EE(context, true);
 
             const generated = await generateSetupURIFromDevice(
                 session.remoteDebuggingPort,
@@ -302,7 +440,7 @@ async function main(): Promise<void> {
             secondDeviceArtifact = generated.artifact;
             screenshots.push(...generated.screenshots);
         } catch (error) {
-            await captureFailure(session, "first-device");
+            await captureFailure(session, "e2ee-rebuild");
             throw error;
         } finally {
             await stopTrackedSession(context, session);

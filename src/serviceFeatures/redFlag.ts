@@ -291,6 +291,15 @@ export async function adjustSettingToRemote(
             return true;
         }
 
+        if (operation === "rebuild") {
+            // An overwrite makes this device authoritative for both the Vault contents and the
+            // shared synchronisation settings. The remote lookup above remains a connection
+            // preflight, but settings from the database which is about to be replaced must not
+            // overwrite intentional local changes such as enabling E2EE.
+            log("Rebuild will use this device's synchronisation settings.", LOG_LEVEL_NOTICE);
+            return true;
+        }
+
         const remoteTweaks = remoteResult.values;
         const necessary = extractObject(TweakValuesShouldMatchedTemplate, remoteTweaks);
         // Check if any necessary tweak value is different from current config.
