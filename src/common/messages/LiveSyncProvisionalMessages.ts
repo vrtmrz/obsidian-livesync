@@ -7,8 +7,6 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
-    "This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.":
-        "This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.",
     "Setup Complete: Preparing to Fetch from Another Device": "Setup Complete: Preparing to Fetch from Another Device",
     "The P2P connection has been configured successfully. The initial synchronisation data must now be fetched from an online source device.":
         "The P2P connection has been configured successfully. The initial synchronisation data must now be fetched from an online source device.",
@@ -59,10 +57,6 @@ export const liveSyncProvisionalEnglishMessages = {
     "Follow whenever this device connects": "Follow whenever this device connects",
     "Include in the P2P synchronisation command": "Include in the P2P synchronisation command",
     "More actions for ${DEVICE}": "More actions for ${DEVICE}",
-    "Create or connect to database and continue": "Create or connect to database and continue",
-    "Connect to existing database and continue": "Connect to existing database and continue",
-    "Test connection and save": "Test connection and save",
-    "Save without connecting": "Save without connecting",
     "Use this device's settings": "Use this device's settings",
     Retry: "Retry",
     "No Synchronisation Settings Found": "No Synchronisation Settings Found",
@@ -75,14 +69,6 @@ export const liveSyncProvisionalEnglishMessages = {
         "Could not read the remote's synchronisation settings. Retry, or continue the overwrite with this device's settings. A working connection is still required.",
     "Skips checking and applying synchronisation settings from the remote.":
         "Skips checking and applying synchronisation settings from the remote.",
-    "Enter a complete HTTP or HTTPS URL.": "Enter a complete HTTP or HTTPS URL.",
-    "CouchDB validates the database name when you connect. The name must not be empty.":
-        "CouchDB validates the database name when you connect. The name must not be empty.",
-    "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.":
-        "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.",
-    "This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.":
-        "This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.",
-    "Check server requirements": "Check server requirements",
     "Change CouchDB server setting": "Change CouchDB server setting",
     "Change CouchDB server setting '${SETTING}' to '${VALUE}'?":
         "Change CouchDB server setting '${SETTING}' to '${VALUE}'?",
