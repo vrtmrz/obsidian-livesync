@@ -123,19 +123,55 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
 
         const encryption = modalByTitle(page, "End-to-End Encryption");
         await encryption.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        assertEqual(
+            await encryption.locator('input[name="e2ee-passphrase"]').count(),
+            0,
+            "The passphrase field was present before end-to-end encryption was enabled."
+        );
+        assertEqual(
+            await encryption.locator("label.row").filter({ hasText: "Obfuscate Properties" }).count(),
+            0,
+            "The Obfuscate Properties row was present before end-to-end encryption was enabled."
+        );
         await encryption
             .locator("label.row")
             .filter({ hasText: "End-to-End Encryption" })
             .locator('input[type="checkbox"]')
             .first()
             .check({ timeout: uiTimeoutMs });
+        const passphraseInput = encryption.locator('input[name="e2ee-passphrase"]');
+        await passphraseInput.waitFor({ state: "visible", timeout: uiTimeoutMs });
         await encryption
             .locator("label.row")
             .filter({ hasText: "Obfuscate Properties" })
             .locator('input[type="checkbox"]')
             .first()
             .check({ timeout: uiTimeoutMs });
-        await encryption.locator('input[name="e2ee-passphrase"]').fill(randomBytes(24).toString("base64url"));
+        const passphraseValue = randomBytes(24).toString("base64url");
+        await passphraseInput.fill(passphraseValue);
+        const passwordToggle = encryption.locator("button.sls-password-toggle");
+        await passwordToggle.click({ timeout: uiTimeoutMs });
+        assertEqual(
+            await passphraseInput.getAttribute("type"),
+            "text",
+            "Toggling visibility did not reveal the passphrase."
+        );
+        assertEqual(
+            await passphraseInput.inputValue(),
+            passphraseValue,
+            "Toggling visibility changed the passphrase value."
+        );
+        await passwordToggle.click({ timeout: uiTimeoutMs });
+        assertEqual(
+            await passphraseInput.getAttribute("type"),
+            "password",
+            "Toggling visibility again did not re-mask the passphrase."
+        );
+        assertEqual(
+            await passphraseInput.inputValue(),
+            passphraseValue,
+            "Re-masking the passphrase changed its value."
+        );
     });
     screenshots.push(await captureGuideDialogue(port, "guide-couchdb-manual-encryption.png", "End-to-End Encryption"));
     await withObsidianPage(port, async (page) => {

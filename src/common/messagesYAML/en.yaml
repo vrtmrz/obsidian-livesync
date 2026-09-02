@@ -409,6 +409,7 @@ Hidden file synchronization have been temporarily disabled. Please enable them a
 Hidden Files: Hidden Files
 Hide completely: Hide completely
 Hide not applicable items: Hide not applicable items
+Hide password: Hide password
 Higher (${local} > ${remote}): Higher (${local} > ${remote})
 Highlight diff: Highlight diff
 How to display network errors when the sync server is unreachable.: How to display network errors when the sync server is unreachable.
@@ -1812,6 +1813,7 @@ Show full banner: Show full banner
 Show history: Show history
 Show icon only: Show icon only
 Show only notifications: Show only notifications
+Show password: Show password
 Show status as icons only: Show status as icons only
 Show status icon instead of file warnings banner: Show status icon instead of file warnings banner
 Show status inside the editor: Show status inside the editor

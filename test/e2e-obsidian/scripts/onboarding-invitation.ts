@@ -131,7 +131,57 @@ async function captureAndSelectMobileInvitation(): Promise<string> {
     return screenshot;
 }
 
-async function captureAndCloseIntro(filename: string, mobile: boolean): Promise<string> {
+async function captureMobilePasswordToggle(): Promise<string> {
+    const port = obsidianRemoteDebuggingPort();
+    await withObsidianPage(port, async (page) => {
+        const intro = onboardingDialogue(page);
+        await intro
+            .locator("label")
+            .filter({ hasText: "I am setting this up for the first time" })
+            .locator('input[type="radio"]')
+            .first()
+            .check({ timeout: uiTimeoutMs });
+        await intro
+            .getByRole("button", { name: "Yes, I want to set up a new synchronisation" })
+            .click({ timeout: uiTimeoutMs });
+
+        const method = page.locator(".modal-container").filter({ hasText: "Connection Method" });
+        await method.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await method
+            .locator("label")
+            .filter({ hasText: "Configure a remote manually" })
+            .locator('input[type="radio"]')
+            .first()
+            .check({ timeout: uiTimeoutMs });
+        await method.getByRole("button", { name: "Proceed with manual configuration" }).click({ timeout: uiTimeoutMs });
+
+        const encryption = page.locator(".modal-container").filter({ hasText: "End-to-End Encryption" });
+        await encryption.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await encryption
+            .locator("label.row")
+            .filter({ hasText: "End-to-End Encryption" })
+            .locator('input[type="checkbox"]')
+            .first()
+            .check({ timeout: uiTimeoutMs });
+    });
+    const screenshot = await captureObsidianDialogue(port, "onboarding-e2ee-mobile.png", async (page) => {
+        const encryption = page.locator(".modal-container").filter({ hasText: "End-to-End Encryption" });
+        const passwordToggle = encryption.locator("button.sls-password-toggle");
+        await passwordToggle.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await passwordToggle.evaluate((element) => element.scrollIntoView({ block: "center" }));
+        await assertLocatorHasMinimumTouchTarget(page, passwordToggle, {
+            label: "mobile password visibility button",
+        });
+    });
+    await withObsidianPage(port, async (page) => {
+        const encryption = page.locator(".modal-container").filter({ hasText: "End-to-End Encryption" });
+        await encryption.getByRole("button", { name: "Cancel", exact: true }).click({ timeout: uiTimeoutMs });
+        await encryption.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    });
+    return screenshot;
+}
+
+async function captureIntro(filename: string, mobile: boolean, closeAfterCapture = true): Promise<string> {
     const port = obsidianRemoteDebuggingPort();
     const screenshot = await captureObsidianDialogue(port, filename, async (page) => {
         const container = onboardingDialogue(page);
@@ -145,11 +195,13 @@ async function captureAndCloseIntro(filename: string, mobile: boolean): Promise<
             .waitFor({ state: "visible", timeout: uiTimeoutMs });
         if (mobile) await assertMobileDialogueLayout(page, container, "mobile onboarding introduction");
     });
-    await withObsidianPage(port, async (page) => {
-        const container = onboardingDialogue(page);
-        await container.getByRole("button", { name: "No, please take me back" }).click({ timeout: uiTimeoutMs });
-        await container.waitFor({ state: "hidden", timeout: uiTimeoutMs });
-    });
+    if (closeAfterCapture) {
+        await withObsidianPage(port, async (page) => {
+            const container = onboardingDialogue(page);
+            await container.getByRole("button", { name: "No, please take me back" }).click({ timeout: uiTimeoutMs });
+            await container.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        });
+    }
     return screenshot;
 }
 
@@ -231,10 +283,11 @@ async function main(): Promise<void> {
 
         const desktopInvitation = await captureDesktopInvitation();
         const mobileInvitation = await captureAndSelectMobileInvitation();
-        const mobileIntro = await captureAndCloseIntro("onboarding-intro-mobile.png", true);
+        const mobileIntro = await captureIntro("onboarding-intro-mobile.png", true, false);
+        const mobileEncryption = await captureMobilePasswordToggle();
         await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), false, uiTimeoutMs);
         await openOnboardingFromSettings();
-        const settingsIntro = await captureAndCloseIntro("onboarding-intro-settings-desktop.png", false);
+        const settingsIntro = await captureIntro("onboarding-intro-settings-desktop.png", false);
         await dismissVisibleNotices();
         await closeSettings();
 
@@ -243,6 +296,7 @@ async function main(): Promise<void> {
                 desktopInvitation,
                 mobileInvitation,
                 mobileIntro,
+                mobileEncryption,
                 settingsIntro,
             ].join(", ")}`
         );
