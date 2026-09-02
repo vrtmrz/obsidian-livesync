@@ -4,7 +4,9 @@ import type {
     EncryptionSettings,
     ObsidianLiveSyncSettings,
     P2PConnectionInfo,
+    P2PSyncSetting,
 } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
+import type { P2PConnectionProbeAdmission } from "@vrtmrz/livesync-commonlib/p2p";
 
 export const TYPE_IDENTICAL = "identical";
 export const TYPE_INDEPENDENT = "independent";
@@ -119,5 +121,9 @@ export type SetupRemoteCouchDBInitialData = {
 };
 
 export type SetupRemoteP2PResultType = typeof TYPE_CANCELLED | P2PConnectionInfo;
+export type SetupRemoteP2PInitialData = {
+    settings: P2PSyncSetting;
+    connectionProbe: P2PConnectionProbeAdmission;
+};
 
 export type ScanQRCodeResultType = typeof TYPE_CLOSE;

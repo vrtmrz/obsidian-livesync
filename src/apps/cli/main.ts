@@ -23,8 +23,8 @@ import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
-import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
-import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import { useP2PReplicatorFeature, type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
+import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
 import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
@@ -103,6 +103,8 @@ Options:
                               (defaults to database-path; allows separate PouchDB and vault dirs)
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --write-settings         Write setting changes after a successful command
+  --compat-remote-admin-exit-zero
+                           Preserve the former zero exit code when remote-administration verification fails
 
 Examples:
     livesync-cli ./my-database                        Run daemon (LiveSync mode)
@@ -153,6 +155,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
     let debug = false;
     let force = false;
     let writeSettings = false;
+    let compatRemoteAdminExitZero = false;
     let interval: number | undefined;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
@@ -212,6 +215,9 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
             case "--write-settings":
                 writeSettings = true;
                 break;
+            case "--compat-remote-admin-exit-zero":
+                compatRemoteAdminExitZero = true;
+                break;
             default: {
                 if (!databasePath) {
                     if (command === "daemon" && isCLICommand(token)) {
@@ -253,6 +259,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
         debug,
         force,
         writeSettings,
+        compatRemoteAdminExitZero,
         command,
         commandArgs,
         interval,
@@ -290,7 +297,10 @@ export async function main(
 ) {
     const options = parseArgs(standardIo);
     if (options.interval && options.command !== "daemon") {
-        writeStderrLine(standardIo, `Warning: --interval is only used in daemon mode, ignored for '${options.command}'`);
+        writeStderrLine(
+            standardIo,
+            `Warning: --interval is only used in daemon mode, ignored for '${options.command}'`
+        );
     }
     const avoidStdoutNoise =
         options.command === "cat" ||
@@ -420,7 +430,10 @@ export async function main(
     // In daemon mode the default handler must run so changes are applied to the filesystem.
     if (options.command !== "daemon") {
         serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
-            writeStderrLine(standardIo, `[Info] Replication result received, but not processed automatically in CLI mode.`);
+            writeStderrLine(
+                standardIo,
+                `[Info] Replication result received, but not processed automatically in CLI mode.`
+            );
             return await Promise.resolve(true);
         }, -100);
     }
@@ -472,6 +485,7 @@ export async function main(
 
     // Create LiveSync core
     let p2pReplicator: UseP2PReplicatorResult | undefined;
+    let replicationScheduling: ReplicationSchedulingControl | undefined;
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
@@ -479,7 +493,8 @@ export async function main(
         },
         (core) => [],
         () => [], // No add-ons
-        (core) => {
+        (core, coreFeatureViews) => {
+            replicationScheduling = coreFeatureViews.replicationScheduling;
             // Register P2P replicator feature.
             p2pReplicator = useP2PReplicatorFeature(core);
             // Add target filter to prevent internal files are handled
@@ -511,6 +526,9 @@ export async function main(
             }
         }
     );
+    if (!replicationScheduling) {
+        throw new Error("Replication scheduling was not provided during core feature composition.");
+    }
 
     // Setup signal handlers for graceful shutdown
     const shutdown = async (signal: string) => {
@@ -617,6 +635,7 @@ export async function main(
                 databasePath,
                 vaultPath,
                 core,
+                replicationScheduling,
                 p2pReplicator,
                 settingsPath,
                 originalSyncSettings,

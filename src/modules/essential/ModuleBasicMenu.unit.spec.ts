@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Command } from "@/deps";
+import {
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
 import { ModuleBasicMenu } from "./ModuleBasicMenu";
 
 type RegisteredCommand = Command & {
@@ -25,7 +29,8 @@ function createFixture() {
             registerProtocolHandler: vi.fn(),
         },
         replication: {
-            replicate: vi.fn(async () => undefined),
+            replicateUserInitiated: vi.fn(async () => ({ status: "completed" as const })),
+            stopActiveTransfer: vi.fn(async () => ({ status: "completed" as const })),
         },
         vault: {
             getActiveFilePath: vi.fn((): string | null => "note.md"),
@@ -123,6 +128,19 @@ describe("ModuleBasicMenu command palette", () => {
         expect(fixture.getCommand("livesync-runbatch").name).toBe("Apply pending changes now");
     });
 
+    it("keeps Sync now progress quiet while retaining failure-recovery authority", async () => {
+        const fixture = createFixture();
+
+        await fixture.module._everyOnloadStart();
+        await fixture.getCommand("livesync-replicate").callback?.();
+
+        expect(fixture.services.replication.replicateUserInitiated).toHaveBeenCalledWith({
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+    });
+
     it("keeps maintenance commands out of the normal palette", async () => {
         const fixture = createFixture();
 
@@ -134,6 +152,19 @@ describe("ModuleBasicMenu command palette", () => {
         fixture.settings.useAdvancedMode = true;
         expect(fixture.getCommand("livesync-scan-files").checkCallback?.(true)).toBe(true);
         expect(fixture.getCommand("livesync-abortsync").checkCallback?.(true)).toBe(true);
+    });
+
+    it("routes an explicit stop through the active provider capability", async () => {
+        const fixture = createFixture();
+        fixture.settings.useAdvancedMode = true;
+
+        await fixture.module._everyOnloadStart();
+
+        expect(fixture.getCommand("livesync-abortsync").checkCallback?.(false)).toBe(true);
+        await vi.waitFor(() => {
+            expect(fixture.services.replication.stopActiveTransfer).toHaveBeenCalledOnce();
+        });
+        expect(fixture.core.replicator.terminateSync).not.toHaveBeenCalled();
     });
 
     it("keeps active-file database information available and opens it in a copy dialogue", async () => {

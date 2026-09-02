@@ -2,12 +2,8 @@ import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/AP
 import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
 import {
     DEFAULT_SETTINGS,
-    MILESTONE_DOCID,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
-    REMOTE_COUCHDB,
-    REMOTE_MINIO,
-    type EntryMilestoneInfo,
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
@@ -23,71 +19,27 @@ import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatur
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
-import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import type { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
+import {
+    CENTRAL_COMPATIBILITY_REJECTION_REASONS,
+    isReplicationCompleted,
+    NO_INTERACTION,
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    REMOTE_RESOURCE_KINDS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
+import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import {
+    isCentralRemoteAdministrationCommand,
+    runCentralRemoteAdministrationCommand,
+} from "./centralRemoteAdministration";
 
 function redactConnectionString(uri: string): string {
     return uri.replace(/\/\/([^@/]+)@/u, "//***@");
 }
 
-async function verifyRemoteState(
-    core: CLICommandContext["core"],
-    settings: ObsidianLiveSyncSettings
-): Promise<boolean> {
-    const { standardIo } = core.services.context;
-    const replicator = core.services.replicator.getActiveReplicator();
-    if (!replicator) {
-        standardIo.writeStderr("[Verification] No active replicator found\n");
-        return false;
-    }
-
-    if (!replicator.nodeid) {
-        await replicator.initializeDatabaseForReplication();
-    }
-
-    try {
-        let milestone: EntryMilestoneInfo | false | undefined = undefined;
-        if (settings.remoteType === REMOTE_COUCHDB) {
-            const dbRet = await (replicator as LiveSyncCouchDBReplicator).connectRemoteCouchDBWithSetting(
-                settings,
-                false,
-                true
-            );
-            if (typeof dbRet === "string") {
-                standardIo.writeStderr(`[Verification] Failed to connect to remote CouchDB: ${dbRet}\n`);
-                return false;
-            }
-            try {
-                milestone = await dbRet.db.get(MILESTONE_DOCID);
-            } finally {
-                await dbRet.db.close();
-            }
-        } else if (settings.remoteType === REMOTE_MINIO) {
-            milestone = await (replicator as LiveSyncJournalReplicator).client.downloadJson("_00000000-milestone.json");
-        }
-
-        if (milestone) {
-            const isLocked = !!milestone.locked;
-            const isAccepted = !!milestone.accepted_nodes?.includes(replicator.nodeid);
-            standardIo.writeStderr(`[Verification] Remote Database: ${isLocked ? "LOCKED" : "UNLOCKED"}\n`);
-            standardIo.writeStderr(
-                `[Verification] Current Device Node ID (${replicator.nodeid}): ${isAccepted ? "ACCEPTED" : "NOT ACCEPTED"}\n`
-            );
-            return true;
-        } else {
-            standardIo.writeStderr("[Verification] Milestone document not found on remote.\n");
-            return false;
-        }
-    } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        standardIo.writeStderr(`[Verification] Failed to fetch milestone document: ${message}\n`);
-        return false;
-    }
-}
-
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
-    const { databasePath, core, settingsPath } = context;
+    const { databasePath, core, replicationScheduling, settingsPath } = context;
     const { standardIo } = core.services.context;
     const vaultPath = context.vaultPath || databasePath;
 
@@ -95,19 +47,28 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     if (options.command === "daemon") {
         const log = (msg: unknown) => writeStderrLine(standardIo, `[Daemon] ${String(msg)}`);
 
+        // The daemon owns its own recurring poller. Suppress the application
+        // resume starter and generic periodic timer before restoring settings.
+        replicationScheduling.setExternalPollingMode(!!options.interval);
+
         // Skip the config mismatch dialog — the daemon cannot resolve it interactively
         // and the default "Dismiss" action would block replication. The daemon should
         // accept whatever configuration the remote has.
         await core.services.setting.applyPartial({ disableCheckingConfigMismatch: true }, true);
 
-        // 1. Replicate CouchDB → local PouchDB so the mirror scan has content to work with.
-        log("Replicating from CouchDB...");
-        const replResult = await core.services.replication.replicate(true);
-        if (!replResult) {
-            writeStderrLine(standardIo, "[Daemon] Initial CouchDB replication failed, cannot continue");
+        // 1. Replicate the configured remote into the local database so the
+        // mirror scan has content to work with.
+        log("Replicating from remote...");
+        const replResult = await core.services.replication.replicateUnattended({
+            trigger: "daemon",
+            interaction: NO_INTERACTION,
+        });
+        if (!isReplicationCompleted(replResult)) {
+            writeStderrLine(standardIo, "[Daemon] Initial replication failed, cannot continue");
             return false;
         }
-        log("CouchDB replication complete");
+        replicationScheduling.markInitialOneShotSatisfied();
+        log("Initial replication complete");
 
         // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
@@ -129,8 +90,9 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 true
             );
             // applySettings fires the full lifecycle: onSuspending → onResumed.
-            // ModuleReplicatorCouchDB starts continuous replication on onResumed
-            // via fireAndForget.
+            // The provider-independent scheduling feature owns any eligible
+            // Continuous start; the daemon marker suppresses a duplicate
+            // sync-on-start OneShot.
             await core.services.control.applySettings();
             // Lifecycle events (onSuspending) may re-enable suspension flags.
             // Clear them explicitly after the lifecycle completes. applyPartial
@@ -153,7 +115,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
             const poll = async () => {
                 try {
-                    await core.services.replication.replicate(true);
+                    const result = await core.services.replication.replicateUnattended({
+                        trigger: "daemon",
+                        interaction: NO_INTERACTION,
+                    });
+                    if (!isReplicationCompleted(result)) {
+                        throw new Error(`Daemon polling replication did not complete (${result.status}).`);
+                    }
                     if (consecutiveFailures > 0) {
                         consecutiveFailures--;
                         currentIntervalMs = Math.max(currentIntervalMs / 2, baseIntervalMs);
@@ -182,11 +150,11 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 return true;
             });
         } else {
-            log("LiveSync mode: restoring sync settings and starting _changes feed");
+            log("LiveSync mode: restoring sync settings and starting continuous synchronisation where supported");
             await restoreSyncSettings();
-            // The applySettings() lifecycle fires onResumed → ModuleReplicatorCouchDB which
-            // starts continuous replication via fireAndForget(openReplication). Don't call
-            // openReplication directly — it races with the handler and causes dedup/termination.
+            // The applySettings() lifecycle fires onResumed → the provider-
+            // independent scheduling feature, which starts Continuous when
+            // supported. Do not call a concrete Replicator directly.
             log("LiveSync active");
             const currentSettings = core.services.setting.currentSettings();
             if (!currentSettings.liveSync && !currentSettings.syncOnStart) {
@@ -204,13 +172,20 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     if (options.command === "sync") {
         writeStdoutLine(standardIo, "[Command] sync");
-        const result = await core.services.replication.replicate(true);
-        if (!result) {
+        const result = await core.services.replication.replicateUserInitiated({
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+        if (!isReplicationCompleted(result)) {
             // TODO: Standardise the logic for identifying the cause of replication
             // failure so that every reason (locked DB, version mismatch, network
             // error, etc.) is surfaced with a CLI-specific actionable message.
-            const replicator = core.services.replicator.getActiveReplicator();
-            if (replicator?.remoteLockedAndDeviceNotAccepted) {
+            const recoveryHint = result.status === "failed" ? result.recoveryHint : undefined;
+            if (
+                recoveryHint?.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED ||
+                recoveryHint?.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED
+            ) {
                 writeStderrLine(
                     standardIo,
                     `[Error] The remote database is locked and this device is not yet accepted.\n` +
@@ -218,7 +193,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                 );
             }
         }
-        return !!result;
+        return isReplicationCompleted(result);
     }
 
     if (options.command === "p2p-peers") {
@@ -227,7 +202,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[0], "p2p-peers");
         writeStderrLine(standardIo, `[Command] p2p-peers timeout=${timeoutSec}s`);
-        const peers = await collectPeers(core, timeoutSec);
+        const peers = await collectPeers(core, context.p2pReplicator, timeoutSec);
         if (peers.length > 0) {
             standardIo.writeStdout(peers.map((peer) => `[peer]\t${peer.peerId}\t${peer.name}`).join("\n") + "\n");
         }
@@ -244,14 +219,14 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
         const timeoutSec = parseTimeoutSeconds(options.commandArgs[1], "p2p-sync");
         writeStderrLine(standardIo, `[Command] p2p-sync peer=${peerToken} timeout=${timeoutSec}s`);
-        const peer = await syncWithPeer(core, peerToken, timeoutSec);
+        const peer = await syncWithPeer(core, context.p2pReplicator, peerToken, timeoutSec);
         writeStderrLine(standardIo, `[Done] P2P sync completed with ${peer.name} (${peer.peerId})`);
         return true;
     }
 
     if (options.command === "p2p-host") {
         writeStderrLine(standardIo, "[Command] p2p-host");
-        await openP2PHost(core);
+        await openP2PHost(core, context.p2pReplicator);
         writeStderrLine(standardIo, "[Ready] P2P host is running. Press Ctrl+C to stop.");
         await new Promise(() => {});
         return true;
@@ -757,88 +732,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         return true;
     }
 
-    if (options.command === "mark-resolved") {
-        const id = options.commandArgs[0]?.trim();
-        if (id) {
-            let switched = false;
-            await core.services.setting.updateSettings((currentSettings) => {
-                const activated = activateRemoteConfiguration(currentSettings, id);
-                if (activated) {
-                    switched = true;
-                    return activated;
-                }
-                return currentSettings;
-            }, false);
-
-            if (!switched) {
-                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
-                return false;
-            }
-
-            await core.services.control.applySettings();
-        }
-
-        writeStderrLine(standardIo, `[Command] mark-resolved${id ? ` ${id}` : ""}`);
-        await core.services.replication.markResolved();
-        const settings = core.services.setting.currentSettings();
-        await verifyRemoteState(core, settings);
-        return true;
-    }
-
-    if (options.command === "unlock-remote") {
-        const id = options.commandArgs[0]?.trim();
-        if (id) {
-            let switched = false;
-            await core.services.setting.updateSettings((currentSettings) => {
-                const activated = activateRemoteConfiguration(currentSettings, id);
-                if (activated) {
-                    switched = true;
-                    return activated;
-                }
-                return currentSettings;
-            }, false);
-
-            if (!switched) {
-                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
-                return false;
-            }
-
-            await core.services.control.applySettings();
-        }
-
-        writeStderrLine(standardIo, `[Command] unlock-remote${id ? ` ${id}` : ""}`);
-        await core.services.replication.markUnlocked();
-        const settings = core.services.setting.currentSettings();
-        await verifyRemoteState(core, settings);
-        return true;
-    }
-
-    if (options.command === "lock-remote") {
-        const id = options.commandArgs[0]?.trim();
-        if (id) {
-            let switched = false;
-            await core.services.setting.updateSettings((currentSettings) => {
-                const activated = activateRemoteConfiguration(currentSettings, id);
-                if (activated) {
-                    switched = true;
-                    return activated;
-                }
-                return currentSettings;
-            }, false);
-
-            if (!switched) {
-                standardIo.writeStderr(`[Info] Failed to temporarily activate remote configuration: ${id}\n`);
-                return false;
-            }
-
-            await core.services.control.applySettings();
-        }
-
-        writeStderrLine(standardIo, `[Command] lock-remote${id ? ` ${id}` : ""}`);
-        await core.services.replication.markLocked();
-        const settings = core.services.setting.currentSettings();
-        await verifyRemoteState(core, settings);
-        return true;
+    if (isCentralRemoteAdministrationCommand(options.command)) {
+        return await runCentralRemoteAdministrationCommand(options, context, options.command);
     }
 
     if (options.command === "remote-status") {
@@ -863,13 +758,16 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         }
 
         writeStderrLine(standardIo, `[Command] remote-status${id ? ` ${id}` : ""}`);
-        const replicator = core.services.replicator.getActiveReplicator();
-        if (!replicator) {
-            standardIo.writeStderr("[Error] No active replicator found\n");
+        const settings = core.services.setting.currentSettings();
+        const resource = await core.services.replicator.createRemoteResource(
+            REMOTE_RESOURCE_KINDS.CONNECTION,
+            settings
+        );
+        if (!resource) {
+            standardIo.writeStderr("[Error] Remote status is unavailable for the current provider\n");
             return false;
         }
-        const settings = core.services.setting.currentSettings();
-        const status = await replicator.getRemoteStatus(settings);
+        const status = await withOwnedRemoteResource(resource, (ownedResource) => ownedResource.getStatus());
         if (status === false) {
             standardIo.writeStderr("[Error] Failed to fetch remote status\n");
             return false;

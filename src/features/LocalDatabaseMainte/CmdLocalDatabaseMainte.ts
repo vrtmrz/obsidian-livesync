@@ -17,6 +17,7 @@ import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
 import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
@@ -29,6 +30,31 @@ type NoteDocumentID = DocumentID;
 type Rev = string;
 
 type ChunkUsageMap = Map<NoteDocumentID, Map<Rev, Set<ChunkID>>>;
+
+type CouchDBCompactionReplicator = ReplicatorInstance &
+    Pick<LiveSyncCouchDBReplicator, "connectRemoteCouchDBWithSetting">;
+
+type CouchDBGarbageCollectionReplicator = ReplicatorInstance &
+    Pick<LiveSyncCouchDBReplicator, "getConnectedDeviceList" | "openOneShotReplication">;
+
+function canCompactCouchDBRemote(replicator: ReplicatorInstance): replicator is CouchDBCompactionReplicator {
+    return (
+        "connectRemoteCouchDBWithSetting" in replicator &&
+        typeof replicator.connectRemoteCouchDBWithSetting === "function"
+    );
+}
+
+function canRunCouchDBGarbageCollection(
+    replicator: ReplicatorInstance
+): replicator is CouchDBGarbageCollectionReplicator {
+    return (
+        "getConnectedDeviceList" in replicator &&
+        typeof replicator.getConnectedDeviceList === "function" &&
+        "openOneShotReplication" in replicator &&
+        typeof replicator.openOneShotReplication === "function"
+    );
+}
+
 export class LocalDatabaseMaintenance extends LiveSyncCommands {
     onunload(): void {
         // NO OP.
@@ -737,7 +763,8 @@ Success: ${successCount}, Errored: ${errored}`;
     }
 
     async compactDatabase() {
-        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
+        const replicator = this.core.replicator;
+        if (!canCompactCouchDBRemote(replicator)) return;
         const remote = await replicator.connectRemoteCouchDBWithSetting(this.settings, false, false, true);
         if (!remote) {
             this._notice("Failed to connect to remote for compaction.", "gc-compact");
@@ -840,8 +867,9 @@ Success: ${successCount}, Errored: ${errored}`;
     //     }
     // }
     async gcv3() {
+        const replicator = this.core.replicator;
+        if (this.settings.remoteType !== REMOTE_COUCHDB || !canRunCouchDBGarbageCollection(replicator)) return;
         if (!(await this.ensureAvailable("Garbage Collection"))) return;
-        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
         // Start one-shot replication to ensure all changes are synced before GC.
         const r0 = await replicator.openOneShotReplication(this.settings, false, false, "sync");
         if (!r0) {
@@ -854,7 +882,7 @@ Success: ${successCount}, Errored: ${errored}`;
         // Delete the chunk, but first verify the following:
         // Fetch the list of accepted nodes from the replicator.
         const OPTION_CANCEL = "Cancel Garbage Collection";
-        const info = await this.core.replicator.getConnectedDeviceList();
+        const info = await replicator.getConnectedDeviceList();
         if (!info) {
             this._notice("No connected device information found. Cancelling Garbage Collection.");
             return;

@@ -179,14 +179,17 @@ async function openOnboardingFromSettings(): Promise<void> {
 async function dismissVisibleNotices(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const notices = page.locator(".notice:visible");
+        let noticeIndex = 0;
         while ((await notices.count()) > 0) {
-            const noticeCount = await page.locator(".notice").count();
-            await notices.first().click({ position: { x: 8, y: 8 }, timeout: uiTimeoutMs });
-            await page.waitForFunction(
-                (previousCount) => document.querySelectorAll(".notice").length < previousCount,
-                noticeCount,
-                { timeout: uiTimeoutMs }
-            );
+            const marker = `livesync-e2e-notice-${noticeIndex++}`;
+            await notices
+                .first()
+                .evaluate((element, value) => element.setAttribute("data-livesync-e2e-notice", value), marker);
+            const markedNotice = page.locator(`[data-livesync-e2e-notice="${marker}"]`);
+            await markedNotice.click({ position: { x: 8, y: 8 }, timeout: uiTimeoutMs });
+            // Follow the notice which was clicked. Another concurrently added
+            // notice must not make a total-count wait look permanently stuck.
+            await markedNotice.waitFor({ state: "hidden", timeout: uiTimeoutMs });
         }
     });
 }

@@ -77,7 +77,9 @@ function createModule(conflictedRevisions: string[] = ["2-right"]) {
             queueCheckFor: vi.fn(async () => undefined),
             ensureAllProcessed: vi.fn(async () => true),
         },
-        replication: { replicateByEvent: vi.fn(async () => true) },
+        replication: {
+            replicateUnattendedByEvent: vi.fn(async () => ({ status: "completed" as const })),
+        },
         vault: { getActiveFilePath: vi.fn(() => path) },
         path: { getPath: vi.fn((entry: { path: FilePathWithPrefix }) => entry.path) },
     };

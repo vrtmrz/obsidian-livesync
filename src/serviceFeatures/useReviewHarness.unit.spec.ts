@@ -42,7 +42,6 @@ function createFixture(options: { enableDebugTools?: boolean; continuation?: str
         periodicReplication: true,
     };
     const services = {} as Record<string, unknown>;
-    const replicator = { env: { services } };
     const api = {
         registerWindow: vi.fn(),
         addCommand: vi.fn(),
@@ -101,7 +100,7 @@ function createFixture(options: { enableDebugTools?: boolean; continuation?: str
         },
     };
 
-    const controller = useReviewHarness(core as never, plugin as never, { replicator } as never, compatibilityReview as never);
+    const controller = useReviewHarness(core as never, plugin as never, compatibilityReview as never);
     return {
         controller,
         api,

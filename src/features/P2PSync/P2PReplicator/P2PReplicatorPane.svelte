@@ -13,7 +13,6 @@
         type PeerInfo,
         type P2PServerInfo,
         EVENT_SERVER_STATUS,
-        EVENT_REQUEST_STATUS,
         EVENT_P2P_REPLICATOR_STATUS,
     } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import type { P2PReplicatorStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
@@ -29,7 +28,6 @@
     let services = $derived(host.services);
     let events = $derived(services.context.events);
     const currentSettings = () => services.setting.currentSettings() as P2PSyncSetting;
-    const currentReplicator = () => host.p2p.replicator;
     const initialSettings = { ...currentSettings() } as P2PSyncSetting;
 
     let settings = $state<P2PSyncSetting>(initialSettings);
@@ -146,7 +144,7 @@
             replicatorInfo = status;
         });
         applyLoadSettings(currentSettings(), true);
-        events.emitEvent(EVENT_REQUEST_STATUS);
+        host.p2p.diagnostics.requestStatus();
         return () => {
             r();
             rx();
@@ -223,16 +221,16 @@
     }
 
     async function openServer() {
-        await currentReplicator().open();
+        await host.p2p.transportLifecycle.connect();
     }
     async function closeServer() {
-        await currentReplicator().close();
+        await host.p2p.transportLifecycle.disconnect();
     }
     function startBroadcasting() {
-        currentReplicator().enableBroadcastChanges();
+        host.p2p.changeRelay.enableBroadcastChanges();
     }
     function stopBroadcasting() {
-        currentReplicator().disableBroadcastChanges();
+        host.p2p.changeRelay.disableBroadcastChanges();
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;

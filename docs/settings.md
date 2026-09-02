@@ -443,6 +443,14 @@ Setting key: P2P_relays
 
 The Nostr-compatible WebSocket relay URL or URLs used for peer discovery and WebRTC connection negotiation. Multiple URLs can be separated by commas. A signalling relay does not store or transfer Vault contents. See [How peer-to-peer synchronisation works](p2p.md).
 
+The P2P Setup connection test does not interrupt an active P2P room. When the
+active relay set already covers the requested URLs, the test observes that
+active signalling transport. If the test would add a relay while P2P is
+active, it asks you to use the active relay settings or disconnect P2P first.
+When P2P is idle, the test opens and disposes a short-lived signalling trial.
+This check does not prove peer discovery, room credentials against another
+device, or a TURN or WebRTC data path.
+
 #### Group ID
 
 Setting key: P2P_roomID
@@ -1105,7 +1113,11 @@ Purge all download/upload cache.
 
 #### Fresh Start Wipe
 
-Delete all data on the remote server.
+Delete all data on the remote server in batches; this operation is not
+transactional. Stop all synchronising devices before starting. If the
+operation is interrupted or reports failure, keep them stopped, rerun Fresh
+Start Wipe, and then use **Overwrite Server Data with This Device's Files**
+from an authoritative Vault.
 
 ### 6. Garbage Collection V3 (CouchDB only)
 

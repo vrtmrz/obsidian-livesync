@@ -1,17 +1,16 @@
 <script lang="ts">
     import { AcceptedStatus, type PeerStatus } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PReplicatorPaneCommon";
-    import type { P2PReplicatorHandle } from "./P2PReplicatorPaneHost";
+    import type { P2PReplicatorPaneP2P } from "./P2PReplicatorPaneHost";
     import { $msg as translateMessage } from "@/common/translation";
 
     interface Props {
         peerStatus: PeerStatus;
-        p2p: P2PReplicatorHandle;
+        p2p: P2PReplicatorPaneP2P;
         showPeerMenu?: (peer: PeerStatus, event: MouseEvent) => void;
     }
 
     let { peerStatus, p2p, showPeerMenu }: Props = $props();
     let peer = $derived(peerStatus);
-    const currentReplicator = () => p2p.replicator;
 
     function select<T extends PropertyKey, U, V = undefined>(
         d: T,
@@ -72,7 +71,7 @@
     let isNew = $derived.by(() => peer.accepted === AcceptedStatus.UNKNOWN);
 
     function makeDecision(isAccepted: boolean, isTemporary: boolean) {
-        currentReplicator().makeDecision({
+        void p2p.peerAdmission.makeDecision({
             peerId: peer.peerId,
             name: peer.name,
             decision: isAccepted,
@@ -80,7 +79,7 @@
         });
     }
     function revokeDecision() {
-        currentReplicator().revokeDecision({
+        void p2p.peerAdmission.revokeDecision({
             peerId: peer.peerId,
             name: peer.name,
         });
@@ -99,14 +98,14 @@
         return attrs;
     });
     function startWatching() {
-        currentReplicator().watchPeer(peer.peerId);
+        p2p.changeRelay.watchPeer(peer.peerId);
     }
     function stopWatching() {
-        currentReplicator().unwatchPeer(peer.peerId);
+        p2p.changeRelay.unwatchPeer(peer.peerId);
     }
 
     function sync() {
-        void currentReplicator().sync(peer.peerId, false);
+        void p2p.targetedTransfer.synchroniseWithPeer(peer.peerId, false);
     }
 
     function moreMenu(evt: MouseEvent) {

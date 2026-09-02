@@ -1,5 +1,6 @@
 const TASKS = [
     "test:settings-writeback",
+    "test:remote-administration-exit-codes",
     "test:setup-put-cat",
     "test:mirror",
     "test:daemon",

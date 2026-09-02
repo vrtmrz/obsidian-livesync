@@ -36,10 +36,14 @@
     import { getDialogContext, type GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import ExtraItems from "@/modules/services/LiveSyncUI/components/ExtraItems.svelte";
-    import { TYPE_CANCELLED, type SetupRemoteP2PResultType } from "./setupDialogTypes";
+    import {
+        TYPE_CANCELLED,
+        type SetupRemoteP2PInitialData,
+        type SetupRemoteP2PResultType,
+    } from "./setupDialogTypes";
     import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
     import { $msg as translateMessage } from "@/common/translation";
-    import { probeP2PSetupConnection } from "./p2pSetupConnectionProbe";
+    import { coordinateP2PSetupConnectionProbe, probeP2PSetupConnection } from "./p2pSetupConnectionProbe";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });
@@ -48,18 +52,18 @@
     let error = $state("");
     let connectionPathResetNotice = $state(false);
     const hasValidTurnServer = $derived(hasValidP2PTurnServerUrl(syncSetting.P2P_turnServers ?? ""));
-    type Props = GuestDialogProps<SetupRemoteP2PResultType, P2PSyncSetting>;
+    type Props = GuestDialogProps<SetupRemoteP2PResultType, SetupRemoteP2PInitialData>;
 
     const { setResult, getInitialData }: Props = $props();
+    let connectionProbe: SetupRemoteP2PInitialData["connectionProbe"] | undefined;
     onMount(() => {
-        let initialData: P2PSyncSetting | undefined = undefined;
-        if (getInitialData) {
-            initialData = getInitialData();
-            if (initialData) {
-                copyTo(initialData, syncSetting);
-            }
+        const initialData = getInitialData?.();
+        connectionProbe = initialData?.connectionProbe;
+        const initialSettings = initialData?.settings;
+        if (initialSettings) {
+            copyTo(initialSettings, syncSetting);
         }
-        const initialPeerName = (initialData?.P2P_DevicePeerName ?? "").trim();
+        const initialPeerName = (initialSettings?.P2P_DevicePeerName ?? "").trim();
         if (initialPeerName !== "") {
             return;
         }
@@ -97,58 +101,74 @@
         try {
             processing = true;
             const trialRemoteSetting = generateSetting();
-            const map = new Map<string, string>();
-            const store = {
-                get: (key: string) => {
-                    return Promise.resolve(map.get(key) || null);
-                },
-                set: (key: string, value: any) => {
-                    map.set(key, value);
-                    return Promise.resolve();
-                },
-                delete: (key: string) => {
-                    map.delete(key);
-                    return Promise.resolve();
-                },
-                keys: () => {
-                    return Promise.resolve(Array.from(map.keys()));
-                },
-                get db() {
-                    return Promise.resolve(this);
-                },
-            } as SimpleStore<any>;
-
-            const dummyPouch = new PouchDB<EntryDoc>("dummy");
-            const env: ReplicatorHostEnv = {
-                events: context.context.events,
-                translate: context.context.translate,
-                settings: trialRemoteSetting,
-                processReplicatedDocs: async (_docs: any[]) => {
-                    return;
-                },
-                confirm: context.services.confirm,
-                db: dummyPouch,
-                simpleStore: store,
-                deviceName: syncSetting.P2P_DevicePeerName || "unnamed-device",
-                platform: "setup-wizard",
-            };
-            const replicator = new TrysteroReplicator(env);
-            try {
-                const result = await probeP2PSetupConnection(replicator);
-                if (!result.ok) {
-                    return translateMessage("Failed to connect to the signalling relay: ${reason}", {
-                        reason: `${result.reason}`,
-                    });
-                }
-                return "";
-            } finally {
-                try {
-                    await replicator.close();
-                    await dummyPouch.destroy();
-                } catch (e) {
-                    Logger(e, LOG_LEVEL_VERBOSE, "setup-p2p-cleanup");
-                }
+            const admission = connectionProbe;
+            if (!admission) {
+                throw new Error("The P2P Setup connection probe is not available.");
             }
+            const result = await coordinateP2PSetupConnectionProbe(admission, trialRemoteSetting, async () => {
+                const map = new Map<string, unknown>();
+                const store = {
+                    get: (key: string) => {
+                        return Promise.resolve(map.get(key) || null);
+                    },
+                    set: (key: string, value: unknown) => {
+                        map.set(key, value);
+                        return Promise.resolve();
+                    },
+                    delete: (key: string) => {
+                        map.delete(key);
+                        return Promise.resolve();
+                    },
+                    keys: () => {
+                        return Promise.resolve(Array.from(map.keys()));
+                    },
+                    get db() {
+                        return Promise.resolve(this);
+                    },
+                } as SimpleStore<unknown>;
+
+                const dummyPouch = new PouchDB<EntryDoc>("dummy");
+                let replicator: TrysteroReplicator | undefined;
+                try {
+                    const env: ReplicatorHostEnv = {
+                        events: context.context.events,
+                        translate: context.context.translate,
+                        settings: trialRemoteSetting,
+                        processReplicatedDocs: async (_docs: PouchDB.Core.ExistingDocument<EntryDoc>[]) => {
+                            return;
+                        },
+                        confirm: context.services.confirm,
+                        db: dummyPouch,
+                        simpleStore: store,
+                        deviceName: syncSetting.P2P_DevicePeerName || "unnamed-device",
+                        platform: "setup-wizard",
+                    };
+                    replicator = new TrysteroReplicator(env);
+                    return await probeP2PSetupConnection(replicator);
+                } finally {
+                    try {
+                        await replicator?.dispose();
+                    } catch (e) {
+                        Logger(e, LOG_LEVEL_VERBOSE, "setup-p2p-replicator-cleanup");
+                    }
+                    try {
+                        await dummyPouch.destroy();
+                    } catch (e) {
+                        Logger(e, LOG_LEVEL_VERBOSE, "setup-p2p-database-cleanup");
+                    }
+                }
+            });
+            if (!result.ok) {
+                if ("kind" in result && result.kind === "blocked") {
+                    return translateMessage(
+                        "The connection test cannot add a signalling relay while P2P is active. Use the active relay settings, or disconnect P2P before testing."
+                    );
+                }
+                return translateMessage("Failed to connect to the signalling relay: ${reason}", {
+                    reason: `${result.reason}`,
+                });
+            }
+            return "";
         } finally {
             processing = false;
         }

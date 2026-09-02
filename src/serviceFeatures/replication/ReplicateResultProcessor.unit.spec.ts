@@ -1,7 +1,7 @@
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { describe, expect, it, vi } from "vitest";
-import type { EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VER, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 
 function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
@@ -20,6 +20,7 @@ function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
 }
 
 type SetupOptions = {
+    applicationReady?: boolean;
     processSynchroniseResult?: (entry: unknown) => Promise<void>;
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
 };
@@ -28,9 +29,11 @@ function setup(options: SetupOptions = {}) {
     const processSynchroniseResult = vi.fn(options.processSynchroniseResult ?? (async () => undefined));
     const setSnapshot = vi.fn(options.setSnapshot ?? (async () => undefined));
     const runBoundedLocalApplicationActivity = vi.fn(async (task: () => Promise<void>) => await task());
+    const onCloseActiveReplication = vi.fn(async () => true);
+    const isReady = vi.fn(() => options.applicationReady ?? true);
     const core = {
         services: {
-            appLifecycle: { isReady: true, isSuspended: () => false },
+            appLifecycle: { isReady, isSuspended: () => false },
             path: { getPath: (entry: { path: string }) => entry.path },
             replication: {
                 databaseQueueCount: reactiveSource(0),
@@ -40,7 +43,7 @@ function setup(options: SetupOptions = {}) {
                 processOptionalSynchroniseResult: vi.fn(async () => false),
                 processSynchroniseResult,
             },
-            replicator: { runBoundedLocalApplicationActivity },
+            replicator: { onCloseActiveReplication, runBoundedLocalApplicationActivity },
             vault: {
                 isTargetFile: vi.fn(async () => true),
                 isFileSizeTooLarge: vi.fn(() => false),
@@ -52,16 +55,48 @@ function setup(options: SetupOptions = {}) {
             getRaw: vi.fn(async (id: string) => ({ _id: id, _rev: "1-test" })),
             getDBEntryFromMeta: vi.fn(async (entry: object) => ({ ...entry, data: "x" })),
         },
-        replicator: { closeReplication: vi.fn() },
     };
     const processor = new ReplicateResultProcessor({
-        core,
-        settings: { maxMTimeForReflectEvents: 0, suspendParseReplicationResult: false },
+        currentSettings: () => ({ maxMTimeForReflectEvents: 0, suspendParseReplicationResult: false }),
+        getKeyValueDB: () => core.kvDB,
+        getLocalDatabase: () => core.localDatabase,
+        requestActiveReplicatorRetirement: () => {
+            void onCloseActiveReplication();
+        },
+        runLocalApplicationActivity: runBoundedLocalApplicationActivity,
+        services: core.services,
     } as never);
-    return { processor, processSynchroniseResult, runBoundedLocalApplicationActivity };
+    return {
+        isReady,
+        onCloseActiveReplication,
+        processor,
+        processSynchroniseResult,
+        runBoundedLocalApplicationActivity,
+    };
 }
 
 describe("ReplicateResultProcessor", () => {
+    it("suspends result application while the application is not ready", () => {
+        const { isReady, processor } = setup({ applicationReady: false });
+
+        expect(processor.isSuspended).toBe(true);
+        expect(isReady).toHaveBeenCalledOnce();
+    });
+
+    it("retires active ownership when a newer remote version is observed", async () => {
+        const { onCloseActiveReplication, processor } = setup();
+        const versionInfo = {
+            _id: "versioninfo",
+            _rev: "1-test",
+            type: "versioninfo",
+            version: VER + 1,
+        } as unknown as PouchDB.Core.ExistingDocument<EntryDoc>;
+
+        processor.enqueueAll([versionInfo]);
+
+        await vi.waitFor(() => expect(onCloseActiveReplication).toHaveBeenCalledOnce());
+    });
+
     it("scans normal-file metadata without loading chunk documents and requeues it", async () => {
         const documents = [
             { _id: "first", _rev: "1-a", type: "plain", path: "first.md" },
@@ -70,14 +105,16 @@ describe("ReplicateResultProcessor", () => {
         const findAllNormalDocs = vi.fn(async function* () {
             yield* documents;
         });
+        const getLocalDatabase = vi.fn(() => ({ findAllNormalDocs }));
         const processor = new ReplicateResultProcessor({
-            core: { localDatabase: { findAllNormalDocs } },
+            getLocalDatabase,
         } as never);
         const enqueueAll = vi.spyOn(processor, "enqueueAll").mockImplementation(() => undefined);
 
         await expect(processor.reprocessStoredDocuments()).resolves.toBe(2);
 
         expect(findAllNormalDocs).toHaveBeenCalledOnce();
+        expect(getLocalDatabase).toHaveBeenCalledOnce();
         expect(enqueueAll).toHaveBeenCalledOnce();
         expect(enqueueAll).toHaveBeenCalledWith(documents);
     });

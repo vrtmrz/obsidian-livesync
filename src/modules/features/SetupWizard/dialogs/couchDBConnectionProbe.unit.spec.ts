@@ -1,47 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.type";
 import { isValidCouchDBServerURL, probeCouchDBConnection } from "./couchDBConnectionProbe";
-
-const settings = {
-    couchDB_URI: "https://couch.example",
-    couchDB_DBNAME: "notes",
-} as ObsidianLiveSyncSettings;
 
 describe("CouchDB setup connection policy", () => {
     it.each([
         [false, "connect to an existing database"],
         [true, "create or connect to a database"],
-    ] as const)(
-        "%s can %s without changing the Commonlib connection contract",
-        async (createIfMissing, _description) => {
-            const close = vi.fn(async () => undefined);
-            const connectRemoteCouchDBWithSetting = vi.fn(async () => ({
-                db: { close },
-                info: { db_name: "notes" },
-            }));
-            const replicator = {
-                isMobile: vi.fn(() => false),
-                connectRemoteCouchDBWithSetting,
-                tryConnectRemote: vi.fn(),
-            };
+    ] as const)("%s can %s through an owned connection probe", async (createIfMissing, _description) => {
+        const check = vi.fn(async () => ({ ok: true as const }));
+        const dispose = vi.fn(async () => undefined);
+        const probe = { check, getStatus: vi.fn(), dispose };
 
-            await expect(probeCouchDBConnection(replicator, settings, createIfMissing)).resolves.toEqual({ ok: true });
-            expect(connectRemoteCouchDBWithSetting).toHaveBeenCalledWith(settings, false, createIfMissing, false);
-            expect(replicator.tryConnectRemote).not.toHaveBeenCalled();
-            expect(close).toHaveBeenCalledOnce();
-        }
-    );
+        await expect(probeCouchDBConnection(probe, createIfMissing)).resolves.toEqual({ ok: true });
 
-    it("returns the connection error without saving or creating through another path", async () => {
-        const replicator = {
-            isMobile: vi.fn(() => true),
-            connectRemoteCouchDBWithSetting: vi.fn(() => "database does not exist"),
+        expect(check).toHaveBeenCalledWith({ createIfMissing, showResult: false });
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+
+    it("returns a connection error and still disposes the probe", async () => {
+        const dispose = vi.fn(async () => undefined);
+        const probe = {
+            check: vi.fn(async () => ({ ok: false as const, reason: "database does not exist" })),
+            getStatus: vi.fn(),
+            dispose,
         };
 
-        await expect(probeCouchDBConnection(replicator, settings, false)).resolves.toEqual({
+        await expect(probeCouchDBConnection(probe, false)).resolves.toEqual({
             ok: false,
             reason: "database does not exist",
         });
+        expect(dispose).toHaveBeenCalledOnce();
     });
 
     it.each([

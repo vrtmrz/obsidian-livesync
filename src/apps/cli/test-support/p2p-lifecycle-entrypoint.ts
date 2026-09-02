@@ -5,7 +5,7 @@ import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node";
 import { writeStderrLine } from "@/apps/cli/cliOutput";
 import { main, type CliCommandRunner } from "@/apps/cli/main";
 import { parseTimeoutSeconds } from "@/apps/cli/commands/p2p";
-import { runP2PReplicatorReplacementProbe } from "./p2p-replicator-replacement";
+import { runP2PReplicatorReplacementProbe } from "./p2p-replicator-replacement.test";
 
 if (
     typeof (compatGlobal as unknown as Record<string, unknown>).RTCPeerConnection === "undefined" &&

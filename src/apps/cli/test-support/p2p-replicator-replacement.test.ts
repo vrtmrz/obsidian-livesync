@@ -1,6 +1,6 @@
 import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { LiveSyncTrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/LiveSyncTrysteroReplicator";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import type { CLICommandContext } from "@/apps/cli/commands/types";
 import { openP2PHost } from "@/apps/cli/commands/p2p";
 
@@ -15,32 +15,35 @@ function describeError(value: unknown): string {
     return value instanceof Error ? (value.stack ?? value.message) : String(value);
 }
 
-async function waitForServing(replicator: LiveSyncTrysteroReplicator, timeoutMs: number): Promise<void> {
+type ProbeP2PService = Pick<P2PServiceViews, "transportLifecycle" | "peerDirectory" | "targetedTransfer">;
+
+async function waitForServing(service: ProbeP2PService, timeoutMs: number): Promise<void> {
     const started = Date.now();
     while (Date.now() - started <= timeoutMs) {
-        if (replicator.server?.isServing) return;
+        if (service.transportLifecycle.isConnected) return;
         await delay(200);
     }
-    throw new Error("The replacement P2P replicator did not start serving within the timeout");
+    throw new Error("The stable P2P service did not start serving within the timeout");
 }
 
 async function waitForPeer(
-    replicator: LiveSyncTrysteroReplicator,
+    service: ProbeP2PService,
     targetPeer: string,
     timeoutMs: number
 ): Promise<{ peerId: string; name: string }> {
     const started = Date.now();
     while (Date.now() - started <= timeoutMs) {
-        const peer = replicator.knownAdvertisements.find(
-            (candidate) => candidate.name === targetPeer || candidate.peerId === targetPeer
-        );
+        const peer = service.peerDirectory
+            .getPeers()
+            .find((candidate) => candidate.name === targetPeer || candidate.peerId === targetPeer);
         if (peer) return peer;
         await delay(200);
     }
-    const knownPeers = replicator.knownAdvertisements.map((peer) => `${peer.name} (${peer.peerId})`).join(", ");
-    throw new Error(
-        `Peer '${targetPeer}' was not discovered within the timeout. Known peers: ${knownPeers || "none"}`
-    );
+    const knownPeers = service.peerDirectory
+        .getPeers()
+        .map((peer) => `${peer.name} (${peer.peerId})`)
+        .join(", ");
+    throw new Error(`Peer '${targetPeer}' was not discovered within the timeout. Known peers: ${knownPeers || "none"}`);
 }
 
 function assertPullSucceeded(result: unknown): void {
@@ -50,15 +53,17 @@ function assertPullSucceeded(result: unknown): void {
 }
 
 async function communicateWithPeer(
-    replicator: LiveSyncTrysteroReplicator,
+    service: ProbeP2PService,
     targetPeer: string,
     timeoutMs: number
 ): Promise<{ peerId: string; name: string }> {
-    await replicator.open();
-    await waitForServing(replicator, timeoutMs);
-    const peer = await waitForPeer(replicator, targetPeer, timeoutMs);
-    assertPullSucceeded(await replicator.replicateFrom(peer.peerId, false));
-    const pushResult = await replicator.requestSynchroniseToPeer(peer.peerId);
+    if (!service.transportLifecycle.isConnected) {
+        await service.transportLifecycle.connect();
+    }
+    await waitForServing(service, timeoutMs);
+    const peer = await waitForPeer(service, targetPeer, timeoutMs);
+    assertPullSucceeded(await service.targetedTransfer.pullFromPeer(peer.peerId, { showNotice: false }));
+    const pushResult = await service.targetedTransfer.requestPushToPeer(peer.peerId);
     if (!pushResult || pushResult.ok !== true) {
         throw new Error(`P2P push failed: ${describeError(pushResult?.error)}`);
     }
@@ -78,35 +83,39 @@ export async function runP2PReplicatorReplacementProbe(
         throw new Error("The CLI did not expose its P2P service-feature result to the integration probe");
     }
 
-    const firstReplicator = await openP2PHost(core);
-    if (p2pReplicator.replicator !== firstReplicator) {
-        throw new Error("The P2P service feature did not expose the newly created replicator");
+    const initialActiveReplicator = core.services.replicator.getActiveReplicator();
+    if (!initialActiveReplicator) {
+        throw new Error("The CLI did not activate the initial P2P Replicator adapter");
     }
+    const compatibilityFacade = p2pReplicator.replicator;
+    const p2pService = await openP2PHost(core, p2pReplicator);
 
-    const firstPeer = await communicateWithPeer(firstReplicator, targetPeer, timeoutMs);
+    const firstPeer = await communicateWithPeer(p2pService, targetPeer, timeoutMs);
     const initialised = await core.services.databaseEvents.initialiseDatabase(false, true, false);
     if (!initialised) {
         throw new Error("Database reinitialisation failed during the P2P replacement probe");
     }
 
-    const replacementReplicator = p2pReplicator.replicator;
-    if (core.services.replicator.getActiveReplicator() !== replacementReplicator) {
-        throw new Error("ReplicatorService did not activate the P2P service feature's replacement replicator");
+    const replacementActiveReplicator = core.services.replicator.getActiveReplicator();
+    if (!replacementActiveReplicator) {
+        throw new Error("ReplicatorService did not activate a replacement P2P Replicator adapter");
     }
-    if (replacementReplicator === firstReplicator) {
-        throw new Error("Database reinitialisation retained the previous P2P replicator instance");
+    if (replacementActiveReplicator === initialActiveReplicator) {
+        throw new Error("Database reinitialisation retained the previous active P2P Replicator adapter");
     }
-    if (firstReplicator.server !== undefined) {
-        throw new Error("The previous P2P replicator remained open after replacement");
+    if (p2pReplicator.replicator !== compatibilityFacade) {
+        throw new Error("Database reinitialisation replaced the stable P2P service compatibility facade");
+    }
+    if (p2pService.transportLifecycle.isConnected) {
+        throw new Error("Database reinitialisation left the database-bound P2P room open");
     }
 
     const settings = core.services.setting.currentSettings();
     settings.P2P_AutoStart = true;
     await core.services.control.applySettings();
-    const resumedReplicator = p2pReplicator.replicator;
-    await waitForServing(resumedReplicator, timeoutMs);
-    if (firstReplicator.server !== undefined) {
-        throw new Error("A setting event reopened the previous P2P replicator");
+    await waitForServing(p2pService, timeoutMs);
+    if (p2pReplicator.replicator !== compatibilityFacade) {
+        throw new Error("A setting event replaced the stable P2P service compatibility facade");
     }
 
     const encoded = new TextEncoder().encode(noteContent);
@@ -118,7 +127,7 @@ export async function runP2PReplicatorReplacementProbe(
     });
     await core.serviceModules.fileHandler.storeFileToDB(notePath as FilePathWithPrefix, true);
 
-    const replacementPeer = await communicateWithPeer(resumedReplicator, targetPeer, timeoutMs);
+    const replacementPeer = await communicateWithPeer(p2pService, targetPeer, timeoutMs);
     if (replacementPeer.name !== firstPeer.name) {
         throw new Error(
             `The replacement replicator reached '${replacementPeer.name}' instead of the original peer '${firstPeer.name}'`
@@ -126,7 +135,7 @@ export async function runP2PReplicatorReplacementProbe(
     }
 
     core.services.context.standardIo.writeStdout(
-        `[Probe] P2P replicator replaced, old transport stayed closed, and ${notePath} was sent through the replacement.\n`
+        `[Probe] The active P2P adapter was replaced, the stable service reopened, and ${notePath} was sent through it.\n`
     );
     return true;
 }
