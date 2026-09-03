@@ -47,8 +47,6 @@ Activate: 활성화
 Active Remote Configuration: 활성 원격 구성
 Add default patterns: 기본 패턴 추가
 Add new connection: 연결 추가
-AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.: 애드온 모듈(ConfigSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.
-AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.: 애드온 모듈(HiddenFileSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.
 Advanced: 고급
 Advanced Settings: 고급 설정
 After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.: 재시작하면 이 기기의 데이터가 '원본'으로서 서버에 업로드됩니다. 현재 서버에 있는 의도치 않은 데이터는 모두 완전히 덮어써진다는 점에 유의해 주세요.

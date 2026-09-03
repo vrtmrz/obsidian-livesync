@@ -1,17 +1,24 @@
 import { mount, unmount } from "svelte";
-import { App, Modal } from "@/deps.ts";
-import ObsidianLiveSyncPlugin from "@/main.ts";
+import { type App, Modal } from "@/deps.ts";
+import type { HiddenFileSyncInitialisationView } from "@/features/HiddenFileSync/hiddenFileSyncViews.ts";
+import type { CustomisationSyncDialogView } from "./customisationSyncView.ts";
 import PluginPane from "./PluginPane.svelte";
 export class PluginDialogModal extends Modal {
-    plugin: ObsidianLiveSyncPlugin;
+    customisationSync: CustomisationSyncDialogView;
+    hiddenFileSync: HiddenFileSyncInitialisationView;
     component: ReturnType<typeof mount> | undefined;
     isOpened() {
         return this.component != undefined;
     }
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
+    constructor(
+        app: App,
+        customisationSync: CustomisationSyncDialogView,
+        hiddenFileSync: HiddenFileSyncInitialisationView
+    ) {
         super(app);
-        this.plugin = plugin;
+        this.customisationSync = customisationSync;
+        this.hiddenFileSync = hiddenFileSync;
     }
 
     override onOpen() {
@@ -25,7 +32,10 @@ export class PluginDialogModal extends Modal {
         if (!this.component) {
             this.component = mount(PluginPane, {
                 target: contentEl,
-                props: { plugin: this.plugin, core: this.plugin.core },
+                props: {
+                    customisationSync: this.customisationSync,
+                    hiddenFileSync: this.hiddenFileSync,
+                },
             });
         }
     }

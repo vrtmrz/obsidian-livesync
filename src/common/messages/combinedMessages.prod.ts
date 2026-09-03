@@ -363,18 +363,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "新增连接",
         "zh-tw": "新增連線",
     },
-    "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
-        def: "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.",
-        es: "El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
-        ko: "애드온 모듈(ConfigSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.",
-        "zh-tw": "附加模組（ConfigSync）尚未載入。這是非常異常的情況，請回報此問題。",
-    },
-    "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
-        def: "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.",
-        es: "El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
-        ko: "애드온 모듈(HiddenFileSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.",
-        "zh-tw": "附加模組（HiddenFileSync）尚未載入。這是非常異常的情況，請回報此問題。",
-    },
     Advanced: {
         def: "Advanced",
         es: "Avanzado",

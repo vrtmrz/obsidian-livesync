@@ -54,6 +54,8 @@ const pluginDir = ".obsidian/plugins/livesync-e2e-sample";
 const pluginManifestPath = `${pluginDir}/manifest.json`;
 const pluginMainPath = `${pluginDir}/main.js`;
 const pluginStylesPath = `${pluginDir}/styles.css`;
+const pluginDataPath = `${pluginDir}/data.json`;
+const pluginSupplementaryPath = `${pluginDir}/presets.json`;
 const pluginManifestContent =
     JSON.stringify(
         {
@@ -77,8 +79,28 @@ const pluginMainContent = [
     "",
 ].join("\n");
 const pluginStylesContent = ".livesync-e2e-sample { color: #73548f; }\n";
+const pluginDataContent = JSON.stringify({ enabled: true, source: "customisation-sync-e2e" }, null, 4) + "\n";
+const pluginSupplementaryContent = JSON.stringify({ preset: "e2e", order: 1 }, null, 4) + "\n";
+const themeDir = ".obsidian/themes/livesync-e2e-theme";
+const themeManifestPath = `${themeDir}/manifest.json`;
+const themeStylesPath = `${themeDir}/theme.css`;
+const themeManifestContent =
+    JSON.stringify(
+        {
+            name: "LiveSync E2E Theme",
+            version: "0.0.1",
+            minAppVersion: "1.0.0",
+            author: "Self-hosted LiveSync",
+        },
+        null,
+        4
+    ) + "\n";
+const themeStylesContent = "body { --livesync-e2e-theme-colour: #3d6f54; }\n";
 const sourceDeviceName = "customisation-sync-a";
 const targetDeviceName = "customisation-sync-b";
+
+type CustomisationCategory = "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA";
+type GroupedCustomisationCategory = Extract<CustomisationCategory, "PLUGIN_MAIN" | "THEME">;
 
 type RunnerContext = {
     binary: string;
@@ -162,6 +184,7 @@ async function startConfiguredSession(
         deviceAndVaultName: deviceName,
         usePluginSync: true,
         usePluginSyncV2: true,
+        usePluginEtc: true,
         autoSweepPlugins: false,
         autoSweepPluginsPeriodic: false,
         syncInternalFiles: false,
@@ -202,15 +225,15 @@ async function scanCustomisations(cliBinary: string, env: NodeJS.ProcessEnv): Pr
         [
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('ConfigSync');",
-            "const before=await addOn.scanInternalFiles();",
-            "await addOn.scanAllConfigFiles(false);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.customisationSync;",
+            "const before=await syncContext.scanInternalFiles();",
+            "await syncContext.scanAllConfigFiles(false);",
             "return JSON.stringify({",
             "ok:true,",
             "enabled:core.settings.usePluginSync,",
             "useV2:core.settings.usePluginSyncV2,",
             "device:core.services.setting.getDeviceAndVaultName(),",
-            "configDir:addOn.configDir,",
+            "configDir:syncContext.configDir,",
             "files:before,",
             "});",
             "})()",
@@ -226,11 +249,11 @@ async function storeCustomisationFile(cliBinary: string, env: NodeJS.ProcessEnv,
             "(async()=>{",
             `const path=${JSON.stringify(path)};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('ConfigSync');",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.customisationSync;",
             "const term=core.services.setting.getDeviceAndVaultName();",
             "const stat=await core.storageAccess.statHidden(path);",
-            "const category=addOn.getFileCategory(path);",
-            "const result=await addOn.storeCustomizationFiles(path,term);",
+            "const category=syncContext.getFileCategory(path);",
+            "const result=await syncContext.storeCustomizationFiles(path,term);",
             "const rows=(await core.localDatabase.allDocsRaw({include_docs:true})).rows;",
             "const entries=rows.map((row)=>row.doc).filter((doc)=>doc?.path?.startsWith('ix:')).map((doc)=>doc.path);",
             "const filename=path.split('/').pop();",
@@ -248,7 +271,7 @@ async function storeCustomisationFile(cliBinary: string, env: NodeJS.ProcessEnv,
 async function deleteCustomisationSyncEntry(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: CustomisationCategory,
     name: string,
     term?: string
 ): Promise<void> {
@@ -260,11 +283,11 @@ async function deleteCustomisationSyncEntry(
             `const name=${JSON.stringify(name)};`,
             `const term=${JSON.stringify(term ?? "")};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('ConfigSync');",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.customisationSync;",
             "const rows=(await core.localDatabase.allDocsRaw({include_docs:true})).rows;",
             "const entry=rows.map((row)=>row.doc).find((doc)=>doc?.path?.includes(`/${category}/`)&&doc.path?.includes(`/${name}%`)&&(!term||doc.path?.startsWith(`ix:${term}/`))&&!doc.deleted&&!doc._deleted)||false;",
             "if(!entry) throw new Error(`Could not find customisation sync entry to delete: ${category}/${name}`);",
-            "if(!(await addOn.deleteConfigOnDatabase(entry.path))){",
+            "if(!(await syncContext.deleteConfigOnDatabase(entry.path))){",
             "  throw new Error(`Could not delete Customisation Sync entry: ${entry.path}`);",
             "}",
             "return JSON.stringify({ok:true,path:entry.path});",
@@ -277,7 +300,7 @@ async function deleteCustomisationSyncEntry(
 async function waitForCustomisationEntry(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: CustomisationCategory,
     name: string,
     term?: string,
     timeoutMs = Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000)
@@ -289,7 +312,7 @@ async function waitForCustomisationEntry(
 async function waitForCustomisationEntries(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: CustomisationCategory,
     name: string,
     count: number,
     term?: string,
@@ -329,7 +352,7 @@ async function waitForCustomisationEntries(
 async function waitForCustomisationEntryAbsent(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: CustomisationCategory,
     name: string,
     term?: string,
     timeoutMs = Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000)
@@ -362,7 +385,7 @@ async function waitForCustomisationEntryAbsent(
 async function applyRemoteCustomisationEntry(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: CustomisationCategory,
     name: string,
     term?: string
 ): Promise<void> {
@@ -374,16 +397,16 @@ async function applyRemoteCustomisationEntry(
             `const name=${JSON.stringify(name)};`,
             `const term=${JSON.stringify(term ?? "")};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('ConfigSync');",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.customisationSync;",
             "const rows=(await core.localDatabase.allDocsRaw({include_docs:true})).rows;",
             "const entry=rows.map((row)=>row.doc).find((doc)=>doc?.path?.includes(`/${category}/`)&&doc.path?.includes(`/${name}%`)&&(!term||doc.path?.startsWith(`ix:${term}/`)))||false;",
             "if(!entry) throw new Error(`Could not find remote customisation entry: ${category}/${name}`);",
-            "const display=addOn.createPluginDataFromV2(entry.path);",
+            "const display=syncContext.createPluginDataFromV2(entry.path);",
             "if(!display) throw new Error(`Could not create Customisation Sync display entry: ${entry.path}`);",
-            "const file=await addOn.createPluginDataExFileV2(entry.path);",
+            "const file=await syncContext.createPluginDataExFileV2(entry.path);",
             "if(!file) throw new Error(`Could not load Customisation Sync file entry: ${entry.path}`);",
             "await display.setFile(file);",
-            "if(!(await addOn.applyDataV2(display))){",
+            "if(!(await syncContext.applyDataV2(display))){",
             "  throw new Error(`Could not apply Customisation Sync entry: ${entry.path}`);",
             "}",
             "return JSON.stringify({ok:true,path:entry.path});",
@@ -396,7 +419,7 @@ async function applyRemoteCustomisationEntry(
 async function applyRemoteCustomisationGroup(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "PLUGIN_MAIN",
+    category: GroupedCustomisationCategory,
     name: string,
     term?: string
 ): Promise<void> {
@@ -408,18 +431,18 @@ async function applyRemoteCustomisationGroup(
             `const name=${JSON.stringify(name)};`,
             `const term=${JSON.stringify(term ?? "")};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('ConfigSync');",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.customisationSync;",
             "const rows=(await core.localDatabase.allDocsRaw({include_docs:true})).rows;",
             "const entries=rows.map((row)=>row.doc).filter((doc)=>doc?.path?.includes(`/${category}/`)&&doc.path?.includes(`/${name}%`)&&(!term||doc.path?.startsWith(`ix:${term}/`)));",
             "if(entries.length===0) throw new Error(`Could not find remote customisation entries: ${category}/${name}`);",
-            "const display=addOn.createPluginDataFromV2(entries[0].path);",
+            "const display=syncContext.createPluginDataFromV2(entries[0].path);",
             "if(!display) throw new Error(`Could not create Customisation Sync display entry: ${entries[0].path}`);",
             "for(const entry of entries){",
-            "  const file=await addOn.createPluginDataExFileV2(entry.path);",
+            "  const file=await syncContext.createPluginDataExFileV2(entry.path);",
             "  if(!file) throw new Error(`Could not load Customisation Sync file entry: ${entry.path}`);",
             "  await display.setFile(file);",
             "}",
-            "if(!(await addOn.applyDataV2(display))){",
+            "if(!(await syncContext.applyDataV2(display))){",
             "  throw new Error(`Could not apply Customisation Sync group: ${category}/${name}`);",
             "}",
             "return JSON.stringify({ok:true,count:entries.length});",
@@ -445,6 +468,7 @@ async function main(): Promise<void> {
     const snippetName = snippetPathParts[snippetPathParts.length - 1] ?? snippetPath;
     const configName = configPath.split("/").pop() ?? configPath;
     const pluginName = pluginDir.split("/").pop() ?? pluginDir;
+    const themeName = themeDir.split("/").pop() ?? themeDir;
 
     try {
         await assertCouchDbReachable(couchDb);
@@ -460,6 +484,10 @@ async function main(): Promise<void> {
         await writeVaultFile(vaultA.path, pluginManifestPath, pluginManifestContent);
         await writeVaultFile(vaultA.path, pluginMainPath, pluginMainContent);
         await writeVaultFile(vaultA.path, pluginStylesPath, pluginStylesContent);
+        await writeVaultFile(vaultA.path, pluginDataPath, pluginDataContent);
+        await writeVaultFile(vaultA.path, pluginSupplementaryPath, pluginSupplementaryContent);
+        await writeVaultFile(vaultA.path, themeManifestPath, themeManifestContent);
+        await writeVaultFile(vaultA.path, themeStylesPath, themeStylesContent);
 
         let session = await startConfiguredSession(context, vaultA, sourceDeviceName);
         const scanResult = await scanCustomisations(context.cliBinary, session.cliEnv);
@@ -469,7 +497,11 @@ async function main(): Promise<void> {
         await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginManifestPath);
         await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginMainPath);
         await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginStylesPath);
-        const entry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName);
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginDataPath);
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginSupplementaryPath);
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, themeManifestPath);
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, themeStylesPath);
+        const snippetEntry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName);
         const configEntry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "CONFIG", configName);
         const pluginEntries = await waitForCustomisationEntries(
             context.cliBinary,
@@ -478,10 +510,36 @@ async function main(): Promise<void> {
             pluginName,
             3
         );
+        const pluginDataEntry = await waitForCustomisationEntry(
+            context.cliBinary,
+            session.cliEnv,
+            "PLUGIN_DATA",
+            pluginName
+        );
+        const pluginSupplementaryEntry = await waitForCustomisationEntry(
+            context.cliBinary,
+            session.cliEnv,
+            "PLUGIN_ETC",
+            pluginName
+        );
+        const themeEntries = await waitForCustomisationEntries(
+            context.cliBinary,
+            session.cliEnv,
+            "THEME",
+            themeName,
+            2
+        );
         await pushLocalChanges(context.cliBinary, session.cliEnv);
         await waitForCouchDbDocs(context.couchDb, context.dbName, (docs) => {
             const ids = new Set(docs.map((doc) => doc._id));
-            const entries = [entry, configEntry, ...pluginEntries];
+            const entries = [
+                snippetEntry,
+                configEntry,
+                ...pluginEntries,
+                pluginDataEntry,
+                pluginSupplementaryEntry,
+                ...themeEntries,
+            ];
             return entries.every(
                 (target) => ids.has(target.id) && target.children.every((childId) => ids.has(childId))
             );
@@ -491,11 +549,33 @@ async function main(): Promise<void> {
         session = await startConfiguredSession(context, vaultB, targetDeviceName);
         await pushLocalChanges(context.cliBinary, session.cliEnv);
         await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName, sourceDeviceName);
-        assertEqual(
-            await pathExists(vaultB.path, snippetPath),
-            false,
-            "Customisation Sync snippet was reflected before explicit application."
+        await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "CONFIG", configName, sourceDeviceName);
+        await waitForCustomisationEntries(
+            context.cliBinary,
+            session.cliEnv,
+            "PLUGIN_MAIN",
+            pluginName,
+            3,
+            sourceDeviceName
         );
+        await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "PLUGIN_DATA", pluginName, sourceDeviceName);
+        await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "PLUGIN_ETC", pluginName, sourceDeviceName);
+        await waitForCustomisationEntries(context.cliBinary, session.cliEnv, "THEME", themeName, 2, sourceDeviceName);
+        const unappliedPaths: Array<[path: string, description: string]> = [
+            [snippetPath, "snippet"],
+            [configPath, "configuration file"],
+            [pluginManifestPath, "plug-in main file"],
+            [pluginDataPath, "plug-in data file"],
+            [pluginSupplementaryPath, "plug-in supplementary file"],
+            [themeManifestPath, "theme file"],
+        ];
+        for (const [path, description] of unappliedPaths) {
+            assertEqual(
+                await pathExists(vaultB.path, path),
+                false,
+                `Customisation Sync ${description} was reflected before explicit application.`
+            );
+        }
         await applyRemoteCustomisationEntry(
             context.cliBinary,
             session.cliEnv,
@@ -528,6 +608,41 @@ async function main(): Promise<void> {
             pluginStylesPath,
             (content) => content === pluginStylesContent
         );
+        await applyRemoteCustomisationEntry(
+            context.cliBinary,
+            session.cliEnv,
+            "PLUGIN_DATA",
+            pluginName,
+            sourceDeviceName
+        );
+        const appliedPluginData = await waitForPathContent(
+            vaultB.path,
+            pluginDataPath,
+            (content) => content === pluginDataContent
+        );
+        await applyRemoteCustomisationEntry(
+            context.cliBinary,
+            session.cliEnv,
+            "PLUGIN_ETC",
+            pluginName,
+            sourceDeviceName
+        );
+        const appliedPluginSupplementary = await waitForPathContent(
+            vaultB.path,
+            pluginSupplementaryPath,
+            (content) => content === pluginSupplementaryContent
+        );
+        await applyRemoteCustomisationGroup(context.cliBinary, session.cliEnv, "THEME", themeName, sourceDeviceName);
+        const appliedThemeManifest = await waitForPathContent(
+            vaultB.path,
+            themeManifestPath,
+            (content) => content === themeManifestContent
+        );
+        const appliedThemeStyles = await waitForPathContent(
+            vaultB.path,
+            themeStylesPath,
+            (content) => content === themeStylesContent
+        );
         await session.app.stop();
 
         assertEqual(applied, snippetContent, "Customisation Sync snippet content did not match after application.");
@@ -539,6 +654,14 @@ async function main(): Promise<void> {
         );
         assertEqual(appliedPluginMain, pluginMainContent, "Customisation Sync plug-in main file did not match.");
         assertEqual(appliedPluginStyles, pluginStylesContent, "Customisation Sync plug-in stylesheet did not match.");
+        assertEqual(appliedPluginData, pluginDataContent, "Customisation Sync plug-in data did not match.");
+        assertEqual(
+            appliedPluginSupplementary,
+            pluginSupplementaryContent,
+            "Customisation Sync plug-in supplementary file did not match."
+        );
+        assertEqual(appliedThemeManifest, themeManifestContent, "Customisation Sync theme manifest did not match.");
+        assertEqual(appliedThemeStyles, themeStylesContent, "Customisation Sync theme stylesheet did not match.");
 
         await writeVaultFile(vaultA.path, snippetPath, snippetUpdatedContent);
         session = await startConfiguredSession(context, vaultA, sourceDeviceName);
@@ -589,7 +712,7 @@ async function main(): Promise<void> {
         await session.app.stop();
 
         console.log(
-            `Customisation Sync applied snippet, config, and plug-in fixtures, then propagated snippet update and sync-data deletion.`
+            `Customisation Sync applied configuration, theme, snippet, and plug-in main, data, and supplementary fixtures, then propagated snippet update and sync-data deletion.`
         );
     } finally {
         await vaultA.dispose();

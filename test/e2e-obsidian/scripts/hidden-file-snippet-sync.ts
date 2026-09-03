@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { MODE_AUTOMATIC, MODE_PAUSED } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     assertLocatorHasMinimumTouchTarget,
     assertLocatorWithinSafeArea,
@@ -60,6 +61,9 @@ const manualMergeJsonPath = ".obsidian/livesync-e2e-manual-merge.json";
 const targetPath = ".obsidian/livesync-targeted/only-a.json";
 const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
 const hiddenFileInitialisationStateKey = "__livesyncE2EHiddenFileInitialisation";
+const mixedSelectivePath = ".obsidian/snippets/livesync-mixed-selective.css";
+const mixedAutomaticPath = ".obsidian/snippets/livesync-mixed-automatic.css";
+const mixedPausedPath = ".obsidian/snippets/livesync-mixed-paused.css";
 
 type RunnerContext = {
     binary: string;
@@ -144,8 +148,8 @@ async function scanHiddenStorage(cliBinary: string, env: NodeJS.ProcessEnv): Pro
         [
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "await addOn.scanAllStorageChanges(true);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "await syncContext.scanAllStorageChanges(true);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -159,8 +163,8 @@ async function scanHiddenDatabase(cliBinary: string, env: NodeJS.ProcessEnv): Pr
         [
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "await addOn.scanAllDatabaseChanges(true);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "await syncContext.scanAllDatabaseChanges(true);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -175,9 +179,9 @@ async function resolveHiddenConflicts(cliBinary: string, env: NodeJS.ProcessEnv)
         [
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "await addOn.resolveConflictOnInternalFiles();",
-            "await addOn.scanAllDatabaseChanges(true);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "await syncContext.resolveConflictOnInternalFiles();",
+            "await syncContext.scanAllDatabaseChanges(true);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -194,7 +198,7 @@ async function autoMergeHiddenJsonConflict(cliBinary: string, env: NodeJS.Proces
             `const path=${JSON.stringify(path)};`,
             "const prefixedPath=`i:${path}`;",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
             "let doc=false;",
             "for await (const entry of core.localDatabase.findEntries('i:','i;',{conflicts:true})){",
             "  if(entry.path===prefixedPath){ doc=entry; break; }",
@@ -214,13 +218,13 @@ async function autoMergeHiddenJsonConflict(cliBinary: string, env: NodeJS.Proces
             "if(!result){",
             "  throw new Error(`Hidden JSON conflict was not auto-mergeable: ${path}; base=${commonBase}; current=${doc._rev}; conflict=${conflictedRev}`);",
             "}",
-            "await addOn.ensureDir(path);",
-            "const stat=await addOn.writeFile(path,result);",
+            "await syncContext.ensureDir(path);",
+            "const stat=await syncContext.writeFile(path,result);",
             "if(!stat) throw new Error(`Could not write merged hidden file: ${path}`);",
-            "await addOn.storeInternalFileToDatabase({path,mtime:stat.mtime,ctime:stat.ctime,size:stat.size},true);",
+            "await syncContext.storeInternalFileToDatabase({path,mtime:stat.mtime,ctime:stat.ctime,size:stat.size},true);",
             "await core.localDatabase.removeRevision(doc._id,conflictedRev);",
-            "await addOn.extractInternalFileFromDatabase(path);",
-            "await addOn.scanAllDatabaseChanges(true);",
+            "await syncContext.extractInternalFileFromDatabase(path);",
+            "await syncContext.scanAllDatabaseChanges(true);",
             "return JSON.stringify({ok:true,merged:JSON.parse(result)});",
             "})()",
         ].join(""),
@@ -236,7 +240,7 @@ async function openHiddenJsonResolveModal(cliBinary: string, env: NodeJS.Process
             `const path=${JSON.stringify(path)};`,
             "const prefixedPath=`i:${path}`;",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
             "let doc=false;",
             "for await (const entry of core.localDatabase.findEntries('i:','i;',{conflicts:true})){",
             "  if(entry.path===prefixedPath){ doc=entry; break; }",
@@ -246,7 +250,7 @@ async function openHiddenJsonResolveModal(cliBinary: string, env: NodeJS.Process
             "const docA=await core.localDatabase.getDBEntry(prefixedPath,{rev:doc._rev});",
             "const docB=await core.localDatabase.getDBEntry(prefixedPath,{rev:conflicts[0]});",
             "if(docA===false||docB===false) throw new Error(`Could not load conflicted hidden JSON entries: ${path}`);",
-            "void addOn.showJSONMergeDialogAndMerge(docA,docB);",
+            "void syncContext.showJSONMergeDialogAndMerge(docA,docB);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -267,10 +271,10 @@ async function storeHiddenFileAsConflict(
             `const path=${JSON.stringify(path)};`,
             `const baseRev=${JSON.stringify(baseRev)};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "const fileInfo=await addOn.loadFileWithInfo(path);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "const fileInfo=await syncContext.loadFileWithInfo(path);",
             "if(fileInfo.deleted) throw new Error(`Hidden file was unexpectedly deleted: ${path}`);",
-            "const baseData=await addOn.__loadBaseSaveData(path,true);",
+            "const baseData=await syncContext.__loadBaseSaveData(path,true);",
             "if(baseData===false) throw new Error(`Could not load base save data: ${path}`);",
             "const saveData={",
             "  ...baseData,",
@@ -509,6 +513,91 @@ async function runTargetMismatch(
     console.log("Hidden target mismatch respected per-device target patterns, then applied after enabling the target.");
 }
 
+async function runMixedOwnership(context: RunnerContext, vault: TemporaryVault): Promise<void> {
+    const content = ".livesync-mixed-owner { color: #245a70; }\n";
+    await writeVaultFile(vault.path, mixedSelectivePath, content);
+    await writeVaultFile(vault.path, mixedAutomaticPath, content);
+    await writeVaultFile(vault.path, mixedPausedPath, content);
+
+    const session = await startConfiguredSession(context, vault, {
+        deviceAndVaultName: "mixed-ownership",
+        usePluginSync: true,
+        usePluginSyncV2: true,
+        usePluginEtc: true,
+        pluginSyncExtendedSetting: {
+            "SNIPPET/livesync-mixed-automatic.css": {
+                key: "SNIPPET/livesync-mixed-automatic.css",
+                mode: MODE_AUTOMATIC,
+                files: ["snippets/livesync-mixed-automatic.css"],
+            },
+            "SNIPPET/livesync-mixed-paused.css": {
+                key: "SNIPPET/livesync-mixed-paused.css",
+                mode: MODE_PAUSED,
+                files: ["snippets/livesync-mixed-paused.css"],
+            },
+        },
+    });
+    try {
+        const result = await evalObsidianJson<{ hiddenPaths: string[]; customisationPaths: string[] }>(
+            context.cliBinary,
+            [
+                "(async()=>{",
+                "const plugin=app.plugins.plugins['obsidian-livesync'];",
+                "const core=plugin.core;",
+                "const customisation=plugin.optionalFileSync.testing.customisationSync;",
+                "const hidden=plugin.optionalFileSync.testing.hiddenFileSync;",
+                "core.services.setting.setDeviceAndVaultName('mixed-ownership');",
+                "await customisation.scanAllConfigFiles(false);",
+                "await hidden.scanAllStorageChanges(false,false,true,true);",
+                "const customisationPaths=[];",
+                "for await(const entry of core.localDatabase.findEntries('ix:','ix;')){customisationPaths.push(entry.path);}",
+                "const hiddenPaths=[];",
+                "for await(const entry of core.localDatabase.findEntries('i:','i;')){hiddenPaths.push(entry.path);}",
+                "return JSON.stringify({customisationPaths,hiddenPaths});",
+                "})()",
+            ].join(""),
+            session.cliEnv,
+            hiddenFileCliTimeoutMs
+        );
+
+        const selectiveDocument =
+            "ix:mixed-ownership/SNIPPET/livesync-mixed-selective.css%livesync-mixed-selective.css";
+        const automaticDocument = `i:${mixedAutomaticPath}`;
+        assertEqual(
+            result.customisationPaths.includes(selectiveDocument),
+            true,
+            "Selective mode did not create its Customisation Sync document."
+        );
+        assertEqual(
+            result.hiddenPaths.includes(`i:${mixedSelectivePath}`),
+            false,
+            "Selective mode also created a Hidden File Sync document."
+        );
+        assertEqual(
+            result.hiddenPaths.includes(automaticDocument),
+            true,
+            "Automatic mode did not create its Hidden File Sync document."
+        );
+        assertEqual(
+            result.customisationPaths.some((path) => path.includes("livesync-mixed-automatic.css")),
+            false,
+            "Automatic mode also created a Customisation Sync document."
+        );
+        assertEqual(
+            result.hiddenPaths.includes(`i:${mixedPausedPath}`) ||
+                result.customisationPaths.some((path) => path.includes("livesync-mixed-paused.css")),
+            false,
+            "Ignore mode created an optional-file document."
+        );
+    } finally {
+        await session.app.stop();
+    }
+
+    console.log(
+        "Mixed optional-file ownership stored Selective, Automatic, and Ignore paths in at most one namespace."
+    );
+}
+
 async function setHiddenFileNoticeFixtures(port: number, itemIds: string[], includeRestart: boolean): Promise<void> {
     await withObsidianPage(port, async (page) => {
         await page.evaluate(
@@ -516,7 +605,7 @@ async function setHiddenFileNoticeFixtures(port: number, itemIds: string[], incl
                 const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;
                 const plugin = obsidianApp.plugins.plugins["obsidian-livesync"];
                 const core = plugin.core;
-                const addOn = core.getAddOn("HiddenFileSync");
+                const syncContext = plugin.optionalFileSync.testing.hiddenFileSync;
                 for (const id of ["alpha", "beta", "gamma"]) {
                     const pluginId = `livesync-e2e-${id}`;
                     obsidianApp.plugins.manifests[pluginId] = {
@@ -531,14 +620,14 @@ async function setHiddenFileNoticeFixtures(port: number, itemIds: string[], incl
                     };
                     obsidianApp.plugins.enabledPlugins.add(pluginId);
                 }
-                addOn.queuedNotificationFiles.clear();
+                syncContext.queuedNotificationFiles.clear();
                 for (const id of nextItemIds) {
-                    addOn.queuedNotificationFiles.add(`.obsidian/plugins/livesync-e2e-${id}`);
+                    syncContext.queuedNotificationFiles.add(`.obsidian/plugins/livesync-e2e-${id}`);
                 }
                 if (nextIncludeRestart) {
-                    addOn.queuedNotificationFiles.add(core.services.API.getSystemConfigDir());
+                    syncContext.queuedNotificationFiles.add(core.services.API.getSystemConfigDir());
                 }
-                addOn.notifyConfigChange();
+                syncContext.notifyConfigChange();
             },
             { nextItemIds: itemIds, nextIncludeRestart: includeRestart }
         );
@@ -571,11 +660,14 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
         await withObsidianPage(port, async (page) => {
             const deadline = Date.now() + timeoutMs;
             while ((await page.locator(".notice:visible").count()) > 0 && Date.now() < deadline) {
-                await page.locator(".notice:visible").first().click({
-                    force: true,
-                    position: { x: 2, y: 2 },
-                    timeout: timeoutMs,
-                });
+                await page
+                    .locator(".notice:visible")
+                    .first()
+                    .click({
+                        force: true,
+                        position: { x: 2, y: 2 },
+                        timeout: timeoutMs,
+                    });
             }
             assertEqual(
                 await page.locator(".notice:visible").count(),
@@ -588,10 +680,10 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                 const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;
                 const plugin = obsidianApp.plugins.plugins["obsidian-livesync"];
                 const core = plugin.core;
-                const addOn = core.getAddOn("HiddenFileSync");
+                const syncContext = plugin.optionalFileSync.testing.hiddenFileSync;
                 const setting = core.services.setting;
                 const originalApplyPartial = setting.applyPartial;
-                const originalRebuildMerging = addOn.rebuildMerging;
+                const originalRebuildMerging = syncContext.rebuildMerging;
                 const state = {
                     done: false,
                     reachedPreparation: false,
@@ -639,12 +731,12 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                     return await originalApplyPartial.apply(setting, args);
                 };
 
-                addOn.rebuildMerging = async (...args: unknown[]) => {
+                syncContext.rebuildMerging = async (...args: unknown[]) => {
                     state.reachedInitialisation = true;
                     await new Promise<void>((resolve) => {
                         state.releaseInitialisation = resolve;
                     });
-                    return await originalRebuildMerging.apply(addOn, args);
+                    return await originalRebuildMerging.apply(syncContext, args);
                 };
 
                 void core.services.setting
@@ -660,7 +752,7 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                     )
                     .finally(() => {
                         setting.applyPartial = originalApplyPartial;
-                        addOn.rebuildMerging = originalRebuildMerging;
+                        syncContext.rebuildMerging = originalRebuildMerging;
                         const notices = Array.from(document.querySelectorAll<HTMLElement>(".notice"));
                         const progressNotices = notices.filter((notice) => notice.textContent?.includes("[⚙"));
                         state.sawStandaloneGatheringNotice ||= notices.some((notice) =>
@@ -707,17 +799,15 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
 
         const result = await withObsidianPage(port, async (page) => {
             await page.evaluate((stateKey) => {
-                const state = (globalThis as unknown as Record<
-                    string,
-                    { releasePreparation?: () => void } | undefined
-                >)[stateKey];
+                const state = (
+                    globalThis as unknown as Record<string, { releasePreparation?: () => void } | undefined>
+                )[stateKey];
                 state?.releasePreparation?.();
             }, hiddenFileInitialisationStateKey);
             await page.waitForFunction(
                 (stateKey) =>
-                    (globalThis as unknown as Record<string, { reachedInitialisation?: boolean } | undefined>)[
-                        stateKey
-                    ]?.reachedInitialisation === true,
+                    (globalThis as unknown as Record<string, { reachedInitialisation?: boolean } | undefined>)[stateKey]
+                        ?.reachedInitialisation === true,
                 hiddenFileInitialisationStateKey,
                 { timeout: timeoutMs }
             );
@@ -872,6 +962,7 @@ async function main(): Promise<void> {
         await runJsonConflictRoundTrip(context, vaultA, vaultB);
         await runJsonManualConflictResolution(context, vaultB);
         await runTargetMismatch(context, vaultA, vaultB);
+        await runMixedOwnership(context, vaultB);
         await runInitialisationNoticeGrouping(context, vaultB);
         await runConfigurationNoticeGrouping(context, vaultB);
     } finally {

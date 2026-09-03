@@ -2,8 +2,6 @@ import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./de
 import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
 import { LiveSyncCommands } from "./features/LiveSyncCommands.ts";
-import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
-import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
 // import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 
 import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
@@ -46,9 +44,13 @@ import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync
 import { useCompatibilityReview } from "./serviceFeatures/compatibilityReview.ts";
 import { createObsidianCompatibilityReviewUi } from "./serviceFeatures/compatibilityReviewObsidian.ts";
 import { createFileReflectionProvenance } from "./serviceModules/FileReflectionProvenance.ts";
+import { useCustomisationSyncUI } from "./serviceFeatures/useCustomisationSyncUI.ts";
+import { useOptionalFileSync, type OptionalFileSyncFeature } from "./serviceFeatures/useOptionalFileSync.ts";
+import { useHiddenFileSyncCommands } from "./serviceFeatures/useHiddenFileSyncCommands.ts";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
+    optionalFileSync?: OptionalFileSyncFeature;
 
     /**
      * Initialise service modules.
@@ -155,7 +157,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             (core) => {
                 const extraModules = [
                     new ModuleObsidianEvents(this, core),
-                    new ModuleObsidianSettingDialogue(this, core),
+                    new ModuleObsidianSettingDialogue(this, core, {
+                        getHiddenFileSyncRepair: () => this.optionalFileSync?.hiddenFileSyncRepair,
+                    }),
                     new ModuleObsidianMenu(core),
                     new ModuleObsidianSettingsAsMarkdown(core),
                     new ModuleLog(this, core),
@@ -169,8 +173,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return extraModules;
             },
             (core) => {
-                const addOns = [new ConfigSync(core), new HiddenFileSync(core), new LocalDatabaseMaintenance(core)];
-                return addOns;
+                return [new LocalDatabaseMaintenance(core)];
             },
             (core) => {
                 //TODO Fix: useXXXX
@@ -202,6 +205,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 );
                 waitForCompatibilityReview = () => compatibilityReview.openReview();
                 useReviewHarness(core, this, compatibilityReview);
+
+                let customisationSyncUI: ReturnType<typeof useCustomisationSyncUI> | undefined;
+                const optionalFileSync = useOptionalFileSync(core, {
+                    getUIControl: () => customisationSyncUI,
+                });
+                customisationSyncUI = useCustomisationSyncUI(
+                    core,
+                    this.app,
+                    optionalFileSync.customisationSync,
+                    optionalFileSync.hiddenFileSyncInitialisation
+                );
+                useHiddenFileSyncCommands(core, optionalFileSync.hiddenFileSyncCommands);
+                this.optionalFileSync = optionalFileSync;
             }
         );
     }

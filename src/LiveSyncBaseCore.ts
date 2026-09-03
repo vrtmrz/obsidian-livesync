@@ -62,18 +62,6 @@ export class LiveSyncBaseCore<
         this.services.appLifecycle.onUnload.addHandler(() => Promise.resolve(addOn.onunload()).then(() => true));
     }
 
-    /**
-     * Get an add-on by its class name. Returns undefined if not found.
-     * @param cls
-     * @returns
-     */
-    getAddOn<T extends TCommands>(cls: string) {
-        for (const addon of this.addOns) {
-            if (addon.constructor.name == cls) return addon as T;
-        }
-        return undefined;
-    }
-
     constructor(
         serviceHub: InjectableServiceHub<T>,
         serviceModuleInitialiser: (
@@ -304,5 +292,4 @@ export class LiveSyncBaseCore<
 export interface IMinimumLiveSyncCommands {
     onunload(): void;
     onload(): void | Promise<void>;
-    constructor: { name: string };
 }

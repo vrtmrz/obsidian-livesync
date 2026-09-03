@@ -745,14 +745,20 @@ async function verifyCompatibleAlignmentSettingDefault(): Promise<void> {
         }
 
         const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
-        const liveSyncSettings = await settingsNavigator.openPage("Advanced");
-        const settingItem = liveSyncSettings.locator(".setting-item").filter({
-            has: settingsNavigator.page.getByText("Auto-accept compatible tweak mismatches", { exact: true }),
-        });
-        await settingItem.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        const toggle = settingItem.locator(".checkbox-container");
-        if (!(await toggle.evaluate((element) => element.classList.contains("is-enabled")))) {
-            throw new Error("The automatic compatible-setting policy was displayed as disabled while still undefined.");
+        try {
+            const liveSyncSettings = await settingsNavigator.openPage("Advanced");
+            const settingItem = liveSyncSettings.locator(".setting-item").filter({
+                has: settingsNavigator.page.getByText("Auto-accept compatible tweak mismatches", { exact: true }),
+            });
+            await settingItem.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const toggle = settingItem.locator(".checkbox-container");
+            if (!(await toggle.evaluate((element) => element.classList.contains("is-enabled")))) {
+                throw new Error(
+                    "The automatic compatible-setting policy was displayed as disabled while still undefined."
+                );
+            }
+        } finally {
+            await settingsNavigator.close();
         }
     });
 }
@@ -871,6 +877,43 @@ async function executeRegisteredCommand(commandId: string): Promise<void> {
     if (!opened) {
         throw new Error(`The command was not registered or could not be executed: ${commandId}`);
     }
+}
+
+async function verifyCustomisationSyncDialogue(): Promise<string> {
+    const commandId = "obsidian-livesync:livesync-plugin-dialog-ex";
+    await executeRegisteredCommand(commandId);
+    const screenshotPath = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "customisation-sync-dialogue.png",
+        async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "Customization Sync (Beta3)" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            for (const action of ["Scan changes", "Sync once", "Refresh", "Apply All Selected"]) {
+                await modal.getByRole("button", { name: action, exact: true }).waitFor({
+                    state: "visible",
+                    timeout: uiTimeoutMs,
+                });
+            }
+        }
+    );
+
+    for (let openCount = 0; openCount < 2; openCount++) {
+        await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+            const modal = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "Customization Sync (Beta3)" }),
+            });
+            await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await page.keyboard.press("Escape");
+            await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        });
+        if (openCount === 0) {
+            await executeRegisteredCommand(commandId);
+        }
+    }
+
+    return screenshotPath;
 }
 
 async function verifyLogAndReportSurfaces(): Promise<{ log: string; report: string }> {
@@ -1198,6 +1241,8 @@ async function main(): Promise<void> {
                     syncAfterMerge: false,
                     periodicReplication: false,
                     useAdvancedMode: true,
+                    usePluginSync: true,
+                    deviceAndVaultName: "dialogue-mounts",
                 }
             ),
         });
@@ -1231,6 +1276,11 @@ async function main(): Promise<void> {
         const remoteSizeScreenshots = await verifyRemoteSizeNoticeAndDialogue();
         console.log(
             `Compatibility review actions were stacked vertically, and the remote-size startup notice opened an untimed review dialogue successfully. Screenshots: ${remoteSizeScreenshots.compatibilityReview}, ${remoteSizeScreenshots.notice}, ${remoteSizeScreenshots.dialogue}`
+        );
+
+        const customisationSyncScreenshot = await verifyCustomisationSyncDialogue();
+        console.log(
+            `The Customisation Sync command mounted, closed, and remounted its focused-view dialogue successfully. Screenshot: ${customisationSyncScreenshot}`
         );
 
         const remoteScreenshot = await verifyRemoteSelectionDialogue("desktop");

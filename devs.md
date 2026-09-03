@@ -158,6 +158,8 @@ Use interaction-based, London School unit tests for the composition boundary. Ve
 
 See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary.
 
+The implemented joint composition, local-owner routing, private contexts, host adapters, and focused views for Customisation Sync and Hidden File Sync are documented in [Optional-file synchronisation architecture](docs/design_docs/optional_file_sync_architecture.md).
+
 Legacy Modules remain grouped by directory:
 
 - `core/` contains platform-independent core behaviour;

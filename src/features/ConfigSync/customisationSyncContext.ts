@@ -1,14 +1,6 @@
 import { writable } from "svelte/store";
 import type PouchDB from "pouchdb-core";
-import {
-    type PluginManifest,
-    parseYaml,
-    normalizePath,
-    type ListedFiles,
-    diff_match_patch,
-    Platform,
-    addIcon,
-} from "@/deps.ts";
+import { type PluginManifest, parseYaml, normalizePath, type ListedFiles, diff_match_patch } from "@/deps.ts";
 
 import type {
     EntryDoc,
@@ -19,16 +11,16 @@ import type {
     AnyEntry,
     SavingEntry,
     diff_result,
+    SYNC_MODE,
+    ObsidianLiveSyncSettings,
+    LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
-    CANCELLED,
-    LEAVE_TO_SUBSEQUENT,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     MODE_SELECTIVE,
-    MODE_SHINY,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
 import {
@@ -50,237 +42,51 @@ import {
     readString,
 } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
-import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { cancelTask, EVEN, isCustomisationSyncMetadata, isPluginMetadata, scheduleTask } from "@/common/utils.ts";
-import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
-import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
+import { reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
-import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
-import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
-import { PluginDialogModal } from "./PluginDialogModal.ts";
 import { $msg } from "@/common/translation";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
-import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
-import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
+import {
+    createCustomisationSyncDevicePrefix,
+    createCustomisationSyncV1DocumentPath,
+    createCustomisationSyncV2DocumentPath,
+    getCustomisationSyncFileCategory,
+    isCustomisationSyncTargetPath,
+    parseCustomisationSyncV2DocumentPath,
+} from "./customisationSyncPaths.ts";
+import { createCustomisationSyncCodec, type PluginDataEx, type PluginDataExFile } from "./customisationSyncCodec.ts";
+import type {
+    CustomisationSyncDialogView,
+    CustomisationSyncUIControl,
+    IPluginDataExDisplay,
+    LoadedEntryPluginDataExFile,
+    PluginDataExDisplay,
+} from "./customisationSyncView.ts";
+import {
+    REPLICATION_PROGRESS_PRESENTATIONS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
+} from "@vrtmrz/livesync-commonlib/replication";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
+import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
+import type { IPathService, IReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 
-const d = "\u200b";
-const d2 = "\n";
+export type { PluginDataEx, PluginDataExFile } from "./customisationSyncCodec.ts";
+export type { IPluginDataExDisplay, PluginDataExDisplay } from "./customisationSyncView.ts";
+
 const UPDATED_CONFIGURATION_NOTICE_KEY = "config-sync:updated-configuration";
 
-function serialize(data: PluginDataEx): string {
-    // For higher performance, create custom plug-in data strings.
-    // Self-hosted LiveSync uses `\n` to split chunks. Therefore, grouping together those with similar entropy would work nicely.
-    let ret = "";
-    ret += ":";
-    ret += data.category + d + data.name + d + data.term + d2;
-    ret += (data.version ?? "") + d2;
-    ret += data.mtime + d2;
-    for (const file of data.files) {
-        ret += file.filename + d + (file.displayName ?? "") + d + (file.version ?? "") + d2;
-        const hash = digestHash(file.data ?? []);
-        ret += file.mtime + d + file.size + d + hash + d2;
-        for (const data of file.data ?? []) {
-            ret += data + d;
-        }
-        ret += d2;
-    }
-    return ret;
-}
-const DUMMY_HEAD = serialize({
-    category: "CONFIG",
-    name: "migrated",
-    files: [],
-    mtime: 0,
-    term: "-",
-    displayName: `MIRAGED`,
-});
-const DUMMY_END = d + d2 + "\u200c";
-function splitWithDelimiters(sources: string[]): string[] {
-    const result: string[] = [];
-    for (const str of sources) {
-        let startIndex = 0;
-        const maxLen = str.length;
-        let i = -1;
-        let i1;
-        let i2;
-        do {
-            i1 = str.indexOf(d, startIndex);
-            i2 = str.indexOf(d2, startIndex);
-            if (i1 == -1 && i2 == -1) {
-                break;
-            }
-            if (i1 == -1) {
-                i = i2;
-            } else if (i2 == -1) {
-                i = i1;
-            } else {
-                i = i1 < i2 ? i1 : i2;
-            }
-            result.push(str.slice(startIndex, i + 1));
-            startIndex = i + 1;
-        } while (i < maxLen);
-        if (startIndex < maxLen) {
-            result.push(str.slice(startIndex));
-        }
-    }
-
-    // To keep compatibilities
-    if (sources[sources.length - 1] == "") {
-        result.push("");
-    }
-
-    return result;
-}
-
-function getTokenizer(source: string[]) {
-    const sources = splitWithDelimiters(source);
-    sources[0] = sources[0].substring(1);
-    let pos = 0;
-    let lineRunOut = false;
-    const t = {
-        next(): string {
-            if (lineRunOut) {
-                return "";
-            }
-            if (pos >= sources.length) {
-                return "";
-            }
-            const item = sources[pos];
-            if (!item.endsWith(d2)) {
-                pos++;
-            } else {
-                lineRunOut = true;
-            }
-            if (item.endsWith(d) || item.endsWith(d2)) {
-                return item.substring(0, item.length - 1);
-            } else {
-                return item + this.next();
-            }
-        },
-        nextLine() {
-            if (lineRunOut) {
-                pos++;
-            } else {
-                while (!sources[pos].endsWith(d2)) {
-                    pos++;
-                    if (pos >= sources.length) break;
-                }
-                pos++;
-            }
-            lineRunOut = false;
-        },
-    };
-    return t;
-}
-
-function deserialize2(str: string[]): PluginDataEx {
-    const tokens = getTokenizer(str);
-    const ret = {} as PluginDataEx;
-    const category = tokens.next();
-    const name = tokens.next();
-    const term = tokens.next();
-    tokens.nextLine();
-    const version = tokens.next();
-    tokens.nextLine();
-    const mtime = Number(tokens.next());
-    tokens.nextLine();
-    const result: PluginDataEx = Object.assign(ret, {
-        category,
-        name,
-        term,
-        version,
-        mtime,
-        files: [] as PluginDataExFile[],
-    });
-    let filename = "";
-    do {
-        filename = tokens.next();
-        if (!filename) break;
-        const displayName = tokens.next();
-        const version = tokens.next();
-        tokens.nextLine();
-        const mtime = Number(tokens.next());
-        const size = Number(tokens.next());
-        const hash = tokens.next();
-        tokens.nextLine();
-        const data = [] as string[];
-        let piece = "";
-        do {
-            piece = tokens.next();
-            if (piece == "") break;
-            data.push(piece);
-        } while (piece != "");
-        result.files.push({
-            filename,
-            displayName,
-            version,
-            mtime,
-            size,
-            data,
-            hash,
-        });
-        tokens.nextLine();
-    } while (filename);
-    return result;
-}
-
-function deserialize<T>(str: string[], def: T) {
-    try {
-        if (str[0][0] == ":") {
-            const o = deserialize2(str);
-            return o;
-        }
-        return JSON.parse(str.join("")) as T;
-    } catch {
-        try {
-            const parsed: unknown = parseYaml(str.join(""));
-            return parsed as T;
-        } catch {
-            return def;
-        }
-    }
-}
-
-export const pluginList = writable([] as PluginDataExDisplay[]);
-export const pluginIsEnumerating = writable(false);
-export const pluginV2Progress = writable(0);
-
-export type PluginDataExFile = {
-    filename: string;
-    data: string[];
-    mtime: number;
-    size: number;
-    version?: string;
-    hash?: string;
-    displayName?: string;
-};
-export interface IPluginDataExDisplay {
-    documentPath: FilePathWithPrefix;
-    category: string;
-    name: string;
-    term: string;
-    displayName?: string;
-    files: (LoadedEntryPluginDataExFile | PluginDataExFile)[];
-    version?: string;
-    mtime: number;
-}
-export type PluginDataExDisplay = {
-    documentPath: FilePathWithPrefix;
-    category: string;
-    name: string;
-    term: string;
-    displayName?: string;
-    files: PluginDataExFile[];
-    version?: string;
-    mtime: number;
-};
-type LoadedEntryPluginDataExFile = LoadedEntry & PluginDataExFile;
+const {
+    serialize,
+    deserialize,
+    dummyHead: DUMMY_HEAD,
+    dummyEnd: DUMMY_END,
+} = createCustomisationSyncCodec({ digestHash, parseYaml });
 
 function categoryToFolder(category: string, configDir: string = ""): string {
     switch (category) {
@@ -301,18 +107,6 @@ function categoryToFolder(category: string, configDir: string = ""): string {
     }
 }
 
-export const pluginManifests = new Map<string, PluginManifest>();
-export const pluginManifestStore = writable(pluginManifests);
-
-function setManifest(key: string, manifest: PluginManifest) {
-    const old = pluginManifests.get(key);
-    if (old && !isObjectDifferent(manifest, old)) {
-        return;
-    }
-    pluginManifests.set(key, manifest);
-    pluginManifestStore.set(pluginManifests);
-}
-
 export class PluginDataExDisplayV2 {
     documentPath: FilePathWithPrefix;
     category: string;
@@ -323,7 +117,10 @@ export class PluginDataExDisplayV2 {
 
     name: string;
     confKey: string;
-    constructor(data: IPluginDataExDisplay) {
+    constructor(
+        data: IPluginDataExDisplay,
+        private readonly manifestLookup: ReadonlyMap<string, PluginManifest>
+    ) {
         this.documentPath = `${data.documentPath}` as FilePathWithPrefix;
         this.category = `${data.category}`;
         this.name = `${data.name}`;
@@ -351,7 +148,7 @@ export class PluginDataExDisplayV2 {
     _version: string | undefined;
 
     applyLoadedManifest() {
-        const manifest = pluginManifests.get(this.confKey);
+        const manifest = this.manifestLookup.get(this.confKey);
         if (manifest) {
             this._displayName = manifest.name;
             if (this.category == "PLUGIN_MAIN" || this.category == "THEME") {
@@ -371,126 +168,253 @@ export class PluginDataExDisplayV2 {
         return ~~this.files.reduce((a, b) => a + b.mtime, 0) / this.files.length;
     }
 }
-export type PluginDataEx = {
-    documentPath?: FilePathWithPrefix;
-    category: string;
-    name: string;
-    displayName?: string;
-    term: string;
-    files: PluginDataExFile[];
-    version?: string;
-    mtime: number;
+type CustomisationSyncSettings = Pick<
+    ObsidianLiveSyncSettings,
+    | "usePluginSync"
+    | "usePluginSyncV2"
+    | "usePluginEtc"
+    | "pluginSyncExtendedSetting"
+    | "autoSweepPlugins"
+    | "autoSweepPluginsPeriodic"
+    | "watchInternalFileChanges"
+    | "notifyPluginOrSettingUpdated"
+>;
+
+type CustomisationSyncDatabase = Pick<
+    LiveSyncLocalDB,
+    "allDocsRaw" | "findEntries" | "getDBEntry" | "getDBEntryFromMeta" | "getDBEntryMeta" | "putDBEntry" | "putRaw"
+>;
+
+type CustomisationSyncStorage = Pick<
+    StorageAccess,
+    "ensureDir" | "readHiddenFileBinary" | "readHiddenFileText" | "statHidden" | "writeHiddenFileAuto"
+>;
+
+export type CustomisationSyncPeriodicProcessor = {
+    enable(interval: number): void;
+    disable(): void;
 };
 
-export class ConfigSync extends LiveSyncCommands {
-    constructor(core: LiveSyncCore) {
-        super(core);
-        pluginScanningCount.onChanged((e) => {
-            const total = e.value;
-            pluginIsEnumerating.set(total != 0);
-        });
+export type CustomisationSyncContextDependencies = {
+    getSettings(): CustomisationSyncSettings;
+    getLocalDatabase(): CustomisationSyncDatabase;
+    storageAccess: CustomisationSyncStorage;
+    path: Pick<IPathService, "getPath" | "isMarkedAsSameChanges" | "markChangesAreSame" | "path2id">;
+    log: LogFunction;
+    getConfigDir(): string;
+    getDeviceAndVaultName(): string;
+    setDeviceAndVaultName(name: string): void;
+    saveSettingData(): Promise<void>;
+    applySettings(partial: Partial<ObsidianLiveSyncSettings>, saveImmediately?: boolean): Promise<void>;
+    replicateUserInitiated: IReplicationService["replicateUserInitiated"];
+    askString(title: string, key: string, placeholder: string): Promise<string | false>;
+    isReady(): boolean;
+    isSuspended(): boolean;
+    askRestart(): void;
+    createPeriodicProcessor(process: () => Promise<unknown>): CustomisationSyncPeriodicProcessor;
+    listFiles(path: string): Promise<ListedFiles>;
+    resolveJsonConflict(
+        path: FilePath,
+        files: [LoadedEntryPluginDataExFile, LoadedEntryPluginDataExFile],
+        remoteName: string,
+        apply: (content: string) => Promise<boolean>
+    ): Promise<boolean>;
+    selectTextFile(path: FilePath, diffResult: diff_result, remoteName: string): Promise<"A" | "B" | false>;
+    reloadPlugin(configDir: string, pluginName: string): Promise<void>;
+    getFallbackDeviceName(): string;
+    showConfigurationNotice(openDialog: () => void): void;
+    hideConfigurationNotice(): void;
+    getUIControl(): CustomisationSyncUIControl | undefined;
+    ownsLocalFile(path: FilePath): boolean;
+    ownsLocalDocument(path: FilePathWithPrefix): boolean;
+    publishScanCount(count: number): void;
+};
+
+export class CustomisationSyncContext implements CustomisationSyncDialogView {
+    private readonly dependencies: CustomisationSyncContextDependencies;
+    private readonly scanProgress = reactiveSource(0);
+    private readonly pluginScanningChanged: Parameters<ReactiveSource<number>["onChanged"]>[0] = (event) => {
+        this.enumerationActive.set(event.value != 0);
+        this.dependencies.publishScanCount(event.value);
+    };
+
+    readonly catalogue = writable<IPluginDataExDisplay[]>([]);
+    readonly enumerationActive = writable(false);
+    readonly migrationProgress = writable(0);
+    private readonly pluginManifests = new Map<string, PluginManifest>();
+    readonly manifests = writable(this.pluginManifests);
+
+    readonly periodicPluginSweepProcessor: CustomisationSyncPeriodicProcessor;
+
+    constructor(dependencies: CustomisationSyncContextDependencies) {
+        this.dependencies = dependencies;
+        this.periodicPluginSweepProcessor = dependencies.createPeriodicProcessor(
+            async () => await this.scanAllConfigFiles(false)
+        );
+        this.scanProgress.onChanged(this.pluginScanningChanged);
     }
     get configDir() {
-        return this.core.services.API.getSystemConfigDir();
+        return this.dependencies.getConfigDir();
     }
-    get kvDB() {
-        return this.core.kvDB;
+
+    private get settings() {
+        return this.dependencies.getSettings();
+    }
+
+    private get localDatabase() {
+        return this.dependencies.getLocalDatabase();
+    }
+
+    private get storageAccess() {
+        return this.dependencies.storageAccess;
+    }
+
+    private async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string) {
+        return await this.dependencies.path.path2id(filename, prefix);
+    }
+
+    private getPath(entry: AnyEntry): FilePathWithPrefix {
+        return this.dependencies.path.getPath(entry);
+    }
+
+    _isMainReady() {
+        return this.dependencies.isReady();
+    }
+
+    _isMainSuspended() {
+        return this.dependencies.isSuspended();
+    }
+
+    private _log(message: unknown, level?: LOG_LEVEL, key?: string) {
+        this.dependencies.log(message, level, key);
     }
 
     get useV2() {
-        return this.core.settings.usePluginSyncV2;
+        return this.settings.usePluginSyncV2;
     }
     get useSyncPluginEtc() {
-        return this.core.settings.usePluginEtc;
+        return this.settings.usePluginEtc;
     }
     isThisModuleEnabled() {
-        return this.core.settings.usePluginSync;
+        return this.settings.usePluginSync;
     }
 
-    pluginDialog?: PluginDialogModal = undefined;
-    periodicPluginSweepProcessor = new PeriodicProcessor(this.core, async () => await this.scanAllConfigFiles(false));
+    isEnabled(): boolean {
+        return this.isThisModuleEnabled();
+    }
+
+    getDeviceAndVaultName(): string {
+        return this.dependencies.getDeviceAndVaultName();
+    }
+
+    getConfiguredModes() {
+        return Object.values(this.settings.pluginSyncExtendedSetting).map((entry) => ({
+            ...entry,
+            files: [...entry.files],
+        }));
+    }
+
+    isPluginEtcEnabled(): boolean {
+        return this.useSyncPluginEtc;
+    }
+
+    updateConfiguredMode(key: string, mode: SYNC_MODE, files: string[]): void {
+        if (mode == MODE_SELECTIVE) {
+            delete this.settings.pluginSyncExtendedSetting[key];
+        } else {
+            this.settings.pluginSyncExtendedSetting[key] = {
+                key,
+                mode,
+                files: [...files],
+            };
+        }
+        void this.dependencies.saveSettingData();
+    }
+
+    getConfiguredTargetFiles(key: string): string[] {
+        const configDir = normalizePath(this.configDir);
+        return (this.settings.pluginSyncExtendedSetting[key]?.files ?? []).map((path) => `${configDir}/${path}`);
+    }
+
+    async synchronise(): Promise<void> {
+        await this.dependencies.replicateUserInitiated({
+            trigger: "manual",
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        });
+    }
+
+    askString(title: string, key: string, placeholder: string): Promise<string | false> {
+        return this.dependencies.askString(title, key, placeholder);
+    }
+
+    async compareFileUsingDisplayData(
+        dataA: IPluginDataExDisplay,
+        dataB: IPluginDataExDisplay,
+        filename: string
+    ): Promise<boolean> {
+        const dataACopy =
+            dataA instanceof PluginDataExDisplayV2
+                ? new PluginDataExDisplayV2(dataA, this.pluginManifests)
+                : { ...dataA };
+        const dataBCopy =
+            dataB instanceof PluginDataExDisplayV2
+                ? new PluginDataExDisplayV2(dataB, this.pluginManifests)
+                : { ...dataB };
+        dataACopy.files = dataACopy.files.filter((file) => file.filename == filename);
+        dataBCopy.files = dataBCopy.files.filter((file) => file.filename == filename);
+        return await this.compareUsingDisplayData(dataACopy, dataBCopy, true);
+    }
+
+    async duplicateData(data: IPluginDataExDisplay, deviceName: string): Promise<void> {
+        const path = `${this.configDir}/${data.files[0].filename}` as FilePath;
+        await this.storeCustomizationFiles(path, deviceName);
+        await this.updatePluginList(false, this.filenameToUnifiedKey(path, deviceName));
+    }
 
     pluginList: IPluginDataExDisplay[] = [];
     showPluginSyncModal() {
-        if (!this.isThisModuleEnabled()) {
-            return;
-        }
-        if (this.pluginDialog) {
-            this.pluginDialog.open();
-        } else {
-            this.pluginDialog = new PluginDialogModal(this.app, this.services.context.liveSyncPlugin);
-            this.pluginDialog.open();
-        }
+        this.dependencies.getUIControl()?.open();
     }
 
     hidePluginSyncModal() {
-        if (this.pluginDialog != null) {
-            this.pluginDialog.close();
-            this.pluginDialog = undefined;
-        }
+        this.dependencies.getUIControl()?.close();
     }
-    onunload() {
+    dispose() {
         cancelTask(UPDATED_CONFIGURATION_NOTICE_KEY);
-        this.hidePluginSyncModal();
         this.periodicPluginSweepProcessor?.disable();
-        this.services.context.notices.hide(UPDATED_CONFIGURATION_NOTICE_KEY);
+        this.pluginScanProcessor?.terminate();
+        this.pluginScanProcessorV2?.terminate();
+        this.scanProgress.offChanged(this.pluginScanningChanged);
+        this.enumerationActive.set(false);
+        this.dependencies.publishScanCount(0);
+        this.dependencies.hideConfigurationNotice();
     }
-    addRibbonIcon = this.services.API.addRibbonIcon.bind(this.services.API);
-    onload() {
-        addIcon(
-            "custom-sync",
-            `<g transform="rotate(-90 75 218)"  fill="currentColor" fill-rule="evenodd">
-            <path d="m272 166-9.38 9.38 9.38 9.38 9.38-9.38c1.96-1.93 5.11-1.9 7.03 0.058 1.91 1.94 1.91 5.04 0 6.98l-9.38 9.38 5.86 5.86-11.7 11.7c-8.34 8.35-21.4 9.68-31.3 3.19l-3.84 3.98c-8.45 8.7-20.1 13.6-32.2 13.6h-5.55v-9.95h5.55c9.43-0.0182 18.5-3.84 25-10.6l3.95-4.09c-6.54-9.86-5.23-23 3.14-31.3l11.7-11.7 5.86 5.86 9.38-9.38c1.96-1.93 5.11-1.9 7.03 0.0564 1.91 1.93 1.91 5.04 2e-3 6.98z"/>
-        </g>`
-        );
-        this.services.API.addCommand({
-            id: "livesync-plugin-dialog-ex",
-            name: "Show customization sync dialog",
-            checkCallback: (checking) => {
-                if (!this.isThisModuleEnabled()) {
-                    return false;
-                }
-                if (!checking) {
-                    this.showPluginSyncModal();
-                }
-                return true;
-            },
-        });
-        this.addRibbonIcon("custom-sync", $msg("cmdConfigSync.showCustomizationSync"), () => {
-            this.showPluginSyncModal();
-        }).addClass("livesync-ribbon-showcustom");
-        eventHub.onEvent(EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, () => this.showPluginSyncModal());
+
+    private setManifest(key: string, manifest: PluginManifest) {
+        const old = this.pluginManifests.get(key);
+        if (old && !isObjectDifferent(manifest, old)) return;
+        this.pluginManifests.set(key, manifest);
+        this.manifests.set(this.pluginManifests);
     }
 
     getFileCategory(
         filePath: string
     ): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
-        if (filePath.split("/").length == 2 && filePath.endsWith(".json")) return "CONFIG";
-        if (filePath.split("/").length == 4 && filePath.startsWith(`${this.configDir}/themes/`)) return "THEME";
-        if (filePath.startsWith(`${this.configDir}/snippets/`) && filePath.endsWith(".css")) return "SNIPPET";
-        if (filePath.startsWith(`${this.configDir}/plugins/`)) {
-            if (
-                filePath.endsWith("/styles.css") ||
-                filePath.endsWith("/manifest.json") ||
-                filePath.endsWith("/main.js")
-            ) {
-                return "PLUGIN_MAIN";
-            } else if (filePath.endsWith("/data.json")) {
-                return "PLUGIN_DATA";
-            } else {
-                // Planned at v0.19.0, realised v0.23.18!
-                return this.useV2 && this.useSyncPluginEtc ? "PLUGIN_ETC" : "";
-            }
-            // return "PLUGIN";
-        }
-        return "";
+        return getCustomisationSyncFileCategory(filePath, {
+            configDir: this.configDir,
+            useV2: this.useV2,
+            usePluginEtc: this.useSyncPluginEtc,
+        });
     }
     isTargetPath(filePath: string): boolean {
-        if (!filePath.startsWith(this.configDir)) return false;
-        // Idea non-filter option?
-        return this.getFileCategory(filePath) != "";
+        return isCustomisationSyncTargetPath(filePath, {
+            configDir: this.configDir,
+            useV2: this.useV2,
+            usePluginEtc: this.useSyncPluginEtc,
+        });
     }
-    private async _everyOnDatabaseInitialized(showNotice: boolean) {
+    async _everyOnDatabaseInitialized(showNotice: boolean) {
         if (!this.isThisModuleEnabled()) return true;
         try {
             this._log("Scanning customizations...");
@@ -525,15 +449,10 @@ export class ConfigSync extends LiveSyncCommands {
         );
         return true;
     }
-    _everyAfterResumeProcess(): Promise<boolean> {
-        const q = activeDocument.querySelector(`.livesync-ribbon-showcustom`);
-        q?.toggleClass("sls-hidden", !this.isThisModuleEnabled());
-        return Promise.resolve(true);
-    }
     async reloadPluginList(showMessage: boolean) {
         this.pluginList = [];
         this.loadedManifest_mTime.clear();
-        pluginList.set(this.pluginList);
+        this.catalogue.set(this.pluginList);
         await this.updatePluginList(showMessage);
     }
     async loadPluginData(path: FilePathWithPrefix): Promise<PluginDataExDisplay | false> {
@@ -585,7 +504,7 @@ export class ConfigSync extends LiveSyncCommands {
                     newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
                     newList.push(pluginData);
                     this.pluginList = newList;
-                    pluginList.set(newList);
+                    this.catalogue.set(newList);
                 }
                 // Failed to load
                 return [];
@@ -602,7 +521,7 @@ export class ConfigSync extends LiveSyncCommands {
             delay: 100,
             yieldThreshold: 10,
             maintainDelay: false,
-            totalRemainingReactiveSource: pluginScanningCount,
+            totalRemainingReactiveSource: this.scanProgress,
         }
     ).startPipeline();
 
@@ -619,7 +538,7 @@ export class ConfigSync extends LiveSyncCommands {
                     newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
                     newList.push(pluginData);
                     this.pluginList = newList;
-                    pluginList.set(newList);
+                    this.catalogue.set(newList);
                 }
                 // Failed to load
                 return [];
@@ -636,34 +555,31 @@ export class ConfigSync extends LiveSyncCommands {
             delay: 100,
             yieldThreshold: 10,
             maintainDelay: false,
-            totalRemainingReactiveSource: pluginScanningCount,
+            totalRemainingReactiveSource: this.scanProgress,
         }
     ).startPipeline();
 
     filenameToUnifiedKey(path: string, termOverRide?: string) {
-        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
-        const category = this.getFileCategory(path);
-        const name =
-            category == "CONFIG" || category == "SNIPPET"
-                ? path.split("/").slice(-1)[0]
-                : category == "PLUGIN_ETC"
-                  ? path.split("/").slice(-2).join("/")
-                  : path.split("/").slice(-2)[0];
-        return `${ICXHeader}${term}/${category}/${name}.md` as FilePathWithPrefix;
+        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
+        return createCustomisationSyncV1DocumentPath(path, term, {
+            configDir: this.configDir,
+            useV2: this.useV2,
+            usePluginEtc: this.useSyncPluginEtc,
+        });
     }
 
     filenameWithUnifiedKey(path: string, termOverRide?: string) {
-        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
-        const category = this.getFileCategory(path);
-        const name =
-            category == "CONFIG" || category == "SNIPPET" ? path.split("/").slice(-1)[0] : path.split("/").slice(-2)[0];
-        const baseName = category == "CONFIG" || category == "SNIPPET" ? name : path.split("/").slice(3).join("/");
-        return `${ICXHeader}${term}/${category}/${name}%${baseName}` as FilePathWithPrefix;
+        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
+        return createCustomisationSyncV2DocumentPath(path, term, {
+            configDir: this.configDir,
+            useV2: this.useV2,
+            usePluginEtc: this.useSyncPluginEtc,
+        });
     }
 
     unifiedKeyPrefixOfTerminal(termOverRide?: string) {
-        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
-        return `${ICXHeader}${term}/` as FilePathWithPrefix;
+        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
+        return createCustomisationSyncDevicePrefix(term);
     }
 
     parseUnifiedPath(unifiedPath: FilePathWithPrefix): {
@@ -673,11 +589,7 @@ export class ConfigSync extends LiveSyncCommands {
         filename: string;
         pathV1: FilePathWithPrefix;
     } {
-        const [device, category, ...rest] = stripAllPrefixes(unifiedPath).split("/");
-        const relativePath = rest.join("/");
-        const [key, filename] = relativePath.split("%");
-        const pathV1 = (unifiedPath.split("%")[0] + ".md") as FilePathWithPrefix;
-        return { device, category, key, filename, pathV1 };
+        return parseCustomisationSyncV2DocumentPath(unifiedPath);
     }
 
     loadedManifest_mTime = new Map<string, number>();
@@ -716,14 +628,17 @@ export class ConfigSync extends LiveSyncCommands {
         };
         if (filename == "manifest.json") {
             // Same as previously loaded
-            if (this.loadedManifest_mTime.get(confKey) != file.mtime && pluginManifests.get(confKey) == undefined) {
+            if (
+                this.loadedManifest_mTime.get(confKey) != file.mtime &&
+                this.pluginManifests.get(confKey) == undefined
+            ) {
                 try {
                     const parsedManifest = JSON.parse(base64ToString(data)) as PluginManifest;
-                    setManifest(confKey, parsedManifest);
+                    this.setManifest(confKey, parsedManifest);
                     this.pluginList
                         .filter((e) => e instanceof PluginDataExDisplayV2 && e.confKey == confKey)
                         .forEach((e) => (e as PluginDataExDisplayV2).applyLoadedManifest());
-                    pluginList.set(this.pluginList);
+                    this.catalogue.set(this.pluginList);
                 } catch (ex) {
                     this._log(
                         `The file ${loaded.path} seems to manifest, but could not be decoded as JSON`,
@@ -736,7 +651,7 @@ export class ConfigSync extends LiveSyncCommands {
                 this.pluginList
                     .filter((e) => e instanceof PluginDataExDisplayV2 && e.confKey == confKey)
                     .forEach((e) => (e as PluginDataExDisplayV2).applyLoadedManifest());
-                pluginList.set(this.pluginList);
+                this.catalogue.set(this.pluginList);
             }
             // }
         }
@@ -746,14 +661,17 @@ export class ConfigSync extends LiveSyncCommands {
         const { category, device, key, pathV1 } = this.parseUnifiedPath(unifiedPathV2);
         if (category == "") return;
 
-        const ret: PluginDataExDisplayV2 = new PluginDataExDisplayV2({
-            documentPath: pathV1,
-            category: category,
-            name: key,
-            term: `${device}`,
-            files: [],
-            mtime: 0,
-        });
+        const ret: PluginDataExDisplayV2 = new PluginDataExDisplayV2(
+            {
+                documentPath: pathV1,
+                category: category,
+                name: key,
+                term: `${device}`,
+                files: [],
+                mtime: 0,
+            },
+            this.pluginManifests
+        );
         return ret;
     }
 
@@ -762,7 +680,7 @@ export class ConfigSync extends LiveSyncCommands {
     async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
         try {
             this.updatingV2Count++;
-            pluginV2Progress.set(this.updatingV2Count);
+            this.migrationProgress.set(this.updatingV2Count);
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
 
@@ -792,11 +710,11 @@ export class ConfigSync extends LiveSyncCommands {
             this.pluginList = newList;
 
             scheduleTask("updatePluginListV2", 100, () => {
-                pluginList.set(this.pluginList);
+                this.catalogue.set(this.pluginList);
             });
         } finally {
             this.updatingV2Count--;
-            pluginV2Progress.set(this.updatingV2Count);
+            this.migrationProgress.set(this.updatingV2Count);
         }
     }
 
@@ -839,7 +757,7 @@ export class ConfigSync extends LiveSyncCommands {
             const v2Path = (prefixPath + relativeFilename) as FilePathWithPrefix;
             // console.warn(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`);
             this._log(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`, LOG_LEVEL_VERBOSE);
-            const newId = await this.services.path.path2id(v2Path);
+            const newId = await this.path2id(v2Path);
             // const buf =
 
             const data = createBlob([DUMMY_HEAD, DUMMY_END, ...getDocDataAsArray(f.data)]);
@@ -855,7 +773,7 @@ export class ConfigSync extends LiveSyncCommands {
                 children: [],
                 eden: {},
             };
-            const r = await this.core.localDatabase.putDBEntry(saving);
+            const r = await this.localDatabase.putDBEntry(saving);
             if (r && r.ok) {
                 this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
                 const delR = await this.deleteConfigOnDatabase(v1Path);
@@ -872,12 +790,12 @@ export class ConfigSync extends LiveSyncCommands {
         if (!this.isThisModuleEnabled()) {
             this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
-            pluginList.set(this.pluginList);
+            this.catalogue.set(this.pluginList);
             return;
         }
         try {
             this.updatingV2Count++;
-            pluginV2Progress.set(this.updatingV2Count);
+            this.migrationProgress.set(this.updatingV2Count);
             const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
             const plugins = updatedDocumentPath
                 ? this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", {
@@ -898,11 +816,11 @@ export class ConfigSync extends LiveSyncCommands {
                 this.pluginScanProcessor.enqueue(v);
             }
         } finally {
-            pluginIsEnumerating.set(false);
+            this.enumerationActive.set(false);
             this.updatingV2Count--;
-            pluginV2Progress.set(this.updatingV2Count);
+            this.migrationProgress.set(this.updatingV2Count);
         }
-        pluginIsEnumerating.set(false);
+        this.enumerationActive.set(false);
         // return entries;
     }
     async compareUsingDisplayData(dataA: IPluginDataExDisplay, dataB: IPluginDataExDisplay, compareEach = false) {
@@ -933,36 +851,18 @@ export class ConfigSync extends LiveSyncCommands {
             path = path.split("%")[1] as FilePath;
         }
         if (fileA.path.endsWith(".json")) {
-            return serialized(
-                "config:merge-data",
-                () =>
-                    new Promise<boolean>((res) => {
-                        this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
-                        // const docs = [docA, docB];
-                        const modal = new JsonResolveModal(
-                            this.app,
-                            path,
-                            [fileA, fileB],
-                            async (keep, result) => {
-                                if (result == null) return res(false);
-                                try {
-                                    res(await this.applyData(dataA, result));
-                                } catch (ex) {
-                                    this._log("Could not apply merged file");
-                                    this._log(ex, LOG_LEVEL_VERBOSE);
-                                    res(false);
-                                }
-                            },
-                            "Local",
-                            `${dataB.term}`,
-                            "B",
-                            true,
-                            true,
-                            "Difference between local and remote"
-                        );
-                        modal.open();
-                    })
-            );
+            return serialized("config:merge-data", async () => {
+                this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
+                return await this.dependencies.resolveJsonConflict(path, [fileA, fileB], dataB.term, async (result) => {
+                    try {
+                        return await this.applyData(dataA, result);
+                    } catch (ex) {
+                        this._log("Could not apply merged file");
+                        this._log(ex, LOG_LEVEL_VERBOSE);
+                        return false;
+                    }
+                });
+            });
         } else {
             const dmp = new diff_match_patch();
             let docAData = getDocData(fileA.data);
@@ -983,12 +883,8 @@ export class ConfigSync extends LiveSyncCommands {
                 right: { rev: "B", ...fileB, data: docBData },
                 diff: diff,
             };
-            // console.dir(diffResult);
-            const d = new ConflictResolveModal(this.app, path, diffResult, true, dataB.term);
-            d.open();
-            const ret = await d.waitForResult();
-            if (ret === CANCELLED) return false;
-            if (ret === LEAVE_TO_SUBSEQUENT) return false;
+            const ret = await this.dependencies.selectTextFile(path, diffResult, dataB.term);
+            if (ret === false) return false;
             const resultContent = ret == "A" ? docAData : ret == "B" ? docBData : undefined;
             if (resultContent) {
                 return await this.applyData(dataA, resultContent);
@@ -1004,10 +900,10 @@ export class ConfigSync extends LiveSyncCommands {
                 const filename = data.files[0].filename;
                 this._log(`Applying ${filename} of ${data.displayName || data.name}..`);
                 const path = `${baseDir}/${filename}` as FilePath;
-                await this.core.storageAccess.ensureDir(path);
+                await this.storageAccess.ensureDir(path);
                 // If the content has applied, modified time will be updated to the current time.
-                await this.core.storageAccess.writeHiddenFileAuto(path, content);
-                await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
+                await this.storageAccess.writeHiddenFileAuto(path, content);
+                await this.storeCustomisationFileV2(path, this.dependencies.getDeviceAndVaultName());
             } else {
                 const files = data.files;
                 for (const f of files) {
@@ -1016,12 +912,12 @@ export class ConfigSync extends LiveSyncCommands {
                     const path = `${baseDir}/${f.filename}` as FilePath;
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                     // const contentEach = createBlob(f.data);
-                    await this.core.storageAccess.ensureDir(path);
+                    await this.storageAccess.ensureDir(path);
 
                     if (f.datatype == "newnote") {
                         let oldData;
                         try {
-                            oldData = await this.core.storageAccess.readHiddenFileBinary(path);
+                            oldData = await this.storageAccess.readHiddenFileBinary(path);
                         } catch (ex) {
                             this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
@@ -1032,11 +928,11 @@ export class ConfigSync extends LiveSyncCommands {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
+                        await this.storageAccess.writeHiddenFileAuto(path, content, stat);
                     } else {
                         let oldData;
                         try {
-                            oldData = await this.core.storageAccess.readHiddenFileText(path);
+                            oldData = await this.storageAccess.readHiddenFileText(path);
                         } catch (ex) {
                             this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
@@ -1047,10 +943,10 @@ export class ConfigSync extends LiveSyncCommands {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
+                        await this.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
                     this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
-                    await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
+                    await this.storeCustomisationFileV2(path, this.dependencies.getDeviceAndVaultName());
                 }
             }
         } catch (ex) {
@@ -1079,12 +975,12 @@ export class ConfigSync extends LiveSyncCommands {
                 try {
                     // console.dir(f);
                     const path = `${baseDir}/${f.filename}`;
-                    await this.core.storageAccess.ensureDir(path);
+                    await this.storageAccess.ensureDir(path);
                     if (!content) {
                         const dt = decodeBinary(f.data);
-                        await this.core.storageAccess.writeHiddenFileAuto(path, dt);
+                        await this.storageAccess.writeHiddenFileAuto(path, dt);
                     } else {
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content);
+                        await this.storageAccess.writeHiddenFileAuto(path, content);
                     }
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
                 } catch (ex) {
@@ -1098,28 +994,9 @@ export class ConfigSync extends LiveSyncCommands {
             await delay(100);
             this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
             if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
-                const pluginManager = getObsidianCommunityPluginManager(this.app);
-                const pluginManifest = pluginManager.manifests.find(
-                    (manifest) =>
-                        pluginManager.enabledPlugins.has(manifest.id) &&
-                        manifest.dir == `${baseDir}/plugins/${data.name}`
-                );
-                if (pluginManifest) {
-                    this._log(
-                        `Unloading plugin: ${pluginManifest.name}`,
-                        LOG_LEVEL_NOTICE,
-                        "plugin-reload-" + pluginManifest.id
-                    );
-                    await pluginManager.unloadPlugin(pluginManifest.id);
-                    await pluginManager.loadPlugin(pluginManifest.id);
-                    this._log(
-                        `Plugin reloaded: ${pluginManifest.name}`,
-                        LOG_LEVEL_NOTICE,
-                        "plugin-reload-" + pluginManifest.id
-                    );
-                }
+                await this.dependencies.reloadPlugin(baseDir, data.name);
             } else if (data.category == "CONFIG") {
-                this.services.appLifecycle.askRestart();
+                this.dependencies.askRestart();
             }
             return true;
         } catch (ex) {
@@ -1170,28 +1047,10 @@ export class ConfigSync extends LiveSyncCommands {
                 (docs as AnyEntry).path ? (docs as AnyEntry).path : this.getPath(docs as AnyEntry)
             );
         }
-        if (this.isThisModuleEnabled() && this.core.settings.notifyPluginOrSettingUpdated) {
-            if (!this.pluginDialog || (this.pluginDialog && !this.pluginDialog.isOpened())) {
-                const fragment = createFragment((doc) => {
-                    doc.createSpan(undefined, (a) => {
-                        a.appendText(`Some configuration has been arrived, Press `);
-                        a.appendChild(
-                            a.createEl("a", undefined, (anchor) => {
-                                anchor.text = "HERE";
-                                anchor.addEventListener("click", () => {
-                                    this.showPluginSyncModal();
-                                });
-                            })
-                        );
-
-                        a.appendText(` to open the config sync dialog , or press elsewhere to dismiss this message.`);
-                    });
-                });
-
+        if (this.isThisModuleEnabled() && this.settings.notifyPluginOrSettingUpdated) {
+            if (!this.dependencies.getUIControl()?.isOpen()) {
                 scheduleTask(UPDATED_CONFIGURATION_NOTICE_KEY, 1000, () => {
-                    this.services.context.notices.show(UPDATED_CONFIGURATION_NOTICE_KEY, fragment, {
-                        durationMs: 20_000,
-                    });
+                    this.dependencies.showConfigurationNotice(() => this.showPluginSyncModal());
                 });
             }
         }
@@ -1215,13 +1074,13 @@ export class ConfigSync extends LiveSyncCommands {
 
     recentProcessedInternalFiles = [] as string[];
     async makeEntryFromFile(path: FilePath): Promise<false | PluginDataExFile> {
-        const stat = await this.core.storageAccess.statHidden(path);
+        const stat = await this.storageAccess.statHidden(path);
         let version: string | undefined;
         let displayName: string | undefined;
         if (!stat) {
             return false;
         }
-        const contentBin = await this.core.storageAccess.readHiddenFileBinary(path);
+        const contentBin = await this.storageAccess.readHiddenFileBinary(path);
         let content: string[];
         try {
             content = await arrayBufferToBase64(contentBin);
@@ -1267,12 +1126,12 @@ export class ConfigSync extends LiveSyncCommands {
             const prefixedFileName = vf;
 
             const id = await this.path2id(prefixedFileName);
-            const stat = await this.core.storageAccess.statHidden(path);
+            const stat = await this.storageAccess.statHidden(path);
             if (!stat) {
                 return false;
             }
             const mtime = stat.mtime;
-            const content = await this.core.storageAccess.readHiddenFileBinary(path);
+            const content = await this.storageAccess.readHiddenFileBinary(path);
             const contentBlob = createBlob([DUMMY_HEAD, DUMMY_END, ...(await arrayBufferToBase64(content))]);
             // const contentBlob = createBlob(content);
             try {
@@ -1293,7 +1152,9 @@ export class ConfigSync extends LiveSyncCommands {
                         eden: {},
                     };
                 } else {
-                    if (this.services.path.isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
+                    if (
+                        this.dependencies.path.isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN
+                    ) {
                         this._log(
                             `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`,
                             LOG_LEVEL_DEBUG
@@ -1313,7 +1174,7 @@ export class ConfigSync extends LiveSyncCommands {
                             `STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`,
                             LOG_LEVEL_VERBOSE
                         );
-                        this.services.path.markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
+                        this.dependencies.path.markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
                         return true;
                     }
                     saveData = {
@@ -1339,7 +1200,7 @@ export class ConfigSync extends LiveSyncCommands {
         });
     }
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
-        const term = termOverRide || this.services.setting.getDeviceAndVaultName();
+        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
         if (term == "") {
             this._log($msg("We have to configure the device name"), LOG_LEVEL_NOTICE);
             return;
@@ -1487,25 +1348,15 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async watchVaultRawEventsAsync(path: FilePath) {
-        if (!this._isMainReady) return false;
+        if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
-        // if (!this.isTargetPath(path)) return false;
-        const stat = await this.core.storageAccess.statHidden(path);
+        if (!this.isTargetPath(path)) return false;
+        if (!this.dependencies.ownsLocalFile(path)) return false;
+        const stat = await this.storageAccess.statHidden(path);
         // Make sure that target is a file.
         if (stat && stat.type != "file") return false;
 
-        const configDir = normalizePath(this.configDir);
-        const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting)
-            .filter((e) => e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY)
-            .map((e) => e.files)
-            .flat()
-            .map((e) => `${configDir}/${e}`.toLowerCase());
-        if (synchronisedInConfigSync.some((e) => e.startsWith(path.toLowerCase()))) {
-            this._log(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
-            // This file could be handled by the other module.
-            return false;
-        }
         // this._log(`Customization file detected: ${path}`, LOG_LEVEL_VERBOSE);
         const storageMTime = ~~(((stat && stat.mtime) || 0) / 1000);
         const key = `${path}-${storageMTime}`;
@@ -1529,7 +1380,7 @@ export class ConfigSync extends LiveSyncCommands {
         await shareRunningResult("scanAllConfigFiles", async () => {
             const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
             this._log("Scanning customizing files.", logLevel, "scan-all-config");
-            const term = this.services.setting.getDeviceAndVaultName();
+            const term = this.dependencies.getDeviceAndVaultName();
             if (term == "") {
                 this._log($msg("We have to configure the device name"), LOG_LEVEL_NOTICE);
                 return;
@@ -1557,9 +1408,11 @@ export class ConfigSync extends LiveSyncCommands {
                             const unifiedFilenameWithKey = `${item._id}` as FilePathWithPrefix;
                             const localPath = localFileMap.get(unifiedFilenameWithKey);
                             if (localPath) {
-                                await this.storeCustomisationFileV2(localPath, term);
+                                if (this.dependencies.ownsLocalFile(localPath)) {
+                                    await this.storeCustomisationFileV2(localPath, term);
+                                }
                                 localFileMap.delete(unifiedFilenameWithKey);
-                            } else {
+                            } else if (this.dependencies.ownsLocalDocument(this.getPath(item))) {
                                 await this.deleteConfigOnDatabase(unifiedFilenameWithKey);
                             }
                         } catch (ex) {
@@ -1574,6 +1427,7 @@ export class ConfigSync extends LiveSyncCommands {
                 // Extra files
                 const taskExtra = [] as (() => Promise<void>)[];
                 for (const [, filePath] of localFileMap) {
+                    if (!this.dependencies.ownsLocalFile(filePath)) continue;
                     taskExtra.push(async () => {
                         const releaser = await semaphore.acquire();
                         try {
@@ -1611,11 +1465,15 @@ export class ConfigSync extends LiveSyncCommands {
                         this._log(`scanAllConfigFiles - File not found: ${vp}`, LOG_LEVEL_VERBOSE);
                         continue;
                     }
-                    await this.storeCustomizationFiles(p);
+                    if (this.dependencies.ownsLocalFile(p)) {
+                        await this.storeCustomizationFiles(p);
+                    }
                     deleteCandidate = deleteCandidate.filter((e) => e != vp);
                 }
                 for (const vp of deleteCandidate) {
-                    await this.deleteConfigOnDatabase(vp);
+                    if (this.dependencies.ownsLocalDocument(vp)) {
+                        await this.deleteConfigOnDatabase(vp);
+                    }
                 }
                 fireAndForget(() => this.updatePluginList(false));
             }
@@ -1677,25 +1535,25 @@ export class ConfigSync extends LiveSyncCommands {
         return Promise.resolve(false);
     }
 
-    private _allSuspendExtraSync(): Promise<boolean> {
-        if (this.core.settings.usePluginSync || this.core.settings.autoSweepPlugins) {
+    _allSuspendExtraSync(): Promise<boolean> {
+        if (this.settings.usePluginSync || this.settings.autoSweepPlugins) {
             this._log(
                 "Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.",
                 LOG_LEVEL_NOTICE
             );
-            this.core.settings.usePluginSync = false;
-            this.core.settings.autoSweepPlugins = false;
+            this.settings.usePluginSync = false;
+            this.settings.autoSweepPlugins = false;
         }
         return Promise.resolve(true);
     }
 
-    private async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
+    async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
     async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         if (mode == "DISABLE") {
-            await this.core.services.setting.applyPartial(
+            await this.dependencies.applySettings(
                 {
                     usePluginSync: false,
                 },
@@ -1705,37 +1563,18 @@ export class ConfigSync extends LiveSyncCommands {
         }
 
         if (mode == "CUSTOMIZE") {
-            if (!this.services.setting.getDeviceAndVaultName()) {
-                let name = await this.core.confirm.askString(
+            if (!this.dependencies.getDeviceAndVaultName()) {
+                let name = await this.dependencies.askString(
                     $msg("Device name"),
                     $msg("Please set this device name"),
                     `desktop`
                 );
                 if (!name) {
-                    if (Platform.isAndroidApp) {
-                        name = "android-app";
-                    } else if (Platform.isIosApp) {
-                        name = "ios";
-                    } else if (Platform.isMacOS) {
-                        name = "macos";
-                    } else if (Platform.isMobileApp) {
-                        name = "mobile-app";
-                    } else if (Platform.isMobile) {
-                        name = "mobile";
-                    } else if (Platform.isSafari) {
-                        name = "safari";
-                    } else if (Platform.isDesktop) {
-                        name = "desktop";
-                    } else if (Platform.isDesktopApp) {
-                        name = "desktop-app";
-                    } else {
-                        name = "unknown";
-                    }
-                    name = name + Math.random().toString(36).slice(-4);
+                    name = this.dependencies.getFallbackDeviceName();
                 }
-                this.services.setting.setDeviceAndVaultName(name);
+                this.dependencies.setDeviceAndVaultName(name);
             }
-            await this.core.services.setting.applyPartial(
+            await this.dependencies.applySettings(
                 {
                     usePluginSync: true,
                     useAdvancedMode: true,
@@ -1750,9 +1589,9 @@ export class ConfigSync extends LiveSyncCommands {
         if (lastDepth == -1) return [];
         let w: ListedFiles;
         try {
-            w = await this.app.vault.adapter.list(path);
+            w = await this.dependencies.listFiles(path);
         } catch (ex) {
-            this._log(`Could not traverse(ConfigSync):${path}`, LOG_LEVEL_INFO);
+            this._log(`Could not traverse(CustomisationSync):${path}`, LOG_LEVEL_INFO);
             this._log(ex, LOG_LEVEL_VERBOSE);
             return [];
         }
@@ -1761,17 +1600,5 @@ export class ConfigSync extends LiveSyncCommands {
             files = files.concat(await this.getFiles(v, lastDepth - 1));
         }
         return files;
-    }
-    override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
-        services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
-        services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
-        services.replication.processVirtualDocument.addHandler(this._anyModuleParsedReplicationResultItem.bind(this));
-        services.setting.onRealiseSetting.addHandler(this._everyRealizeSettingSyncMode.bind(this));
-        services.appLifecycle.onResuming.addHandler(this._everyOnResumeProcess.bind(this));
-        services.appLifecycle.onResumed.addHandler(this._everyAfterResumeProcess.bind(this));
-        services.replication.onBeforeReplicate.addHandler(this._everyBeforeReplicate.bind(this));
-        services.databaseEvents.onDatabaseInitialised.addHandler(this._everyOnDatabaseInitialized.bind(this));
-        services.setting.suspendExtraSync.addHandler(this._allSuspendExtraSync.bind(this));
-        services.setting.enableOptionalFeature.addHandler(this._allConfigureOptionalSyncFeature.bind(this));
     }
 }

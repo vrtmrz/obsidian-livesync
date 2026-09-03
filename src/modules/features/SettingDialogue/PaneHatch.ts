@@ -21,7 +21,6 @@ import {
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
     eventHub,
 } from "@/common/events.ts";
-import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
@@ -339,22 +338,22 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             ]);
         };
         const findHiddenFile = async (path: string) => {
-            const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
-            if (!addOn) {
+            const repair = this.featureViews.hiddenFileSyncRepair;
+            if (!repair) {
                 return false;
             }
-            const file = (await addOn.scanInternalFiles()).find((entry) => entry.path === path);
+            const file = (await repair.scanInternalFiles()).find((entry) => entry.path === path);
             if (!file) {
                 Logger(`Failed to find the file in the internal files: ${path}`, LOG_LEVEL_NOTICE);
                 return false;
             }
-            return { addOn, file };
+            return { repair, file };
         };
         const storeStorageInDatabase = async (path: string): Promise<boolean> => {
             if (path.startsWith(".")) {
                 const hidden = await findHiddenFile(path);
                 return hidden
-                    ? Boolean(await hidden.addOn.storeInternalFileToDatabase(hidden.file, true))
+                    ? Boolean(await hidden.repair.storeInternalFileToDatabase(hidden.file, true))
                     : false;
             }
             return Boolean(await this.core.fileHandler.storeFileToDB(path as FilePath, true));
@@ -368,7 +367,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                 const hidden = await findHiddenFile(path);
                 return hidden
                     ? Boolean(
-                          await hidden.addOn.storeInternalFileToDatabaseWithBaseRevision(
+                          await hidden.repair.storeInternalFileToDatabaseWithBaseRevision(
                               hidden.file,
                               revision,
                               createIfDifferent
@@ -390,10 +389,10 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             force: boolean
         ): Promise<boolean> => {
             if (path.startsWith(".")) {
-                const addOn = this.core.getAddOn<HiddenFileSync>(HiddenFileSync.name);
-                return addOn
+                const repair = this.featureViews.hiddenFileSyncRepair;
+                return repair
                     ? Boolean(
-                          await addOn.extractInternalFileRevisionFromDatabase(
+                          await repair.extractInternalFileRevisionFromDatabase(
                               path as FilePath,
                               revision,
                               force
