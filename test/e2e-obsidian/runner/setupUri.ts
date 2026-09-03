@@ -1,4 +1,5 @@
 import type { Locator, Page } from "playwright";
+import { $msg } from "../../../src/common/translation.ts";
 import { evalObsidianJson } from "./cli.ts";
 import { captureObsidianDialogue, captureObsidianElement, withObsidianPage } from "./ui.ts";
 
@@ -166,7 +167,7 @@ export async function generateSetupURIFromDevice(
     );
     await withObsidianPage(port, async (page) => {
         const result = modalByTitle(page, resultTitle);
-        await result.getByRole("button", { name: "OK", exact: true }).click({ timeout: uiTimeoutMs });
+        await result.getByRole("button", { name: $msg("Ok"), exact: true }).click({ timeout: uiTimeoutMs });
         await result.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
 

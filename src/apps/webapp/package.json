@@ -1,7 +1,7 @@
 {
     "name": "livesync-webapp",
     "private": true,
-    "version": "1.0.23-webapp",
+    "version": "1.0.24-webapp",
     "type": "module",
     "description": "Browser-based Self-hosted LiveSync using FileSystem API",
     "scripts": {

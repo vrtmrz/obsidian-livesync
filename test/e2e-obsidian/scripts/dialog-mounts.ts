@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { $msg } from "../../../src/common/translation.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { createE2eCouchDbPluginData, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
 import { assertMobileDialogueLayout, assertMobileNoticeLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
@@ -909,7 +910,7 @@ async function verifyLogAndReportSurfaces(): Promise<{ log: string; report: stri
             if (!report.includes("# ---- Debug Info Dump ----")) {
                 throw new Error("The full-report dialogue did not contain the generated debug report.");
             }
-            await modal.getByRole("button", { name: "OK", exact: true }).waitFor({
+            await modal.getByRole("button", { name: $msg("Ok"), exact: true }).waitFor({
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
@@ -920,7 +921,7 @@ async function verifyLogAndReportSurfaces(): Promise<{ log: string; report: stri
         const modal = page.locator(".modal-container").filter({
             hasText: "Your Debug info is ready to be copied",
         });
-        await modal.getByRole("button", { name: "OK", exact: true }).click({ timeout: uiTimeoutMs });
+        await modal.getByRole("button", { name: $msg("Ok"), exact: true }).click({ timeout: uiTimeoutMs });
         await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
 
