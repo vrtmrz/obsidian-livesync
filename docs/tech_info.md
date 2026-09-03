@@ -11,6 +11,21 @@
 
 Note: The figure is drawn as single-directional, between two devices for demonstration purposes. Everything actually occurs bi-directionally between many devices at the same time.
 
+## Current technical references
+
+- [Database Data Structures](datastructure.md) describes current Metadata and
+  Chunk shapes, identifier handling, deletion, and raw remote representations.
+- [Replicator architecture](design_docs/replicator_architecture.md) describes
+  provider composition, active Replicator publication, retirement, and P2P
+  ownership.
+- [Conflict resolution and revision provenance](specs_conflict_resolution.md)
+  defines the current revision-tree and file-provenance rules.
+- [Chunk Retrieval and Waiting](design_docs/chunk_retrieval_and_waiting.md)
+  defines missing-Chunk arrival and quiescence handling.
+- [Data Compression](specs_data_compression.md) and [Garbage Collection
+  V3](specs_garbage_collection.md) describe their respective storage and
+  maintenance contracts.
+
 ## Techniques to keep bandwidth consumption low.
 
 ![dedupe](../images/2.png)

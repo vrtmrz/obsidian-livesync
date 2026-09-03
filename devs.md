@@ -270,7 +270,7 @@ Existing legacy Modules continue to register their handlers in `onBindFunction()
 ### Database Operations
 
 - Local database operations through `LiveSyncLocalDB` (wraps PouchDB)
-- Document types: `EntryDoc` (files), `EntryLeaf` (chunks), `PluginDataEntry` (plugin sync)
+- Document types are owned by Commonlib. `EntryDoc` covers file Metadata, Chunks, database version information, Milestone information, Node information, and Chunk Packs. Current Customisation Sync data uses ordinary chunked Metadata in the `ix:` namespace rather than the application-local `PluginDataEntry` interface.
 
 ## Important Files
 
