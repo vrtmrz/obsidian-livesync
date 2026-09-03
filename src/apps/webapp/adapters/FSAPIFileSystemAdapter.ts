@@ -238,9 +238,15 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
 
     /**
      * Clear all caches
+     *
+     * The full-scan state is part of the cache: once the inventory has been
+     * discarded, the next `getFiles()` must rebuild it. Leaving the flag set
+     * would let a caller that repopulates a single entry afterwards, such as
+     * `renameFile()`, publish that entry as the complete listing.
      */
     clearCache(): void {
         this.fileCache.clear();
         this.handleCache.clear();
+        this.hasScannedFully = false;
     }
 }

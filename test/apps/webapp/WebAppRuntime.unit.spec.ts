@@ -174,8 +174,10 @@ describe("WebAppRuntime lifecycle", () => {
 
         expect(runtimeMocks.onLoad).toHaveBeenCalledOnce();
         expect(runtimeMocks.onReady).toHaveBeenCalledOnce();
-        expect(runtimeMocks.scanDirectory).toHaveBeenCalledOnce();
+        // `getFiles()` performs the initial scan itself; scanning explicitly
+        // beforehand would traverse the whole Vault twice.
         expect(runtimeMocks.getFiles).toHaveBeenCalledOnce();
+        expect(runtimeMocks.scanDirectory).not.toHaveBeenCalled();
         expect(runtimeMocks.addLog).toHaveBeenCalledWith("Found 1 files", expect.anything(), "scan");
         expect(reportStatus).toHaveBeenCalledWith(
             "warning",
@@ -210,8 +212,10 @@ describe("WebAppRuntime lifecycle", () => {
 
         await expect(runtime.scanLocalFiles()).resolves.toBe(true);
 
+        // Clearing the cache also discards the full-scan state, so the rebuild
+        // is left to the `getFiles()` inside `collectFilesOnStorage()`.
         expect(runtimeMocks.clearCache).toHaveBeenCalledOnce();
-        expect(runtimeMocks.scanDirectory).toHaveBeenCalledOnce();
+        expect(runtimeMocks.scanDirectory).not.toHaveBeenCalled();
         expect(runtimeMocks.collectFilesOnStorage).toHaveBeenCalledWith(
             expect.objectContaining({
                 services: runtimeMocks.serviceHub,
