@@ -5,10 +5,11 @@ When working on this repository (writing code, comments, documentation, or commi
 ## Required Reference Files
 
 Before making changes to documentation, user-facing text, or settings:
-1. Read [docs/terms.md](docs/terms.md) for terminology, vocabulary conventions, and technical definitions.
-2. Read [docs/settings.md](docs/settings.md) (and [docs/settings_ja.md](docs/settings_ja.md)) for UI settings and setting key mappings.
-3. Read [docs/troubleshooting.md](docs/troubleshooting.md) for troubleshooting guidelines and common recovery steps (such as flag files and SCRAM state).
-4. Read [devs.md](devs.md) for development workflows, module architecture, and testing infrastructure.
+1. Read [docs/terms.md](docs/terms.md) for documentation style and vocabulary conventions.
+2. Read [docs/glossary.md](docs/glossary.md) for user-facing, operational, developer, and design terminology.
+3. Read [docs/settings.md](docs/settings.md) (and [docs/settings_ja.md](docs/settings_ja.md)) for UI settings and setting key mappings.
+4. Read [docs/troubleshooting.md](docs/troubleshooting.md) for troubleshooting guidelines and common recovery steps (such as flag files and SCRAM state).
+5. Read [devs.md](devs.md) for development workflows, module architecture, and testing infrastructure.
 
 ---
 

@@ -20,7 +20,7 @@ Resolving a conflict writes the selected or merged result on one observed branch
 
 ### Independent revision properties
 
-The modifiers defined under [Revision](terms.md#revision) describe independent properties, rather than exclusive revision types. The winner is a database-tree role, Vault-matching describes current file-state equality, and displayed identifies the device-local branch recorded for the Vault. The same revision commonly has all three properties, but synchronisation, conflicts, local edits, and missing provenance can separate them.
+The modifiers defined under [Revision](glossary.md#revision) describe independent properties, rather than exclusive revision types. The winner is a database-tree role, Vault-matching describes current file-state equality, and displayed identifies the device-local branch recorded for the Vault. The same revision commonly has all three properties, but synchronisation, conflicts, local edits, and missing provenance can separate them.
 
 | Situation                                            | Winner             | Vault-matching                                      | Displayed                                            |
 | ---------------------------------------------------- | ------------------ | --------------------------------------------------- | ---------------------------------------------------- |

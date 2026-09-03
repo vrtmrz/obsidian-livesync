@@ -7,7 +7,7 @@ Accepted for a limited implementation.
 ## Problem and scope
 
 This document uses the independent revision properties defined under
-[Revision](../terms.md#revision) and the general state model in
+[Revision](../glossary.md#revision) and the general state model in
 [Conflict resolution and revision provenance](../specs_conflict_resolution.md).
 
 Document History can reconstruct an available historical revision from its

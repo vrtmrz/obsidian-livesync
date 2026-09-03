@@ -1,8 +1,8 @@
 ---
-date: 2026-08-27
-commonlib-version: "0.1.20"
-self-hosted-livesync-version: "1.0.21"
-status: proposed
+date: 2026-09-02
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.23"
+status: accepted
 series: replicator-capabilities-and-lifecycle
 part: 1 of 3
 ---
@@ -15,15 +15,20 @@ then [Part 3: migration plan and verification](2026_08_replicator_capabilities_0
 
 ## Status
 
-Proposed. This record defines the provider, capability, lifecycle, interaction,
+Accepted and implemented in Commonlib 0.1.21 and Self-hosted LiveSync 1.0.23.
+This record defines the provider, capability, lifecycle, interaction,
 ownership, and probe boundaries required by current Self-hosted LiveSync
 consumers. It is the generic part of the series; the P2P-specific ownership
-rules live in Part 2, and implementation sequencing lives in Part 3.
+rules live in Part 2, and the completed implementation sequence lives in Part
+3. The current structure is summarised in the
+[Replicator architecture](../design_docs/replicator_architecture.md) design
+document.
 
-The accepted P2P room and transport lifecycle record remains authoritative for
-the current P2P implementation until Stage 3 in Part 3 is complete. The
-supersession boundary for that record is stated in Part 2 and is not repeated
-here.
+Stage 3 in Part 3 is complete. The stable P2P service and room-session owner in
+Part 2 supersede the replaceable LiveSync P2P Replicator ownership described by
+the earlier P2P room and transport lifecycle record. That accepted record
+remains authoritative for its retained Trystero room, physical-peer, and relay
+ownership decisions.
 
 ## Context
 
@@ -235,12 +240,14 @@ supplies an exhaustive definition table for that set. The current catalogue is
 CouchDB, Object Storage, and P2P; it is not a public third-party registration
 API.
 
-CouchDB is part of every current host composition. Object Storage and P2P are
-compile-time composition choices and may be included or omitted without
-changing the generic scheduling feature. Adding another current provider
-requires a Commonlib kind and support declaration, host composition,
-Setup/profile schema handling, and provider-specific tests. It does not require
-a runtime plug-in registry or behaviour for unknown provider kinds.
+Every current `LiveSyncBaseCore` host composes CouchDB and Object Storage.
+`WebPeerRuntime` is a separate P2P-only host composition, and P2P remains a
+compile-time feature choice for the other hosts. A host can include or omit a
+provider without changing the generic scheduling feature. Adding another
+current provider requires a Commonlib kind and support declaration, host
+composition, Setup/profile schema handling, and provider-specific tests. It
+does not require a runtime plug-in registry or behaviour for unknown provider
+kinds.
 
 Each provider definition supplies:
 
@@ -777,6 +784,7 @@ when every caller proves it to be the operation's identity.
 
 ## References
 
+- [Project glossary](../glossary.md#developer-and-design-terms)
 - [Part 2: P2P service and session lifecycle](2026_08_replicator_capabilities_02_p2p_service_lifecycle.md)
 - [Part 3: migration plan and verification](2026_08_replicator_capabilities_03_migration_plan.md)
 - [Bounded Remote Activity](2026_07_bounded_remote_activity.md)

@@ -85,7 +85,7 @@ To facilitate development and testing, the build process can automatically copy 
 
 Regression tests remain in the suite owned by the implementation under test. Plug-in tests may be co-located with their source, while independent application tests remain under `test/apps/` or `test/browser-apps/` so that they stay outside the Community Review source boundary. Prefix a case or group with `compatibility:` when it protects a persisted input or state which current releases still accept, and with `retirement guard:` when it prevents a removed setting, control, or notification from returning. Remove or replace a compatibility case only when the corresponding input is no longer accepted or an equivalent maintained case preserves the contract. Remove a retirement guard only when another current contract makes the old behaviour unreachable. Do not preserve a disconnected historical test as an executable specification when no maintained runner invokes it; Git history is the reference for retired test infrastructure.
 
-- **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
+- **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current Replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Self-hosted setup tools** (`utils/couchdb/`, `utils/setup/`, and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current CouchDB, Object Storage, and random-room P2P Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
 - **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and MinIO fixtures managed by the wrapper.
 
@@ -129,6 +129,10 @@ Changes spanning both repositories must first produce a packed Commonlib artefac
 
 ## Architecture
 
+The [Project glossary](docs/glossary.md#developer-and-design-terms) defines the
+stable developer and design vocabulary used in this section. The guidance
+below describes how those boundaries are applied.
+
 ### Service composition and legacy Modules
 
 The application is composed from Services, ServiceModules, serviceFeatures, add-ons, and a legacy Module layer:
@@ -138,7 +142,7 @@ The application is composed from Services, ServiceModules, serviceFeatures, add-
 - **serviceFeature**: a typed composition function which accepts only its declared Services and ServiceModules. It registers lifecycle handlers, commands, user-interface bindings, or other host glue, and may return a focused view. It is not a runtime registry entry.
 - **AbstractModule** and **AbstractObsidianModule**: the legacy application Module layer. Existing Modules are loaded by the application and bound after the Service graph has been composed; this broad core access is not the preferred dependency boundary for new orchestration.
 
-The normal composition order is the Service Hub, replicator-provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy Module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
+The normal composition order is the Service Hub, Replicator provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy Module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
 
 Mutable state is permitted in a serviceFeature. State alone is not a reason to create a class, a ServiceModule, or retain an AbstractModule. Prefer one private context, with module-level functions which receive that context, when identity and polymorphism are not part of the contract. Separate the state, transitions, and invariants from the surrounding function which registers lifecycle handlers and connects downstream effects. Give the stateful boundary narrow collaborators rather than `LiveSyncBaseCore`.
 
@@ -169,7 +173,12 @@ Legacy Modules remain grouped by directory:
 - **Service Hub** (`src/modules/services/`): Central service registry using dependency injection
 - **Common Library** (`@vrtmrz/livesync-commonlib`): Platform-independent synchronisation logic, shared with the CLI, WebApp, WebPeer, and external tools
 
-Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, connection-probe admission, directory, peer-admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact as-built ownership and shutdown boundaries are recorded in Commonlib's `docs/p2p-transport-lifecycle.md` design document.
+See [Replicator architecture](docs/design_docs/replicator_architecture.md) for
+the implemented provider contract, active Replicator lifecycle, publication and
+session fences, P2P ownership exception, compatibility boundaries, and the
+steps required to add a built-in provider.
+
+Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, connection-probe admission, directory, peer-admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact implemented ownership and shutdown boundaries are recorded in Commonlib's [P2P transport lifecycle](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/p2p-transport-lifecycle.md) design document.
 
 ### Conflict Merge Policy
 
@@ -254,7 +263,7 @@ Existing legacy Modules continue to register their handlers in `onBindFunction()
   `Plugin.addSettingTab()`. Register a settings tab which reads persisted values
   from the sequential `onSettingLoaded` lifecycle, seed its editing snapshot
   before registration, and keep definition construction independent of local
-  database and replicator readiness. See
+  database and Replicator readiness. See
   [the declarative settings adapter ADR](docs/adr/2026_08_declarative_settings_adapter.md).
 - Use `this.services.setting.saveSettingData()` instead of using plugin methods directly
 
