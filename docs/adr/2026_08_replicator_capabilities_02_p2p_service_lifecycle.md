@@ -1,8 +1,8 @@
 ---
-date: 2026-08-27
-commonlib-version: "0.1.20"
-self-hosted-livesync-version: "1.0.21"
-status: proposed
+date: 2026-09-02
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.23"
+status: accepted
 series: replicator-capabilities-and-lifecycle
 part: 2 of 3
 ---
@@ -14,20 +14,24 @@ first, then continue with [Part 3: migration plan and verification](2026_08_repl
 
 ## Status
 
-Proposed. This record defines the P2P service owner, room-session boundary,
-narrow contract views, automation demands, replacement fencing, and trigger
+Accepted and implemented in Commonlib 0.1.21 and Self-hosted LiveSync 1.0.23.
+This record defines the P2P service owner, room-session boundary, narrow
+contract views, automation demands, replacement fencing, and trigger
 semantics. Generic provider and capability rules are owned by Part 1; the
-implementation and verification order is owned by Part 3.
+completed implementation and verification order is recorded in Part 3.
 
 The implemented state is recorded separately in Commonlib's
-`docs/p2p-transport-lifecycle.md` design document. It supersedes the
-replaceable LiveSync P2P Replicator and current-result ownership described by
+[P2P transport lifecycle](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/p2p-transport-lifecycle.md)
+design document and summarised with the generic provider lifecycle in the
+[Replicator architecture](../design_docs/replicator_architecture.md) design
+document. It supersedes the replaceable LiveSync P2P Replicator and ownership
+of the replaceable result returned by the `serviceFeature`, as described by
 the accepted [P2P Room and Transport Lifecycle](2026_07_p2p_transport_lifecycle.md)
-record. The accepted record's decisions about serialised room operations,
+record.
+The accepted record's decisions about serialised room operations,
 `room.leave()`, Trystero-owned physical peers, and relay reconnection remain in
-force. This ADR remains the decision and migration target; the Commonlib
-design document records the names and ownership boundaries which actually
-landed.
+force. This ADR records the product decision; the Commonlib design document
+records the implemented names and ownership boundaries.
 
 ## Scope and context
 
@@ -397,6 +401,7 @@ and does not publish a second P2P lifecycle owner.
 
 ## References
 
+- [Project glossary](../glossary.md#developer-and-design-terms)
 - [Part 1: core contract](2026_08_replicator_capabilities_01_core_contract.md)
 - [Part 3: migration plan and verification](2026_08_replicator_capabilities_03_migration_plan.md)
 - [P2P Room and Transport Lifecycle](2026_07_p2p_transport_lifecycle.md)

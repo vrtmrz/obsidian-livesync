@@ -1,3 +1,10 @@
+---
+date: 2026-09-03
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.24"
+status: accepted
+---
+
 # Notes on Terminology, Spelling, Vocabulary Conventions
 
 ## Spelling and Vocabulary conventions
@@ -24,97 +31,5 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 
 ### Terminology
 
-- Boot-up sequence (boot-sequence)
-    - The initialisation process of the plug-in when Obsidian starts. It starts with the loading of the plug-in, setting up core services, loading saved settings, and opening the local database. Once the layout is ready, the plug-in checks for the presence of flag files, runs configuration diagnostics, connects to the remote database, and begins file watching. The sequence finishes once the plug-in is fully ready and operational.
-- Broken files (Size mismatch)
-    - A state where a file's metadata and the actual content stored in its chunks do not match, causing file retrieval or synchronisation failures. These mismatches can be inspected with `Inspect conflicts and file/database differences` on the Hatch pane, then handled one exact revision at a time.
-- Chunk / Chunks
-    - Divided units of data stored in the database or object storage to facilitate efficient synchronisation.
-- Compaction
-    - A database maintenance procedure that discards old historical document revisions to shrink the remote database size.
-- Custom HTTP Handler / Use Internal API (CORS Bypass Settings)
-    - Settings used to bypass CORS restrictions by routing requests through Obsidian's native request APIs. There are two distinct settings under the hood depending on the remote server type:
-        - **For S3-compatible Object Storage (useCustomRequestHandler)**: Labeled as **"Use Custom HTTP Handler"** in the standard settings tab, **"Use internal API"** in the Svelte-based Setup Wizard dialogue, and represented as `useProxy` in the Setup URI's query parameters due to an unfortunate misunderstanding during development.
-        - **For CouchDB (useRequestAPI)**: Labeled as **"Use Request API to avoid `inevitable` CORS problem"** in the standard settings tab, **"Use Internal API"** in the Svelte-based Setup Wizard dialogue, and represented as `useRequestAPI` in the Setup URI's query parameters.
-- Customisation Sync
-    - The feature that synchronises settings, snippets, themes, and plug-ins. Write with an "s" in documentation (`Customisation`), though technical configurations and links may use `customization`.
-- Database Adapter (IDB vs. IndexedDB)
-    - The local database storage interface used by PouchDB. The `IDB` adapter is recommended since the older `IndexedDB` adapter is obsolete and known to cause memory leaks in `LiveSync` mode. Users can switch between these adapters without a full database rebuild, although a local data migration and an Obsidian restart are required.
-- Database Suffix (additionalSuffixOfDatabaseName)
-    - A unique suffix appended to the database name to allow synchronising multiple vaults with the same name on the same remote server.
-- E2EE Algorithm
-    - The cryptographic algorithm version used for end-to-end encryption. All synchronising devices must be configured with a compatible version (such as `V2` or `V1`).
-- Eden (Eden Chunks)
-    - A performance optimisation where newly created chunks are held within the document until they stabilise, before graduating to independent chunks.
-- Fast Setup (Simple Fetch)
-    - A simplified, automated initial synchronisation flow triggered when setting up subsequent devices or recovering a database. It bypasses the detailed step-by-step setup wizard dialogues, prompting the user with high-level data processing decisions and completing the initial download and local file scan in one continuous process.
-- Flag files (redflag.md, redflag2.md, redflag3.md)
-    - Special Markdown files (or directories) placed at the root of the vault to stop the boot-up sequence or trigger recovery tasks. For instance, `redflag.md` suspends all processes, while `redflag2.md` (`flag_rebuild.md`) triggers a full database rebuild and `redflag3.md` (`flag_fetch.md`) discards the local database to fetch it again from the remote.
-- Garbage Collection (GC)
-    - The process of identifying and purging unreferenced chunks (unused data) from local and remote databases to reclaim storage space.
-- Hatch (Hatch pane)
-    - A dedicated troubleshooting and maintenance section in the plug-in settings, typically hidden behind a warning-labeled collapsible panel to prevent accidental misconfiguration. It contains diagnostic utilities, database reset controls, status reports, and advanced edge-case patches.
-- Hidden File Sync
-    - The feature that synchronises files located in hidden directories (like `.obsidian`).
-- JWT Authentication
-    - An experimental authentication option for CouchDB allowing secure token-based authentication instead of standard credentials. It requires a configured private key/secret, algorithm, expiration duration, subject, and key ID.
-- LiveSync
-    - A very confusing term.
-        - As a shortened form of `Self-hosted LiveSync`.
-        - As the name of a synchronisation mode. This should be changed to `Continuous`, in contrast to `Periodic`.
-- livesync-serverpeer / webpeer
-    - Pseudo-clients that assist in WebRTC peer-to-peer communication.
-- Metadata (File metadata)
-    - A database document that stores properties of a file, including its filename, path, size, modification time, and references (hashes) of the chunks that comprise the file's content. Conflict state is carried by the surrounding PouchDB/CouchDB revision metadata rather than by a separate history field inside the file metadata document. In Self-hosted LiveSync, file metadata is stored separately from the actual file content to enable efficient synchronisation and versioning.
-- OneShot Sync
-    - A single, immediate bidirectional synchronisation (pull then push) triggered on demand or on specific events, as opposed to continuous (live) replication.
-- Overwrite Server Data with This Device's Files
-    - A maintenance operation (formerly known as `Rebuild everything`) that discards the remote database and reconstructs it by uploading all current local files as a fresh database, overwriting any remote changes.
-- Path Obfuscation
-    - A privacy option that encrypts file paths and folder names on the remote server.
-- plug-in
-    - We use the hyphenated form `plug-in` in user-facing messages and general documentation, while `plugin` may appear in codebase files, configuration settings, or technical contexts.
-- Signalling relay (P2P)
-    - A Nostr-compatible WebSocket relay used for peer discovery and WebRTC connection negotiation. It does not store or transfer Vault contents. The project author operates a public relay as a best-effort convenience, and users can provide another compatible relay.
-- Remediation (maxMTimeForReflectEvents)
-    - A recovery setting that restricts the propagation of changes from the database to local storage, ignoring any file events (such as accidental mass deletions) that occurred after a specified date and time.
-- Reset Synchronisation on This Device
-    - A maintenance operation (formerly known as `Fetch everything`) that discards the local database and reconstructs it by downloading all data from the remote server.
-
-#### Revision
-
-A revision is a version of one PouchDB/CouchDB document. Concurrent changes can form a revision tree with more than one current branch.
-
-Revision modifiers describe independent properties. More than one may apply to the same revision:
-
-- **leaf**: Has no known child revision.
-- **winner**: Is the leaf selected by PouchDB/CouchDB as the current document.
-- **conflict**: Is another current leaf which was not selected as the winner.
-- **Vault-matching**: Represents the same file contents, or the same absent-file state, as the current Vault. More than one revision may match.
-- **displayed**: Is recorded by valid device-local file provenance as the branch represented in the Vault. A pending local edit may no longer match its bytes, but still extends this recorded branch.
-- **logically deleted**: Represents the absence of the file through a deletion marker. A logically deleted revision may also be a leaf, winner, conflict, or Vault-matching revision. An absent file retains no displayed provenance.
-
-Avoid **live revision** in prose because it can ambiguously mean either a current leaf or a non-deleted revision. See [Independent revision properties](specs_conflict_resolution.md#independent-revision-properties) for the relationship between revision-tree roles, Vault state, and device-local provenance.
-
-- Scram (Scram Switches)
-    - Emergency controls in the settings that allow users to suspend file watching or database writes to prevent corruption.
-- Segmenter (Segmented-splitter)
-    - A chunking method that divides files on semantic boundaries (such as paragraphs or sections) rather than arbitrary byte boundaries.
-- Self-hosted LiveSync
-    - The name of this plug-in. `Self-hosted` is one word.
-- Setting Doctor (Config Doctor)
-    - A diagnostic utility that checks for mismatches or suboptimal configurations, presenting users with ideal values and recommendation reasons to easily resolve issues during migration, configuration import, or general troubleshooting.
-- Setup URI
-    - An encrypted representation of the plug-in's settings containing server configuration, which allows users to clone their configuration across devices securely using a passphrase.
-- Streaming replication (Stream-based replication)
-    - A data transfer method that downloads database documents as a continuous stream of events. It is significantly faster than traditional chunk-by-chunk HTTP requests and is used during Fast Setup to retrieve remote metadata quickly.
-- Sync Mode
-    - The replication trigger mechanism. Users can select from `On Events` (synchronising on local file changes), `Periodic and Events` (synchronising at fixed intervals as well as on events), or `LiveSync` (continuous, real-time synchronisation).
-- Synchronising devices
-    - Devices which participate in the same synchronisation for a Vault. The term describes membership rather than current activity, so it includes offline and idle devices.
-- TURN Server (WebRTC P2P)
-    - A Traversal Using Relays around NAT server used as an optional fallback to relay encrypted WebRTC traffic when strict NAT or firewall rules block a direct peer connection. It is distinct from the signalling relay.
-- Update Thinning (Batch database update)
-    - An optimisation that groups multiple local file edits together over a short delay before committing them to the local database, reducing the number of database write operations.
-- WebRTC P2P (Peer-to-Peer)
-    - A synchronisation method enabling direct communication between devices without a central server database.
+Project-specific meanings are defined separately in the
+[Project glossary](glossary.md).

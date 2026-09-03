@@ -57,7 +57,10 @@ To maintain consistency across the project, we ask that you follow the establish
 - **Affirmative Phrasing**: Avoid asking questions using negative forms in user-facing dialogue. Use affirmative questions to prevent translation and interpretation discrepancies.
 - **Specific Words**: Use 'dialogue' for documentation and user-facing messages (use 'dialog' only inside source code). Use the hyphenated form 'plug-in' in user-facing text (use 'plugin' only in configuration settings or technical contexts).
 
-For a detailed list of vocabulary conventions and terms, please refer to [docs/terms.md](docs/terms.md).
+For writing conventions, see [Documentation style and vocabulary conventions](docs/terms.md).
+Project-specific meanings are defined in the [Project glossary](docs/glossary.md),
+including internal developer and design terms which might not appear in the
+user interface.
 
 ### 3. Translations
 

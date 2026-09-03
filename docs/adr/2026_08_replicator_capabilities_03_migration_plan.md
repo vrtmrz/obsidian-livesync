@@ -1,8 +1,8 @@
 ---
-date: 2026-08-27
-commonlib-version: "0.1.20"
-self-hosted-livesync-version: "1.0.21"
-status: proposed
+date: 2026-09-02
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.23"
+status: accepted
 series: replicator-capabilities-and-lifecycle
 part: 3 of 3
 ---
@@ -16,11 +16,14 @@ another runtime contract.
 
 ## Status
 
-Proposed. The stages below are an implementation and verification order, not
-independently releasable states. Commonlib and Self-hosted LiveSync must not
-publish temporary support boundaries described by an incomplete stage. A
-release follows only after the target matrix, ownership boundaries, and the
-contracted production-consumer migrations in Parts 1 and 2 are complete.
+Accepted and implemented in Commonlib 0.1.21 and Self-hosted LiveSync 1.0.23.
+The stages below record the implementation and verification order; they were
+not independently releasable states. The target matrix, ownership boundaries,
+and contracted production-consumer migrations in Parts 1 and 2 are complete.
+Items which Stage 7 explicitly defers remain separate compatibility work rather
+than incomplete stages. The current result is summarised in the
+[Replicator architecture](../design_docs/replicator_architecture.md) design
+document.
 
 ## Migration rules
 
@@ -103,11 +106,11 @@ until every remaining demand has settled. The LiveSync feature-binding test
 must not rely on the current registration order of equal-priority resume
 handlers.
 
-Until Stage 4 supplies target-aware unattended P2P, each host composition
-declares generic `P2P_SyncOnReplication` as `not-implemented`. Its automatic
-request settles without UI with an explicit blocked result. Existing AutoSync,
-AutoWatch, and accepted incoming-request paths continue with the Stage 2 gate.
-This is a temporary migration state, not the target matrix in Part 1.
+Before Stage 4 supplied target-aware unattended P2P, each host composition
+declared generic `P2P_SyncOnReplication` as `not-implemented`. Its automatic
+request settled without UI with an explicit blocked result. Existing AutoSync,
+AutoWatch, and accepted incoming-request paths continued with the Stage 2 gate.
+This was a temporary migration state, not the target matrix in Part 1.
 
 Apply and test the CLI scheduling precedence defined in Part 1, so the daemon
 and scheduling context cannot schedule duplicate initial or recurring work.
@@ -178,10 +181,11 @@ Add ownership regressions immediately before implementation:
   publishing the new database identity, while a failed candidate leaves one
   observable disconnected state without reviving the fenced session.
 
-When this stage lands, add a supersession note to the accepted P2P lifecycle
-record and update `devs.md` from the replaceable concrete Replicator getter to
-the stable contract views. Preserve the accepted Trystero peer and relay
-ownership rules rather than rewriting their historical verification.
+Completion of this stage added a bounded supersession note to the accepted P2P
+lifecycle record and updated `devs.md` from the replaceable concrete Replicator
+getter to the stable contract views. The accepted Trystero peer and relay
+ownership rules remain in force rather than being rewritten as part of this
+migration.
 
 ## Stage 4: add target-aware unattended P2P orchestration
 
@@ -203,14 +207,17 @@ shared-pane synchronisation.
 Keep the detailed wait, session-demand, de-duplication, and session-epoch state
 machine in Part 2 rather than expanding the generic provider contract. If
 implementation evidence requires a refinement, amend Part 2 before completing
-this stage. After Stage 3 is complete, Part 2 supersedes the
-replaceable-Replicator and current-result ownership portions of the accepted
-July 2026 record; its Trystero peer and relay decisions remain unchanged.
+this stage. With Stage 3 complete, Part 2 supersedes the portions of the
+accepted July 2026 record concerning the replaceable Replicator and ownership
+of the replaceable result returned by the `serviceFeature`. Its Trystero peer
+and relay decisions remain unchanged.
 
-Commonlib's `docs/p2p-transport-lifecycle.md` design document records the
-implemented Stage 3 and Stage 4 ownership, demand, automation, replacement,
-and shutdown behaviour. This document remains the migration and verification
-sequence rather than a second description of the implemented state.
+Commonlib's
+[P2P transport lifecycle](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/p2p-transport-lifecycle.md)
+design document records the implemented Stage 3 and Stage 4 ownership, demand,
+automation, replacement, and shutdown behaviour. This document remains the
+migration and verification sequence rather than a second description of the
+implemented state.
 
 ## Stage 5: separate active construction and flow-specific probes
 
@@ -231,8 +238,8 @@ making active construction private.
 The provider-defined active-construction path is now private to
 `ReplicatorService`. The public `getNewReplicator` handler remains as a
 compatibility surface, but current Self-hosted LiveSync production code no
-longer calls it. Its removal belongs to Stage 7 after any external compatibility
-decision has been made.
+longer calls it. Stage 7 reviewed its possible removal and deferred it pending
+an external compatibility decision.
 
 The current host composition has migrated CouchDB and Object Storage connection
 checks, passphrase inspection, preferred-tweak reads, CLI remote status and
@@ -246,10 +253,11 @@ against the active relay binding held by the stable P2P service. The Stage 7
 review identified and completed that remaining owner boundary; it did not
 reopen the active-construction contract.
 
-This position completes the Stage 5 construction and probe boundary. It is not
-itself a release decision: the active-publication and truthful-attempt work in
-Stage 6 remains required. Complete retirement of the compatibility facade is
-not a prerequisite for issue 1140.
+This position completed the Stage 5 construction and probe boundary. At that
+intermediate point it was not itself a release decision: Stage 6 still had to
+complete the active-publication lifecycle and return an exact outcome for each
+attempt. Complete retirement of the compatibility facade was not a prerequisite
+for issue 1140.
 
 ## Stage 6: harden the active lifecycle and exact attempt outcome
 
@@ -342,8 +350,8 @@ publication.
 
 The first implementation regressions cover:
 
-- replacement waiting for an admitted exact-context task while ignoring an
-  unrelated bounded activity;
+- replacement waiting for a task admitted against the exact publication while
+  ignoring an unrelated bounded activity;
 - context acquisition waiting for a queued replacement rather than returning a
   stale or intermediate publication;
 - rejecting central-remote administration releasing its reservation before
@@ -711,6 +719,7 @@ retirement remains a separately reviewed compatibility change.
 
 ## References
 
+- [Project glossary](../glossary.md#developer-and-design-terms)
 - [Part 1: core contract](2026_08_replicator_capabilities_01_core_contract.md)
 - [Part 2: P2P service and session lifecycle](2026_08_replicator_capabilities_02_p2p_service_lifecycle.md)
 - [P2P Room and Transport Lifecycle](2026_07_p2p_transport_lifecycle.md)
