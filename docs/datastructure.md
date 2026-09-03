@@ -1,173 +1,222 @@
-# Data Structures of Self-Hosted LiveSync
+---
+date: 2026-09-03
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.24"
+status: accepted
+---
 
-## Overview
+# Database Data Structures
 
-Self-hosted LiveSync uses the following types of documents:
+## Scope and Authority
 
-- Metadata
-    - Legacy Metadata
-    - Binary Metadata
-    - Plain Metadata
-- Chunk
-- Versioning
-- Synchronise Information
-- Synchronise Parameters
-- Milestone Information
+This document is a developer overview of the database structures used by the
+current Self-hosted LiveSync 1.0 series. It is not a stable, forward-compatible
+API for constructing CouchDB documents by hand.
 
-## Description of Each Data Structure
+The executable authority for document types, path and identifier encoding,
+chunk splitting and hashing, encryption, compression, and content
+reconstruction is the exact `@vrtmrz/livesync-commonlib` version recorded in
+the repository lockfile. Commonlib owns this domain under the
+[package-boundary decision](adr/2026_07_common_library_package_boundary.md).
+When this overview and that installed package differ, correct this document
+and treat the package behaviour as authoritative for the affected release.
 
-All documents inherit from the `DatabaseEntry` interface. This is necessary for conflict resolution and deletion flags.
+Three representations must be distinguished:
+
+1. the decoded application representation used by Commonlib services;
+2. the local PouchDB representation, including CouchDB revision metadata; and
+3. the raw remote representation after any configured compression, E2EE, or
+   path-obfuscation transform.
+
+The examples below describe the first two representations unless a section
+explicitly discusses the raw remote representation. The exact raw remote shape
+depends on the configured transforms and protocol version and cannot be
+inferred from the decoded or local examples alone.
+
+## Principal Document Families
+
+- file Metadata, including compatibility-only legacy Metadata;
+- Chunks and compatibility transport structures such as Chunk Packs;
+- database version, synchronisation, Milestone, and Node information; and
+- CouchDB revision and deletion records.
+
+Commonlib's `EntryDoc` is a union across several of these families. It is not
+synonymous with file Metadata.
+
+## Common CouchDB Fields
+
+Database documents share this base shape:
 
 ```ts
 export interface DatabaseEntry {
     _id: DocumentID;
     _rev?: string;
     _deleted?: boolean;
+    _conflicts?: string[];
 }
 ```
 
-### Versioning Document
+- `_id` identifies one CouchDB document.
+- `_rev` identifies one revision of that document.
+- `_conflicts` is returned when conflict information is requested. It is
+  CouchDB revision metadata, not part of the persisted application document.
+- `_deleted: true` creates a CouchDB tombstone. It is distinct from the
+  logical file-deletion field `deleted: true` described below.
 
-This document stores version information for Self-hosted LiveSync.
-The ID is fixed as `obsydian_livesync_version` [VERSIONING_DOCID]. Yes, the typo has become a curse.
-When Self-hosted LiveSync detects changes to this document via Replication, it reads the version information and checks compatibility.
-This internal database version is independent of the plug-in's SemVer version. The last version explicitly acknowledged on a device is stored through Commonlib's device-local configuration contract. When that version differs, or when a settings migration requires review, Self-hosted LiveSync presents a dedicated compatibility dialogue and blocks replication without changing the user's automatic synchronisation choices. A supported upgrade can resume only after explicit review. A downgrade from a newer acknowledged database version, or settings written by a future schema, remains blocked until a compatible plug-in is installed.
-Please refer to negotiation.ts.
+## File Metadata
 
-### Synchronise Information Document
-
-This document stores information that should be verified in synchronisation settings.
-The ID is fixed as `syncinfo` [SYNCINFO_ID].
-The information stored in this document is only the conditions necessary for synchronisation to succeed, and as of v0.25.43, only a random string is stored.
-This document is only used during rebuilds from the settings screen for CouchDB-based synchronisation, making it like an appendix. It may be removed in the future.
-
-### Synchronise Parameters Document
-
-This document stores synchronisation parameters.
-Synchronisation parameters include the protocol version and salt used for encryption, but do not include chunking settings.
-
-The ID is fixed as `_local/obsidian_livesync_sync_parameters` [DOCID_SYNC_PARAMETERS] or `_obsidian_livesync_journal_sync_parameters.json` [DOCID_JOURNAL_SYNC_PARAMETERS].
-
-This document exists only on the remote and not locally.
-This document stores the following information.
-It is read each time before connecting and is used to verify that E2EE settings match.
-This mismatch cannot be ignored and synchronisation will be stopped.
+Current files are stored as chunked Metadata. The following is a simplified
+shape; the exported Commonlib declarations remain authoritative:
 
 ```ts
-export interface SyncParameters extends DatabaseEntry {
-    _id: typeof DOCID_SYNC_PARAMETERS;
-    type: (typeof EntryTypes)["SYNC_PARAMETERS"];
-    protocolVersion: ProtocolVersion;
-    pbkdf2salt: string;
-}
-```
-
-#### protocolVersion
-
-This field indicates the protocol version used by the remote. Mostly, this value should be `2` (ProtocolVersions.ADVANCED_E2EE), which indicates safer E2EE support.
-
-#### pbkdf2salt
-
-This field stores the salt used for PBKDF2 key derivation on the remote. This salt and the passphrase provides E2EE encryption keys.
-
-### Milestone Information Document
-
-This document stores information about how the remote accepts and recognises clients.
-The ID is fixed as `_local/obsidian_livesync_milestone` [MILESTONE_DOCID].
-This document exists only on the remote and not locally.
-This document is used to indicate synchronisation progress and includes the version range of accepted chunks for each node and adjustment values for each node.
-Tweak Mismatched is determined based on the information in this document.
-
-For details, please refer to LiveSyncReplicator.ts, LiveSyncJournalReplicator.ts, and LiveSyncDBFunctions.ts.
-
-```ts
-export interface EntryMilestoneInfo extends DatabaseEntry {
-    _id: typeof MILESTONE_DOCID;
-    type: EntryTypes["MILESTONE_INFO"];
-    created: number;
-    accepted_nodes: string[];
-    node_info: { [key: NodeKey]: NodeData };
-    locked: boolean;
-    cleaned?: boolean;
-    node_chunk_info: { [key: NodeKey]: ChunkVersionRange };
-    tweak_values: { [key: NodeKey]: TweakValues };
-}
-```
-
-### locked
-
-If the remote has been requested to lock out from any client, this is set to true.
-When set to true, clients will stop synchronisation unless they are included in accepted_nodes.
-
-### cleaned
-
-If the remote has been cleaned up from any client, this is set to true.
-In this case, clients will stop synchronisation as they need to rebuild again.
-
-### Metadata Document
-
-Metadata documents store metadata for Obsidian notes.
-
-```ts
-export interface MetadataDocument extends DatabaseEntry {
-    _id: DocumentID;
+type ChunkedMetadata = DatabaseEntry & {
     ctime: number;
     mtime: number;
     size: number;
     deleted?: boolean;
-    eden: Record<string, EdenChunk>; // Obsolete
+    eden: Record<string, { data: string; epoch: number }>;
     path: FilePathWithPrefix;
     children: string[];
-    type: EntryTypes["NOTE_LEGACY" | "NOTE_BINARY" | "NOTE_PLAIN"];
-}
-```
-
-### type
-
-This field indicates the type of Metadata document.
-By convention, Self-hosted LiveSync does not save the mime type of the file, but distinguishes them with this field. Please note this.
-Possible values are as follows:
-
-- NOTE_LEGACY: Legacy metadata document
-    - Please do not use
-- NOTE_BINARY: Binary metadata document (newnote)
-- NOTE_PLAIN: Plain metadata document (plain)
-
-#### children
-
-This field stores an array of Chunk Document IDs.
-
-#### \_id, path
-
-\_id is generated based on the path of the Obsidian note.
-
-The validation and explicit repair contract for normal-file Metadata whose
-actual ID does not match the ID derived from its stored path is defined in
-[Normal-file Metadata Document ID Validation and Repair](design_docs/metadata_document_id_validation_and_repair.md).
-
-- If the path starts with `_`, it is converted to `/_` for convenience.
-- If Case Sensitive is disabled, it is converted to lowercase.
-
-When Obfuscation is enabled, the path field contains `f:{obfuscated path}`.
-The path field stores the path as is. However, when Obfuscation is enabled, the obfuscated path is stored.
-
-When Property Encryption is enabled, the path field stores all properties including children, mtime, ctime, and size in an encrypted state. Please refer to encryption.ts.
-
-### Chunk Document
-
-```ts
-export type EntryLeaf = DatabaseEntry & {
-    _id: DocumentID;
-    type: EntryTypes["CHUNK"];
-    data: string;
+    type: "plain" | "newnote";
 };
 ```
 
-Chunk documents store parts of note content.
+`children` contains Chunk document IDs in reconstruction order. A normal save
+persists every referenced Chunk before it persists the Metadata which names
+those Chunks. The writes are separate database operations rather than one
+atomic transaction, so another client may still observe the Metadata first.
+The resulting retrieval contract is documented in
+[Chunk Retrieval and Waiting](design_docs/chunk_retrieval_and_waiting.md).
 
-- The type field is always `[CHUNK]`, `leaf`.
-- The data field stores the chunk content.
-- The \_id field is generated based on a hash of the content and the passphrase.
+The current persisted file types are:
 
-Hash functions used include xxHash and SHA-1, depending on settings.
-Chunking methods used include Contextual Chunking and Rabin-Karp Chunking, depending on settings.
+- `plain`, for text content represented by literal text Chunks; and
+- `newnote`, for binary content represented by Base64 Chunks.
+
+The compatibility-only `notes` type stores content directly in its `data`
+field rather than in `children`. Existing data may be read through selected
+legacy paths, but current writers do not create `notes` documents, and not
+every current replication path accepts newly created legacy documents.
+
+`datatype` appears on Commonlib's loaded and saving representations. The
+current Metadata writer does not persist it, so it is absent from ordinary
+current CouchDB Metadata.
+
+`eden` remains in the shared type for existing data compatibility. New
+configuration does not enable Eden, and current writers do not create
+incubated Eden Chunks for a new configuration.
+
+### Times and Size
+
+`ctime` and `mtime` are Unix epoch times in milliseconds. `size` is the byte
+size of the decoded file content supplied by the storage boundary. Current
+storage adapters and generated Blob paths obtain it from filesystem metadata
+or `Blob.size`; JavaScript `String.length` is a UTF-16 code-unit count and is
+not a valid substitute for non-ASCII content.
+
+### Paths, Identifiers, and Namespaces
+
+At the decoded boundary, `path` records the logical path, including any
+feature namespace prefix. `_id` is derived from that path by Commonlib's path
+service:
+
+- a path beginning with `_` receives a leading `/` in its document ID so that
+  CouchDB does not interpret it as a reserved identifier;
+- the path is folded to lower case only when
+  `handleFilenameCaseSensitive` is disabled; and
+- when path obfuscation is enabled, the body of the document ID is replaced
+  by an `f:` SHA-256-derived value. A feature prefix is retained, so an
+  obfuscated Hidden File Sync ID can begin with `i:f:`.
+
+The main namespaces are:
+
+| Prefix | Meaning                                                 |
+| ------ | ------------------------------------------------------- |
+| none   | An ordinary Vault file                                  |
+| `i:`   | Hidden File Sync Metadata                               |
+| `ix:`  | Customisation Sync Metadata                             |
+| `ps:`  | Compatibility namespace for plug-in storage data        |
+| `f:`   | Obfuscated document-ID body                             |
+| `h:`   | Chunk document                                          |
+| `h:+`  | Chunk whose identifier incorporates encryption material |
+
+Namespaces identify storage and path handling; they do not by themselves
+select an Entry `type`. Current Hidden File Sync and Customisation Sync writers
+store chunked `plain` or `newnote` documents under `i:` and `ix:`. The
+application-local `type: "plugin"` interface is not a Commonlib Entry type and
+is not the current Customisation Sync storage format. Although Commonlib
+retains an `internalfile` constant for compatibility, current Hidden File Sync
+producers do not use it as their persisted type.
+
+The decoded `path` does not become `f:{obfuscated path}`. Compression, E2EE,
+and path obfuscation can change raw remote identifiers and properties.
+Commonlib owns those transforms, and their exact representation depends on the
+selected settings.
+
+The validation and explicit repair contract for ordinary-file Metadata whose
+stored `_id` does not agree with its decoded `path` is defined in
+[Normal-file Metadata Document ID Validation and Repair](design_docs/metadata_document_id_validation_and_repair.md).
+
+## Chunk Documents
+
+```ts
+export type EntryLeaf = DatabaseEntry & {
+    type: "leaf";
+    data: string;
+    isCorrupted?: boolean;
+};
+```
+
+A `leaf` stores one content-addressed piece. For `plain` Metadata, `data` is
+literal text. For `newnote` Metadata, `data` is Base64 text representing binary
+bytes. Concatenating and decoding the children in order reconstructs the
+decoded file content.
+
+Commonlib's configured `HashManager` produces content-derived Chunk
+identifiers. Their representation can vary with compatibility and encryption
+settings. Historical hash algorithms remain readable only as compatibility
+settings.
+
+Chunk revisions are content-derived irrespective of the obsolete stored
+`doNotUseFixedRevisionForChunks` setting. Compression and E2EE may transform a
+Chunk's raw remote `data` and add representation markers, so the remote value
+can differ from the decoded Chunk data.
+
+## File Deletion
+
+LiveSync distinguishes two operations:
+
+- `deleted: true` is a logical deletion of a file. With Metadata retention
+  enabled, an ordinary current-file deletion preserves the existing Metadata
+  fields and Chunk references, updates `mtime`, and creates a new Metadata
+  revision. This permits the deletion to participate in synchronisation and
+  conflict history.
+- `_deleted: true` is a CouchDB tombstone for one document revision. That
+  revision does not retain the application body. Tombstones are used by
+  explicit compatibility and clean-up paths.
+
+A logical deletion does not clear `children` or set `size` to zero. The
+`deleteMetadataOfDeletedFiles` setting can request an immediate tombstone
+instead. Whether retained, logically deleted Metadata is later tombstoned
+depends on the configured deletion-retention settings.
+
+Branch-specific conflict operations and their ancestry requirements are defined
+in the [Conflict Resolution specification](specs_conflict_resolution.md).
+
+## Control Documents
+
+The principal control documents are:
+
+| Document                           | Identifier                                        | Purpose                                                                                                  |
+| ---------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Version information                | `obsydian_livesync_version`                       | Records the internal database version. The historical spelling is retained for compatibility.            |
+| Synchronisation information        | `syncinfo`                                        | Stores rebuild-related synchronisation information for CouchDB-based operation.                          |
+| CouchDB synchronisation parameters | `_local/obsidian_livesync_sync_parameters`        | Stores the protocol version and PBKDF2 salt on the remote.                                               |
+| Journal synchronisation parameters | `_obsidian_livesync_journal_sync_parameters.json` | Journal counterpart of the synchronisation-parameter record.                                             |
+| Milestone information              | `_local/obsidian_livesync_milestone`              | Records accepted Nodes, locking, clean-up state, Chunk version ranges, and synchronisation tweak values. |
+| Node information                   | `_local/obsidian_livesync_nodeinfo`               | Records the local Node identifier and compatibility markers.                                             |
+
+The `_local/` records are CouchDB-local documents and do not replicate like
+ordinary Metadata and Chunks. Synchronisation parameters are checked before
+connecting; an incompatible protocol or encryption configuration stops
+synchronisation rather than being ignored.
