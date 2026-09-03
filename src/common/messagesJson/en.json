@@ -15,7 +15,7 @@
     "(Obsolete) Use an old adapter for compatibility": "(Obsolete) Use an old adapter for compatibility",
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.",
     "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.": "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.",
-    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.",
+    "(Select this if you already have another synchronising device.) This option adds this device to the same synchronisation.": "(Select this if you already have another synchronising device.) This option adds this device to the same synchronisation.",
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.",
     "↑: Overwrite Remote": "↑: Overwrite Remote",
     "↓: Overwrite Local": "↓: Overwrite Local",

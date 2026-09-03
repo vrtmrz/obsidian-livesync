@@ -148,16 +148,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "（正则表达式）如果已设置，则所有匹配此模式的本地和远端文件变更都会被跳过。",
         "zh-tw": "（正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。",
     },
-    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.":
+    "(Select this if you already have another synchronising device.) This option adds this device to the same synchronisation.":
         {
-            def: "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.",
-            es: "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。",
-            ja: "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。",
-            ko: "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요.) 이 기기를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다.",
-            ru: "(Выберите этот вариант, если вы уже используете синхронизацию на другом компьютере или смартфоне.) Он подходит, если вы хотите добавить это устройство к уже существующей конфигурации LiveSync。",
-            zh: "（如果你已经在另一台电脑或手机上使用同步，请选择此项。）此选项适合将当前设备加入现有 LiveSync 配置的用户。",
-            "zh-tw":
-                "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。",
+            def: "(Select this if you already have another synchronising device.) This option adds this device to the same synchronisation.",
         },
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.":
         {
@@ -12739,6 +12732,16 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "you wanted(Thank you)!",
         es: "tu solicitud (¡gracias!)",
     },
+    "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.":
+        {
+            es: "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。",
+            ja: "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。",
+            ko: "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요.) 이 기기를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다.",
+            ru: "(Выберите этот вариант, если вы уже используете синхронизацию на другом компьютере или смартфоне.) Он подходит, если вы хотите добавить это устройство к уже существующей конфигурации LiveSync。",
+            zh: "（如果你已经在另一台电脑或手机上使用同步，请选择此项。）此选项适合将当前设备加入现有 LiveSync 配置的用户。",
+            "zh-tw":
+                "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。",
+        },
     "Compute revisions for chunks (Previous behaviour)": {
         es: "Calcular revisiones para chunks (comportamiento anterior)",
     },
