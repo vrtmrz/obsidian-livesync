@@ -12,6 +12,21 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.24
+
+3rd September, 2026
+
+### Interface and translation
+
+#### Fixed
+
+- The Setup Wizard now correctly explains that the existing-device path adds this device to an existing synchronisation (PR #1118). Thank you to @nikhilmaddirala for the contribution!
+- Spanish translations now resolve the **Display language** placeholder, cover previously untranslated Setup Wizard and CouchDB text, translate user-facing Config Doctor values and confirmation controls, and use Spanish sentence case (PR #1129). Thank you to @zeedif for the contribution!
+
+#### Improved
+
+- The Setup Wizard now shows the passphrase and **Obfuscate Properties** controls only after E2EE is enabled, provides a password-visibility button, allows longer translated labels to wrap, and keeps the invitation link compact on desktop while preserving its mobile touch target (PR #1130). Thank you to @zeedif for the contribution!
+
 ### Synchronisation and storage
 
 #### Fixed
