@@ -22,8 +22,6 @@ import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/comp
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
-import { ModuleConflictChecker } from "./modules/coreFeatures/ModuleConflictChecker";
-import { ModuleConflictResolver } from "./modules/coreFeatures/ModuleConflictResolver";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
@@ -33,6 +31,7 @@ import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils
 import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
 import { createCentralReplicatorProviderDefinitions } from "./common/replicatorProviders";
 import { useReplicationFeature } from "./serviceFeatures/replication";
+import { useConflictResolutionFeature } from "./serviceFeatures/conflictResolution";
 
 /** Focused views returned by serviceFeatures which the host may consume during composition. */
 export interface LiveSyncCoreFeatureViews {
@@ -157,8 +156,6 @@ export class LiveSyncBaseCore<
 
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
-        this._registerModule(new ModuleConflictChecker(this));
-        this._registerModule(new ModuleConflictResolver(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
         this._registerModule(new ModuleBasicMenu(this));
 
@@ -290,6 +287,7 @@ export class LiveSyncBaseCore<
      * (Please refer `serviceFeatures` for more details)
      */
     initialiseServiceFeatures(): LiveSyncCoreFeatureViews {
+        useConflictResolutionFeature(this);
         useTargetFilters(this);
         // enable target filter feature.
         usePrepareDatabaseForUse(this);
