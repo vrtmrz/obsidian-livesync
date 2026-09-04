@@ -34,8 +34,7 @@ export class ConflictResolveModal extends Modal {
     readOnly: boolean = false;
     localName: string = "Base";
     remoteName: string = "Conflicted";
-    offConflictCancelled?: ReturnType<typeof eventHub.onEvent>;
-    offPluginUnloaded?: ReturnType<typeof eventHub.onceEvent>;
+    private eventSubscriptions?: AbortController;
     currentDiffIndex = -1;
     diffView!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
@@ -112,23 +111,31 @@ export class ConflictResolveModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        this.offConflictCancelled?.();
-        this.offConflictCancelled = undefined;
-        this.offPluginUnloaded?.();
-        this.offPluginUnloaded = eventHub.onceEvent(EVENT_PLUGIN_UNLOADED, () => {
-            this.sendResponse(CANCELLED);
-        });
+        this.eventSubscriptions?.abort();
+        const eventSubscriptions = new AbortController();
+        this.eventSubscriptions = eventSubscriptions;
+        eventHub.onceEvent(
+            EVENT_PLUGIN_UNLOADED,
+            () => {
+                this.sendResponse(CANCELLED);
+            },
+            { signal: eventSubscriptions.signal }
+        );
         if (!this.readOnly) {
             // Cancel an older dialogue for this path before subscribing this
             // instance. Emitting after subscription would close the replacement
             // itself; the instance-owned result promise then completes the older
             // caller even when it only begins waiting after this event.
             eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, this.filename);
-            this.offConflictCancelled = eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (path) => {
-                if (path === this.filename) {
-                    this.sendResponse(CANCELLED);
-                }
-            });
+            eventHub.onEvent(
+                EVENT_CONFLICT_CANCELLED,
+                (path) => {
+                    if (path === this.filename) {
+                        this.sendResponse(CANCELLED);
+                    }
+                },
+                { signal: eventSubscriptions.signal }
+            );
         }
         this.titleEl.setText(this.title);
         contentEl.empty();
@@ -219,10 +226,8 @@ export class ConflictResolveModal extends Modal {
     override onClose() {
         const { contentEl } = this;
         contentEl.empty();
-        this.offConflictCancelled?.();
-        this.offConflictCancelled = undefined;
-        this.offPluginUnloaded?.();
-        this.offPluginUnloaded = undefined;
+        this.eventSubscriptions?.abort();
+        this.eventSubscriptions = undefined;
         if (this.consumed) {
             return;
         }

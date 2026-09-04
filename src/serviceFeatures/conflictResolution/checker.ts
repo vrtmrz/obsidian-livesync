@@ -28,12 +28,9 @@ export interface ConflictCheckingHandlers {
     readonly ensureAllProcessed: () => Promise<boolean>;
 }
 
-/**
- * Create conflict-checking handlers and retain both queue processors privately.
- * The returned operations do not expose queue state to a host or consumer.
- */
+/** Create conflict-checking handlers while retaining scheduling state privately. */
 export function createConflictCheckingHandlers(dependencies: ConflictCheckingDependencies): ConflictCheckingHandlers {
-    const conflictResolveQueue = new QueueProcessor<FilePathWithPrefix, void>(
+    const conflictQueue = new QueueProcessor<FilePathWithPrefix, void>(
         async (filenames: FilePathWithPrefix[]) => {
             const filename = filenames[0];
             return await dependencies.conflict.resolve(filename);
@@ -47,27 +44,12 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
             concurrentLimit: 10,
             delay: 0,
             keepResultUntilDownstreamConnected: false,
+            totalRemainingReactiveSource: dependencies.conflictProcessQueueCount,
         }
     ).replaceEnqueueProcessor((queue, newEntity) => {
         const newQueue = [...queue].filter((entry) => entry != newEntity);
         return [...newQueue, newEntity];
     });
-
-    const conflictCheckQueue = new QueueProcessor<FilePathWithPrefix, FilePathWithPrefix>(
-        (files: FilePathWithPrefix[]) => {
-            const filename = files[0];
-            return Promise.resolve([filename]);
-        },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 0,
-            keepResultUntilDownstreamConnected: true,
-            pipeTo: conflictResolveQueue,
-            totalRemainingReactiveSource: dependencies.conflictProcessQueueCount,
-        }
-    );
 
     const queueCheckForIfOpen = async (file: FilePathWithPrefix): Promise<void> => {
         const path = file;
@@ -90,11 +72,11 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
             // The conflict should be resolved by the newer entry.
             await dependencies.conflict.resolveByNewest(file);
         } else {
-            conflictCheckQueue.enqueue(file);
+            conflictQueue.enqueue(file);
         }
     };
 
-    const ensureAllProcessed = (): Promise<boolean> => conflictResolveQueue.waitForAllProcessed();
+    const ensureAllProcessed = (): Promise<boolean> => conflictQueue.waitForAllProcessed();
 
     return {
         queueCheckForIfOpen,

@@ -61,22 +61,23 @@ export function useInteractiveConflictResolutionFeature(
     });
     services.appLifecycle.getUnresolvedMessages.addHandler(operations.getActiveConflictMessages);
     services.conflict.resolveByUserInteraction.addHandler(operations.resolveByUserInteraction);
-    const offConflictCancelled = services.context.events.onEvent(EVENT_CONFLICT_CANCELLED, (filename) => {
-        operations.invalidateWaitingResolution(filename);
-        fireAndForget(() => operations.refreshConflictState(filename));
-    });
-    let featureDisposed = false;
+    const eventSubscriptions = new AbortController();
     const dispose = () => {
-        if (featureDisposed) return;
-        featureDisposed = true;
         // Stop the refresh listener before cancellation so that unloading does
         // not start a database read which can race with database disposal.
-        offConflictCancelled();
+        eventSubscriptions.abort();
         operations.dispose();
     };
-    const offPluginUnloaded = services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, dispose);
+    services.context.events.onEvent(
+        EVENT_CONFLICT_CANCELLED,
+        (filename) => {
+            operations.invalidateWaitingResolution(filename);
+            fireAndForget(() => operations.refreshConflictState(filename));
+        },
+        { signal: eventSubscriptions.signal }
+    );
+    services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, dispose, { signal: eventSubscriptions.signal });
     services.appLifecycle.onUnload.addHandler(() => {
-        offPluginUnloaded();
         dispose();
         return Promise.resolve(true);
     });

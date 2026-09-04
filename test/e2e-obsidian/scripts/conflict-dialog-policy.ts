@@ -423,7 +423,17 @@ async function main(): Promise<void> {
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
-            const actionButtonBounds = await modal.locator(".conflict-action-button").evaluateAll((buttons) =>
+        });
+        const firstDialogueScreenshot = await captureObsidianElement(
+            session.remoteDebuggingPort,
+            "conflict-dialog-three-versions.png",
+            (page) => conflictDialogue(page).locator(".modal").first()
+        );
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const modal = conflictDialogue(page);
+            const actionButtons = modal.locator(".conflict-action-button");
+            await actionButtons.nth(3).waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const actionButtonBounds = await actionButtons.evaluateAll((buttons) =>
                 buttons.map((button) => {
                     const bounds = button.getBoundingClientRect();
                     return { top: bounds.top, bottom: bounds.bottom };
@@ -435,16 +445,20 @@ async function main(): Promise<void> {
                     (bounds, index) => index > 0 && bounds.top < actionButtonBounds[index - 1].bottom
                 )
             ) {
+                const buttonDetails = await modal.locator("button").evaluateAll((buttons) =>
+                    buttons.map((button) => ({
+                        text: button.textContent,
+                        className: button.className,
+                    }))
+                );
                 throw new Error(
-                    `Conflict action buttons are not stacked vertically: ${JSON.stringify(actionButtonBounds)}`
+                    `Conflict action buttons are not stacked vertically: ${JSON.stringify({
+                        actionButtonBounds,
+                        buttonDetails,
+                    })}`
                 );
             }
         });
-        const firstDialogueScreenshot = await captureObsidianElement(
-            session.remoteDebuggingPort,
-            "conflict-dialog-three-versions.png",
-            (page) => conflictDialogue(page).locator(".modal").first()
-        );
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const modal = conflictDialogue(page);
             await modal.getByRole("button", { name: "Concat both", exact: true }).click({ timeout: uiTimeoutMs });
