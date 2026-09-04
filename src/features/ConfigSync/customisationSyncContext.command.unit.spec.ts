@@ -64,27 +64,17 @@ describe("CustomisationSyncContext commands", () => {
         expect(updatePluginList).toHaveBeenCalledWith(false, "ix:example");
     });
 
-    it("releases every owned processor and reactive subscription", () => {
+    it("delegates catalogue resource release during disposal", () => {
         const hideConfigurationNotice = vi.fn();
-        const publishScanCount = vi.fn();
         const periodicPluginSweepProcessor = { disable: vi.fn() };
-        const pluginScanProcessor = { terminate: vi.fn() };
-        const pluginScanProcessorV2 = { terminate: vi.fn() };
-        const pluginScanningChanged = vi.fn();
-        const offChanged = vi.fn();
-        const setEnumerationActive = vi.fn();
+        const catalogueOperations = { dispose: vi.fn() };
         const configSync = Object.create(CustomisationSyncContext.prototype) as CustomisationSyncContext;
         Object.assign(configSync, {
             dependencies: createCustomisationSyncTestDependencies({
                 hideConfigurationNotice,
-                publishScanCount,
             }),
             periodicPluginSweepProcessor,
-            pluginScanProcessor,
-            pluginScanProcessorV2,
-            pluginScanningChanged,
-            scanProgress: { offChanged },
-            enumerationActive: { set: setEnumerationActive },
+            catalogueOperations,
         });
 
         configSync.dispose();
@@ -92,11 +82,7 @@ describe("CustomisationSyncContext commands", () => {
         expect(cancelTask).toHaveBeenCalledWith("config-sync:updated-configuration");
         expect(hideConfigurationNotice).toHaveBeenCalledOnce();
         expect(periodicPluginSweepProcessor.disable).toHaveBeenCalledOnce();
-        expect(pluginScanProcessor.terminate).toHaveBeenCalledOnce();
-        expect(pluginScanProcessorV2.terminate).toHaveBeenCalledOnce();
-        expect(offChanged).toHaveBeenCalledWith(pluginScanningChanged);
-        expect(setEnumerationActive).toHaveBeenCalledWith(false);
-        expect(publishScanCount).toHaveBeenCalledWith(0);
+        expect(catalogueOperations.dispose).toHaveBeenCalledOnce();
     });
 
     it("characterises the inherited setting-realisation gates pending separate review", async () => {

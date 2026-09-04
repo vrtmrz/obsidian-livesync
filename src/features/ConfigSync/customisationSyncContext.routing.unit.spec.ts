@@ -90,9 +90,9 @@ describe("Customisation Sync raw-event admission", () => {
     it("rejects a path outside the recognised Customisation Sync categories", async () => {
         const { configSync, ownsLocalFile } = createConfigSync();
 
-        await expect(configSync.serviceHandlers.processOptionalFileEvent(".obsidian/workspace" as FilePath)).resolves.toBe(
-            false
-        );
+        await expect(
+            configSync.serviceHandlers.processOptionalFileEvent(".obsidian/workspace" as FilePath)
+        ).resolves.toBe(false);
         expect(ownsLocalFile).not.toHaveBeenCalled();
         expect(scheduleTask).not.toHaveBeenCalled();
     });

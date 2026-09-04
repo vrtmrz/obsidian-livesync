@@ -19,6 +19,7 @@ describe("HiddenFileSyncContext lifecycle", () => {
         const periodicInternalFileScanProcessor = { disable: vi.fn() };
         const conflictResolution = { dispose: vi.fn() };
         const changeProcessor = { dispose: vi.fn() };
+        const reconciliation = { dispose: vi.fn() };
         const pathAdmission = { dispose: vi.fn() };
         const changeNotifier = { dispose: vi.fn() };
         const closeJsonConflictDialogs = vi.fn();
@@ -28,6 +29,7 @@ describe("HiddenFileSyncContext lifecycle", () => {
             periodicInternalFileScanProcessor,
             conflictResolution,
             changeProcessor,
+            reconciliation,
             pathAdmission,
             changeNotifier,
             eventCount: 4,
@@ -40,6 +42,7 @@ describe("HiddenFileSyncContext lifecycle", () => {
         expect(periodicInternalFileScanProcessor.disable).toHaveBeenCalledOnce();
         expect(conflictResolution.dispose).toHaveBeenCalledOnce();
         expect(changeProcessor.dispose).toHaveBeenCalledOnce();
+        expect(reconciliation.dispose).toHaveBeenCalledOnce();
         expect(pathAdmission.dispose).toHaveBeenCalledOnce();
         expect(changeNotifier.dispose).toHaveBeenCalledOnce();
         expect(closeJsonConflictDialogs).toHaveBeenCalledOnce();
@@ -58,35 +61,6 @@ describe("HiddenFileSyncContext lifecycle", () => {
         });
 
         expect(callPrivate<() => boolean>(hiddenFileSync, "isReady")()).toBe(false);
-    });
-
-    it("keeps subordinate initialisation phases below Notice level so one progress Notice owns the scan", async () => {
-        const progress = {
-            log: vi.fn(),
-            once: vi.fn(),
-            done: vi.fn(),
-        };
-        const rebuildMerging = vi.fn(async () => []);
-        const adoptCurrentStorageFilesAsProcessed = vi.fn(async () => undefined);
-        const adoptCurrentDatabaseFilesAsProcessed = vi.fn(async () => undefined);
-        const scanAllStorageChanges = vi.fn(async () => undefined);
-        const scanAllDatabaseChanges = vi.fn(async () => undefined);
-        const hiddenFileSync = Object.create(HiddenFileSyncContext.prototype) as HiddenFileSyncContext;
-        Object.assign(hiddenFileSync, {
-            _progress: vi.fn(() => progress),
-            rebuildMerging,
-            adoptCurrentStorageFilesAsProcessed,
-            adoptCurrentDatabaseFilesAsProcessed,
-            scanAllStorageChanges,
-            scanAllDatabaseChanges,
-        });
-
-        await hiddenFileSync.initialiseInternalFileSync("safe", true);
-
-        expect(rebuildMerging).toHaveBeenCalledWith(false, false);
-        expect(scanAllStorageChanges).toHaveBeenCalledWith(false, true, false);
-        expect(scanAllDatabaseChanges).toHaveBeenCalledWith(false, true, false);
-        expect(progress.done).toHaveBeenCalledOnce();
     });
 
     it("retirement guard: does not restore separate gathering and restart Notices", async () => {

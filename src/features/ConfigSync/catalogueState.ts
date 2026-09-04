@@ -9,11 +9,12 @@ import type { IPluginDataExDisplay } from "./customisationSyncView.ts";
 /**
  * Owns the transient catalogue projection used by Customisation Sync.
  *
- * The database and storage operations remain in the context. This owner only
- * coordinates the in-memory rows, their reactive publications, manifest
- * lookup, and the update counter which is derived from those operations.
+ * The database and storage operations remain in the catalogue modules. This
+ * owner only coordinates the in-memory rows, their reactive publications,
+ * manifest lookup, and the update counter which is derived from those
+ * operations.
  */
-export class CustomisationSyncCatalogueState {
+export class CatalogueState {
     private catalogueRows: IPluginDataExDisplay[] = [];
     private readonly manifestByKey = new Map<string, PluginManifest>();
     private readonly loadedManifestMTimeByKey = new Map<string, number>();
@@ -33,7 +34,7 @@ export class CustomisationSyncCatalogueState {
         return this.loadedManifestMTimeByKey;
     }
 
-    /** Returns the authoritative row for a V1 document path, when present. */
+    /** Returns the authoritative row for a document path, when present. */
     findPlugin(documentPath: FilePathWithPrefix | string): IPluginDataExDisplay | undefined {
         return this.catalogueRows.find((entry) => entry.documentPath == documentPath);
     }

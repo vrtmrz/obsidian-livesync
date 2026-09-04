@@ -20,13 +20,15 @@ one writer for raw events, scheduled scans, and automatic database-to-local
 reflection. The constructor-name add-on lookup and the `ConfigSync` and
 `HiddenFileSync` add-on identities have been retired.
 
-The Customisation Sync private context coordinates its snapshot operations,
-scan queues, periodic work, and focused path and transient-state owners. The
-Hidden File Sync private context coordinates reconciliation, periodic work,
-and the lifetimes of focused path-admission, notification, processed-state,
-change-processing, and conflict-resolution owners. Each receives live settings
-and database projections, focused storage, path, and exact-revision
-capabilities, and explicit host effects rather than `LiveSyncCore`.
+The Customisation Sync private context coordinates lifecycle, raw-event
+admission, configuration and periodic policy, view composition, and the
+lifetimes of focused path, snapshot, application, scan, and catalogue owners.
+The Hidden File Sync private context coordinates lifecycle and handler
+admission around focused path-admission, notification, processed-state,
+change-processing, conflict-resolution, and reconciliation owners. Each
+receives live settings and database projections, focused storage, path, and
+exact-revision capabilities, and explicit host effects rather than
+`LiveSyncCore`.
 
 The corresponding implemented topology is documented in
 [Optional-file synchronisation architecture](../design_docs/optional_file_sync_architecture.md).
@@ -203,14 +205,35 @@ operations receive this capability through one narrow `processedState` port;
 they do not receive bundles of individual state callbacks or implement state
 keys themselves.
 
-`CustomisationSyncCatalogueState` separately owns the transient catalogue
-rows, manifest lookup and mtime cache, their reactive stores, and catalogue
-update progress. A small recent-event deduplicator owns raw-event admission
-history. These Customisation Sync owners are deliberately not implementations
-of a shared Hidden File Sync state abstraction: the former state is a derived,
-in-memory projection, while Hidden File Sync markers are persisted operational
-reconciliation state with different identity, invalidation, and deletion
-rules.
+`CatalogueState` separately owns the transient catalogue rows, manifest lookup
+and mtime cache, their reactive stores, and catalogue update progress. A small
+recent-event deduplicator owns raw-event admission history. These Customisation
+Sync owners are deliberately not implementations of a shared Hidden File Sync
+state abstraction: the former state is a derived, in-memory projection, while
+Hidden File Sync markers are persisted operational reconciliation state with
+different identity, invalidation, and deletion rules.
+
+`CatalogueOperations` owns catalogue enumeration, one queue and its progress
+subscription, and composes `CatalogueV1`, `CatalogueV2`, and
+`CatalogueMigration`. V1 and V2 are mutually exclusive as the selected write
+format, but both persisted formats can coexist during migration. Queue work
+therefore reads the live setting when it starts, and the shared state continues
+to recognise V2 rows independently of that setting. `CatalogueMigration`
+remains the distinct bridge from grouped V1 binders to per-file V2 documents.
+
+`SnapshotPersistence` owns the host-neutral V1 grouped and V2 per-file writes
+and logical deletion. It returns explicit mutation and refresh outcomes, so it
+neither owns catalogue state nor calls back through the context.
+`SnapshotOperations` applies those outcomes with the inherited awaited V1 or
+fire-and-forget V2 timing. `ApplicationOperations` owns compare, apply,
+duplicate, and delete workflows, while `ScanOperations` owns configuration-file
+enumeration and V1/V2 reconciliation. Both depend on narrow snapshot and
+catalogue ports instead of the context.
+
+The newly extracted catalogue, snapshot, application, scan, and reconciliation
+modules omit a Customisation Sync or Hidden File Sync prefix because their
+feature directories already supply that scope. Public contexts and views retain
+their domain names for compatibility.
 
 `CustomisationSyncPathOperations` binds live configuration-directory, mode,
 and device-name projections to the pure category and V1/V2 key functions. It
@@ -231,6 +254,12 @@ inherited order in which processed-state markers and transfer results settle.
 This boundary keeps event concurrency and settlement directly testable without
 giving the processor full scan, initialisation, notification, or host
 responsibilities.
+
+`Reconciliation` owns storage and database enumeration, full scans, offline
+comparison, rebuild direction and ordering, processed-state adoption,
+initialisation sequencing, and the scoped rebuild interceptor used by maintained
+real-Obsidian tests. Storage and database scans remain together because every
+offline and initialisation path coordinates both sides.
 
 The joint composition may return several views backed by those contexts:
 
@@ -372,11 +401,17 @@ to the non-owner.
 
 The private context, path module, codec module, focused presentation view, and
 resource teardown are implemented. A focused path capability binds live
-settings and device identity to the pure path functions. A focused
-catalogue-state owner holds the rows, manifests, manifest mtime cache, reactive
-stores, and update progress, while a bounded deduplicator owns recent raw-event
-keys. Enumeration and scan queues remain with the orchestrating context. The
-context accepts only narrow, live projections and explicit effects; an
+settings and device identity to the pure path functions. A focused catalogue
+owner holds one queue, its progress subscription, and shared state, while
+separate V1, V2, and migration modules hold format-specific behaviour. A
+bounded deduplicator owns recent raw-event keys. Host-neutral snapshot
+persistence owns V1 grouped and V2 per-file writes, unchanged-content checks,
+and logical deletion. A snapshot coordinator applies its explicit refresh
+outcomes without a catalogue-to-context callback cycle. Focused application
+and scan owners contain selected-snapshot workflows and full local/database
+reconciliation, respectively. The context retains raw-event admission and
+scheduling, configuration and periodic policy, owner lifetime, and view
+composition. It accepts only narrow, live projections and explicit effects; an
 Obsidian adapter at the composition edge owns dialogues, Notices, plug-in
 reload, restart, lifecycle, Vault access, and compatibility scan telemetry.
 
@@ -397,9 +432,10 @@ the ownership, static-path, pattern, and ignore-file sequence. A focused change
 notifier owns folder batching, delayed delivery, and teardown of its scheduled
 work and Notice effect. A focused change processor owns storage and database
 event processing, bounded concurrency, per-path serialisation, activity
-publication, and compatibility settlement order. The context retains scan,
-initialisation, and reconciliation orchestration. A focused
-conflict-resolution owner owns pending-path admission,
+publication, and compatibility settlement order. A focused reconciliation
+owner owns storage and database scans, offline comparison, rebuilds,
+processed-state adoption, initialisation direction and ordering, and its scoped
+testing interceptor. A focused conflict-resolution owner owns pending-path admission,
 the parallel classification and serial interaction queues, automatic merge,
 newer-revision selection, interactive JSON application, settlement, and queue
 disposal. An Obsidian adapter owns JSON conflict dialogue instances, progress
@@ -499,12 +535,13 @@ migration without first establishing narrow dependencies.
 - The legacy add-on identity and constructor-name lookup are removed.
 - The two contexts coordinate separate synchronisation workflows, but their
   dependency surfaces are explicit and do not include the complete core.
-  Customisation Sync delegates its path binding, derived catalogue, and
-  recent-event state, while Hidden File Sync delegates path admission,
-  notification, processed-state, change-processing, and conflict lifecycles,
-  to focused owners. Further extraction should follow a concrete behavioural
-  boundary rather than create additional serviceFeatures for private
-  operations.
+  Customisation Sync delegates its path binding, snapshot persistence and
+  refresh sequencing, selected-snapshot application, scan reconciliation,
+  derived catalogue, catalogue queue, and recent-event state, while Hidden File
+  Sync delegates path admission, notification, processed-state,
+  change-processing, reconciliation, and conflict lifecycles to focused owners.
+  Further extraction should follow a concrete behavioural boundary rather than
+  create additional serviceFeatures for private operations.
 
 ## References
 

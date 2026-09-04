@@ -53,6 +53,9 @@ describe("HiddenFileSyncContext ownership and start-up lifecycle", () => {
         expect(getPrivate<unknown>(first.context, "changeProcessor")).not.toBe(
             getPrivate<unknown>(second.context, "changeProcessor")
         );
+        expect(getPrivate<unknown>(first.context, "reconciliation")).not.toBe(
+            getPrivate<unknown>(second.context, "reconciliation")
+        );
         expect(getPrivate<unknown>(first.context, "periodicInternalFileScanProcessor")).toBe(first.periodicProcessor);
         expect(getPrivate<unknown>(second.context, "periodicInternalFileScanProcessor")).toBe(second.periodicProcessor);
 
@@ -67,8 +70,10 @@ describe("HiddenFileSyncContext ownership and start-up lifecycle", () => {
         "preserves start-up scan notice selection for the processed-file cache",
         async (processedFiles, forcedNotice) => {
             const { context } = createContext(processedFiles);
-            const applyOfflineChanges = vi.fn(async () => undefined);
-            context.applyOfflineChanges = applyOfflineChanges;
+            const reconciliation = getPrivate<{
+                applyOfflineChanges(showNotice: boolean): Promise<unknown>;
+            }>(context, "reconciliation");
+            const applyOfflineChanges = vi.spyOn(reconciliation, "applyOfflineChanges").mockResolvedValue(undefined);
 
             await context.serviceHandlers.onDatabaseInitialised(false);
 

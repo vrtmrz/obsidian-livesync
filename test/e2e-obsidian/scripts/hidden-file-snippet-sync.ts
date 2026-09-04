@@ -202,7 +202,8 @@ async function autoMergeHiddenJsonConflict(cliBinary: string, env: NodeJS.Proces
             "return JSON.stringify({ok:true,path});",
             "})()",
         ].join(""),
-        env
+        env,
+        hiddenFileCliTimeoutMs
     );
 }
 
@@ -567,7 +568,9 @@ async function runMixedOwnership(context: RunnerContext, vault: TemporaryVault):
                 "const hidden=plugin.optionalFileSync.testing.hiddenFileSync;",
                 "core.services.setting.setDeviceAndVaultName('mixed-ownership');",
                 "await customisation.scanAllConfigFiles(false);",
-                "await hidden.scanAllStorageChanges(false,false,true,true);",
+                // The testing view exposes the command-level one-argument scan.
+                // Extra internal scan flags passed here were previously ignored by the view wrapper.
+                "await hidden.scanAllStorageChanges(false);",
                 "const customisationPaths=[];",
                 "for await(const entry of core.localDatabase.findEntries('ix:','ix;')){customisationPaths.push(entry.path);}",
                 "const hiddenPaths=[];",

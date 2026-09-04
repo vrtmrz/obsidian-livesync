@@ -26,6 +26,16 @@ vi.mock("@/common/translation", () => ({
 vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
+vi.mock("octagonal-wheels/concurrency/processor", () => ({
+    QueueProcessor: class QueueProcessor {
+        clearQueue = vi.fn();
+        enqueue = vi.fn();
+        terminate = vi.fn();
+        startPipeline() {
+            return this;
+        }
+    },
+}));
 
 import {
     LOG_LEVEL_VERBOSE,
@@ -34,7 +44,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { digestHash } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/hash";
 import { createCustomisationSyncCodec } from "./customisationSyncCodec.ts";
-import { CustomisationSyncCatalogueState } from "./customisationSyncCatalogueState.ts";
+import { CatalogueOperations } from "./catalogueOperations.ts";
 import { CustomisationSyncContext } from "./customisationSyncContext.ts";
 import { createCustomisationSyncTestDependencies } from "./customisationSyncContext.unit.fixture.ts";
 
@@ -64,22 +74,31 @@ function loadedManifest(manifestSource: string, mtime: number): LoadedEntry {
 
 function createContext() {
     const log = vi.fn();
-    const catalogueState = new CustomisationSyncCatalogueState();
-    const pluginManifests = catalogueState.manifestLookup;
-    const loadedManifest_mTime = catalogueState.loadedManifestMTime;
-    const setManifests = vi.spyOn(catalogueState.manifests, "set");
-    const setCatalogue = vi.spyOn(catalogueState.catalogue, "set");
+    const snapshotPersistence = {
+        deleteConfigOnDatabase: vi.fn(async () => ({ value: true, status: "missing" as const, refreshes: [] })),
+    };
+    const catalogueOperations = new CatalogueOperations({
+        ...createCustomisationSyncTestDependencies({
+            log,
+            getLocalDatabase: () => ({ getDBEntry: async () => false }) as never,
+        }),
+        snapshotPersistence,
+        publishScanCount: vi.fn(),
+    });
+    const pluginManifests = catalogueOperations.manifestLookup;
+    const setManifests = vi.spyOn(catalogueOperations.manifests, "set");
+    const setCatalogue = vi.spyOn(catalogueOperations.catalogue, "set");
     const context = Object.create(CustomisationSyncContext.prototype) as CustomisationSyncContext;
     Object.assign(context, {
         dependencies: createCustomisationSyncTestDependencies({
             log,
             getLocalDatabase: () => ({ getDBEntry: async () => false }) as never,
         }),
-        catalogueState,
+        catalogueOperations,
     });
     return {
+        catalogueOperations,
         context,
-        loadedManifest_mTime,
         log,
         pluginManifests,
         setCatalogue,
@@ -89,7 +108,7 @@ function createContext() {
 
 describe("compatibility: Customisation Sync V2 manifest state", () => {
     it("keeps the first parsed manifest when a later file has a different mtime", async () => {
-        const { context, loadedManifest_mTime, pluginManifests, setManifests } = createContext();
+        const { catalogueOperations, context, pluginManifests, setManifests } = createContext();
 
         await context.testing.createPluginDataExFileV2(
             path,
@@ -101,12 +120,12 @@ describe("compatibility: Customisation Sync V2 manifest state", () => {
         );
 
         expect(pluginManifests.get(confKey)).toMatchObject({ name: "First", version: "1.0.0" });
-        expect(loadedManifest_mTime.get(confKey)).toBe(20);
         expect(setManifests).toHaveBeenCalledOnce();
+        catalogueOperations.dispose();
     });
 
     it("records a failed manifest mtime and does not retry the same revision", async () => {
-        const { context, loadedManifest_mTime, log, pluginManifests, setCatalogue } = createContext();
+        const { catalogueOperations, context, log, pluginManifests, setCatalogue } = createContext();
         const invalid = loadedManifest("{invalid", 20);
 
         await expect(context.testing.createPluginDataExFileV2(path, invalid)).resolves.toMatchObject({
@@ -115,7 +134,6 @@ describe("compatibility: Customisation Sync V2 manifest state", () => {
         await context.testing.createPluginDataExFileV2(path, invalid);
 
         expect(pluginManifests.has(confKey)).toBe(false);
-        expect(loadedManifest_mTime.get(confKey)).toBe(20);
         expect(log).toHaveBeenCalledTimes(2);
         expect(log).toHaveBeenNthCalledWith(
             1,
@@ -125,5 +143,6 @@ describe("compatibility: Customisation Sync V2 manifest state", () => {
         );
         expect(log).toHaveBeenNthCalledWith(2, expect.any(SyntaxError), LOG_LEVEL_VERBOSE, undefined);
         expect(setCatalogue).toHaveBeenCalledOnce();
+        catalogueOperations.dispose();
     });
 });

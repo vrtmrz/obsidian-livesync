@@ -121,31 +121,18 @@ describe("CustomisationSyncContext dialogue view", () => {
         expect(askString).toHaveBeenCalledWith("Duplicate", "device name", "");
     });
 
-    it("keeps file-level comparison clones and duplication inside the view boundary", async () => {
+    it("delegates file-level comparison and duplication to the application owner", async () => {
         const { configSync } = createConfigSync();
-        const compareUsingDisplayData = vi.fn<
-            (dataA: IPluginDataExDisplay, dataB: IPluginDataExDisplay, compareEach?: boolean) => Promise<boolean>
-        >(async () => true);
-        const storeCustomizationFiles = vi.fn(async () => true);
-        const updatePluginList = vi.fn(async () => undefined);
+        const compareFileUsingDisplayData = vi.fn(async () => true);
+        const duplicateData = vi.fn(async () => undefined);
         Object.assign(configSync, {
-            compareUsingDisplayData,
-            pathOperations: {
-                filenameToUnifiedKey: vi.fn(() => "ix:device-b/PLUGIN_DATA/example.md"),
-            },
-            storeCustomizationFiles,
-            updatePluginList,
+            applicationOperations: { compareFileUsingDisplayData, duplicateData },
         });
 
         await expect(configSync.compareFileUsingDisplayData(display, display, "data.json")).resolves.toBe(true);
-        const [left, right, compareEach] = compareUsingDisplayData.mock.calls[0];
-        expect(left.files.map((file) => file.filename)).toEqual(["data.json"]);
-        expect(right.files.map((file) => file.filename)).toEqual(["data.json"]);
-        expect(compareEach).toBe(true);
-        expect(display.files).toHaveLength(2);
+        expect(compareFileUsingDisplayData).toHaveBeenCalledWith(display, display, "data.json");
 
         await configSync.duplicateData(display, "device-b");
-        expect(storeCustomizationFiles).toHaveBeenCalledWith(".obsidian/data.json", "device-b");
-        expect(updatePluginList).toHaveBeenCalledWith(false, "ix:device-b/PLUGIN_DATA/example.md");
+        expect(duplicateData).toHaveBeenCalledWith(display, "device-b");
     });
 });

@@ -1,51 +1,22 @@
-import { writable } from "svelte/store";
 import type PouchDB from "pouchdb-core";
-import { type PluginManifest, parseYaml, normalizePath, diff_match_patch } from "@/deps.ts";
+import { normalizePath } from "@/deps.ts";
 
 import type {
     EntryDoc,
     LoadedEntry,
-    InternalFileEntry,
     FilePathWithPrefix,
     FilePath,
     AnyEntry,
-    SavingEntry,
     diff_result,
     SYNC_MODE,
     ObsidianLiveSyncSettings,
     LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import {
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_NOTICE,
-    LOG_LEVEL_VERBOSE,
-    MODE_SELECTIVE,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, MODE_SELECTIVE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
-import {
-    createBlob,
-    createTextBlob,
-    delay,
-    fireAndForget,
-    getDocData,
-    getDocDataAsArray,
-    isDocContentSame,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { digestHash } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/hash";
-import { arrayBufferToBase64, decodeBinary } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
-import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
-import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { cancelTask, EVEN, scheduleTask } from "@/common/utils.ts";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
-import { reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
-import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
-import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import { cancelTask, scheduleTask } from "@/common/utils.ts";
 import { $msg } from "@/common/translation";
-import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
-import { parseCustomisationSyncV2DocumentPath } from "./customisationSyncPaths.ts";
-import { createCustomisationSyncCodec, type PluginDataEx } from "./customisationSyncCodec.ts";
 import type {
     CustomisationSyncDialogView,
     CustomisationSyncUIControl,
@@ -62,19 +33,14 @@ import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/
 import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
 import type { IPathService, IReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import {
-    collectOptionalFileSyncFiles,
-    type OptionalFileSyncFileTreeDependencies,
-} from "@/features/optionalFileSyncFileTree.ts";
+import type { OptionalFileSyncFileTreeDependencies } from "@/features/optionalFileSyncFileTree.ts";
 import { PluginDataExDisplayV2 } from "./customisationSyncModel.ts";
-import {
-    decodeCustomisationSyncV2File,
-    loadCustomisationDisplayData,
-    loadCustomisationV2Entry,
-    readCustomisationFile,
-} from "./customisationSyncReadOperations.ts";
-import { CustomisationSyncCatalogueState } from "./customisationSyncCatalogueState.ts";
+import { ApplicationOperations, type ApplicationOperationsDependencies } from "./applicationOperations.ts";
 import { CustomisationSyncRecentEventDeduplicator } from "./customisationSyncRecentEventDeduplicator.ts";
+import { CatalogueOperations, type CatalogueOperationsDependencies } from "./catalogueOperations.ts";
+import { SnapshotPersistence, type SnapshotPersistenceDependencies } from "./snapshotPersistence.ts";
+import { SnapshotOperations } from "./snapshotOperations.ts";
+import { ScanOperations, type ScanOperationsDependencies } from "./scanOperations.ts";
 import {
     createCustomisationSyncPathOperations,
     type CustomisationSyncPathOperations,
@@ -91,14 +57,6 @@ export type {
 export { PluginDataExDisplayV2 } from "./customisationSyncModel.ts";
 
 const UPDATED_CONFIGURATION_NOTICE_KEY = "config-sync:updated-configuration";
-
-const {
-    serialize,
-    deserialize,
-    dummyHead: DUMMY_HEAD,
-    dummyEnd: DUMMY_END,
-} = createCustomisationSyncCodec({ digestHash, parseYaml });
-const CUSTOMISATION_SYNC_READ_CODEC = { deserialize, serialize };
 
 type CustomisationSyncSettings = Pick<
     ObsidianLiveSyncSettings,
@@ -164,20 +122,14 @@ export type CustomisationSyncContextDependencies = OptionalFileSyncFileTreeDepen
 export class CustomisationSyncContext implements CustomisationSyncDialogView {
     private readonly dependencies: CustomisationSyncContextDependencies;
     private readonly pathOperations: CustomisationSyncPathOperations;
-    private readonly catalogueState = new CustomisationSyncCatalogueState();
+    private readonly snapshotPersistence: SnapshotPersistence;
+    private readonly snapshotOperations: SnapshotOperations;
+    private readonly catalogueOperations: CatalogueOperations;
+    private readonly applicationOperations: ApplicationOperations;
+    private readonly scanOperations: ScanOperations;
     private readonly recentProcessedInternalFiles = new CustomisationSyncRecentEventDeduplicator();
     private serviceHandlersView: CustomisationSyncServiceHandlers | undefined;
     private testingView: CustomisationSyncTestingView | undefined;
-    private readonly scanProgress = reactiveSource(0);
-    private readonly pluginScanningChanged: Parameters<ReactiveSource<number>["onChanged"]>[0] = (event) => {
-        this.enumerationActive.set(event.value != 0);
-        this.dependencies.publishScanCount(event.value);
-    };
-
-    readonly enumerationActive = writable(false);
-    readonly catalogue = this.catalogueState.catalogue;
-    readonly migrationProgress = this.catalogueState.migrationProgress;
-    readonly manifests = this.catalogueState.manifests;
 
     private readonly periodicPluginSweepProcessor: CustomisationSyncPeriodicProcessor;
 
@@ -189,10 +141,104 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             getUsePluginEtc: () => dependencies.getSettings().usePluginEtc,
             getDeviceAndVaultName: () => dependencies.getDeviceAndVaultName(),
         });
+        const snapshotPersistenceDependencies: SnapshotPersistenceDependencies = {
+            getLocalDatabase: () => dependencies.getLocalDatabase(),
+            storageAccess: dependencies.storageAccess,
+            path: {
+                ...this.pathOperations,
+                path2id: (filename, prefix) => dependencies.path.path2id(filename, prefix),
+                isMarkedAsSameChanges: (file, mtimes) => dependencies.path.isMarkedAsSameChanges(file, mtimes),
+                markChangesAreSame: (file, newMtime, oldMtime) =>
+                    dependencies.path.markChangesAreSame(file, newMtime, oldMtime),
+            },
+            log: (message, level, key) => dependencies.log(message, level, key),
+            getConfigDir: () => dependencies.getConfigDir(),
+        };
+        this.snapshotPersistence = new SnapshotPersistence(snapshotPersistenceDependencies);
+        this.catalogueOperations = new CatalogueOperations({
+            getSettings: () => {
+                const settings = dependencies.getSettings();
+                return {
+                    usePluginSync: settings.usePluginSync,
+                    usePluginSyncV2: settings.usePluginSyncV2,
+                };
+            },
+            getLocalDatabase: () => dependencies.getLocalDatabase(),
+            path: {
+                getPath: (entry) => dependencies.path.getPath(entry),
+                path2id: (filename, prefix) => dependencies.path.path2id(filename, prefix),
+            },
+            log: (message, level, key) => dependencies.log(message, level, key),
+            snapshotPersistence: this.snapshotPersistence,
+            publishScanCount: (count) => dependencies.publishScanCount(count),
+        } satisfies CatalogueOperationsDependencies);
+        this.snapshotOperations = new SnapshotOperations({
+            getSettings: () => ({ usePluginSyncV2: dependencies.getSettings().usePluginSyncV2 }),
+            getDeviceAndVaultName: () => dependencies.getDeviceAndVaultName(),
+            log: (message, level, key) => dependencies.log(message, level, key),
+            snapshotPersistence: this.snapshotPersistence,
+            catalogueOperations: this.catalogueOperations,
+        });
+        const applicationOperationsDependencies: ApplicationOperationsDependencies = {
+            getLocalDatabase: () => ({ getDBEntry: (path) => dependencies.getLocalDatabase().getDBEntry(path) }),
+            storageAccess: dependencies.storageAccess,
+            path: {
+                filenameToUnifiedKey: (path, termOverride) =>
+                    this.pathOperations.filenameToUnifiedKey(path, termOverride),
+            },
+            log: (message, level, key) => dependencies.log(message, level, key),
+            getConfigDir: () => dependencies.getConfigDir(),
+            getDeviceAndVaultName: () => dependencies.getDeviceAndVaultName(),
+            resolveJsonConflict: (path, files, remoteName, apply) =>
+                dependencies.resolveJsonConflict(path, files, remoteName, apply),
+            selectTextFile: (path, diffResult, remoteName) => dependencies.selectTextFile(path, diffResult, remoteName),
+            reloadPlugin: (configDir, pluginName) => dependencies.reloadPlugin(configDir, pluginName),
+            askRestart: () => dependencies.askRestart(),
+            snapshotOperations: this.snapshotOperations,
+            catalogueOperations: this.catalogueOperations,
+        };
+        this.applicationOperations = new ApplicationOperations(applicationOperationsDependencies);
+        this.scanOperations = new ScanOperations({
+            listFiles: async (path) => await dependencies.listFiles(path),
+            getSettings: () => ({ usePluginSyncV2: dependencies.getSettings().usePluginSyncV2 }),
+            getLocalDatabase: () => dependencies.getLocalDatabase(),
+            path: {
+                getPath: (entry) => dependencies.path.getPath(entry),
+                isTargetPath: (path) => this.pathOperations.isTargetPath(path),
+                filenameToUnifiedKey: (path, termOverride) =>
+                    this.pathOperations.filenameToUnifiedKey(path, termOverride),
+                filenameWithUnifiedKey: (path, termOverride) =>
+                    this.pathOperations.filenameWithUnifiedKey(path, termOverride),
+                unifiedKeyPrefixOfTerminal: (termOverride) =>
+                    this.pathOperations.unifiedKeyPrefixOfTerminal(termOverride),
+            },
+            log: (message, level, key) => dependencies.log(message, level, key),
+            getConfigDir: () => dependencies.getConfigDir(),
+            getDeviceAndVaultName: () => dependencies.getDeviceAndVaultName(),
+            ownsLocalFile: (path) => dependencies.ownsLocalFile(path),
+            ownsLocalDocument: (path) => dependencies.ownsLocalDocument(path),
+            snapshotOperations: this.snapshotOperations,
+            catalogueOperations: this.catalogueOperations,
+        } satisfies ScanOperationsDependencies);
         this.periodicPluginSweepProcessor = dependencies.createPeriodicProcessor(
             async () => await this.scanAllConfigFiles(false)
         );
-        this.scanProgress.onChanged(this.pluginScanningChanged);
+    }
+
+    get catalogue() {
+        return this.catalogueOperations.catalogue;
+    }
+
+    get enumerationActive() {
+        return this.catalogueOperations.enumerationActive;
+    }
+
+    get migrationProgress() {
+        return this.catalogueOperations.migrationProgress;
+    }
+
+    get manifests() {
+        return this.catalogueOperations.manifests;
     }
 
     /**
@@ -225,17 +271,18 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         if (!this.testingView) {
             this.testingView = Object.freeze({
                 configDir: this.configDir,
-                scanInternalFiles: async () => await this.scanInternalFiles(),
+                scanInternalFiles: async () => await this.scanOperations.scanInternalFiles(),
                 scanAllConfigFiles: async (showMessage: boolean) => await this.scanAllConfigFiles(showMessage),
                 storeCustomizationFiles: async (path: FilePath, termOverride?: string) =>
-                    await this.storeCustomizationFiles(path, termOverride),
+                    await this.snapshotOperations.storeCustomizationFiles(path, termOverride),
                 deleteConfigOnDatabase: async (path: FilePathWithPrefix, forceWrite?: boolean) =>
-                    await this.deleteConfigOnDatabase(path, forceWrite),
-                createPluginDataFromV2: (path: FilePathWithPrefix) => this.createPluginDataFromV2(path),
+                    await this.snapshotOperations.deleteConfigOnDatabase(path, forceWrite),
+                createPluginDataFromV2: (path: FilePathWithPrefix) =>
+                    this.catalogueOperations.createPluginDataFromV2(path),
                 createPluginDataExFileV2: async (path: FilePathWithPrefix, loaded?: LoadedEntry) =>
-                    await this.createPluginDataExFileV2(path, loaded),
+                    await this.catalogueOperations.createPluginDataExFileV2(path, loaded),
                 applyDataV2: async (data: PluginDataExDisplayV2, content?: string) =>
-                    await this.applyDataV2(data, content),
+                    await this.applicationOperations.applyDataV2(data, content),
             });
         }
         return this.testingView;
@@ -249,16 +296,8 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return this.dependencies.getSettings();
     }
 
-    private get localDatabase() {
-        return this.dependencies.getLocalDatabase();
-    }
-
     private get storageAccess() {
         return this.dependencies.storageAccess;
-    }
-
-    private async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string) {
-        return await this.dependencies.path.path2id(filename, prefix);
     }
 
     private getPath(entry: AnyEntry): FilePathWithPrefix {
@@ -277,9 +316,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         this.dependencies.log(message, level, key);
     }
 
-    private get useV2() {
-        return this.settings.usePluginSyncV2;
-    }
     private get useSyncPluginEtc() {
         return this.settings.usePluginEtc;
     }
@@ -341,33 +377,17 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         dataB: IPluginDataExDisplay,
         filename: string
     ): Promise<boolean> {
-        const dataACopy =
-            dataA instanceof PluginDataExDisplayV2
-                ? new PluginDataExDisplayV2(dataA, this.catalogueState.manifestLookup)
-                : { ...dataA };
-        const dataBCopy =
-            dataB instanceof PluginDataExDisplayV2
-                ? new PluginDataExDisplayV2(dataB, this.catalogueState.manifestLookup)
-                : { ...dataB };
-        dataACopy.files = dataACopy.files.filter((file) => file.filename == filename);
-        dataBCopy.files = dataBCopy.files.filter((file) => file.filename == filename);
-        return await this.compareUsingDisplayData(dataACopy, dataBCopy, true);
+        return await this.applicationOperations.compareFileUsingDisplayData(dataA, dataB, filename);
     }
 
     async duplicateData(data: IPluginDataExDisplay, deviceName: string): Promise<void> {
-        const path = `${this.configDir}/${data.files[0].filename}` as FilePath;
-        await this.storeCustomizationFiles(path, deviceName);
-        await this.updatePluginList(false, this.pathOperations.filenameToUnifiedKey(path, deviceName));
+        await this.applicationOperations.duplicateData(data, deviceName);
     }
 
     dispose() {
         cancelTask(UPDATED_CONFIGURATION_NOTICE_KEY);
         this.periodicPluginSweepProcessor?.disable();
-        this.pluginScanProcessor?.terminate();
-        this.pluginScanProcessorV2?.terminate();
-        this.scanProgress.offChanged(this.pluginScanningChanged);
-        this.enumerationActive.set(false);
-        this.dependencies.publishScanCount(0);
+        this.catalogueOperations.dispose();
         this.dependencies.hideConfigurationNotice();
     }
 
@@ -407,474 +427,19 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return true;
     }
     async reloadPluginList(showMessage: boolean) {
-        this.catalogueState.clearForReload();
-        await this.updatePluginList(showMessage);
+        await this.catalogueOperations.reloadPluginList(showMessage);
     }
-    private pluginScanProcessor = new QueueProcessor(
-        async (v: AnyEntry[]) => {
-            const plugin = v[0];
-            if (this.useV2) {
-                await this.migrateV1ToV2(false, plugin);
-                return [];
-            }
-            const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.catalogueState.findPlugin(path);
-            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
-            try {
-                const pluginData = await loadCustomisationDisplayData(
-                    this.dependencies,
-                    path,
-                    CUSTOMISATION_SYNC_READ_CODEC
-                );
-                if (pluginData) {
-                    this.catalogueState.replacePlugin(pluginData);
-                }
-                // Failed to load
-                return [];
-            } catch (ex) {
-                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-            }
-            return [];
-        },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 100,
-            yieldThreshold: 10,
-            maintainDelay: false,
-            totalRemainingReactiveSource: this.scanProgress,
-        }
-    ).startPipeline();
-
-    // Compatibility question: no production path currently enqueues work into
-    // this second processor. Preserve its construction and disposal until the
-    // intended V2 scan path, or its safe removal, has focused coverage.
-    private pluginScanProcessorV2 = new QueueProcessor(
-        async (v: AnyEntry[]) => {
-            const plugin = v[0];
-            const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.catalogueState.findPlugin(path);
-            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
-            try {
-                const pluginData = await loadCustomisationDisplayData(
-                    this.dependencies,
-                    path,
-                    CUSTOMISATION_SYNC_READ_CODEC
-                );
-                if (pluginData) {
-                    this.catalogueState.replacePlugin(pluginData);
-                }
-                // Failed to load
-                return [];
-            } catch (ex) {
-                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-            }
-            return [];
-        },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 100,
-            yieldThreshold: 10,
-            maintainDelay: false,
-            totalRemainingReactiveSource: this.scanProgress,
-        }
-    ).startPipeline();
-
-    private async createPluginDataExFileV2(
-        unifiedPathV2: FilePathWithPrefix,
-        loaded?: LoadedEntry
-    ): Promise<false | LoadedEntryPluginDataExFile> {
-        // Compatibility: a caller-supplied entry bypasses the database lookup
-        // and the isLoadedEntry check performed by loadCustomisationV2Entry.
-        const loadedEntry = loaded ?? (await loadCustomisationV2Entry(this.dependencies, unifiedPathV2));
-        if (!loadedEntry) return false;
-        const { confKey, file, isManifest } = decodeCustomisationSyncV2File(unifiedPathV2, loadedEntry, DUMMY_END);
-        if (isManifest) {
-            this.catalogueState.processManifest(
-                confKey,
-                file.mtime,
-                () => JSON.parse(file.data[0]) as PluginManifest,
-                (error) => {
-                    this._log(
-                        `The file ${loadedEntry.path} seems to manifest, but could not be decoded as JSON`,
-                        LOG_LEVEL_VERBOSE
-                    );
-                    this._log(error, LOG_LEVEL_VERBOSE);
-                }
-            );
-        }
-        return file;
-    }
-    private createPluginDataFromV2(unifiedPathV2: FilePathWithPrefix) {
-        const { category, device, key, pathV1 } = parseCustomisationSyncV2DocumentPath(unifiedPathV2);
-        if (category == "") return;
-
-        const ret: PluginDataExDisplayV2 = new PluginDataExDisplayV2(
-            {
-                documentPath: pathV1,
-                category: category,
-                name: key,
-                term: `${device}`,
-                files: [],
-                mtime: 0,
-            },
-            this.catalogueState.manifestLookup
-        );
-        return ret;
-    }
-
-    private async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
-        try {
-            this.catalogueState.beginUpdate();
-            const { pathV1 } = parseCustomisationSyncV2DocumentPath(unifiedFilenameWithKey);
-
-            const oldEntry = this.catalogueState.findPlugin(pathV1);
-            let entry: PluginDataExDisplayV2 | undefined = undefined;
-
-            if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
-                const newEntry = this.createPluginDataFromV2(unifiedFilenameWithKey);
-                if (newEntry) {
-                    entry = newEntry;
-                }
-            } else if (oldEntry instanceof PluginDataExDisplayV2) {
-                entry = oldEntry;
-            }
-            if (!entry) return;
-            const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
-            // Compatibility: the inherited update always re-adds an empty V2
-            // row after deleting its final file.
-            await this.catalogueState.updateV2Plugin(entry, file, unifiedFilenameWithKey);
-
-            scheduleTask("updatePluginListV2", 100, () => {
-                this.catalogueState.publishCatalogue();
-            });
-        } finally {
-            this.catalogueState.endUpdate();
-        }
-    }
-
-    private async migrateV1ToV2(showMessage: boolean, entry: AnyEntry): Promise<void> {
-        const v1Path = entry.path;
-        this._log(`Migrating ${entry.path} to V2`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-        if (entry.deleted) {
-            this._log(`The entry ${v1Path} is already deleted`, LOG_LEVEL_VERBOSE);
-            return;
-        }
-        if (!v1Path.endsWith(".md") && !v1Path.startsWith(ICXHeader)) {
-            this._log(`The entry ${v1Path} is not a customisation sync binder`, LOG_LEVEL_VERBOSE);
-            return;
-        }
-        if (v1Path.indexOf("%") !== -1) {
-            this._log(`The entry ${v1Path} is already migrated`, LOG_LEVEL_VERBOSE);
-            return;
-        }
-        const loadedEntry = await this.localDatabase.getDBEntry(v1Path);
-        if (!loadedEntry) {
-            this._log(`The entry ${v1Path} is not found`, LOG_LEVEL_VERBOSE);
-            return;
-        }
-
-        const pluginData = deserialize(getDocDataAsArray(loadedEntry.data), {}) as PluginDataEx;
-        const prefixPath = v1Path.slice(0, -".md".length) + "%";
-        const category = pluginData.category;
-
-        for (const f of pluginData.files) {
-            const stripTable: Record<string, number> = {
-                CONFIG: 0,
-                THEME: 2,
-                SNIPPET: 1,
-                PLUGIN_MAIN: 2,
-                PLUGIN_DATA: 2,
-                PLUGIN_ETC: 2,
-            };
-            const deletePrefixCount = stripTable?.[category] ?? 1;
-            const relativeFilename = f.filename.split("/").slice(deletePrefixCount).join("/");
-            const v2Path = (prefixPath + relativeFilename) as FilePathWithPrefix;
-            // console.warn(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`);
-            this._log(`Migrating ${v1Path} / ${relativeFilename} to ${v2Path}`, LOG_LEVEL_VERBOSE);
-            const newId = await this.path2id(v2Path);
-            // const buf =
-
-            const data = createBlob([DUMMY_HEAD, DUMMY_END, ...getDocDataAsArray(f.data)]);
-
-            const saving: SavingEntry = {
-                ...loadedEntry,
-                _rev: undefined,
-                _id: newId,
-                path: v2Path,
-                data: data,
-                datatype: "plain",
-                type: "plain",
-                children: [],
-                eden: {},
-            };
-            const r = await this.localDatabase.putDBEntry(saving);
-            if (r && r.ok) {
-                this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
-                const delR = await this.deleteConfigOnDatabase(v1Path);
-                if (delR) {
-                    this._log(`Deleted ${v1Path} successfully`, LOG_LEVEL_INFO);
-                } else {
-                    this._log(`Failed to delete ${v1Path}`, LOG_LEVEL_NOTICE);
-                }
-            }
-        }
-    }
-
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
-        if (!this.isThisModuleEnabled()) {
-            this.pluginScanProcessor.clearQueue();
-            this.catalogueState.clearForDisabledRefresh();
-            return;
-        }
-        try {
-            this.catalogueState.beginUpdate();
-            const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
-            const plugins = updatedDocumentPath
-                ? this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", {
-                      include_docs: true,
-                      key: updatedDocumentId,
-                      limit: 1,
-                  })
-                : this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
-            for await (const v of plugins) {
-                if (v.deleted || v._deleted) continue;
-                if (v.path.indexOf("%") !== -1) {
-                    fireAndForget(() => this.updatePluginListV2(showMessage, v.path));
-                    continue;
-                }
-
-                const path = v.path || this.getPath(v);
-                if (updatedDocumentPath && updatedDocumentPath != path) continue;
-                this.pluginScanProcessor.enqueue(v);
-            }
-        } finally {
-            this.enumerationActive.set(false);
-            this.catalogueState.endUpdate();
-        }
-        this.enumerationActive.set(false);
-        // return entries;
+        await this.catalogueOperations.updatePluginList(showMessage, updatedDocumentPath);
     }
     async compareUsingDisplayData(dataA: IPluginDataExDisplay, dataB: IPluginDataExDisplay, compareEach = false) {
-        const loadFile = async (data: IPluginDataExDisplay) => {
-            if (data instanceof PluginDataExDisplayV2 || compareEach) {
-                return data.files[0] as LoadedEntryPluginDataExFile;
-            }
-            const loadDoc = await this.localDatabase.getDBEntry(data.documentPath);
-            if (!loadDoc) return false;
-            const pluginData = deserialize(getDocDataAsArray(loadDoc.data), {}) as PluginDataEx;
-            pluginData.documentPath = data.documentPath;
-            const file = pluginData.files[0];
-            const doc = { ...loadDoc, ...file, datatype: "newnote" } as LoadedEntryPluginDataExFile;
-            return doc;
-        };
-        const fileA = await loadFile(dataA);
-        const fileB = await loadFile(dataB);
-        this._log(`Comparing: ${dataA.documentPath} <-> ${dataB.documentPath}`, LOG_LEVEL_VERBOSE);
-        if (!fileA || !fileB) {
-            this._log(
-                `Could not load ${dataA.name} for comparison: ${!fileA ? dataA.term : ""}${!fileB ? dataB.term : ""}`,
-                LOG_LEVEL_NOTICE
-            );
-            return false;
-        }
-        let path = stripAllPrefixes(fileA.path.split("/").slice(-1).join("/") as FilePath); // TODO:adjust
-        if (path.indexOf("%") !== -1) {
-            path = path.split("%")[1] as FilePath;
-        }
-        if (fileA.path.endsWith(".json")) {
-            return serialized("config:merge-data", async () => {
-                this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
-                return await this.dependencies.resolveJsonConflict(path, [fileA, fileB], dataB.term, async (result) => {
-                    try {
-                        return await this.applyData(dataA, result);
-                    } catch (ex) {
-                        this._log("Could not apply merged file");
-                        this._log(ex, LOG_LEVEL_VERBOSE);
-                        return false;
-                    }
-                });
-            });
-        } else {
-            const dmp = new diff_match_patch();
-            let docAData = getDocData(fileA.data);
-            let docBData = getDocData(fileB.data);
-            if (fileA?.datatype != "plain") {
-                docAData = base64ToString(docAData);
-            }
-            if (fileB?.datatype != "plain") {
-                docBData = base64ToString(docBData);
-            }
-            const diffMap = dmp.diff_linesToChars_(docAData, docBData);
-
-            const diff = dmp.diff_main(diffMap.chars1, diffMap.chars2, false);
-            dmp.diff_charsToLines_(diff, diffMap.lineArray);
-            dmp.diff_cleanupSemantic(diff);
-            const diffResult: diff_result = {
-                left: { rev: "A", ...fileA, data: docAData },
-                right: { rev: "B", ...fileB, data: docBData },
-                diff: diff,
-            };
-            const ret = await this.dependencies.selectTextFile(path, diffResult, dataB.term);
-            if (ret === false) return false;
-            const resultContent = ret == "A" ? docAData : ret == "B" ? docBData : undefined;
-            if (resultContent) {
-                return await this.applyData(dataA, resultContent);
-            }
-            return false;
-        }
-    }
-    private async applyDataV2(data: PluginDataExDisplayV2, content?: string): Promise<boolean> {
-        const baseDir = this.configDir;
-        try {
-            if (content) {
-                // const dt = createBlob(content);
-                const filename = data.files[0].filename;
-                this._log(`Applying ${filename} of ${data.displayName || data.name}..`);
-                const path = `${baseDir}/${filename}` as FilePath;
-                await this.storageAccess.ensureDir(path);
-                // If the content has applied, modified time will be updated to the current time.
-                await this.storageAccess.writeHiddenFileAuto(path, content);
-                await this.storeCustomisationFileV2(path, this.dependencies.getDeviceAndVaultName());
-            } else {
-                const files = data.files;
-                for (const f of files) {
-                    // If files have applied, modified time will be updated to the current time.
-                    const stat = { mtime: f.mtime, ctime: f.ctime };
-                    const path = `${baseDir}/${f.filename}` as FilePath;
-                    this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
-                    // const contentEach = createBlob(f.data);
-                    await this.storageAccess.ensureDir(path);
-
-                    if (f.datatype == "newnote") {
-                        let oldData;
-                        try {
-                            oldData = await this.storageAccess.readHiddenFileBinary(path);
-                        } catch (ex) {
-                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                            oldData = new ArrayBuffer(0);
-                        }
-                        const content = base64ToArrayBuffer(f.data);
-                        if (await isDocContentSame(oldData, content)) {
-                            this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
-                            continue;
-                        }
-                        await this.storageAccess.writeHiddenFileAuto(path, content, stat);
-                    } else {
-                        let oldData;
-                        try {
-                            oldData = await this.storageAccess.readHiddenFileText(path);
-                        } catch (ex) {
-                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                            oldData = "";
-                        }
-                        const content = getDocData(f.data);
-                        if (await isDocContentSame(oldData, content)) {
-                            this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
-                            continue;
-                        }
-                        await this.storageAccess.writeHiddenFileAuto(path, content, stat);
-                    }
-                    this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
-                    await this.storeCustomisationFileV2(path, this.dependencies.getDeviceAndVaultName());
-                }
-            }
-        } catch (ex) {
-            this._log(`Applying ${data.displayName || data.name}.. Failed`, LOG_LEVEL_NOTICE);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
-        return true;
+        return await this.applicationOperations.compareUsingDisplayData(dataA, dataB, compareEach);
     }
     async applyData(data: IPluginDataExDisplay, content?: string): Promise<boolean> {
-        this._log(`Applying ${data.displayName || data.name}..`);
-
-        if (data instanceof PluginDataExDisplayV2) {
-            return this.applyDataV2(data, content);
-        }
-        const baseDir = this.configDir;
-        try {
-            if (!data.documentPath) throw new LiveSyncError("InternalError: Document path not exist");
-            const dx = await this.localDatabase.getDBEntry(data.documentPath);
-            if (dx == false) {
-                throw new LiveSyncError("Not found on database");
-            }
-            const loadedData = deserialize(getDocDataAsArray(dx.data), {}) as PluginDataEx;
-            for (const f of loadedData.files) {
-                this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
-                try {
-                    // console.dir(f);
-                    const path = `${baseDir}/${f.filename}`;
-                    await this.storageAccess.ensureDir(path);
-                    if (!content) {
-                        const dt = decodeBinary(f.data);
-                        await this.storageAccess.writeHiddenFileAuto(path, dt);
-                    } else {
-                        await this.storageAccess.writeHiddenFileAuto(path, content);
-                    }
-                    this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Done`);
-                } catch (ex) {
-                    this._log(`Applying ${f.filename} of ${data.displayName || data.name}.. Failed`);
-                    this._log(ex, LOG_LEVEL_VERBOSE);
-                }
-            }
-            const uPath = `${baseDir}/${loadedData.files[0].filename}` as FilePath;
-            await this.storeCustomizationFiles(uPath);
-            await this.updatePluginList(true, uPath);
-            await delay(100);
-            this._log(`Config ${data.displayName || data.name} has been applied`, LOG_LEVEL_NOTICE);
-            if (data.category == "PLUGIN_DATA" || data.category == "PLUGIN_MAIN") {
-                await this.dependencies.reloadPlugin(baseDir, data.name);
-            } else if (data.category == "CONFIG") {
-                this.dependencies.askRestart();
-            }
-            return true;
-        } catch (ex) {
-            this._log(`Applying ${data.displayName || data.name}.. Failed`);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
+        return await this.applicationOperations.applyData(data, content);
     }
-    async deleteData(data: PluginDataEx): Promise<boolean> {
-        try {
-            if (data.documentPath) {
-                const delList = [];
-                if (this.useV2) {
-                    const deleteList = this.catalogueState
-                        .findPlugins(data.documentPath)
-                        .filter((entry) => entry instanceof PluginDataExDisplayV2)
-                        .map((entry) => entry.files)
-                        .flat();
-                    for (const e of deleteList) {
-                        delList.push(e.path);
-                    }
-                }
-                delList.push(data.documentPath);
-                const p = delList.map(async (e) => {
-                    await this.deleteConfigOnDatabase(e);
-                    await this.updatePluginList(false, e);
-                });
-                await Promise.allSettled(p);
-                // await this.deleteConfigOnDatabase(data.documentPath);
-                // await this.updatePluginList(false, data.documentPath);
-                this._log(
-                    `Deleted: ${data.category}/${data.name} of ${data.category} (${delList.length} items)`,
-                    LOG_LEVEL_NOTICE
-                );
-            }
-            return true;
-        } catch (ex) {
-            this._log(`Failed to delete: ${data.documentPath}`, LOG_LEVEL_NOTICE);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
+    async deleteData(data: IPluginDataExDisplay): Promise<boolean> {
+        return await this.applicationOperations.deleteData(data);
     }
     private async processVirtualDocument(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (!docs._id.startsWith(ICXHeader)) return false;
@@ -913,229 +478,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return true;
     }
 
-    private async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
-        const vf = this.pathOperations.filenameWithUnifiedKey(path, term);
-        return await serialized(`plugin-${vf}`, async () => {
-            const prefixedFileName = vf;
-
-            const id = await this.path2id(prefixedFileName);
-            const stat = await this.storageAccess.statHidden(path);
-            if (!stat) {
-                return false;
-            }
-            const mtime = stat.mtime;
-            const content = await this.storageAccess.readHiddenFileBinary(path);
-            const contentBlob = createBlob([DUMMY_HEAD, DUMMY_END, ...(await arrayBufferToBase64(content))]);
-            // const contentBlob = createBlob(content);
-            try {
-                const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false);
-                let saveData: SavingEntry;
-                if (old === false) {
-                    saveData = {
-                        _id: id,
-                        path: prefixedFileName,
-                        data: contentBlob,
-                        mtime,
-                        ctime: mtime,
-                        datatype: "plain",
-                        size: contentBlob.size,
-                        children: [],
-                        deleted: false,
-                        type: "plain",
-                        eden: {},
-                    };
-                } else {
-                    if (
-                        this.dependencies.path.isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN
-                    ) {
-                        this._log(
-                            `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`,
-                            LOG_LEVEL_DEBUG
-                        );
-                        return;
-                    }
-                    const docXDoc = await this.localDatabase.getDBEntryFromMeta(old, false, false);
-                    if (docXDoc == false) {
-                        throw new LiveSyncError("Could not load the document");
-                    }
-                    const dataSrc = getDocData(docXDoc.data);
-                    const dataStart = dataSrc.indexOf(DUMMY_END);
-                    const oldContent = dataSrc.substring(dataStart + DUMMY_END.length);
-                    const oldContentArray = base64ToArrayBuffer(oldContent);
-                    if (await isDocContentSame(oldContentArray, content)) {
-                        this._log(
-                            `STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`,
-                            LOG_LEVEL_VERBOSE
-                        );
-                        this.dependencies.path.markChangesAreSame(prefixedFileName, old.mtime, mtime + 1);
-                        return true;
-                    }
-                    saveData = {
-                        ...old,
-                        data: contentBlob,
-                        mtime,
-                        size: contentBlob.size,
-                        datatype: "plain",
-                        children: [],
-                        deleted: false,
-                        type: "plain",
-                    };
-                }
-                const ret = await this.localDatabase.putDBEntry(saveData);
-                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
-                fireAndForget(() => this.updatePluginListV2(false, this.pathOperations.filenameWithUnifiedKey(path)));
-                return ret;
-            } catch (ex) {
-                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
-    private async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
-        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
-        if (term == "") {
-            this._log($msg("We have to configure the device name"), LOG_LEVEL_NOTICE);
-            return;
-        }
-        if (this.useV2) {
-            return await this.storeCustomisationFileV2(path, term);
-        }
-        const vf = this.pathOperations.filenameToUnifiedKey(path, term);
-        // console.warn(`Storing ${path} to ${bareVF} :--> ${keyedVF}`);
-
-        return await serialized(`plugin-${vf}`, async () => {
-            const category = this.pathOperations.getFileCategory(path);
-            let mtime = 0;
-            let fileTargets = [] as FilePath[];
-            // let savePath = "";
-            const name =
-                category == "CONFIG" || category == "SNIPPET"
-                    ? path.split("/").reverse()[0]
-                    : path.split("/").reverse()[1];
-            const parentPath = path.split("/").slice(0, -1).join("/");
-            const prefixedFileName = this.pathOperations.filenameToUnifiedKey(path, term);
-            const id = await this.path2id(prefixedFileName);
-            const dt: PluginDataEx = {
-                category: category,
-                files: [],
-                name: name,
-                mtime: 0,
-                term: term,
-            };
-            // let scheduleKey = "";
-            if (
-                category == "CONFIG" ||
-                category == "SNIPPET" ||
-                category == "PLUGIN_ETC" ||
-                category == "PLUGIN_DATA"
-            ) {
-                fileTargets = [path];
-                if (category == "PLUGIN_ETC") {
-                    dt.displayName = path.split("/").slice(-1).join("/");
-                }
-            } else if (category == "PLUGIN_MAIN") {
-                fileTargets = ["manifest.json", "main.js", "styles.css"].map((e) => `${parentPath}/${e}` as FilePath);
-            } else if (category == "THEME") {
-                fileTargets = ["manifest.json", "theme.css"].map((e) => `${parentPath}/${e}` as FilePath);
-            }
-            for (const target of fileTargets) {
-                const data = await readCustomisationFile(this.dependencies, target, this.configDir);
-                if (data == false) {
-                    this._log(`Config: skipped (Possibly is not exist): ${target} `, LOG_LEVEL_VERBOSE);
-                    continue;
-                }
-                if (data.version) {
-                    dt.version = data.version;
-                }
-                if (data.displayName) {
-                    dt.displayName = data.displayName;
-                }
-                // Use average for total modified time.
-                mtime = mtime == 0 ? data.mtime : (data.mtime + mtime) / 2;
-                dt.files.push(data);
-            }
-            dt.mtime = mtime;
-
-            // this._log(`Configuration saving: ${prefixedFileName}`);
-            if (dt.files.length == 0) {
-                this._log(`Nothing left: deleting.. ${path}`);
-                await this.deleteConfigOnDatabase(prefixedFileName);
-                await this.updatePluginList(false, prefixedFileName);
-                return;
-            }
-
-            const content = createTextBlob(serialize(dt));
-            try {
-                const old = await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false);
-                let saveData: SavingEntry;
-                if (old === false) {
-                    saveData = {
-                        _id: id,
-                        path: prefixedFileName,
-                        data: content,
-                        mtime,
-                        ctime: mtime,
-                        datatype: "newnote",
-                        size: content.size,
-                        children: [],
-                        deleted: false,
-                        type: "newnote",
-                        eden: {},
-                    };
-                } else {
-                    if (old.mtime == mtime) {
-                        // this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
-                        return true;
-                    }
-                    const oldC = await this.localDatabase.getDBEntryFromMeta(old, false, false);
-                    if (oldC) {
-                        const d = deserialize(getDocDataAsArray(oldC.data), {}) as PluginDataEx;
-                        if (d.files.length == dt.files.length) {
-                            const diffs = d.files
-                                .map((previous) => ({
-                                    prev: previous,
-                                    curr: dt.files.find((e) => e.filename == previous.filename),
-                                }))
-                                .map(async (e) => {
-                                    try {
-                                        return await isDocContentSame(e.curr?.data ?? [], e.prev.data);
-                                    } catch {
-                                        return false;
-                                    }
-                                });
-                            const isSame = (await Promise.all(diffs)).every((e) => e == true);
-                            if (isSame) {
-                                this._log(
-                                    `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`,
-                                    LOG_LEVEL_VERBOSE
-                                );
-                                return true;
-                            }
-                        }
-                    }
-                    saveData = {
-                        ...old,
-                        data: content,
-                        mtime,
-                        size: content.size,
-                        datatype: "newnote",
-                        children: [],
-                        deleted: false,
-                        type: "newnote",
-                    };
-                }
-                const ret = await this.localDatabase.putDBEntry(saveData);
-                await this.updatePluginList(false, saveData.path);
-                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
-                return ret;
-            } catch (ex) {
-                this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
     private async processOptionalFileEvent(path: FilePath): Promise<boolean> {
         return await this.watchVaultRawEventsAsync(path);
     }
@@ -1161,174 +503,15 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         // To prevent saving half-collected file sets.
         const keySchedule = this.pathOperations.filenameToUnifiedKey(path);
         scheduleTask(keySchedule, 100, async () => {
-            await this.storeCustomizationFiles(path);
+            await this.snapshotOperations.storeCustomizationFiles(path);
         });
         // Okay, it may handled after 100ms.
         // This was my own job.
         return true;
     }
 
-    async scanAllConfigFiles(showMessage: boolean) {
-        await shareRunningResult("scanAllConfigFiles", async () => {
-            const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
-            this._log("Scanning customizing files.", logLevel, "scan-all-config");
-            const term = this.dependencies.getDeviceAndVaultName();
-            if (term == "") {
-                this._log($msg("We have to configure the device name"), LOG_LEVEL_NOTICE);
-                return;
-            }
-            const filesAll = await this.scanInternalFiles();
-            if (this.useV2) {
-                const filesAllUnified = filesAll
-                    .filter((e) => this.pathOperations.isTargetPath(e))
-                    .map(
-                        (e) =>
-                            [this.pathOperations.filenameWithUnifiedKey(e, term), e] as [
-                                FilePathWithPrefix,
-                                FilePath,
-                            ]
-                    );
-                const localFileMap = new Map(filesAllUnified.map((e) => [e[0], e[1]]));
-                const prefix = this.pathOperations.unifiedKeyPrefixOfTerminal(term);
-                const entries = this.localDatabase.findEntries(prefix + "", `${prefix}\u{10ffff}`, {
-                    include_docs: true,
-                });
-                const tasks = [] as (() => Promise<void>)[];
-                const concurrency = 10;
-                const semaphore = Semaphore(concurrency);
-                for await (const item of entries) {
-                    if (item.path.indexOf("%") !== -1) {
-                        continue;
-                    }
-                    tasks.push(async () => {
-                        const releaser = await semaphore.acquire();
-                        try {
-                            const unifiedFilenameWithKey = `${item._id}` as FilePathWithPrefix;
-                            const localPath = localFileMap.get(unifiedFilenameWithKey);
-                            if (localPath) {
-                                if (this.dependencies.ownsLocalFile(localPath)) {
-                                    await this.storeCustomisationFileV2(localPath, term);
-                                }
-                                localFileMap.delete(unifiedFilenameWithKey);
-                            } else if (this.dependencies.ownsLocalDocument(this.getPath(item))) {
-                                await this.deleteConfigOnDatabase(unifiedFilenameWithKey);
-                            }
-                        } catch (ex) {
-                            this._log(`scanAllConfigFiles - Error: ${item._id}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                        } finally {
-                            releaser();
-                        }
-                    });
-                }
-                await Promise.all(tasks.map((e) => e()));
-                // Extra files
-                const taskExtra = [] as (() => Promise<void>)[];
-                for (const [, filePath] of localFileMap) {
-                    if (!this.dependencies.ownsLocalFile(filePath)) continue;
-                    taskExtra.push(async () => {
-                        const releaser = await semaphore.acquire();
-                        try {
-                            await this.storeCustomisationFileV2(filePath, term);
-                        } catch (ex) {
-                            this._log(`scanAllConfigFiles - Error: ${filePath}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                        } finally {
-                            releaser();
-                        }
-                    });
-                }
-                await Promise.all(taskExtra.map((e) => e()));
-                fireAndForget(() => this.updatePluginList(false));
-            } else {
-                const files = filesAll
-                    .filter((e) => this.pathOperations.isTargetPath(e))
-                    .map((e) => ({ key: this.pathOperations.filenameToUnifiedKey(e), file: e }));
-                const virtualPathsOfLocalFiles = [...new Set(files.map((e) => e.key))];
-                const filesOnDB = (
-                    (
-                        await this.localDatabase.allDocsRaw({
-                            startkey: ICXHeader + "",
-                            endkey: `${ICXHeader}\u{10ffff}`,
-                            include_docs: true,
-                        })
-                    ).rows.map((e) => e.doc) as InternalFileEntry[]
-                ).filter((e) => !e.deleted);
-                let deleteCandidate = filesOnDB
-                    .map((e) => this.getPath(e))
-                    .filter((e) => e.startsWith(`${ICXHeader}${term}/`));
-                for (const vp of virtualPathsOfLocalFiles) {
-                    const p = files.find((e) => e.key == vp)?.file;
-                    if (!p) {
-                        this._log(`scanAllConfigFiles - File not found: ${vp}`, LOG_LEVEL_VERBOSE);
-                        continue;
-                    }
-                    if (this.dependencies.ownsLocalFile(p)) {
-                        await this.storeCustomizationFiles(p);
-                    }
-                    deleteCandidate = deleteCandidate.filter((e) => e != vp);
-                }
-                for (const vp of deleteCandidate) {
-                    if (this.dependencies.ownsLocalDocument(vp)) {
-                        await this.deleteConfigOnDatabase(vp);
-                    }
-                }
-                fireAndForget(() => this.updatePluginList(false));
-            }
-        });
-    }
-
-    private async deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite = false): Promise<boolean> {
-        // const id = await this.path2id(prefixedFileName);
-        const mtime = new Date().getTime();
-        return await serialized("file-x-" + prefixedFileName, async () => {
-            try {
-                const old = (await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false)) as
-                    | InternalFileEntry
-                    | false;
-                let saveData: InternalFileEntry;
-                if (old === false) {
-                    this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted (Not found on database)`);
-                    return true;
-                } else {
-                    if (old.deleted) {
-                        this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted`);
-                        return true;
-                    }
-                    saveData = {
-                        ...old,
-                        mtime,
-                        size: 0,
-                        children: [],
-                        deleted: true,
-                        type: "newnote",
-                    };
-                }
-                await this.localDatabase.putRaw(saveData);
-                await this.updatePluginList(false, prefixedFileName);
-                this._log(`STORAGE -x> DB:${prefixedFileName}: (config) Done`);
-                return true;
-            } catch (ex) {
-                this._log(`STORAGE -x> DB:${prefixedFileName}: (config) Failed`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
-
-    private async scanInternalFiles(): Promise<FilePath[]> {
-        const filenames = (
-            await collectOptionalFileSyncFiles(this.dependencies, this.configDir, {
-                maxDepth: 2,
-                onError: (path, error) => {
-                    this._log(`Could not traverse(CustomisationSync):${path}`, LOG_LEVEL_INFO);
-                    this._log(error, LOG_LEVEL_VERBOSE);
-                },
-            })
-        )
-            .filter((e) => e.startsWith("."))
-            .filter((e) => !e.startsWith(".trash"));
-        return filenames as FilePath[];
+    async scanAllConfigFiles(showMessage: boolean): Promise<void> {
+        await this.scanOperations.scanAllConfigFiles(showMessage);
     }
 
     private suspendExtraSync(): Promise<boolean> {

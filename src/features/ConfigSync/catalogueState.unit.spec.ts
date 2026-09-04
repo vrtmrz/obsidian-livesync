@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PluginManifest } from "@/deps.ts";
 import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
-import { CustomisationSyncCatalogueState } from "./customisationSyncCatalogueState.ts";
+import { CatalogueState } from "./catalogueState.ts";
 import { PluginDataExDisplayV2 } from "./customisationSyncModel.ts";
 import type { IPluginDataExDisplay, LoadedEntryPluginDataExFile } from "./customisationSyncView.ts";
 
@@ -30,7 +30,7 @@ function file(filename: string, mtime: number): LoadedEntryPluginDataExFile {
 
 describe("Customisation Sync catalogue state", () => {
     it("publishes V1 replacement and keeps V2 replacement delayed", async () => {
-        const state = new CustomisationSyncCatalogueState();
+        const state = new CatalogueState();
         const setCatalogue = vi.spyOn(state.catalogue, "set");
         const row = display();
 
@@ -54,7 +54,7 @@ describe("Customisation Sync catalogue state", () => {
     });
 
     it("retains the first parsed manifest and records failed mtimes", () => {
-        const state = new CustomisationSyncCatalogueState();
+        const state = new CatalogueState();
         const first = { name: "First", version: "1.0.0" } as PluginManifest;
         const parseManifest = vi.fn(() => first);
 
@@ -69,7 +69,7 @@ describe("Customisation Sync catalogue state", () => {
         expect(state.loadedManifestMTime.get("device-a/plugins/example")).toBe(20);
         expect(parseManifest).toHaveBeenCalledOnce();
 
-        const failedState = new CustomisationSyncCatalogueState();
+        const failedState = new CatalogueState();
         const onParseError = vi.fn();
         const failure = new SyntaxError("invalid");
         failedState.processManifest(
@@ -88,7 +88,7 @@ describe("Customisation Sync catalogue state", () => {
     });
 
     it("clears rows and loaded mtimes on reload while retaining manifest lookup", () => {
-        const state = new CustomisationSyncCatalogueState();
+        const state = new CatalogueState();
         const key = "device-a/plugins/example";
         state.processManifest(key, 20, () => ({ name: "Example" }) as PluginManifest);
         state.replacePlugin(display());
@@ -102,7 +102,7 @@ describe("Customisation Sync catalogue state", () => {
     });
 
     it("keeps manifest caches through the narrower disabled refresh", () => {
-        const state = new CustomisationSyncCatalogueState();
+        const state = new CatalogueState();
         const key = "device-a/plugins/example";
         state.processManifest(key, 20, () => ({ name: "Example" }) as PluginManifest);
         state.replacePlugin(display());
@@ -115,7 +115,7 @@ describe("Customisation Sync catalogue state", () => {
     });
 
     it("tracks V2 updates through migration progress", () => {
-        const state = new CustomisationSyncCatalogueState();
+        const state = new CatalogueState();
 
         state.beginUpdate();
         state.beginUpdate();
