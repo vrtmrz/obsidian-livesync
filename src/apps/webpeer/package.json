@@ -1,7 +1,7 @@
 {
     "name": "webpeer",
     "private": true,
-    "version": "1.0.24-webpeer",
+    "version": "1.0.25-webpeer",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -15,7 +15,7 @@
         "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webpeer/browser-smoke.test.ts"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.53"
+        "octagonal-wheels": "^0.1.54"
     },
     "devDependencies": {
         "eslint-plugin-svelte": "^3.19.0",
