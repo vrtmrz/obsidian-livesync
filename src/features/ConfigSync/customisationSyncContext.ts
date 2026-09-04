@@ -44,19 +44,11 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { $msg } from "@/common/translation";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
-import {
-    createCustomisationSyncDevicePrefix,
-    createCustomisationSyncV1DocumentPath,
-    createCustomisationSyncV2DocumentPath,
-    getCustomisationSyncFileCategory,
-    isCustomisationSyncTargetPath,
-    parseCustomisationSyncV2DocumentPath,
-} from "./customisationSyncPaths.ts";
+import { parseCustomisationSyncV2DocumentPath } from "./customisationSyncPaths.ts";
 import { createCustomisationSyncCodec, type PluginDataEx } from "./customisationSyncCodec.ts";
 import type {
     CustomisationSyncDialogView,
     CustomisationSyncUIControl,
-    CustomisationSyncFileCategory,
     CustomisationSyncServiceHandlers,
     CustomisationSyncTestingView,
     IPluginDataExDisplay,
@@ -83,6 +75,10 @@ import {
 } from "./customisationSyncReadOperations.ts";
 import { CustomisationSyncCatalogueState } from "./customisationSyncCatalogueState.ts";
 import { CustomisationSyncRecentEventDeduplicator } from "./customisationSyncRecentEventDeduplicator.ts";
+import {
+    createCustomisationSyncPathOperations,
+    type CustomisationSyncPathOperations,
+} from "./customisationSyncPathOperations.ts";
 
 export type { PluginDataEx, PluginDataExFile } from "./customisationSyncCodec.ts";
 export type {
@@ -167,6 +163,7 @@ export type CustomisationSyncContextDependencies = OptionalFileSyncFileTreeDepen
 
 export class CustomisationSyncContext implements CustomisationSyncDialogView {
     private readonly dependencies: CustomisationSyncContextDependencies;
+    private readonly pathOperations: CustomisationSyncPathOperations;
     private readonly catalogueState = new CustomisationSyncCatalogueState();
     private readonly recentProcessedInternalFiles = new CustomisationSyncRecentEventDeduplicator();
     private serviceHandlersView: CustomisationSyncServiceHandlers | undefined;
@@ -186,6 +183,12 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
 
     constructor(dependencies: CustomisationSyncContextDependencies) {
         this.dependencies = dependencies;
+        this.pathOperations = createCustomisationSyncPathOperations({
+            getConfigDir: () => dependencies.getConfigDir(),
+            getUseV2: () => dependencies.getSettings().usePluginSyncV2,
+            getUsePluginEtc: () => dependencies.getSettings().usePluginEtc,
+            getDeviceAndVaultName: () => dependencies.getDeviceAndVaultName(),
+        });
         this.periodicPluginSweepProcessor = dependencies.createPeriodicProcessor(
             async () => await this.scanAllConfigFiles(false)
         );
@@ -224,14 +227,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                 configDir: this.configDir,
                 scanInternalFiles: async () => await this.scanInternalFiles(),
                 scanAllConfigFiles: async (showMessage: boolean) => await this.scanAllConfigFiles(showMessage),
-                getFileCategory: (filePath: string) => this.getFileCategory(filePath),
-                isTargetPath: (filePath: string) => this.isTargetPath(filePath),
-                filenameToUnifiedKey: (path: string, termOverride?: string) =>
-                    this.filenameToUnifiedKey(path, termOverride),
-                filenameWithUnifiedKey: (path: string, termOverride?: string) =>
-                    this.filenameWithUnifiedKey(path, termOverride),
-                unifiedKeyPrefixOfTerminal: (termOverride?: string) =>
-                    this.unifiedKeyPrefixOfTerminal(termOverride),
                 storeCustomizationFiles: async (path: FilePath, termOverride?: string) =>
                     await this.storeCustomizationFiles(path, termOverride),
                 deleteConfigOnDatabase: async (path: FilePathWithPrefix, forceWrite?: boolean) =>
@@ -362,7 +357,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
     async duplicateData(data: IPluginDataExDisplay, deviceName: string): Promise<void> {
         const path = `${this.configDir}/${data.files[0].filename}` as FilePath;
         await this.storeCustomizationFiles(path, deviceName);
-        await this.updatePluginList(false, this.filenameToUnifiedKey(path, deviceName));
+        await this.updatePluginList(false, this.pathOperations.filenameToUnifiedKey(path, deviceName));
     }
 
     dispose() {
@@ -376,20 +371,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         this.dependencies.hideConfigurationNotice();
     }
 
-    private getFileCategory(filePath: string): CustomisationSyncFileCategory {
-        return getCustomisationSyncFileCategory(filePath, {
-            configDir: this.configDir,
-            useV2: this.useV2,
-            usePluginEtc: this.useSyncPluginEtc,
-        });
-    }
-    private isTargetPath(filePath: string): boolean {
-        return isCustomisationSyncTargetPath(filePath, {
-            configDir: this.configDir,
-            useV2: this.useV2,
-            usePluginEtc: this.useSyncPluginEtc,
-        });
-    }
     private async onDatabaseInitialised(showNotice: boolean) {
         if (!this.isThisModuleEnabled()) return true;
         try {
@@ -504,29 +485,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         }
     ).startPipeline();
 
-    private filenameToUnifiedKey(path: string, termOverRide?: string): FilePathWithPrefix {
-        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
-        return createCustomisationSyncV1DocumentPath(path, term, {
-            configDir: this.configDir,
-            useV2: this.useV2,
-            usePluginEtc: this.useSyncPluginEtc,
-        });
-    }
-
-    private filenameWithUnifiedKey(path: string, termOverRide?: string): FilePathWithPrefix {
-        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
-        return createCustomisationSyncV2DocumentPath(path, term, {
-            configDir: this.configDir,
-            useV2: this.useV2,
-            usePluginEtc: this.useSyncPluginEtc,
-        });
-    }
-
-    private unifiedKeyPrefixOfTerminal(termOverRide?: string): string {
-        const term = termOverRide || this.dependencies.getDeviceAndVaultName();
-        return createCustomisationSyncDevicePrefix(term);
-    }
-
     private async createPluginDataExFileV2(
         unifiedPathV2: FilePathWithPrefix,
         loaded?: LoadedEntry
@@ -573,7 +531,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
     private async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
         try {
             this.catalogueState.beginUpdate();
-            // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = parseCustomisationSyncV2DocumentPath(unifiedFilenameWithKey);
 
             const oldEntry = this.catalogueState.findPlugin(pathV1);
@@ -957,7 +914,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
     }
 
     private async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
-        const vf = this.filenameWithUnifiedKey(path, term);
+        const vf = this.pathOperations.filenameWithUnifiedKey(path, term);
         return await serialized(`plugin-${vf}`, async () => {
             const prefixedFileName = vf;
 
@@ -1026,7 +983,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
                 this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
-                fireAndForget(() => this.updatePluginListV2(false, this.filenameWithUnifiedKey(path)));
+                fireAndForget(() => this.updatePluginListV2(false, this.pathOperations.filenameWithUnifiedKey(path)));
                 return ret;
             } catch (ex) {
                 this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
@@ -1044,11 +1001,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         if (this.useV2) {
             return await this.storeCustomisationFileV2(path, term);
         }
-        const vf = this.filenameToUnifiedKey(path, term);
+        const vf = this.pathOperations.filenameToUnifiedKey(path, term);
         // console.warn(`Storing ${path} to ${bareVF} :--> ${keyedVF}`);
 
         return await serialized(`plugin-${vf}`, async () => {
-            const category = this.getFileCategory(path);
+            const category = this.pathOperations.getFileCategory(path);
             let mtime = 0;
             let fileTargets = [] as FilePath[];
             // let savePath = "";
@@ -1057,7 +1014,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                     ? path.split("/").reverse()[0]
                     : path.split("/").reverse()[1];
             const parentPath = path.split("/").slice(0, -1).join("/");
-            const prefixedFileName = this.filenameToUnifiedKey(path, term);
+            const prefixedFileName = this.pathOperations.filenameToUnifiedKey(path, term);
             const id = await this.path2id(prefixedFileName);
             const dt: PluginDataEx = {
                 category: category,
@@ -1187,7 +1144,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
-        if (!this.isTargetPath(path)) return false;
+        if (!this.pathOperations.isTargetPath(path)) return false;
         if (!this.dependencies.ownsLocalFile(path)) return false;
         const stat = await this.storageAccess.statHidden(path);
         // Make sure that target is a file.
@@ -1202,7 +1159,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             return true;
         }
         // To prevent saving half-collected file sets.
-        const keySchedule = this.filenameToUnifiedKey(path);
+        const keySchedule = this.pathOperations.filenameToUnifiedKey(path);
         scheduleTask(keySchedule, 100, async () => {
             await this.storeCustomizationFiles(path);
         });
@@ -1223,10 +1180,16 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             const filesAll = await this.scanInternalFiles();
             if (this.useV2) {
                 const filesAllUnified = filesAll
-                    .filter((e) => this.isTargetPath(e))
-                    .map((e) => [this.filenameWithUnifiedKey(e, term), e] as [FilePathWithPrefix, FilePath]);
+                    .filter((e) => this.pathOperations.isTargetPath(e))
+                    .map(
+                        (e) =>
+                            [this.pathOperations.filenameWithUnifiedKey(e, term), e] as [
+                                FilePathWithPrefix,
+                                FilePath,
+                            ]
+                    );
                 const localFileMap = new Map(filesAllUnified.map((e) => [e[0], e[1]]));
-                const prefix = this.unifiedKeyPrefixOfTerminal(term);
+                const prefix = this.pathOperations.unifiedKeyPrefixOfTerminal(term);
                 const entries = this.localDatabase.findEntries(prefix + "", `${prefix}\u{10ffff}`, {
                     include_docs: true,
                 });
@@ -1279,8 +1242,8 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                 fireAndForget(() => this.updatePluginList(false));
             } else {
                 const files = filesAll
-                    .filter((e) => this.isTargetPath(e))
-                    .map((e) => ({ key: this.filenameToUnifiedKey(e), file: e }));
+                    .filter((e) => this.pathOperations.isTargetPath(e))
+                    .map((e) => ({ key: this.pathOperations.filenameToUnifiedKey(e), file: e }));
                 const virtualPathsOfLocalFiles = [...new Set(files.map((e) => e.key))];
                 const filesOnDB = (
                     (

@@ -14,24 +14,22 @@ function callPrivate<T extends (...args: never[]) => unknown>(context: HiddenFil
     return operation.bind(context) as T;
 }
 
-describe("HiddenFileSyncContext configuration-change notices", () => {
-    it("releases processors, transient queues, the pattern cache, activity, and the host Notice effect", () => {
+describe("HiddenFileSyncContext lifecycle", () => {
+    it("releases its processors, capability owners, and host conflict dialogues", () => {
         const periodicInternalFileScanProcessor = { disable: vi.fn() };
         const conflictResolution = { dispose: vi.fn() };
-        const queuedNotificationFiles = new Set([".obsidian/plugins/example"]);
-        const cacheFileRegExps = new Map([["patterns", []]]);
-        const publishActivity = vi.fn();
         const changeProcessor = { dispose: vi.fn() };
-        const hideConfigurationChangeNotice = vi.fn();
+        const pathAdmission = { dispose: vi.fn() };
+        const changeNotifier = { dispose: vi.fn() };
         const closeJsonConflictDialogs = vi.fn();
         const hiddenFileSync = Object.create(HiddenFileSyncContext.prototype) as HiddenFileSyncContext;
         Object.assign(hiddenFileSync, {
-            dependencies: { publishActivity, hideConfigurationChangeNotice, closeJsonConflictDialogs },
+            dependencies: { closeJsonConflictDialogs },
             periodicInternalFileScanProcessor,
             conflictResolution,
             changeProcessor,
-            queuedNotificationFiles,
-            cacheFileRegExps,
+            pathAdmission,
+            changeNotifier,
             eventCount: 4,
             processingCount: 2,
         });
@@ -41,11 +39,10 @@ describe("HiddenFileSyncContext configuration-change notices", () => {
 
         expect(periodicInternalFileScanProcessor.disable).toHaveBeenCalledOnce();
         expect(conflictResolution.dispose).toHaveBeenCalledOnce();
-        expect(queuedNotificationFiles.size).toBe(0);
-        expect(cacheFileRegExps.size).toBe(0);
         expect(changeProcessor.dispose).toHaveBeenCalledOnce();
+        expect(pathAdmission.dispose).toHaveBeenCalledOnce();
+        expect(changeNotifier.dispose).toHaveBeenCalledOnce();
         expect(closeJsonConflictDialogs).toHaveBeenCalledOnce();
-        expect(hideConfigurationChangeNotice).toHaveBeenCalledOnce();
     });
 
     it("does not report Hidden File Sync as ready before the main runtime is ready", () => {
@@ -61,26 +58,6 @@ describe("HiddenFileSyncContext configuration-change notices", () => {
         });
 
         expect(callPrivate<() => boolean>(hiddenFileSync, "isReady")()).toBe(false);
-    });
-
-    it("settles one batch of changed folders through the host notification effect", () => {
-        const showConfigurationChangeNotice = vi.fn();
-        const hiddenFileSync = Object.create(HiddenFileSyncContext.prototype) as HiddenFileSyncContext;
-        Object.assign(hiddenFileSync, {
-            dependencies: { showConfigurationChangeNotice },
-            queuedNotificationFiles: new Set([".obsidian/plugins/alpha", ".obsidian/plugins/beta", ".obsidian"]),
-        });
-
-        callPrivate<() => void>(hiddenFileSync, "notifyConfigChange")();
-
-        expect(showConfigurationChangeNotice).toHaveBeenCalledWith([
-            ".obsidian/plugins/alpha",
-            ".obsidian/plugins/beta",
-            ".obsidian",
-        ]);
-        expect((hiddenFileSync as unknown as { queuedNotificationFiles: Set<string> }).queuedNotificationFiles.size).toBe(
-            0
-        );
     });
 
     it("keeps subordinate initialisation phases below Notice level so one progress Notice owns the scan", async () => {

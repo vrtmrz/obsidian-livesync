@@ -130,7 +130,9 @@ describe("CustomisationSyncContext dialogue view", () => {
         const updatePluginList = vi.fn(async () => undefined);
         Object.assign(configSync, {
             compareUsingDisplayData,
-            filenameToUnifiedKey: vi.fn(() => "ix:device-b/PLUGIN_DATA/example.md"),
+            pathOperations: {
+                filenameToUnifiedKey: vi.fn(() => "ix:device-b/PLUGIN_DATA/example.md"),
+            },
             storeCustomizationFiles,
             updatePluginList,
         });

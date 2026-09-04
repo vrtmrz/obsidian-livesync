@@ -11,7 +11,6 @@ import type PouchDB from "pouchdb-core";
 import type { Readable } from "svelte/store";
 
 import type { PluginDataExFile } from "./customisationSyncCodec.ts";
-import type { CustomisationSyncFileCategory } from "./customisationSyncPaths.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import type { PluginDataExDisplayV2 } from "./customisationSyncModel.ts";
 
@@ -67,11 +66,6 @@ export interface CustomisationSyncTestingView {
     readonly configDir: string;
     scanInternalFiles(): Promise<FilePath[]>;
     scanAllConfigFiles(showMessage: boolean): Promise<void>;
-    getFileCategory(filePath: string): CustomisationSyncFileCategory;
-    isTargetPath(filePath: string): boolean;
-    filenameToUnifiedKey(path: string, termOverride?: string): FilePathWithPrefix;
-    filenameWithUnifiedKey(path: string, termOverride?: string): FilePathWithPrefix;
-    unifiedKeyPrefixOfTerminal(termOverride?: string): string;
     storeCustomizationFiles(path: FilePath, termOverride?: string): Promise<unknown>;
     deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite?: boolean): Promise<boolean>;
     createPluginDataFromV2(unifiedPathV2: FilePathWithPrefix): PluginDataExDisplayV2 | undefined;

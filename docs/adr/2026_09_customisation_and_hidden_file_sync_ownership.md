@@ -21,12 +21,12 @@ reflection. The constructor-name add-on lookup and the `ConfigSync` and
 `HiddenFileSync` add-on identities have been retired.
 
 The Customisation Sync private context coordinates its snapshot operations,
-scan queues, periodic work, and focused transient-state owners. The Hidden File
-Sync private context coordinates reconciliation, periodic work, and the
-lifetimes of focused processed-state, change-processing, and
-conflict-resolution owners. Each receives live settings and database
-projections, focused storage, path, and exact-revision capabilities, and
-explicit host effects rather than `LiveSyncCore`.
+scan queues, periodic work, and focused path and transient-state owners. The
+Hidden File Sync private context coordinates reconciliation, periodic work,
+and the lifetimes of focused path-admission, notification, processed-state,
+change-processing, and conflict-resolution owners. Each receives live settings
+and database projections, focused storage, path, and exact-revision
+capabilities, and explicit host effects rather than `LiveSyncCore`.
 
 The corresponding implemented topology is documented in
 [Optional-file synchronisation architecture](../design_docs/optional_file_sync_architecture.md).
@@ -212,6 +212,19 @@ in-memory projection, while Hidden File Sync markers are persisted operational
 reconciliation state with different identity, invalidation, and deletion
 rules.
 
+`CustomisationSyncPathOperations` binds live configuration-directory, mode,
+and device-name projections to the pure category and V1/V2 key functions. It
+has no host registration or stateful application lifetime. The context uses
+this capability internally; its path helpers are not re-exported through the
+real-Obsidian testing view.
+
+`HiddenFileSyncPathAdmission` owns the ownership-first eligibility sequence
+and its parsed-pattern cache. `HiddenFileSyncChangeNotifier` owns the pending
+folder set, delayed delivery, suppression checks, scheduled-task cancellation,
+and Notice show/hide effect calls. The Obsidian adapter still owns the actual
+Notice instance. These owners make cache and notification behaviour directly
+testable without making either concern a serviceFeature.
+
 `HiddenFileSyncChangeProcessor` owns storage and database change processing,
 the bounded semaphore, same-path event serialisation, activity counts, and the
 inherited order in which processed-state markers and transfer results settle.
@@ -358,13 +371,14 @@ to the non-owner.
 - Replace the complete-core dependency with narrow dependencies.
 
 The private context, path module, codec module, focused presentation view, and
-resource teardown are implemented. A focused catalogue-state owner holds the
-rows, manifests, manifest mtime cache, reactive stores, and update progress,
-while a bounded deduplicator owns recent raw-event keys. Enumeration and scan
-queues remain with the orchestrating context. The context accepts only narrow,
-live projections and explicit effects; an Obsidian adapter at the composition
-edge owns dialogues, Notices, plug-in reload, restart, lifecycle, Vault access,
-and compatibility scan telemetry.
+resource teardown are implemented. A focused path capability binds live
+settings and device identity to the pure path functions. A focused
+catalogue-state owner holds the rows, manifests, manifest mtime cache, reactive
+stores, and update progress, while a bounded deduplicator owns recent raw-event
+keys. Enumeration and scan queues remain with the orchestrating context. The
+context accepts only narrow, live projections and explicit effects; an
+Obsidian adapter at the composition edge owns dialogues, Notices, plug-in
+reload, restart, lifecycle, Vault access, and compatibility scan telemetry.
 
 ### Stage 5: extract the Hidden File Sync runtime — implemented
 
@@ -378,11 +392,14 @@ host-owned command registration, and processor, cache, subscription, and
 Notice teardown are implemented. A focused processed-state owner holds all
 three persisted maps, their key and mtime rules, reset operations, and
 cross-side settlement. Database write and extraction operations consume one
-narrow state port. A focused change processor owns storage and database event
-processing, bounded concurrency, per-path serialisation, activity publication,
-and compatibility settlement order. The context retains scan, initialisation,
-notification, and reconciliation orchestration. A focused conflict-resolution
-owner owns pending-path admission,
+narrow state port. A focused path-admission owner holds the pattern cache and
+the ownership, static-path, pattern, and ignore-file sequence. A focused change
+notifier owns folder batching, delayed delivery, and teardown of its scheduled
+work and Notice effect. A focused change processor owns storage and database
+event processing, bounded concurrency, per-path serialisation, activity
+publication, and compatibility settlement order. The context retains scan,
+initialisation, and reconciliation orchestration. A focused
+conflict-resolution owner owns pending-path admission,
 the parallel classification and serial interaction queues, automatic merge,
 newer-revision selection, interactive JSON application, settlement, and queue
 disposal. An Obsidian adapter owns JSON conflict dialogue instances, progress
@@ -482,11 +499,12 @@ migration without first establishing narrow dependencies.
 - The legacy add-on identity and constructor-name lookup are removed.
 - The two contexts coordinate separate synchronisation workflows, but their
   dependency surfaces are explicit and do not include the complete core.
-  Customisation Sync delegates its derived catalogue and recent-event state,
-  while Hidden File Sync delegates processed-state, change-processing, and
-  conflict lifecycles, to focused owners. Further extraction should follow a
-  concrete behavioural boundary rather than create additional serviceFeatures
-  for private operations.
+  Customisation Sync delegates its path binding, derived catalogue, and
+  recent-event state, while Hidden File Sync delegates path admission,
+  notification, processed-state, change-processing, and conflict lifecycles,
+  to focused owners. Further extraction should follow a concrete behavioural
+  boundary rather than create additional serviceFeatures for private
+  operations.
 
 ## References
 

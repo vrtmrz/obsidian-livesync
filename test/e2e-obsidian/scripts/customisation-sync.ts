@@ -242,17 +242,22 @@ async function scanCustomisations(cliBinary: string, env: NodeJS.ProcessEnv): Pr
     );
 }
 
-async function storeCustomisationFile(cliBinary: string, env: NodeJS.ProcessEnv, path: string): Promise<void> {
+async function storeCustomisationFile(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string,
+    category: CustomisationCategory
+): Promise<void> {
     await evalObsidianJson<unknown>(
         cliBinary,
         [
             "(async()=>{",
             `const path=${JSON.stringify(path)};`,
+            `const category=${JSON.stringify(category)};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
             "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.customisationSync;",
             "const term=core.services.setting.getDeviceAndVaultName();",
             "const stat=await core.storageAccess.statHidden(path);",
-            "const category=syncContext.getFileCategory(path);",
             "const result=await syncContext.storeCustomizationFiles(path,term);",
             "const rows=(await core.localDatabase.allDocsRaw({include_docs:true})).rows;",
             "const entries=rows.map((row)=>row.doc).filter((doc)=>doc?.path?.startsWith('ix:')).map((doc)=>doc.path);",
@@ -492,15 +497,15 @@ async function main(): Promise<void> {
         let session = await startConfiguredSession(context, vaultA, sourceDeviceName);
         const scanResult = await scanCustomisations(context.cliBinary, session.cliEnv);
         console.log(`Customisation scan files: ${scanResult.files.join(", ") || "(none)"}`);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, snippetPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, configPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginManifestPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginMainPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginStylesPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginDataPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginSupplementaryPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, themeManifestPath);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, themeStylesPath);
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, snippetPath, "SNIPPET");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, configPath, "CONFIG");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginManifestPath, "PLUGIN_MAIN");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginMainPath, "PLUGIN_MAIN");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginStylesPath, "PLUGIN_MAIN");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginDataPath, "PLUGIN_DATA");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginSupplementaryPath, "PLUGIN_ETC");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, themeManifestPath, "THEME");
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, themeStylesPath, "THEME");
         const snippetEntry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName);
         const configEntry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "CONFIG", configName);
         const pluginEntries = await waitForCustomisationEntries(
@@ -665,7 +670,7 @@ async function main(): Promise<void> {
 
         await writeVaultFile(vaultA.path, snippetPath, snippetUpdatedContent);
         session = await startConfiguredSession(context, vaultA, sourceDeviceName);
-        await storeCustomisationFile(context.cliBinary, session.cliEnv, snippetPath);
+        await storeCustomisationFile(context.cliBinary, session.cliEnv, snippetPath, "SNIPPET");
         await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName);
         await pushLocalChanges(context.cliBinary, session.cliEnv);
         await session.app.stop();

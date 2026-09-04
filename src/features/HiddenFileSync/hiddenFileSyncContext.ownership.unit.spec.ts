@@ -37,16 +37,17 @@ function createContext(processedFiles = new Map()) {
     return { context, hideConfigurationChangeNotice, periodicProcessor, publishActivity };
 }
 
-describe("HiddenFileSyncContext state ownership", () => {
-    it("owns caches, concurrency controls, processors, and conflict owners per context instance", () => {
+describe("HiddenFileSyncContext ownership and start-up lifecycle", () => {
+    it("creates each stateful capability owner per context instance", () => {
         const first = createContext();
         const second = createContext();
 
-        getPrivate<Set<string>>(first.context, "queuedNotificationFiles").add(".obsidian/plugins/first");
-        getPrivate<Map<string, unknown[]>>(first.context, "cacheFileRegExps").set("first", []);
-
-        expect(getPrivate<Set<string>>(second.context, "queuedNotificationFiles").size).toBe(0);
-        expect(getPrivate<Map<string, unknown[]>>(second.context, "cacheFileRegExps")).toEqual(new Map());
+        expect(getPrivate<unknown>(first.context, "pathAdmission")).not.toBe(
+            getPrivate<unknown>(second.context, "pathAdmission")
+        );
+        expect(getPrivate<unknown>(first.context, "changeNotifier")).not.toBe(
+            getPrivate<unknown>(second.context, "changeNotifier")
+        );
         expect(first.context.testing.conflictResolution).not.toBe(second.context.testing.conflictResolution);
         expect(getProcessedState(first.context)).not.toBe(getProcessedState(second.context));
         expect(getPrivate<unknown>(first.context, "changeProcessor")).not.toBe(

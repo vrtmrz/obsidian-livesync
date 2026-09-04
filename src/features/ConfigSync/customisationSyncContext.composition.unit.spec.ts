@@ -29,7 +29,7 @@ vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
 import { CustomisationSyncContext } from "./customisationSyncContext.ts";
 import { createCustomisationSyncTestDependencies } from "./customisationSyncContext.unit.fixture.ts";
 
-describe("CustomisationSyncContext state ownership", () => {
+describe("CustomisationSyncContext composition", () => {
     it("does not share catalogue or presentation state between context instances", () => {
         const first = new CustomisationSyncContext(createCustomisationSyncTestDependencies());
         const second = new CustomisationSyncContext(createCustomisationSyncTestDependencies());
@@ -66,14 +66,9 @@ describe("CustomisationSyncContext state ownership", () => {
                 "createPluginDataExFileV2",
                 "createPluginDataFromV2",
                 "deleteConfigOnDatabase",
-                "filenameToUnifiedKey",
-                "filenameWithUnifiedKey",
-                "getFileCategory",
-                "isTargetPath",
                 "scanAllConfigFiles",
                 "scanInternalFiles",
                 "storeCustomizationFiles",
-                "unifiedKeyPrefixOfTerminal",
             ].sort()
         );
         expect("catalogue" in context.testing).toBe(false);

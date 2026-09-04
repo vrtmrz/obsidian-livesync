@@ -45,7 +45,6 @@ import {
     type HiddenFileSyncTestingRebuild,
     type HiddenFileSyncTestingView,
 } from "./hiddenFileSyncViews.ts";
-import { isHiddenFileSyncPath, matchesHiddenFileSyncPatterns } from "./hiddenFileSyncPathPolicy.ts";
 import { describeHiddenFileSyncDocument, getHiddenFileSyncComparisonMTime } from "./hiddenFileSyncState.ts";
 import {
     collectOptionalFileSyncFiles,
@@ -82,6 +81,14 @@ import {
     createHiddenFileSyncChangeProcessor,
     type HiddenFileSyncChangeProcessor,
 } from "./hiddenFileSyncChangeProcessor.ts";
+import {
+    createHiddenFileSyncPathAdmission,
+    type HiddenFileSyncPathAdmission,
+} from "./hiddenFileSyncPathAdmission.ts";
+import {
+    createHiddenFileSyncChangeNotifier,
+    type HiddenFileSyncChangeNotifier,
+} from "./hiddenFileSyncChangeNotifier.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 export type HiddenFileSyncProgress = {
@@ -89,8 +96,6 @@ export type HiddenFileSyncProgress = {
     once(message: string): void;
     done(message?: string): void;
 };
-
-const HIDDEN_FILE_NOTIFICATION_TASK = "notify-config-change";
 
 type HiddenFileSyncSettings = Pick<
     ObsidianLiveSyncSettings,
@@ -175,6 +180,8 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
     private readonly databaseExtractionOperations: HiddenFileSyncDatabaseExtractionOperations;
     private readonly conflictResolution: HiddenFileSyncConflictResolution;
     private readonly changeProcessor: HiddenFileSyncChangeProcessor;
+    private readonly pathAdmission: HiddenFileSyncPathAdmission;
+    private readonly changeNotifier: HiddenFileSyncChangeNotifier;
     readonly serviceHandlers: HiddenFileSyncServiceHandlerView;
     readonly testing: HiddenFileSyncTestingView;
     readonly repair: HiddenFileSyncRepairView;
@@ -184,6 +191,22 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
 
     constructor(dependencies: HiddenFileSyncContextDependencies) {
         this.dependencies = dependencies;
+        this.pathAdmission = createHiddenFileSyncPathAdmission({
+            getTargetPatternSource: () => dependencies.getSettings().syncInternalFilesTargetPatterns,
+            getIgnorePatternSource: () => dependencies.getSettings().syncInternalFilesIgnorePatterns,
+            getFileRegExp: (key) => dependencies.getFileRegExp(key),
+            isIgnoredByIgnoreFile: async (path) => await dependencies.isIgnoredByIgnoreFile(path),
+            ownsLocalFile: (path) => dependencies.ownsLocalFile(path),
+        });
+        this.changeNotifier = createHiddenFileSyncChangeNotifier({
+            getSettings: () => dependencies.getSettings(),
+            getConfigDir: () => dependencies.getConfigDir(),
+            scheduleTask: (key, timeout, operation) => scheduleTask(key, timeout, operation),
+            cancelTask: (key) => cancelTask(key),
+            showConfigurationChangeNotice: (updatedFolders) =>
+                dependencies.showConfigurationChangeNotice(updatedFolders),
+            hideConfigurationChangeNotice: () => dependencies.hideConfigurationChangeNotice(),
+        });
         this.processedState = createHiddenFileSyncProcessedState({
             getKeyValueDatabase: () => this.dependencies.getKeyValueDatabase(),
             getLocalDatabase: () => this.dependencies.getLocalDatabase(),
@@ -224,7 +247,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
                 await writeHiddenFileFromDatabase(dependencies, path, entry, force),
             deleteStorageFile: async (path) => await deleteHiddenFileFromStorage(dependencies, path),
             processedState: this.processedState,
-            queueNotification: (path) => this.queueNotification(path),
+            queueNotification: (path) => this.changeNotifier.queueNotification(path),
             log: (message, level, key) => dependencies.log(message, level, key),
         });
         this.conflictResolution = createHiddenFileSyncConflictResolution({
@@ -299,7 +322,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
             onDatabaseInitialised: async (showNotice) => await this.onDatabaseInitialised(showNotice),
             suspendExtraSync: async () => await this.suspendExtraSync(),
             configureOptionalSyncFeature: async (mode) => await this.configureOptionalSyncFeature(mode),
-            isTargetFileEligible: async (path) => await this.isTargetFileEligible(path),
+            isTargetFileEligible: async (path) => await this.pathAdmission.isTargetFileEligible(path),
             queueConflict: async (path) => await this.queueConflict(path),
         });
         this.testing = createHiddenFileSyncTestingView({
@@ -312,13 +335,8 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
                 await this.initialiseInternalFileSync(direction, showMessage, targetFiles),
             conflictResolution: this.conflictResolution.testing,
             readFileWithInfo: async (path) => await readHiddenFileWithInfo(dependencies, path),
-            showConfigurationChangeNotice: (updatedFolders) => {
-                this.queuedNotificationFiles.clear();
-                for (const folder of updatedFolders) {
-                    this.queuedNotificationFiles.add(folder);
-                }
-                this.notifyConfigChange();
-            },
+            showConfigurationChangeNotice: (updatedFolders) =>
+                this.changeNotifier.showConfigurationChangeNotice(updatedFolders),
             interceptRebuildMerging: (interceptor) => {
                 const previousHook = this.rebuildMergingHook;
                 const runRebuild = async (showNotice: boolean, targetFiles?: FilePath[] | false) =>
@@ -393,12 +411,10 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
         this.periodicInternalFileScanProcessor?.disable();
         this.changeProcessor.dispose();
         this.conflictResolution.dispose();
+        this.pathAdmission.dispose();
+        this.changeNotifier.dispose();
         this.rebuildMergingHook = undefined;
-        this.queuedNotificationFiles.clear();
-        this.cacheFileRegExps.clear();
-        cancelTask(HIDDEN_FILE_NOTIFICATION_TASK);
         this.dependencies.closeJsonConflictDialogs();
-        this.dependencies.hideConfigurationChangeNotice();
     }
 
     // The key-value database becomes available before this lifecycle callback.
@@ -432,7 +448,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
     }
 
     updateSettingCache() {
-        this.cacheFileRegExps.clear();
+        this.pathAdmission.invalidatePatternCache();
     }
 
     private isReady() {
@@ -470,7 +486,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
                 ? this.settings.syncInternalFilesInterval * 1000
                 : 0
         );
-        this.cacheFileRegExps.clear();
+        this.pathAdmission.invalidatePatternCache();
         return Promise.resolve(true);
     }
 
@@ -487,7 +503,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
                 //system file
                 const filename = this.getPath(doc);
                 const unprefixedPath = stripAllPrefixes(filename);
-                if (!(await this.isTargetFile(stripAllPrefixes(unprefixedPath)))) {
+                if (!(await this.pathAdmission.isTargetFile(stripAllPrefixes(unprefixedPath)))) {
                     this._log(
                         `Skipped processing sync file:${unprefixedPath} (Not Hidden File Sync target)`,
                         LOG_LEVEL_VERBOSE
@@ -595,7 +611,7 @@ Offline Changed files: ${processFiles.length}`;
         forceWrite = false,
         includeDeleted = true
     ): Promise<boolean | undefined> {
-        if (!(await this.isTargetFile(path))) {
+        if (!(await this.pathAdmission.isTargetFile(path))) {
             this._log(
                 `Storage file tracking: Hidden file skipped: ${path} is filtered out by the defined patterns.`,
                 LOG_LEVEL_VERBOSE
@@ -619,44 +635,6 @@ Offline Changed files: ${processFiles.length}`;
 
     // --> Database Event Functions
 
-    private readonly cacheFileRegExps = new Map<string, CustomRegExp[][]>();
-    /**
-     * Parses the regular expression settings for hidden file synchronization.
-     * @returns An object containing the ignore and target filters.
-     */
-    private parseRegExpSettings() {
-        const regExpKey = `${this.settings.syncInternalFilesTargetPatterns}||${this.settings.syncInternalFilesIgnorePatterns}`;
-        let ignoreFilter: CustomRegExp[];
-        let targetFilter: CustomRegExp[];
-        if (this.cacheFileRegExps.has(regExpKey)) {
-            const cached = this.cacheFileRegExps.get(regExpKey)!;
-            ignoreFilter = cached[1];
-            targetFilter = cached[0];
-        } else {
-            ignoreFilter = this.dependencies.getFileRegExp("syncInternalFilesIgnorePatterns");
-            targetFilter = this.dependencies.getFileRegExp("syncInternalFilesTargetPatterns");
-            this.cacheFileRegExps.clear();
-            this.cacheFileRegExps.set(regExpKey, [targetFilter, ignoreFilter]);
-        }
-        return { ignoreFilter, targetFilter };
-    }
-
-    private async isTargetFileEligible(path: FilePath): Promise<boolean> {
-        const result = matchesHiddenFileSyncPatterns(path, this.parseRegExpSettings()) && isHiddenFileSyncPath(path);
-        // console.warn(`Assertion: isTargetFile(${path}) : ${result ? "✔️" : "❌"}`);
-        if (!result) {
-            return false;
-        }
-        const resultByFile = await this.dependencies.isIgnoredByIgnoreFile(path);
-        // console.warn(`${path}  -> isIgnoredByIgnoreFile: ${resultByFile ? "❌" : "✔️"}`);
-        return !resultByFile;
-    }
-
-    private async isTargetFile(path: FilePath): Promise<boolean> {
-        if (this.dependencies?.ownsLocalFile(path) === false) return false;
-        return await this.isTargetFileEligible(path);
-    }
-
     private async trackScannedDatabaseChange(
         processFiles: MetaEntry[],
         showNotice: boolean = false,
@@ -670,7 +648,7 @@ Offline Changed files: ${processFiles.length}`;
         const processes = processFiles.map(async (file) => {
             try {
                 const path = stripAllPrefixes(this.getPath(file));
-                if (!(await this.isTargetFile(path))) {
+                if (!(await this.pathAdmission.isTargetFile(path))) {
                     this._log(
                         `Database file tracking: Hidden file skipped: ${path} is filtered out by the defined patterns.`,
                         LOG_LEVEL_VERBOSE
@@ -834,30 +812,6 @@ Offline Changed files: ${files.length}`;
 
     // <-- Database Event Functions
 
-    // --> Notification for Config Change
-    private readonly queuedNotificationFiles = new Set<string>();
-    private notifyConfigChange() {
-        const updatedFolders = [...this.queuedNotificationFiles];
-        this.queuedNotificationFiles.clear();
-        if (this.disposed) return;
-        this.dependencies.showConfigurationChangeNotice(updatedFolders);
-    }
-
-    private queueNotification(key: FilePath) {
-        if (this.disposed) return;
-        if (this.settings.suppressNotifyHiddenFilesChange) {
-            return;
-        }
-        const configDir = this.dependencies.getConfigDir();
-        if (!key.startsWith(configDir)) return;
-        const dirName = key.split("/").slice(0, -1).join("/");
-        this.queuedNotificationFiles.add(dirName);
-        scheduleTask(HIDDEN_FILE_NOTIFICATION_TASK, 1000, () => {
-            this.notifyConfigChange();
-        });
-    }
-    // <-- Notification for Config Change
-
     // --> Initialization functions
 
     private async rebuildMerging(showNotice: boolean, targetFiles: FilePath[] | false = false) {
@@ -948,7 +902,7 @@ Offline Changed files: ${files.length}`;
             .map((e) => e.doc) as MetaEntry[];
         const files = [] as MetaEntry[];
         for (const file of allFiles) {
-            if (await this.isTargetFile(stripAllPrefixes(this.getPath(file)))) {
+            if (await this.pathAdmission.isTargetFile(stripAllPrefixes(this.getPath(file)))) {
                 files.push(file);
             }
         }
@@ -1109,7 +1063,7 @@ Offline Changed files: ${files.length}`;
         const findRoot = this.dependencies.getRootPath();
 
         const filenames = await collectOptionalFileSyncFiles(this.dependencies, findRoot, {
-            shouldInclude: (path) => this.isTargetFile(path as FilePath),
+            shouldInclude: (path) => this.pathAdmission.isTargetFile(path as FilePath),
             onError: (path, error) => {
                 this._log(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
                 this._log(error, LOG_LEVEL_VERBOSE);

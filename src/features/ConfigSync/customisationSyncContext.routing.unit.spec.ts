@@ -56,6 +56,10 @@ function createConfigSync(options: { ready?: boolean; suspended?: boolean; enabl
         _isMainReady: vi.fn(() => options.ready ?? true),
         _isMainSuspended: vi.fn(() => options.suspended ?? false),
         isThisModuleEnabled: vi.fn(() => options.enabled ?? true),
+        pathOperations: {
+            isTargetPath: vi.fn((path: FilePath) => path == PATH),
+            filenameToUnifiedKey: vi.fn(() => "ix:device-a/PLUGIN_DATA/example.md"),
+        },
         recentProcessedInternalFiles,
         _log: vi.fn(),
     });

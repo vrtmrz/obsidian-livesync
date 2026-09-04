@@ -31,6 +31,7 @@ Obsidian composition (`main.ts`)
   |      +--> pure local-path and document routing policy
   |      |
   |      +--> `CustomisationSyncContext`
+  |      |      +-- `CustomisationSyncPathOperations`
   |      |      +-- `CustomisationSyncCatalogueState`
   |      |      +-- recent-event deduplicator
   |      |      +-- immutable service-handler and testing views
@@ -55,6 +56,14 @@ Obsidian composition (`main.ts`)
   |             |      +-- pending paths and two-stage conflict queue
   |             |      +-- automatic and interactive JSON resolution
   |             |
+  |             +--> `HiddenFileSyncPathAdmission`
+  |             |      +-- ownership, path, pattern, and ignore-file admission
+  |             |      +-- per-context parsed-pattern cache
+  |             |
+  |             +--> `HiddenFileSyncChangeNotifier`
+  |             |      +-- changed-folder batching and scheduled delivery
+  |             |      +-- suppression and Notice-effect teardown
+  |             |
   |             +-- immutable service-handler, command, repair, and testing views
   |
   +--> `useCustomisationSyncUI`
@@ -78,13 +87,16 @@ application core.
 | Owner                                 | Owns                                                                                                                                                                                                          | Does not own                                                                                                          |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `useOptionalFileSync`                 | Construction of both contexts, handler registration and removal, local-owner selection, namespace dispatch, compatibility callback order, and context disposal order.                                         | Persisted feature state, synchronisation algorithms, commands, dialogues, or Notices.                                 |
-| `CustomisationSyncContext`            | The `ix:` codec and path rules, scan queues, snapshot storage and application, periodic scan state, and the lifetimes of its transient-state owners.                                                          | Catalogue mutations, recent-event history, Obsidian dialogues, ribbon actions, or handler registration.               |
+| `CustomisationSyncContext`            | The `ix:` scan and snapshot workflow, snapshot storage and application, periodic scan state, and the lifetimes of its focused owners.                                                                         | Path derivation, catalogue mutations, recent-event history, Obsidian dialogues, ribbon actions, or handler registration. |
+| `CustomisationSyncPathOperations`     | Binding live configuration-directory, mode, and device-name projections to the pure category, target-path, V1 key, V2 key, and device-prefix functions.                                                       | I/O, mutable state, local-owner selection, or persistence.                                                             |
 | `CustomisationSyncCatalogueState`     | Transient catalogue rows, manifest lookup and mtime cache, reactive catalogue and manifest stores, and catalogue update progress.                                                                             | Database or storage I/O, scan scheduling, routing, or persistence.                                                    |
 | Customisation Sync event deduplicator | The bounded, newest-first keys used to admit raw configuration events once.                                                                                                                                   | Scheduling, path ownership, catalogue state, or persisted data.                                                       |
-| `HiddenFileSyncContext`               | The `i:` scan and reconciliation workflow, exact-revision repair composition, notification batching, periodic scan state, and focused-owner lifetimes.                                                        | Change-event serialisation, processed-state representation, conflict queue state, Obsidian dialogues, or service handler registration. |
+| `HiddenFileSyncContext`               | The `i:` scan and reconciliation workflow, exact-revision repair composition, periodic scan state, and focused-owner lifetimes.                                                                               | Path admission state, change-event serialisation, processed-state representation, notification batching, conflict queue state, Obsidian dialogues, or service handler registration. |
 | `HiddenFileSyncProcessedState`        | Three device-local autosaved maps, exact storage and database keys, retained known mtime, reset behaviour, and storage/database settlement effects.                                                           | File transfer, scan scheduling, conflict handling, or presentation.                                                   |
 | `HiddenFileSyncChangeProcessor`       | Storage and database change processing, same-path event serialisation, bounded concurrency, activity counts, and the inherited event-consumption and settlement order.                                      | Full scans, initialisation policy, notification presentation, or conflict interaction.                               |
 | `HiddenFileSyncConflictResolution`    | Conflict admission and deduplication, pending paths, the parallel classification and serial interaction queues, automatic merge, newer-revision policy, interactive JSON resolution, and conflict settlement. | Obsidian dialogue instances, general Hidden File Sync scans, processed-state caches, or Service handler registration. |
+| `HiddenFileSyncPathAdmission`         | The ownership-first eligibility sequence, hidden-path and pattern policy, asynchronous ignore-file check, and the per-context parsed-pattern cache.                                                           | Composition-level owner selection, scans, transfer, or persistence.                                                   |
+| `HiddenFileSyncChangeNotifier`        | Changed-folder deduplication, delayed delivery, live suppression and configuration-directory checks, scheduled-task cancellation, and the host Notice show/hide effects.                                     | The Obsidian Notice instance, file extraction, or scan policy.                                                        |
 | Customisation Sync Obsidian adapter   | Obsidian conflict selection, Notice presentation, plug-in reload, restart requests, Vault enumeration, progress telemetry, and platform-derived fallback device names.                                        | Catalogue state, routing, or persisted document operations.                                                           |
 | Hidden File Sync Obsidian adapter     | JSON conflict dialogue lifetime, progress presentation, grouped change Notices, plug-in reload actions, restart scheduling, Vault enumeration, and compatibility activity publication.                        | Transfer, reconciliation, processed-state, or conflict decisions.                                                     |
 | `useCustomisationSyncUI`              | Command, ribbon, dialogue, open-request subscription, and their unload teardown.                                                                                                                              | Synchronisation state or Hidden File Sync initialisation behaviour.                                                   |
@@ -93,9 +105,13 @@ application core.
 The two domain contexts coordinate one cohesive synchronisation workflow each.
 Their private operations and focused owners are not additional serviceFeatures:
 they do not independently register host integration or have separate
-application lifetimes. `HiddenFileSyncChangeProcessor` is a focused resource
-owner because its semaphore, per-path serialisation, activity counters, and
-event settlement form one independently testable lifecycle.
+application lifetimes. `CustomisationSyncPathOperations` is a stateless
+capability which binds live inputs to pure path functions. The Hidden File Sync
+path-admission owner holds the parsed-pattern cache, and its change notifier
+holds the pending folder set and scheduled-task lifetime.
+`HiddenFileSyncChangeProcessor` is a focused resource owner because its
+semaphore, per-path serialisation, activity counters, and event settlement form
+one independently testable lifecycle.
 `HiddenFileSyncConflictResolution` is another focused resource owner because
 conflict admission, pending-path identity, two serialisation stages, and
 disposal form a separate lifecycle.
@@ -112,8 +128,10 @@ than interchangeable state semantics.
 Local file ownership is selected before either context processes an event.
 `optionalFileSyncRouting.ts` combines the configuration directory, feature
 enablement, Customisation Sync mode, and current path category. Hidden File
-Sync target patterns and ignore-file results are evaluated only after the
-static policy selects Hidden File Sync.
+Sync path admission then checks ownership again before reading its current
+target patterns, ignore patterns, or ignore-file result. This keeps the same
+guard available to raw events, scheduled scans, and database reflection
+without duplicating the policy or its cache in the context.
 
 The maintained local ownership is:
 
@@ -187,18 +205,21 @@ also exposes immutable, explicitly internal testing views for maintained
 real-Obsidian contract tests. They provide named operations, including a scoped
 rebuild interceptor, without exposing context instances, dependency objects,
 queues, or writable stores. These test seams are not production service
-locators and should not be used by application features.
+locators and should not be used by application features. Path categorisation
+and key derivation are tested directly through their focused capability rather
+than being re-exported through a broad context testing view.
 
 ## Lifecycle and disposal
 
 The composition is created after the Service Hub and required ServiceModules
 exist, and before lifecycle-driven feature work begins. Each context creates
 its own periodic processor and focused resource owners.
-`CustomisationSyncContext` creates one catalogue-state owner and one
-recent-event deduplicator. `HiddenFileSyncContext` creates one processed-state
-owner before composing database write and extraction operations around its
-narrow port, then creates one change processor and one conflict-resolution
-owner. The change processor owns its semaphore and activity state.
+`CustomisationSyncContext` creates one path capability, one catalogue-state
+owner, and one recent-event deduplicator. `HiddenFileSyncContext` creates one
+path-admission owner, one change notifier, and one processed-state owner before
+composing database write and extraction operations around their narrow ports.
+It then creates one change processor and one conflict-resolution owner. The
+change processor owns its semaphore and activity state.
 Full conflict scans admit discovered paths into the same queue without
 suspending it, so ordinary database conflict notifications continue during a
 slow scan. After enumeration, the operation waits for both classification and
@@ -231,11 +252,13 @@ appropriate, a migration decision.
 
 ## Verification boundaries
 
-Focused unit tests cover routing, semantic handler views, context state
-isolation, teardown, initial cache selection, exact-revision repair, change
-event serialisation and settlement, conflict queue admission, revision
-selection, automatic and interactive merge effect ordering, conflict dialogue
-adaptation, grouped Notices, and compatibility activity publication.
+Focused unit tests cover routing, path-option binding, Hidden File Sync
+admission ordering and cache invalidation, semantic handler views, context
+owner isolation, teardown, initial cache selection, exact-revision repair,
+change-event serialisation and settlement, notification batching, conflict
+queue admission, revision selection, automatic and interactive merge effect
+ordering, conflict dialogue adaptation, grouped Notices, and compatibility
+activity publication.
 The boundary test prevents either domain context from regaining core or
 Obsidian dependencies.
 
