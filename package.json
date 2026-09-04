@@ -73,6 +73,7 @@
         "pretest:e2e:obsidian:p2p-connection-check": "npm run build && npm run build --workspace webpeer",
         "test:e2e:obsidian:p2p-connection-check": "tsx test/e2e-obsidian/scripts/p2p-connection-check.ts",
         "test:e2e:obsidian:p2p-connection-check:services": "npm run test:e2e:obsidian:p2p-connection-check -- --manage-p2p",
+        "test:e2e:obsidian:partial-startup-file-failure": "tsx test/e2e-obsidian/scripts/partial-startup-file-failure.ts",
         "test:e2e:obsidian:startup-scan": "tsx test/e2e-obsidian/scripts/startup-scan.ts",
         "test:e2e:obsidian:setup-uri-workflow": "tsx test/e2e-obsidian/scripts/setup-uri-workflow.ts",
         "test:e2e:obsidian:two-vault-sync": "tsx test/e2e-obsidian/scripts/two-vault-sync.ts",

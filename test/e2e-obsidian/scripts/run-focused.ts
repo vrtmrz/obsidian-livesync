@@ -22,6 +22,7 @@ const focusedScenarios = new Set([
     "minio-upload",
     "object-storage-setup-uri-workflow",
     "p2p-setup-uri-workflow",
+    "partial-startup-file-failure",
     "startup-scan",
     "setup-uri-workflow",
     "two-vault-sync",

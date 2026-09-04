@@ -27,7 +27,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Testing
 
-- Start-up migrations, integrity checks, Config Doctor, basic commands, and the Obsidian replication ribbon now have focused regression tests for their service composition. Real Obsidian checks cover unconfigured onboarding, configured start-up scanning, Config Doctor detection and layout, command registration, and the established ribbon icon.
+- Start-up migrations, integrity checks, Config Doctor, basic commands, and the Obsidian replication ribbon now have focused regression tests for their service composition. Real Obsidian checks cover unconfigured onboarding, configured start-up scanning and individual file failures, Config Doctor detection and layout, command registration, and the established ribbon icon.
 
 ## 1.0.24
 
