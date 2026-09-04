@@ -49,6 +49,10 @@ import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@vrtmrz/livesync-com
 import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { generateReport } from "@/common/reportTool.ts";
+import {
+    ANDROID_LINUX_PATH_COMPONENT_UTF8_WARNING_BOUNDARY,
+    findPathComponentsExceedingUtf8Limit,
+} from "@/common/pathCompatibility.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
@@ -292,6 +296,18 @@ export class ModuleLog extends AbstractObsidianModule {
             if (labels.length > 0) {
                 reasonWarn.push("Some platforms may be unable to process this file correctly: " + labels.join(" "));
             }
+        }
+        const oversizedPathComponents = findPathComponentsExceedingUtf8Limit(thisFile.path);
+        if (oversizedPathComponents.length > 0) {
+            const components = oversizedPathComponents
+                .map(({ component, utf8Bytes }) => `${component} (${utf8Bytes} bytes)`)
+                .join(", ");
+            reasonWarn.push(
+                $msg("moduleLog.pathComponentTooLong", {
+                    maxBytes: `${ANDROID_LINUX_PATH_COMPONENT_UTF8_WARNING_BOUNDARY}`,
+                    components,
+                })
+            );
         }
         // Case Sensitivity
         if (this.services.vault.shouldCheckCaseInsensitively()) {

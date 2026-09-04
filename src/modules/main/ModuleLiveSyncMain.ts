@@ -42,8 +42,11 @@ export class ModuleLiveSyncMain extends AbstractModule {
                 return false;
             }
         }
-        const isInitialized = await this.services.databaseEvents.initialiseDatabase(false, false);
+        // Ordinary start-up may continue when individual files could not be
+        // processed. Explicit Fetch and Rebuild flows retain the strict default.
+        const isInitialized = await this.services.databaseEvents.initialiseDatabase(false, false, false, true);
         if (!isInitialized) {
+            this._log($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);
             //TODO:stop all sync.
             return false;
         }

@@ -4212,6 +4212,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "等待就绪...",
         "zh-tw": "正在等待就緒⋯",
     },
+    "moduleLog.pathComponentTooLong": {
+        def: "A file or folder name exceeds ${maxBytes} UTF-8 bytes and may not work on some Android and Linux file systems: ${components}",
+    },
     "moduleLog.showLog": {
         def: "Show Log",
         es: "Mostrar registro",
@@ -10413,6 +10416,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Использовать удалённую конфигурацию",
         zh: "Use Remote Configuration",
         "zh-tw": "使用遠端設定",
+    },
+    "Ui.Common.LocalDatabaseInitialisationFailed": {
+        def: "Local database initialisation did not complete. See the log for details.",
     },
     "Ui.Common.Signal.Caution": {
         def: "CAUTION",

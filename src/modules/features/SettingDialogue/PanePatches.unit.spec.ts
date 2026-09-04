@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { panePatches } from "./PanePatches.ts";
 
 const remediationHarness = vi.hoisted(() => {
@@ -14,11 +15,13 @@ const remediationHarness = vi.hoisted(() => {
     };
     const setButtonClassState = vi.fn();
     const setSettingClassState = vi.fn();
+    const logger = vi.fn();
 
     return {
         createSpan,
         dateElement,
         inputEl,
+        logger,
         setButtonClassState,
         setSettingClassState,
         textComponent,
@@ -59,7 +62,23 @@ vi.mock("./LiveSyncSetting.ts", () => ({
         autoWireToggle(): this {
             return this;
         }
+
+        autoWireText(): this {
+            return this;
+        }
+
+        autoWireDropDown(): this {
+            return this;
+        }
     },
+}));
+
+vi.mock("@/common/translation", () => ({
+    $msg: (message: string) => message,
+}));
+
+vi.mock("@vrtmrz/livesync-commonlib/compat/common/logger", () => ({
+    Logger: remediationHarness.logger,
 }));
 
 afterEach(() => {
@@ -69,7 +88,7 @@ afterEach(() => {
     remediationHarness.inputEl.type = "";
 });
 
-describe("panePatches remediation setting", () => {
+describe("panePatches", () => {
     it("creates the status element in the setting control instead of the document", () => {
         const hierarchyError = new DOMException(
             "Failed to execute 'appendChild' on 'Node': Only one element on document allowed.",
@@ -114,5 +133,37 @@ describe("panePatches remediation setting", () => {
             true
         );
         expect(remediationHarness.setButtonClassState).toHaveBeenCalledWith("sls-setting-additional-action", true);
+    });
+
+    it("reports when database reinitialisation after a suffix change does not complete", async () => {
+        const initialiseDatabase = vi.fn(async () => false);
+        let onSuffixSaved: (() => Promise<void>) | undefined;
+        const host = {
+            addOnSaved: vi.fn((key: string, callback: () => Promise<void>) => {
+                if (key === "additionalSuffixOfDatabaseName") onSuffixSaved = callback;
+            }),
+            services: {
+                databaseEvents: { initialiseDatabase },
+            },
+        };
+        const addPanel = vi.fn((_paneEl: HTMLElement, title: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (title === "Edge case addressing (Database)") {
+                    callback({} as HTMLElement);
+                }
+                return Promise.resolve();
+            },
+        }));
+
+        panePatches.call(host as never, {} as HTMLElement, { addPanel } as never);
+        if (!onSuffixSaved) throw new Error("Database suffix save handler was not registered");
+
+        await onSuffixSaved();
+
+        expect(initialiseDatabase).toHaveBeenCalledOnce();
+        expect(remediationHarness.logger).toHaveBeenCalledWith(
+            "Ui.Common.LocalDatabaseInitialisationFailed",
+            LOG_LEVEL_NOTICE
+        );
     });
 });
