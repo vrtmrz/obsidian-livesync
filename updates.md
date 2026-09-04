@@ -12,22 +12,20 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### Synchronisation and storage
+## 1.0.25
 
-#### Fixed
+4th September, 2026
 
-- Conflict resolution dialogues now close when the same file is resolved elsewhere or the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the stale dialogue.
-- An individual file-processing failure during ordinary start-up no longer keeps the entire application unready. A start-up notice asks the user to check the affected files and generate a report for details; each path is recorded in verbose logs and remains eligible for retry, while explicit Fetch and Rebuild operations retain strict completion.
-- Replication readiness diagnostics now state that application initialisation is incomplete instead of reporting only 'Not ready'. Database-preparation failures show a short notice, with the failed stage available in verbose logs.
+### Fixed
 
-#### Improved
+- A file that cannot be processed during start-up no longer prevents every other file from synchronising. LiveSync completes ordinary start-up, warns about the affected files, and allows them to be retried during a later scan. Fetch and Rebuild still stop rather than treating an incomplete operation as successful. (#1164)
+- When local database initialisation cannot finish, LiveSync no longer leaves the failure at 'Not ready'. It states that synchronisation is unavailable and directs you to generate a report, where the failed preparation stage is recorded. (#1164)
 
-- Start-up now keeps unconfigured Vaults on the onboarding path without running configured-only checks or accepting Config Doctor and incomplete-document repair requests. Returning a configured Vault to an unconfigured state also retires those requests for the current plug-in process, so completing setup admits them only after the requested restart.
-- The active-file warning now concisely identifies file or folder names longer than 255 UTF-8 bytes as an Android and Linux compatibility risk, without rejecting or changing the path.
+### Improved
 
-### Testing
-
-- Start-up migrations, integrity checks, Config Doctor, basic commands, and the Obsidian replication ribbon now have focused regression tests for their service composition. Real Obsidian checks cover unconfigured onboarding, configured start-up scanning and individual file failures, Config Doctor detection and layout, command registration, and the established ribbon icon.
+- New or unconfigured Vaults no longer run Config Doctor or incomplete-document repair before setup. If a configured Vault is returned to an unconfigured state, those checks remain paused until the requested restart. (#1161)
+- Conflict dialogue clean-up is now more robust when repeated checks overlap, a waiting conflict is resolved elsewhere, or the plug-in unloads. (#1162)
+- When the active file's path contains a file or folder name longer than 255 UTF-8 bytes, LiveSync now warns that the path may not work on some Android and Linux file systems. The path is neither renamed nor rejected, so you can decide how to handle the compatibility risk. (#1164)
 
 ## 1.0.24
 

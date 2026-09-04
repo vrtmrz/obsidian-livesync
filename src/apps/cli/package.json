@@ -1,7 +1,7 @@
 {
     "name": "self-hosted-livesync-cli",
     "private": true,
-    "version": "1.0.24-cli",
+    "version": "1.0.25-cli",
     "main": "dist/index.cjs",
     "type": "module",
     "scripts": {
@@ -37,7 +37,7 @@
     "dependencies": {
         "chokidar": "^4.0.0",
         "minimatch": "^10.2.5",
-        "octagonal-wheels": "^0.1.53",
+        "octagonal-wheels": "^0.1.54",
         "pouchdb-adapter-http": "^9.0.0",
         "pouchdb-adapter-leveldb": "^9.0.0",
         "pouchdb-core": "^9.0.0",

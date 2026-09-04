@@ -1,7 +1,7 @@
 {
     "name": "livesync-webapp",
     "private": true,
-    "version": "1.0.24-webapp",
+    "version": "1.0.25-webapp",
     "type": "module",
     "description": "Browser-based Self-hosted LiveSync using FileSystem API",
     "scripts": {
@@ -15,7 +15,7 @@
         "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webapp/browser-smoke.test.ts"
     },
     "dependencies": {
-        "octagonal-wheels": "^0.1.53"
+        "octagonal-wheels": "^0.1.54"
     },
     "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^7.1.2",
