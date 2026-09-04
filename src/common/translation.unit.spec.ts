@@ -21,6 +21,23 @@ describe("LiveSync-owned translation catalogue", () => {
         expect($msg("moduleCheckRemoteSize.optionIncreaseLimit", { newMax: "800" }, "def")).toBe("increase to 800MB");
     });
 
+    it("keeps the active-file path compatibility warning concise", () => {
+        const oversizedComponent = `${"界".repeat(86)} (258 bytes)`;
+
+        expect(
+            $msg(
+                "moduleLog.pathComponentTooLong",
+                {
+                    maxBytes: "255",
+                    components: oversizedComponent,
+                },
+                "def"
+            )
+        ).toBe(
+            "This path contains a file or folder name longer than 255 UTF-8 bytes. It may not work on some Android and Linux file systems."
+        );
+    });
+
     it("uses Commonlib's canonical English when the application catalogue has no translation", () => {
         setLang("es");
 

@@ -733,8 +733,8 @@ moduleLocalDatabase:
     logWaitingForReady: Waiting for ready...
 moduleLog:
     pathComponentTooLong: >-
-        A file or folder name exceeds ${maxBytes} UTF-8 bytes and may not work on
-        some Android and Linux file systems: ${components}
+        This path contains a file or folder name longer than ${maxBytes} UTF-8
+        bytes. It may not work on some Android and Linux file systems.
     showLog: Show Log
 moduleMigration:
     fix0256:

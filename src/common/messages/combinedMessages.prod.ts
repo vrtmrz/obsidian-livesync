@@ -4213,7 +4213,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw": "正在等待就緒⋯",
     },
     "moduleLog.pathComponentTooLong": {
-        def: "A file or folder name exceeds ${maxBytes} UTF-8 bytes and may not work on some Android and Linux file systems: ${components}",
+        def: "This path contains a file or folder name longer than ${maxBytes} UTF-8 bytes. It may not work on some Android and Linux file systems.",
     },
     "moduleLog.showLog": {
         def: "Show Log",
