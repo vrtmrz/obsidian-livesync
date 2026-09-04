@@ -688,10 +688,13 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                         timeout: timeoutMs,
                     });
             }
+            const remainingNotices = await page.locator(".notice:visible").allTextContents();
             assertEqual(
-                await page.locator(".notice:visible").count(),
+                remainingNotices.length,
                 0,
-                "Transient start-up Notices remained before the Hidden File Sync initialisation check."
+                `Transient start-up Notices remained before the Hidden File Sync initialisation check: ${JSON.stringify(
+                    remainingNotices
+                )}`
             );
         });
         await withObsidianPage(port, async (page) => {

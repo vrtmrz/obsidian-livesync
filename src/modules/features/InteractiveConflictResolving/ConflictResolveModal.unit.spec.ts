@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { POSTPONED, ConflictResolveModal } from "./ConflictResolveModal.ts";
 import { CANCELLED, type diff_result, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { EVENT_CONFLICT_CANCELLED, EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
 
 vi.mock("@/deps.ts", () => ({
     App: class App {},
@@ -24,12 +25,7 @@ vi.mock("@/deps.ts", () => ({
             };
             element.createDiv = vi.fn(() => this.createElement());
             element.createEl = vi.fn((_tag: string, _options?: unknown, callback?: (child: unknown) => void) => {
-                if (
-                    _tag === "button" &&
-                    typeof _options === "object" &&
-                    _options !== null &&
-                    "text" in _options
-                ) {
+                if (_tag === "button" && typeof _options === "object" && _options !== null && "text" in _options) {
                     this.createdButtons.push(String((_options as { text: unknown }).text));
                 }
                 const child = this.createElement();
@@ -93,23 +89,50 @@ describe("ConflictResolveModal result lifecycle", () => {
         expect(replacementState).toBe("still-open");
     });
 
+    it("closes for an external resolution of the same file and ignores other files", async () => {
+        const filename = "resolved-elsewhere.md" as FilePathWithPrefix;
+        const modal = new ConflictResolveModal({} as never, filename, conflict);
+        modal.onOpen();
+
+        eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, "other.md" as FilePathWithPrefix);
+        const stateAfterOtherFile = await Promise.race([
+            modal.waitForResult(),
+            new Promise<"still-open">((resolve) => setTimeout(() => resolve("still-open"), 25)),
+        ]);
+        eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+
+        await expect(modal.waitForResult()).resolves.toBe(CANCELLED);
+        expect(stateAfterOtherFile).toBe("still-open");
+    });
+
+    it("closes and completes its result when the plug-in unloads", async () => {
+        const modal = new ConflictResolveModal(
+            {} as never,
+            "open-during-unload.md" as FilePathWithPrefix,
+            conflict
+        );
+        modal.onOpen();
+
+        eventHub.emitEvent(EVENT_PLUGIN_UNLOADED);
+        const result = await Promise.race([
+            modal.waitForResult(),
+            new Promise<"timed-out">((resolve) => setTimeout(() => resolve("timed-out"), 25)),
+        ]);
+        modal.sendResponse(CANCELLED);
+
+        expect(result).toBe(CANCELLED);
+    });
+
     it("renders a read-only comparison with no resolution actions", () => {
         const ReadOnlyModal = ConflictResolveModal as unknown as new (
             ...args: unknown[]
         ) => ConflictResolveModal & { createdButtons: string[] };
-        const modal = new ReadOnlyModal(
-            {},
-            "repair-preview.md",
-            conflict,
-            false,
-            undefined,
-            {
-                readOnly: true,
-                title: "Vault and database revision",
-                localName: "Vault file",
-                remoteName: "Database revision",
-            }
-        );
+        const modal = new ReadOnlyModal({}, "repair-preview.md", conflict, false, undefined, {
+            readOnly: true,
+            title: "Vault and database revision",
+            localName: "Vault file",
+            remoteName: "Database revision",
+        });
 
         modal.onOpen();
 
@@ -124,9 +147,7 @@ describe("ConflictResolveModal result lifecycle", () => {
     it("does not cancel an active conflict dialogue when a read-only comparison opens for the same file", async () => {
         const filename = "repair-alongside-conflict.md" as FilePathWithPrefix;
         const previous = new ConflictResolveModal({} as never, filename, conflict);
-        const ReadOnlyModal = ConflictResolveModal as unknown as new (
-            ...args: unknown[]
-        ) => ConflictResolveModal;
+        const ReadOnlyModal = ConflictResolveModal as unknown as new (...args: unknown[]) => ConflictResolveModal;
         const comparison = new ReadOnlyModal({}, filename, conflict, false, undefined, {
             readOnly: true,
         });

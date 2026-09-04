@@ -1,7 +1,7 @@
 ---
-date: 2026-08-30
-commonlib-version: "0.1.19"
-self-hosted-livesync-version: "1.0.21"
+date: 2026-09-04
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.24"
 status: accepted
 ---
 
@@ -34,8 +34,9 @@ Do not select `AbstractModule` or `AbstractObsidianModule` merely to obtain conv
 3. construct and register built-in and host-supplied Modules;
 4. compose the built-in Commonlib serviceFeatures;
 5. compose host-supplied serviceFeatures;
-6. construct add-ons; and
-7. call `onBindFunction()` for each registered Module.
+6. construct add-ons;
+7. compose the late core serviceFeatures whose handlers must follow host features and add-ons; and
+8. call `onBindFunction()` for each registered Module.
 
 The Module constructor therefore runs before its handler bindings, while the complete Service Hub and ServiceModules already exist. `bindModuleFunctions()` then invokes every `onBindFunction()` and runs `__$checkInstanceBinding()`. That diagnostic compares underscore-prefixed prototype methods with method references found in the source text of `onBindFunction()`.
 
@@ -127,54 +128,31 @@ This split allows tests to verify:
 
 The operation does not need an application Module identity.
 
+### Ordered start-up composition and registration-only features
+
+Configured Vault admission and the checks which follow database preparation are composed by `src/serviceFeatures/startupLifecycle/`. The directory keeps onboarding admission, compromised-chunk inspection, incomplete-document repair, Config Doctor, and the obsolete bulk-send setting migration as separate operations. One feature composer owns their order and receives the compatibility-review wait operation explicitly; an individual operation does not call the composer.
+
+The layout-ready admission handler uses priority 1. This preserves ordinary priority-0 host integration before admission, while keeping an unconfigured Vault outside the flag-file recovery handlers at priorities 5, 10, and 20, and the compatibility review at priority 30. Admission belongs to one plug-in process: an initially unconfigured process remains inert until setup restarts it, and declining the requested restart does not trigger an in-process reconfiguration. Changing an admitted process back to unconfigured retires its Config Doctor and incomplete-document repair request handlers. The handlers also recheck the current configured state and database readiness when invoked, so a pending restart cannot expose partially initialised or retired state. The first-initialise handler rechecks admission before retaining the established order after the file watcher has been started: database readiness, compromised chunks, incomplete documents, compatibility review, Config Doctor, and the bulk-send setting migration.
+
+Command and ribbon registration are serviceFeatures for the same dependency-visibility reason, but they are not start-up migrations. The basic commands remain a host-neutral feature composed by `LiveSyncBaseCore`, while the replication ribbon remains an Obsidian-only feature composed by the Obsidian host. Both retain `onInitialise` registration so moving them out of the Module list does not make their effects run during construction.
+
 ### Private state and ordered handlers: target filters
 
 Commonlib's `targetFilter.ts` keeps each cache or readiness gate in the factory which owns one predicate. `useTargetFilters()` constructs those predicates and registers them in their required order.
 
 The state remains private to the composed feature. It does not become a `LiveSyncBaseCore` property or a ServiceModule merely because it persists across calls.
 
-### Legacy example to improve when touched: conflict checking
+### Implemented composition: conflict resolution
 
-`ModuleConflictChecker` currently combines:
+Conflict checking and resolution are composed for every host by `useConflictResolutionFeature`. The feature owns its `QueueProcessor` privately and registers the conflict Service handlers directly. Its operations receive explicit collaborators for settings, active-file state, database and storage access, replication, logging, and host events. No consumer locates a conflict Module or retains the queue.
 
-- conflict policy decisions;
-- two `QueueProcessor` owners;
-- cancellation signalling;
-- access to settings and active-file state; and
-- registration into the conflict Service.
+The scheduling queue remains one state owner. It publishes `conflictProcessQueueCount`, coalesces pending checks for the same path, and makes `ensureAllProcessed()` wait for conflict resolution to finish. Repeated resolver invocations for one path retain only the newest waiting request and close an active comparison for that path before waiting for the per-file resolver, while comparisons for other paths remain open. Resolution remains host-neutral and communicates dialogue cancellation through `services.context.events`, so CLI, WebApp, and Obsidian compositions use their own selected event channel.
 
-Its queues are class fields which dereference `this.services` during field initialisation, and its public handlers are bound later in `onBindFunction()`.
+Interactive resolution is a separate Obsidian-owned serviceFeature. It registers the manual conflict handler, commands, start-up scan, unresolved-message contribution, cancellation listener, and unload clean-up. Its postponed-conflict set, active dialogue, and dialogue queue are private, session-local state. Manual comparisons are shown one at a time: a request for the active file publishes `EVENT_CONFLICT_CANCELLED` to cancel and replace its dialogue, while a request for another file waits. A resolution received through replication closes an open dialogue for the resolved path through the same event, or discards its waiting request before a stale dialogue can open. On unload, the feature drops waiting requests and publishes the same event for the active path before the host event channel is retired, so the dialogue closes and its waiting operation completes. The feature receives a dialogue-opening adapter and connects to the common feature only through the conflict Service; it does not expose an Obsidian application or dialogue as a general capability.
 
-A bounded change to this area should prefer a shape such as:
+Both operation layers acquire the active local database through an operation-time accessor. Composition occurs before the database is opened, and a reset may replace the active instance, so retaining the database object at composition time would violate both start-up and reset boundaries.
 
-```typescript
-interface ConflictCheckContext {
-    readonly checkQueue: QueueProcessor<FilePathWithPrefix, unknown>;
-    readonly resolveQueue: QueueProcessor<FilePathWithPrefix, unknown>;
-}
-
-interface ConflictCheckDependencies {
-    readonly conflict: ConflictCapability;
-    readonly currentSettings: () => ConflictSettings;
-    readonly getActiveFilePath: () => FilePathWithPrefix | undefined;
-    readonly log: LogFunction;
-}
-
-function queueConflictCheck(
-    context: ConflictCheckContext,
-    dependencies: ConflictCheckDependencies,
-    path: FilePathWithPrefix
-): Promise<void> {
-    // Make the decision and enqueue through explicit collaborators.
-}
-
-export function useConflictChecking(host: ConflictCheckingHost): void {
-    const context = createConflictCheckContext(host);
-    host.services.conflict.queueCheckFor.setHandler((path) => queueConflictCheck(context, dependencies, path));
-}
-```
-
-The exact extraction should be made only when conflict-checking behaviour changes. The example describes the intended ownership boundary; it is not a request to convert the Module in an unrelated documentation change.
+`ConflictResolveModal` remains a focused class. One instance owns one dialogue's result promise, event subscription, and close lifetime, which is stable identity and resource ownership rather than application composition. This preserves the distinction between a useful object lifetime and a legacy Module used as a service locator.
 
 ## Interaction-based testing
 

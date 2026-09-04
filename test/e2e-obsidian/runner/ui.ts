@@ -287,19 +287,28 @@ export async function captureObsidianElement(
     await mkdir(dirname(screenshotPath), { recursive: true });
 
     await withObsidianPage(port, async (page) => {
-        try {
-            const element = await resolveElement(page);
-            await element.waitFor({ state: "visible", timeout: timeoutMs });
-            await element.screenshot({
-                path: screenshotPath,
-                animations: "disabled",
-                style: ".notice-container { visibility: hidden !important; }",
-            });
-        } catch (error) {
-            const failurePath = screenshotPath.replace(/\.png$/u, ".failure.png");
-            await page.screenshot({ path: failurePath, fullPage: true });
-            console.error(`UI element failure screenshot: ${failurePath}`);
-            throw error;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const element = await resolveElement(page);
+                await element.waitFor({ state: "visible", timeout: timeoutMs });
+                await element.screenshot({
+                    path: screenshotPath,
+                    animations: "disabled",
+                    style: ".notice-container { visibility: hidden !important; }",
+                });
+                return;
+            } catch (error) {
+                const detachedDuringCapture =
+                    error instanceof Error && error.message.includes("not attached to the DOM");
+                if (detachedDuringCapture && attempt < 2) {
+                    await page.waitForTimeout(50);
+                    continue;
+                }
+                const failurePath = screenshotPath.replace(/\.png$/u, ".failure.png");
+                await page.screenshot({ path: failurePath, fullPage: true });
+                console.error(`UI element failure screenshot: ${failurePath}`);
+                throw error;
+            }
         }
     });
 

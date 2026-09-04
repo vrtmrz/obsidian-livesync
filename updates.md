@@ -12,6 +12,20 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Fixed
+
+- Conflict resolution dialogues now close when the same file is resolved elsewhere or the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the stale dialogue.
+
+#### Improved
+
+- Start-up now keeps unconfigured Vaults on the onboarding path without running configured-only checks or accepting Config Doctor and incomplete-document repair requests. Returning a configured Vault to an unconfigured state also retires those requests for the current plug-in process, so completing setup admits them only after the requested restart.
+
+### Testing
+
+- Start-up migrations, integrity checks, Config Doctor, basic commands, and the Obsidian replication ribbon now have focused regression tests for their service composition. Real Obsidian checks cover unconfigured onboarding, configured start-up scanning, Config Doctor detection and layout, command registration, and the established ribbon icon.
+
 ## 1.0.24
 
 3rd September, 2026

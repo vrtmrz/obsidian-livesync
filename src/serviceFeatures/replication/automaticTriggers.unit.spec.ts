@@ -15,7 +15,10 @@ const taskMocks = vi.hoisted(() => ({
 
 vi.mock("octagonal-wheels/concurrency/task", () => taskMocks);
 
-import { ModuleConflictResolver } from "@/modules/coreFeatures/ModuleConflictResolver";
+import {
+    createConflictResolutionOperations,
+    type ConflictResolutionOperationsDependencies,
+} from "@/serviceFeatures/conflictResolution";
 import { ModuleObsidianEvents } from "@/modules/essentialObsidian/ModuleObsidianEvents";
 import {
     createReplicationSchedulingContext,
@@ -224,18 +227,34 @@ describe("automatic replication triggers while P2P is active", () => {
         const replicateUnattendedByEvent = vi.fn(async () => ({ status: "completed" as const }));
         const queueCheckFor = vi.fn(async () => undefined);
         const path = "merged.md" as FilePathWithPrefix;
-        const module = {
-            settings: p2pSettings({ syncAfterMerge: true }),
-            services: {
-                appLifecycle: { isSuspended: vi.fn(() => false) },
-                conflict: { queueCheckFor },
-                replication: { replicateUnattendedByEvent },
+        const operations = createConflictResolutionOperations({
+            events: { emitEvent: vi.fn() },
+            databaseFileAccess: {
+                fetchEntryMeta: vi.fn(),
+                getConflictedRevs: vi.fn(async () => []),
+                storeContent: vi.fn(async () => true),
             },
-            checkConflictAndPerformAutoMerge: vi.fn(async () => AUTO_MERGED),
-            _log: vi.fn(),
-        };
+            fileHandler: {
+                deleteRevisionFromDB: vi.fn(async () => true),
+                dbToStorage: vi.fn(async () => true),
+            },
+            localDatabase: () => ({
+                tryAutoMerge: vi.fn(async () => ({ ok: AUTO_MERGED })),
+            }),
+            conflict: {
+                queueCheckFor,
+                resolveByDeletingRevision: vi.fn(async () => AUTO_MERGED),
+                resolveByUserInteraction: vi.fn(async () => false),
+            },
+            replication: { replicateUnattendedByEvent },
+            appLifecycle: { isSuspended: vi.fn(() => false) },
+            vault: { getActiveFilePath: vi.fn(() => undefined) },
+            storageAccess: { getFileNames: vi.fn(async () => []) },
+            currentSettings: () => p2pSettings({ syncAfterMerge: true }),
+            log: vi.fn(),
+        } as unknown as ConflictResolutionOperationsDependencies);
 
-        await (ModuleConflictResolver.prototype as any)._resolveConflict.call(module, path);
+        await operations.resolve(path);
 
         expect(replicateUnattendedByEvent).toHaveBeenCalledOnce();
         expect(replicateUnattendedByEvent).toHaveBeenCalledWith({

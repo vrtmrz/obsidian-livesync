@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import { assertLocatorWithinViewport, assertNoHorizontalOverflow } from "@vrtmrz/obsidian-test-session";
 import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { createE2eObsidianDeviceLocalState, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
@@ -597,26 +598,42 @@ async function verifyCompatibilityReview(): Promise<void> {
     );
 }
 
-async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<void> {
+async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<string> {
+    const screenshot = await captureObsidianDialogue(
+        obsidianRemoteDebuggingPort(),
+        "config-doctor-after-compatibility-review.png",
+        async (page) => {
+            const doctor = page.locator(".modal-container").filter({
+                has: page.locator(".modal-title").filter({ hasText: "Self-hosted LiveSync Config Doctor" }),
+            });
+            await doctor.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await doctor.getByText("Per-file-saved customization sync", { exact: true }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+            await doctor.getByText("Enhance chunk size", { exact: true }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+            if ((await doctor.getByText("Data Compression", { exact: true }).count()) !== 0) {
+                throw new Error("Config Doctor still treats supported Data Compression as a problem.");
+            }
+            await assertLocatorWithinViewport(page, doctor.locator(".modal").last(), {
+                label: "Config Doctor dialogue",
+            });
+            await assertNoHorizontalOverflow(page, doctor.locator(".modal").last(), {
+                label: "Config Doctor dialogue",
+            });
+        }
+    );
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const doctor = page.locator(".modal-container").filter({
             has: page.locator(".modal-title").filter({ hasText: "Self-hosted LiveSync Config Doctor" }),
         });
-        await doctor.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await doctor.getByText("Per-file-saved customization sync", { exact: true }).waitFor({
-            state: "visible",
-            timeout: uiTimeoutMs,
-        });
-        await doctor.getByText("Enhance chunk size", { exact: true }).waitFor({
-            state: "visible",
-            timeout: uiTimeoutMs,
-        });
-        if ((await doctor.getByText("Data Compression", { exact: true }).count()) !== 0) {
-            throw new Error("Config Doctor still treats supported Data Compression as a problem.");
-        }
         await doctor.getByRole("button", { name: /No, and do not ask again/u }).click();
         await doctor.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
+    return screenshot;
 }
 
 async function verifyEffectiveSettings(): Promise<"declarative" | "imperative"> {
@@ -1051,7 +1068,8 @@ async function main(): Promise<void> {
             await resumePendingCompatibilityReviewForSettings();
         } else {
             await verifyCompatibilityReview();
-            await verifyConfigDoctorFollowsCompatibilityReview();
+            const configDoctorScreenshot = await verifyConfigDoctorFollowsCompatibilityReview();
+            console.log(`Config Doctor screenshot: ${configDoctorScreenshot}`);
         }
         settingsRenderer = await verifyEffectiveSettings();
         const initialisation = await verifyPendingSettingsInitialisationFlow();

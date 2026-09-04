@@ -6,12 +6,11 @@ import {
     type diff_result,
     type FilePathWithPrefix,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { EVENT_CONFLICT_CANCELLED, eventHub } from "@/common/events.ts";
+import { EVENT_CONFLICT_CANCELLED, EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
+import { POSTPONED, type MergeDialogResult } from "@/serviceFeatures/interactiveConflictResolution/types";
 
-export const POSTPONED = Symbol("postponed");
-
-export type MergeDialogResult = typeof CANCELLED | typeof POSTPONED | typeof LEAVE_TO_SUBSEQUENT | string;
+export { POSTPONED, type MergeDialogResult };
 
 export type ConflictResolveModalOptions = {
     readOnly?: boolean;
@@ -35,7 +34,7 @@ export class ConflictResolveModal extends Modal {
     readOnly: boolean = false;
     localName: string = "Base";
     remoteName: string = "Conflicted";
-    offEvent?: ReturnType<typeof eventHub.onEvent>;
+    private eventSubscriptions?: AbortController;
     currentDiffIndex = -1;
     diffView!: HTMLDivElement;
     diffNavIndicator!: HTMLSpanElement;
@@ -112,20 +111,31 @@ export class ConflictResolveModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        if (this.offEvent) {
-            this.offEvent();
-        }
+        this.eventSubscriptions?.abort();
+        const eventSubscriptions = new AbortController();
+        this.eventSubscriptions = eventSubscriptions;
+        eventHub.onceEvent(
+            EVENT_PLUGIN_UNLOADED,
+            () => {
+                this.sendResponse(CANCELLED);
+            },
+            { signal: eventSubscriptions.signal }
+        );
         if (!this.readOnly) {
             // Cancel an older dialogue for this path before subscribing this
             // instance. Emitting after subscription would close the replacement
             // itself; the instance-owned result promise then completes the older
             // caller even when it only begins waiting after this event.
             eventHub.emitEvent(EVENT_CONFLICT_CANCELLED, this.filename);
-            this.offEvent = eventHub.onEvent(EVENT_CONFLICT_CANCELLED, (path) => {
-                if (path === this.filename) {
-                    this.sendResponse(CANCELLED);
-                }
-            });
+            eventHub.onEvent(
+                EVENT_CONFLICT_CANCELLED,
+                (path) => {
+                    if (path === this.filename) {
+                        this.sendResponse(CANCELLED);
+                    }
+                },
+                { signal: eventSubscriptions.signal }
+            );
         }
         this.titleEl.setText(this.title);
         contentEl.empty();
@@ -216,9 +226,8 @@ export class ConflictResolveModal extends Modal {
     override onClose() {
         const { contentEl } = this;
         contentEl.empty();
-        if (this.offEvent) {
-            this.offEvent();
-        }
+        this.eventSubscriptions?.abort();
+        this.eventSubscriptions = undefined;
         if (this.consumed) {
             return;
         }
