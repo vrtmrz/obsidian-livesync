@@ -9,7 +9,7 @@ import {
     type FilePathWithPrefix,
     type diff_result,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { EVENT_CONFLICT_CANCELLED, EVENT_PLUGIN_UNLOADED } from "@/common/events";
+import { EVENT_CONFLICT_CANCELLED, EVENT_ON_UNRESOLVED_ERROR, EVENT_PLUGIN_UNLOADED } from "@/common/events";
 import {
     createInteractiveConflictResolutionOperations,
     type InteractiveConflictResolutionOperationsDependencies,
@@ -37,12 +37,14 @@ function createOperations(conflictedRevisions: string[] = ["2-right"]) {
     const getDBEntry = vi.fn(async (): Promise<false | { _rev: string; _conflicts?: string[] }> => false);
     const findAllDocs = vi.fn(() => documents([]));
     const askSelectString = vi.fn(async (): Promise<string> => "");
+    const askInPopup = vi.fn();
     const queueCheckFor = vi.fn(async () => undefined);
     const ensureAllProcessed = vi.fn(async () => true);
     const resolveByDeletingRevision = vi.fn(async () => AUTO_MERGED);
     const getConflictedRevs = vi.fn(async () => conflictedRevisions);
     const storeContent = vi.fn(async () => true);
     const isSuspended = vi.fn(() => false);
+    const getActiveFilePath = vi.fn((): FilePathWithPrefix | undefined => path);
     const replicateUnattendedByEvent = vi.fn(async () => ({ status: "completed" as const }));
     const currentSettings = vi.fn(() => ({ syncAfterMerge: false }));
     const log = vi.fn();
@@ -55,10 +57,10 @@ function createOperations(conflictedRevisions: string[] = ["2-right"]) {
         localDatabase: () => ({ getDBEntry, findAllDocs }),
         confirm: {
             askSelectString,
-            askInPopup: vi.fn(),
+            askInPopup,
         },
         path: { getPath: vi.fn((entry: { path: FilePathWithPrefix }) => entry.path) },
-        vault: { getActiveFilePath: vi.fn(() => path) },
+        vault: { getActiveFilePath },
         appLifecycle: { isSuspended },
         conflict: { queueCheckFor, ensureAllProcessed, resolveByDeletingRevision },
         replication: {
@@ -76,6 +78,7 @@ function createOperations(conflictedRevisions: string[] = ["2-right"]) {
     } as unknown as InteractiveConflictResolutionOperationsDependencies);
     return {
         askSelectString,
+        askInPopup,
         constructed,
         context,
         dialogueResult: {
@@ -88,6 +91,7 @@ function createOperations(conflictedRevisions: string[] = ["2-right"]) {
         },
         findAllDocs,
         getDBEntry,
+        getActiveFilePath,
         getConflictedRevs,
         ensureAllProcessed,
         currentSettings,
@@ -194,6 +198,22 @@ describe("interactive conflict resolution operations", () => {
         await Promise.all([first, superseded, replacement]);
     });
 
+    it("keeps a same-file replacement request when its cancellation refresh sees the active dialogue", async () => {
+        const dialogues: ControlledDialogue[] = [];
+        const fixture = createFeatureHarness((context) => createControlledDialogueFactory(context, dialogues));
+        const resolveByUserInteraction = fixture.handlers.resolveByUserInteraction!;
+
+        const first = resolveByUserInteraction(path, conflict);
+        await vi.waitFor(() => expect(dialogues).toHaveLength(1));
+        const replacement = resolveByUserInteraction(path, conflict);
+
+        await vi.waitFor(() => expect(dialogues).toHaveLength(2));
+        expect(dialogues[1]?.filename).toBe(path);
+
+        dialogues[1]?.finish(CANCELLED);
+        await Promise.all([first, replacement]);
+    });
+
     it("keeps a different file waiting until the active dialogue finishes", async () => {
         const fixture = createDialogueConcurrencyHarness();
         const otherPath = "other.md" as FilePathWithPrefix;
@@ -259,10 +279,53 @@ describe("interactive conflict resolution operations", () => {
         expect(constructed.value).toBe(2);
     });
 
+    it.each([
+        { label: "cannot be read", result: false as const, refreshes: false },
+        { label: "has no conflicts", result: { _rev: "2-left", _conflicts: [] as string[] }, refreshes: true },
+    ])("exits safely when the live database $label after a user selection", async ({ result, refreshes }) => {
+        const fixture = createOperations();
+        fixture.dialogueResult.value = "2-right";
+        fixture.getDBEntry.mockResolvedValue(result);
+        const emitEvent = vi.spyOn(fixture.context.events, "emitEvent");
+
+        await expect(fixture.operations.resolveByUserInteraction(path, conflict)).resolves.toBe(false);
+
+        expect(fixture.resolveByDeletingRevision).not.toHaveBeenCalled();
+        expect(fixture.replicateUnattendedByEvent).not.toHaveBeenCalled();
+        expect(fixture.queueCheckFor).not.toHaveBeenCalled();
+        if (refreshes) {
+            expect(fixture.getConflictedRevs).toHaveBeenCalledWith(path);
+            expect(emitEvent).toHaveBeenCalledWith(EVENT_ON_UNRESOLVED_ERROR);
+        } else {
+            expect(fixture.getConflictedRevs).not.toHaveBeenCalled();
+            expect(emitEvent).not.toHaveBeenCalled();
+        }
+    });
+
     it("contributes the active conflict to the existing unresolved-message display", async () => {
         const { operations } = createOperations();
 
         await expect(operations.getActiveConflictMessages()).resolves.toEqual(["This file has unresolved conflicts."]);
+    });
+
+    it("returns no unresolved message when there is no active file", async () => {
+        const { getActiveFilePath, getConflictedRevs, operations } = createOperations();
+        getActiveFilePath.mockReturnValue(undefined);
+
+        await expect(operations.getActiveConflictMessages()).resolves.toEqual([]);
+
+        expect(getConflictedRevs).not.toHaveBeenCalled();
+    });
+
+    it("logs a failed conflict inspection and returns no unresolved messages", async () => {
+        const fixture = createOperations();
+        const error = new Error("database unavailable");
+        fixture.getConflictedRevs.mockRejectedValue(error);
+
+        await expect(fixture.operations.getActiveConflictMessages()).resolves.toEqual([]);
+
+        expect(fixture.log).toHaveBeenCalledWith("Could not inspect the conflict state of note.md", expect.anything());
+        expect(fixture.log).toHaveBeenCalledWith(error, expect.anything());
     });
 
     it("removes the active warning once the conflict has resolved", async () => {
@@ -312,17 +375,45 @@ describe("interactive conflict resolution operations", () => {
         expect(restartedSession.constructed.value).toBe(1);
     });
 
-    it("deletes the compared right leaf when concatenating a deterministically selected pair", async () => {
+    it("stores the exact concatenated diff before deleting a deterministically selected pair", async () => {
         const fixture = createOperations(["2-unrelated", "2-right"]);
         fixture.dialogueResult.value = LEAVE_TO_SUBSEQUENT;
         fixture.getDBEntry.mockResolvedValue({
             _rev: "2-left",
             _conflicts: ["2-unrelated", "2-right"],
         });
-        await fixture.operations.resolveByUserInteraction(path, conflict);
+        await fixture.operations.resolveByUserInteraction(path, {
+            ...conflict,
+            diff: [
+                [0, "left"],
+                [1, "\n"],
+                [1, "right"],
+            ],
+        });
 
-        expect(fixture.storeContent).toHaveBeenCalledWith(path, "");
+        expect(fixture.storeContent).toHaveBeenCalledWith(path, "left\nright");
         expect(fixture.resolveByDeletingRevision).toHaveBeenCalledWith(path, "2-right", "UI Concatenated");
+    });
+
+    it("does not replicate or requeue when concatenated revision deletion fails", async () => {
+        const fixture = createOperations();
+        fixture.dialogueResult.value = LEAVE_TO_SUBSEQUENT;
+        fixture.getDBEntry.mockResolvedValue({ _rev: "2-left", _conflicts: ["2-right"] });
+        fixture.currentSettings.mockReturnValue({ syncAfterMerge: true });
+        fixture.resolveByDeletingRevision.mockResolvedValue(MISSING_OR_ERROR);
+
+        await fixture.operations.resolveByUserInteraction(path, {
+            ...conflict,
+            diff: [
+                [0, "left"],
+                [1, "\nright"],
+            ],
+        });
+
+        expect(fixture.storeContent).toHaveBeenCalledWith(path, "left\nright");
+        expect(fixture.resolveByDeletingRevision).toHaveBeenCalledWith(path, "2-right", "UI Concatenated");
+        expect(fixture.replicateUnattendedByEvent).not.toHaveBeenCalled();
+        expect(fixture.queueCheckFor).not.toHaveBeenCalled();
     });
 
     it("rechecks the live leaves instead of applying a stale dialogue selection", async () => {
@@ -360,6 +451,22 @@ describe("interactive conflict resolution operations", () => {
 
         await fixture.operations.resolveByUserInteraction(path, conflict);
 
+        expect(fixture.replicateUnattendedByEvent).not.toHaveBeenCalled();
+        expect(fixture.queueCheckFor).not.toHaveBeenCalled();
+    });
+
+    it("rejects an unexpected dialogue result without changing revisions", async () => {
+        const fixture = createOperations();
+        fixture.dialogueResult.value = "unexpected-result";
+        fixture.getDBEntry.mockResolvedValue({ _rev: "2-left", _conflicts: ["2-right"] });
+
+        await fixture.operations.resolveByUserInteraction(path, conflict);
+
+        expect(fixture.log).toHaveBeenCalledWith(
+            `Merge: Something went wrong: ${path}, (unexpected-result)`,
+            expect.anything()
+        );
+        expect(fixture.resolveByDeletingRevision).not.toHaveBeenCalled();
         expect(fixture.replicateUnattendedByEvent).not.toHaveBeenCalled();
         expect(fixture.queueCheckFor).not.toHaveBeenCalled();
     });
@@ -424,21 +531,82 @@ describe("interactive conflict resolution operations", () => {
         expect(fixture.askSelectString).not.toHaveBeenCalled();
         expect(fixture.log).toHaveBeenCalledWith("There are no conflicted documents", expect.anything());
     });
+
+    it("sorts multiple picker candidates newest first and returns safely on cancellation", async () => {
+        const fixture = createOperations();
+        fixture.findAllDocs.mockReturnValue(
+            documents([
+                { _id: "ordinary-id", path: "ordinary.md", mtime: 40 },
+                { _id: "old-id", path: "old.md", _conflicts: ["2-old"], mtime: 10 },
+                { _id: "new-id", path: "new.md", _conflicts: ["2-new"], mtime: 30 },
+                { _id: "middle-id", path: "middle.md", _conflicts: ["2-middle"], mtime: 20 },
+            ])
+        );
+        fixture.askSelectString.mockResolvedValue("");
+
+        await expect(fixture.operations.pickFileForResolve()).resolves.toBe(false);
+
+        expect(fixture.askSelectString).toHaveBeenCalledWith("File to resolve conflict", [
+            "new.md",
+            "middle.md",
+            "old.md",
+        ]);
+        expect(fixture.queueCheckFor).not.toHaveBeenCalled();
+        expect(fixture.ensureAllProcessed).not.toHaveBeenCalled();
+    });
+
+    it("reports conflicted documents and wires the startup popup action", async () => {
+        const fixture = createOperations();
+        fixture.findAllDocs.mockImplementation(() =>
+            documents([
+                { _id: "ordinary-id", path: "ordinary.md", mtime: 30 },
+                { _id: "first-id", path: "first.md", _conflicts: ["2-first"], mtime: 10 },
+                { _id: "second-id", path: "second.md", _conflicts: ["2-second"], mtime: 20 },
+            ])
+        );
+
+        await expect(fixture.operations.scanStartupIssues()).resolves.toBe(true);
+
+        expect(fixture.askInPopup).toHaveBeenCalledWith(
+            "conflicting-detected-on-safety",
+            expect.stringContaining("Some files have been left conflicted!"),
+            expect.any(Function)
+        );
+        expect(fixture.log).toHaveBeenCalledWith("Conflicted: first.md");
+        expect(fixture.log).toHaveBeenCalledWith("Conflicted: second.md");
+        expect(fixture.log).not.toHaveBeenCalledWith("Conflicted: ordinary.md");
+
+        const popupAction = fixture.askInPopup.mock.calls[0]?.[2] as (anchor: HTMLAnchorElement) => void;
+        const addEventListener = vi.fn();
+        const anchor = { text: "", addEventListener } as unknown as HTMLAnchorElement;
+        popupAction(anchor);
+
+        expect(anchor.text).toBe("HERE");
+        expect(addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+
+        const clickHandler = addEventListener.mock.calls[0]?.[1] as () => void;
+        clickHandler();
+        await vi.waitFor(() =>
+            expect(fixture.askSelectString).toHaveBeenCalledWith("File to resolve conflict", ["second.md", "first.md"])
+        );
+    });
 });
 
 function createFeatureHarness(
-    createDialogueForContext?: (
-        context: ReturnType<typeof createServiceContext>
-    ) => ConflictResolveDialogueFactory
+    createDialogueForContext?: (context: ReturnType<typeof createServiceContext>) => ConflictResolveDialogueFactory
 ) {
     const context = createServiceContext();
+    type FeatureLocalDatabase = {
+        getDBEntry: (...args: unknown[]) => Promise<unknown>;
+        findAllDocs: (...args: unknown[]) => AsyncGenerator<unknown>;
+    };
     const initialLocalDatabase = {
         getDBEntry: vi.fn(async () => false),
         findAllDocs: vi.fn(() => documents([])),
     };
-    let activeLocalDatabase = initialLocalDatabase;
+    let activeLocalDatabase: FeatureLocalDatabase = initialLocalDatabase;
     const getLocalDatabase = vi.fn(() => activeLocalDatabase);
-    const replaceLocalDatabase = (replacement: typeof initialLocalDatabase) => {
+    const replaceLocalDatabase = (replacement: FeatureLocalDatabase) => {
         activeLocalDatabase = replacement;
     };
     const database = {} as { readonly localDatabase: ReturnType<typeof getLocalDatabase> };
@@ -605,6 +773,18 @@ describe("interactive conflict resolution feature composition", () => {
         await fixture.handlers.onUnload?.();
     });
 
+    it("rejects a resolution request after unload without opening a dialogue", async () => {
+        const dialogues: ControlledDialogue[] = [];
+        const fixture = createFeatureHarness((context) => createControlledDialogueFactory(context, dialogues));
+        const resolveByUserInteraction = fixture.handlers.resolveByUserInteraction!;
+
+        await fixture.handlers.onUnload?.();
+        await expect(resolveByUserInteraction(path, conflict)).resolves.toBe(false);
+
+        expect(dialogues).toHaveLength(0);
+        expect(fixture.createDialogue).not.toHaveBeenCalled();
+    });
+
     it("drops a waiting dialogue when its conflict is resolved elsewhere", async () => {
         const dialogues: ControlledDialogue[] = [];
         const fixture = createFeatureHarness((context) => createControlledDialogueFactory(context, dialogues));
@@ -665,6 +845,41 @@ describe("interactive conflict resolution feature composition", () => {
 
         expect(fixture.services.conflict.queueCheckFor).toHaveBeenCalledWith(path);
         expect(fixture.getLocalDatabase).toHaveBeenCalledTimes(2);
+    });
+
+    it("reads the host's current sync setting after a composed resolution", async () => {
+        const fixture = createFeatureHarness(() => () => ({
+            open: vi.fn(),
+            waitForResult: vi.fn(async (): Promise<MergeDialogResult> => "2-right"),
+        }));
+        fixture.replaceLocalDatabase({
+            getDBEntry: vi.fn(async () => ({ _rev: "2-left", _conflicts: ["2-right"] })),
+            findAllDocs: vi.fn(() => documents([])),
+        });
+        fixture.services.setting.currentSettings.mockReturnValue({
+            ...DEFAULT_SETTINGS,
+            syncAfterMerge: true,
+        });
+
+        await fixture.handlers.resolveByUserInteraction?.(path, conflict);
+
+        expect(fixture.services.setting.currentSettings).toHaveBeenCalledOnce();
+        expect(fixture.services.replication.replicateUnattendedByEvent).toHaveBeenCalledOnce();
+    });
+
+    it("does nothing when the editor command has no active file", async () => {
+        const fixture = createFeatureHarness();
+        await fixture.handlers.initialise?.();
+        const command = fixture.services.API.addCommand.mock.calls[0]?.[0] as {
+            editorCallback: (editor: unknown, view: { file: null }) => void;
+        };
+
+        command.editorCallback({}, { file: null });
+        await Promise.resolve();
+
+        expect(fixture.services.conflict.queueCheckFor).not.toHaveBeenCalled();
+        expect(fixture.services.conflict.ensureAllProcessed).not.toHaveBeenCalled();
+        expect(fixture.createDialogue).not.toHaveBeenCalled();
     });
 
     it("reports a failed startup scan without escaping the lifecycle handler", async () => {

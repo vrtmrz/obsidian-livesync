@@ -170,6 +170,66 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
     });
 
+    it("deletes the older conflict leaf when matching current content is newer", async () => {
+        const harness = createOperationsHarness();
+        const path = "same-newer-current.md" as FilePathWithPrefix;
+        const leftLeaf = leaf("2-left", "Same content\n", 3000);
+        const rightLeaf = leaf("1-right", "Same content\n", 2000);
+        harness.tryAutoMerge.mockResolvedValue({
+            leftRev: leftLeaf.rev,
+            rightRev: rightLeaf.rev,
+            leftLeaf,
+            rightLeaf,
+        });
+
+        const result = await harness.operations.checkConflictAndPerformAutoMerge(path);
+
+        expect(result).toBe(AUTO_MERGED);
+        expect(harness.resolveByDeletingRevision).toHaveBeenCalledWith(path, "1-right", "same");
+    });
+
+    it.each([
+        {
+            description: "binary content",
+            path: "different.png" as FilePathWithPrefix,
+            resolveConflictsByNewerFile: false,
+            expectedSubtitle: "binary",
+        },
+        {
+            description: "the newer-file policy",
+            path: "different.md" as FilePathWithPrefix,
+            resolveConflictsByNewerFile: true,
+            expectedSubtitle: "alwaysNewer",
+        },
+    ])(
+        "retains automatic resolution for $description",
+        async ({ path, resolveConflictsByNewerFile, expectedSubtitle }) => {
+            const harness = createOperationsHarness();
+            const leftLeaf = leaf("1-left", "Left content\n", 1000);
+            const rightLeaf = leaf("2-right", "Right content\n", 2000);
+            harness.tryAutoMerge.mockResolvedValue({
+                leftRev: leftLeaf.rev,
+                rightRev: rightLeaf.rev,
+                leftLeaf,
+                rightLeaf,
+            });
+            const operations = createConflictResolutionOperations({
+                ...harness.dependencies,
+                currentSettings: () => ({
+                    disableMarkdownAutoMerge: false,
+                    resolveConflictsByNewerFile,
+                    syncAfterMerge: false,
+                    showMergeDialogOnlyOnActive: false,
+                }),
+            });
+
+            const result = await operations.checkConflictAndPerformAutoMerge(path);
+
+            expect(result).toBe(AUTO_MERGED);
+            expect(harness.resolveByDeletingRevision).toHaveBeenCalledWith(path, "1-left", expectedSubtitle);
+        }
+    );
+
     it("acquires the active local database for each resolution attempt", async () => {
         const harness = createOperationsHarness();
         const path = "database-reset.md" as FilePathWithPrefix;
@@ -254,6 +314,34 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
     });
 
+    it("returns a safe error and logs when reflecting the resolved revision fails", async () => {
+        const harness = createOperationsHarness();
+        const path = "failed-reflection.md" as FilePathWithPrefix;
+        harness.fileHandler.dbToStorage.mockResolvedValue(false);
+
+        const result = await harness.operations.resolveByDeletingRevision(path, "2-right", "UI Selected");
+
+        expect(result).toBe(MISSING_OR_ERROR);
+        expect(harness.fileHandler.dbToStorage).toHaveBeenCalledWith(path, path, true);
+        expect(harness.dependencies.log).toHaveBeenCalledWith(
+            `Could not write the resolved content to the storage: ${path}`,
+            LOG_LEVEL_NOTICE
+        );
+    });
+
+    it.each([
+        ["plugin metadata", "ps:plugin-metadata" as FilePathWithPrefix],
+        ["customisation metadata", "ix:customisation-metadata" as FilePathWithPrefix],
+    ])("does not reflect %s into the Vault after deleting its revision", async (_description, path) => {
+        const harness = createOperationsHarness();
+
+        const result = await harness.operations.resolveByDeletingRevision(path, "2-right", "UI Selected");
+
+        expect(result).toBe(AUTO_MERGED);
+        expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledWith(path, "2-right");
+        expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
+    });
+
     it("rechecks a remaining manual pair after committing a sensible merge", async () => {
         const harness = createOperationsHarness();
         const path = "three-versions.md" as FilePathWithPrefix;
@@ -330,6 +418,35 @@ describe("conflict resolution serviceFeature", () => {
         expect(dependencies.log).toHaveBeenCalledWith(
             expect.stringContaining("Merging process has been postponed"),
             LOG_LEVEL_NOTICE
+        );
+    });
+
+    it("opens a manual merge when the active-only setting matches the current file", async () => {
+        const harness = createOperationsHarness();
+        const path = "active.md" as FilePathWithPrefix;
+        const activePath = "active.md" as FilePath;
+        harness.tryAutoMerge.mockResolvedValue({
+            leftRev: "2-left",
+            rightRev: "2-right",
+            leftLeaf: leaf("2-left", "Left\n", 1),
+            rightLeaf: leaf("2-right", "Right\n", 2),
+        });
+        const operations = createConflictResolutionOperations({
+            ...harness.dependencies,
+            currentSettings: () => ({
+                disableMarkdownAutoMerge: false,
+                resolveConflictsByNewerFile: false,
+                syncAfterMerge: false,
+                showMergeDialogOnlyOnActive: true,
+            }),
+            vault: { getActiveFilePath: () => activePath },
+        });
+
+        await operations.resolve(path);
+
+        expect(harness.resolveByUserInteraction).toHaveBeenCalledWith(
+            path,
+            expect.objectContaining({ left: expect.anything(), right: expect.anything() })
         );
     });
 
@@ -470,6 +587,21 @@ describe("conflict resolution serviceFeature", () => {
             LOG_LEVEL_NOTICE,
             ""
         );
+    });
+
+    it.each([
+        ["the active-file gate is disabled", { checkConflictOnlyOnOpen: false }, "other.md" as FilePathWithPrefix],
+        ["the requested path is active", { checkConflictOnlyOnOpen: true }, "active.md" as FilePathWithPrefix],
+    ])("reaches the resolver when %s", async (_description, settings, activeFile) => {
+        const path = "active.md" as FilePathWithPrefix;
+        const harness = createHarness({ settings, activeFile });
+        harness.tryAutoMerge.mockResolvedValue({ ok: NOT_CONFLICTED });
+
+        await harness.conflict.queueCheckForIfOpen(path);
+        await harness.conflict.ensureAllProcessed();
+
+        expect(harness.tryAutoMerge).toHaveBeenCalledOnce();
+        expect(harness.tryAutoMerge).toHaveBeenCalledWith(path, true);
     });
 
     it("limits concurrent conflict checks and reports queued and active work", async () => {
@@ -632,6 +764,27 @@ describe("conflict resolution serviceFeature", () => {
         expect(MISSING_OR_ERROR).toBeDefined();
     });
 
+    it("preserves revisions and returns a safe error when the current leaf is unreadable", async () => {
+        const harness = createOperationsHarness();
+        const path = "unreadable-current.md" as FilePathWithPrefix;
+        harness.tryAutoMerge.mockResolvedValue({
+            leftRev: "3-current",
+            rightRev: "2-conflict",
+            leftLeaf: false,
+            rightLeaf: leaf("2-conflict", "Conflict body\n", 2),
+        });
+
+        const result = await harness.operations.checkConflictAndPerformAutoMerge(path);
+
+        expect(result).toBe(MISSING_OR_ERROR);
+        expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
+        expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
+        expect(harness.dependencies.log).toHaveBeenCalledWith(
+            `could not get current revisions:${path}`,
+            LOG_LEVEL_NOTICE
+        );
+    });
+
     it("resolves an identical pair, emits cancellation, and rechecks after merging", async () => {
         const path = "independently-created.md" as FilePathWithPrefix;
         const harness = createHarness({ settings: { syncAfterMerge: false } });
@@ -703,5 +856,28 @@ describe("conflict resolution serviceFeature", () => {
             `${path} has been merged automatically`,
             LOG_LEVEL_NOTICE
         );
+    });
+
+    it.each([
+        { description: "no conflicts remain", conflicts: [] as string[], expectedDeletes: [] as string[] },
+        {
+            description: "conflict metadata is unreadable",
+            conflicts: ["2-unreadable"],
+            expectedDeletes: ["2-unreadable"],
+        },
+    ])("handles the case where $description while resolving by newest", async ({ conflicts, expectedDeletes }) => {
+        const harness = createOperationsHarness();
+        const path = "newest-policy.md" as FilePathWithPrefix;
+        harness.databaseFileAccess.fetchEntryMeta.mockImplementation(
+            async (_filename: FilePathWithPrefix, revision?: string) =>
+                revision === undefined ? metadata(path, "3-current", 1000) : false
+        );
+        harness.databaseFileAccess.getConflictedRevs.mockResolvedValueOnce(conflicts).mockResolvedValueOnce([]);
+
+        await expect(harness.operations.resolveByNewest(path)).resolves.toBe(true);
+        expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledTimes(expectedDeletes.length);
+        for (const [index, revision] of expectedDeletes.entries()) {
+            expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenNthCalledWith(index + 1, path, revision);
+        }
     });
 });
