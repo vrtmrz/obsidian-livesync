@@ -36,6 +36,13 @@ async function assertMenuFeaturesAreComposed(remoteDebuggingPort: number): Promi
         if (ribbonCount !== 1) {
             throw new Error(`Expected one extracted replication ribbon action, found ${ribbonCount}.`);
         }
+
+        const preservedRibbonPathCount = await page
+            .locator('.livesync-ribbon-replicate path[d*="c-7.66 1.98-12.2 9.61-10 17"]')
+            .count();
+        if (preservedRibbonPathCount !== 1) {
+            throw new Error("The extracted replication ribbon does not preserve its established icon path.");
+        }
     });
 }
 

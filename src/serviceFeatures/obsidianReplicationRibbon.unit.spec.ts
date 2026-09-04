@@ -42,6 +42,7 @@ describe("useObsidianReplicationRibbonFeature", () => {
         await expect(initialise?.()).resolves.toBe(true);
 
         expect(addIcon).toHaveBeenCalledWith("replicate", expect.any(String));
+        expect(addIcon).toHaveBeenCalledWith("replicate", expect.stringContaining("c-7.66 1.98-12.2 9.61-10 17"));
         expect(addRibbonIcon).toHaveBeenCalledWith(
             "replicate",
             $msg("moduleObsidianMenu.replicate"),
