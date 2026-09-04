@@ -47,4 +47,34 @@ describe("ModuleLiveSyncMain", () => {
         expect(initialiseDatabase).toHaveBeenCalledWith(false, false, false, true);
         expect(log).toHaveBeenCalledWith("Ui.Common.LocalDatabaseInitialisationFailed", LOG_LEVEL_NOTICE);
     });
+
+    it("warns when start-up continues with individual file failures", async () => {
+        const initialiseDatabase = vi.fn(async () => "completed-with-file-failures");
+        const log = vi.fn();
+        const appLifecycle = {
+            onLayoutReady: vi.fn(async () => true),
+            onFirstInitialise: vi.fn(async () => true),
+            onScanningStartupIssues: vi.fn(async () => true),
+        };
+        const host = {
+            core: {
+                services: { appLifecycle },
+            },
+            services: {
+                appLifecycle,
+                control: { applySettings: vi.fn(async () => undefined) },
+                databaseEvents: { initialiseDatabase },
+            },
+            settings: {
+                suspendFileWatching: false,
+                suspendParseReplicationResult: false,
+            },
+            _log: log,
+        };
+
+        const result = await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
+
+        expect(result).toBe(true);
+        expect(log).toHaveBeenCalledWith("Ui.Common.SomeFilesCouldNotBeSynchronised", LOG_LEVEL_NOTICE);
+    });
 });

@@ -15,7 +15,10 @@ import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_b
 import type { CLICommandContext, CLIOptions } from "./types";
 import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
-import { performFullScan } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import {
+    performFullScan,
+    VaultScanResults,
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
@@ -529,7 +532,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         writeStderrLine(standardIo, "[Command] mirror");
         const log = (msg: unknown) => writeStderrLine(standardIo, `[Mirror] ${String(msg)}`);
         const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
-        return await performFullScan(core, log, errorManager, false, true);
+        return (await performFullScan(core, log, errorManager, false, true)) === VaultScanResults.COMPLETED;
     }
 
     if (options.command === "remote-add") {

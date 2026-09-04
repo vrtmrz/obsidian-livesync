@@ -10418,7 +10418,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         "zh-tw": "使用遠端設定",
     },
     "Ui.Common.LocalDatabaseInitialisationFailed": {
-        def: "Local database initialisation did not complete. See the log for details.",
+        def: "Self-hosted LiveSync cannot synchronise. Generate a report to review the detailed log.",
     },
     "Ui.Common.Signal.Caution": {
         def: "CAUTION",
@@ -10447,6 +10447,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "경고",
         zh: "警告",
         "zh-tw": "警告",
+    },
+    "Ui.Common.SomeFilesCouldNotBeSynchronised": {
+        def: "Not all files could be synchronised. Check the affected files. Generate a report to review the detailed log.",
     },
     "Ui.Settings.Advanced.LocalDatabaseTweak": {
         def: "Local Database Tweak",

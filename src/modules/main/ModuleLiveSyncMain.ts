@@ -17,6 +17,7 @@ import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/ser
 import type { LiveSyncCore } from "@/main.ts";
 import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker/bgWorker";
 import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
+import { VaultScanResults } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
@@ -44,11 +45,14 @@ export class ModuleLiveSyncMain extends AbstractModule {
         }
         // Ordinary start-up may continue when individual files could not be
         // processed. Explicit Fetch and Rebuild flows retain the strict default.
-        const isInitialized = await this.services.databaseEvents.initialiseDatabase(false, false, false, true);
-        if (!isInitialized) {
+        const initialisationResult = await this.services.databaseEvents.initialiseDatabase(false, false, false, true);
+        if (initialisationResult === VaultScanResults.FAILED) {
             this._log($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);
             //TODO:stop all sync.
             return false;
+        }
+        if (initialisationResult === VaultScanResults.COMPLETED_WITH_FILE_FAILURES) {
+            this._log($msg("Ui.Common.SomeFilesCouldNotBeSynchronised"), LOG_LEVEL_NOTICE);
         }
         if (!(await this.core.services.appLifecycle.onFirstInitialise())) return false;
         // await this.core.$$realizeSettingSyncMode();
