@@ -25,10 +25,8 @@ import type { ServiceModules } from "./types.ts";
 import { setNoticeClass } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/wrapper";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { LiveSyncBaseCore } from "./LiveSyncBaseCore.ts";
-import { ModuleObsidianMenu } from "./modules/essentialObsidian/ModuleObsidianMenu.ts";
 import { ModuleObsidianSettingsAsMarkdown } from "./modules/features/ModuleObsidianSettingAsMarkdown.ts";
 import { SetupManager } from "./modules/features/SetupManager.ts";
-import { ModuleMigration } from "./modules/essential/ModuleMigration.ts";
 import { enableI18nFeature } from "./serviceFeatures/onLayoutReady/enablei18n.ts";
 import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
@@ -37,7 +35,10 @@ import { useRedFlagFeatures } from "./serviceFeatures/redFlag.ts";
 import { useSetupProtocolFeature } from "./serviceFeatures/setupObsidian/setupProtocol.ts";
 import { useSetupQRCodeFeature } from "@/serviceFeatures/setupObsidian/qrCode";
 import { useSetupURIFeature } from "@/serviceFeatures/setupObsidian/setupUri";
-import { useSetupManagerHandlersFeature } from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
+import {
+    showOnboardingInvitation,
+    useSetupManagerHandlersFeature,
+} from "./serviceFeatures/setupObsidian/setupManagerHandlers.ts";
 import { useP2PReplicatorCommands, useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/p2p";
 import { useP2PReplicatorUI } from "./serviceFeatures/useP2PReplicatorUI.ts";
 import { useReviewHarness } from "./serviceFeatures/useReviewHarness.ts";
@@ -47,6 +48,8 @@ import { createObsidianCompatibilityReviewUi } from "./serviceFeatures/compatibi
 import { createFileReflectionProvenance } from "./serviceModules/FileReflectionProvenance.ts";
 import { useInteractiveConflictResolutionFeature } from "./serviceFeatures/interactiveConflictResolution";
 import { ConflictResolveModal } from "./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
+import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianReplicationRibbon.ts";
+import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -146,7 +149,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         setNoticeClass(Notice);
 
         const serviceHub = new ObsidianServiceHub(this);
-        let waitForCompatibilityReview = (): Promise<void> => Promise.resolve();
 
         this.core = new LiveSyncBaseCore(
             serviceHub,
@@ -157,14 +159,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const extraModules = [
                     new ModuleObsidianEvents(this, core),
                     new ModuleObsidianSettingDialogue(this, core),
-                    new ModuleObsidianMenu(core),
                     new ModuleObsidianSettingsAsMarkdown(core),
                     new ModuleLog(this, core),
                     new ModuleObsidianDocumentHistory(this, core),
                     new ModuleObsidianGlobalHistory(this, core),
                     // new ModuleDev(this, core),
                     new SetupManager(core), // this should be moved to core?
-                    new ModuleMigration(core, () => waitForCompatibilityReview()),
                 ];
                 return extraModules;
             },
@@ -187,6 +187,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 setupManager.registerP2PSetupConnectionProbe(replicator.connectionProbe);
                 useP2PReplicatorCommands(core, replicator);
                 useP2PReplicatorUI(core, core, replicator, createInteractiveP2PReplication(replicator));
+                useObsidianReplicationRibbonFeature(core);
                 useRemoteConfiguration(core);
 
                 useSetupProtocolFeature(core, setupManager);
@@ -203,7 +204,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     core,
                     createObsidianCompatibilityReviewUi(core.confirm)
                 );
-                waitForCompatibilityReview = () => compatibilityReview.openReview();
+                useStartupLifecycleFeature(core, {
+                    inviteToOnboarding: () => showOnboardingInvitation(core, setupManager),
+                    waitForCompatibilityReview: () => compatibilityReview.openReview(),
+                });
                 useReviewHarness(core, this, compatibilityReview);
             }
         );

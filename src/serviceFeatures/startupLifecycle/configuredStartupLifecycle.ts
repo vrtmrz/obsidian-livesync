@@ -1,34 +1,30 @@
-export interface ConfiguredStartupLifecycleRuntime {
-    databaseReady: boolean;
-    reportDatabaseNotReady(): void;
-    hasCompromisedChunks(): Promise<boolean>;
-    hasIncompleteDocuments(): Promise<boolean>;
-    waitForCompatibilityReview(): Promise<void>;
-    runDoctor(): Promise<boolean>;
-    migrateBulkSend(): Promise<void>;
-}
+import type { ConfiguredStartupLifecycleOperations, StartupLifecycleValue } from "./types";
 
-export interface StartupEntryLifecycleRuntime {
-    configured: boolean;
-    inviteToOnboarding(): void;
+function readValue<T>(value: StartupLifecycleValue<T>): T {
+    return typeof value === "function" ? (value as () => T)() : value;
 }
 
 /**
  * Keeps an unconfigured Vault outside database initialisation and all
  * configured-only start-up work while offering an explicit setup action.
  */
+export interface StartupEntryLifecycleRuntime {
+    readonly configured: StartupLifecycleValue<boolean>;
+    readonly inviteToOnboarding: () => void;
+}
+
 export function runStartupEntryLifecycle(runtime: StartupEntryLifecycleRuntime): boolean {
-    if (runtime.configured) return true;
+    if (readValue(runtime.configured)) return true;
     runtime.inviteToOnboarding();
     return false;
 }
 
 /**
- * Separates the inert, unconfigured startup path from checks which must run
+ * Separates the inert, unconfigured start-up path from checks which must run
  * before an already configured device is allowed to synchronise.
  */
-export async function runConfiguredStartupLifecycle(runtime: ConfiguredStartupLifecycleRuntime): Promise<boolean> {
-    if (!runtime.databaseReady) {
+export async function runConfiguredStartupLifecycle(runtime: ConfiguredStartupLifecycleOperations): Promise<boolean> {
+    if (!readValue(runtime.databaseReady)) {
         runtime.reportDatabaseNotReady();
         return false;
     }

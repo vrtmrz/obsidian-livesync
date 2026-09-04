@@ -25,13 +25,13 @@ import { AbstractModule } from "./modules/AbstractModule";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { ModuleBasicMenu } from "./modules/essential/ModuleBasicMenu";
 import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
 import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
 import { createCentralReplicatorProviderDefinitions } from "./common/replicatorProviders";
 import { useReplicationFeature } from "./serviceFeatures/replication";
 import { useConflictResolutionFeature } from "./serviceFeatures/conflictResolution";
+import { useBasicCommandsFeature } from "./serviceFeatures/basicCommands";
 
 /** Focused views returned by serviceFeatures which the host may consume during composition. */
 export interface LiveSyncCoreFeatureViews {
@@ -44,10 +44,7 @@ export class LiveSyncBaseCore<
     T extends ServiceContext = ServiceContext,
     TCommands extends IMinimumLiveSyncCommands = IMinimumLiveSyncCommands,
 >
-    implements
-        LiveSyncLocalDBEnv,
-        LiveSyncCouchDBReplicatorEnv,
-        HasSettings<ObsidianLiveSyncSettings>
+    implements LiveSyncLocalDBEnv, LiveSyncCouchDBReplicatorEnv, HasSettings<ObsidianLiveSyncSettings>
 {
     addOns = [] as TCommands[];
 
@@ -94,9 +91,10 @@ export class LiveSyncBaseCore<
         for (const addOn of addOns) {
             this._registerAddOn(addOn);
         }
-        // Register host features and add-ons before replication, then bind
+        // Compose late core features after host features and add-ons, then bind
         // legacy modules so lifecycle handlers observe the required order.
         useReplicationFeature(this);
+        useBasicCommandsFeature(this);
         this.bindModuleFunctions();
     }
     /**
@@ -157,7 +155,6 @@ export class LiveSyncBaseCore<
     public registerModules(extraModules: AbstractModule[] = []) {
         this._registerModule(new ModuleLiveSyncMain(this));
         this._registerModule(new ModuleResolvingMismatchedTweaks(this));
-        this._registerModule(new ModuleBasicMenu(this));
 
         for (const module of extraModules) {
             this._registerModule(module);
