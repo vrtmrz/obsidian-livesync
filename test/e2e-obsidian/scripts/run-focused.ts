@@ -8,6 +8,7 @@ const focusedScenarios = new Set([
     "smoke",
     "onboarding-invitation",
     "dialog-mounts",
+    "conflict-dialog-policy",
     "revision-repair",
     "document-history-nav",
     "document-history-restore",

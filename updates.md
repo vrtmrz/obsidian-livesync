@@ -14,6 +14,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Synchronisation and storage
 
+#### Fixed
+
+- Conflict resolution dialogues now close when the same file is resolved elsewhere or the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the stale dialogue.
+
 #### Improved
 
 - Start-up now keeps unconfigured Vaults on the onboarding path without running configured-only checks or accepting Config Doctor and incomplete-document repair requests. Returning a configured Vault to an unconfigured state also retires those requests for the current plug-in process, so completing setup admits them only after the requested restart.

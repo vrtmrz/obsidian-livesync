@@ -1,7 +1,7 @@
 ---
-date: 2026-08-30
-commonlib-version: "0.1.19"
-self-hosted-livesync-version: "1.0.21"
+date: 2026-09-04
+commonlib-version: "0.1.21"
+self-hosted-livesync-version: "1.0.24"
 status: accepted
 ---
 
@@ -142,48 +142,17 @@ Commonlib's `targetFilter.ts` keeps each cache or readiness gate in the factory 
 
 The state remains private to the composed feature. It does not become a `LiveSyncBaseCore` property or a ServiceModule merely because it persists across calls.
 
-### Legacy example to improve when touched: conflict checking
+### Implemented composition: conflict resolution
 
-`ModuleConflictChecker` currently combines:
+Conflict checking and resolution are composed for every host by `useConflictResolutionFeature`. The feature owns its `QueueProcessor` privately and registers the conflict Service handlers directly. Its operations receive explicit collaborators for settings, active-file state, database and storage access, replication, logging, and host events. No consumer locates a conflict Module or retains the queue.
 
-- conflict policy decisions;
-- two `QueueProcessor` owners;
-- cancellation signalling;
-- access to settings and active-file state; and
-- registration into the conflict Service.
+The scheduling queue remains one state owner. It publishes `conflictProcessQueueCount`, coalesces pending checks for the same path, and makes `ensureAllProcessed()` wait for conflict resolution to finish. Repeated resolver invocations for one path retain only the newest waiting request and close an active comparison for that path before waiting for the per-file resolver, while comparisons for other paths remain open. Resolution remains host-neutral and communicates dialogue cancellation through `services.context.events`, so CLI, WebApp, and Obsidian compositions use their own selected event channel.
 
-Its queues are class fields which dereference `this.services` during field initialisation, and its public handlers are bound later in `onBindFunction()`.
+Interactive resolution is a separate Obsidian-owned serviceFeature. It registers the manual conflict handler, commands, start-up scan, unresolved-message contribution, cancellation listener, and unload clean-up. Its postponed-conflict set, active dialogue, and dialogue queue are private, session-local state. Manual comparisons are shown one at a time: a request for the active file publishes `EVENT_CONFLICT_CANCELLED` to cancel and replace its dialogue, while a request for another file waits. A resolution received through replication closes an open dialogue for the resolved path through the same event, or discards its waiting request before a stale dialogue can open. On unload, the feature drops waiting requests and publishes the same event for the active path before the host event channel is retired, so the dialogue closes and its waiting operation completes. The feature receives a dialogue-opening adapter and connects to the common feature only through the conflict Service; it does not expose an Obsidian application or dialogue as a general capability.
 
-A bounded change to this area should prefer a shape such as:
+Both operation layers acquire the active local database through an operation-time accessor. Composition occurs before the database is opened, and a reset may replace the active instance, so retaining the database object at composition time would violate both start-up and reset boundaries.
 
-```typescript
-interface ConflictCheckContext {
-    readonly checkQueue: QueueProcessor<FilePathWithPrefix, unknown>;
-    readonly resolveQueue: QueueProcessor<FilePathWithPrefix, unknown>;
-}
-
-interface ConflictCheckDependencies {
-    readonly conflict: ConflictCapability;
-    readonly currentSettings: () => ConflictSettings;
-    readonly getActiveFilePath: () => FilePathWithPrefix | undefined;
-    readonly log: LogFunction;
-}
-
-function queueConflictCheck(
-    context: ConflictCheckContext,
-    dependencies: ConflictCheckDependencies,
-    path: FilePathWithPrefix
-): Promise<void> {
-    // Make the decision and enqueue through explicit collaborators.
-}
-
-export function useConflictChecking(host: ConflictCheckingHost): void {
-    const context = createConflictCheckContext(host);
-    host.services.conflict.queueCheckFor.setHandler((path) => queueConflictCheck(context, dependencies, path));
-}
-```
-
-The exact extraction should be made only when conflict-checking behaviour changes. The example describes the intended ownership boundary; it is not a request to convert the Module in an unrelated documentation change.
+`ConflictResolveModal` remains a focused class. One instance owns one dialogue's result promise, event subscription, and close lifetime, which is stable identity and resource ownership rather than application composition. This preserves the distinction between a useful object lifetime and a legacy Module used as a service locator.
 
 ## Interaction-based testing
 

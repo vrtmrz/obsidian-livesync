@@ -6,7 +6,6 @@ import { HiddenFileSync } from "./features/HiddenFileSync/CmdHiddenFileSync.ts";
 import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
 // import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 
-import { ModuleInteractiveConflictResolver } from "./modules/features/ModuleInteractiveConflictResolver.ts";
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
@@ -47,6 +46,8 @@ import { createOpenReplicationUI, createOpenRebuildUI } from "./features/P2PSync
 import { useCompatibilityReview } from "./serviceFeatures/compatibilityReview.ts";
 import { createObsidianCompatibilityReviewUi } from "./serviceFeatures/compatibilityReviewObsidian.ts";
 import { createFileReflectionProvenance } from "./serviceModules/FileReflectionProvenance.ts";
+import { useInteractiveConflictResolutionFeature } from "./serviceFeatures/interactiveConflictResolution";
+import { ConflictResolveModal } from "./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianReplicationRibbon.ts";
 import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
@@ -161,7 +162,6 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     new ModuleObsidianSettingsAsMarkdown(core),
                     new ModuleLog(this, core),
                     new ModuleObsidianDocumentHistory(this, core),
-                    new ModuleInteractiveConflictResolver(this, core),
                     new ModuleObsidianGlobalHistory(this, core),
                     // new ModuleDev(this, core),
                     new SetupManager(core), // this should be moved to core?
@@ -197,6 +197,9 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useOfflineScanner(core);
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
+                useInteractiveConflictResolutionFeature(core, (filename, conflictCheckResult) => {
+                    return new ConflictResolveModal(this.app, filename, conflictCheckResult);
+                });
                 const compatibilityReview = useCompatibilityReview(
                     core,
                     createObsidianCompatibilityReviewUi(core.confirm)
