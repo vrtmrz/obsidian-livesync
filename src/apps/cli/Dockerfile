@@ -82,9 +82,11 @@ RUN apt-get update \
 
 WORKDIR /deps
 
-# package.json lists only the packages that the CLI requires
+# Remove build-only dependencies before resolving the standalone runtime tree.
+# npm --omit=dev omits them from disk, but still resolves their peer graph.
 COPY src/apps/cli/package.json ./package.json
-RUN npm install --omit=dev
+RUN npm pkg delete devDependencies \
+    && npm install --omit=dev
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Stage 3 — runtime
