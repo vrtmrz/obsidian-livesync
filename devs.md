@@ -238,6 +238,21 @@ Commonlib owns the typed English fallback for messages requested by its services
 - Dev mode creates `ls-debug/` folder in `.obsidian/` for debug outputs (e.g., missing translations)
     - This causes pretty significant performance overhead.
 
+#### Diagnostic and notice ownership
+
+- A Commonlib or service operation should normally record detailed diagnostics at `LOG_LEVEL_VERBOSE` and return a typed result which lets its caller distinguish complete, partial, and failed outcomes. Do not make callers infer an outcome by parsing log text.
+- Detailed diagnostics may be long and remain in English when they are intended for tracing and the generated report. Include enough context to identify the operation, affected target, and remaining state or retry behaviour.
+- The application boundary which owns the workflow should decide whether to raise `LOG_LEVEL_NOTICE`. It has the interaction context to describe the user-visible consequence and the next useful action; an internal stage description alone is not a useful notice.
+- When several files fail, issue one concise summary notice after the operation returns. Keep the per-file paths and technical causes at verbose level so that the notice remains readable and the generated report remains traceable.
+- Commonlib should raise a notice only when its contract explicitly owns user presentation and no higher-level caller can add the required workflow context.
+
+The ordinary start-up scan provides a concrete comparison:
+
+- Good verbose diagnostic: `Offline scan failed to synchronise ${path} between storage and the local database; this path remains eligible for a later scan.` It identifies the operation, the two states being reconciled, the exact target, and what can happen next. Its length is appropriate for a report.
+- Notice which needs more context: `Local database initialisation did not complete. See the log for details.` It describes an internal stage, but does not tell the user whether synchronisation can continue, what may be affected, or how to obtain the detailed log.
+- Good application notice for a partial result: `Not all files could be synchronised. Check the affected files. Generate a report to review the detailed log.` It states the observable consequence, gives a proportionate action, and leaves the per-file evidence in the report.
+- Good application notice for a failed result: `Self-hosted LiveSync cannot synchronise. Generate a report to review the detailed log.` It states the operational consequence without exposing the internal initialisation stage.
+
 ## Common Patterns
 
 ### Service feature implementation
