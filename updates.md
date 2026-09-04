@@ -23,7 +23,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Improved
 
 - Start-up now keeps unconfigured Vaults on the onboarding path without running configured-only checks or accepting Config Doctor and incomplete-document repair requests. Returning a configured Vault to an unconfigured state also retires those requests for the current plug-in process, so completing setup admits them only after the requested restart.
-- The active-file warning now identifies file or folder names longer than 255 UTF-8 bytes as an Android and Linux compatibility risk, without rejecting or changing the path.
+- The active-file warning now concisely identifies file or folder names longer than 255 UTF-8 bytes as an Android and Linux compatibility risk, without rejecting or changing the path.
 
 ### Testing
 

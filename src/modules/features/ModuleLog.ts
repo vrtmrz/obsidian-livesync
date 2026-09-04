@@ -299,13 +299,9 @@ export class ModuleLog extends AbstractObsidianModule {
         }
         const oversizedPathComponents = findPathComponentsExceedingUtf8Limit(thisFile.path);
         if (oversizedPathComponents.length > 0) {
-            const components = oversizedPathComponents
-                .map(({ component, utf8Bytes }) => `${component} (${utf8Bytes} bytes)`)
-                .join(", ");
             reasonWarn.push(
                 $msg("moduleLog.pathComponentTooLong", {
                     maxBytes: `${ANDROID_LINUX_PATH_COMPONENT_UTF8_WARNING_BOUNDARY}`,
-                    components,
                 })
             );
         }
