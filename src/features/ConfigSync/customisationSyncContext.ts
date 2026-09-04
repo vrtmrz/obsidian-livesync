@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 import type PouchDB from "pouchdb-core";
-import { type PluginManifest, parseYaml, normalizePath, type ListedFiles, diff_match_patch } from "@/deps.ts";
+import { type PluginManifest, parseYaml, normalizePath, diff_match_patch } from "@/deps.ts";
 
 import type {
     EntryDoc,
@@ -25,25 +25,18 @@ import {
 import { ICXHeader, PERIODIC_PLUGIN_SWEEP } from "@/common/types.ts";
 import {
     createBlob,
-    createSavingEntryFromLoadedEntry,
     createTextBlob,
     delay,
     fireAndForget,
     getDocData,
     getDocDataAsArray,
     isDocContentSame,
-    isLoadedEntry,
-    isObjectDifferent,
 } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { digestHash } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/hash";
-import {
-    arrayBufferToBase64,
-    decodeBinary,
-    readString,
-} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
+import { arrayBufferToBase64, decodeBinary } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
 import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { cancelTask, EVEN, isCustomisationSyncMetadata, isPluginMetadata, scheduleTask } from "@/common/utils.ts";
+import { cancelTask, EVEN, scheduleTask } from "@/common/utils.ts";
 import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { reactiveSource, type ReactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
@@ -59,13 +52,15 @@ import {
     isCustomisationSyncTargetPath,
     parseCustomisationSyncV2DocumentPath,
 } from "./customisationSyncPaths.ts";
-import { createCustomisationSyncCodec, type PluginDataEx, type PluginDataExFile } from "./customisationSyncCodec.ts";
+import { createCustomisationSyncCodec, type PluginDataEx } from "./customisationSyncCodec.ts";
 import type {
     CustomisationSyncDialogView,
     CustomisationSyncUIControl,
+    CustomisationSyncFileCategory,
+    CustomisationSyncServiceHandlers,
+    CustomisationSyncTestingView,
     IPluginDataExDisplay,
     LoadedEntryPluginDataExFile,
-    PluginDataExDisplay,
 } from "./customisationSyncView.ts";
 import {
     REPLICATION_PROGRESS_PRESENTATIONS,
@@ -75,9 +70,29 @@ import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/
 import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
 import type { IPathService, IReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import {
+    collectOptionalFileSyncFiles,
+    type OptionalFileSyncFileTreeDependencies,
+} from "@/features/optionalFileSyncFileTree.ts";
+import { PluginDataExDisplayV2 } from "./customisationSyncModel.ts";
+import {
+    decodeCustomisationSyncV2File,
+    loadCustomisationDisplayData,
+    loadCustomisationV2Entry,
+    readCustomisationFile,
+} from "./customisationSyncReadOperations.ts";
+import { CustomisationSyncCatalogueState } from "./customisationSyncCatalogueState.ts";
+import { CustomisationSyncRecentEventDeduplicator } from "./customisationSyncRecentEventDeduplicator.ts";
 
 export type { PluginDataEx, PluginDataExFile } from "./customisationSyncCodec.ts";
-export type { IPluginDataExDisplay, PluginDataExDisplay } from "./customisationSyncView.ts";
+export type {
+    CustomisationSyncFileCategory,
+    CustomisationSyncServiceHandlers,
+    CustomisationSyncTestingView,
+    IPluginDataExDisplay,
+    PluginDataExDisplay,
+} from "./customisationSyncView.ts";
+export { PluginDataExDisplayV2 } from "./customisationSyncModel.ts";
 
 const UPDATED_CONFIGURATION_NOTICE_KEY = "config-sync:updated-configuration";
 
@@ -87,87 +102,8 @@ const {
     dummyHead: DUMMY_HEAD,
     dummyEnd: DUMMY_END,
 } = createCustomisationSyncCodec({ digestHash, parseYaml });
+const CUSTOMISATION_SYNC_READ_CODEC = { deserialize, serialize };
 
-function categoryToFolder(category: string, configDir: string = ""): string {
-    switch (category) {
-        case "CONFIG":
-            return `${configDir}/`;
-        case "THEME":
-            return `${configDir}/themes/`;
-        case "SNIPPET":
-            return `${configDir}/snippets/`;
-        case "PLUGIN_MAIN":
-            return `${configDir}/plugins/`;
-        case "PLUGIN_DATA":
-            return `${configDir}/plugins/`;
-        case "PLUGIN_ETC":
-            return `${configDir}/plugins/`;
-        default:
-            return "";
-    }
-}
-
-export class PluginDataExDisplayV2 {
-    documentPath: FilePathWithPrefix;
-    category: string;
-
-    term: string;
-
-    files = [] as LoadedEntryPluginDataExFile[];
-
-    name: string;
-    confKey: string;
-    constructor(
-        data: IPluginDataExDisplay,
-        private readonly manifestLookup: ReadonlyMap<string, PluginManifest>
-    ) {
-        this.documentPath = `${data.documentPath}` as FilePathWithPrefix;
-        this.category = `${data.category}`;
-        this.name = `${data.name}`;
-        this.term = `${data.term}`;
-        this.files = [...(data.files as LoadedEntryPluginDataExFile[])];
-        this.confKey = `${categoryToFolder(this.category, this.term)}${this.name}`;
-        this.applyLoadedManifest();
-    }
-    async setFile(file: LoadedEntryPluginDataExFile) {
-        const old = this.files.find((e) => e.filename == file.filename);
-        if (old) {
-            if (old.mtime == file.mtime && (await isDocContentSame(old.data, file.data))) return;
-            this.files = this.files.filter((e) => e.filename != file.filename);
-        }
-        this.files.push(file);
-        if (file.filename == "manifest.json") {
-            this.applyLoadedManifest();
-        }
-    }
-    deleteFile(filename: string) {
-        this.files = this.files.filter((e) => e.filename != filename);
-    }
-
-    _displayName: string | undefined;
-    _version: string | undefined;
-
-    applyLoadedManifest() {
-        const manifest = this.manifestLookup.get(this.confKey);
-        if (manifest) {
-            this._displayName = manifest.name;
-            if (this.category == "PLUGIN_MAIN" || this.category == "THEME") {
-                this._version = manifest?.version;
-            }
-        }
-    }
-    get displayName(): string {
-        // if (this._displayNameBuffer !== symbolUnInitialised) return this._displayNameBuffer;
-        // return this._bufferManifest().displayName;
-        return this._displayName || this.name;
-    }
-    get version(): string | undefined {
-        return this._version;
-    }
-    get mtime(): number {
-        return ~~this.files.reduce((a, b) => a + b.mtime, 0) / this.files.length;
-    }
-}
 type CustomisationSyncSettings = Pick<
     ObsidianLiveSyncSettings,
     | "usePluginSync"
@@ -195,7 +131,7 @@ export type CustomisationSyncPeriodicProcessor = {
     disable(): void;
 };
 
-export type CustomisationSyncContextDependencies = {
+export type CustomisationSyncContextDependencies = OptionalFileSyncFileTreeDependencies & {
     getSettings(): CustomisationSyncSettings;
     getLocalDatabase(): CustomisationSyncDatabase;
     storageAccess: CustomisationSyncStorage;
@@ -212,7 +148,6 @@ export type CustomisationSyncContextDependencies = {
     isSuspended(): boolean;
     askRestart(): void;
     createPeriodicProcessor(process: () => Promise<unknown>): CustomisationSyncPeriodicProcessor;
-    listFiles(path: string): Promise<ListedFiles>;
     resolveJsonConflict(
         path: FilePath,
         files: [LoadedEntryPluginDataExFile, LoadedEntryPluginDataExFile],
@@ -232,19 +167,22 @@ export type CustomisationSyncContextDependencies = {
 
 export class CustomisationSyncContext implements CustomisationSyncDialogView {
     private readonly dependencies: CustomisationSyncContextDependencies;
+    private readonly catalogueState = new CustomisationSyncCatalogueState();
+    private readonly recentProcessedInternalFiles = new CustomisationSyncRecentEventDeduplicator();
+    private serviceHandlersView: CustomisationSyncServiceHandlers | undefined;
+    private testingView: CustomisationSyncTestingView | undefined;
     private readonly scanProgress = reactiveSource(0);
     private readonly pluginScanningChanged: Parameters<ReactiveSource<number>["onChanged"]>[0] = (event) => {
         this.enumerationActive.set(event.value != 0);
         this.dependencies.publishScanCount(event.value);
     };
 
-    readonly catalogue = writable<IPluginDataExDisplay[]>([]);
     readonly enumerationActive = writable(false);
-    readonly migrationProgress = writable(0);
-    private readonly pluginManifests = new Map<string, PluginManifest>();
-    readonly manifests = writable(this.pluginManifests);
+    readonly catalogue = this.catalogueState.catalogue;
+    readonly migrationProgress = this.catalogueState.migrationProgress;
+    readonly manifests = this.catalogueState.manifests;
 
-    readonly periodicPluginSweepProcessor: CustomisationSyncPeriodicProcessor;
+    private readonly periodicPluginSweepProcessor: CustomisationSyncPeriodicProcessor;
 
     constructor(dependencies: CustomisationSyncContextDependencies) {
         this.dependencies = dependencies;
@@ -253,7 +191,62 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         );
         this.scanProgress.onChanged(this.pluginScanningChanged);
     }
-    get configDir() {
+
+    /**
+     * Semantic callbacks for registration by the optional-file composition
+     * feature. The returned object is immutable, and each callback retains its
+     * context without requiring callers to bind a concrete implementation.
+     */
+    get serviceHandlers(): CustomisationSyncServiceHandlers {
+        if (!this.serviceHandlersView) {
+            this.serviceHandlersView = Object.freeze({
+                processOptionalFileEvent: (path: FilePath) => this.processOptionalFileEvent(path),
+                processVirtualDocument: (docs: PouchDB.Core.ExistingDocument<EntryDoc>) =>
+                    this.processVirtualDocument(docs),
+                onRealiseSetting: () => this.realiseSettingSyncMode(),
+                onResuming: () => this.onResumeProcess(),
+                onBeforeReplicate: (showMessage: boolean) => this.beforeReplicate(showMessage),
+                onDatabaseInitialised: (showNotice: boolean) => this.onDatabaseInitialised(showNotice),
+                suspendExtraSync: () => this.suspendExtraSync(),
+                enableOptionalFeature: (mode: OptionalSyncFeatureMode) => this.enableOptionalFeature(mode),
+            });
+        }
+        return this.serviceHandlersView;
+    }
+
+    /**
+     * Narrow internal surface used by maintained real-Obsidian contract tests.
+     * It intentionally omits the context, queues, and writable stores.
+     */
+    get testing(): CustomisationSyncTestingView {
+        if (!this.testingView) {
+            this.testingView = Object.freeze({
+                configDir: this.configDir,
+                scanInternalFiles: async () => await this.scanInternalFiles(),
+                scanAllConfigFiles: async (showMessage: boolean) => await this.scanAllConfigFiles(showMessage),
+                getFileCategory: (filePath: string) => this.getFileCategory(filePath),
+                isTargetPath: (filePath: string) => this.isTargetPath(filePath),
+                filenameToUnifiedKey: (path: string, termOverride?: string) =>
+                    this.filenameToUnifiedKey(path, termOverride),
+                filenameWithUnifiedKey: (path: string, termOverride?: string) =>
+                    this.filenameWithUnifiedKey(path, termOverride),
+                unifiedKeyPrefixOfTerminal: (termOverride?: string) =>
+                    this.unifiedKeyPrefixOfTerminal(termOverride),
+                storeCustomizationFiles: async (path: FilePath, termOverride?: string) =>
+                    await this.storeCustomizationFiles(path, termOverride),
+                deleteConfigOnDatabase: async (path: FilePathWithPrefix, forceWrite?: boolean) =>
+                    await this.deleteConfigOnDatabase(path, forceWrite),
+                createPluginDataFromV2: (path: FilePathWithPrefix) => this.createPluginDataFromV2(path),
+                createPluginDataExFileV2: async (path: FilePathWithPrefix, loaded?: LoadedEntry) =>
+                    await this.createPluginDataExFileV2(path, loaded),
+                applyDataV2: async (data: PluginDataExDisplayV2, content?: string) =>
+                    await this.applyDataV2(data, content),
+            });
+        }
+        return this.testingView;
+    }
+
+    private get configDir() {
         return this.dependencies.getConfigDir();
     }
 
@@ -277,11 +270,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return this.dependencies.path.getPath(entry);
     }
 
-    _isMainReady() {
+    private _isMainReady() {
         return this.dependencies.isReady();
     }
 
-    _isMainSuspended() {
+    private _isMainSuspended() {
         return this.dependencies.isSuspended();
     }
 
@@ -289,13 +282,13 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         this.dependencies.log(message, level, key);
     }
 
-    get useV2() {
+    private get useV2() {
         return this.settings.usePluginSyncV2;
     }
-    get useSyncPluginEtc() {
+    private get useSyncPluginEtc() {
         return this.settings.usePluginEtc;
     }
-    isThisModuleEnabled() {
+    private isThisModuleEnabled() {
         return this.settings.usePluginSync;
     }
 
@@ -355,11 +348,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
     ): Promise<boolean> {
         const dataACopy =
             dataA instanceof PluginDataExDisplayV2
-                ? new PluginDataExDisplayV2(dataA, this.pluginManifests)
+                ? new PluginDataExDisplayV2(dataA, this.catalogueState.manifestLookup)
                 : { ...dataA };
         const dataBCopy =
             dataB instanceof PluginDataExDisplayV2
-                ? new PluginDataExDisplayV2(dataB, this.pluginManifests)
+                ? new PluginDataExDisplayV2(dataB, this.catalogueState.manifestLookup)
                 : { ...dataB };
         dataACopy.files = dataACopy.files.filter((file) => file.filename == filename);
         dataBCopy.files = dataBCopy.files.filter((file) => file.filename == filename);
@@ -372,14 +365,6 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         await this.updatePluginList(false, this.filenameToUnifiedKey(path, deviceName));
     }
 
-    pluginList: IPluginDataExDisplay[] = [];
-    showPluginSyncModal() {
-        this.dependencies.getUIControl()?.open();
-    }
-
-    hidePluginSyncModal() {
-        this.dependencies.getUIControl()?.close();
-    }
     dispose() {
         cancelTask(UPDATED_CONFIGURATION_NOTICE_KEY);
         this.periodicPluginSweepProcessor?.disable();
@@ -391,30 +376,21 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         this.dependencies.hideConfigurationNotice();
     }
 
-    private setManifest(key: string, manifest: PluginManifest) {
-        const old = this.pluginManifests.get(key);
-        if (old && !isObjectDifferent(manifest, old)) return;
-        this.pluginManifests.set(key, manifest);
-        this.manifests.set(this.pluginManifests);
-    }
-
-    getFileCategory(
-        filePath: string
-    ): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
+    private getFileCategory(filePath: string): CustomisationSyncFileCategory {
         return getCustomisationSyncFileCategory(filePath, {
             configDir: this.configDir,
             useV2: this.useV2,
             usePluginEtc: this.useSyncPluginEtc,
         });
     }
-    isTargetPath(filePath: string): boolean {
+    private isTargetPath(filePath: string): boolean {
         return isCustomisationSyncTargetPath(filePath, {
             configDir: this.configDir,
             useV2: this.useV2,
             usePluginEtc: this.useSyncPluginEtc,
         });
     }
-    async _everyOnDatabaseInitialized(showNotice: boolean) {
+    private async onDatabaseInitialised(showNotice: boolean) {
         if (!this.isThisModuleEnabled()) return true;
         try {
             this._log("Scanning customizations...");
@@ -426,7 +402,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         }
         return true;
     }
-    async _everyBeforeReplicate(showNotice: boolean) {
+    private async beforeReplicate(showNotice: boolean) {
         if (!this.isThisModuleEnabled()) return true;
         if (this.settings.autoSweepPlugins) {
             await this.scanAllConfigFiles(showNotice);
@@ -434,7 +410,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         }
         return true;
     }
-    async _everyOnResumeProcess(): Promise<boolean> {
+    private async onResumeProcess(): Promise<boolean> {
         if (!this.isThisModuleEnabled()) return true;
         if (this._isMainSuspended()) {
             return true;
@@ -450,44 +426,10 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return true;
     }
     async reloadPluginList(showMessage: boolean) {
-        this.pluginList = [];
-        this.loadedManifest_mTime.clear();
-        this.catalogue.set(this.pluginList);
+        this.catalogueState.clearForReload();
         await this.updatePluginList(showMessage);
     }
-    async loadPluginData(path: FilePathWithPrefix): Promise<PluginDataExDisplay | false> {
-        const wx = await this.localDatabase.getDBEntry(path, undefined, false, false);
-        if (wx) {
-            const data = deserialize(getDocDataAsArray(wx.data), {}) as PluginDataEx;
-            const xFiles = [] as PluginDataExFile[];
-            let missingHash = false;
-            for (const file of data.files) {
-                const work = { ...file, data: [] as string[] };
-                if (!file.hash) {
-                    // debugger;
-                    const tempStr = getDocDataAsArray(work.data);
-                    const hash = digestHash(tempStr);
-                    file.hash = hash;
-                    missingHash = true;
-                }
-                work.data = [file.hash];
-                xFiles.push(work);
-            }
-            if (missingHash) {
-                this._log(`Digest created for ${path} to improve checking`, LOG_LEVEL_VERBOSE);
-                wx.data = serialize(data);
-                fireAndForget(() => this.localDatabase.putDBEntry(createSavingEntryFromLoadedEntry(wx)));
-            }
-            return {
-                ...data,
-                documentPath: this.getPath(wx),
-                files: xFiles,
-            } satisfies PluginDataExDisplay;
-        }
-        return false;
-    }
-
-    pluginScanProcessor = new QueueProcessor(
+    private pluginScanProcessor = new QueueProcessor(
         async (v: AnyEntry[]) => {
             const plugin = v[0];
             if (this.useV2) {
@@ -495,16 +437,16 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                 return [];
             }
             const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
+            const oldEntry = this.catalogueState.findPlugin(path);
             if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
             try {
-                const pluginData = await this.loadPluginData(path);
+                const pluginData = await loadCustomisationDisplayData(
+                    this.dependencies,
+                    path,
+                    CUSTOMISATION_SYNC_READ_CODEC
+                );
                 if (pluginData) {
-                    let newList = [...this.pluginList];
-                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
-                    newList.push(pluginData);
-                    this.pluginList = newList;
-                    this.catalogue.set(newList);
+                    this.catalogueState.replacePlugin(pluginData);
                 }
                 // Failed to load
                 return [];
@@ -525,20 +467,23 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         }
     ).startPipeline();
 
-    pluginScanProcessorV2 = new QueueProcessor(
+    // Compatibility question: no production path currently enqueues work into
+    // this second processor. Preserve its construction and disposal until the
+    // intended V2 scan path, or its safe removal, has focused coverage.
+    private pluginScanProcessorV2 = new QueueProcessor(
         async (v: AnyEntry[]) => {
             const plugin = v[0];
             const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
+            const oldEntry = this.catalogueState.findPlugin(path);
             if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
             try {
-                const pluginData = await this.loadPluginData(path);
+                const pluginData = await loadCustomisationDisplayData(
+                    this.dependencies,
+                    path,
+                    CUSTOMISATION_SYNC_READ_CODEC
+                );
                 if (pluginData) {
-                    let newList = [...this.pluginList];
-                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
-                    newList.push(pluginData);
-                    this.pluginList = newList;
-                    this.catalogue.set(newList);
+                    this.catalogueState.replacePlugin(pluginData);
                 }
                 // Failed to load
                 return [];
@@ -559,7 +504,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         }
     ).startPipeline();
 
-    filenameToUnifiedKey(path: string, termOverRide?: string) {
+    private filenameToUnifiedKey(path: string, termOverRide?: string): FilePathWithPrefix {
         const term = termOverRide || this.dependencies.getDeviceAndVaultName();
         return createCustomisationSyncV1DocumentPath(path, term, {
             configDir: this.configDir,
@@ -568,7 +513,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         });
     }
 
-    filenameWithUnifiedKey(path: string, termOverRide?: string) {
+    private filenameWithUnifiedKey(path: string, termOverRide?: string): FilePathWithPrefix {
         const term = termOverRide || this.dependencies.getDeviceAndVaultName();
         return createCustomisationSyncV2DocumentPath(path, term, {
             configDir: this.configDir,
@@ -577,88 +522,38 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         });
     }
 
-    unifiedKeyPrefixOfTerminal(termOverRide?: string) {
+    private unifiedKeyPrefixOfTerminal(termOverRide?: string): string {
         const term = termOverRide || this.dependencies.getDeviceAndVaultName();
         return createCustomisationSyncDevicePrefix(term);
     }
 
-    parseUnifiedPath(unifiedPath: FilePathWithPrefix): {
-        category: string;
-        device: string;
-        key: string;
-        filename: string;
-        pathV1: FilePathWithPrefix;
-    } {
-        return parseCustomisationSyncV2DocumentPath(unifiedPath);
-    }
-
-    loadedManifest_mTime = new Map<string, number>();
-
-    async createPluginDataExFileV2(
+    private async createPluginDataExFileV2(
         unifiedPathV2: FilePathWithPrefix,
         loaded?: LoadedEntry
     ): Promise<false | LoadedEntryPluginDataExFile> {
-        const { category, key, filename, device } = this.parseUnifiedPath(unifiedPathV2);
-        if (!loaded) {
-            const d = await this.localDatabase.getDBEntry(unifiedPathV2);
-            if (!d) {
-                this._log(`The file ${unifiedPathV2} is not found`, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-            if (!isLoadedEntry(d)) {
-                this._log(`The file ${unifiedPathV2} is not a note`, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-            loaded = d;
-        }
-        const confKey = `${categoryToFolder(category, device)}${key}`;
-        const relativeFilename =
-            `${categoryToFolder(category, "")}${category == "CONFIG" || category == "SNIPPET" ? "" : key + "/"}${filename}`.substring(
-                1
-            );
-        const dataSrc = getDocData(loaded.data);
-        const dataStart = dataSrc.indexOf(DUMMY_END);
-        const data = dataSrc.substring(dataStart + DUMMY_END.length);
-        const file: LoadedEntryPluginDataExFile = {
-            ...loaded,
-            hash: "",
-            data: [base64ToString(data)],
-            filename: relativeFilename,
-            displayName: filename,
-        };
-        if (filename == "manifest.json") {
-            // Same as previously loaded
-            if (
-                this.loadedManifest_mTime.get(confKey) != file.mtime &&
-                this.pluginManifests.get(confKey) == undefined
-            ) {
-                try {
-                    const parsedManifest = JSON.parse(base64ToString(data)) as PluginManifest;
-                    this.setManifest(confKey, parsedManifest);
-                    this.pluginList
-                        .filter((e) => e instanceof PluginDataExDisplayV2 && e.confKey == confKey)
-                        .forEach((e) => (e as PluginDataExDisplayV2).applyLoadedManifest());
-                    this.catalogue.set(this.pluginList);
-                } catch (ex) {
+        // Compatibility: a caller-supplied entry bypasses the database lookup
+        // and the isLoadedEntry check performed by loadCustomisationV2Entry.
+        const loadedEntry = loaded ?? (await loadCustomisationV2Entry(this.dependencies, unifiedPathV2));
+        if (!loadedEntry) return false;
+        const { confKey, file, isManifest } = decodeCustomisationSyncV2File(unifiedPathV2, loadedEntry, DUMMY_END);
+        if (isManifest) {
+            this.catalogueState.processManifest(
+                confKey,
+                file.mtime,
+                () => JSON.parse(file.data[0]) as PluginManifest,
+                (error) => {
                     this._log(
-                        `The file ${loaded.path} seems to manifest, but could not be decoded as JSON`,
+                        `The file ${loadedEntry.path} seems to manifest, but could not be decoded as JSON`,
                         LOG_LEVEL_VERBOSE
                     );
-                    this._log(ex, LOG_LEVEL_VERBOSE);
+                    this._log(error, LOG_LEVEL_VERBOSE);
                 }
-                this.loadedManifest_mTime.set(confKey, file.mtime);
-            } else {
-                this.pluginList
-                    .filter((e) => e instanceof PluginDataExDisplayV2 && e.confKey == confKey)
-                    .forEach((e) => (e as PluginDataExDisplayV2).applyLoadedManifest());
-                this.catalogue.set(this.pluginList);
-            }
-            // }
+            );
         }
         return file;
     }
-    createPluginDataFromV2(unifiedPathV2: FilePathWithPrefix) {
-        const { category, device, key, pathV1 } = this.parseUnifiedPath(unifiedPathV2);
+    private createPluginDataFromV2(unifiedPathV2: FilePathWithPrefix) {
+        const { category, device, key, pathV1 } = parseCustomisationSyncV2DocumentPath(unifiedPathV2);
         if (category == "") return;
 
         const ret: PluginDataExDisplayV2 = new PluginDataExDisplayV2(
@@ -670,21 +565,18 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                 files: [],
                 mtime: 0,
             },
-            this.pluginManifests
+            this.catalogueState.manifestLookup
         );
         return ret;
     }
 
-    updatingV2Count = 0;
-
-    async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
+    private async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
         try {
-            this.updatingV2Count++;
-            this.migrationProgress.set(this.updatingV2Count);
+            this.catalogueState.beginUpdate();
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
-            const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
+            const { pathV1 } = parseCustomisationSyncV2DocumentPath(unifiedFilenameWithKey);
 
-            const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
+            const oldEntry = this.catalogueState.findPlugin(pathV1);
             let entry: PluginDataExDisplayV2 | undefined = undefined;
 
             if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
@@ -697,28 +589,19 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             }
             if (!entry) return;
             const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
-            if (file) {
-                await entry.setFile(file);
-            } else {
-                entry.deleteFile(unifiedFilenameWithKey);
-                if (entry.files.length == 0) {
-                    this.pluginList = this.pluginList.filter((e) => e.documentPath != pathV1);
-                }
-            }
-            const newList = this.pluginList.filter((e) => e.documentPath != entry.documentPath);
-            newList.push(entry);
-            this.pluginList = newList;
+            // Compatibility: the inherited update always re-adds an empty V2
+            // row after deleting its final file.
+            await this.catalogueState.updateV2Plugin(entry, file, unifiedFilenameWithKey);
 
             scheduleTask("updatePluginListV2", 100, () => {
-                this.catalogue.set(this.pluginList);
+                this.catalogueState.publishCatalogue();
             });
         } finally {
-            this.updatingV2Count--;
-            this.migrationProgress.set(this.updatingV2Count);
+            this.catalogueState.endUpdate();
         }
     }
 
-    async migrateV1ToV2(showMessage: boolean, entry: AnyEntry): Promise<void> {
+    private async migrateV1ToV2(showMessage: boolean, entry: AnyEntry): Promise<void> {
         const v1Path = entry.path;
         this._log(`Migrating ${entry.path} to V2`, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
         if (entry.deleted) {
@@ -789,13 +672,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
         if (!this.isThisModuleEnabled()) {
             this.pluginScanProcessor.clearQueue();
-            this.pluginList = [];
-            this.catalogue.set(this.pluginList);
+            this.catalogueState.clearForDisabledRefresh();
             return;
         }
         try {
-            this.updatingV2Count++;
-            this.migrationProgress.set(this.updatingV2Count);
+            this.catalogueState.beginUpdate();
             const updatedDocumentId = updatedDocumentPath ? await this.path2id(updatedDocumentPath) : "";
             const plugins = updatedDocumentPath
                 ? this.localDatabase.findEntries(updatedDocumentId, updatedDocumentId + "\u{10ffff}", {
@@ -817,8 +698,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             }
         } finally {
             this.enumerationActive.set(false);
-            this.updatingV2Count--;
-            this.migrationProgress.set(this.updatingV2Count);
+            this.catalogueState.endUpdate();
         }
         this.enumerationActive.set(false);
         // return entries;
@@ -892,7 +772,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             return false;
         }
     }
-    async applyDataV2(data: PluginDataExDisplayV2, content?: string): Promise<boolean> {
+    private async applyDataV2(data: PluginDataExDisplayV2, content?: string): Promise<boolean> {
         const baseDir = this.configDir;
         try {
             if (content) {
@@ -1010,10 +890,10 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             if (data.documentPath) {
                 const delList = [];
                 if (this.useV2) {
-                    const deleteList = this.pluginList
-                        .filter((e) => e.documentPath == data.documentPath)
-                        .filter((e) => e instanceof PluginDataExDisplayV2)
-                        .map((e) => e.files)
+                    const deleteList = this.catalogueState
+                        .findPlugins(data.documentPath)
+                        .filter((entry) => entry instanceof PluginDataExDisplayV2)
+                        .map((entry) => entry.files)
                         .flat();
                     for (const e of deleteList) {
                         delList.push(e.path);
@@ -1039,7 +919,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             return false;
         }
     }
-    async _anyModuleParsedReplicationResultItem(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
+    private async processVirtualDocument(docs: PouchDB.Core.ExistingDocument<EntryDoc>) {
         if (!docs._id.startsWith(ICXHeader)) return false;
         if (this.isThisModuleEnabled()) {
             await this.updatePluginList(
@@ -1050,14 +930,18 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         if (this.isThisModuleEnabled() && this.settings.notifyPluginOrSettingUpdated) {
             if (!this.dependencies.getUIControl()?.isOpen()) {
                 scheduleTask(UPDATED_CONFIGURATION_NOTICE_KEY, 1000, () => {
-                    this.dependencies.showConfigurationNotice(() => this.showPluginSyncModal());
+                    this.dependencies.showConfigurationNotice(() => this.dependencies.getUIControl()?.open());
                 });
             }
         }
         return true;
     }
-    async _everyRealizeSettingSyncMode(): Promise<boolean> {
+    private async realiseSettingSyncMode(): Promise<boolean> {
         this.periodicPluginSweepProcessor?.disable();
+        // Compatibility question: this inherited callback checks the method
+        // reference rather than invoking it, then proceeds only while the host is
+        // suspended. Preserve both gates until their intended lifecycle semantics
+        // are verified and corrected under a separate behavioural test.
         if (!this._isMainReady) return true;
         if (!this._isMainSuspended()) return true;
         if (!this.isThisModuleEnabled()) return true;
@@ -1072,55 +956,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return true;
     }
 
-    recentProcessedInternalFiles = [] as string[];
-    async makeEntryFromFile(path: FilePath): Promise<false | PluginDataExFile> {
-        const stat = await this.storageAccess.statHidden(path);
-        let version: string | undefined;
-        let displayName: string | undefined;
-        if (!stat) {
-            return false;
-        }
-        const contentBin = await this.storageAccess.readHiddenFileBinary(path);
-        let content: string[];
-        try {
-            content = await arrayBufferToBase64(contentBin);
-            if (path.toLowerCase().endsWith("/manifest.json")) {
-                const v = readString(new Uint8Array(contentBin));
-                try {
-                    const json: unknown = JSON.parse(v);
-                    if (typeof json === "object" && json !== null) {
-                        if ("version" in json) {
-                            version = String(json.version);
-                        }
-                        if ("name" in json) {
-                            displayName = String(json.name);
-                        }
-                    }
-                } catch (ex) {
-                    this._log(
-                        `Configuration sync data: ${path} looks like manifest, but could not read the version`,
-                        LOG_LEVEL_INFO
-                    );
-                    this._log(ex, LOG_LEVEL_VERBOSE);
-                }
-            }
-        } catch (ex) {
-            this._log(`The file ${path} could not be encoded`);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
-        const mtime = stat.mtime;
-        return {
-            filename: path.substring(this.configDir.length + 1),
-            data: content,
-            mtime,
-            size: stat.size,
-            version,
-            displayName: displayName,
-        };
-    }
-
-    async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
+    private async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
         const vf = this.filenameWithUnifiedKey(path, term);
         return await serialized(`plugin-${vf}`, async () => {
             const prefixedFileName = vf;
@@ -1199,7 +1035,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             }
         });
     }
-    async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
+    private async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
         const term = termOverRide || this.dependencies.getDeviceAndVaultName();
         if (term == "") {
             this._log($msg("We have to configure the device name"), LOG_LEVEL_NOTICE);
@@ -1247,7 +1083,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
                 fileTargets = ["manifest.json", "theme.css"].map((e) => `${parentPath}/${e}` as FilePath);
             }
             for (const target of fileTargets) {
-                const data = await this.makeEntryFromFile(target);
+                const data = await readCustomisationFile(this.dependencies, target, this.configDir);
                 if (data == false) {
                     this._log(`Config: skipped (Possibly is not exist): ${target} `, LOG_LEVEL_VERBOSE);
                     continue;
@@ -1343,11 +1179,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             }
         });
     }
-    async _anyProcessOptionalFileEvent(path: FilePath): Promise<boolean> {
+    private async processOptionalFileEvent(path: FilePath): Promise<boolean> {
         return await this.watchVaultRawEventsAsync(path);
     }
 
-    async watchVaultRawEventsAsync(path: FilePath) {
+    private async watchVaultRawEventsAsync(path: FilePath) {
         if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
@@ -1360,12 +1196,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         // this._log(`Customization file detected: ${path}`, LOG_LEVEL_VERBOSE);
         const storageMTime = ~~(((stat && stat.mtime) || 0) / 1000);
         const key = `${path}-${storageMTime}`;
-        if (this.recentProcessedInternalFiles.contains(key)) {
+        if (!this.recentProcessedInternalFiles.admit(key)) {
             // If recently processed, it may caused by self.
             // return true to prevent pass the event to the next.
             return true;
         }
-        this.recentProcessedInternalFiles = [key, ...this.recentProcessedInternalFiles].slice(0, 100);
         // To prevent saving half-collected file sets.
         const keySchedule = this.filenameToUnifiedKey(path);
         scheduleTask(keySchedule, 100, async () => {
@@ -1480,7 +1315,7 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         });
     }
 
-    async deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite = false) {
+    private async deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite = false): Promise<boolean> {
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
         return await serialized("file-x-" + prefixedFileName, async () => {
@@ -1518,24 +1353,22 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         });
     }
 
-    async scanInternalFiles(): Promise<FilePath[]> {
-        const filenames = (await this.getFiles(this.configDir, 2))
+    private async scanInternalFiles(): Promise<FilePath[]> {
+        const filenames = (
+            await collectOptionalFileSyncFiles(this.dependencies, this.configDir, {
+                maxDepth: 2,
+                onError: (path, error) => {
+                    this._log(`Could not traverse(CustomisationSync):${path}`, LOG_LEVEL_INFO);
+                    this._log(error, LOG_LEVEL_VERBOSE);
+                },
+            })
+        )
             .filter((e) => e.startsWith("."))
             .filter((e) => !e.startsWith(".trash"));
         return filenames as FilePath[];
     }
 
-    _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
-        if (isPluginMetadata(path)) {
-            return Promise.resolve("newer");
-        }
-        if (isCustomisationSyncMetadata(path)) {
-            return Promise.resolve("newer");
-        }
-        return Promise.resolve(false);
-    }
-
-    _allSuspendExtraSync(): Promise<boolean> {
+    private suspendExtraSync(): Promise<boolean> {
         if (this.settings.usePluginSync || this.settings.autoSweepPlugins) {
             this._log(
                 "Customisation sync have been temporarily disabled. Please enable them after the fetching, if you need them.",
@@ -1547,11 +1380,11 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
         return Promise.resolve(true);
     }
 
-    async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
-        await this.configureHiddenFileSync(mode);
+    private async enableOptionalFeature(mode: OptionalSyncFeatureMode): Promise<boolean> {
+        await this.configureCustomisationSync(mode);
         return true;
     }
-    async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
+    private async configureCustomisationSync(mode: OptionalSyncFeatureMode) {
         if (mode == "DISABLE") {
             await this.dependencies.applySettings(
                 {
@@ -1583,22 +1416,5 @@ export class CustomisationSyncContext implements CustomisationSyncDialogView {
             );
             await this.scanAllConfigFiles(true);
         }
-    }
-
-    async getFiles(path: string, lastDepth: number) {
-        if (lastDepth == -1) return [];
-        let w: ListedFiles;
-        try {
-            w = await this.dependencies.listFiles(path);
-        } catch (ex) {
-            this._log(`Could not traverse(CustomisationSync):${path}`, LOG_LEVEL_INFO);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return [];
-        }
-        let files = [...w.files];
-        for (const v of w.folders) {
-            files = files.concat(await this.getFiles(v, lastDepth - 1));
-        }
-        return files;
     }
 }

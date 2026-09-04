@@ -10,12 +10,16 @@ import {
     CustomisationSyncContext,
     type CustomisationSyncContextDependencies,
 } from "@/features/ConfigSync/customisationSyncContext.ts";
-import type { CustomisationSyncDialogView } from "@/features/ConfigSync/customisationSyncView.ts";
+import type {
+    CustomisationSyncDialogView,
+    CustomisationSyncTestingView,
+} from "@/features/ConfigSync/customisationSyncView.ts";
 import { HiddenFileSyncContext } from "@/features/HiddenFileSync/hiddenFileSyncContext.ts";
 import type {
     HiddenFileSyncCommandView,
     HiddenFileSyncInitialisationView,
     HiddenFileSyncRepairView,
+    HiddenFileSyncTestingView,
 } from "@/features/HiddenFileSync/hiddenFileSyncViews.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import {
@@ -38,10 +42,10 @@ export interface OptionalFileSyncFeature {
     readonly hiddenFileSyncCommands: HiddenFileSyncCommandView;
     readonly hiddenFileSyncInitialisation: HiddenFileSyncInitialisationView;
     readonly hiddenFileSyncRepair: HiddenFileSyncRepairView;
-    /** @internal Direct runtime access for the repository's real-Obsidian contract tests. */
+    /** @internal Focused operations for the repository's real-Obsidian contract tests. */
     readonly testing: {
-        readonly customisationSync: CustomisationSyncContext;
-        readonly hiddenFileSync: HiddenFileSyncContext;
+        readonly customisationSync: CustomisationSyncTestingView;
+        readonly hiddenFileSync: HiddenFileSyncTestingView;
     };
 }
 
@@ -96,6 +100,9 @@ export function useOptionalFileSync(
     const hiddenFileSync = createHiddenFileSync({
         ownsLocalFile: ownsLocalFile("hidden-file"),
     });
+    const customisationHandlers = customisationSync.serviceHandlers;
+    const hiddenFileHandlers = hiddenFileSync.serviceHandlers;
+    const hiddenFileSyncRepair = hiddenFileSync.repair;
     const { services } = host;
     const disposers: (() => void)[] = [];
 
@@ -108,7 +115,7 @@ export function useOptionalFileSync(
     const routeLocalPath = async (path: FilePath) => {
         const selected = selectOptionalFileSyncOwner(ownerSelectionInput(path));
         const hiddenFileEligible =
-            selected.owner == "hidden-file" ? await hiddenFileSync.isTargetFileEligible(path) : false;
+            selected.owner == "hidden-file" ? await hiddenFileHandlers.isTargetFileEligible(path) : false;
         const ready = services.appLifecycle.isReady() && !services.appLifecycle.isSuspended();
         return routeOptionalFileSyncPath({
             ...ownerSelectionInput(path),
@@ -123,86 +130,44 @@ export function useOptionalFileSync(
             const localPath = normaliseLocalPath(path);
             const decision = await routeLocalPath(localPath);
             if (decision.owner == "customisation") {
-                return await customisationSync._anyProcessOptionalFileEvent(localPath);
+                return await customisationHandlers.processOptionalFileEvent(localPath);
             }
             if (decision.owner == "hidden-file") {
-                return await hiddenFileSync._anyProcessOptionalFileEvent(localPath);
+                return await hiddenFileHandlers.processOptionalFileEvent(localPath);
             }
             return false;
         })
     );
     register(
-        services.conflict.getOptionalConflictCheckMethod.addHandler(async (path: FilePathWithPrefix) => {
+        services.conflict.getOptionalConflictCheckMethod.addHandler((path: FilePathWithPrefix) => {
             if (isPluginMetadata(path) || isCustomisationSyncMetadata(path)) {
-                return await customisationSync._anyGetOptionalConflictCheckMethod(path);
+                return Promise.resolve("newer");
             }
             if (isInternalMetadata(path)) {
-                return await hiddenFileSync._anyGetOptionalConflictCheckMethod(path);
+                return hiddenFileHandlers.queueConflict(path);
             }
-            return false;
+            return Promise.resolve(false);
         })
     );
 
+    register(services.replication.processVirtualDocument.addHandler(customisationHandlers.processVirtualDocument));
     register(
-        services.replication.processVirtualDocument.addHandler(
-            customisationSync._anyModuleParsedReplicationResultItem.bind(customisationSync)
-        )
+        services.replication.processOptionalSynchroniseResult.addHandler(hiddenFileHandlers.processOptionalSyncFiles)
     );
-    register(
-        services.replication.processOptionalSynchroniseResult.addHandler(
-            hiddenFileSync._anyProcessOptionalSyncFiles.bind(hiddenFileSync)
-        )
-    );
-    register(
-        services.appLifecycle.onSettingLoaded.addHandler(
-            hiddenFileSync._everyOnloadAfterLoadSettings.bind(hiddenFileSync)
-        )
-    );
+    register(services.appLifecycle.onSettingLoaded.addHandler(hiddenFileHandlers.onSettingLoaded));
 
-    register(
-        services.setting.onRealiseSetting.addHandler(
-            customisationSync._everyRealizeSettingSyncMode.bind(customisationSync)
-        )
-    );
-    register(
-        services.setting.onRealiseSetting.addHandler(hiddenFileSync._everyRealizeSettingSyncMode.bind(hiddenFileSync))
-    );
-    register(
-        services.appLifecycle.onResuming.addHandler(customisationSync._everyOnResumeProcess.bind(customisationSync))
-    );
-    register(services.appLifecycle.onResuming.addHandler(hiddenFileSync._everyOnResumeProcess.bind(hiddenFileSync)));
-    register(
-        services.replication.onBeforeReplicate.addHandler(
-            customisationSync._everyBeforeReplicate.bind(customisationSync)
-        )
-    );
-    register(
-        services.replication.onBeforeReplicate.addHandler(hiddenFileSync._everyBeforeReplicate.bind(hiddenFileSync))
-    );
-    register(
-        services.databaseEvents.onDatabaseInitialised.addHandler(
-            customisationSync._everyOnDatabaseInitialized.bind(customisationSync)
-        )
-    );
-    register(
-        services.databaseEvents.onDatabaseInitialised.addHandler(
-            hiddenFileSync._everyOnDatabaseInitialized.bind(hiddenFileSync)
-        )
-    );
-    register(
-        services.setting.suspendExtraSync.addHandler(customisationSync._allSuspendExtraSync.bind(customisationSync))
-    );
-    register(services.setting.suspendExtraSync.addHandler(hiddenFileSync._allSuspendExtraSync.bind(hiddenFileSync)));
-    register(
-        services.setting.enableOptionalFeature.addHandler(
-            customisationSync._allConfigureOptionalSyncFeature.bind(customisationSync)
-        )
-    );
-    register(
-        services.setting.enableOptionalFeature.addHandler(
-            hiddenFileSync._allConfigureOptionalSyncFeature.bind(hiddenFileSync)
-        )
-    );
+    register(services.setting.onRealiseSetting.addHandler(customisationHandlers.onRealiseSetting));
+    register(services.setting.onRealiseSetting.addHandler(hiddenFileHandlers.realiseSettingSyncMode));
+    register(services.appLifecycle.onResuming.addHandler(customisationHandlers.onResuming));
+    register(services.appLifecycle.onResuming.addHandler(hiddenFileHandlers.onResuming));
+    register(services.replication.onBeforeReplicate.addHandler(customisationHandlers.onBeforeReplicate));
+    register(services.replication.onBeforeReplicate.addHandler(hiddenFileHandlers.beforeReplicate));
+    register(services.databaseEvents.onDatabaseInitialised.addHandler(customisationHandlers.onDatabaseInitialised));
+    register(services.databaseEvents.onDatabaseInitialised.addHandler(hiddenFileHandlers.onDatabaseInitialised));
+    register(services.setting.suspendExtraSync.addHandler(customisationHandlers.suspendExtraSync));
+    register(services.setting.suspendExtraSync.addHandler(hiddenFileHandlers.suspendExtraSync));
+    register(services.setting.enableOptionalFeature.addHandler(customisationHandlers.enableOptionalFeature));
+    register(services.setting.enableOptionalFeature.addHandler(hiddenFileHandlers.configureOptionalSyncFeature));
     register(
         services.vault.isTargetFileInExtra.addHandler(
             async (file: string | UXFileInfoStub) => (await routeLocalPath(normaliseLocalPath(file))).owner != "none"
@@ -234,7 +199,10 @@ export function useOptionalFileSync(
         customisationSync,
         hiddenFileSyncCommands: hiddenFileSync,
         hiddenFileSyncInitialisation: hiddenFileSync,
-        hiddenFileSyncRepair: hiddenFileSync,
-        testing: Object.freeze({ customisationSync, hiddenFileSync }),
+        hiddenFileSyncRepair,
+        testing: Object.freeze({
+            customisationSync: customisationSync.testing,
+            hiddenFileSync: hiddenFileSync.testing,
+        }),
     });
 }

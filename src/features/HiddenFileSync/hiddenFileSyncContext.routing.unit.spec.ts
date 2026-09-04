@@ -10,58 +10,58 @@ import { HiddenFileSyncContext } from "./hiddenFileSyncContext.ts";
 
 const PATH = ".obsidian/plugins/example/data.json" as FilePath;
 
+function isTargetFile(context: HiddenFileSyncContext, path: FilePath): Promise<boolean> {
+    return (context as unknown as { isTargetFile(path: FilePath): Promise<boolean> }).isTargetFile(path);
+}
+
+function isTargetFileEligible(context: HiddenFileSyncContext, path: FilePath): Promise<boolean> {
+    return (context as unknown as { isTargetFileEligible(path: FilePath): Promise<boolean> }).isTargetFileEligible(path);
+}
+
 function createHiddenFileSync(
     options: { owned?: boolean; ignoredByIgnoreFile?: boolean; patternMatch?: boolean } = {}
 ) {
     const ownsLocalFile = vi.fn(() => options.owned ?? true);
     const isIgnoredByIgnoreFile = vi.fn(async () => options.ignoredByIgnoreFile ?? false);
-    const isTargetFileInPatterns = vi.fn(() => options.patternMatch ?? true);
+    const patternTest = vi.fn(() => options.patternMatch ?? true);
+    const parseRegExpSettings = vi.fn(() => ({
+        ignoreFilter: [],
+        targetFilter: options.patternMatch === undefined ? [] : [{ test: patternTest }],
+    }));
     const hiddenFileSync = Object.create(HiddenFileSyncContext.prototype) as HiddenFileSyncContext;
     Object.assign(hiddenFileSync, {
         dependencies: { ownsLocalFile, isIgnoredByIgnoreFile },
-        isTargetFileInPatterns,
+        parseRegExpSettings,
     });
-    return { hiddenFileSync, isIgnoredByIgnoreFile, isTargetFileInPatterns, ownsLocalFile };
+    return { hiddenFileSync, isIgnoredByIgnoreFile, parseRegExpSettings, ownsLocalFile };
 }
 
 describe("Hidden File Sync local-path admission", () => {
     it("checks composition ownership before Hidden File Sync filters", async () => {
-        const { hiddenFileSync, isTargetFileInPatterns, ownsLocalFile } = createHiddenFileSync({ owned: false });
+        const { hiddenFileSync, parseRegExpSettings, ownsLocalFile } = createHiddenFileSync({ owned: false });
 
-        await expect(hiddenFileSync.isTargetFile(PATH)).resolves.toBe(false);
+        await expect(isTargetFile(hiddenFileSync, PATH)).resolves.toBe(false);
         expect(ownsLocalFile).toHaveBeenCalledWith(PATH);
-        expect(isTargetFileInPatterns).not.toHaveBeenCalled();
+        expect(parseRegExpSettings).not.toHaveBeenCalled();
     });
 
     it("keeps target patterns and ignore-file results as Hidden File Sync eligibility", async () => {
         const patternExcluded = createHiddenFileSync({ patternMatch: false });
-        await expect(patternExcluded.hiddenFileSync.isTargetFile(PATH)).resolves.toBe(false);
+        await expect(isTargetFile(patternExcluded.hiddenFileSync, PATH)).resolves.toBe(false);
         expect(patternExcluded.isIgnoredByIgnoreFile).not.toHaveBeenCalled();
 
         const ignoreFileExcluded = createHiddenFileSync({ ignoredByIgnoreFile: true });
-        await expect(ignoreFileExcluded.hiddenFileSync.isTargetFile(PATH)).resolves.toBe(false);
+        await expect(isTargetFile(ignoreFileExcluded.hiddenFileSync, PATH)).resolves.toBe(false);
         expect(ignoreFileExcluded.isIgnoredByIgnoreFile).toHaveBeenCalledWith(PATH);
 
         const admitted = createHiddenFileSync();
-        await expect(admitted.hiddenFileSync.isTargetFile(PATH)).resolves.toBe(true);
+        await expect(isTargetFile(admitted.hiddenFileSync, PATH)).resolves.toBe(true);
     });
 
-    it("exposes eligibility without consulting the composition owner", async () => {
+    it("evaluates eligibility without consulting the composition owner", async () => {
         const { hiddenFileSync, ownsLocalFile } = createHiddenFileSync({ owned: false });
 
-        await expect(hiddenFileSync.isTargetFileEligible(PATH)).resolves.toBe(true);
+        await expect(isTargetFileEligible(hiddenFileSync, PATH)).resolves.toBe(true);
         expect(ownsLocalFile).not.toHaveBeenCalled();
-    });
-});
-
-describe("compatibility: Hidden File Sync path shape", () => {
-    const hiddenFileSync = Object.create(HiddenFileSyncContext.prototype) as HiddenFileSyncContext;
-
-    it.each([
-        [".obsidian/app.json", true],
-        [".trash/app.json", false],
-        ["notes/app.json", false],
-    ])("recognises %s as a Hidden File Sync path=%s", (path, expected) => {
-        expect(hiddenFileSync.isHiddenFileSyncHandlingPath(path as FilePath)).toBe(expected);
     });
 });

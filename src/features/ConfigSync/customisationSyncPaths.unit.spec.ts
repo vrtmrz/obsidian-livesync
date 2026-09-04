@@ -5,6 +5,7 @@ import {
     createCustomisationSyncDevicePrefix,
     createCustomisationSyncV1DocumentPath,
     createCustomisationSyncV2DocumentPath,
+    getCustomisationSyncCategoryFolder,
     getCustomisationSyncFileCategory,
     isCustomisationSyncTargetPath,
     getCustomisationSyncSettingKey,
@@ -20,6 +21,18 @@ const currentOptions: CustomisationSyncPathOptions = {
 };
 
 describe("compatibility: Customisation Sync path operations", () => {
+    it.each([
+        ["CONFIG", ".obsidian/"],
+        ["THEME", ".obsidian/themes/"],
+        ["SNIPPET", ".obsidian/snippets/"],
+        ["PLUGIN_MAIN", ".obsidian/plugins/"],
+        ["PLUGIN_DATA", ".obsidian/plugins/"],
+        ["PLUGIN_ETC", ".obsidian/plugins/"],
+        ["UNKNOWN", ""],
+    ])("maps category %s to folder %s", (category, expected) => {
+        expect(getCustomisationSyncCategoryFolder(category, ".obsidian")).toBe(expected);
+    });
+
     it.each([
         [".obsidian/app.json", "CONFIG"],
         [".obsidian/themes/Minimal/theme.css", "THEME"],

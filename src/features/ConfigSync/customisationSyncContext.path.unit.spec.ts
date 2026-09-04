@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 vi.mock("@/deps.ts", () => ({
     diff_match_patch: class DiffMatchPatch {},
@@ -65,7 +64,7 @@ describe("compatibility: Customisation Sync paths", () => {
         [".obsidian/workspace", ""],
         ["notes/example.json", "CONFIG"],
     ])("classifies %s as %s", (path, expected) => {
-        expect(createConfigSync().getFileCategory(path)).toBe(expected);
+        expect(createConfigSync().testing.getFileCategory(path)).toBe(expected);
     });
 
     it("keeps other plug-in files outside V1 and disabled plug-in-extra synchronisation", () => {
@@ -73,17 +72,17 @@ describe("compatibility: Customisation Sync paths", () => {
         const withoutPluginEtc = createConfigSync({ usePluginEtc: false });
         const path = ".obsidian/plugins/example/other.json";
 
-        expect(v1.getFileCategory(path)).toBe("");
-        expect(withoutPluginEtc.getFileCategory(path)).toBe("");
+        expect(v1.testing.getFileCategory(path)).toBe("");
+        expect(withoutPluginEtc.testing.getFileCategory(path)).toBe("");
     });
 
     it("recognises only classified files below the Obsidian configuration directory", () => {
         const configSync = createConfigSync();
 
-        expect(configSync.isTargetPath(".obsidian/app.json")).toBe(true);
-        expect(configSync.isTargetPath(".obsidian/plugins/example/main.js")).toBe(true);
-        expect(configSync.isTargetPath(".obsidian/workspace")).toBe(false);
-        expect(configSync.isTargetPath("notes/example.json")).toBe(false);
+        expect(configSync.testing.isTargetPath(".obsidian/app.json")).toBe(true);
+        expect(configSync.testing.isTargetPath(".obsidian/plugins/example/main.js")).toBe(true);
+        expect(configSync.testing.isTargetPath(".obsidian/workspace")).toBe(false);
+        expect(configSync.testing.isTargetPath("notes/example.json")).toBe(false);
     });
 
     it.each([
@@ -92,7 +91,7 @@ describe("compatibility: Customisation Sync paths", () => {
         [".obsidian/plugins/example/main.js", "ix:device-a/PLUGIN_MAIN/example.md"],
         [".obsidian/plugins/example/data.json", "ix:device-a/PLUGIN_DATA/example.md"],
     ])("creates the V1 document path for %s", (path, expected) => {
-        expect(createConfigSync().filenameToUnifiedKey(path)).toBe(expected);
+        expect(createConfigSync().testing.filenameToUnifiedKey(path)).toBe(expected);
     });
 
     it.each([
@@ -101,30 +100,18 @@ describe("compatibility: Customisation Sync paths", () => {
         [".obsidian/plugins/example/main.js", "ix:device-a/PLUGIN_MAIN/example%main.js"],
         [".obsidian/plugins/example/data.json", "ix:device-a/PLUGIN_DATA/example%data.json"],
     ])("creates the V2 document path for %s", (path, expected) => {
-        expect(createConfigSync().filenameWithUnifiedKey(path)).toBe(expected);
+        expect(createConfigSync().testing.filenameWithUnifiedKey(path)).toBe(expected);
     });
 
     it("uses an explicit device name when supplied", () => {
         const configSync = createConfigSync();
 
-        expect(configSync.filenameToUnifiedKey(".obsidian/app.json", "device-b")).toBe(
+        expect(configSync.testing.filenameToUnifiedKey(".obsidian/app.json", "device-b")).toBe(
             "ix:device-b/CONFIG/app.json.md"
         );
-        expect(configSync.filenameWithUnifiedKey(".obsidian/app.json", "device-b")).toBe(
+        expect(configSync.testing.filenameWithUnifiedKey(".obsidian/app.json", "device-b")).toBe(
             "ix:device-b/CONFIG/app.json%app.json"
         );
-        expect(configSync.unifiedKeyPrefixOfTerminal("device-b")).toBe("ix:device-b/");
-    });
-
-    it("parses a V2 document path and derives its V1 compatibility path", () => {
-        expect(
-            createConfigSync().parseUnifiedPath("ix:device-a/PLUGIN_MAIN/example%main.js" as FilePathWithPrefix)
-        ).toEqual({
-            device: "device-a",
-            category: "PLUGIN_MAIN",
-            key: "example",
-            filename: "main.js",
-            pathV1: "ix:device-a/PLUGIN_MAIN/example.md",
-        });
+        expect(configSync.testing.unifiedKeyPrefixOfTerminal("device-b")).toBe("ix:device-b/");
     });
 });

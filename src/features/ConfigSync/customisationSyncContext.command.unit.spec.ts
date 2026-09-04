@@ -26,29 +26,42 @@ vi.mock("@/common/translation", () => ({
 vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
-import { cancelTask } from "@/common/utils.ts";
+import { cancelTask, scheduleTask } from "@/common/utils.ts";
 import { CustomisationSyncContext } from "./customisationSyncContext";
 import { createCustomisationSyncTestDependencies } from "./customisationSyncContext.unit.fixture.ts";
 
 describe("CustomisationSyncContext commands", () => {
-    it("keeps the legacy dialogue methods as delegates to the host-owned UI", () => {
+    it("opens the host-owned dialogue from a scheduled configuration Notice", async () => {
         const control = {
             open: vi.fn(),
             close: vi.fn(),
-            isOpen: vi.fn(),
+            isOpen: vi.fn(() => false),
         };
+        const showConfigurationNotice = vi.fn();
+        const updatePluginList = vi.fn(async () => undefined);
         const configSync = Object.create(CustomisationSyncContext.prototype) as CustomisationSyncContext;
         Object.assign(configSync, {
             dependencies: createCustomisationSyncTestDependencies({
                 getUIControl: () => control,
+                getSettings: () => ({ usePluginSync: true, notifyPluginOrSettingUpdated: true }) as never,
+                showConfigurationNotice,
             }),
+            updatePluginList,
         });
 
-        configSync.showPluginSyncModal();
-        configSync.hidePluginSyncModal();
+        await configSync.serviceHandlers.processVirtualDocument({
+            _id: "ix:example",
+            path: "ix:example",
+        } as never);
+        const scheduledNotice = vi.mocked(scheduleTask).mock.calls[0]?.[2] as (() => void) | undefined;
+        expect(scheduledNotice).toBeTypeOf("function");
+        scheduledNotice?.();
+        const openDialogue = showConfigurationNotice.mock.calls[0]?.[0] as (() => void) | undefined;
+        expect(openDialogue).toBeTypeOf("function");
+        openDialogue?.();
 
         expect(control.open).toHaveBeenCalledOnce();
-        expect(control.close).toHaveBeenCalledOnce();
+        expect(updatePluginList).toHaveBeenCalledWith(false, "ix:example");
     });
 
     it("releases every owned processor and reactive subscription", () => {
@@ -84,5 +97,26 @@ describe("CustomisationSyncContext commands", () => {
         expect(offChanged).toHaveBeenCalledWith(pluginScanningChanged);
         expect(setEnumerationActive).toHaveBeenCalledWith(false);
         expect(publishScanCount).toHaveBeenCalledWith(0);
+    });
+
+    it("characterises the inherited setting-realisation gates pending separate review", async () => {
+        const isReady = vi.fn(() => false);
+        const isSuspended = vi.fn(() => false);
+        const periodicPluginSweepProcessor = { disable: vi.fn(), enable: vi.fn() };
+        const scanAllConfigFiles = vi.fn(async () => undefined);
+        const configSync = Object.create(CustomisationSyncContext.prototype) as CustomisationSyncContext;
+        Object.assign(configSync, {
+            dependencies: createCustomisationSyncTestDependencies({ isReady, isSuspended }),
+            periodicPluginSweepProcessor,
+            scanAllConfigFiles,
+        });
+
+        await expect(configSync.serviceHandlers.onRealiseSetting()).resolves.toBe(true);
+
+        expect(periodicPluginSweepProcessor.disable).toHaveBeenCalledOnce();
+        expect(isReady).not.toHaveBeenCalled();
+        expect(isSuspended).toHaveBeenCalledOnce();
+        expect(scanAllConfigFiles).not.toHaveBeenCalled();
+        expect(periodicPluginSweepProcessor.enable).not.toHaveBeenCalled();
     });
 });

@@ -11,9 +11,9 @@ import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlu
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import type {
     HiddenFileSyncContextDependencies,
-    HiddenFileSyncJsonResolution,
     HiddenFileSyncProgress,
 } from "@/features/HiddenFileSync/hiddenFileSyncContext.ts";
+import type { HiddenFileSyncJsonResolution } from "@/features/HiddenFileSync/hiddenFileSyncConflictResolution.ts";
 import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "@/main.ts";
 

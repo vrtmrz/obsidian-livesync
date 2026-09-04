@@ -18,8 +18,14 @@ describe("Optional File Sync ownership boundary", () => {
         expect(mainSource).not.toContain("optionalFileSync.testing");
         expect(featureSource).toContain("new CustomisationSyncContext");
         expect(featureSource).toContain("new HiddenFileSyncContext");
+        expect(featureSource).toContain("customisationSync.serviceHandlers");
+        expect(featureSource).toContain("hiddenFileSync.serviceHandlers");
+        expect(featureSource).toContain("customisationSync.testing");
+        expect(featureSource).toContain("hiddenFileSync.testing");
         expect(customisationSource).not.toContain("onBindFunction(");
         expect(hiddenSource).not.toContain("onBindFunction(");
+        expect(customisationSource).not.toMatch(/\b_(?:any|every|all)[A-Z]/);
+        expect(hiddenSource).not.toMatch(/\b_(?:any|every|all)[A-Z]/);
         expect(customisationSource).not.toContain("LiveSyncCommands");
         expect(hiddenSource).not.toContain("LiveSyncCommands");
         expect(customisationSource).not.toContain("extends LiveSyncContext");

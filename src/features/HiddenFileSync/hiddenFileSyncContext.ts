@@ -6,24 +6,13 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
-    type SavingEntry,
     type DocumentID,
-    type UXFileInfo,
-    type UXStat,
-    LOG_LEVEL_DEBUG,
     type MetaEntry,
-    type UXDataWriteOptions,
     type ObsidianLiveSyncSettings,
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { type InternalFileInfo, ICHeader, ICHeaderEnd } from "@/common/types.ts";
-import {
-    readAsBlob,
-    isDocContentSame,
-    readContent,
-    createBlob,
-    type CustomRegExp,
-} from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { type CustomRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     compareMTime,
     isInternalMetadata,
@@ -31,28 +20,68 @@ import {
     cancelTask,
     scheduleTask,
     getLogLevel,
-    autosaveCache,
-    type MapLike,
     onlyInNTimes,
     BASE_IS_NEW,
     EVEN,
-    displayRev,
 } from "@/common/utils.ts";
 import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { $msg } from "@/common/translation";
 import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
-import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
 import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
 import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import type { IPathService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
-import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import type { HiddenFileSyncCommandView, HiddenFileSyncRepairView } from "./hiddenFileSyncViews.ts";
+import {
+    createHiddenFileSyncRepairView,
+    createHiddenFileSyncServiceHandlerView,
+    createHiddenFileSyncTestingView,
+    type HiddenFileSyncCommandView,
+    type HiddenFileSyncRepairView,
+    type HiddenFileSyncServiceHandlerView,
+    type HiddenFileSyncTestingRebuild,
+    type HiddenFileSyncTestingView,
+} from "./hiddenFileSyncViews.ts";
+import { isHiddenFileSyncPath, matchesHiddenFileSyncPatterns } from "./hiddenFileSyncPathPolicy.ts";
+import { describeHiddenFileSyncDocument, getHiddenFileSyncComparisonMTime } from "./hiddenFileSyncState.ts";
+import {
+    collectOptionalFileSyncFiles,
+    type OptionalFileSyncFileTreeDependencies,
+} from "@/features/optionalFileSyncFileTree.ts";
+import {
+    deleteHiddenFileFromStorage,
+    ensureHiddenFileDirectory,
+    readHiddenFileWithInfo,
+    triggerHiddenFileEvent,
+    writeHiddenFile,
+    writeHiddenFileFromDatabase,
+    type HiddenFileSyncStorageDependencies,
+} from "./hiddenFileSyncStorage.ts";
+import { loadHiddenFileSyncBaseEntry, loadLiveHiddenFileSyncRevision } from "./hiddenFileSyncDatabaseLoaders.ts";
+import {
+    createHiddenFileSyncDatabaseWriteOperations,
+    type HiddenFileSyncDatabaseWriteOperations,
+} from "./hiddenFileSyncDatabaseWriteOperations.ts";
+import {
+    createHiddenFileSyncDatabaseExtractionOperations,
+    type HiddenFileSyncDatabaseExtractionOperations,
+} from "./hiddenFileSyncDatabaseExtractionOperations.ts";
+import {
+    createHiddenFileSyncConflictResolution,
+    type HiddenFileSyncConflictResolution,
+    type HiddenFileSyncJsonResolution,
+} from "./hiddenFileSyncConflictResolution.ts";
+import {
+    createHiddenFileSyncProcessedState,
+    type HiddenFileSyncProcessedState,
+} from "./hiddenFileSyncProcessedState.ts";
+import {
+    createHiddenFileSyncChangeProcessor,
+    type HiddenFileSyncChangeProcessor,
+} from "./hiddenFileSyncChangeProcessor.ts";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
 export type HiddenFileSyncProgress = {
@@ -94,17 +123,6 @@ type HiddenFileSyncDatabase = Pick<
     };
 };
 
-type HiddenFileSyncStorage = Pick<
-    StorageAccess,
-    | "ensureDir"
-    | "isExistsIncludeHidden"
-    | "readHiddenFileAuto"
-    | "removeHidden"
-    | "statHidden"
-    | "triggerHiddenFile"
-    | "writeHiddenFileAuto"
->;
-
 type HiddenFileSyncDatabaseFileAccess = Pick<
     DatabaseFileAccess,
     "fetchEntryFromMeta" | "fetchEntryMeta" | "getConflictedRevs" | "storeWithBaseRevision"
@@ -115,74 +133,206 @@ export type HiddenFileSyncPeriodicProcessor = {
     disable(): void;
 };
 
-export type HiddenFileSyncJsonResolution = {
-    keepRevision?: string;
-    mergedText?: string;
-};
+export type HiddenFileSyncContextDependencies = OptionalFileSyncFileTreeDependencies &
+    HiddenFileSyncStorageDependencies & {
+        getSettings(): HiddenFileSyncSettings;
+        getLocalDatabase(): HiddenFileSyncDatabase;
+        getKeyValueDatabase(): KeyValueDatabase;
+        databaseFileAccess: HiddenFileSyncDatabaseFileAccess;
+        path: Pick<IPathService, "getPath" | "markChangesAreSame" | "path2id" | "unmarkChanges">;
+        createProgress(prefix?: string, level?: LOG_LEVEL): HiddenFileSyncProgress;
+        createPeriodicProcessor(process: () => Promise<unknown>): HiddenFileSyncPeriodicProcessor;
+        isReady(): boolean;
+        isSuspended(): boolean;
+        isDatabaseReady(): boolean;
+        isIgnoredByIgnoreFile(path: string): Promise<boolean>;
+        getConfigDir(): string;
+        getRootPath(): string;
+        getFileRegExp(
+            key:
+                | "syncInternalFileOverwritePatterns"
+                | "syncInternalFilesIgnorePatterns"
+                | "syncInternalFilesTargetPatterns"
+        ): CustomRegExp[];
+        applySettings(partial: Partial<ObsidianLiveSyncSettings>, saveImmediately?: boolean): Promise<void>;
+        setSyncInternalFilesEnabled(enabled: boolean): void;
+        resolveJsonConflict(
+            path: FilePath,
+            docs: [LoadedEntry, LoadedEntry],
+            apply: (resolution: HiddenFileSyncJsonResolution) => Promise<boolean>
+        ): Promise<boolean>;
+        showConfigurationChangeNotice(updatedFolders: readonly string[]): void;
+        hideConfigurationChangeNotice(): void;
+        closeJsonConflictDialogs(): void;
+        publishActivity(eventCount: number, processingCount: number): void;
+        ownsLocalFile(path: FilePath): boolean;
+    };
 
-export type HiddenFileSyncDirectoryListing = {
-    files: string[];
-    folders: string[];
-};
-
-export type HiddenFileSyncContextDependencies = {
-    getSettings(): HiddenFileSyncSettings;
-    getLocalDatabase(): HiddenFileSyncDatabase;
-    getKeyValueDatabase(): KeyValueDatabase;
-    storageAccess: HiddenFileSyncStorage;
-    databaseFileAccess: HiddenFileSyncDatabaseFileAccess;
-    path: Pick<IPathService, "getPath" | "markChangesAreSame" | "path2id" | "unmarkChanges">;
-    log: LogFunction;
-    createProgress(prefix?: string, level?: LOG_LEVEL): HiddenFileSyncProgress;
-    createPeriodicProcessor(process: () => Promise<unknown>): HiddenFileSyncPeriodicProcessor;
-    isReady(): boolean;
-    isSuspended(): boolean;
-    isDatabaseReady(): boolean;
-    isIgnoredByIgnoreFile(path: string): Promise<boolean>;
-    getConfigDir(): string;
-    getRootPath(): string;
-    listFiles(path: string): Promise<HiddenFileSyncDirectoryListing>;
-    getFileRegExp(
-        key: "syncInternalFileOverwritePatterns" | "syncInternalFilesIgnorePatterns" | "syncInternalFilesTargetPatterns"
-    ): CustomRegExp[];
-    applySettings(partial: Partial<ObsidianLiveSyncSettings>, saveImmediately?: boolean): Promise<void>;
-    setSyncInternalFilesEnabled(enabled: boolean): void;
-    resolveJsonConflict(
-        path: FilePath,
-        docs: [LoadedEntry, LoadedEntry],
-        apply: (resolution: HiddenFileSyncJsonResolution) => Promise<boolean>
-    ): Promise<boolean>;
-    showConfigurationChangeNotice(updatedFolders: readonly string[]): void;
-    hideConfigurationChangeNotice(): void;
-    closeJsonConflictDialogs(): void;
-    publishActivity(eventCount: number, processingCount: number): void;
-    ownsLocalFile(path: FilePath): boolean;
-};
-
-function getComparingMTime(
-    doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
-    includeDeleted = false
-) {
-    if (doc === null) return 0;
-    if (doc === false) return 0;
-    if (doc === undefined) return 0;
-    if (!includeDeleted) {
-        if ("deleted" in doc && doc.deleted) return 0;
-        if ("_deleted" in doc && doc._deleted) return 0;
-    }
-    if ("stat" in doc) return doc.stat?.mtime ?? 0;
-    return doc.mtime ?? 0;
-}
-
-export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenFileSyncRepairView {
+export class HiddenFileSyncContext implements HiddenFileSyncCommandView {
     private readonly dependencies: HiddenFileSyncContextDependencies;
-    readonly periodicInternalFileScanProcessor: HiddenFileSyncPeriodicProcessor;
-    private eventCount = 0;
-    private processingCount = 0;
+    private readonly processedState: HiddenFileSyncProcessedState;
+    private readonly databaseWriteOperations: HiddenFileSyncDatabaseWriteOperations;
+    private readonly databaseExtractionOperations: HiddenFileSyncDatabaseExtractionOperations;
+    private readonly conflictResolution: HiddenFileSyncConflictResolution;
+    private readonly changeProcessor: HiddenFileSyncChangeProcessor;
+    readonly serviceHandlers: HiddenFileSyncServiceHandlerView;
+    readonly testing: HiddenFileSyncTestingView;
+    readonly repair: HiddenFileSyncRepairView;
+    private readonly periodicInternalFileScanProcessor: HiddenFileSyncPeriodicProcessor;
+    private rebuildMergingHook: HiddenFileSyncTestingRebuild | undefined;
     private disposed = false;
 
     constructor(dependencies: HiddenFileSyncContextDependencies) {
         this.dependencies = dependencies;
+        this.processedState = createHiddenFileSyncProcessedState({
+            getKeyValueDatabase: () => this.dependencies.getKeyValueDatabase(),
+            getLocalDatabase: () => this.dependencies.getLocalDatabase(),
+            storageAccess: this.dependencies.storageAccess,
+            path: this.dependencies.path,
+            log: (message, level, key) => this.dependencies.log(message, level, key),
+        });
+        this.databaseWriteOperations = createHiddenFileSyncDatabaseWriteOperations({
+            serialiseFileOperation: async (key, operation) => await serialized(key, operation),
+            isIgnoredByIgnoreFile: async (path) => await dependencies.isIgnoredByIgnoreFile(path),
+            readFileWithInfo: async (path) => await readHiddenFileWithInfo(dependencies, path),
+            loadBaseEntry: async (path) => await loadHiddenFileSyncBaseEntry(dependencies, path, true),
+            loadBaseMetadata: async (path) => await loadHiddenFileSyncBaseEntry(dependencies, path, false),
+            loadLiveRevision: async (path, revision) =>
+                await loadLiveHiddenFileSyncRevision(dependencies, path, revision),
+            fetchEntryFromMeta: async (meta, waitForReady, skipCheck) =>
+                await dependencies.databaseFileAccess.fetchEntryFromMeta(meta, waitForReady, skipCheck),
+            storeWithBaseRevision: async (file, baseRevision, skipCheck) =>
+                await dependencies.databaseFileAccess.storeWithBaseRevision(file, baseRevision, skipCheck),
+            putDatabaseEntry: async (entry) => await dependencies.getLocalDatabase().putDBEntry(entry),
+            putRaw: async (entry) => await dependencies.getLocalDatabase().putRaw(entry),
+            removeRevision: async (id, revision) => await dependencies.getLocalDatabase().removeRevision(id, revision),
+            processedState: this.processedState,
+            now: () => new Date().getTime(),
+            log: (message, level, key) => dependencies.log(message, level, key),
+        });
+        this.databaseExtractionOperations = createHiddenFileSyncDatabaseExtractionOperations({
+            serialiseFileOperation: async (key, operation) => await serialized(key, operation),
+            isIgnoredByIgnoreFile: async (path) => await dependencies.isIgnoredByIgnoreFile(path),
+            loadDatabaseMetadata: async (path) =>
+                await dependencies.getLocalDatabase().getDBEntryMeta(path, { conflicts: true }, true),
+            loadLiveRevision: async (path, revision) =>
+                await loadLiveHiddenFileSyncRevision(dependencies, path, revision),
+            loadDatabaseEntry: async (entry) =>
+                await dependencies.getLocalDatabase().getDBEntryFromMeta(entry, false, true),
+            statStorageFile: async (path) => await dependencies.storageAccess.statHidden(path),
+            writeStorageFile: async (path, entry, force) =>
+                await writeHiddenFileFromDatabase(dependencies, path, entry, force),
+            deleteStorageFile: async (path) => await deleteHiddenFileFromStorage(dependencies, path),
+            processedState: this.processedState,
+            queueNotification: (path) => this.queueNotification(path),
+            log: (message, level, key) => dependencies.log(message, level, key),
+        });
+        this.conflictResolution = createHiddenFileSyncConflictResolution({
+            database: {
+                scanConflictedEntries: () =>
+                    dependencies.getLocalDatabase().findEntries(ICHeader, ICHeaderEnd, { conflicts: true }),
+                getDocumentId: async (path) => await dependencies.path.path2id(path, ICHeader),
+                loadCurrentMetadata: async (id) =>
+                    await dependencies.getLocalDatabase().getRaw<MetaEntry>(id, { conflicts: true }),
+                loadConflictingMetadata: async (id, revision) =>
+                    await dependencies.getLocalDatabase().getRaw<MetaEntry>(id, { rev: revision }),
+                loadRevisionHistory: async (id) =>
+                    await dependencies.getLocalDatabase().getRaw(id, { revs_info: true }),
+                loadRevisionEntry: async (path, revision) =>
+                    await dependencies.getLocalDatabase().getDBEntry(addPrefix(path, ICHeader), { rev: revision }),
+                mergeJson: async (path, baseRevision, currentRevision, conflictedRevision) =>
+                    await dependencies
+                        .getLocalDatabase()
+                        .managers.conflictManager.mergeObject(path, baseRevision, currentRevision, conflictedRevision),
+                removeRevision: async (id, revision) =>
+                    await dependencies.getLocalDatabase().removeRevision(id, revision),
+                deleteRevision: async (entry) =>
+                    await dependencies.getLocalDatabase().deleteDBEntry(dependencies.path.getPath(entry), {
+                        rev: entry._rev,
+                    }),
+            },
+            storage: {
+                ensureDirectory: async (path) => await ensureHiddenFileDirectory(dependencies, path),
+                writeFile: async (path, data) => await writeHiddenFile(dependencies, path, data),
+                triggerEvent: async (path) => await triggerHiddenFileEvent(dependencies, path),
+            },
+            reconciliation: {
+                storeFile: async (file, forceWrite) => await this.databaseWriteOperations.store(file, forceWrite),
+                extractFile: async (path) => await this.databaseExtractionOperations.extract(path),
+            },
+            interaction: {
+                resolveJsonConflict: async (path, docs, apply) =>
+                    await dependencies.resolveJsonConflict(path, docs, apply),
+            },
+            shouldOverwrite: (path) =>
+                dependencies.getFileRegExp("syncInternalFileOverwritePatterns").some((pattern) => pattern.test(path)),
+            log: (message, level, key) => dependencies.log(message, level, key),
+        });
+        this.changeProcessor = createHiddenFileSyncChangeProcessor({
+            storageAccess: dependencies.storageAccess,
+            readFileWithInfo: async (path) => await readHiddenFileWithInfo(dependencies, path),
+            loadDatabaseMetadata: async (path) =>
+                await dependencies.getLocalDatabase().getDBEntryMeta(path, { conflicts: true }, true),
+            databaseWriteOperations: this.databaseWriteOperations,
+            databaseExtractionOperations: this.databaseExtractionOperations,
+            processedState: this.processedState,
+            conflictResolution: this.conflictResolution,
+            log: (message, level, key) => dependencies.log(message, level, key),
+            publishActivity: (eventCount, processingCount) => dependencies.publishActivity(eventCount, processingCount),
+        });
+        this.repair = createHiddenFileSyncRepairView({
+            scanInternalFiles: async () => await this.scanInternalFiles(),
+            storeInternalFileToDatabase: async (file, forceWrite) =>
+                await this.databaseWriteOperations.store(file, forceWrite),
+            storeInternalFileToDatabaseWithBaseRevision: async (file, baseRevision, createIfDifferent) =>
+                await this.databaseWriteOperations.storeWithBaseRevision(file, baseRevision, createIfDifferent),
+            extractInternalFileRevisionFromDatabase: async (storageFilePath, revision, force) =>
+                await this.databaseExtractionOperations.extractRevision(storageFilePath, revision, force),
+        });
+        this.serviceHandlers = createHiddenFileSyncServiceHandlerView({
+            processOptionalFileEvent: async (path) => await this.processOptionalFileEvent(path),
+            processOptionalSyncFiles: async (doc) => await this.processOptionalSyncFiles(doc),
+            onSettingLoaded: async () => await this.onSettingLoaded(),
+            realiseSettingSyncMode: async () => await this.realiseSettingSyncMode(),
+            onResuming: async () => await this.onResuming(),
+            beforeReplicate: async (showNotice) => await this.beforeReplicate(showNotice),
+            onDatabaseInitialised: async (showNotice) => await this.onDatabaseInitialised(showNotice),
+            suspendExtraSync: async () => await this.suspendExtraSync(),
+            configureOptionalSyncFeature: async (mode) => await this.configureOptionalSyncFeature(mode),
+            isTargetFileEligible: async (path) => await this.isTargetFileEligible(path),
+            queueConflict: async (path) => await this.queueConflict(path),
+        });
+        this.testing = createHiddenFileSyncTestingView({
+            isManualCommandAvailable: () => this.isManualCommandAvailable(),
+            scanAllStorageChanges: async (showNotice) => await this.scanAllStorageChanges(showNotice),
+            scanAllDatabaseChanges: async (showNotice) => await this.scanAllDatabaseChanges(showNotice),
+            applyOfflineChanges: async (showNotice) => await this.applyOfflineChanges(showNotice),
+            updateSettingCache: () => this.updateSettingCache(),
+            initialiseInternalFileSync: async (direction, showMessage, targetFiles) =>
+                await this.initialiseInternalFileSync(direction, showMessage, targetFiles),
+            conflictResolution: this.conflictResolution.testing,
+            readFileWithInfo: async (path) => await readHiddenFileWithInfo(dependencies, path),
+            showConfigurationChangeNotice: (updatedFolders) => {
+                this.queuedNotificationFiles.clear();
+                for (const folder of updatedFolders) {
+                    this.queuedNotificationFiles.add(folder);
+                }
+                this.notifyConfigChange();
+            },
+            interceptRebuildMerging: (interceptor) => {
+                const previousHook = this.rebuildMergingHook;
+                const runRebuild = async (showNotice: boolean, targetFiles?: FilePath[] | false) =>
+                    await this.rebuildMerging(showNotice, targetFiles);
+                const hook: HiddenFileSyncTestingRebuild = async (showNotice, targetFiles) =>
+                    await interceptor(runRebuild, showNotice, targetFiles);
+                this.rebuildMergingHook = hook;
+                return () => {
+                    if (this.rebuildMergingHook === hook) {
+                        this.rebuildMergingHook = previousHook;
+                    }
+                };
+            },
+        });
         this.periodicInternalFileScanProcessor = dependencies.createPeriodicProcessor(
             async () =>
                 this.isThisModuleEnabled() && this._isDatabaseReady() && (await this.scanAllStorageChanges(false))
@@ -203,14 +353,6 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
 
     private get databaseFileAccess() {
         return this.dependencies.databaseFileAccess;
-    }
-
-    private get kvDB() {
-        return this.dependencies.getKeyValueDatabase();
-    }
-
-    private async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
-        return await this.dependencies.path.path2id(filename, prefix);
     }
 
     private getPath(entry: AnyEntry): FilePathWithPrefix {
@@ -241,7 +383,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         return this.dependencies.createProgress(prefix, level);
     }
 
-    isThisModuleEnabled() {
+    private isThisModuleEnabled() {
         return this.settings.syncInternalFiles;
     }
 
@@ -249,34 +391,30 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         if (this.disposed) return;
         this.disposed = true;
         this.periodicInternalFileScanProcessor?.disable();
-        this.conflictResolutionProcessor?.terminate();
-        this.pendingConflictChecks.clear();
+        this.changeProcessor.dispose();
+        this.conflictResolution.dispose();
+        this.rebuildMergingHook = undefined;
         this.queuedNotificationFiles.clear();
         this.cacheFileRegExps.clear();
         cancelTask(HIDDEN_FILE_NOTIFICATION_TASK);
-        this.eventCount = 0;
-        this.processingCount = 0;
-        this.dependencies.publishActivity(0, 0);
         this.dependencies.closeJsonConflictDialogs();
         this.dependencies.hideConfigurationChangeNotice();
     }
 
     // The key-value database becomes available before this lifecycle callback.
-    async _everyOnDatabaseInitialized(showNotice: boolean) {
-        this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
-        this._databaseInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed-database");
-        this._fileInfoLastKnown = await autosaveCache(this.kvDB, "hidden-file-lastKnown");
+    private async onDatabaseInitialised(showNotice: boolean) {
+        await this.processedState.initialise();
         if (this.isThisModuleEnabled()) {
-            if (this._fileInfoLastProcessed.size == 0) {
+            if (this.processedState.getLastProcessedFileCount() == 0) {
                 this._log(`No cache found. Performing startup scan.`, LOG_LEVEL_VERBOSE);
-                await this.performStartupScan(true);
+                await this.applyOfflineChanges(true);
             } else {
-                await this.performStartupScan(showNotice);
+                await this.applyOfflineChanges(showNotice);
             }
         }
         return true;
     }
-    async _everyBeforeReplicate(showNotice: boolean) {
+    private async beforeReplicate(showNotice: boolean) {
         if (
             this.isThisModuleEnabled() &&
             this._isDatabaseReady() &&
@@ -288,7 +426,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         return true;
     }
 
-    _everyOnloadAfterLoadSettings(): Promise<boolean> {
+    private onSettingLoaded(): Promise<boolean> {
         this.updateSettingCache();
         return Promise.resolve(true);
     }
@@ -297,7 +435,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         this.cacheFileRegExps.clear();
     }
 
-    isReady() {
+    private isReady() {
         if (this.disposed) return false;
         if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
@@ -309,15 +447,11 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         return this.settings.useAdvancedMode && this.isReady() && this._isDatabaseReady();
     }
 
-    async performStartupScan(showNotice: boolean) {
-        await this.applyOfflineChanges(showNotice);
-    }
-
-    async _everyOnResumeProcess(): Promise<boolean> {
+    private async onResuming(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
         if (this._isMainSuspended()) return true;
         if (this.isThisModuleEnabled()) {
-            await this.performStartupScan(false);
+            await this.applyOfflineChanges(false);
         }
         this.periodicInternalFileScanProcessor.enable(
             this.isThisModuleEnabled() && this.settings.syncInternalFilesInterval
@@ -327,7 +461,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         return true;
     }
 
-    _everyRealizeSettingSyncMode(): Promise<boolean> {
+    private realiseSettingSyncMode(): Promise<boolean> {
         this.periodicInternalFileScanProcessor?.disable();
         if (this._isMainSuspended()) return Promise.resolve(true);
         if (!this._isMainReady()) return Promise.resolve(true);
@@ -340,22 +474,14 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         return Promise.resolve(true);
     }
 
-    async _anyProcessOptionalFileEvent(path: FilePath): Promise<boolean> {
+    private async processOptionalFileEvent(path: FilePath): Promise<boolean> {
         if (this.isReady()) {
             return (await this.trackStorageFileModification(path)) || false;
         }
         return false;
     }
 
-    _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
-        if (isInternalMetadata(path)) {
-            this.queueConflictCheck(path);
-            return Promise.resolve(true);
-        }
-        return Promise.resolve(false);
-    }
-
-    async _anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean> {
+    private async processOptionalSyncFiles(doc: LoadedEntry): Promise<boolean> {
         if (isInternalMetadata(doc._id)) {
             if (this.isThisModuleEnabled()) {
                 //system file
@@ -379,225 +505,25 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
         return false;
     }
 
-    async loadFileWithInfo(path: FilePath): Promise<UXFileInfo> {
-        const stat = await this.storageAccess.statHidden(path);
-        if (!stat)
-            return {
-                name: path.split("/").pop() ?? "",
-                path,
-                stat: {
-                    size: 0,
-                    mtime: 0,
-                    ctime: 0,
-                    type: "file",
-                },
-                isInternal: true,
-                deleted: true,
-                body: createBlob(new Uint8Array(0)),
-            };
-        const content = await this.storageAccess.readHiddenFileAuto(path);
-        return {
-            name: path.split("/").pop() ?? "",
-            path,
-            stat,
-            isInternal: true,
-            deleted: false,
-            body: createBlob(content),
-        };
-    }
-
-    _fileInfoLastProcessed!: MapLike<string, string>;
-    _fileInfoLastKnown!: MapLike<string, number>;
-    _databaseInfoLastProcessed!: MapLike<string, string>;
-
-    statToKey(stat: UXStat | null) {
-        return `${stat?.mtime ?? 0}-${stat?.size ?? 0}`;
-    }
-    docToKey(doc: LoadedEntry | MetaEntry) {
-        return `${doc.mtime}-${doc.size}-${doc._rev}-${doc._deleted || doc.deleted || false ? "-0" : "-1"}`;
-    }
-    async fileToStatKey(file: FilePath, stat: UXStat | null = null) {
-        if (!stat) stat = await this.storageAccess.statHidden(file);
-        return this.statToKey(stat);
-    }
-
-    updateLastProcessedFile(file: FilePath, keySrc: string | UXStat) {
-        const key = typeof keySrc == "string" ? keySrc : this.statToKey(keySrc);
-        const splitted = key.split("-");
-        if (splitted[0] != "0") {
-            this._fileInfoLastKnown.set(file, Number(splitted[0]));
-        }
-        this._fileInfoLastProcessed.set(file, key);
-    }
-
-    async updateLastProcessedAsActualFile(file: FilePath, stat?: UXStat | null) {
-        if (!stat) stat = await this.storageAccess.statHidden(file);
-        this._fileInfoLastProcessed.set(file, this.statToKey(stat));
-    }
-
-    resetLastProcessedFile(targetFiles: FilePath[] | false) {
-        if (targetFiles) {
-            for (const key of targetFiles) {
-                this._fileInfoLastProcessed.delete(key);
-            }
-        } else {
-            this._log(`Delete all processed mark.`, LOG_LEVEL_VERBOSE);
-            // THINKING: Should we...
-            // - delete all `Known file` processed mark? (This is current implementation)
-            // - delete all `Existing file` processed mark?
-            // - delete all files inside the config folder of current device mark?
-            this._fileInfoLastProcessed.clear();
-        }
-    }
-
-    getLastProcessedFileMTime(file: FilePath) {
-        const key = this._fileInfoLastKnown.get(file);
-        if (!key) return 0;
-        return key;
-    }
-
-    getLastProcessedFileKey(file: FilePath) {
-        return this._fileInfoLastProcessed.get(file);
-    }
-
-    getLastProcessedDatabaseKey(file: FilePath) {
-        return this._databaseInfoLastProcessed.get(file);
-    }
-    updateLastProcessedDatabase(file: FilePath, keySrc: string | MetaEntry | LoadedEntry) {
-        const key = typeof keySrc == "string" ? keySrc : this.docToKey(keySrc);
-        this._databaseInfoLastProcessed.set(file, key);
-    }
-    updateLastProcessed(path: FilePath, db: MetaEntry | LoadedEntry, stat: UXStat) {
-        this.updateLastProcessedDatabase(path, db);
-        this.updateLastProcessedFile(path, this.statToKey(stat));
-        const dbMTime = getComparingMTime(db);
-        const storageMTime = getComparingMTime(stat);
-        if (dbMTime == 0 || storageMTime == 0) {
-            this.dependencies.path.unmarkChanges(path);
-        } else {
-            this.dependencies.path.markChangesAreSame(path, getComparingMTime(db), getComparingMTime(stat));
-        }
-    }
-    updateLastProcessedDeletion(path: FilePath, db: MetaEntry | LoadedEntry | false) {
-        this.dependencies.path.unmarkChanges(path);
-        if (db) this.updateLastProcessedDatabase(path, db);
-        this.updateLastProcessedFile(path, this.statToKey(null));
-    }
-    async ensureDir(path: FilePath) {
-        const isExists = await this.storageAccess.isExistsIncludeHidden(path);
-        if (!isExists) {
-            await this.storageAccess.ensureDir(path);
-        }
-    }
-
-    async writeFile(path: FilePath, data: string | ArrayBuffer, opt?: UXDataWriteOptions): Promise<UXStat | null> {
-        await this.storageAccess.writeHiddenFileAuto(path, data, opt);
-        const stat = await this.storageAccess.statHidden(path);
-        // this.updateLastProcessedFile(path, this.statToKey(stat));
-        return stat;
-    }
-
-    async __removeFile(path: FilePath): Promise<"OK" | "ALREADY" | false> {
-        try {
-            if (!(await this.storageAccess.isExistsIncludeHidden(path))) {
-                // Already deleted
-                // this.updateLastProcessedFile(path, this.statToKey(null));
-                return "ALREADY";
-            }
-            if (await this.storageAccess.removeHidden(path)) {
-                // this.updateLastProcessedFile(path, this.statToKey(null));
-                return "OK";
-            }
-        } catch (ex) {
-            this._log(`Failed to remove file:${path}`);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-        }
-        return false;
-    }
-    async triggerEvent(path: FilePath) {
-        try {
-            await this.storageAccess.triggerHiddenFile(path);
-        } catch (ex) {
-            this._log("Failed to call internal API(reconcileInternalFile)", LOG_LEVEL_VERBOSE);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-        }
-    }
-
-    async updateLastProcessedAsActualDatabase(file: FilePath, doc?: MetaEntry | LoadedEntry | null | false) {
-        const dbPath = addPrefix(file, ICHeader);
-        if (!doc) doc = await this.localDatabase.getDBEntryMeta(dbPath);
-        if (!doc) return;
-        this._databaseInfoLastProcessed.set(file, this.docToKey(doc));
-    }
-
-    resetLastProcessedDatabase(targetFiles: FilePath[] | false) {
-        if (targetFiles) {
-            for (const key of targetFiles) {
-                this._databaseInfoLastProcessed.delete(key);
-            }
-        } else {
-            this._log(`Delete all processed mark.`, LOG_LEVEL_VERBOSE);
-            // THINKING: Should we...
-            // - delete all `Known file` processed mark? (This is current implementation)
-            // - delete all `Existing file` processed mark?
-            // - delete all files inside the config folder of current device mark?
-            this._databaseInfoLastProcessed.clear();
-        }
-    }
-
-    async adoptCurrentStorageFilesAsProcessed(targetFiles: FilePath[] | false) {
+    private async adoptCurrentStorageFilesAsProcessed(targetFiles: FilePath[] | false) {
         const allFiles = await this.scanInternalFileNames();
         const files = targetFiles ? allFiles.filter((e) => targetFiles.some((t) => e.indexOf(t) !== -1)) : allFiles;
         for (const file of files) {
-            await this.updateLastProcessedAsActualFile(file);
+            await this.processedState.updateLastProcessedAsActualFile(file);
         }
     }
-    async adoptCurrentDatabaseFilesAsProcessed(targetFiles: FilePath[] | false) {
+    private async adoptCurrentDatabaseFilesAsProcessed(targetFiles: FilePath[] | false) {
         const allFiles = await this.getAllDatabaseFiles();
         const files = targetFiles
             ? allFiles.filter((e) => targetFiles.some((t) => e.path.indexOf(t) !== -1))
             : allFiles;
         for (const file of files) {
             const path = stripAllPrefixes(this.getPath(file));
-            await this.updateLastProcessedAsActualDatabase(path, file);
+            await this.processedState.updateLastProcessedAsActualDatabase(path, file);
         }
     }
 
-    semaphore = Semaphore(10);
-    async serializedForEvent<T>(file: FilePath, fn: () => Promise<T>) {
-        this.eventCount++;
-        this.publishActivity();
-        const rel = await this.semaphore.acquire();
-        try {
-            return await serialized(`hidden-file-event:${file}`, async () => {
-                this.processingCount++;
-                this.publishActivity();
-                try {
-                    return await fn();
-                } finally {
-                    this.processingCount = Math.max(0, this.processingCount - 1);
-                    this.publishActivity();
-                }
-            });
-        } finally {
-            rel();
-            this.eventCount = Math.max(0, this.eventCount - 1);
-            this.publishActivity();
-        }
-    }
-
-    private publishActivity() {
-        this.dependencies.publishActivity(
-            this.disposed ? 0 : this.eventCount,
-            this.disposed ? 0 : this.processingCount
-        );
-    }
-
-    async useStorageFiles(files: FilePath[], showNotice = false, onlyNew = false) {
-        return await this.trackScannedStorageChanges(files, showNotice, onlyNew, true);
-    }
-
-    async trackScannedStorageChanges(
+    private async trackScannedStorageChanges(
         processFiles: FilePath[],
         showNotice: boolean = false,
         onlyNew = false,
@@ -629,7 +555,7 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
             const logLevel = getLogLevel(showNotice);
             const p = this._progress(`[⚙ Scanning Storage -> DB ]\n`, logLevel);
             p.log(`Scanning storage files...`);
-            const knownNames = [...this._fileInfoLastProcessed.keys()] as FilePath[];
+            const knownNames = [...this.processedState.getLastProcessedFileKeys()] as FilePath[];
             const existNames = await this.scanInternalFileNames();
             const files = new Set([...knownNames, ...existNames]);
 
@@ -642,8 +568,8 @@ export class HiddenFileSyncContext implements HiddenFileSyncCommandView, HiddenF
             const processFiles = nameAndMeta
                 .filter(([path, stat]) => {
                     if (forceWriteAll) return true;
-                    const key = this.getLastProcessedFileKey(path);
-                    const newKey = this.statToKey(stat);
+                    const key = this.processedState.getLastProcessedFileKey(path);
+                    const newKey = this.processedState.storageStateKey(stat);
                     return key != newKey;
                 })
                 .map(([path, stat]) => path);
@@ -663,7 +589,7 @@ Offline Changed files: ${processFiles.length}`;
     /**
      * check the file is changed or not, and if changed, process it.
      */
-    async trackStorageFileModification(
+    private async trackStorageFileModification(
         path: FilePath,
         onlyNew = false,
         forceWrite = false,
@@ -676,343 +602,12 @@ Offline Changed files: ${processFiles.length}`;
             );
             return false;
         }
-        try {
-            return await this.serializedForEvent(path, async () => {
-                let stat = await this.storageAccess.statHidden(path);
-                // sometimes folder is coming.
-                if (stat != null && stat.type != "file") {
-                    return false;
-                }
-                const key = await this.fileToStatKey(path, stat);
-                // At here, we need to check to not to respond the same event.
-                // (a raw event occurs even at the file reading).
-                // This is only for the events. Not for scanning. Because of the scan is for not to miss any changes.
-                // Mostly all of before scanning, we should processed the files at the event.
-                const lastKey = this.getLastProcessedFileKey(path);
-                if (lastKey == key) {
-                    this._log(`${path} Already processed.`, LOG_LEVEL_DEBUG);
-                    return true;
-                }
-                // We should cache the file
-                const cache = await this.loadFileWithInfo(path);
-                const cacheMTime = getComparingMTime(cache.stat);
-                const statMtime = getComparingMTime(stat);
-                if (cacheMTime != statMtime) {
-                    this._log(`Hidden file:${path} is changed.`, LOG_LEVEL_VERBOSE);
-                    stat = cache.stat;
-                }
-                this.updateLastProcessedFile(path, stat!);
-                const lastIsNotFound = !lastKey || lastKey.endsWith("-0-0");
-                const nowIsNotFound = cache.deleted;
-                const type = lastIsNotFound && nowIsNotFound ? "invalid" : nowIsNotFound ? "delete" : "modified";
-
-                if (type == "invalid") {
-                    // Maybe the folder is deleted.
-                    return false;
-                }
-
-                const storageMTimeActual = getComparingMTime(stat);
-                const storageMTime =
-                    storageMTimeActual == 0 ? this.getLastProcessedFileMTime(path) : storageMTimeActual;
-
-                if (onlyNew) {
-                    // If the file is deleted, and it was not new, we should process it.
-                    const prefixedFileName = addPrefix(path, ICHeader);
-                    const filesOnDB = await this.localDatabase.getDBEntryMeta(prefixedFileName);
-                    const dbMTime = getComparingMTime(filesOnDB, includeDeleted);
-                    const diff = compareMTime(storageMTime, dbMTime);
-
-                    if (diff != TARGET_IS_NEW) {
-                        this._log(`Hidden file:${path} is not new.`, LOG_LEVEL_VERBOSE);
-                        if (filesOnDB && stat) {
-                            // OnlyNew not handles the deletion.
-                            this.updateLastProcessed(path, filesOnDB, stat);
-                        }
-                        return true;
-                    }
-                }
-
-                if (type == "delete") {
-                    this._log(`Deletion detected: ${path}`);
-                    const result = await this.deleteInternalFileOnDatabase(path, forceWrite);
-                    return result;
-                } else if (type == "modified") {
-                    this._log(`Modification detected:${path}`, LOG_LEVEL_VERBOSE);
-                    const result = await this.storeInternalFileToDatabase(cache, forceWrite);
-                    const resultText = result === undefined ? "Nothing changed" : result ? "Updated" : "Failed";
-                    this._log(`${resultText}: ${path} ${resultText}`, LOG_LEVEL_VERBOSE);
-                    return result;
-                }
-            });
-        } catch (ex) {
-            this._log(`Failed to process hidden file:${path}`);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-        }
-        // Could not be processed. but it was own task. so return true to prevent further processing.
-        return true;
+        return await this.changeProcessor.processStorageChange(path, onlyNew, forceWrite, includeDeleted);
     }
-
-    // --> Conflict processing
-
-    // Keep one in-flight conflict check per path so repeated sync events do not close the active merge dialogue.
-    pendingConflictChecks = new Set<FilePathWithPrefix>();
-
-    queueConflictCheck(path: FilePathWithPrefix) {
-        if (this.disposed) return;
-        if (this.pendingConflictChecks.has(path)) return;
-        this.pendingConflictChecks.add(path);
-        this.conflictResolutionProcessor.enqueue(path);
-    }
-
-    finishConflictCheck(path: FilePathWithPrefix) {
-        this.pendingConflictChecks.delete(path);
-    }
-
-    requeueConflictCheck(path: FilePathWithPrefix) {
-        this.finishConflictCheck(path);
-        this.queueConflictCheck(path);
-    }
-
-    async resolveConflictOnInternalFiles() {
-        // Scan all conflicted internal files
-        const conflicted = this.localDatabase.findEntries(ICHeader, ICHeaderEnd, { conflicts: true });
-        this.conflictResolutionProcessor.suspend();
-        try {
-            for await (const doc of conflicted) {
-                if (!("_conflicts" in doc)) continue;
-                if (isInternalMetadata(doc._id)) {
-                    this.queueConflictCheck(doc.path);
-                }
-            }
-        } catch (ex) {
-            this._log("something went wrong on resolving all conflicted internal files");
-            this._log(ex, LOG_LEVEL_VERBOSE);
-        }
-        await this.conflictResolutionProcessor.startPipeline().waitForAllProcessed();
-    }
-
-    async resolveByNewerEntry(
-        id: DocumentID,
-        path: FilePathWithPrefix,
-        currentDoc: MetaEntry,
-        currentRev: string,
-        conflictedRev: string
-    ) {
-        const conflictedDoc = await this.localDatabase.getRaw<MetaEntry>(id, { rev: conflictedRev });
-        // determine which revision should been deleted.
-        // simply check modified time
-        const mtimeCurrent = getComparingMTime(currentDoc, true);
-        const mtimeConflicted = getComparingMTime(conflictedDoc, true);
-        // this._log(`Revisions:${new Date(mtimeA).toLocaleString} and ${new Date(mtimeB).toLocaleString}`);
-        // console.log(`mtime:${mtimeA} - ${mtimeB}`);
-        const delRev = mtimeCurrent < mtimeConflicted ? currentRev : conflictedRev;
-        // delete older one.
-        await this.localDatabase.removeRevision(id, delRev);
-        this._log(`Older one has been deleted:${path}`);
-        const cc = await this.localDatabase.getRaw(id, { conflicts: true });
-        if (cc._conflicts?.length === 0) {
-            await this.extractInternalFileFromDatabase(stripAllPrefixes(path));
-            this.finishConflictCheck(path);
-        } else {
-            this.requeueConflictCheck(path);
-        }
-        // check the file again
-    }
-    conflictResolutionProcessor = new QueueProcessor(
-        async (paths: FilePathWithPrefix[]) => {
-            const path = paths[0];
-            try {
-                // Retrieve data
-                const id = await this.path2id(path, ICHeader);
-                const doc = await this.localDatabase.getRaw<MetaEntry>(id, { conflicts: true });
-                if (doc._conflicts === undefined) {
-                    this.finishConflictCheck(path);
-                    return [];
-                }
-                if (doc._conflicts.length == 0) {
-                    this.finishConflictCheck(path);
-                    return [];
-                }
-                this._log(`Hidden file conflicted:${path}`);
-                const conflicts = doc._conflicts.sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
-                const revA = doc._rev;
-                const revB = conflicts[0];
-
-                if (path.endsWith(".json")) {
-                    const conflictedRev = conflicts[0];
-                    const conflictedRevNo = Number(conflictedRev.split("-")[0]);
-                    //Search
-                    const revFrom = await this.localDatabase.getRaw<MetaEntry>(id, { revs_info: true });
-                    const commonBase =
-                        revFrom._revs_info
-                            ?.filter((e) => e.status == "available" && Number(e.rev.split("-")[0]) < conflictedRevNo)
-                            .first()?.rev ?? "";
-                    const result = await this.localDatabase.managers.conflictManager.mergeObject(
-                        doc.path,
-                        commonBase,
-                        doc._rev,
-                        conflictedRev
-                    );
-                    if (result) {
-                        this._log(`Object merge:${path}`, LOG_LEVEL_INFO);
-                        const filename = stripAllPrefixes(path);
-                        await this.ensureDir(filename);
-                        const stat = await this.writeFile(filename, result);
-                        if (!stat) {
-                            throw new Error(`conflictResolutionProcessor: Failed to stat file ${filename}`);
-                        }
-                        await this.storeInternalFileToDatabase({ path: filename, ...stat });
-                        await this.extractInternalFileFromDatabase(filename);
-                        await this.localDatabase.removeRevision(id, revB);
-                        this.requeueConflictCheck(path);
-                        return [];
-                    } else {
-                        this._log(`Object merge is not applicable.`, LOG_LEVEL_VERBOSE);
-                    }
-                    // const pat = this.settings.syncInternalFileOverwritePatterns;
-                    const regExp = this.dependencies.getFileRegExp("syncInternalFileOverwritePatterns");
-                    if (regExp.some((r) => r.test(stripAllPrefixes(path)))) {
-                        this._log(`Overwrite rule applied for conflicted hidden file: ${path}`, LOG_LEVEL_INFO);
-                        await this.resolveByNewerEntry(id, path, doc, revA, revB);
-                        return [];
-                    }
-                    return [{ path, revA, revB, id, doc }];
-                }
-                // When not JSON file, resolve conflicts by choosing a newer one.
-                await this.resolveByNewerEntry(id, path, doc, revA, revB);
-                return [];
-            } catch (ex) {
-                this.finishConflictCheck(path);
-                this._log(`Failed to resolve conflict (Hidden): ${path}`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return [];
-            }
-        },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 5,
-            delay: 10,
-            keepResultUntilDownstreamConnected: true,
-            yieldThreshold: 10,
-            pipeTo: new QueueProcessor(
-                async (results) => {
-                    const { id, doc, path, revA, revB } = results[0];
-                    const prefixedPath = addPrefix(path, ICHeader);
-                    const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
-                    const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
-                    try {
-                        if (docAMerge != false && docBMerge != false) {
-                            if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
-                                // Again for other conflicted revisions.
-                                this.requeueConflictCheck(path);
-                            } else {
-                                this.finishConflictCheck(path);
-                            }
-                            return;
-                        } else {
-                            // If either revision could not read, force resolving by the newer one.
-                            await this.resolveByNewerEntry(id, path, doc, revA, revB);
-                        }
-                    } catch (ex) {
-                        this.finishConflictCheck(path);
-                        throw ex;
-                    }
-                },
-                {
-                    suspended: false,
-                    batchSize: 1,
-                    concurrentLimit: 1,
-                    delay: 10,
-                    keepResultUntilDownstreamConnected: false,
-                    yieldThreshold: 10,
-                }
-            ),
-        }
-    );
-
-    async showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
-        this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
-        const docs: [LoadedEntry, LoadedEntry] = [docA, docB];
-        const storageFilePath = stripAllPrefixes(docA.path);
-        const displayFilename = `${storageFilePath}`;
-        return await this.dependencies.resolveJsonConflict(
-            storageFilePath,
-            docs,
-            async ({ keepRevision: keep, mergedText: result }) => {
-                try {
-                    let needFlush = false;
-                    if (!result && !keep) {
-                        this._log(`Skipped merging: ${displayFilename}`);
-                        return false;
-                    }
-                    for (const doc of docs) {
-                        if (doc._rev != keep) {
-                            if (await this.localDatabase.deleteDBEntry(this.getPath(doc), { rev: doc._rev })) {
-                                this._log(`Conflicted revision has been deleted: ${displayFilename}`);
-                                needFlush = true;
-                            }
-                        }
-                    }
-                    if (!keep && result) {
-                        await this.ensureDir(storageFilePath);
-                        const stat = await this.writeFile(storageFilePath, result);
-                        if (!stat) {
-                            throw new Error("Stat failed");
-                        }
-                        const mtime = getComparingMTime(stat);
-                        await this.storeInternalFileToDatabase(
-                            { path: storageFilePath, mtime, ctime: stat.ctime ?? mtime, size: stat.size ?? 0 },
-                            true
-                        );
-                        await this.triggerEvent(storageFilePath);
-                        this._log(`STORAGE <-- DB:${displayFilename}: written (hidden,merged)`);
-                    }
-                    if (needFlush) {
-                        if (await this.extractInternalFileFromDatabase(storageFilePath, false)) {
-                            this._log(`STORAGE --> DB:${displayFilename}: extracted (hidden,merged)`);
-                        } else {
-                            this._log(`STORAGE --> DB:${displayFilename}: extracted (hidden,merged) Failed`);
-                        }
-                    }
-                    return true;
-                } catch (ex) {
-                    this._log("Could not merge conflicted json");
-                    this._log(ex, LOG_LEVEL_VERBOSE);
-                    return false;
-                }
-            }
-        );
-    }
-    // <-- Conflict processing
 
     // --> Event Source Handler (Database)
-    getDocProps(doc: LoadedEntry) {
-        /*
-            type DocumentProps = {
-                id: DocumentID;
-                rev?: string;
-                prefixedPath: FilePathWithPrefix;
-                path: FilePath;
-                isDeleted: boolean;
-                revDisplay: string;
-                shortenedId: string;
-                shortenedPath: string;
-            };
-        */
-        const id = doc._id;
-        const shortenedId = id.substring(0, 10);
-        const prefixedPath = this.getPath(doc);
-        const path = stripAllPrefixes(prefixedPath);
-        const rev = doc._rev;
-        const revDisplay = rev ? displayRev(rev) : "0-NOREVS";
-        // const prefix = prefixedPath.substring(0, prefixedPath.length - path.length);
-        const shortenedPath = path.substring(0, 10);
-        const isDeleted = doc._deleted || doc.deleted || false;
-        return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
-    }
-    async processReplicationResult(doc: LoadedEntry): Promise<boolean> {
-        const info = this.getDocProps(doc);
+    private async processReplicationResult(doc: LoadedEntry): Promise<boolean> {
+        const info = describeHiddenFileSyncDocument(doc, this.getPath(doc));
         const path = info.path;
         const headerLine = `Tracking DB ${info.path} (${info.revDisplay}) :`;
         const ret = await this.trackDatabaseFileModification(path, headerLine);
@@ -1024,12 +619,12 @@ Offline Changed files: ${processFiles.length}`;
 
     // --> Database Event Functions
 
-    cacheFileRegExps = new Map<string, CustomRegExp[][]>();
+    private readonly cacheFileRegExps = new Map<string, CustomRegExp[][]>();
     /**
      * Parses the regular expression settings for hidden file synchronization.
      * @returns An object containing the ignore and target filters.
      */
-    parseRegExpSettings() {
+    private parseRegExpSettings() {
         const regExpKey = `${this.settings.syncInternalFilesTargetPatterns}||${this.settings.syncInternalFilesIgnorePatterns}`;
         let ignoreFilter: CustomRegExp[];
         let targetFilter: CustomRegExp[];
@@ -1046,39 +641,8 @@ Offline Changed files: ${processFiles.length}`;
         return { ignoreFilter, targetFilter };
     }
 
-    /**
-     * Checks if the target file path matches the defined patterns.
-     */
-    isTargetFileInPatterns(path: string): boolean {
-        const { ignoreFilter, targetFilter } = this.parseRegExpSettings();
-
-        if (ignoreFilter && ignoreFilter.length > 0) {
-            for (const pattern of ignoreFilter) {
-                if (pattern.test(path)) {
-                    return false;
-                }
-            }
-        }
-        if (targetFilter && targetFilter.length > 0) {
-            for (const pattern of targetFilter) {
-                if (pattern.test(path)) {
-                    return true;
-                }
-            }
-            // While having target patterns, it effects as an allow-list.
-            return false;
-        }
-        return true;
-    }
-
-    isHiddenFileSyncHandlingPath(path: FilePath): boolean {
-        const result = path.startsWith(".") && !path.startsWith(".trash");
-        // console.warn(`Assertion: isHiddenFileSyncHandlingPath(${path}) = ${result}`);
-        return result;
-    }
-
-    async isTargetFileEligible(path: FilePath): Promise<boolean> {
-        const result = this.isTargetFileInPatterns(path) && this.isHiddenFileSyncHandlingPath(path);
+    private async isTargetFileEligible(path: FilePath): Promise<boolean> {
+        const result = matchesHiddenFileSyncPatterns(path, this.parseRegExpSettings()) && isHiddenFileSyncPath(path);
         // console.warn(`Assertion: isTargetFile(${path}) : ${result ? "✔️" : "❌"}`);
         if (!result) {
             return false;
@@ -1088,12 +652,12 @@ Offline Changed files: ${processFiles.length}`;
         return !resultByFile;
     }
 
-    async isTargetFile(path: FilePath): Promise<boolean> {
+    private async isTargetFile(path: FilePath): Promise<boolean> {
         if (this.dependencies?.ownsLocalFile(path) === false) return false;
         return await this.isTargetFileEligible(path);
     }
 
-    async trackScannedDatabaseChange(
+    private async trackScannedDatabaseChange(
         processFiles: MetaEntry[],
         showNotice: boolean = false,
         onlyNew = false,
@@ -1144,8 +708,10 @@ Offline Changed files: ${processFiles.length}`;
                 currentDatabaseFiles.map((e) => [stripAllPrefixes(this.getPath(e)), e])
             );
             const currentDatabaseFileNames = [...Object.keys(allDatabaseMap)] as FilePath[];
-            const untrackedLocal = currentStorageFiles.filter((e) => !this._fileInfoLastProcessed.has(e));
-            const untrackedDatabase = currentDatabaseFileNames.filter((e) => !this._databaseInfoLastProcessed.has(e));
+            const untrackedLocal = currentStorageFiles.filter((e) => !this.processedState.hasLastProcessedFile(e));
+            const untrackedDatabase = currentDatabaseFileNames.filter(
+                (e) => !this.processedState.hasLastProcessedDatabase(e)
+            );
             const bothUntracked = untrackedLocal.filter((e) => untrackedDatabase.indexOf(e) !== -1);
             p.log("Applying untracked changes...");
             const stat = `Tracking statics:
@@ -1173,8 +739,8 @@ Common untracked files: ${bothUntracked.length}`;
                         // So, we should skip this.
                         return;
                     }
-                    const fileMTime = getComparingMTime(fileStat);
-                    const dbMTime = getComparingMTime(dbInfo);
+                    const fileMTime = getHiddenFileSyncComparisonMTime(fileStat);
+                    const dbMTime = getHiddenFileSyncComparisonMTime(dbInfo);
                     const diff = compareMTime(fileMTime, dbMTime);
                     if (diff == BASE_IS_NEW) {
                         // Local file is newer than the database file.
@@ -1186,7 +752,7 @@ Common untracked files: ${bothUntracked.length}`;
                         await this.trackDatabaseFileModification(file, "[Apply]", true, true, dbInfo);
                     } else if (diff == EVEN) {
                         // Both are same, we may skip this but should update the last processed key.
-                        this.updateLastProcessed(file, dbInfo, fileStat);
+                        this.processedState.updateLastProcessed(file, dbInfo, fileStat);
                     }
                 } finally {
                     rel();
@@ -1210,9 +776,9 @@ Common untracked files: ${bothUntracked.length}`;
             const databaseFiles = await this.getAllDatabaseFiles();
             const files = databaseFiles.filter((e) => {
                 const doc = e;
-                const key = this.docToKey(doc);
+                const key = this.processedState.databaseStateKey(doc);
                 const path = stripAllPrefixes(this.getPath(doc));
-                const lastKey = this.getLastProcessedDatabaseKey(path);
+                const lastKey = this.processedState.getLastProcessedDatabaseKey(path);
                 return lastKey != key;
             });
             const logLevel = getLogLevel(showNotice);
@@ -1224,7 +790,7 @@ Offline Changed files: ${files.length}`;
         });
     }
 
-    async useDatabaseFiles(files: MetaEntry[], showNotice = false, onlyNew = false) {
+    private async useDatabaseFiles(files: MetaEntry[], showNotice = false, onlyNew = false) {
         const logLevel = getLogLevel(showNotice);
         const p = this._progress(`[⚙ Scanning DB -> Storage ]\n`, logLevel);
         p.log("Scanning database files...");
@@ -1245,7 +811,7 @@ Offline Changed files: ${files.length}`;
         return true;
     }
 
-    async trackDatabaseFileModification(
+    private async trackDatabaseFileModification(
         path: FilePath,
         headerLine: string,
         preventDoubleProcess = false,
@@ -1253,56 +819,31 @@ Offline Changed files: ${files.length}`;
         meta: MetaEntry | false = false,
         includeDeletion = true
     ): Promise<boolean> {
-        return await this.serializedForEvent(path, async () => {
-            try {
-                // Fetch the document with conflicts
-                const prefixedPath = addPrefix(path, ICHeader);
-                const docMeta = meta
-                    ? meta
-                    : await this.localDatabase.getDBEntryMeta(prefixedPath, { conflicts: true }, true);
-                if (docMeta === false) {
-                    this._log(`${headerLine}: Failed to read detail of ${path}`);
-                    throw new Error(`Failed to read detail ${path}`);
-                }
-                // Check if the file is conflicted, and if so, enqueue to resolve.
-                // Until the conflict is resolved, the file will not be processed.
-                if (docMeta._conflicts && docMeta._conflicts.length > 0) {
-                    this.queueConflictCheck(path);
-                    this._log(`${headerLine} Hidden file conflicted, enqueued to resolve`);
-                    return true;
-                }
-                // And, extract (or delete) the file to storage.
-                const extractResult = await this.extractInternalFileFromDatabase(
-                    path,
-                    false,
-                    docMeta,
-                    preventDoubleProcess,
-                    onlyNew,
-                    includeDeletion
-                );
-                if (extractResult) {
-                    this._log(`${headerLine} Hidden file processed`);
-                }
-            } catch (ex) {
-                this._log(`${headerLine} Failed to process hidden file`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-            }
-            return true;
+        return await this.changeProcessor.processDatabaseChange(path, headerLine, {
+            preventDoubleProcess,
+            onlyNew,
+            metaEntry: meta,
+            includeDeletion,
         });
+    }
+
+    private queueConflict(path: FilePathWithPrefix): Promise<boolean> {
+        this.conflictResolution.queue(path);
+        return Promise.resolve(true);
     }
 
     // <-- Database Event Functions
 
     // --> Notification for Config Change
-    queuedNotificationFiles = new Set<string>();
-    notifyConfigChange() {
+    private readonly queuedNotificationFiles = new Set<string>();
+    private notifyConfigChange() {
         const updatedFolders = [...this.queuedNotificationFiles];
         this.queuedNotificationFiles.clear();
         if (this.disposed) return;
         this.dependencies.showConfigurationChangeNotice(updatedFolders);
     }
 
-    queueNotification(key: FilePath) {
+    private queueNotification(key: FilePath) {
         if (this.disposed) return;
         if (this.settings.suppressNotifyHiddenFilesChange) {
             return;
@@ -1319,7 +860,7 @@ Offline Changed files: ${files.length}`;
 
     // --> Initialization functions
 
-    async rebuildMerging(showNotice: boolean, targetFiles: FilePath[] | false = false) {
+    private async rebuildMerging(showNotice: boolean, targetFiles: FilePath[] | false = false) {
         const logLevel = getLogLevel(showNotice);
         const p = this._progress("[⚙ Rebuild by Merge ]\n", logLevel);
         this._log(`Rebuilding hidden files from the storage and the local database.`, logLevel);
@@ -1346,9 +887,9 @@ Offline Changed files: ${files.length}`;
         for (const file of allFileNames) {
             eachProgress();
             const storageMTime = await this.storageAccess.statHidden(file);
-            const mtimeStorage = getComparingMTime(storageMTime);
+            const mtimeStorage = getHiddenFileSyncComparisonMTime(storageMTime);
             const dbEntry = allDatabaseMap.get(file)!;
-            const mtimeDB = getComparingMTime(dbEntry);
+            const mtimeDB = getHiddenFileSyncComparisonMTime(dbEntry);
             const diff = compareMTime(mtimeStorage, mtimeDB);
             if (diff == BASE_IS_NEW) {
                 storageToDatabase.push(file);
@@ -1362,10 +903,10 @@ Offline Changed files: ${files.length}`;
         p.once(
             `Storage to Database: ${storageToDatabase.length} files\n Database to Storage: ${databaseToStorage.length} files`
         );
-        this.resetLastProcessedDatabase(targetFiles);
-        this.resetLastProcessedFile(targetFiles);
+        this.processedState.resetLastProcessedDatabase(targetFiles);
+        this.processedState.resetLastProcessedFile(targetFiles);
         const processes = [
-            this.useStorageFiles(storageToDatabase, showNotice, false),
+            this.trackScannedStorageChanges(storageToDatabase, showNotice, false, true),
             this.useDatabaseFiles(databaseToStorage, showNotice, false),
         ];
         p.log("Start processing...");
@@ -1374,7 +915,13 @@ Offline Changed files: ${files.length}`;
         return [...allFileNames];
     }
 
-    async rebuildFromStorage(showNotice: boolean, targetFiles: FilePath[] | false = false, onlyNew = false) {
+    private async runRebuildMerging(showNotice: boolean, targetFiles: FilePath[] | false = false) {
+        return this.rebuildMergingHook
+            ? await this.rebuildMergingHook(showNotice, targetFiles)
+            : await this.rebuildMerging(showNotice, targetFiles);
+    }
+
+    private async rebuildFromStorage(showNotice: boolean, targetFiles: FilePath[] | false = false, onlyNew = false) {
         // reset processed file markers
         const logLevel = getLogLevel(showNotice);
         this._verbose(`Rebuilding hidden files from the storage.`);
@@ -1387,13 +934,13 @@ Offline Changed files: ${files.length}`;
             : currentFilesAll;
         p.once(`Storage to Database: ${currentFiles.length} files.`);
         p.log("Start processing...");
-        this.resetLastProcessedFile(targetFiles);
-        await this.useStorageFiles(currentFiles, showNotice, onlyNew);
+        this.processedState.resetLastProcessedFile(targetFiles);
+        await this.trackScannedStorageChanges(currentFiles, showNotice, onlyNew, true);
         p.done();
         return currentFiles;
     }
 
-    async getAllDatabaseFiles() {
+    private async getAllDatabaseFiles() {
         const allFiles = (
             await this.localDatabase.allDocsRaw({ startkey: ICHeader, endkey: ICHeaderEnd, include_docs: true })
         ).rows
@@ -1408,7 +955,7 @@ Offline Changed files: ${files.length}`;
         return files;
     }
 
-    async rebuildFromDatabase(showNotice: boolean, targetFiles: FilePath[] | false = false, onlyNew = false) {
+    private async rebuildFromDatabase(showNotice: boolean, targetFiles: FilePath[] | false = false, onlyNew = false) {
         const logLevel = getLogLevel(showNotice);
         this._verbose(`Rebuilding hidden files from the local database.`);
         const p = this._progress("[⚙ Rebuild by Database ]\n", logLevel);
@@ -1424,7 +971,7 @@ Offline Changed files: ${files.length}`;
             : allFiles;
 
         p.once(`Database to Storage: ${currentFiles.length} files.`);
-        this.resetLastProcessedDatabase(targetFiles);
+        this.processedState.resetLastProcessedDatabase(targetFiles);
         p.log("Start processing...");
         await this.useDatabaseFiles(currentFiles, showNotice, onlyNew);
         p.done();
@@ -1440,8 +987,11 @@ Offline Changed files: ${files.length}`;
     ) {
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
         const p = initialisationProgress ?? this._progress("[⚙ Initialise]\n", logLevel);
+        // Compatibility question: the legacy preflight was already disabled.
+        // Enabling it would change initialisation timing and could open a
+        // conflict dialogue while the feature is being configured.
         // p.log("Resolving conflicts before starting...");
-        // await this.resolveConflictOnInternalFiles();
+        // await this.conflictResolution.resolveAll();
         p.log("Initialising hidden files sync...");
         // The initialisation progress owns the user-visible Notice. Its child
         // rebuild and scan operations still write ordinary log entries, but
@@ -1480,7 +1030,7 @@ Offline Changed files: ${files.length}`;
         }
         if (direction == "safe") {
             p.log(`Started: Database <--> Storage (by modified date)`);
-            const updatedFiles = await this.rebuildMerging(showChildNotices, targetFiles);
+            const updatedFiles = await this.runRebuildMerging(showChildNotices, targetFiles);
             await this.adoptCurrentStorageFilesAsProcessed(updatedFiles);
             await this.adoptCurrentDatabaseFilesAsProcessed(updatedFiles);
             // And, scan other changes on the database (i.e. files which are on only other devices)
@@ -1492,414 +1042,7 @@ Offline Changed files: ${files.length}`;
     }
     // <-- Initialization functions
 
-    // --> Storage To Database Functions
-
-    async __loadBaseSaveData(file: FilePath, includeContent = true): Promise<LoadedEntry | false> {
-        const prefixedFileName = addPrefix(file, ICHeader);
-        const id = await this.path2id(prefixedFileName, ICHeader);
-        try {
-            const old = includeContent
-                ? await this.localDatabase.getDBEntry(prefixedFileName, undefined, false, true)
-                : await this.localDatabase.getDBEntryMeta(prefixedFileName, { conflicts: true }, true);
-            if (old === false) {
-                const baseSaveData: LoadedEntry = {
-                    _id: id,
-                    data: [],
-                    path: prefixedFileName,
-                    mtime: 0,
-                    ctime: 0,
-                    datatype: "newnote",
-                    children: [],
-                    size: 0,
-                    deleted: false,
-                    type: "newnote",
-                    eden: {},
-                };
-                return baseSaveData;
-            } else {
-                return old;
-            }
-        } catch (ex) {
-            this._log(`Getting base save data failed`);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
-    }
-
-    private async getLiveInternalRevision(
-        prefixedFileName: FilePathWithPrefix,
-        revision: string
-    ): Promise<MetaEntry | false> {
-        const [selected, current, conflicts] = await Promise.all([
-            this.databaseFileAccess.fetchEntryMeta(prefixedFileName, revision, true),
-            this.databaseFileAccess.fetchEntryMeta(prefixedFileName, undefined, true),
-            this.databaseFileAccess.getConflictedRevs(prefixedFileName),
-        ]);
-        const liveRevisions = new Set([...(current && current._rev ? [current._rev] : []), ...conflicts]);
-        if (!selected || selected._rev !== revision || !liveRevisions.has(revision)) {
-            this._log(
-                `Could not use hidden-file revision ${revision} of ${stripAllPrefixes(prefixedFileName)}; the selected revision is no longer live`,
-                LOG_LEVEL_NOTICE
-            );
-            return false;
-        }
-        return selected;
-    }
-
-    async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
-        const storeFilePath = stripAllPrefixes(file.path);
-        const storageFilePath = file.path;
-        if (await this.dependencies.isIgnoredByIgnoreFile(storageFilePath)) {
-            return undefined;
-        }
-        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
-
-        return await serialized("file-" + prefixedFileName, async () => {
-            try {
-                const fileInfo = "stat" in file && "body" in file ? file : await this.loadFileWithInfo(storeFilePath);
-                if (fileInfo.deleted) {
-                    throw new Error(`Hidden file:${storeFilePath} is deleted. This should not be occurred.`);
-                }
-                const baseData = await this.__loadBaseSaveData(storeFilePath, true);
-                if (baseData === false) throw new Error("Failed to load base data");
-                if (baseData._rev && !forceWrite) {
-                    // Not newly created,  we should check the content is actually modified.
-                    const isSame = await isDocContentSame(readAsBlob(baseData), fileInfo.body);
-                    if (isSame) {
-                        this.updateLastProcessed(storeFilePath, baseData, fileInfo.stat);
-                        // Not changed. skip.
-                        // TODO: Mark as same?
-                        return undefined;
-                    }
-                }
-                const saveData: SavingEntry = {
-                    ...baseData,
-                    data: fileInfo.body,
-                    mtime: fileInfo.stat.mtime,
-                    size: fileInfo.stat.size,
-                    children: [],
-                    deleted: false,
-                    type: baseData.datatype,
-                };
-                const ret = await this.localDatabase.putDBEntry(saveData);
-                if (ret && ret.ok) {
-                    saveData._rev = ret.rev;
-                    this.updateLastProcessed(storeFilePath, saveData, fileInfo.stat);
-                }
-                const success = ret && ret.ok;
-                this._log(`STORAGE --> DB:${storageFilePath}: (hidden) ${success ? "Done" : "Failed"}`);
-                return success;
-            } catch (ex) {
-                this._log(`STORAGE --> DB:${storageFilePath}: (hidden) Failed`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
-
-    async storeInternalFileToDatabaseWithBaseRevision(
-        file: InternalFileInfo | UXFileInfo,
-        baseRevision: string,
-        createIfDifferent = true
-    ): Promise<boolean> {
-        const storeFilePath = stripAllPrefixes(file.path);
-        const storageFilePath = file.path;
-        if (await this.dependencies.isIgnoredByIgnoreFile(storageFilePath)) {
-            return false;
-        }
-        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
-
-        return await serialized("file-" + prefixedFileName, async () => {
-            try {
-                const baseData = await this.getLiveInternalRevision(prefixedFileName, baseRevision);
-                if (baseData === false) {
-                    return false;
-                }
-                const fileInfo = "stat" in file && "body" in file ? file : await this.loadFileWithInfo(storeFilePath);
-                if (fileInfo.deleted) {
-                    throw new Error(`Hidden file:${storeFilePath} is deleted. This should not be occurred.`);
-                }
-                if (!baseData.deleted && !baseData._deleted) {
-                    const loadedBase = await this.databaseFileAccess.fetchEntryFromMeta(baseData, true, true);
-                    if (loadedBase && (await isDocContentSame(readAsBlob(loadedBase), fileInfo.body))) {
-                        this.updateLastProcessed(storeFilePath, baseData, fileInfo.stat);
-                        return true;
-                    }
-                }
-                if (!createIfDifferent) {
-                    this._log(
-                        `Could not mark hidden file ${storeFilePath} as revision ${baseRevision}; the storage content differs`,
-                        LOG_LEVEL_NOTICE
-                    );
-                    return false;
-                }
-
-                const storedRevision = await this.databaseFileAccess.storeWithBaseRevision(
-                    {
-                        ...fileInfo,
-                        path: storeFilePath,
-                        name: fileInfo.name || storeFilePath.split("/").pop() || "",
-                        isInternal: true,
-                    },
-                    baseRevision,
-                    true
-                );
-                if (storedRevision === false) {
-                    return false;
-                }
-                this.updateLastProcessed(
-                    storeFilePath,
-                    {
-                        ...baseData,
-                        _rev: storedRevision,
-                        path: prefixedFileName,
-                        ctime: fileInfo.stat.ctime,
-                        mtime: fileInfo.stat.mtime,
-                        size: fileInfo.stat.size,
-                        deleted: false,
-                    },
-                    fileInfo.stat
-                );
-                this._log(`STORAGE --> DB:${storageFilePath}: (hidden, selected branch) Done`);
-                return true;
-            } catch (ex) {
-                this._log(`STORAGE --> DB:${storageFilePath}: (hidden, selected branch) Failed`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
-
-    async deleteInternalFileOnDatabase(filenameSrc: FilePath, forceWrite = false) {
-        const storeFilePath = filenameSrc;
-        const storageFilePath = filenameSrc;
-        const displayFileName = filenameSrc;
-        const prefixedFileName = addPrefix(storeFilePath, ICHeader);
-        const mtime = new Date().getTime();
-        if (await this.dependencies.isIgnoredByIgnoreFile(storageFilePath)) {
-            return undefined;
-        }
-        return await serialized("file-" + prefixedFileName, async () => {
-            try {
-                const baseData = await this.__loadBaseSaveData(storeFilePath, false);
-                if (baseData === false) throw new Error("Failed to load base data during deleting");
-                if (baseData._conflicts !== undefined) {
-                    for (const conflictRev of baseData._conflicts) {
-                        await this.localDatabase.removeRevision(baseData._id, conflictRev);
-                        this._log(
-                            `STORAGE -x> DB: ${displayFileName}: (hidden) conflict removed ${baseData._rev} =>  ${conflictRev}`,
-                            LOG_LEVEL_VERBOSE
-                        );
-                    }
-                }
-                if (baseData.deleted) {
-                    this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) already deleted`, LOG_LEVEL_VERBOSE);
-                    this.updateLastProcessedDeletion(storeFilePath, baseData);
-                    return true;
-                }
-                const saveData: LoadedEntry = {
-                    ...baseData,
-                    mtime,
-                    size: 0,
-                    children: [],
-                    deleted: true,
-                    type: baseData.datatype,
-                };
-                const ret = await this.localDatabase.putRaw(saveData);
-                if (ret && ret.ok) {
-                    this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Done`);
-                    saveData._rev = ret.rev;
-                    this.updateLastProcessedDeletion(storeFilePath, saveData);
-                    return true;
-                } else {
-                    this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Failed`);
-                    return false;
-                }
-            } catch (ex) {
-                this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Failed`);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
-
-    // <-- Storage To Database Functions
-
-    // --> Database To Storage Functions
-
-    async extractInternalFileFromDatabase(
-        storageFilePath: FilePath,
-        force = false,
-        metaEntry?: MetaEntry | LoadedEntry,
-        preventDoubleProcess = true,
-        onlyNew = false,
-        includeDeletion = true,
-        requiredLiveRevision?: string
-    ) {
-        const prefixedFileName = addPrefix(storageFilePath, ICHeader);
-        if (await this.dependencies.isIgnoredByIgnoreFile(storageFilePath)) {
-            return undefined;
-        }
-        return await serialized("file-" + prefixedFileName, async () => {
-            try {
-                // Check conflicted status
-                const metaOnDB = requiredLiveRevision
-                    ? await this.getLiveInternalRevision(prefixedFileName, requiredLiveRevision)
-                    : metaEntry
-                      ? metaEntry
-                      : await this.localDatabase.getDBEntryMeta(prefixedFileName, { conflicts: true }, true);
-                if (metaOnDB === false) throw new Error(`File not found on database.:${storageFilePath}`);
-                // Prevent overwrite for Prevent overwriting while some conflicted revision exists.
-                if (metaOnDB?._conflicts?.length) {
-                    this._log(
-                        `Hidden file ${storageFilePath} has conflicted revisions, to keep in safe, writing to storage has been prevented`,
-                        LOG_LEVEL_INFO
-                    );
-                    return false;
-                }
-                if (preventDoubleProcess) {
-                    const key = this.docToKey(metaOnDB);
-                    if (this.getLastProcessedDatabaseKey(storageFilePath) == key && !force) {
-                        this._log(
-                            `STORAGE <-- DB: ${storageFilePath}: skipped (hidden, overwrite${force ? ", force" : ""}) (Previously processed)`
-                        );
-                        return;
-                    }
-                }
-                if (onlyNew) {
-                    // Check the file is new or not.
-                    const dbMTime = getComparingMTime(metaOnDB, includeDeletion); // metaOnDB.mtime;
-                    const storageStat = await this.storageAccess.statHidden(storageFilePath);
-                    const storageMTimeActual = storageStat?.mtime ?? 0;
-                    const storageMTime =
-                        storageMTimeActual == 0 ? this.getLastProcessedFileMTime(storageFilePath) : storageMTimeActual;
-                    const diff = compareMTime(storageMTime, dbMTime);
-                    if (diff != TARGET_IS_NEW) {
-                        this._log(
-                            `STORAGE <-- DB: ${storageFilePath}: skipped (hidden, overwrite${force ? ", force" : ""}) (Not new)`
-                        );
-                        // And this case, we should update the last processed key.
-                        this.updateLastProcessedDatabase(storageFilePath, metaOnDB);
-                        if (storageStat) this.updateLastProcessedFile(storageFilePath, storageStat);
-                        return;
-                    }
-                }
-                const deleted = metaOnDB.deleted || metaOnDB._deleted || false;
-                if (deleted) {
-                    const result = await this.__deleteFile(storageFilePath);
-                    if (result == "OK") {
-                        this.updateLastProcessedDeletion(storageFilePath, metaOnDB);
-                        return true;
-                    } else if (result == "ALREADY") {
-                        this.updateLastProcessedDatabase(storageFilePath, metaOnDB);
-                        return true;
-                    }
-                    return false;
-                } else {
-                    const fileOnDB = await this.localDatabase.getDBEntryFromMeta(metaOnDB, false, true);
-                    if (fileOnDB === false) {
-                        throw new Error(`Failed to read file from database:${storageFilePath}`);
-                    }
-                    const resultStat = await this.__writeFile(storageFilePath, fileOnDB, force);
-                    if (resultStat) {
-                        this.updateLastProcessed(storageFilePath, metaOnDB, resultStat);
-                        this.queueNotification(storageFilePath);
-                        this._log(
-                            `STORAGE <-- DB: ${storageFilePath}: written (hidden, overwrite${force ? ", force" : ""}) Done`
-                        );
-                        return true;
-                    }
-                }
-                return false;
-            } catch (ex) {
-                this._log(
-                    `STORAGE <-- DB: ${storageFilePath}: written (hidden, overwrite${force ? ", force" : ""}) Failed`
-                );
-                this._log(ex, LOG_LEVEL_VERBOSE);
-                return false;
-            }
-        });
-    }
-
-    async extractInternalFileRevisionFromDatabase(
-        storageFilePath: FilePath,
-        revision: string,
-        force = false
-    ): Promise<boolean> {
-        return Boolean(
-            await this.extractInternalFileFromDatabase(storageFilePath, force, undefined, true, false, true, revision)
-        );
-    }
-
-    async __checkIsNeedToWriteFile(storageFilePath: FilePath, content: string | ArrayBuffer): Promise<boolean> {
-        try {
-            const storageContent = await this.storageAccess.readHiddenFileAuto(storageFilePath);
-            const needWrite = !(await isDocContentSame(storageContent, content));
-            return needWrite;
-        } catch (ex) {
-            this._log(`Cannot check the content of ${storageFilePath}`);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return true;
-        }
-    }
-
-    async __writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
-        try {
-            const statBefore = await this.storageAccess.statHidden(storageFilePath);
-            const isExist = statBefore != null;
-            const writeContent = readContent(fileOnDB);
-            await this.ensureDir(storageFilePath);
-            // We have to compare the content, so read it once.
-            const needWrite =
-                force || !isExist || (isExist && (await this.__checkIsNeedToWriteFile(storageFilePath, writeContent)));
-
-            if (!needWrite) {
-                this._log(`STORAGE <-- DB: ${storageFilePath}: skipped (hidden) Not changed`, LOG_LEVEL_DEBUG);
-                return statBefore;
-            }
-
-            const writeResultStat = await this.writeFile(storageFilePath, writeContent, {
-                mtime: fileOnDB.mtime,
-                ctime: fileOnDB.ctime,
-            });
-
-            if (writeResultStat == null) {
-                this._log(
-                    `STORAGE <-- DB: ${storageFilePath}: written (hidden,new${force ? ", force" : ""}) Failed (writeResult)`
-                );
-                return false;
-            }
-            // await this.triggerEvent(storageFilePath);
-            // markChangesAreSame(storageFilePath, getComparingMTime(writeResultStat), getComparingMTime(fileOnDB));
-            this._log(`STORAGE <-- DB: ${storageFilePath}: written (hidden, overwrite${force ? ", force" : ""})`);
-            return writeResultStat;
-        } catch (ex) {
-            this._log(
-                `STORAGE <-- DB: ${storageFilePath}: written (hidden, overwrite${force ? ", force" : ""}) Failed`
-            );
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return false;
-        }
-    }
-
-    async __deleteFile(storageFilePath: FilePath): Promise<false | "OK" | "ALREADY"> {
-        const result = await this.__removeFile(storageFilePath);
-        if (result === false) {
-            this._log(`STORAGE <x- DB: ${storageFilePath}: deleting (hidden) Failed`);
-            return false;
-        }
-        if (result === "OK") {
-            await this.triggerEvent(storageFilePath);
-        }
-        this._log(
-            `STORAGE <x- DB: ${storageFilePath}: deleting (hidden) ${result == "OK" ? "Done" : "Already not found"}`
-        );
-        return result;
-    }
-
-    // <-- Database To Storage Functions
-
-    _allSuspendExtraSync(): Promise<boolean> {
+    private suspendExtraSync(): Promise<boolean> {
         if (this.settings.syncInternalFiles) {
             this._log(
                 $msg(
@@ -1913,12 +1056,12 @@ Offline Changed files: ${files.length}`;
     }
 
     // --> Configuration handling
-    async _allConfigureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
+    private async configureOptionalSyncFeature(mode: OptionalSyncFeatureMode) {
         await this.configureHiddenFileSync(mode);
         return true;
     }
 
-    async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
+    private async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         let initialisationProgress: HiddenFileSyncProgress | undefined;
         let result: ConfigureHiddenFileSyncResult;
         try {
@@ -1962,15 +1105,21 @@ Offline Changed files: ${files.length}`;
     // <-- Configuration handling
 
     // --> Local Storage SubFunctions
-    async scanInternalFileNames() {
+    private async scanInternalFileNames() {
         const findRoot = this.dependencies.getRootPath();
 
-        const filenames = await this.getFiles(findRoot, (path) => this.isTargetFile(path));
+        const filenames = await collectOptionalFileSyncFiles(this.dependencies, findRoot, {
+            shouldInclude: (path) => this.isTargetFile(path as FilePath),
+            onError: (path, error) => {
+                this._log(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
+                this._log(error, LOG_LEVEL_VERBOSE);
+            },
+        });
 
         return filenames as FilePath[];
     }
 
-    async scanInternalFiles(): Promise<InternalFileInfo[]> {
+    private async scanInternalFiles(): Promise<InternalFileInfo[]> {
         const fileNames = await this.scanInternalFileNames();
         const files = fileNames.map(async (e) => {
             return {
@@ -1997,29 +1146,5 @@ Offline Changed files: ${files.length}`;
         return result;
     }
 
-    async getFiles(path: string, checkFunction: (path: FilePath) => Promise<boolean> | boolean) {
-        let w: HiddenFileSyncDirectoryListing;
-        try {
-            w = await this.dependencies.listFiles(path);
-        } catch (ex) {
-            this._log(`Could not traverse(HiddenSync):${path}`, LOG_LEVEL_INFO);
-            this._log(ex, LOG_LEVEL_VERBOSE);
-            return [];
-        }
-        let files = [] as string[];
-        for (const file of w.files) {
-            if (!(await checkFunction(file as FilePath))) {
-                continue;
-            }
-            files.push(file);
-        }
-        for (const v of w.folders) {
-            if (!(await checkFunction(v as FilePath))) {
-                continue;
-            }
-            files = files.concat(await this.getFiles(v, checkFunction));
-        }
-        return files;
-    }
     // <-- Local Storage SubFunctions
 }

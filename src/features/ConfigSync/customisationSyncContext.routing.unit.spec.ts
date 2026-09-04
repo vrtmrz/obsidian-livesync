@@ -31,6 +31,7 @@ vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
 import { scheduleTask } from "@/common/utils.ts";
 import { CustomisationSyncContext } from "./customisationSyncContext.ts";
 import { createCustomisationSyncTestDependencies } from "./customisationSyncContext.unit.fixture.ts";
+import { CustomisationSyncRecentEventDeduplicator } from "./customisationSyncRecentEventDeduplicator.ts";
 
 const PATH = ".obsidian/plugins/example/data.json" as FilePath;
 
@@ -43,9 +44,7 @@ function createConfigSync(options: { ready?: boolean; suspended?: boolean; enabl
     };
     const ownsLocalFile = vi.fn(() => options.owned ?? true);
     const statHidden = vi.fn(async () => ({ type: "file", mtime: 1 }));
-    const recentProcessedInternalFiles = Object.assign([] as string[], {
-        contains: vi.fn(() => false),
-    });
+    const recentProcessedInternalFiles = new CustomisationSyncRecentEventDeduplicator();
     const configSync = Object.create(CustomisationSyncContext.prototype) as CustomisationSyncContext;
     Object.assign(configSync, {
         dependencies: createCustomisationSyncTestDependencies({
@@ -71,7 +70,7 @@ describe("Customisation Sync raw-event admission", () => {
     it("schedules a recognised path granted by the composition owner", async () => {
         const { configSync, ownsLocalFile } = createConfigSync();
 
-        await expect(configSync._anyProcessOptionalFileEvent(PATH)).resolves.toBe(true);
+        await expect(configSync.serviceHandlers.processOptionalFileEvent(PATH)).resolves.toBe(true);
         expect(ownsLocalFile).toHaveBeenCalledWith(PATH);
         expect(scheduleTask).toHaveBeenCalledOnce();
     });
@@ -79,7 +78,7 @@ describe("Customisation Sync raw-event admission", () => {
     it("rejects an event while the host is not ready", async () => {
         const { configSync, statHidden } = createConfigSync({ ready: false });
 
-        await expect(configSync._anyProcessOptionalFileEvent(PATH)).resolves.toBe(false);
+        await expect(configSync.serviceHandlers.processOptionalFileEvent(PATH)).resolves.toBe(false);
         expect(statHidden).not.toHaveBeenCalled();
         expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -87,7 +86,9 @@ describe("Customisation Sync raw-event admission", () => {
     it("rejects a path outside the recognised Customisation Sync categories", async () => {
         const { configSync, ownsLocalFile } = createConfigSync();
 
-        await expect(configSync._anyProcessOptionalFileEvent(".obsidian/workspace" as FilePath)).resolves.toBe(false);
+        await expect(configSync.serviceHandlers.processOptionalFileEvent(".obsidian/workspace" as FilePath)).resolves.toBe(
+            false
+        );
         expect(ownsLocalFile).not.toHaveBeenCalled();
         expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -95,7 +96,7 @@ describe("Customisation Sync raw-event admission", () => {
     it("rejects a recognised path assigned to another owner", async () => {
         const { configSync, statHidden } = createConfigSync({ owned: false });
 
-        await expect(configSync._anyProcessOptionalFileEvent(PATH)).resolves.toBe(false);
+        await expect(configSync.serviceHandlers.processOptionalFileEvent(PATH)).resolves.toBe(false);
         expect(statHidden).not.toHaveBeenCalled();
         expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -106,7 +107,7 @@ describe("Customisation Sync raw-event admission", () => {
     ] as const)("rejects an event while %s", async (_label, options) => {
         const { configSync } = createConfigSync(options);
 
-        await expect(configSync._anyProcessOptionalFileEvent(PATH)).resolves.toBe(false);
+        await expect(configSync.serviceHandlers.processOptionalFileEvent(PATH)).resolves.toBe(false);
         expect(scheduleTask).not.toHaveBeenCalled();
     });
 });

@@ -17,6 +17,23 @@ export type CustomisationSyncPathOptions = {
     usePluginEtc: boolean;
 };
 
+export function getCustomisationSyncCategoryFolder(category: string, configDir: string = ""): string {
+    switch (category) {
+        case "CONFIG":
+            return `${configDir}/`;
+        case "THEME":
+            return `${configDir}/themes/`;
+        case "SNIPPET":
+            return `${configDir}/snippets/`;
+        case "PLUGIN_MAIN":
+        case "PLUGIN_DATA":
+        case "PLUGIN_ETC":
+            return `${configDir}/plugins/`;
+        default:
+            return "";
+    }
+}
+
 export function getCustomisationSyncFileCategory(
     filePath: string,
     options: CustomisationSyncPathOptions

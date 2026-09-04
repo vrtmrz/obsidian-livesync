@@ -15,6 +15,7 @@ import {
     type CustomisationSyncFileCategory,
     type CustomisationSyncPathOptions,
 } from "@/features/ConfigSync/customisationSyncPaths.ts";
+import { isHiddenFileSyncPath } from "@/features/HiddenFileSync/hiddenFileSyncPathPolicy.ts";
 
 export type OptionalFileSyncOwner = "customisation" | "hidden-file" | "none";
 
@@ -57,10 +58,6 @@ export type CustomisationSyncDocumentOwnershipInput = {
     customisationEnabled: boolean;
     pluginSyncExtendedSetting: Readonly<Record<string, PluginSyncSettingEntry>>;
 };
-
-function isHiddenFileSyncPath(path: string): boolean {
-    return path.startsWith(".") && !path.startsWith(".trash");
-}
 
 /** Select the sole local writer from persisted feature settings. */
 export function selectOptionalFileSyncOwner(

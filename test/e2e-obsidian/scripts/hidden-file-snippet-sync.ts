@@ -180,7 +180,7 @@ async function resolveHiddenConflicts(cliBinary: string, env: NodeJS.ProcessEnv)
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
             "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
-            "await syncContext.resolveConflictOnInternalFiles();",
+            "await syncContext.conflictResolution.resolveAll();",
             "await syncContext.scanAllDatabaseChanges(true);",
             "return JSON.stringify({ok:true});",
             "})()",
@@ -196,36 +196,42 @@ async function autoMergeHiddenJsonConflict(cliBinary: string, env: NodeJS.Proces
         [
             "(async()=>{",
             `const path=${JSON.stringify(path)};`,
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "await syncContext.conflictResolution.resolveAll();",
+            "await syncContext.scanAllDatabaseChanges(true);",
+            "return JSON.stringify({ok:true,path});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function readHiddenConflictDiagnostics(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string
+): Promise<unknown> {
+    return await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
             "const prefixedPath=`i:${path}`;",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
-            "let doc=false;",
+            "const owner=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync.conflictResolution;",
+            "const entries=[];",
             "for await (const entry of core.localDatabase.findEntries('i:','i;',{conflicts:true})){",
-            "  if(entry.path===prefixedPath){ doc=entry; break; }",
+            "  if(entry.path===prefixedPath){",
+            "    entries.push({id:entry._id,path:entry.path,rev:entry._rev,conflicts:entry._conflicts});",
+            "  }",
             "}",
-            "if(!doc) throw new Error(`Could not find hidden conflict candidate: ${path}`);",
-            "if(!doc._conflicts?.length) throw new Error(`Hidden file has no conflicts: ${path}`);",
-            "const conflicts=doc._conflicts.sort((a,b)=>Number(a.split('-')[0])-Number(b.split('-')[0]));",
-            "const conflictedRev=conflicts[0];",
-            "const conflictedRevNo=Number(conflictedRev.split('-')[0]);",
-            "const revFrom=await core.localDatabase.getRaw(doc._id,{revs_info:true});",
-            "const commonBase=(revFrom._revs_info||[])",
-            "  .filter((rev)=>rev.status==='available'&&Number(rev.rev.split('-')[0])<conflictedRevNo)",
-            "  .map((rev)=>rev.rev)[0]||'';",
-            "const result=await core.localDatabase.managers.conflictManager.mergeObject(",
-            "  doc.path, commonBase, doc._rev, conflictedRev",
-            ");",
-            "if(!result){",
-            "  throw new Error(`Hidden JSON conflict was not auto-mergeable: ${path}; base=${commonBase}; current=${doc._rev}; conflict=${conflictedRev}`);",
-            "}",
-            "await syncContext.ensureDir(path);",
-            "const stat=await syncContext.writeFile(path,result);",
-            "if(!stat) throw new Error(`Could not write merged hidden file: ${path}`);",
-            "await syncContext.storeInternalFileToDatabase({path,mtime:stat.mtime,ctime:stat.ctime,size:stat.size},true);",
-            "await core.localDatabase.removeRevision(doc._id,conflictedRev);",
-            "await syncContext.extractInternalFileFromDatabase(path);",
-            "await syncContext.scanAllDatabaseChanges(true);",
-            "return JSON.stringify({ok:true,merged:JSON.parse(result)});",
+            "const modals=Array.from(document.querySelectorAll('.modal-container')).map((element)=>element.textContent?.trim());",
+            "return JSON.stringify({",
+            "  entries,",
+            "  pendingPaths:Array.from(owner.pendingPaths??[]),",
+            "  processor:{remaining:owner.processor?.remaining,totalRemaining:owner.processor?.totalRemaining,nowProcessing:owner.processor?.nowProcessing},",
+            "  modals,",
+            "});",
             "})()",
         ].join(""),
         env
@@ -250,7 +256,7 @@ async function openHiddenJsonResolveModal(cliBinary: string, env: NodeJS.Process
             "const docA=await core.localDatabase.getDBEntry(prefixedPath,{rev:doc._rev});",
             "const docB=await core.localDatabase.getDBEntry(prefixedPath,{rev:conflicts[0]});",
             "if(docA===false||docB===false) throw new Error(`Could not load conflicted hidden JSON entries: ${path}`);",
-            "void syncContext.showJSONMergeDialogAndMerge(docA,docB);",
+            "void syncContext.conflictResolution.resolveJson(docA,docB);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -270,11 +276,12 @@ async function storeHiddenFileAsConflict(
             "(async()=>{",
             `const path=${JSON.stringify(path)};`,
             `const baseRev=${JSON.stringify(baseRev)};`,
+            "const prefixedPath=`i:${path}`;",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
             "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
-            "const fileInfo=await syncContext.loadFileWithInfo(path);",
+            "const fileInfo=await syncContext.readFileWithInfo(path);",
             "if(fileInfo.deleted) throw new Error(`Hidden file was unexpectedly deleted: ${path}`);",
-            "const baseData=await syncContext.__loadBaseSaveData(path,true);",
+            "const baseData=await core.localDatabase.getDBEntry(prefixedPath,undefined,false,true);",
             "if(baseData===false) throw new Error(`Could not load base save data: ${path}`);",
             "const saveData={",
             "  ...baseData,",
@@ -430,9 +437,21 @@ async function runJsonConflictRoundTrip(
     await createHiddenJsonConflict(context, session, vaultB, mergeJsonPath, base, left, right);
     await autoMergeHiddenJsonConflict(context.cliBinary, session.cliEnv, mergeJsonPath);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
-    const mergedOnB = await waitForPathContent(vaultB.path, mergeJsonPath, (content) =>
-        hasJsonValues(content, { fromA: true, fromB: true })
-    );
+    let mergedOnB: string;
+    try {
+        mergedOnB = await waitForPathContent(vaultB.path, mergeJsonPath, (content) =>
+            hasJsonValues(content, { fromA: true, fromB: true })
+        );
+    } catch (error) {
+        const diagnostics = await readHiddenConflictDiagnostics(context.cliBinary, session.cliEnv, mergeJsonPath).catch(
+            (diagnosticError: unknown) => ({
+                diagnosticError: diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError),
+            })
+        );
+        throw new Error(
+            `${error instanceof Error ? error.message : String(error)}\nConflict diagnostics: ${JSON.stringify(diagnostics)}`
+        );
+    }
     await session.app.stop();
 
     session = await startConfiguredSession(context, vaultA);
@@ -620,14 +639,11 @@ async function setHiddenFileNoticeFixtures(port: number, itemIds: string[], incl
                     };
                     obsidianApp.plugins.enabledPlugins.add(pluginId);
                 }
-                syncContext.queuedNotificationFiles.clear();
-                for (const id of nextItemIds) {
-                    syncContext.queuedNotificationFiles.add(`.obsidian/plugins/livesync-e2e-${id}`);
-                }
+                const updatedFolders = nextItemIds.map((id) => `.obsidian/plugins/livesync-e2e-${id}`);
                 if (nextIncludeRestart) {
-                    syncContext.queuedNotificationFiles.add(core.services.API.getSystemConfigDir());
+                    updatedFolders.push(core.services.API.getSystemConfigDir());
                 }
-                syncContext.notifyConfigChange();
+                syncContext.showConfigurationChangeNotice(updatedFolders);
             },
             { nextItemIds: itemIds, nextIncludeRestart: includeRestart }
         );
@@ -683,7 +699,6 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                 const syncContext = plugin.optionalFileSync.testing.hiddenFileSync;
                 const setting = core.services.setting;
                 const originalApplyPartial = setting.applyPartial;
-                const originalRebuildMerging = syncContext.rebuildMerging;
                 const state = {
                     done: false,
                     reachedPreparation: false,
@@ -731,13 +746,15 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                     return await originalApplyPartial.apply(setting, args);
                 };
 
-                syncContext.rebuildMerging = async (...args: unknown[]) => {
-                    state.reachedInitialisation = true;
-                    await new Promise<void>((resolve) => {
-                        state.releaseInitialisation = resolve;
-                    });
-                    return await originalRebuildMerging.apply(syncContext, args);
-                };
+                const restoreRebuildMerging = syncContext.interceptRebuildMerging(
+                    async (runRebuild: (...args: unknown[]) => Promise<unknown>, ...args: unknown[]) => {
+                        state.reachedInitialisation = true;
+                        await new Promise<void>((resolve) => {
+                            state.releaseInitialisation = resolve;
+                        });
+                        return await runRebuild(...args);
+                    }
+                );
 
                 void core.services.setting
                     .enableOptionalFeature("MERGE")
@@ -752,7 +769,7 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                     )
                     .finally(() => {
                         setting.applyPartial = originalApplyPartial;
-                        syncContext.rebuildMerging = originalRebuildMerging;
+                        restoreRebuildMerging();
                         const notices = Array.from(document.querySelectorAll<HTMLElement>(".notice"));
                         const progressNotices = notices.filter((notice) => notice.textContent?.includes("[⚙"));
                         state.sawStandaloneGatheringNotice ||= notices.some((notice) =>

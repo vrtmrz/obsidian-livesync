@@ -38,6 +38,15 @@ function handlerRegistry() {
     };
 }
 
+function hiddenFileSyncRepairFixture() {
+    return Object.freeze({
+        scanInternalFiles: vi.fn(async () => []),
+        storeInternalFileToDatabase: vi.fn(async () => true),
+        storeInternalFileToDatabaseWithBaseRevision: vi.fn(async () => true),
+        extractInternalFileRevisionFromDatabase: vi.fn(async () => true),
+    });
+}
+
 function createFixture() {
     const processOptionalFileEvent = handlerRegistry();
     const getOptionalConflictCheckMethod = handlerRegistry();
@@ -54,31 +63,42 @@ function createFixture() {
     const onUnload = handlerRegistry();
 
     const calls: string[] = [];
+    const customisationHandlers = {
+        processOptionalFileEvent: vi.fn(async () => false),
+        processVirtualDocument: vi.fn(async () => false),
+        onRealiseSetting: vi.fn(async () => true),
+        onResuming: vi.fn(async () => true),
+        onBeforeReplicate: vi.fn(async () => true),
+        onDatabaseInitialised: vi.fn(async () => true),
+        suspendExtraSync: vi.fn(async () => true),
+        enableOptionalFeature: vi.fn(async () => true),
+    };
+    const customisationTesting = Object.freeze({ kind: "customisation-testing" });
     const customisationSync = {
         dispose: vi.fn(() => calls.push("customisation:unload")),
-        _anyProcessOptionalFileEvent: vi.fn(async () => false),
-        _anyGetOptionalConflictCheckMethod: vi.fn(async () => false),
-        _anyModuleParsedReplicationResultItem: vi.fn(async () => false),
-        _everyRealizeSettingSyncMode: vi.fn(async () => true),
-        _everyOnResumeProcess: vi.fn(async () => true),
-        _everyBeforeReplicate: vi.fn(async () => true),
-        _everyOnDatabaseInitialized: vi.fn(async () => true),
-        _allSuspendExtraSync: vi.fn(async () => true),
-        _allConfigureOptionalSyncFeature: vi.fn(async () => true),
+        serviceHandlers: Object.freeze(customisationHandlers),
+        testing: customisationTesting,
     };
+    const hiddenFileHandlers = {
+        onSettingLoaded: vi.fn(async () => true),
+        processOptionalFileEvent: vi.fn(async () => false),
+        queueConflict: vi.fn(async () => true),
+        processOptionalSyncFiles: vi.fn(async () => false),
+        realiseSettingSyncMode: vi.fn(async () => true),
+        onResuming: vi.fn(async () => true),
+        beforeReplicate: vi.fn(async () => true),
+        onDatabaseInitialised: vi.fn(async () => true),
+        suspendExtraSync: vi.fn(async () => true),
+        configureOptionalSyncFeature: vi.fn(async () => true),
+        isTargetFileEligible: vi.fn(async () => true),
+    };
+    const hiddenFileSyncRepair = hiddenFileSyncRepairFixture();
+    const hiddenFileTesting = Object.freeze({ kind: "hidden-file-testing" });
     const hiddenFileSync = {
         dispose: vi.fn(() => calls.push("hidden:unload")),
-        _everyOnloadAfterLoadSettings: vi.fn(async () => true),
-        _anyProcessOptionalFileEvent: vi.fn(async () => false),
-        _anyGetOptionalConflictCheckMethod: vi.fn(async () => false),
-        _anyProcessOptionalSyncFiles: vi.fn(async () => false),
-        _everyRealizeSettingSyncMode: vi.fn(async () => true),
-        _everyOnResumeProcess: vi.fn(async () => true),
-        _everyBeforeReplicate: vi.fn(async () => true),
-        _everyOnDatabaseInitialized: vi.fn(async () => true),
-        _allSuspendExtraSync: vi.fn(async () => true),
-        _allConfigureOptionalSyncFeature: vi.fn(async () => true),
-        isTargetFileEligible: vi.fn(async () => true),
+        serviceHandlers: Object.freeze(hiddenFileHandlers),
+        testing: hiddenFileTesting,
+        repair: hiddenFileSyncRepair,
     };
     const settings = {
         usePluginSync: true,
@@ -121,9 +141,13 @@ function createFixture() {
 
     return {
         calls,
+        customisationHandlers,
         customisationSync,
+        customisationTesting,
         feature,
+        hiddenFileHandlers,
         hiddenFileSync,
+        hiddenFileTesting,
         settings,
         contextDependencies: {
             customisation: () => customisationDependencies,
@@ -148,31 +172,39 @@ function createFixture() {
 }
 
 function createAggregateFixture() {
+    const customisationHandlers = {
+        processOptionalFileEvent: vi.fn(async () => false),
+        processVirtualDocument: vi.fn(async () => false),
+        onRealiseSetting: vi.fn(async () => true),
+        onResuming: vi.fn(async () => true),
+        onBeforeReplicate: vi.fn(async () => true),
+        onDatabaseInitialised: vi.fn(async () => true),
+        suspendExtraSync: vi.fn(async () => true),
+        enableOptionalFeature: vi.fn(async () => true),
+    };
     const customisationSync = {
         dispose: vi.fn(),
-        _anyProcessOptionalFileEvent: vi.fn(async () => false),
-        _anyGetOptionalConflictCheckMethod: vi.fn(async (): Promise<boolean | "newer"> => false),
-        _anyModuleParsedReplicationResultItem: vi.fn(async () => false),
-        _everyRealizeSettingSyncMode: vi.fn(async () => true),
-        _everyOnResumeProcess: vi.fn(async () => true),
-        _everyBeforeReplicate: vi.fn(async () => true),
-        _everyOnDatabaseInitialized: vi.fn(async () => true),
-        _allSuspendExtraSync: vi.fn(async () => true),
-        _allConfigureOptionalSyncFeature: vi.fn(async () => true),
+        serviceHandlers: Object.freeze(customisationHandlers),
+        testing: Object.freeze({ kind: "customisation-testing" }),
+    };
+    const hiddenFileHandlers = {
+        onSettingLoaded: vi.fn(async () => true),
+        processOptionalFileEvent: vi.fn(async () => false),
+        queueConflict: vi.fn(async () => true),
+        processOptionalSyncFiles: vi.fn(async () => false),
+        realiseSettingSyncMode: vi.fn(async () => true),
+        onResuming: vi.fn(async () => true),
+        beforeReplicate: vi.fn(async () => true),
+        onDatabaseInitialised: vi.fn(async () => true),
+        suspendExtraSync: vi.fn(async () => true),
+        configureOptionalSyncFeature: vi.fn(async () => true),
+        isTargetFileEligible: vi.fn(async () => true),
     };
     const hiddenFileSync = {
         dispose: vi.fn(),
-        _everyOnloadAfterLoadSettings: vi.fn(async () => true),
-        _anyProcessOptionalFileEvent: vi.fn(async () => false),
-        _anyGetOptionalConflictCheckMethod: vi.fn(async (): Promise<boolean | "newer"> => false),
-        _anyProcessOptionalSyncFiles: vi.fn(async () => false),
-        _everyRealizeSettingSyncMode: vi.fn(async () => true),
-        _everyOnResumeProcess: vi.fn(async () => true),
-        _everyBeforeReplicate: vi.fn(async () => true),
-        _everyOnDatabaseInitialized: vi.fn(async () => true),
-        _allSuspendExtraSync: vi.fn(async () => true),
-        _allConfigureOptionalSyncFeature: vi.fn(async () => true),
-        isTargetFileEligible: vi.fn(async () => true),
+        serviceHandlers: Object.freeze(hiddenFileHandlers),
+        testing: Object.freeze({ kind: "hidden-file-testing" }),
+        repair: hiddenFileSyncRepairFixture(),
     };
     const settings = {
         usePluginSync: true,
@@ -217,7 +249,7 @@ function createAggregateFixture() {
         createHiddenFileSync: () => hiddenFileSync as never,
     });
 
-    return { customisationSync, hiddenFileSync, services, settings };
+    return { customisationHandlers, customisationSync, hiddenFileHandlers, hiddenFileSync, services, settings };
 }
 
 describe("useOptionalFileSync", () => {
@@ -239,10 +271,10 @@ describe("useOptionalFileSync", () => {
     });
 
     it("routes Selective and Automatic paths to exactly one local owner", async () => {
-        const { customisationSync, hiddenFileSync, registries, settings } = createFixture();
-        customisationSync._anyProcessOptionalFileEvent.mockResolvedValue(true);
-        hiddenFileSync._anyProcessOptionalFileEvent.mockResolvedValue(true);
-        hiddenFileSync.isTargetFileEligible.mockResolvedValue(false);
+        const { customisationHandlers, hiddenFileHandlers, registries, settings } = createFixture();
+        customisationHandlers.processOptionalFileEvent.mockResolvedValue(true);
+        hiddenFileHandlers.processOptionalFileEvent.mockResolvedValue(true);
+        hiddenFileHandlers.isTargetFileEligible.mockResolvedValue(false);
 
         await expect(registries.isTargetFileInExtra.handlers[0]!(".obsidian/plugins/example/data.json")).resolves.toBe(
             true
@@ -250,9 +282,9 @@ describe("useOptionalFileSync", () => {
         await expect(
             registries.processOptionalFileEvent.handlers[0]!(".obsidian/plugins/example/data.json")
         ).resolves.toBe(true);
-        expect(customisationSync._anyProcessOptionalFileEvent).toHaveBeenCalledOnce();
-        expect(hiddenFileSync._anyProcessOptionalFileEvent).not.toHaveBeenCalled();
-        expect(hiddenFileSync.isTargetFileEligible).not.toHaveBeenCalled();
+        expect(customisationHandlers.processOptionalFileEvent).toHaveBeenCalledOnce();
+        expect(hiddenFileHandlers.processOptionalFileEvent).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.isTargetFileEligible).not.toHaveBeenCalled();
 
         settings.pluginSyncExtendedSetting = {
             "PLUGIN_DATA/example": {
@@ -261,53 +293,53 @@ describe("useOptionalFileSync", () => {
                 files: [],
             },
         };
-        hiddenFileSync.isTargetFileEligible.mockResolvedValue(true);
-        customisationSync._anyProcessOptionalFileEvent.mockClear();
+        hiddenFileHandlers.isTargetFileEligible.mockResolvedValue(true);
+        customisationHandlers.processOptionalFileEvent.mockClear();
 
         await expect(
             registries.processOptionalFileEvent.handlers[0]!(".obsidian/plugins/example/data.json")
         ).resolves.toBe(true);
-        expect(hiddenFileSync._anyProcessOptionalFileEvent).toHaveBeenCalledOnce();
-        expect(customisationSync._anyProcessOptionalFileEvent).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.processOptionalFileEvent).toHaveBeenCalledOnce();
+        expect(customisationHandlers.processOptionalFileEvent).not.toHaveBeenCalled();
     });
 
     it("does not fall back to the other context when the selected owner skips or fails", async () => {
-        const { customisationSync, hiddenFileSync, services } = createAggregateFixture();
-        customisationSync._anyProcessOptionalFileEvent.mockResolvedValueOnce(false);
+        const { customisationHandlers, hiddenFileHandlers, services } = createAggregateFixture();
+        customisationHandlers.processOptionalFileEvent.mockResolvedValueOnce(false);
 
         await expect(services.fileProcessing.processOptionalFileEvent(".obsidian/app.json")).resolves.toBe(false);
-        expect(hiddenFileSync._anyProcessOptionalFileEvent).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.processOptionalFileEvent).not.toHaveBeenCalled();
 
-        customisationSync._anyProcessOptionalFileEvent.mockRejectedValueOnce(new Error("customisation failed"));
+        customisationHandlers.processOptionalFileEvent.mockRejectedValueOnce(new Error("customisation failed"));
         await expect(services.fileProcessing.processOptionalFileEvent(".obsidian/app.json")).resolves.toBe(false);
-        expect(hiddenFileSync._anyProcessOptionalFileEvent).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.processOptionalFileEvent).not.toHaveBeenCalled();
     });
 
     it("dispatches conflict documents by their persisted namespace", async () => {
-        const { customisationSync, hiddenFileSync, services } = createAggregateFixture();
-        customisationSync._anyGetOptionalConflictCheckMethod.mockResolvedValue("newer");
-        hiddenFileSync._anyGetOptionalConflictCheckMethod.mockResolvedValue(true);
+        const { hiddenFileHandlers, services } = createAggregateFixture();
 
         await expect(services.conflict.getOptionalConflictCheckMethod("ix:device/app.json")).resolves.toBe("newer");
-        expect(hiddenFileSync._anyGetOptionalConflictCheckMethod).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.queueConflict).not.toHaveBeenCalled();
         await expect(services.conflict.getOptionalConflictCheckMethod("i:.obsidian/example.json")).resolves.toBe(true);
-        expect(customisationSync._anyGetOptionalConflictCheckMethod).toHaveBeenCalledOnce();
+        expect(hiddenFileHandlers.queueConflict).toHaveBeenCalledOnce();
+        expect(hiddenFileHandlers.queueConflict).toHaveBeenCalledWith("i:.obsidian/example.json");
+        await expect(services.conflict.getOptionalConflictCheckMethod("notes/example.md")).resolves.toBe(false);
     });
 
     it("keeps persisted document acceptance separate from current local ownership", async () => {
-        const { customisationSync, hiddenFileSync, registries, settings } = createFixture();
+        const { customisationHandlers, hiddenFileHandlers, registries, settings } = createFixture();
         settings.usePluginSync = false;
         settings.syncInternalFiles = false;
 
         await registries.processVirtualDocument.handlers[0]!({ _id: "ix:device-a/CONFIG/app.json.md" });
         await registries.processOptionalSynchroniseResult.handlers[0]!({ _id: "i:.obsidian/app.json" });
 
-        expect(customisationSync._anyModuleParsedReplicationResultItem).toHaveBeenCalledOnce();
-        expect(hiddenFileSync._anyProcessOptionalSyncFiles).toHaveBeenCalledOnce();
+        expect(customisationHandlers.processVirtualDocument).toHaveBeenCalledOnce();
+        expect(hiddenFileHandlers.processOptionalSyncFiles).toHaveBeenCalledOnce();
     });
 
     it("routes Ignore mode to neither local context", async () => {
-        const { customisationSync, hiddenFileSync, registries, settings } = createFixture();
+        const { customisationHandlers, hiddenFileHandlers, registries, settings } = createFixture();
         settings.pluginSyncExtendedSetting = {
             "PLUGIN_DATA/example": {
                 key: "PLUGIN_DATA/example",
@@ -319,8 +351,8 @@ describe("useOptionalFileSync", () => {
         await expect(
             registries.processOptionalFileEvent.handlers[0]!(".obsidian/plugins/example/data.json")
         ).resolves.toBe(false);
-        expect(customisationSync._anyProcessOptionalFileEvent).not.toHaveBeenCalled();
-        expect(hiddenFileSync._anyProcessOptionalFileEvent).not.toHaveBeenCalled();
+        expect(customisationHandlers.processOptionalFileEvent).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.processOptionalFileEvent).not.toHaveBeenCalled();
     });
 
     it("injects the same static ownership policy into both scan contexts", () => {
@@ -351,11 +383,12 @@ describe("useOptionalFileSync", () => {
     });
 
     it("preserves bail-first-failure and settled-unload behaviour", async () => {
-        const { customisationSync, hiddenFileSync, services } = createAggregateFixture();
-        customisationSync._everyRealizeSettingSyncMode.mockResolvedValueOnce(false);
+        const { customisationHandlers, customisationSync, hiddenFileHandlers, hiddenFileSync, services } =
+            createAggregateFixture();
+        customisationHandlers.onRealiseSetting.mockResolvedValueOnce(false);
 
         await expect(services.setting.onRealiseSetting()).resolves.toBe(false);
-        expect(hiddenFileSync._everyRealizeSettingSyncMode).not.toHaveBeenCalled();
+        expect(hiddenFileHandlers.realiseSettingSyncMode).not.toHaveBeenCalled();
 
         customisationSync.dispose.mockImplementationOnce(() => {
             throw new Error("customisation disposal failed");
@@ -380,21 +413,54 @@ describe("useOptionalFileSync", () => {
     });
 
     it("strips a database prefix before evaluating a Hidden File Sync target", async () => {
-        const { hiddenFileSync, registries } = createFixture();
+        const { hiddenFileHandlers, registries } = createFixture();
 
         await registries.isTargetFileInExtra.handlers[0]!({ path: "i:.obsidian/workspace" });
 
-        expect(hiddenFileSync.isTargetFileEligible).toHaveBeenCalledWith(".obsidian/workspace");
+        expect(hiddenFileHandlers.isTargetFileEligible).toHaveBeenCalledWith(".obsidian/workspace");
     });
 
-    it("returns focused views without registering either context as an add-on", () => {
-        const { customisationSync, feature, hiddenFileSync } = createFixture();
+    it("returns a concrete repair adapter instead of exposing the broad context to UI", async () => {
+        const {
+            customisationSync,
+            customisationTesting,
+            feature,
+            hiddenFileSync,
+            hiddenFileTesting,
+        } = createFixture();
 
         expect(feature.customisationSync).toBe(customisationSync);
         expect(feature.hiddenFileSyncCommands).toBe(hiddenFileSync);
         expect(feature.hiddenFileSyncInitialisation).toBe(hiddenFileSync);
-        expect(feature.hiddenFileSyncRepair).toBe(hiddenFileSync);
-        expect(feature.testing).toEqual({ customisationSync, hiddenFileSync });
+        expect(feature.hiddenFileSyncRepair).toBe(hiddenFileSync.repair);
+        expect(feature.hiddenFileSyncRepair).not.toBe(hiddenFileSync);
+        expect(Object.isFrozen(feature.hiddenFileSyncRepair)).toBe(true);
+        expect(Object.keys(feature.hiddenFileSyncRepair).sort()).toEqual(
+            [
+                "extractInternalFileRevisionFromDatabase",
+                "scanInternalFiles",
+                "storeInternalFileToDatabase",
+                "storeInternalFileToDatabaseWithBaseRevision",
+            ].sort()
+        );
+        const file = {
+            path: ".obsidian/app.json",
+            ctime: 1,
+            mtime: 2,
+            size: 3,
+        } as never;
+        await feature.hiddenFileSyncRepair.storeInternalFileToDatabaseWithBaseRevision(file, "2-selected", false);
+        expect(hiddenFileSync.repair.storeInternalFileToDatabaseWithBaseRevision).toHaveBeenCalledWith(
+            file,
+            "2-selected",
+            false
+        );
+        expect(feature.testing).toEqual({
+            customisationSync: customisationTesting,
+            hiddenFileSync: hiddenFileTesting,
+        });
         expect(Object.isFrozen(feature.testing)).toBe(true);
+        expect(feature.testing.customisationSync).not.toBe(customisationSync);
+        expect(feature.testing.hiddenFileSync).not.toBe(hiddenFileSync);
     });
 });

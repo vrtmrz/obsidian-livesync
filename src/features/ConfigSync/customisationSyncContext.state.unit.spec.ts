@@ -40,4 +40,46 @@ describe("CustomisationSyncContext state ownership", () => {
         expect(first.manifests).not.toBe(second.manifests);
         expect(get(first.manifests)).not.toBe(get(second.manifests));
     });
+
+    it("exposes frozen semantic service and testing views without writable state", () => {
+        const context = new CustomisationSyncContext(createCustomisationSyncTestDependencies());
+
+        expect(Object.isFrozen(context.serviceHandlers)).toBe(true);
+        expect(Object.keys(context.serviceHandlers).sort()).toEqual(
+            [
+                "enableOptionalFeature",
+                "onBeforeReplicate",
+                "onDatabaseInitialised",
+                "onRealiseSetting",
+                "onResuming",
+                "processOptionalFileEvent",
+                "processVirtualDocument",
+                "suspendExtraSync",
+            ].sort()
+        );
+
+        expect(Object.isFrozen(context.testing)).toBe(true);
+        expect(Object.keys(context.testing).sort()).toEqual(
+            [
+                "applyDataV2",
+                "configDir",
+                "createPluginDataExFileV2",
+                "createPluginDataFromV2",
+                "deleteConfigOnDatabase",
+                "filenameToUnifiedKey",
+                "filenameWithUnifiedKey",
+                "getFileCategory",
+                "isTargetPath",
+                "scanAllConfigFiles",
+                "scanInternalFiles",
+                "storeCustomizationFiles",
+                "unifiedKeyPrefixOfTerminal",
+            ].sort()
+        );
+        expect("catalogue" in context.testing).toBe(false);
+        expect("enumerationActive" in context.testing).toBe(false);
+        expect("manifests" in context.testing).toBe(false);
+
+        context.dispose();
+    });
 });

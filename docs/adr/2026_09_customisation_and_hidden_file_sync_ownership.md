@@ -20,12 +20,13 @@ one writer for raw events, scheduled scans, and automatic database-to-local
 reflection. The constructor-name add-on lookup and the `ConfigSync` and
 `HiddenFileSync` add-on identities have been retired.
 
-The Customisation Sync private context owns its catalogue, progress, manifest,
-queue, and periodic state. The Hidden File Sync private context owns its
-processed-state caches, reconciliation and conflict queues, activity counts,
-and periodic state. Each receives live settings and database projections,
-focused storage, path, and exact-revision capabilities, and explicit host
-effects rather than `LiveSyncCore`.
+The Customisation Sync private context coordinates its snapshot operations,
+scan queues, periodic work, and focused transient-state owners. The Hidden File
+Sync private context coordinates reconciliation, periodic work, and the
+lifetimes of focused processed-state, change-processing, and
+conflict-resolution owners. Each receives live settings and database
+projections, focused storage, path, and exact-revision capabilities, and
+explicit host effects rather than `LiveSyncCore`.
 
 The corresponding implemented topology is documented in
 [Optional-file synchronisation architecture](../design_docs/optional_file_sync_architecture.md).
@@ -105,7 +106,7 @@ The Customisation Sync runtime will own:
   operations; and
 - the state required to serialise and report those operations.
 
-The Hidden File Sync runtime will own:
+The Hidden File Sync runtime and its composed focused owners will own:
 
 - the device-local processed-state records;
 - one-file storage and database transfer, including exact-revision repair;
@@ -194,15 +195,44 @@ caches, processed-state records, recent-event records, locks, semaphores,
 queues, periodic processors, Notices, and event subscriptions must be created
 and disposed by their feature context or a focused resource owner.
 
+The contexts are orchestration roots, rather than containers for every mutable
+detail. `HiddenFileSyncProcessedState` owns the three device-local maps, their
+autosave initialisation, exact key formats, retained known mtime, reset rules,
+and settlement effects on `IPathService`. Database write and extraction
+operations receive this capability through one narrow `processedState` port;
+they do not receive bundles of individual state callbacks or implement state
+keys themselves.
+
+`CustomisationSyncCatalogueState` separately owns the transient catalogue
+rows, manifest lookup and mtime cache, their reactive stores, and catalogue
+update progress. A small recent-event deduplicator owns raw-event admission
+history. These Customisation Sync owners are deliberately not implementations
+of a shared Hidden File Sync state abstraction: the former state is a derived,
+in-memory projection, while Hidden File Sync markers are persisted operational
+reconciliation state with different identity, invalidation, and deletion
+rules.
+
+`HiddenFileSyncChangeProcessor` owns storage and database change processing,
+the bounded semaphore, same-path event serialisation, activity counts, and the
+inherited order in which processed-state markers and transfer results settle.
+This boundary keeps event concurrency and settlement directly testable without
+giving the processor full scan, initialisation, notification, or host
+responsibilities.
+
 The joint composition may return several views backed by those contexts:
 
 - a Customisation Sync catalogue and operation view for its dialogue;
-- a Hidden File Sync initialisation view for settings workflows; and
-- a Hidden File Sync repair view for the Hatch pane.
+- a Hidden File Sync initialisation view for settings workflows;
+- a Hidden File Sync repair view for the Hatch pane;
+- immutable semantic handler views for registration by the joint composition;
+  and
+- explicitly internal testing views for maintained real-Obsidian workflows.
 
 Several views over one context do not create several owners. Views expose
-stable application data and operations rather than PouchDB entries, queue
-objects, mutable settings records, or the complete core.
+stable application data and named operations rather than PouchDB entries,
+queue objects, mutable settings records, dependency objects, or the complete
+core. The testing views also avoid exposing context instances or writable
+internal state; time-sensitive E2E work uses a scoped operation interceptor.
 
 Obsidian commands, ribbon actions, dialogues, Notices, plug-in reloads, and
 restart scheduling will remain in host-owned composition. The UI will receive
@@ -231,10 +261,10 @@ serviceFeature. `LiveSyncBaseCore.getAddOn()` and its constructor-name lookup
 have been removed.
 
 Production code consumes focused views and does not use the broad context
-surface. Maintained real-Obsidian E2E workflows use an explicitly internal
-test view exposed by the composed feature. This is a transitional test seam,
-not a production service locator, and it should be narrowed as those workflows
-move to public operations or commands.
+surface. Maintained real-Obsidian E2E workflows use explicitly internal,
+immutable test views exposed by the composed feature. These are transitional
+test seams, not production service locators, and they should be narrowed as
+those workflows move to public operations or commands.
 
 The retirement was gated on:
 
@@ -328,11 +358,13 @@ to the non-owner.
 - Replace the complete-core dependency with narrow dependencies.
 
 The private context, path module, codec module, focused presentation view, and
-resource teardown are implemented. Catalogue, enumeration, migration, scan,
-and manifest state is owned per context instance. The context accepts only
-narrow, live projections and explicit effects; an Obsidian adapter at the
-composition edge owns dialogues, Notices, plug-in reload, restart, lifecycle,
-Vault access, and compatibility scan telemetry.
+resource teardown are implemented. A focused catalogue-state owner holds the
+rows, manifests, manifest mtime cache, reactive stores, and update progress,
+while a bounded deduplicator owns recent raw-event keys. Enumeration and scan
+queues remain with the orchestrating context. The context accepts only narrow,
+live projections and explicit effects; an Obsidian adapter at the composition
+edge owns dialogues, Notices, plug-in reload, restart, lifecycle, Vault access,
+and compatibility scan telemetry.
 
 ### Stage 5: extract the Hidden File Sync runtime — implemented
 
@@ -343,16 +375,26 @@ Vault access, and compatibility scan telemetry.
 
 The private context, focused initialisation, repair, and command views,
 host-owned command registration, and processor, cache, subscription, and
-Notice teardown are implemented. The context owns transfer, reconciliation,
-conflict, and processed-state behaviour through narrow live dependencies.
-An Obsidian adapter owns JSON conflict dialogues, progress presentation,
-grouped Notices, plug-in reload, restart scheduling, Vault enumeration, and
-compatibility activity publication.
+Notice teardown are implemented. A focused processed-state owner holds all
+three persisted maps, their key and mtime rules, reset operations, and
+cross-side settlement. Database write and extraction operations consume one
+narrow state port. A focused change processor owns storage and database event
+processing, bounded concurrency, per-path serialisation, activity publication,
+and compatibility settlement order. The context retains scan, initialisation,
+notification, and reconciliation orchestration. A focused conflict-resolution
+owner owns pending-path admission,
+the parallel classification and serial interaction queues, automatic merge,
+newer-revision selection, interactive JSON application, settlement, and queue
+disposal. An Obsidian adapter owns JSON conflict dialogue instances, progress
+presentation, grouped Notices, plug-in reload, restart scheduling, Vault
+enumeration, and compatibility activity publication.
 
 ### Stage 6: move synchronisation composition — implemented
 
 - Register the overlapping Service handlers once through the joint
   serviceFeature.
+- Consume immutable semantic handler views rather than exposing registry-style
+  methods on either context.
 - Preserve the characterised lifecycle callback order and Commonlib
   aggregation semantics through focused tests.
 
@@ -438,11 +480,13 @@ migration without first establishing narrow dependencies.
 - The composition root gains several focused views but does not gain another
   runtime service locator.
 - The legacy add-on identity and constructor-name lookup are removed.
-- The two contexts remain sizeable because each owns one cohesive persisted
-  synchronisation model, but their dependency surfaces are explicit and do
-  not include the complete core. Further extraction should follow a concrete
-  behavioural boundary rather than create additional serviceFeatures for
-  private operations.
+- The two contexts coordinate separate synchronisation workflows, but their
+  dependency surfaces are explicit and do not include the complete core.
+  Customisation Sync delegates its derived catalogue and recent-event state,
+  while Hidden File Sync delegates processed-state, change-processing, and
+  conflict lifecycles, to focused owners. Further extraction should follow a
+  concrete behavioural boundary rather than create additional serviceFeatures
+  for private operations.
 
 ## References
 
