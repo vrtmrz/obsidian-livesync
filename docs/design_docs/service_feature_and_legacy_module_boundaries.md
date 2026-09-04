@@ -34,8 +34,9 @@ Do not select `AbstractModule` or `AbstractObsidianModule` merely to obtain conv
 3. construct and register built-in and host-supplied Modules;
 4. compose the built-in Commonlib serviceFeatures;
 5. compose host-supplied serviceFeatures;
-6. construct add-ons; and
-7. call `onBindFunction()` for each registered Module.
+6. construct add-ons;
+7. compose the late core serviceFeatures whose handlers must follow host features and add-ons; and
+8. call `onBindFunction()` for each registered Module.
 
 The Module constructor therefore runs before its handler bindings, while the complete Service Hub and ServiceModules already exist. `bindModuleFunctions()` then invokes every `onBindFunction()` and runs `__$checkInstanceBinding()`. That diagnostic compares underscore-prefixed prototype methods with method references found in the source text of `onBindFunction()`.
 
@@ -126,6 +127,14 @@ This split allows tests to verify:
 - registration of the composed operation.
 
 The operation does not need an application Module identity.
+
+### Ordered start-up composition and registration-only features
+
+Configured Vault admission and the checks which follow database preparation are composed by `src/serviceFeatures/startupLifecycle/`. The directory keeps onboarding admission, compromised-chunk inspection, incomplete-document repair, Config Doctor, and the obsolete bulk-send setting migration as separate operations. One feature composer owns their order and receives the compatibility-review wait operation explicitly; an individual operation does not call the composer.
+
+The layout-ready admission handler uses priority 1. This preserves ordinary priority-0 host integration before admission, while keeping an unconfigured Vault outside the flag-file recovery handlers at priorities 5, 10, and 20, and the compatibility review at priority 30. Admission belongs to one plug-in process: an initially unconfigured process remains inert until setup restarts it, and declining the requested restart does not trigger an in-process reconfiguration. Changing an admitted process back to unconfigured retires its Config Doctor and incomplete-document repair request handlers. The handlers also recheck the current configured state and database readiness when invoked, so a pending restart cannot expose partially initialised or retired state. The first-initialise handler rechecks admission before retaining the established order after the file watcher has been started: database readiness, compromised chunks, incomplete documents, compatibility review, Config Doctor, and the bulk-send setting migration.
+
+Command and ribbon registration are serviceFeatures for the same dependency-visibility reason, but they are not start-up migrations. The basic commands remain a host-neutral feature composed by `LiveSyncBaseCore`, while the replication ribbon remains an Obsidian-only feature composed by the Obsidian host. Both retain `onInitialise` registration so moving them out of the Module list does not make their effects run during construction.
 
 ### Private state and ordered handlers: target filters
 
