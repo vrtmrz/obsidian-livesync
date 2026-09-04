@@ -732,6 +732,9 @@ moduleLiveSyncMain:
 moduleLocalDatabase:
     logWaitingForReady: Waiting for ready...
 moduleLog:
+    pathComponentTooLong: >-
+        A file or folder name exceeds ${maxBytes} UTF-8 bytes and may not work on
+        some Android and Linux file systems: ${components}
     showLog: Show Log
 moduleMigration:
     fix0256:
@@ -2126,6 +2129,8 @@ xxhash64 (Fastest): xxhash64 (Fastest)
 "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer.": "This feature enables direct synchronisation between devices. No server is required, but both devices must be online at the same time for synchronisation to occur, and some features may be limited. Internet connection is only required to signalling (detecting peers) and not for data transfer."
 Ui:
     Common:
+        LocalDatabaseInitialisationFailed: Self-hosted LiveSync cannot synchronise. Generate a report to review the detailed log.
+        SomeFilesCouldNotBeSynchronised: Not all files could be synchronised. Check the affected files. Generate a report to review the detailed log.
         Signal:
             Caution: CAUTION
             Danger: DANGER

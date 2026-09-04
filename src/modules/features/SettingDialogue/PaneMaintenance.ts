@@ -412,7 +412,9 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.services.database.resetDatabase();
-                        await this.services.databaseEvents.initialiseDatabase();
+                        if (!(await this.services.databaseEvents.initialiseDatabase())) {
+                            Logger($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);
+                        }
                     })
             );
     });

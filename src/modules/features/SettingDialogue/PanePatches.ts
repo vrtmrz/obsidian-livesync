@@ -15,6 +15,7 @@ import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-brows
 import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { migrateDatabases } from "./settingUtils.ts";
 import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
+import { $msg } from "@/common/translation";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
@@ -142,7 +143,9 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
 
         this.addOnSaved("additionalSuffixOfDatabaseName", async (key) => {
             Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
-            await this.services.databaseEvents.initialiseDatabase();
+            if (!(await this.services.databaseEvents.initialiseDatabase())) {
+                Logger($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);
+            }
         });
 
         new Setting(paneEl).autoWireDropDown("hashAlg", {

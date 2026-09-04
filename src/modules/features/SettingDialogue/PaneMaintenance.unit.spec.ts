@@ -93,7 +93,7 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 
-describe("paneMaintenance Fresh Start Wipe", () => {
+describe("paneMaintenance", () => {
     it("does not announce success when the remote wipe reports failure", async () => {
         const updateCheckPointInfo = vi.fn(async () => undefined);
         const resetRemoteBucket = vi.fn(async () => false);
@@ -139,5 +139,50 @@ describe("paneMaintenance Fresh Start Wipe", () => {
             "notice"
         );
         expect(maintenanceHarness.logger).not.toHaveBeenCalledWith("Deleted all data on remote server", "notice");
+    });
+
+    it("reports when database initialisation after a local reset does not complete", async () => {
+        const resetDatabase = vi.fn(async () => undefined);
+        const initialiseDatabase = vi.fn(async () => false);
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "Reset") {
+                    callback({} as HTMLElement);
+                }
+                return Promise.resolve();
+            },
+        }));
+        const host = {
+            core: {},
+            createEl: vi.fn(),
+            editingSettings: {},
+            isConfiguredAs: vi.fn(),
+            onlyOnCouchDB: vi.fn(),
+            onlyOnCouchDBOrMinIO: vi.fn(),
+            onlyOnMinIO: vi.fn(),
+            services: {
+                appLifecycle: { askRestart: vi.fn() },
+                database: { resetDatabase },
+                databaseEvents: { initialiseDatabase },
+                setting: { saveSettingData: vi.fn() },
+            },
+        };
+
+        paneMaintenance.call(host as never, {} as HTMLElement, { addPanel } as never);
+        const deleteLocalDatabase = maintenanceHarness.createdSettings.find(
+            ({ name }) => name === "Delete local database to reset or uninstall Self-hosted LiveSync"
+        );
+        if (!deleteLocalDatabase?.click) {
+            throw new Error("Delete local database action was not registered");
+        }
+
+        await deleteLocalDatabase.click();
+
+        expect(resetDatabase).toHaveBeenCalledOnce();
+        expect(initialiseDatabase).toHaveBeenCalledOnce();
+        expect(maintenanceHarness.logger).toHaveBeenCalledWith(
+            "Ui.Common.LocalDatabaseInitialisationFailed",
+            "notice"
+        );
     });
 });

@@ -4212,6 +4212,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "等待就绪...",
         "zh-tw": "正在等待就緒⋯",
     },
+    "moduleLog.pathComponentTooLong": {
+        def: "A file or folder name exceeds ${maxBytes} UTF-8 bytes and may not work on some Android and Linux file systems: ${components}",
+    },
     "moduleLog.showLog": {
         def: "Show Log",
         es: "Mostrar registro",
@@ -10414,6 +10417,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "Use Remote Configuration",
         "zh-tw": "使用遠端設定",
     },
+    "Ui.Common.LocalDatabaseInitialisationFailed": {
+        def: "Self-hosted LiveSync cannot synchronise. Generate a report to review the detailed log.",
+    },
     "Ui.Common.Signal.Caution": {
         def: "CAUTION",
         es: "PRECAUCIÓN",
@@ -10441,6 +10447,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "경고",
         zh: "警告",
         "zh-tw": "警告",
+    },
+    "Ui.Common.SomeFilesCouldNotBeSynchronised": {
+        def: "Not all files could be synchronised. Check the affected files. Generate a report to review the detailed log.",
     },
     "Ui.Settings.Advanced.LocalDatabaseTweak": {
         def: "Local Database Tweak",

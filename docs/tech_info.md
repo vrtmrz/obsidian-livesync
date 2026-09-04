@@ -22,6 +22,9 @@ Note: The figure is drawn as single-directional, between two devices for demonst
   defines the current revision-tree and file-provenance rules.
 - [Chunk Retrieval and Waiting](design_docs/chunk_retrieval_and_waiting.md)
   defines missing-Chunk arrival and quiescence handling.
+- [Path component length compatibility](design_docs/path_component_length_compatibility.md)
+  explains why 255 UTF-8 bytes is an Android and Linux compatibility warning,
+  rather than a universal rule for deciding whether a path is valid.
 - [Data Compression](specs_data_compression.md) and [Garbage Collection
   V3](specs_garbage_collection.md) describe their respective storage and
   maintenance contracts.
