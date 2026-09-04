@@ -93,6 +93,12 @@ describe("useStartupLifecycleFeature default operation wiring", () => {
             log,
         });
 
+        expect(operationMocks.checkCompromisedChunks).not.toHaveBeenCalled();
+        expect(operationMocks.checkIncompleteDocuments).not.toHaveBeenCalled();
+        expect(operationMocks.runConfigDoctor).not.toHaveBeenCalled();
+        expect(operationMocks.migrateBulkSendSetting).not.toHaveBeenCalled();
+        expect(waitForCompatibilityReview).not.toHaveBeenCalled();
+
         const layoutAdmission = addLayoutHandler.mock.calls[0]?.[0] as () => Promise<boolean>;
         const firstInitialise = addFirstInitialiseHandler.mock.calls[0]?.[0] as () => Promise<boolean>;
         await expect(layoutAdmission()).resolves.toBe(true);

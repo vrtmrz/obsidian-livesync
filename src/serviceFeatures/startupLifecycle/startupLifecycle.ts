@@ -26,69 +26,68 @@ function createDefaultOperations(
     log: ReturnType<typeof createInstanceLogFunction>
 ): ConfiguredStartupLifecycleOperations {
     const { services } = host;
-    return {
-        databaseReady: options.databaseReady ?? (() => services.database.localDatabase.isReady),
-        reportDatabaseNotReady:
-            options.reportDatabaseNotReady ??
-            (() => log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE)),
-        hasCompromisedChunks:
-            options.hasCompromisedChunks ??
-            (() =>
-                checkCompromisedChunks({
-                    settings: services.setting.currentSettings(),
+    const defaultOperations = {
+        databaseReady: () => services.database.localDatabase.isReady,
+        reportDatabaseNotReady: () => log($msg("moduleMigration.logLocalDatabaseNotReady"), LOG_LEVEL_NOTICE),
+        hasCompromisedChunks: () =>
+            checkCompromisedChunks({
+                settings: services.setting.currentSettings(),
+                localDatabase: services.database.localDatabase,
+                isOnline: () => services.API.isOnline,
+                getActiveReplicator: () => services.replicator.getActiveReplicator(),
+                confirm: services.UI.confirm,
+                rebuilder: host.serviceModules.rebuilder,
+                performRestart: () => services.appLifecycle.performRestart(),
+                log,
+            }),
+        hasIncompleteDocuments: (force = false) =>
+            checkIncompleteDocuments(
+                {
                     localDatabase: services.database.localDatabase,
-                    isOnline: () => services.API.isOnline,
-                    getActiveReplicator: () => services.replicator.getActiveReplicator(),
+                    getPath: (entry) => services.path.getPath(entry),
+                    isTargetFile: (path) => services.vault.isTargetFile(path),
+                    storageAccess: host.serviceModules.storageAccess,
+                    fileHandler: host.serviceModules.fileHandler,
+                    keyValueDB: services.keyValueDB.kvDB,
+                    noticeGroups: services.context.noticeGroups,
                     confirm: services.UI.confirm,
+                    log,
+                },
+                force
+            ),
+        runDoctor: (skipRebuild = false, activateReason = "updated", forceRescan = false) =>
+            runConfigDoctor(
+                {
+                    confirm: services.UI.confirm,
+                    translate: services.context.translate,
+                    settings: services.setting.currentSettings(),
+                    setSettings: (settings) => {
+                        services.setting.settings = settings;
+                    },
+                    saveSettings: () => services.setting.saveSettingData(),
                     rebuilder: host.serviceModules.rebuilder,
                     performRestart: () => services.appLifecycle.performRestart(),
-                    log,
-                })),
-        hasIncompleteDocuments:
-            options.hasIncompleteDocuments ??
-            ((force = false) =>
-                checkIncompleteDocuments(
-                    {
-                        localDatabase: services.database.localDatabase,
-                        getPath: (entry) => services.path.getPath(entry),
-                        isTargetFile: (path) => services.vault.isTargetFile(path),
-                        storageAccess: host.serviceModules.storageAccess,
-                        fileHandler: host.serviceModules.fileHandler,
-                        keyValueDB: services.keyValueDB.kvDB,
-                        noticeGroups: services.context.noticeGroups,
-                        confirm: services.UI.confirm,
-                        log,
-                    },
-                    force
-                )),
+                },
+                skipRebuild,
+                activateReason,
+                forceRescan
+            ),
+        migrateBulkSend: () =>
+            migrateBulkSendSetting({
+                settings: services.setting.currentSettings(),
+                log,
+                saveSettings: () => services.setting.saveSettingData(),
+            }),
+    } satisfies Omit<ConfiguredStartupLifecycleOperations, "waitForCompatibilityReview">;
+
+    return {
+        databaseReady: options.databaseReady ?? defaultOperations.databaseReady,
+        reportDatabaseNotReady: options.reportDatabaseNotReady ?? defaultOperations.reportDatabaseNotReady,
+        hasCompromisedChunks: options.hasCompromisedChunks ?? defaultOperations.hasCompromisedChunks,
+        hasIncompleteDocuments: options.hasIncompleteDocuments ?? defaultOperations.hasIncompleteDocuments,
         waitForCompatibilityReview: options.waitForCompatibilityReview,
-        runDoctor:
-            options.runDoctor ??
-            ((skipRebuild = false, activateReason = "updated", forceRescan = false) =>
-                runConfigDoctor(
-                    {
-                        confirm: services.UI.confirm,
-                        translate: services.context.translate,
-                        settings: services.setting.currentSettings(),
-                        setSettings: (settings) => {
-                            services.setting.settings = settings;
-                        },
-                        saveSettings: () => services.setting.saveSettingData(),
-                        rebuilder: host.serviceModules.rebuilder,
-                        performRestart: () => services.appLifecycle.performRestart(),
-                    },
-                    skipRebuild,
-                    activateReason,
-                    forceRescan
-                )),
-        migrateBulkSend:
-            options.migrateBulkSend ??
-            (() =>
-                migrateBulkSendSetting({
-                    settings: services.setting.currentSettings(),
-                    log,
-                    saveSettings: () => services.setting.saveSettingData(),
-                })),
+        runDoctor: options.runDoctor ?? defaultOperations.runDoctor,
+        migrateBulkSend: options.migrateBulkSend ?? defaultOperations.migrateBulkSend,
     };
 }
 
