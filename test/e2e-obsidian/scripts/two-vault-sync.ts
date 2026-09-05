@@ -1,10 +1,11 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename as renameFilesystemPath, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
     assertCouchDbReachable,
     createCouchDbDatabase,
     deleteCouchDbDatabase,
+    fetchAllCouchDbDocs,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
     waitForCouchDbDocs,
@@ -27,6 +28,7 @@ import {
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
+import { captureObsidianPage } from "../runner/ui.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "20000";
@@ -47,6 +49,11 @@ const conflictRenameFromPath = "E2E/two-vault/conflict-operations/rename-source.
 const conflictRenameToPath = "E2E/two-vault/conflict-operations/renamed/rename-target.md";
 const targetMismatchPath = "E2E/two-vault/target-mismatch.md";
 const encryptedPath = "E2E/two-vault/encrypted.md";
+const parentCaseRenameFromDirectoryPath = "E2E/two-vault/parent/test3";
+const parentCaseRenameToDirectoryPath = "E2E/two-vault/parent/Test3";
+const parentCaseRenameFromPath = `${parentCaseRenameFromDirectoryPath}/note.md`;
+const parentCaseRenameToPath = `${parentCaseRenameToDirectoryPath}/note.md`;
+const parentCaseEventObserverKey = "__livesyncE2eParentCaseEventObserver";
 
 type RunnerContext = {
     binary: string;
@@ -66,6 +73,34 @@ type FileConflictState = {
         deleted: boolean;
         path: string;
     }[];
+};
+
+type ParentCaseVaultEvent = {
+    type: "create" | "delete" | "rename";
+    path: string;
+    oldPath: string | null;
+};
+
+type ParentCaseMetadataState = {
+    id: string;
+    found: boolean;
+    rev: string | null;
+    path: string | null;
+    deleted: boolean;
+    children: string[];
+    contentMatches: boolean;
+    childrenMatch: boolean;
+    chunksPresent: boolean;
+    chunkReferenceCount: number;
+    availableChunkCount: number;
+};
+
+type ParentCaseRemoteMetadataState = {
+    id: string;
+    rev: string | null;
+    path: string | null;
+    deleted: boolean;
+    children: string[];
 };
 
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
@@ -92,6 +127,57 @@ async function pathExists(vaultPath: string, path: string): Promise<boolean> {
         }
         throw error;
     }
+}
+
+async function installParentCaseEventObserver(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    observedPaths: readonly string[]
+): Promise<string> {
+    return await evalObsidianJson<string>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const key=${JSON.stringify(parentCaseEventObserverKey)};`,
+            `const observedPaths=${JSON.stringify(observedPaths)};`,
+            "const previous=globalThis[key];",
+            "if(previous){for(const ref of previous.refs??[]) app.vault.offref(ref);}",
+            "const events=[];",
+            "const record=(type,file,oldPath)=>{",
+            "  const path=typeof file?.path==='string'?file.path:'';",
+            "  const previousPath=typeof oldPath==='string'?oldPath:null;",
+            "  if(!observedPaths.includes(path)&&(!previousPath||!observedPaths.includes(previousPath))) return;",
+            "  globalThis[key].lastEventAt=Date.now();",
+            "  if(events.length<32) events.push({type,path,oldPath:previousPath});",
+            "};",
+            "const refs=[",
+            "  app.vault.on('create',(file)=>record('create',file)),",
+            "  app.vault.on('delete',(file)=>record('delete',file)),",
+            "  app.vault.on('rename',(file,oldPath)=>record('rename',file,oldPath)),",
+            "];",
+            "globalThis[key]={events,refs,lastEventAt:Date.now()};",
+            "return JSON.stringify(app.plugins.plugins['obsidian-livesync'].core.services.API.getAppVersion());",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function takeParentCaseEventEvidence(cliBinary: string, env: NodeJS.ProcessEnv): Promise<ParentCaseVaultEvent[]> {
+    return await evalObsidianJson<ParentCaseVaultEvent[]>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const key=${JSON.stringify(parentCaseEventObserverKey)};`,
+            "const observer=globalThis[key];",
+            "if(!observer) return JSON.stringify([]);",
+            "const events=Array.isArray(observer.events)?observer.events.slice(0,32):[];",
+            "try{for(const ref of observer.refs??[]) app.vault.offref(ref);}finally{delete globalThis[key];}",
+            "return JSON.stringify(events);",
+            "})()",
+        ].join(""),
+        env
+    );
 }
 
 async function stopTrackedSession(context: RunnerContext, session: ObsidianLiveSyncSession): Promise<void> {
@@ -139,6 +225,165 @@ async function waitForPathDeleted(
         await new Promise((resolve) => setTimeout(resolve, 250));
     }
     throw new Error(`Timed out waiting for deleted file: ${join(vaultPath, path)}`);
+}
+
+async function waitForExactObsidianPath(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string,
+    oldPath: string,
+    timeoutMs = Number(process.env.E2E_OBSIDIAN_FILE_TIMEOUT_MS ?? 10000)
+): Promise<void> {
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const expectedPath=${JSON.stringify(path)};`,
+            `const oldPath=${JSON.stringify(oldPath)};`,
+            `const observerKey=${JSON.stringify(parentCaseEventObserverKey)};`,
+            `const timeoutMs=${JSON.stringify(timeoutMs)};`,
+            "const deadline=Date.now()+timeoutMs;",
+            "let observedPath=null;",
+            "while(Date.now()<deadline){",
+            "  const files=app.vault.getFiles();",
+            "  const file=files.find((candidate)=>candidate.path===expectedPath);",
+            "  observedPath=typeof file?.path==='string'?file.path:null;",
+            "  const observer=globalThis[observerKey];",
+            "  if(observedPath===expectedPath&&!files.some((candidate)=>candidate.path===oldPath)&&observer?.events.length>0&&Date.now()-observer.lastEventAt>=500) return JSON.stringify({path:observedPath});",
+            "  await new Promise((resolve)=>setTimeout(resolve,100));",
+            "}",
+            "throw new Error(`Timed out waiting for Obsidian to recognise the exact path: ${JSON.stringify({expectedPath,observedPath})}`);",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function waitForEitherPathContent(
+    vaultPath: string,
+    paths: readonly string[],
+    expectedContent: string,
+    timeoutMs = Number(process.env.E2E_OBSIDIAN_FILE_TIMEOUT_MS ?? 10000)
+): Promise<{ path: string }> {
+    const deadline = Date.now() + timeoutMs;
+    let lastPath: string | null = null;
+    let contentMatched = false;
+    while (Date.now() < deadline) {
+        for (const path of paths) {
+            if (!(await pathExists(vaultPath, path))) continue;
+            lastPath = path;
+            contentMatched = (await readVaultFile(vaultPath, path)) === expectedContent;
+            if (contentMatched) return { path };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error(
+        `Timed out waiting for content at either case variant: ${JSON.stringify({
+            paths,
+            lastPath,
+            contentMatched,
+        })}`
+    );
+}
+
+async function waitForParentCaseMetadata(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    id: string,
+    expectedPath: string,
+    expectedContent: string,
+    expectedChildren: readonly string[],
+    expectedRevision?: string
+): Promise<ParentCaseMetadataState> {
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000);
+    return await evalObsidianJson<ParentCaseMetadataState>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const id=${JSON.stringify(id)};`,
+            `const expectedPath=${JSON.stringify(expectedPath)};`,
+            `const expectedContent=${JSON.stringify(expectedContent)};`,
+            `const expectedChildren=${JSON.stringify(expectedChildren)};`,
+            `const expectedRevision=${JSON.stringify(expectedRevision ?? null)};`,
+            `const timeoutMs=${JSON.stringify(timeoutMs)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const deadline=Date.now()+timeoutMs;",
+            "let state={id,found:false,rev:null,path:null,deleted:false,children:[],contentMatches:false,childrenMatch:false,chunksPresent:false,chunkReferenceCount:0,availableChunkCount:0};",
+            "while(Date.now()<deadline){",
+            "  await core.services.fileProcessing.commitPendingFileEvents();",
+            "  const raw=await core.localDatabase.getRaw(id,{revs_info:true}).catch(()=>null);",
+            "  const row=((await core.localDatabase.allDocsRaw({keys:[id],include_docs:true})).rows??[])[0];",
+            "  const rawDoc=raw??row?.doc??null;",
+            "  const deleted=Boolean(raw?.deleted||raw?._deleted||row?.value?.deleted||row?.doc?.deleted||row?.doc?._deleted);",
+            "  const children=Array.isArray(rawDoc?.children)?rawDoc.children:[];",
+            "  const rev=rawDoc?._rev??row?.value?.rev??null;",
+            "  if(deleted) throw new Error(`Parent case rename marked Metadata as deleted (deleted or _deleted): ${JSON.stringify({id,rev,path:rawDoc?.path??null})}`);",
+            "  if(rawDoc){",
+            "    const loaded=await core.localDatabase.getDBEntry(expectedPath,{rev},false,true,true).catch(()=>false);",
+            "    const content=loaded===false?'':Array.isArray(loaded.data)?loaded.data.join(''):typeof loaded.data==='string'?loaded.data:'';",
+            "    const chunkRows=children.length===0?{rows:[]}:await core.localDatabase.allDocsRaw({keys:children,include_docs:true});",
+            "    const availableChunkCount=chunkRows.rows.filter((chunkRow)=>Boolean(chunkRow.doc)&&!Boolean(chunkRow.value?.deleted)&&!Boolean(chunkRow.doc?.deleted)&&!Boolean(chunkRow.doc?._deleted)).length;",
+            "    state={id,found:true,rev,path:rawDoc?.path??null,deleted:false,children,contentMatches:content===expectedContent,childrenMatch:children.length===expectedChildren.length&&children.every((child,index)=>child===expectedChildren[index]),chunksPresent:availableChunkCount===children.length&&children.length===expectedChildren.length,chunkReferenceCount:children.length,availableChunkCount};",
+            "    if(state.contentMatches&&state.childrenMatch&&state.chunksPresent&&(!expectedRevision||state.rev===expectedRevision)) return JSON.stringify(state);",
+            "  }",
+            "  await new Promise((resolve)=>setTimeout(resolve,250));",
+            "}",
+            "throw new Error(`Timed out waiting for parent case Metadata and Chunks: ${JSON.stringify(state)}`);",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function waitForParentCaseRemoteMetadata(
+    context: RunnerContext,
+    entry: LocalDatabaseEntry
+): Promise<ParentCaseRemoteMetadataState> {
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ?? 15000);
+    const deadline = Date.now() + timeoutMs;
+    let lastState: ParentCaseRemoteMetadataState | null = null;
+    while (Date.now() < deadline) {
+        const response = await fetchAllCouchDbDocs(context.couchDb, context.dbName);
+        const row = response.rows.find((candidate) => candidate.id === entry.id);
+        const doc = row?.doc;
+        const deleted = Boolean(row?.value.deleted || doc?.deleted || doc?._deleted);
+        lastState = {
+            id: entry.id,
+            rev: row?.value.rev ?? doc?._rev ?? null,
+            path: doc?.path ?? null,
+            deleted,
+            children: Array.isArray(doc?.children) ? doc.children : [],
+        };
+        if (deleted) {
+            throw new Error(
+                `Parent case rename uploaded deleted remote Metadata: ${JSON.stringify({
+                    id: entry.id,
+                    rev: lastState.rev,
+                    path: lastState.path,
+                })}`
+            );
+        }
+        if (
+            doc &&
+            lastState.children.length === entry.children.length &&
+            lastState.children.every(
+                (child, index) =>
+                    child === entry.children[index] &&
+                    response.rows.some(
+                        (chunk) =>
+                            chunk.id === child &&
+                            chunk.doc &&
+                            !chunk.value.deleted &&
+                            !chunk.doc.deleted &&
+                            !chunk.doc._deleted
+                    )
+            )
+        ) {
+            return lastState;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    throw new Error(`Timed out waiting for non-deleted remote Metadata: ${JSON.stringify(lastState)}`);
 }
 
 async function writeNoteViaObsidian(cliBinary: string, env: NodeJS.ProcessEnv, path: string, content: string) {
@@ -557,6 +802,145 @@ async function runCaseOnlyRename(
 
     assertEqual(renamedOnB, fileContent, "Case-only note rename did not round-trip to the second vault.");
     console.log("Two-vault case-only note rename round-tripped without a tombstone.");
+}
+
+async function runParentCaseDeletionProtection(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault
+): Promise<void> {
+    const fileContent = "# Parent case rename\n\nThe document must remain live after an external parent rename.\n";
+    const parentCaseOverrides = {
+        handleFilenameCaseSensitive: false,
+        batchSave: false,
+    };
+    const observedPaths = [
+        parentCaseRenameFromDirectoryPath,
+        parentCaseRenameToDirectoryPath,
+        parentCaseRenameFromPath,
+        parentCaseRenameToPath,
+    ];
+    let session: ObsidianLiveSyncSession | undefined;
+    let observerInstalled = false;
+    let obsidianVersion: string | undefined;
+    let observedEvents: ParentCaseVaultEvent[] = [];
+    let localMetadataEvidence: ParentCaseMetadataState | undefined;
+    let remoteMetadataEvidence: ParentCaseRemoteMetadataState | undefined;
+    let restartedMetadataEvidence: ParentCaseMetadataState | undefined;
+
+    try {
+        session = await startConfiguredSession(context, vaultA, parentCaseOverrides);
+        await writeNoteViaObsidian(context.cliBinary, session.cliEnv, parentCaseRenameFromPath, fileContent);
+        const initialEntry = await uploadNote(context, session, parentCaseRenameFromPath);
+        if (initialEntry.children.length === 0) {
+            throw new Error(`Parent case fixture did not retain a Chunk reference: ${initialEntry.id}`);
+        }
+        await stopTrackedSession(context, session);
+        session = undefined;
+
+        session = await startConfiguredSession(context, vaultB, parentCaseOverrides);
+        await syncAndApply(context, session);
+        await waitForPathContent(vaultB.path, parentCaseRenameFromPath, (content) => content === fileContent);
+        await stopTrackedSession(context, session);
+        session = undefined;
+
+        session = await startConfiguredSession(context, vaultA, parentCaseOverrides);
+        await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, parentCaseRenameFromPath);
+        obsidianVersion = await installParentCaseEventObserver(context.cliBinary, session.cliEnv, observedPaths);
+        observerInstalled = true;
+
+        await renameFilesystemPath(
+            join(vaultA.path, parentCaseRenameFromDirectoryPath),
+            join(vaultA.path, parentCaseRenameToDirectoryPath)
+        );
+        await waitForExactObsidianPath(
+            context.cliBinary,
+            session.cliEnv,
+            parentCaseRenameToPath,
+            parentCaseRenameFromPath
+        );
+        localMetadataEvidence = await waitForParentCaseMetadata(
+            context.cliBinary,
+            session.cliEnv,
+            initialEntry.id,
+            parentCaseRenameToPath,
+            fileContent,
+            initialEntry.children
+        );
+        await pushLocalChanges(context.cliBinary, session.cliEnv);
+        const remoteMetadata = await waitForParentCaseRemoteMetadata(context, initialEntry);
+        remoteMetadataEvidence = remoteMetadata;
+        observedEvents = await takeParentCaseEventEvidence(context.cliBinary, session.cliEnv);
+        observerInstalled = false;
+        await stopTrackedSession(context, session);
+        session = undefined;
+
+        session = await startConfiguredSession(context, vaultB, parentCaseOverrides);
+        await syncAndApply(context, session);
+        await waitForParentCaseMetadata(
+            context.cliBinary,
+            session.cliEnv,
+            initialEntry.id,
+            parentCaseRenameToPath,
+            fileContent,
+            initialEntry.children,
+            remoteMetadata.rev ?? undefined
+        );
+        await waitForEitherPathContent(vaultB.path, [parentCaseRenameFromPath, parentCaseRenameToPath], fileContent);
+        await stopTrackedSession(context, session);
+        session = undefined;
+
+        session = await startConfiguredSession(context, vaultA, parentCaseOverrides);
+        await syncAndApply(context, session);
+        await waitForEitherPathContent(vaultA.path, [parentCaseRenameFromPath, parentCaseRenameToPath], fileContent);
+        restartedMetadataEvidence = await waitForParentCaseMetadata(
+            context.cliBinary,
+            session.cliEnv,
+            initialEntry.id,
+            parentCaseRenameToPath,
+            fileContent,
+            initialEntry.children,
+            remoteMetadata.rev ?? undefined
+        );
+        await stopTrackedSession(context, session);
+        session = undefined;
+    } catch (error) {
+        if (session) {
+            await captureObsidianPage(session.remoteDebuggingPort, "parent-case-deletion-failure.png", async () => {})
+                .then((path) => console.error(`Parent case failure screenshot: ${path}`))
+                .catch((captureError: unknown) => {
+                    console.warn(captureError instanceof Error ? captureError.message : captureError);
+                });
+        }
+        throw error;
+    } finally {
+        if (observerInstalled && session) {
+            try {
+                observedEvents = await takeParentCaseEventEvidence(context.cliBinary, session.cliEnv);
+            } catch (error) {
+                console.warn(
+                    `Could not collect parent case rename event evidence: ${
+                        error instanceof Error ? error.message : String(error)
+                    }`
+                );
+            }
+        }
+        try {
+            if (session) await stopTrackedSession(context, session);
+        } finally {
+            console.log(
+                `Parent case rename evidence: ${JSON.stringify({
+                    obsidianVersion,
+                    events: observedEvents,
+                    localMetadata: localMetadataEvidence ?? null,
+                    remoteMetadata: remoteMetadataEvidence ?? null,
+                    restartedMetadata: restartedMetadataEvidence ?? null,
+                })}`
+            );
+        }
+    }
+
+    console.log("External parent case rename preserved the note Metadata, Chunks, and content.");
 }
 
 async function runEncryptedRoundTrip(
@@ -1002,8 +1386,12 @@ async function main(): Promise<void> {
         console.log(`Temporary CouchDB database: ${dbName}`);
         console.log(`Temporary encrypted CouchDB database: ${encryptedDbName}`);
 
+        const onlyParentCaseDeletion = process.env.E2E_OBSIDIAN_ONLY_PARENT_CASE_DELETION === "true";
+        if (onlyParentCaseDeletion) {
+            await runParentCaseDeletionProtection(context, vaultA, vaultB);
+        }
         const onlyConflictOperations = process.env.E2E_OBSIDIAN_ONLY_CONFLICT_OPERATIONS === "true";
-        if (!onlyConflictOperations) {
+        if (!onlyParentCaseDeletion && !onlyConflictOperations) {
             await runCreateUpdateDelete(context, vaultA, vaultB);
             await runRename(context, vaultA, vaultB);
             await runCaseOnlyRename(context, vaultA, vaultB);
@@ -1011,10 +1399,13 @@ async function main(): Promise<void> {
                 await runMarkdownAutoMerge(context, vaultA, vaultB);
             }
         }
-        if (onlyConflictOperations || process.env.E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS === "true") {
+        if (
+            !onlyParentCaseDeletion &&
+            (onlyConflictOperations || process.env.E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS === "true")
+        ) {
             await runConflictTimeStorageOperations(context, vaultA, vaultB);
         }
-        if (!onlyConflictOperations) {
+        if (!onlyParentCaseDeletion && !onlyConflictOperations) {
             await runTargetMismatch(context, vaultA, vaultB);
             await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
         }

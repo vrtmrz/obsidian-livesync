@@ -16,6 +16,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- Watcher events from an external case-only parent-folder rename no longer let a stale deletion remove a note's Metadata while the file still exists. Moves out of the selected files retain the existing deletion behaviour; this fix does not add general folder-rename handling or path-case convergence. (#1168)
 - Conflict resolution dialogues now close when the same file is resolved elsewhere or the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the stale dialogue.
 - An individual file-processing failure during ordinary start-up no longer keeps the entire application unready. A start-up notice asks the user to check the affected files and generate a report for details; each path is recorded in verbose logs and remains eligible for retry, while explicit Fetch and Rebuild operations retain strict completion.
 - Replication readiness diagnostics now state that application initialisation is incomplete instead of reporting only 'Not ready'. Database-preparation failures show a short notice, with the failed stage available in verbose logs.
@@ -27,6 +28,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Testing
 
+- An optional real-Obsidian regression checks for stale deletions after an external parent-directory case change, including Metadata, Chunks, a second Vault, and restart. Developer documentation now distinguishes file-event handling from database-to-storage reflection.
 - Start-up migrations, integrity checks, Config Doctor, basic commands, and the Obsidian replication ribbon now have focused regression tests for their service composition. Real Obsidian checks cover unconfigured onboarding, configured start-up scanning and individual file failures, Config Doctor detection and layout, command registration, and the established ribbon icon.
 
 ## 1.0.24
