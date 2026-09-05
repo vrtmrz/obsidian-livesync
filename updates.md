@@ -27,6 +27,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Testing
 
+- An optional real-Obsidian regression checks for stale deletions after an external parent-directory case change, including Metadata, Chunks, a second Vault, and restart. Developer documentation now distinguishes file-event handling from database-to-storage reflection.
 - Start-up migrations, integrity checks, Config Doctor, basic commands, and the Obsidian replication ribbon now have focused regression tests for their service composition. Real Obsidian checks cover unconfigured onboarding, configured start-up scanning and individual file failures, Config Doctor detection and layout, command registration, and the established ribbon icon.
 
 ## 1.0.24

@@ -11,6 +11,25 @@
 
 Note: The figure is drawn as single-directional, between two devices for demonstration purposes. Everything actually occurs bi-directionally between many devices at the same time.
 
+## File events and storage writes
+
+File events describe changes observed in the Vault. Commonlib filters and
+serialises those events before updating file Metadata in the local database.
+A queued `DELETE` therefore requests a database change; it is not itself an
+instruction to delete the physical file. A rename out of the selected files
+can also become a database deletion while the destination remains on disk.
+
+The opposite direction starts with database Metadata. Replicated changes and
+full scans can call the database-to-storage handler, which writes or removes
+Vault files subject to its conflict and content-preservation rules. Preventing
+a stale file event from deleting Metadata and applying a valid replicated
+deletion are separate decisions.
+
+Commonlib's [Storage events and database-to-storage reflection](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/storage-events-and-reflection.md)
+documents the event boundary, the unreleased deletion revalidation, and its
+limits. In particular, deletion protection does not promise full support for
+external folder case changes or convergence of path spelling.
+
 ## Current technical references
 
 - [Database Data Structures](datastructure.md) describes current Metadata and

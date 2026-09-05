@@ -133,6 +133,11 @@ The [Project glossary](docs/glossary.md#developer-and-design-terms) defines the
 stable developer and design vocabulary used in this section. The guidance
 below describes how those boundaries are applied.
 
+For file-event admission versus physical Vault writes, see
+[File events and storage writes](docs/tech_info.md#file-events-and-storage-writes)
+and its linked Commonlib contract. Keep regression coverage for those two
+directions separate when changing deletion handling.
+
 ### Service composition and legacy Modules
 
 The application is composed from Services, ServiceModules, serviceFeatures, add-ons, and a legacy Module layer:
