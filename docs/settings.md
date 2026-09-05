@@ -721,7 +721,7 @@ When a saved setting changes whether a normal file can be reflected, LiveSync re
 
 ## 6. Customisation sync (Advanced)
 
-Customisation Sync is a supported, advanced opt-in feature. Its current per-file implementation is covered by a two-Vault real-Obsidian workflow for snippets, configuration files, and plug-in files. Hidden File Sync is a separate feature with different setup, selection, and conflict behaviour; do not use both features to manage the same files.
+Customisation Sync is a supported, advanced opt-in feature. Its current per-file implementation is covered by a two-Vault real-Obsidian workflow for configuration files, themes, snippets, and plug-in main, data, and supplementary files. Hidden File Sync is a separate feature with different setup, selection, and conflict behaviour; do not use both features to manage the same files.
 
 ### 1. Customisation Sync
 

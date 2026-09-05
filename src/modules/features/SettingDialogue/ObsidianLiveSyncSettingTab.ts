@@ -14,7 +14,7 @@ import {
 import { delay, isObjectDifferent, sizeToHumanReadable } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { testCrypt } from "octagonal-wheels/encryption/encryption";
-import ObsidianLiveSyncPlugin from "@/main.ts";
+import type ObsidianLiveSyncPlugin from "@/main.ts";
 import { scheduleTask } from "@/common/utils.ts";
 import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 import {
@@ -78,12 +78,18 @@ import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from 
 import { SetupManager } from "@/modules/features/SetupManager.ts";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource.ts";
+import type { HiddenFileSyncRepairView } from "@/features/HiddenFileSync/hiddenFileSyncViews.ts";
 
 // For creating a document
 // const toc = new Set<string>();
 
+export type SettingTabFeatureViews = {
+    hiddenFileSyncRepair?: HiddenFileSyncRepairView;
+};
+
 export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     plugin: ObsidianLiveSyncPlugin;
+    readonly featureViews: SettingTabFeatureViews;
     private _lifetimeComponent?: Component;
     private activePageRefresh?: () => void;
     get lifetimeComponent(): Component {
@@ -323,9 +329,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     controlledElementFunc = [] as UpdateFunction[];
     onSavedHandlers = [] as OnSavedHandler<AllSettingItemKey>[];
 
-    constructor(app: App, plugin: ObsidianLiveSyncPlugin) {
+    constructor(app: App, plugin: ObsidianLiveSyncPlugin, featureViews: SettingTabFeatureViews = {}) {
         super(app, plugin);
         this.plugin = plugin;
+        this.featureViews = featureViews;
         Setting.env = this;
         eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
             this.requestReload();

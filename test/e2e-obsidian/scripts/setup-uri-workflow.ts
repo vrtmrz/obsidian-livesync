@@ -589,8 +589,8 @@ async function scanHiddenStorage(cliBinary: string, environment: NodeJS.ProcessE
         [
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "await addOn.scanAllStorageChanges(true);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "await syncContext.scanAllStorageChanges(true);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -605,8 +605,8 @@ async function scanHiddenDatabase(cliBinary: string, environment: NodeJS.Process
         [
             "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "await addOn.scanAllDatabaseChanges(true);",
+            "const syncContext=app.plugins.plugins['obsidian-livesync'].optionalFileSync.testing.hiddenFileSync;",
+            "await syncContext.scanAllDatabaseChanges(true);",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),

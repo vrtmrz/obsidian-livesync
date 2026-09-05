@@ -1,15 +1,9 @@
 <script lang="ts">
-    import {
-        ConfigSync,
-        PluginDataExDisplayV2,
-        type IPluginDataExDisplay,
-        type PluginDataExFile,
-    } from "./CmdConfigSync.ts";
+    import type { CustomisationSyncDialogView, IPluginDataExDisplay } from "./customisationSyncView.ts";
+    import type { PluginDataExFile } from "./customisationSyncCodec.ts";
     import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-    import { type FilePath, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { getDocData, timeDeltaToHumanReadable, unique } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-    import type ObsidianLiveSyncPlugin from "@/main";
-    // import { askString } from "../../common/utils";
     import { Menu } from "@/deps.ts";
     import { $msg as translateMessage } from "@/common/translation";
 
@@ -28,15 +22,9 @@
     ) => Promise<boolean>;
     export let deleteData: (data: IPluginDataExDisplay) => Promise<boolean>;
     export let hidden: boolean;
-    export let plugin: ObsidianLiveSyncPlugin;
+    export let customisationSync: CustomisationSyncDialogView;
     export let isMaintenanceMode: boolean = false;
     export let isFlagged: boolean = false;
-    $: core = plugin.core;
-    const addOn = plugin.core.getAddOn<ConfigSync>(ConfigSync.name)!;
-    if (!addOn) {
-        Logger(`Could not load the add-on ${ConfigSync.name}`, LOG_LEVEL_INFO);
-        throw new Error(`Could not load the add-on ${ConfigSync.name}`);
-    }
 
     export let selected = "";
     let freshness = "";
@@ -263,7 +251,7 @@
         const local = list.find((e) => e.term == thisTerm);
         const selectedItem = list.find((e) => e.term == selected);
         if (selectedItem && (await applyData(selectedItem))) {
-            addOn.updatePluginList(true, local?.documentPath);
+            void customisationSync.updatePluginList(true, local?.documentPath);
         }
     }
     async function compareSelected() {
@@ -279,18 +267,12 @@
         if (local && remote) {
             if (!filename) {
                 if (await compareData(local, remote)) {
-                    addOn.updatePluginList(true, local.documentPath);
+                    void customisationSync.updatePluginList(true, local.documentPath);
                 }
                 return;
             } else {
-                const localCopy =
-                    local instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(local) : { ...local };
-                const remoteCopy =
-                    remote instanceof PluginDataExDisplayV2 ? new PluginDataExDisplayV2(remote) : { ...remote };
-                localCopy.files = localCopy.files.filter((e) => e.filename == filename);
-                remoteCopy.files = remoteCopy.files.filter((e) => e.filename == filename);
-                if (await compareData(localCopy, remoteCopy, true)) {
-                    addOn.updatePluginList(true, local.documentPath);
+                if (await customisationSync.compareFileUsingDisplayData(local, remote, filename)) {
+                    void customisationSync.updatePluginList(true, local.documentPath);
                 }
             }
             return;
@@ -333,7 +315,7 @@
         const selectedItem = list.find((e) => e.term == selected);
         // const deletedPath = selectedItem.documentPath;
         if (selectedItem && (await deleteData(selectedItem))) {
-            addOn.reloadPluginList(true);
+            void customisationSync.reloadPluginList(true);
         }
     }
     async function duplicateItem() {
@@ -342,7 +324,7 @@
             Logger(`Could not find local item`, LOG_LEVEL_VERBOSE);
             return;
         }
-        const duplicateTermName = await core.confirm.askString(
+        const duplicateTermName = await customisationSync.askString(
             translateMessage("Duplicate"),
             translateMessage("device name"),
             ""
@@ -352,9 +334,7 @@
                 Logger(translateMessage('We can not use "/" to the device name'), LOG_LEVEL_NOTICE);
                 return;
             }
-            const key = `${plugin.core.services.API.getSystemConfigDir()}/${local.files[0].filename}`;
-            await addOn.storeCustomizationFiles(key as FilePath, duplicateTermName);
-            await addOn.updatePluginList(false, addOn.filenameToUnifiedKey(key, duplicateTermName));
+            await customisationSync.duplicateData(local, duplicateTermName);
         }
     }
 </script>
