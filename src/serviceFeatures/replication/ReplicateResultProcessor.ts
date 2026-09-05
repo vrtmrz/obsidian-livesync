@@ -25,6 +25,7 @@ import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import type PouchDB from "pouchdb-core";
 import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
+import { $msg } from "@/common/translation";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 const REPROCESS_BATCH_SIZE = 100;
@@ -78,6 +79,14 @@ export class ReplicateResultProcessor {
     }
     private logError(e: unknown) {
         Logger(e, LOG_LEVEL_VERBOSE);
+    }
+    private reportVaultReflectionFailure(entry: MetaEntry, cause?: unknown) {
+        this.log(
+            `Live replication could not reflect ${this.getPath(entry)} from the local database to the Vault; this path remains eligible for a later Vault scan.`,
+            LOG_LEVEL_VERBOSE
+        );
+        if (cause !== undefined) this.logError(cause);
+        Logger($msg("Ui.Common.SomeFilesCouldNotBeSynchronised"), LOG_LEVEL_NOTICE);
     }
     constructor(private readonly context: ReplicateResultProcessorContext) {}
 
@@ -510,8 +519,16 @@ export class ReplicateResultProcessor {
                 this.log(`Processed by other processor: ${docNote}`, LOG_LEVEL_DEBUG);
             } else if (this.services.vault.isValidPath(this.getPath(doc))) {
                 // Apply to storage if the path is valid
-                await this.applyToStorage(doc as MetaEntry);
-                this.log(`Processed: ${docNote}`, LOG_LEVEL_DEBUG);
+                try {
+                    const reflected = await this.applyToStorage(doc as MetaEntry);
+                    if (!reflected) {
+                        this.reportVaultReflectionFailure(doc as MetaEntry);
+                        return;
+                    }
+                    this.log(`Processed: ${docNote}`, LOG_LEVEL_DEBUG);
+                } catch (error) {
+                    this.reportVaultReflectionFailure(doc as MetaEntry, error);
+                }
             } else {
                 // Should process, but have an invalid path
                 this.log(`Unprocessed (Invalid path): ${docNote}`, LOG_LEVEL_VERBOSE);
@@ -525,9 +542,10 @@ export class ReplicateResultProcessor {
      * @returns
      */
     protected applyToStorage(entry: MetaEntry) {
-        return this.withCounting(async () => {
-            await this.services.replication.processSynchroniseResult(entry);
-        }, this.services.replication.storageApplyingCount);
+        return this.withCounting(
+            () => this.services.replication.processSynchroniseResult(entry),
+            this.services.replication.storageApplyingCount
+        );
     }
 
     /**
