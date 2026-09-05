@@ -141,6 +141,60 @@ describe("FSAPIVaultAdapter.rename", () => {
     });
 });
 
+describe("FSAPIFileSystemAdapter full scan state", () => {
+    const createVault = async (...paths: string[]) => {
+        const memoryRoot = new MemoryDirectoryHandle("root");
+        const root = memoryRoot as unknown as FileSystemDirectoryHandle;
+        const vault = new FSAPIVaultAdapter(root);
+        for (const path of paths) {
+            await vault.create(path, `content of ${path}`);
+        }
+        return { memoryRoot, root };
+    };
+
+    const listPaths = async (adapter: FSAPIFileSystemAdapter) =>
+        (await adapter.getFiles()).map((file) => file.path).sort();
+
+    it("lists every file when the cache has been warmed by a single refresh", async () => {
+        const { root } = await createVault("a.md", "b.md");
+        const adapter = new FSAPIFileSystemAdapter(root, vi.fn());
+
+        // `refreshFile()` is the second writer of the cache: before the scan
+        // state was tracked explicitly, this one entry made `getFiles()` skip
+        // `scanDirectory()` and return a truncated listing.
+        await adapter.refreshFile("a.md");
+
+        await expect(listPaths(adapter)).resolves.toEqual(["a.md", "b.md"]);
+    });
+
+    it("rescans after a rename invalidates the cache", async () => {
+        const { root } = await createVault("a.md", "b.md");
+        const adapter = new FSAPIFileSystemAdapter(root, vi.fn());
+
+        await expect(listPaths(adapter)).resolves.toEqual(["a.md", "b.md"]);
+
+        // `renameFile()` clears the cache and then repopulates the renamed path
+        // alone. Without resetting the full-scan state, that single entry would
+        // be published as the complete listing.
+        const source = await adapter.getAbstractFileByPath("a.md");
+        expect(source).not.toBeNull();
+        await adapter.renameFile(source!, "renamed.md");
+
+        await expect(listPaths(adapter)).resolves.toEqual(["b.md", "renamed.md"]);
+    });
+
+    it("scans the directory only once across repeated calls", async () => {
+        const { root } = await createVault("a.md", "b.md");
+        const adapter = new FSAPIFileSystemAdapter(root, vi.fn());
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+        await adapter.getFiles();
+        await adapter.getFiles();
+
+        expect(scanDirectory).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe("FSAPIFileSystemAdapter path case", () => {
     it("returns the stored path case from a case-insensitive file system", async () => {
         const memoryRoot = new MemoryDirectoryHandle("root", true);
