@@ -16,6 +16,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- Watcher events from an external case-only parent-folder rename no longer let a stale deletion remove a note's Metadata while the file still exists. Moves out of the selected files retain the existing deletion behaviour; this fix does not add general folder-rename handling or path-case convergence. (#1168)
 - Conflict resolution dialogues now close when the same file is resolved elsewhere or the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the stale dialogue.
 - An individual file-processing failure during ordinary start-up no longer keeps the entire application unready. A start-up notice asks the user to check the affected files and generate a report for details; each path is recorded in verbose logs and remains eligible for retry, while explicit Fetch and Rebuild operations retain strict completion.
 - Replication readiness diagnostics now state that application initialisation is incomplete instead of reporting only 'Not ready'. Database-preparation failures show a short notice, with the failed stage available in verbose logs.

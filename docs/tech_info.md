@@ -26,9 +26,10 @@ a stale file event from deleting Metadata and applying a valid replicated
 deletion are separate decisions.
 
 Commonlib's [Storage events and database-to-storage reflection](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/storage-events-and-reflection.md)
-documents the event boundary, the unreleased deletion revalidation, and its
-limits. In particular, deletion protection does not promise full support for
-external folder case changes or convergence of path spelling.
+documents the event boundary, the deletion revalidation introduced in
+Commonlib 0.1.23, and its limits. In particular, deletion protection does not
+promise full support for external folder case changes or convergence of path
+spelling.
 
 ## Current technical references
 
