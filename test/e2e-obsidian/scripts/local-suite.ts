@@ -35,6 +35,10 @@ const testSteps: Step[] = [
         name: "Object Storage Setup URI workflow",
         args: ["run", "test:e2e:obsidian:object-storage-setup-uri-workflow"],
     },
+    {
+        name: "Object Storage Custom HTTP Handler Setup URI workflow",
+        args: ["run", "test:e2e:obsidian:object-storage-custom-http-handler-setup-uri-workflow"],
+    },
     { name: "P2P Setup URI workflow", args: ["run", "test:e2e:obsidian:p2p-setup-uri-workflow"] },
     { name: "startup scan", args: ["run", "test:e2e:obsidian:startup-scan"] },
     { name: "provisioned Setup URI workflow", args: ["run", "test:e2e:obsidian:setup-uri-workflow"] },

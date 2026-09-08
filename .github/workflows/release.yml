@@ -26,12 +26,12 @@ jobs:
       id-token: write
       attestations: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
         ref: ${{ inputs.tag }}
     - name: Use Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '24.x'
     - name: Validate release
@@ -61,7 +61,7 @@ jobs:
               manifest.json
               styles.css
     - name: Create Release and Upload Assets
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         files: |
           main.js

@@ -1,14 +1,14 @@
 ---
 date: 2026-09-08
 commonlib-version: "0.1.24"
-self-hosted-livesync-version: "1.0.26"
+self-hosted-livesync-version: "1.0.27"
 status: unreleased
 ---
 
 # Tweak compatibility and recovery
 
 This document describes the integration of Commonlib 0.1.24 with
-Self-hosted LiveSync 1.0.26. Commonlib owns the interpretation of synchronisation
+Self-hosted LiveSync 1.0.27. Commonlib owns the interpretation of synchronisation
 settings; LiveSync owns the dialogues and operations which consume that result.
 
 ## Shared assessment

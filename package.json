@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "1.0.26",
+    "version": "1.0.27",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -30,6 +30,7 @@
         "i18n:json2yaml": "tsx _tools/json2yaml.ts",
         "i18n:yaml2json": "tsx _tools/yaml2json.ts",
         "test:unit": "vitest run --config vitest.config.unit.ts",
+        "test:release-process": "vitest run --config vitest.config.unit.ts utils/release-process.unit.spec.ts",
         "build:browser-apps": "npm run build --workspace livesync-webapp --workspace webpeer",
         "test:browser-apps": "npm run test:browser --workspace livesync-webapp && npm run test:browser --workspace webpeer",
         "test:browser-apps:pages": "deno test -A --no-check --frozen --config test/browser-apps/deno.json --lock test/browser-apps/deno.lock test/browser-apps/pages/browser-smoke.test.ts",
@@ -46,7 +47,7 @@
         "test:e2e:cli:p2p": "npm run test:e2e:p2p --workspace self-hosted-livesync-cli",
         "test:e2e:cli:all": "npm run test:e2e:all --workspace self-hosted-livesync-cli",
         "test:integration": "npx dotenv-cli -e .env -e .test.env -- vitest run --config vitest.config.integration.ts",
-        "test:unit:coverage": "vitest run --config vitest.config.unit.ts --coverage",
+        "test:unit:coverage": "vitest run --config vitest.config.unit.ts --coverage --exclude utils/release-process.unit.spec.ts",
         "test:e2e:obsidian:install-appimage": "tsx test/e2e-obsidian/scripts/install-appimage.ts",
         "test:e2e:obsidian:runner": "vitest run --config vitest.config.e2e-runner.ts",
         "test:e2e:obsidian:discover": "tsx test/e2e-obsidian/scripts/discover.ts",
@@ -70,6 +71,7 @@
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",
+        "test:e2e:obsidian:object-storage-custom-http-handler-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --custom-http-handler",
         "test:e2e:obsidian:p2p-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/p2p-setup-uri-workflow.ts",
         "pretest:e2e:obsidian:p2p-connection-check": "npm run build && npm run build --workspace webpeer",
         "test:e2e:obsidian:p2p-connection-check": "tsx test/e2e-obsidian/scripts/p2p-connection-check.ts",
@@ -128,7 +130,7 @@
         "@types/pouchdb-mapreduce": "^6.1.10",
         "@types/pouchdb-replication": "^6.4.7",
         "@types/transform-pouch": "^1.0.6",
-        "@typescript-eslint/parser": "8.56.1",
+        "@typescript-eslint/parser": "8.69.0",
         "@vitest/coverage-v8": "^4.1.8",
         "@vrtmrz/obsidian-test-session": "0.2.6",
         "dotenv-cli": "^11.0.0",
@@ -158,13 +160,13 @@
         "svelte": "5.56.3",
         "svelte-check": "^4.6.0",
         "svelte-eslint-parser": "^1.8.0",
-        "svelte-preprocess": "^6.0.3",
+        "svelte-preprocess": "6.0.5",
         "terser": "^5.39.0",
         "tinyglobby": "^0.2.15",
         "transform-pouch": "^2.0.0",
         "tsx": "^4.21.0",
-        "typescript": "5.9.3",
-        "typescript-eslint": "^8.61.0",
+        "typescript": "6.0.3",
+        "typescript-eslint": "8.69.0",
         "vite": "^8.0.16",
         "vitest": "^4.1.8",
         "yaml": "^2.8.2"
@@ -183,7 +185,6 @@
         "@vrtmrz/obsidian-plugin-kit": "0.1.4",
         "@vrtmrz/ui-interactions": "0.1.2",
         "diff-match-patch": "^1.0.5",
-        "fflate": "^0.8.2",
         "idb": "^8.0.3",
         "markdown-it": "^14.2.0",
         "minimatch": "^10.2.5",
@@ -204,5 +205,11 @@
         "src/apps/cli",
         "src/apps/webpeer",
         "src/apps/webapp"
-    ]
+    ],
+    "allowScripts": {
+        "esbuild@0.28.1": true,
+        "leveldown@5.6.0": true,
+        "leveldown@6.1.1": true,
+        "svelte-preprocess": false
+    }
 }

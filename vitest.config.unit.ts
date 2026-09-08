@@ -7,6 +7,10 @@ import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vitest.config.common";
 
 const importOnlyFiles = ["**/encryption/encryptHKDF.ts"];
+const obsidianRuntimeOnlyFiles = [
+    "src/deps.ts",
+    "src/serviceModules/FileSystemAdapters/ObsidianTypeGuardAdapter.ts",
+];
 export default mergeConfig(
     viteConfig,
     defineConfig({
@@ -32,6 +36,7 @@ export default mergeConfig(
                     "src/apps/**/testdeno/**",
                     "**/*_obsolete.ts",
                     ...importOnlyFiles,
+                    ...obsidianRuntimeOnlyFiles,
                 ],
                 provider: "v8",
                 reporter: ["text", "json", "html", ["text", { file: "coverage-text.txt" }]],

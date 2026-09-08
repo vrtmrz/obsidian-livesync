@@ -19,6 +19,7 @@ export type SetupState = {
     endpoint: string;
     bucket: string;
     bucketPrefix: string;
+    useCustomRequestHandler: boolean;
     p2pEnabled: boolean;
     p2pRelays: string;
     p2pRoomId: string;
@@ -354,6 +355,7 @@ export async function readSetupState(cliBinary: string, environment: NodeJS.Proc
             "endpoint:settings.endpoint||'',",
             "bucket:settings.bucket||'',",
             "bucketPrefix:settings.bucketPrefix||'',",
+            "useCustomRequestHandler:settings.useCustomRequestHandler===true,",
             "p2pEnabled:settings.P2P_Enabled===true,",
             "p2pRelays:settings.P2P_relays||'',",
             "p2pRoomId:settings.P2P_roomID||'',",

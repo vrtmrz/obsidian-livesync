@@ -45,7 +45,10 @@ import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
 
 const execFileAsync = promisify(execFile);
-const captures: SetupCaptureNames = { scenario: "object-storage-setup-uri", guide: "object-storage-setup" };
+const useCustomRequestHandler = process.argv.includes("--custom-http-handler");
+const captures: SetupCaptureNames = useCustomRequestHandler
+    ? { scenario: "object-storage-custom-http-handler-setup-uri", guide: "object-storage-custom-http-handler-setup" }
+    : { scenario: "object-storage-setup-uri", guide: "object-storage-setup" };
 const noteFromFirst = "E2E/object-storage/from-first.md";
 const noteFromSecond = "E2E/object-storage/from-second.md";
 const firstContent =
@@ -94,7 +97,8 @@ async function runDeno(script: string, environment: NodeJS.ProcessEnv): Promise<
 
 async function generateBootstrapSetupURI(
     objectStorage: ObjectStorageConfig,
-    bucketPrefix: string
+    bucketPrefix: string,
+    useCustomRequestHandler: boolean
 ): Promise<SetupArtifact> {
     const setupPassphrase = randomBytes(24).toString("base64url");
     const output = await runDeno("utils/setup/generate_setup_uri.ts", {
@@ -107,6 +111,7 @@ async function generateBootstrapSetupURI(
         region: objectStorage.region,
         force_path_style: String(objectStorage.forcePathStyle),
         bucket_prefix: bucketPrefix,
+        ...(useCustomRequestHandler ? { use_custom_request_handler: "true" } : {}),
         passphrase: randomBytes(24).toString("base64url"),
         uri_passphrase: setupPassphrase,
     });
@@ -251,7 +256,7 @@ async function main(): Promise<void> {
 
     const objectStorage = await loadObjectStorageConfig();
     const bucketPrefix = makeUniqueBucketPrefix("setup-uri-workflow");
-    const bootstrapArtifact = await generateBootstrapSetupURI(objectStorage, bucketPrefix);
+    const bootstrapArtifact = await generateBootstrapSetupURI(objectStorage, bucketPrefix, useCustomRequestHandler);
     const vaultA = await createTemporaryVault();
     const vaultB = await createTemporaryVault();
     const [portA, portB] = sessionPorts();
@@ -284,6 +289,11 @@ async function main(): Promise<void> {
             firstState.bucketPrefix,
             bucketPrefix,
             "The first device did not activate the unique bucket prefix."
+        );
+        assertEqual(
+            firstState.useCustomRequestHandler,
+            useCustomRequestHandler,
+            "The first device did not preserve the expected Custom HTTP Handler setting."
         );
 
         await writeNote(context.cliBinary, sessionA.cliEnv, noteFromFirst, firstContent);
@@ -330,6 +340,11 @@ async function main(): Promise<void> {
             bucketPrefix,
             "The second device did not import the unique bucket prefix."
         );
+        assertEqual(
+            secondState.useCustomRequestHandler,
+            useCustomRequestHandler,
+            "The second device did not import the expected Custom HTTP Handler setting."
+        );
         await pushLocalChanges(context.cliBinary, sessionB.cliEnv);
         await waitForPathContent(vaultB, noteFromFirst, firstContent);
         screenshots.push(
@@ -337,7 +352,7 @@ async function main(): Promise<void> {
                 portB,
                 noteFromFirst,
                 "Object Storage from the first device",
-                "guide-object-storage-setup-first-to-second.png"
+                `guide-${captures.guide}-first-to-second.png`
             )
         );
 
@@ -357,12 +372,14 @@ async function main(): Promise<void> {
                 portA,
                 noteFromSecond,
                 "Object Storage from the second device",
-                "guide-object-storage-setup-second-to-first.png"
+                `guide-${captures.guide}-second-to-first.png`
             )
         );
 
         console.log(
-            `Object Storage Setup URI and two-device roundtrip succeeded. Screenshots: ${screenshots.join(", ")}`
+            `Object Storage Setup URI and two-device roundtrip succeeded with the ${
+                useCustomRequestHandler ? "Custom HTTP Handler" : "default HTTP handler"
+            }. Screenshots: ${screenshots.join(", ")}`
         );
     } finally {
         await stopSessions(context).catch((error: unknown) => {

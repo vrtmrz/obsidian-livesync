@@ -65,10 +65,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -113,10 +113,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -127,6 +127,9 @@ jobs:
       - name: Run source checks
         run: npm run check
 
+      - name: Run release process tests
+        run: npm run test:release-process
+
       - name: Run unit tests suite with coverage
         run: npm run test:unit:coverage
 
@@ -135,7 +138,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unit-coverage-report
           path: coverage/**
@@ -146,7 +149,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Detect LiveSync-owned integration tests
         id: integration_tests
@@ -165,7 +168,7 @@ jobs:
 
       - name: Setup Node.js
         if: ${{ steps.integration_tests.outputs.present == 'true' }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           cache: 'npm'

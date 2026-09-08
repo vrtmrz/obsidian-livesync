@@ -1,7 +1,7 @@
-// This file is based on a file that was published by the @remotely-save, under the Apache 2 License.
-// I would love to express my deepest gratitude to the original authors for their hard work and dedication. Without their contributions, this project would not have been possible.
+// This file was originally based on code published by @remotely-save under the Apache License 2.0.
+// I would like to express my gratitude to the original authors for their work.
 //
-// Original Implementation is here: https://github.com/remotely-save/remotely-save/blob/28b99557a864ef59c19d2ad96101196e401718f0/src/remoteForS3.ts
+// Original implementation: https://github.com/remotely-save/remotely-save/blob/28b99557a864ef59c19d2ad96101196e401718f0/src/remoteForS3.ts
 
 import { FetchHttpHandler, type FetchHttpHandlerOptions } from "@smithy/fetch-http-handler";
 import { HttpRequest, HttpResponse } from "@smithy/protocol-http";
@@ -102,6 +102,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             method: method,
             url: url,
             contentType: contentType,
+            throw: false,
         };
 
         const raceOfPromises = [

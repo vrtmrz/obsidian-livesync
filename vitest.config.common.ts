@@ -89,6 +89,7 @@ export default defineConfig({
             treeShaking: true,
         }),
         svelte({
+            configFile: false,
             preprocess: sveltePreprocess(),
             compilerOptions: { css: "injected", preserveComments: false },
         }),
@@ -99,12 +100,7 @@ export default defineConfig({
             src: path.resolve(__dirname, "./src"),
         },
     },
-    esbuild: {
-        define: define,
-        target: "es2018",
-        platform: "browser",
-    },
-    // define,
+    define,
     server: {
         headers: {
             "Service-Worker-Allowed": "/",

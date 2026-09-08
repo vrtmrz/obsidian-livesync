@@ -33,13 +33,13 @@ jobs:
             contents: write
             pull-requests: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
               with:
                   ref: ${{ inputs.base_branch }}
                   fetch-depth: 0
 
             - name: Use Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v5
               with:
                   node-version: "24.x"
                   cache: npm

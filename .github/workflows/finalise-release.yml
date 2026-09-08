@@ -47,13 +47,13 @@ jobs:
                   fi
                   echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
 
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
               with:
                   ref: ${{ steps.branch.outputs.name }}
                   fetch-depth: 0
 
             - name: Use Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v5
               with:
                   node-version: "24.x"
 

@@ -21,6 +21,7 @@ const focusedScenarios = new Set([
     "cli-to-obsidian-sync",
     "minio-upload",
     "object-storage-setup-uri-workflow",
+    "object-storage-custom-http-handler-setup-uri-workflow",
     "p2p-setup-uri-workflow",
     "partial-startup-file-failure",
     "startup-scan",
