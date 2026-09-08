@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+title: "Self-hosted LiveSync"
+abstract: "Self-hosted LiveSync is an open-source synchronisation plug-in for Obsidian that replicates note vaults and supporting files across desktop and mobile devices using user-controlled servers, object storage, or direct peer-to-peer connections."
+type: software
+authors:
+  - name: "vorotamoroz"
+    website: "https://github.com/vrtmrz"
+  - name: "Self-hosted LiveSync Contributors"
+repository-code: "https://github.com/vrtmrz/obsidian-livesync"
+url: "https://github.com/vrtmrz/obsidian-livesync"
+version: 1.0.23
+doi: 10.5281/zenodo.22247183
+date-released: "2026-09-05"
+license: MIT
+keywords:
+  - obsidian
+  - obsidian-plugin
+  - synchronisation
+  - local-first
+  - couchdb
+  - pouchdb
+  - webrtc
+  - peer-to-peer
