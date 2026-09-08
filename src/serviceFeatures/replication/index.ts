@@ -86,6 +86,7 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
             API: services.API,
             appLifecycle: services.appLifecycle,
             replicator: services.replicator,
+            setting: services.setting,
             tweakValue: services.tweakValue,
         },
     });

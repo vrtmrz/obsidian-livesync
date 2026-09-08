@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Setup and compatibility
+
+#### Fixed
+
+- A missing legacy file-name case setting no longer makes the configuration mismatch dialogue require a database rebuild when this device already uses case-insensitive handling. Case-sensitive handling now correctly requires a compatibility decision when the remote omits that setting.
+- Configuration review now compares the selected remote profile's trial settings, and discards a pending decision if its settings or active connection change before it can be applied.
+
 ## 1.0.26
 
 ~~1.0.25~~ was cancelled because pre-release validation found that LiveSync could appear to finish synchronising even though Android had not written a received file to the Vault; the warning appeared only after restart.

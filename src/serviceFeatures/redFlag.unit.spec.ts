@@ -19,9 +19,11 @@ import {
     flagHandlerToEventHandler,
 } from "./redFlag";
 import {
+    DEFAULT_SETTINGS,
     TweakValuesRecommendedTemplate,
     TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
+    type TweakValues,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     ExtraOnLocal,
@@ -1149,6 +1151,26 @@ describe("Red Flag Feature", () => {
     });
 
     describe("Remote configuration adjustment", () => {
+        it("compatibility: preserves the local filename-case value when the remote omits it", async () => {
+            const host = createHostMock();
+            const config = {
+                ...DEFAULT_SETTINGS,
+                ...TweakValuesShouldMatchedTemplate,
+                handleFilenameCaseSensitive: false,
+            };
+            const remote: TweakValues = { ...TweakValuesShouldMatchedTemplate };
+            delete remote.handleFilenameCaseSensitive;
+            host.mocks.tweakValue.fetchRemotePreferred.mockResolvedValueOnce(availableRemoteTweaks(remote));
+
+            await adjustSettingToRemote(host as any, createLoggerMock(), config);
+
+            expect(host.mocks.ui.confirm.askSelectStringDialogue).not.toHaveBeenCalled();
+            expect(host.mocks.setting.applyExternalSettings).toHaveBeenCalledWith(
+                expect.objectContaining({ handleFilenameCaseSensitive: false }),
+                true
+            );
+        });
+
         it("keeps this device's E2EE settings when preparing to overwrite the remote", async () => {
             const host = createHostMock();
             Object.assign(host.mocks.setting.settings, TweakValuesShouldMatchedTemplate, {

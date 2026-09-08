@@ -88,6 +88,8 @@ Some settings must match across devices. LiveSync pauses synchronisation when th
 
 Current releases automatically align compatible settings which control how new chunks are created, by default and where possible. This applies to the chunk hash algorithm, chunk size, and splitter version. Existing content remains readable across these choices, although using different choices can reduce chunk reuse and increase storage or transfer work. An explicit opt-out retains the manual review. A mismatch involving encryption, path obfuscation, file-name case handling, or any combination which includes one of those settings always remains a manual decision.
 
+A missing legacy file-name case setting means case-insensitive handling. It matches an explicit disabled setting and does not require a rebuild for that difference. An explicitly enabled setting can use different document IDs and still requires a compatibility decision against either value. Other configuration differences shown in the dialogue must still be resolved.
+
 The `Sync now` command keeps routine replication progress quiet so that it is convenient to assign to a keyboard shortcut; assign one in Obsidian if that suits your workflow. A quiet command may still open this dialogue when a mismatch or another decision requires your attention.
 
 The available actions depend on when the mismatch is found:

@@ -138,6 +138,10 @@ For file-event admission versus physical Vault writes, see
 and its linked Commonlib contract. Keep regression coverage for those two
 directions separate when changing deletion handling.
 
+For shared synchronisation-setting comparisons, directional reconstruction
+consequences, and the lifetime of a recovery decision, see
+[Tweak compatibility and recovery](docs/design_docs/tweak_compatibility.md).
+
 ### Service composition and legacy Modules
 
 The application is composed from Services, ServiceModules, serviceFeatures, add-ons, and a legacy Module layer:

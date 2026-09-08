@@ -1,19 +1,16 @@
 import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { extractObject } from "octagonal-wheels/object";
 import {
-    TweakValuesShouldMatchedTemplate,
     TweakValuesTemplate,
-    IncompatibleChanges,
     configurationNames,
     statusDisplay,
     type TweakValues,
     type ObsidianLiveSyncSettings,
     type RemoteDBSettings,
-    IncompatibleChangesInSpecificPattern,
-    CompatibleButLossyChanges,
     type RemotePreferredTweakResult,
     RemotePreferredTweakStatuses,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { assessTweakCompatibility, type TweakAssessment } from "@vrtmrz/livesync-commonlib/settings";
 import { escapeMarkdownValue } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg, translateIfAvailable } from "@/common/translation";
@@ -59,14 +56,49 @@ function valueToString(value: string | number | boolean | object | undefined): s
     return `${value}`;
 }
 
-export class ModuleResolvingMismatchedTweaks extends AbstractModule {
-    private _collectMismatchedTweakKeys(current: TweakValues, preferred: Partial<TweakValues>) {
-        const items = Object.keys(
-            TweakValuesShouldMatchedTemplate
-        ) as (keyof typeof TweakValuesShouldMatchedTemplate)[];
-        return items.filter((key) => current[key] !== preferred[key]);
-    }
+function definedTweaks(values: TweakValues): TweakValues {
+    return Object.fromEntries(
+        Object.entries(values).filter(([key, value]) => key in TweakValuesTemplate && value !== undefined)
+    );
+}
 
+function settingsAfterAdoption(assessment: TweakAssessment, direction: "adoptPreferred" | "adoptCurrent"): TweakValues {
+    const comparedKeys = new Set<string>(assessment.entries.map((entry) => entry.key));
+    const source = direction === "adoptPreferred" ? assessment.preferredValues : assessment.currentValues;
+    const target = direction === "adoptPreferred" ? assessment.currentValues : assessment.preferredValues;
+    const recommendations = Object.fromEntries(
+        Object.entries(source).filter(([key, value]) => !comparedKeys.has(key) && value !== undefined)
+    );
+    return {
+        ...definedTweaks(target),
+        ...recommendations,
+        ...assessment[direction].changes,
+    };
+}
+
+function mismatchTable(assessment: TweakAssessment, direction?: "adoptPreferred" | "adoptCurrent"): string {
+    const reasons = direction
+        ? assessment[direction].reasons
+        : [...assessment.adoptPreferred.reasons, ...assessment.adoptCurrent.reasons];
+    const consequenceKeys = new Set(reasons.map((reason) => reason.key));
+    const rows = assessment.entries
+        .filter((entry) => entry.relation === "different" || consequenceKeys.has(entry.key))
+        .map((entry) =>
+            $msg("TweakMismatchResolve.Table.Row", {
+                name: localisedConfName(entry.key),
+                self: valueToString(escapeMarkdownValue(entry.current.effectiveValue)),
+                remote: valueToString(escapeMarkdownValue(entry.preferred.effectiveValue)),
+            })
+        );
+    return $msg("TweakMismatchResolve.Table", { rows: rows.join("\n") });
+}
+
+/** Kept only while resolving a decision; this can contain credentials and must never be logged. */
+function resolutionSettingsSignature(settings: ObsidianLiveSyncSettings): string {
+    return JSON.stringify({ ...settings, autoAcceptCompatibleTweak: settings.autoAcceptCompatibleTweak ?? true });
+}
+
+export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     private _selectNewerTweakSide(current: TweakValues, preferred: Partial<TweakValues>): "REMOTE" | "CURRENT" {
         Logger(`Modified: ${current.tweakModified} (current) vs ${preferred.tweakModified} (preferred)`);
         const currentModified = current.tweakModified;
@@ -83,15 +115,9 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     }
 
     private async _shouldAutoAcceptCompatibleLossy(
-        current: TweakValues,
-        preferred: Partial<TweakValues>,
-        mismatchedKeys: (keyof typeof TweakValuesShouldMatchedTemplate)[]
+        assessment: TweakAssessment
     ): Promise<"REMOTE" | "CURRENT" | undefined> {
-        if (mismatchedKeys.length === 0) return undefined;
-        const hasOnlyCompatibleLossyMismatches = mismatchedKeys.every(
-            (key) => CompatibleButLossyChanges.indexOf(key) !== -1
-        );
-        if (!hasOnlyCompatibleLossyMismatches) return undefined;
+        if (!assessment.onlyCompatibleLossyDifferences) return undefined;
 
         let autoAcceptCompatibleTweak = this.settings.autoAcceptCompatibleTweak;
         if (this.settings.autoAcceptCompatibleTweak === undefined) {
@@ -104,7 +130,7 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         }
 
         if (autoAcceptCompatibleTweak !== true) return undefined;
-        return this._selectNewerTweakSide(current, preferred);
+        return this._selectNewerTweakSide(assessment.currentValues, assessment.preferredValues);
     }
 
     /**
@@ -138,6 +164,14 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         ) {
             return false;
         }
+        const isCurrent = await this.services.replicator.runWithActiveReplicatorContext(
+            (activeContext) => activeContext === failure.context
+        );
+        if (!isCurrent || resolutionSettingsSignature(failure.setting) !== resolutionSettingsSignature(this.settings)) {
+            return true;
+        }
+        const assessment =
+            recovery.tweakAssessment ?? assessTweakCompatibility(failure.setting, recovery.preferredTweakValue);
         const ret = await this.services.tweakValue.askResolvingMismatched(
             { ...recovery.preferredTweakValue },
             async (setting) => {
@@ -149,138 +183,119 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
                     updated = true;
                 });
                 return updated;
-            }
+            },
+            assessment
         );
         if (ret == "OK") return false;
         if (ret == "CHECKAGAIN") return "CHECKAGAIN";
         if (ret == "IGNORE") return true;
     }
 
-    async _checkAndAskResolvingMismatchedTweaks(preferred: TweakValues): Promise<[TweakValues | boolean, boolean]> {
-        const mine = extractObject(TweakValuesTemplate, this.settings) as TweakValues;
-        const mismatchedKeys = this._collectMismatchedTweakKeys(mine, preferred);
-        const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(mine, preferred, mismatchedKeys);
-        if (autoAcceptSide === "REMOTE") {
-            return [{ ...mine, ...preferred }, false];
-        }
-        if (autoAcceptSide === "CURRENT") {
-            return [true, false];
-        }
-        const items = Object.entries(TweakValuesShouldMatchedTemplate);
-        let rebuildRequired = false;
-        let rebuildRecommended = false;
-        // Making tables:
-        // let table = `| Value name | This device | Configured | \n` + `|: --- |: --- :|: ---- :| \n`;
-        const tableRows = [];
-        // const items = [mine,preferred]
-        for (const v of items) {
-            const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-            const valueMine = escapeMarkdownValue(mine[key]);
-            const valuePreferred = escapeMarkdownValue(preferred[key]);
-            if (valueMine == valuePreferred) continue;
-            if (IncompatibleChanges.indexOf(key) !== -1) {
-                rebuildRequired = true;
-            }
-            for (const pattern of IncompatibleChangesInSpecificPattern) {
-                if (pattern.key !== key) continue;
-                // if from value supplied, check if current value have been violated : in other words, if the current value is the same as the from value, it should require a rebuild.
-                const isFromConditionMet = "from" in pattern ? pattern.from === mine[key] : false;
-                // and, if to value supplied, same as above.
-                const isToConditionMet = "to" in pattern ? pattern.to === preferred[key] : false;
-                // if either of them is true, it should require a rebuild, if the pattern is not a recommendation.
-                if (isFromConditionMet || isToConditionMet) {
-                    if (pattern.isRecommendation) {
-                        rebuildRecommended = true;
-                    } else {
-                        rebuildRequired = true;
-                    }
-                }
-            }
-            if (CompatibleButLossyChanges.indexOf(key) !== -1) {
-                rebuildRecommended = true;
-            }
+    async _checkAndAskResolvingMismatchedTweaks(
+        preferred: TweakValues,
+        assessment = assessTweakCompatibility(this.settings, preferred)
+    ): Promise<[TweakValues | boolean, boolean]> {
+        if (assessment.alignment === "matched") return [false, false];
+        const acceptedSettings = settingsAfterAdoption(assessment, "adoptPreferred");
+        const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(assessment);
+        if (autoAcceptSide === "REMOTE") return [acceptedSettings, false];
+        if (autoAcceptSide === "CURRENT") return [true, false];
 
-            // table += `| ${confName(key)} | ${valueMine} | ${valuePreferred} | \n`;
-            tableRows.push(
-                $msg("TweakMismatchResolve.Table.Row", {
-                    name: localisedConfName(key),
-                    self: valueToString(valueMine),
-                    remote: valueToString(valuePreferred),
-                })
-            );
-        }
-
+        const localImpact = assessment.adoptPreferred.reconstruction;
+        const remoteImpact = assessment.adoptCurrent.reconstruction;
+        const requiresRebuild = localImpact === "required" || remoteImpact === "required";
+        const recommendsRebuild = localImpact === "recommended" || remoteImpact === "recommended";
         const additionalMessage =
-            rebuildRequired && this.core.settings.isConfigured
+            requiresRebuild && this.settings.isConfigured
                 ? $msg("TweakMismatchResolve.Message.WarningIncompatibleRebuildRequired")
                 : "";
         const additionalMessage2 =
-            rebuildRecommended && this.core.settings.isConfigured
+            recommendsRebuild && this.settings.isConfigured
                 ? $msg("TweakMismatchResolve.Message.WarningIncompatibleRebuildRecommended")
                 : "";
-
-        const table = $msg("TweakMismatchResolve.Table", { rows: tableRows.join("\n") });
-
         const message = $msg("TweakMismatchResolve.Message.MainTweakResolving", {
-            table: table,
-            additionalMessage: [additionalMessage, additionalMessage2].filter((v) => v).join("\n"),
+            table: mismatchTable(assessment),
+            additionalMessage: [additionalMessage, additionalMessage2].filter(Boolean).join("\n"),
         });
-
-        const CHOICE_USE_REMOTE = $msg("TweakMismatchResolve.Action.UseRemote");
-        const CHOICE_USE_REMOTE_WITH_REBUILD = $msg("TweakMismatchResolve.Action.UseRemoteWithRebuild");
-        const CHOICE_USE_REMOTE_PREVENT_REBUILD = $msg("TweakMismatchResolve.Action.UseRemoteAcceptIncompatible");
-        const CHOICE_USE_MINE = $msg("TweakMismatchResolve.Action.UseMine");
-        const CHOICE_USE_MINE_WITH_REBUILD = $msg("TweakMismatchResolve.Action.UseMineWithRebuild");
-        const CHOICE_USE_MINE_PREVENT_REBUILD = $msg("TweakMismatchResolve.Action.UseMineAcceptIncompatible");
-        const CHOICE_DISMISS = $msg("TweakMismatchResolve.Action.Dismiss");
-
-        const CHOICE_AND_VALUES = [] as [string, [result: TweakValues | boolean, rebuild: boolean]][];
-
-        if (rebuildRequired) {
-            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_WITH_REBUILD, [preferred, true]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_MINE_WITH_REBUILD, [true, true]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_PREVENT_REBUILD, [preferred, false]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_MINE_PREVENT_REBUILD, [true, false]]);
-        } else if (rebuildRecommended) {
-            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE, [preferred, false]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_MINE, [true, false]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE_WITH_REBUILD, [preferred, true]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_MINE_WITH_REBUILD, [true, true]]);
-        } else {
-            CHOICE_AND_VALUES.push([CHOICE_USE_REMOTE, [preferred, false]]);
-            CHOICE_AND_VALUES.push([CHOICE_USE_MINE, [true, false]]);
+        const choices: Record<string, [TweakValues | boolean, boolean]> = {};
+        const remoteChoices = {
+            ordinary: $msg("TweakMismatchResolve.Action.UseRemote"),
+            rebuild: $msg("TweakMismatchResolve.Action.UseRemoteWithRebuild"),
+            accept: $msg("TweakMismatchResolve.Action.UseRemoteAcceptIncompatible"),
+        };
+        const localChoices = {
+            ordinary: $msg("TweakMismatchResolve.Action.UseMine"),
+            rebuild: $msg("TweakMismatchResolve.Action.UseMineWithRebuild"),
+            accept: $msg("TweakMismatchResolve.Action.UseMineAcceptIncompatible"),
+        };
+        // Each direction owns its consequence; a rebuild on one side does not require one on the other.
+        choices[localImpact === "required" ? remoteChoices.rebuild : remoteChoices.ordinary] = [
+            acceptedSettings,
+            localImpact === "required",
+        ];
+        choices[remoteImpact === "required" ? localChoices.rebuild : localChoices.ordinary] = [
+            true,
+            remoteImpact === "required",
+        ];
+        if (localImpact !== "none") {
+            choices[localImpact === "required" ? remoteChoices.accept : remoteChoices.rebuild] = [
+                acceptedSettings,
+                localImpact !== "required",
+            ];
         }
-        CHOICE_AND_VALUES.push([CHOICE_DISMISS, [false, false]]);
-        const CHOICES = Object.fromEntries(CHOICE_AND_VALUES) as Record<
-            string,
-            [TweakValues | boolean, performRebuild: boolean]
-        >;
-        const retKey = await this.core.confirm.askSelectStringDialogue(message, Object.keys(CHOICES), {
+        if (remoteImpact !== "none") {
+            choices[remoteImpact === "required" ? localChoices.accept : localChoices.rebuild] = [
+                true,
+                remoteImpact !== "required",
+            ];
+        }
+        const dismiss = $msg("TweakMismatchResolve.Action.Dismiss");
+        choices[dismiss] = [false, false];
+        const retKey = await this.core.confirm.askSelectStringDialogue(message, Object.keys(choices), {
             title: $msg("TweakMismatchResolve.Title.TweakResolving"),
             timeout: 60,
-            defaultAction: CHOICE_DISMISS,
+            defaultAction: dismiss,
         });
-        if (!retKey) return [false, false];
-        return CHOICES[retKey];
+        return (retKey && choices[retKey]) || [false, false];
     }
 
     async _askResolvingMismatchedTweaks(
         preferredSource: TweakValues,
-        updatePreferredRemote?: (setting: ObsidianLiveSyncSettings) => Promise<boolean>
+        updatePreferredRemote?: (setting: ObsidianLiveSyncSettings) => Promise<boolean>,
+        assessment = assessTweakCompatibility(this.settings, preferredSource)
     ): Promise<"OK" | "CHECKAGAIN" | "IGNORE"> {
-        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(preferredSource);
+        const signature = resolutionSettingsSignature(this.settings);
+        const publication = await this.services.replicator.acquireActiveReplicatorContext();
+        if (resolutionSettingsSignature(this.settings) !== signature) return "IGNORE";
+        const currentTweaks = JSON.stringify(extractObject(TweakValuesTemplate, this.settings));
+        if (JSON.stringify(extractObject(TweakValuesTemplate, assessment.currentValues)) !== currentTweaks) {
+            return "IGNORE";
+        }
+        const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(
+            preferredSource,
+            assessment
+        );
         if (!conf) return "IGNORE";
+        const currentPublication = await this.services.replicator.acquireActiveReplicatorContext();
+        if (currentPublication !== publication || resolutionSettingsSignature(this.settings) !== signature) {
+            return "IGNORE";
+        }
 
-        const updateRemote = async () => {
-            if (updatePreferredRemote) return await updatePreferredRemote(this.settings);
+        const updateRemote = async (tweaks: TweakValues) => {
+            const setting = {
+                ...this.settings,
+                ...definedTweaks(assessment.preferredValues),
+                ...definedTweaks(tweaks),
+            };
+            if (updatePreferredRemote) return await updatePreferredRemote(setting);
             const candidate = this.core.replicator;
             if (typeof candidate.setPreferredRemoteTweakSettings !== "function") return false;
-            await candidate.setPreferredRemoteTweakSettings(this.settings);
+            await candidate.setPreferredRemoteTweakSettings(setting);
             return true;
         };
 
         if (conf === true) {
-            if (!(await updateRemote())) return "IGNORE";
+            if (!(await updateRemote(settingsAfterAdoption(assessment, "adoptCurrent")))) return "IGNORE";
             if (rebuildRequired) {
                 await this.core.rebuilder.$rebuildRemote();
             }
@@ -288,16 +303,15 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
             return "CHECKAGAIN";
         }
         if (conf) {
-            // ReplicationService retains the current settings object while it performs the immediate
-            // CHECKAGAIN retry. Update that object in place so the retry observes the accepted values.
-            Object.assign(this.settings, extractObject(TweakValuesTemplate, conf));
+            // Keep existing consumers' settings reference stable, and never erase a value omitted by an older peer.
+            Object.assign(this.settings, definedTweaks(conf));
             await this.services.setting.saveSettingData();
             if (!rebuildRequired) {
                 // The failed replication has settled before mismatch resolution runs. Reinitialise the
                 // chunk-generation managers now so hash and splitter changes take effect before retrying.
                 await this.localDatabase.managers.reinitialise();
             }
-            if (!(await updateRemote())) return "IGNORE";
+            if (!(await updateRemote(this.settings))) return "IGNORE";
             if (rebuildRequired) {
                 await this.core.rebuilder.$fetchLocal();
             }
@@ -333,7 +347,9 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         if (trialSetting.remoteType === REMOTE_P2P) {
             return { result: false, requireFetch: false };
         }
+        const signature = JSON.stringify(trialSetting);
         const preferred = await this.services.tweakValue.fetchRemotePreferred(trialSetting);
+        if (JSON.stringify(trialSetting) !== signature) return { result: false, requireFetch: false };
         if (preferred.status === RemotePreferredTweakStatuses.AVAILABLE) {
             return await this.services.tweakValue.askUseRemoteConfiguration(trialSetting, preferred.values);
         }
@@ -344,101 +360,48 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         trialSetting: RemoteDBSettings,
         preferred: TweakValues
     ): Promise<{ result: false | TweakValues; requireFetch: boolean }> {
-        const localTweaks = extractObject(TweakValuesTemplate, this.settings) as TweakValues;
-        const mismatchedKeys = this._collectMismatchedTweakKeys(localTweaks, preferred);
-        const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(localTweaks, preferred, mismatchedKeys);
-        if (autoAcceptSide === "REMOTE") {
-            return { result: { ...trialSetting, ...preferred }, requireFetch: false };
-        }
-        if (autoAcceptSide === "CURRENT") {
-            return { result: false, requireFetch: false };
-        }
-
-        const items = Object.entries(TweakValuesShouldMatchedTemplate);
-        let rebuildRequired = false;
-        let rebuildRecommended = false;
-        // Making tables:
-        // let table = `| Value name | This device | On Remote | \n` + `|: --- |: ---- :|: ---- :| \n`;
-        let differenceCount = 0;
-        const tableRows = [] as string[];
-        // const items = [mine,preferred]
-        for (const v of items) {
-            const key = v[0] as keyof typeof TweakValuesShouldMatchedTemplate;
-            const remoteValueForDisplay = escapeMarkdownValue(valueToString(preferred[key]));
-            const currentValueForDisplay = escapeMarkdownValue(valueToString((trialSetting as TweakValues)?.[key]));
-            if ((trialSetting as TweakValues)?.[key] !== preferred[key]) {
-                if (IncompatibleChanges.indexOf(key) !== -1) {
-                    rebuildRequired = true;
-                }
-                for (const pattern of IncompatibleChangesInSpecificPattern) {
-                    if (pattern.key !== key) continue;
-                    // if from value supplied, check if current value have been violated : in other words, if the current value is the same as the from value, it should require a rebuild.
-                    const isFromConditionMet =
-                        "from" in pattern ? pattern.from === (trialSetting as TweakValues)?.[key] : false;
-                    // and, if to value supplied, same as above.
-                    const isToConditionMet = "to" in pattern ? pattern.to === preferred[key] : false;
-                    // if either of them is true, it should require a rebuild, if the pattern is not a recommendation.
-                    if (isFromConditionMet || isToConditionMet) {
-                        if (pattern.isRecommendation) {
-                            rebuildRecommended = true;
-                        } else {
-                            rebuildRequired = true;
-                        }
-                    }
-                }
-                if (CompatibleButLossyChanges.indexOf(key) !== -1) {
-                    rebuildRecommended = true;
-                }
-            } else {
-                continue;
-            }
-            tableRows.push(
-                $msg("TweakMismatchResolve.Table.Row", {
-                    name: localisedConfName(key),
-                    self: currentValueForDisplay,
-                    remote: remoteValueForDisplay,
-                })
-            );
-            differenceCount++;
-        }
-
-        if (differenceCount === 0) {
+        const trialSignature = JSON.stringify(trialSetting);
+        const currentSignature = resolutionSettingsSignature(this.settings);
+        const assessment = assessTweakCompatibility(trialSetting, preferred);
+        if (assessment.alignment === "matched") {
             this._log("The settings in the remote database are the same as the local database.", LOG_LEVEL_NOTICE);
             return { result: false, requireFetch: false };
         }
+        const publication = await this.services.replicator.acquireActiveReplicatorContext();
+        const settingsStillCurrent = () =>
+            JSON.stringify(trialSetting) === trialSignature &&
+            resolutionSettingsSignature(this.settings) === currentSignature;
+        if (!settingsStillCurrent()) return { result: false, requireFetch: false };
+        const stillCurrent = async () =>
+            (await this.services.replicator.acquireActiveReplicatorContext()) === publication && settingsStillCurrent();
+        const acceptedSettings = { ...trialSetting, ...settingsAfterAdoption(assessment, "adoptPreferred") };
+        const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(assessment);
+        if (!(await stillCurrent())) return { result: false, requireFetch: false };
+        if (autoAcceptSide === "REMOTE") return { result: acceptedSettings, requireFetch: false };
+        if (autoAcceptSide === "CURRENT") return { result: false, requireFetch: false };
+
+        const impact = assessment.adoptPreferred.reconstruction;
         const additionalMessage =
-            rebuildRequired && this.core.settings.isConfigured
+            impact === "required" && this.settings.isConfigured
                 ? $msg("TweakMismatchResolve.Message.UseRemote.WarningRebuildRequired")
                 : "";
         const additionalMessage2 =
-            rebuildRecommended && this.core.settings.isConfigured
+            impact === "recommended" && this.settings.isConfigured
                 ? $msg("TweakMismatchResolve.Message.UseRemote.WarningRebuildRecommended")
                 : "";
-
-        const table = $msg("TweakMismatchResolve.Table", { rows: tableRows.join("\n") });
-
         const message = $msg("TweakMismatchResolve.Message.Main", {
-            table: table,
-            additionalMessage: [additionalMessage, additionalMessage2].filter((v) => v).join("\n"),
+            table: mismatchTable(assessment, "adoptPreferred"),
+            additionalMessage: [additionalMessage, additionalMessage2].filter(Boolean).join("\n"),
         });
-
-        const CHOICE_USE_REMOTE = $msg("TweakMismatchResolve.Action.UseConfigured");
-        const CHOICE_DISMISS = $msg("TweakMismatchResolve.Action.Dismiss");
-        // const CHOICE_AND_VALUES = [
-        //     [CHOICE_USE_REMOTE, preferred],
-        //     [CHOICE_DISMISS, false]]
-        const CHOICES = [CHOICE_USE_REMOTE, CHOICE_DISMISS];
-        const retKey = await this.core.confirm.askSelectStringDialogue(message, CHOICES, {
+        const useRemote = $msg("TweakMismatchResolve.Action.UseConfigured");
+        const dismiss = $msg("TweakMismatchResolve.Action.Dismiss");
+        const retKey = await this.core.confirm.askSelectStringDialogue(message, [useRemote, dismiss], {
             title: $msg("TweakMismatchResolve.Title.UseRemoteConfig"),
             timeout: 0,
-            defaultAction: CHOICE_DISMISS,
+            defaultAction: dismiss,
         });
-        if (!retKey) return { result: false, requireFetch: false };
-        if (retKey === CHOICE_DISMISS) return { result: false, requireFetch: false };
-        if (retKey === CHOICE_USE_REMOTE) {
-            return { result: { ...trialSetting, ...preferred }, requireFetch: rebuildRequired };
-        }
-        return { result: false, requireFetch: false };
+        if (retKey !== useRemote || !(await stillCurrent())) return { result: false, requireFetch: false };
+        return { result: acceptedSettings, requireFetch: impact === "required" };
     }
 
     override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
