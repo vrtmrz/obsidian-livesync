@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
+    TweakValuesTemplate,
     type RemoteDBSettings,
     type TweakValues,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { extractObject } from "octagonal-wheels/object";
+import { assessTweakCompatibility } from "@vrtmrz/livesync-commonlib/settings";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 import { setLang } from "@/common/translation";
 import {
@@ -14,10 +17,16 @@ import {
     type ReplicationAttemptFailure,
 } from "@vrtmrz/livesync-commonlib/replication";
 
+const BASE_TWEAKS = {
+    ...extractObject(TweakValuesTemplate, DEFAULT_SETTINGS),
+    handleFilenameCaseSensitive: false,
+};
+
 function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
     const askSelectStringDialogue = vi.fn(async (..._args: unknown[]): Promise<string | undefined> => undefined);
     const applyPartial = vi.fn(async (_partial: Record<string, unknown>): Promise<void> => undefined);
     const reinitialise = vi.fn(async () => undefined);
+    const publication = {};
     const core = {
         _services: {
             API: {
@@ -31,6 +40,9 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
                 saveSettingData: vi.fn(async () => undefined),
                 applyPartial,
             },
+            replicator: {
+                acquireActiveReplicatorContext: vi.fn(async () => publication),
+            },
         },
         localDatabase: {
             managers: {
@@ -39,6 +51,7 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
         },
         settings: {
             ...DEFAULT_SETTINGS,
+            handleFilenameCaseSensitive: false,
             remoteType: REMOTE_COUCHDB,
             ...settingsOverride,
         },
@@ -61,14 +74,170 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 describe("ModuleResolvingMismatchedTweaks", () => {
+    it("compatibility: offers ordinary application for a missing legacy filename-case setting", async () => {
+        const { module, askSelectStringDialogue } = createModule({
+            autoAcceptCompatibleTweak: false,
+            customChunkSize: 60,
+            usePluginSyncV2: true,
+            handleFilenameCaseSensitive: false,
+        });
+        const preferred: TweakValues = {
+            ...DEFAULT_SETTINGS,
+            customChunkSize: 0,
+            usePluginSyncV2: false,
+        };
+        delete preferred.handleFilenameCaseSensitive;
+
+        await module._checkAndAskResolvingMismatchedTweaks(preferred);
+
+        expect(askSelectStringDialogue.mock.calls[0][1]).toContain("Apply settings to this device");
+        expect(askSelectStringDialogue.mock.calls[0][0]).not.toContain("Handle files as Case-Sensitive");
+    });
+
+    it("compares the trial configuration when deciding whether to accept compatible remote values", async () => {
+        const { module, askSelectStringDialogue } = createModule({
+            autoAcceptCompatibleTweak: true,
+            hashAlg: "xxhash32",
+            tweakModified: 300,
+        });
+        const trial = {
+            ...DEFAULT_SETTINGS,
+            hashAlg: "xxhash64",
+            tweakModified: 100,
+        } as RemoteDBSettings;
+        const preferred = { ...trial, hashAlg: "xxhash32", tweakModified: 200 } as TweakValues;
+
+        const result = await module._askUseRemoteConfiguration(trial, preferred);
+
+        expect(result).toEqual({ result: { ...trial, ...preferred }, requireFetch: false });
+        expect(askSelectStringDialogue).not.toHaveBeenCalled();
+    });
+
+    it("discards remote profile adoption if the active publication changed while awaiting it", async () => {
+        const { module, core, askSelectStringDialogue } = createModule({
+            autoAcceptCompatibleTweak: false,
+            usePluginSyncV2: true,
+        });
+        let publication = {};
+        core._services.replicator.acquireActiveReplicatorContext.mockImplementation(async () => publication);
+        askSelectStringDialogue.mockImplementation(async () => {
+            publication = {};
+            return "Use configured settings";
+        });
+        const trial = { ...core.settings } as RemoteDBSettings;
+        const preferred = { ...trial, usePluginSyncV2: false };
+
+        const result = await module._askUseRemoteConfiguration(trial, preferred);
+
+        expect(askSelectStringDialogue).toHaveBeenCalled();
+        expect(result).toEqual({ result: false, requireFetch: false });
+    });
+
+    it("discards a decision if the connection settings changed while awaiting it", async () => {
+        const { module, core, reinitialise } = createModule({ hashAlg: "xxhash64" });
+        const preferred = { ...DEFAULT_SETTINGS, hashAlg: "xxhash32" } as TweakValues;
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: vi.fn(async () => {
+                core.settings.couchDB_DBNAME = "another-database";
+                return [preferred, false];
+            }),
+        };
+        const updatePreferredRemote = vi.fn(async () => true);
+
+        const result = await module._askResolvingMismatchedTweaks(preferred, updatePreferredRemote);
+
+        expect(result).toBe("IGNORE");
+        expect(core.settings.hashAlg).toBe("xxhash64");
+        expect(core._services.setting.saveSettingData).not.toHaveBeenCalled();
+        expect(reinitialise).not.toHaveBeenCalled();
+        expect(updatePreferredRemote).not.toHaveBeenCalled();
+    });
+
+    it("discards a decision if its active publication was replaced while awaiting it", async () => {
+        const { module, core, reinitialise } = createModule({ hashAlg: "xxhash64" });
+        const preferred = { ...BASE_TWEAKS, hashAlg: "xxhash32" } as TweakValues;
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: vi.fn(async () => [preferred, false]),
+        };
+        core._services.replicator.acquireActiveReplicatorContext.mockResolvedValueOnce({}).mockResolvedValueOnce({});
+        const updatePreferredRemote = vi.fn(async () => true);
+
+        await expect(module._askResolvingMismatchedTweaks(preferred, updatePreferredRemote)).resolves.toBe("IGNORE");
+
+        expect(core._services.setting.saveSettingData).not.toHaveBeenCalled();
+        expect(reinitialise).not.toHaveBeenCalled();
+        expect(updatePreferredRemote).not.toHaveBeenCalled();
+    });
+
+    it("uses each direction's assessed reconstruction consequence in the available choices", async () => {
+        const { module, core, askSelectStringDialogue } = createModule({ autoAcceptCompatibleTweak: false });
+        const preferred = { ...BASE_TWEAKS, encrypt: true };
+        const assessment = assessTweakCompatibility(core.settings, preferred);
+        const directionalAssessment = {
+            ...assessment,
+            adoptCurrent: { ...assessment.adoptCurrent, reconstruction: "none" as const },
+        };
+        askSelectStringDialogue.mockResolvedValueOnce("Update remote database settings");
+
+        const result = await module._checkAndAskResolvingMismatchedTweaks(preferred, directionalAssessment);
+
+        expect(result).toEqual([true, false]);
+        expect(askSelectStringDialogue.mock.calls[0][1]).toContain("Apply settings to this device, and fetch again");
+        expect(askSelectStringDialogue.mock.calls[0][1]).not.toContain("Apply settings to this device");
+    });
+
+    it("keeps explicitly chosen Fetch failures from becoming a successful retry", async () => {
+        const { module, core } = createModule({ hashAlg: "xxhash64" });
+        const preferred = { ...BASE_TWEAKS, hashAlg: "xxhash32" } as TweakValues;
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: vi.fn(async () => [preferred, true]),
+        };
+        const failure = new Error("Fetch failed");
+        core.rebuilder = {
+            $fetchLocal: vi.fn(async () => {
+                throw failure;
+            }),
+        };
+
+        await expect(module._askResolvingMismatchedTweaks(preferred, async () => true)).rejects.toBe(failure);
+    });
+
+    it("does not erase an explicit local setting when accepting a partial remote configuration", async () => {
+        const { module, core } = createModule({ handleFilenameCaseSensitive: false });
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: vi.fn(async () => [{ customChunkSize: 30 }, false]),
+        };
+
+        await expect(module._askResolvingMismatchedTweaks({ customChunkSize: 30 }, async () => true)).resolves.toBe(
+            "CHECKAGAIN"
+        );
+        expect(core.settings.handleFilenameCaseSensitive).toBe(false);
+        expect(core.settings.customChunkSize).toBe(30);
+    });
+
+    it("preserves a remote recommendation which this device has not advertised", async () => {
+        const { module, core } = createModule({ hashAlg: "xxhash64" });
+        delete core.settings.readChunksOnline;
+        const preferred = { ...BASE_TWEAKS, hashAlg: "xxhash32", readChunksOnline: false } as TweakValues;
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: vi.fn(async () => [true, false]),
+        };
+        const updateRemote = vi.fn(async () => true);
+
+        await expect(module._askResolvingMismatchedTweaks(preferred, updateRemote)).resolves.toBe("CHECKAGAIN");
+        expect(updateRemote).toHaveBeenCalledWith(
+            expect.objectContaining({ hashAlg: "xxhash64", readChunksOnline: false })
+        );
+    });
+
     it("uses the failed attempt hint and writes only through that exact active publication", async () => {
         const { module, core } = createModule();
         const attemptPreferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             customChunkSize: 60,
         };
         const replacementPreferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             customChunkSize: 99,
         };
         let updatePreferredRemote: ((setting: typeof core.settings) => Promise<boolean>) | undefined;
@@ -118,7 +287,11 @@ describe("ModuleResolvingMismatchedTweaks", () => {
 
         await expect(module._anyAfterConnectCheckFailed(request)).resolves.toBe(true);
 
-        expect(askResolvingMismatched).toHaveBeenCalledWith(attemptPreferred, expect.any(Function));
+        expect(askResolvingMismatched).toHaveBeenCalledWith(
+            attemptPreferred,
+            expect.any(Function),
+            expect.objectContaining({ alignment: "mismatched" })
+        );
         const effectiveSetting = { ...core.settings, customChunkSize: 64 };
         await expect(updatePreferredRemote?.(effectiveSetting)).resolves.toBe(true);
         expect(failedSetPreferred).toHaveBeenCalledWith(effectiveSetting);
@@ -193,7 +366,7 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         const initialSettings = core.settings;
 
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
             tweakModified: 200,
         } as Partial<TweakValues>;
@@ -217,7 +390,7 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         });
 
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
             tweakModified: 200,
         } as Partial<TweakValues>;
@@ -239,7 +412,7 @@ describe("ModuleResolvingMismatchedTweaks", () => {
             tweakModified: currentModified,
         });
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
             tweakModified: preferredModified,
         } as Partial<TweakValues>;
@@ -260,7 +433,7 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         });
 
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
             encrypt: true,
             tweakModified: 200,
@@ -281,7 +454,7 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         askSelectStringDialogue.mockResolvedValueOnce("Apply settings to this device, and fetch again");
 
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
         } as TweakValues;
 
@@ -325,7 +498,7 @@ describe("ModuleResolvingMismatchedTweaks", () => {
         });
         const initialSettings = core.settings;
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
             tweakModified: 200,
         } as TweakValues;
@@ -372,7 +545,7 @@ describe("ModuleResolvingMismatchedTweaks setting labels", () => {
             tweakModified: 100,
         });
         const preferred = {
-            ...(DEFAULT_SETTINGS as unknown as TweakValues),
+            ...BASE_TWEAKS,
             hashAlg: "xxhash32",
             encrypt: true,
             tweakModified: 200,

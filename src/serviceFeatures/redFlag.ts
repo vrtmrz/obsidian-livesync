@@ -7,13 +7,9 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/models/redflag.const";
 import FetchEverything from "@/modules/features/SetupWizard/dialogs/FetchEverything.svelte";
 import RebuildEverything from "@/modules/features/SetupWizard/dialogs/RebuildEverything.svelte";
-import { extractObject } from "octagonal-wheels/object";
 import { REMOTE_MINIO, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
-import {
-    RemotePreferredTweakStatuses,
-    TweakValuesShouldMatchedTemplate,
-} from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
+import { assessTweakCompatibility, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { RemotePreferredTweakStatuses } from "@vrtmrz/livesync-commonlib/compat/common/models/tweak.definition";
 import type {
     FetchEverythingResult,
     RebuildEverythingResult,
@@ -301,12 +297,8 @@ export async function adjustSettingToRemote(
         }
 
         const remoteTweaks = remoteResult.values;
-        const necessary = extractObject(TweakValuesShouldMatchedTemplate, remoteTweaks);
-        // Check if any necessary tweak value is different from current config.
-        const differentItems = Object.entries(necessary).filter(([key, value]) => {
-            return config[key as keyof ObsidianLiveSyncSettings] !== value;
-        });
-        if (differentItems.length === 0) {
+        const assessment = assessTweakCompatibility(config, remoteTweaks);
+        if (assessment.alignment === "matched") {
             log("Remote configuration matches local configuration. No changes applied.", LOG_LEVEL_NOTICE);
         } else {
             await host.services.UI.confirm.askSelectStringDialogue(
@@ -321,7 +313,7 @@ export async function adjustSettingToRemote(
 
         config = {
             ...config,
-            ...(Object.fromEntries(differentItems) as Partial<ObsidianLiveSyncSettings>),
+            ...assessment.adoptPreferred.changes,
         } satisfies ObsidianLiveSyncSettings;
         await host.services.setting.applyExternalSettings(config, true);
         log("Remote configuration applied.", LOG_LEVEL_NOTICE);

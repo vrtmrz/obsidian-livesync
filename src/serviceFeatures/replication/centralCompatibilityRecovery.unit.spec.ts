@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { assessTweakCompatibility } from "@vrtmrz/livesync-commonlib/settings";
 import { defaultLogger, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
@@ -23,6 +24,72 @@ import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/rep
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 
 describe("central compatibility recovery", () => {
+    it("passes the failed attempt's exact tweak assessment to mismatch resolution", async () => {
+        const setting = { customChunkSize: 0 };
+        const preferredTweakValue = { customChunkSize: 60 };
+        const tweakAssessment = assessTweakCompatibility(setting, preferredTweakValue);
+        const failedContext = { provider: {}, replicator: {} };
+        const askResolvingMismatched = vi.fn(async (..._args: unknown[]) => "CHECKAGAIN");
+        const recovery = createCentralCompatibilityRecovery({
+            services: {
+                setting: { currentSettings: () => setting },
+                replicator: {
+                    runWithActiveReplicatorContext: async (task: (context: unknown) => unknown) => task(failedContext),
+                },
+                tweakValue: { askResolvingMismatched },
+            },
+        } as never);
+
+        const result = await recovery.handleReplicationFailure({
+            context: failedContext,
+            setting,
+            outcome: replicationFailed(new Error("mismatched"), {
+                reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
+                preferredTweakValue,
+                tweakAssessment,
+            }),
+            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
+            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        } as never);
+
+        expect(askResolvingMismatched.mock.calls[0][2]).toBe(tweakAssessment);
+        expect(result).toBe(false);
+    });
+
+    it.each(["settings", "publication"])(
+        "discards a mismatch after its %s changed before recovery",
+        async (changed) => {
+            const setting = { customChunkSize: 0, couchDB_DBNAME: "original" };
+            const failedContext = { provider: {}, replicator: {} };
+            const currentContext = changed === "publication" ? { provider: {}, replicator: {} } : failedContext;
+            const currentSetting = changed === "settings" ? { ...setting, couchDB_DBNAME: "replacement" } : setting;
+            const askResolvingMismatched = vi.fn(async () => "CHECKAGAIN");
+            const recovery = createCentralCompatibilityRecovery({
+                services: {
+                    setting: { currentSettings: () => currentSetting },
+                    replicator: {
+                        runWithActiveReplicatorContext: async (task: (context: unknown) => unknown) =>
+                            task(currentContext),
+                    },
+                    tweakValue: { askResolvingMismatched },
+                },
+            } as never);
+
+            await recovery.handleReplicationFailure({
+                context: failedContext,
+                setting,
+                outcome: replicationFailed(new Error("mismatched"), {
+                    reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
+                    preferredTweakValue: { customChunkSize: 60 },
+                }),
+                progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
+                interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+            } as never);
+
+            expect(askResolvingMismatched).not.toHaveBeenCalled();
+        }
+    );
+
     it("characterises unattended central failure handling as one INFO log without a NOTICE", async () => {
         const log = vi.fn((_message: unknown, _level?: number, _key?: string) => undefined);
         setGlobalLogFunction(log);
@@ -69,6 +136,7 @@ describe("central compatibility recovery", () => {
         };
         const failedContext = { provider: {}, replicator: failedReplicator };
         const replacementContext = { provider: {}, replicator: replacementReplicator };
+        let activeContext = failedContext;
         const preferredTweakValue = { customChunkSize: 60 };
         const outcome = replicationFailed(new Error("mismatched"), {
             reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH,
@@ -81,9 +149,10 @@ describe("central compatibility recovery", () => {
             services: {
                 appLifecycle: {},
                 API: {},
+                setting: { currentSettings: () => ({}) },
                 replicator: {
                     runWithActiveReplicatorContext: vi.fn(async (task: (context: unknown) => unknown) =>
-                        task(replacementContext)
+                        task(activeContext)
                     ),
                 },
                 tweakValue: { askResolvingMismatched },
@@ -118,10 +187,15 @@ describe("central compatibility recovery", () => {
             progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.QUIET,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
         } as never);
-        expect(askResolvingMismatched).toHaveBeenCalledWith(preferredTweakValue, expect.any(Function));
+        expect(askResolvingMismatched).toHaveBeenCalledWith(
+            preferredTweakValue,
+            expect.any(Function),
+            assessTweakCompatibility({}, preferredTweakValue)
+        );
         const updatePreferredRemote = askResolvingMismatched.mock.calls[0][1] as (
             setting: Record<string, unknown>
         ) => Promise<boolean>;
+        activeContext = replacementContext;
         await expect(updatePreferredRemote({ customChunkSize: 64 })).resolves.toBe(false);
         expect(failedSetPreferred).not.toHaveBeenCalled();
         expect(replacementSetPreferred).not.toHaveBeenCalled();
@@ -143,6 +217,7 @@ describe("central compatibility recovery", () => {
             services: {
                 appLifecycle: {},
                 API: {},
+                setting: { currentSettings: () => ({}) },
                 replicator: {
                     runWithActiveReplicatorContext: vi.fn(async (task: (context: unknown) => unknown) =>
                         task(failedContext)

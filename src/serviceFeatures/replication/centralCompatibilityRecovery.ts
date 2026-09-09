@@ -1,4 +1,5 @@
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { assessTweakCompatibility } from "@vrtmrz/livesync-commonlib/settings";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
 import { skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { balanceChunkPurgedDBs, purgeUnreferencedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/chunks";
@@ -15,7 +16,7 @@ import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
 type CentralCompatibilityRecoveryServices = Pick<
     LiveSyncBaseCore["services"],
-    "API" | "appLifecycle" | "replicator" | "tweakValue"
+    "API" | "appLifecycle" | "replicator" | "setting" | "tweakValue"
 >;
 
 /** Collaborators for applying a compatibility decision to its failed publication. */
@@ -145,6 +146,15 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
             recovery.reason === CENTRAL_COMPATIBILITY_REJECTION_REASONS.TWEAK_MISMATCH &&
             recovery.preferredTweakValue
         ) {
+            const isCurrent = await context.services.replicator.runWithActiveReplicatorContext(
+                (activeContext) => activeContext === failedContext
+            );
+            // Compare in memory only: these snapshots can contain connection credentials.
+            if (!isCurrent || JSON.stringify(setting) !== JSON.stringify(context.services.setting.currentSettings())) {
+                return false;
+            }
+            const assessment =
+                recovery.tweakAssessment ?? assessTweakCompatibility(setting, recovery.preferredTweakValue);
             await context.services.tweakValue.askResolvingMismatched(
                 recovery.preferredTweakValue,
                 async (effectiveSetting) => {
@@ -156,7 +166,8 @@ Even if you choose to clean up, you will see this option again if you exit Obsid
                         updated = true;
                     });
                     return updated;
-                }
+                },
+                assessment
             );
             return false;
         }
