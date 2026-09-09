@@ -18,6 +18,8 @@ Please refer to the repository's [CITATION.cff](../CITATION.cff) file or the met
 
 For corrections, suggestions, or questions regarding the manuscript, please open an [issue](https://github.com/vrtmrz/obsidian-livesync/issues) or submit a pull request.
 
+If I have overlooked or misrepresented anyone's contribution, please let me know.
+
 ---
 
 ## 本原稿について
