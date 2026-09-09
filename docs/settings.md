@@ -171,6 +171,17 @@ Setting key: showStatusOnStatusbar
 
 We can show the status of synchronisation on the status bar. (Default: On)
 
+#### Status style
+
+Setting key: statusStyle
+
+How the synchronisation status is presented, both inside the editor and on the status bar. (Default: Classic)
+
+- **Classic (always visible)**: the status line (`Sync: 💤 ↑ 8 ↓ 3 ...`) is always shown.
+- **Minimal (only while synchronising or on error)**: nothing is shown while the replicator is idle. A small pill with a spinner and the transfer counts appears while a batch is moving, and stays for a moment after it has finished. On an error, a `Sync failed` pill with `Retry` stays until it is dismissed. On phones, the pill sits in the header row between the floating buttons, so it never covers the text of the note.
+
+This option only changes how the status is displayed; `Show status inside the editor` and `Show status on the status bar` still decide where it is shown.
+
 #### Show status icon instead of file warnings banner
 
 Setting key: hideFileWarningNotice
