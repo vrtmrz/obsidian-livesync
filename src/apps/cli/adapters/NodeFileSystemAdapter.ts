@@ -20,6 +20,15 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     readonly vault: NodeVaultAdapter;
 
     private fileCache = new Map<string, NodeFile>();
+    /**
+     * Whether a full directory scan has completed at least once.
+     *
+     * This must not be inferred from `fileCache.size`: the cache is also
+     * populated one entry at a time by `refreshFile()`, so a single
+     * incidental entry would suppress the initial scan and make
+     * `getFiles()` silently return a truncated listing.
+     */
+    private hasScannedFully = false;
 
     constructor(
         private basePath: string,
@@ -92,8 +101,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     async getFiles(): Promise<NodeFile[]> {
-        if (this.fileCache.size === 0) {
+        if (!this.hasScannedFully) {
             await this.scanDirectory();
+            this.hasScannedFully = true;
         }
         return Array.from(this.fileCache.values());
     }

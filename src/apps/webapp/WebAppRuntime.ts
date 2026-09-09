@@ -160,8 +160,10 @@ export class WebAppRuntime {
             throw new Error("The WebApp core is not initialised");
         }
 
+        // Discarding the cache also discards the full-scan state, so the
+        // `getFiles()` inside `collectFilesOnStorage()` rebuilds the inventory.
+        // Scanning here as well would traverse the whole Vault twice.
         fileAccess.fsapiAdapter.clearCache();
-        await fileAccess.fsapiAdapter.scanDirectory();
 
         const log = (message: unknown, level: LOG_LEVEL = LOG_LEVEL_INFO, key?: string): void => {
             this.addLog(message, level, key);
@@ -298,7 +300,6 @@ export class WebAppRuntime {
             const fileAccess = this.platformServiceModules?.vaultAccess;
             if (fileAccess) {
                 this.addLog("Scanning vault directory...", LOG_LEVEL_VERBOSE, "scan");
-                await fileAccess.fsapiAdapter.scanDirectory();
                 const files = await fileAccess.fsapiAdapter.getFiles();
                 this.addLog(`Found ${files.length} files`, LOG_LEVEL_VERBOSE, "scan");
             }
