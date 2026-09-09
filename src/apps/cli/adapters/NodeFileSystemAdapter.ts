@@ -20,6 +20,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     readonly vault: NodeVaultAdapter;
 
     private fileCache = new Map<string, NodeFile>();
+    private isFullyScanned = false;
 
     constructor(
         private basePath: string,
@@ -80,7 +81,10 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             }
         }
 
-        await this.scanDirectory();
+        if (!this.isFullyScanned) {
+            await this.scanDirectory();
+            this.isFullyScanned = true;
+        }
 
         for (const [cachedPath, cachedFile] of this.fileCache.entries()) {
             if (cachedPath.toLowerCase() === lowerPath) {
@@ -92,8 +96,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     async getFiles(): Promise<NodeFile[]> {
-        if (this.fileCache.size === 0) {
+        if (!this.isFullyScanned) {
             await this.scanDirectory();
+            this.isFullyScanned = true;
         }
         return Array.from(this.fileCache.values());
     }
