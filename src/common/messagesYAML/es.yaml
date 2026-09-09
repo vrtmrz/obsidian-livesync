@@ -57,12 +57,6 @@ Activate: Activar
 Active Remote Configuration: Configuración remota activa
 Add default patterns: Añadir patrones predeterminados
 Add new connection: Añadir conexión
-AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.:
-  El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy
-  inesperada. Informa de este problema.
-AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.:
-  El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es
-  muy inesperada. Informa de este problema.
 Advanced: Avanzado
 Advanced Settings: Ajustes avanzados
 After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.:

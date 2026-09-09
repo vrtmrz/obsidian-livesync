@@ -1,0 +1,95 @@
+import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+import {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_NOTICE,
+    type AnyEntry,
+    type DocumentID,
+    type FilePath,
+    type FilePathWithPrefix,
+    type LOG_LEVEL,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+
+import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
+import type { LiveSyncCore } from "@/main.ts";
+
+let noticeIndex = 0;
+
+/** Shared host access and logging helpers for stateful feature contexts. */
+export abstract class LiveSyncContext {
+    readonly core: LiveSyncCore;
+
+    constructor(core: LiveSyncCore) {
+        this.core = core;
+        this._log = createInstanceLogFunction(this.constructor.name, this.services.API);
+    }
+
+    get app() {
+        return this.services.context.app;
+    }
+
+    get settings() {
+        return this.core.settings;
+    }
+
+    get localDatabase() {
+        return this.core.localDatabase;
+    }
+
+    get services() {
+        return this.core.services;
+    }
+
+    async path2id(filename: FilePathWithPrefix | FilePath, prefix?: string): Promise<DocumentID> {
+        return await this.services.path.path2id(filename, prefix);
+    }
+
+    getPath(entry: AnyEntry): FilePathWithPrefix {
+        return this.services.path.getPath(entry);
+    }
+
+    _isMainReady() {
+        return this.services.appLifecycle.isReady();
+    }
+
+    _isMainSuspended() {
+        return this.services.appLifecycle.isSuspended();
+    }
+
+    _isDatabaseReady() {
+        return this.services.database.isDatabaseReady();
+    }
+
+    _log: ReturnType<typeof createInstanceLogFunction>;
+
+    _verbose = (msg: unknown, key?: string) => {
+        this._log(msg, LOG_LEVEL_VERBOSE, key);
+    };
+
+    _info = (msg: unknown, key?: string) => {
+        this._log(msg, LOG_LEVEL_INFO, key);
+    };
+
+    _notice = (msg: unknown, key?: string) => {
+        this._log(msg, LOG_LEVEL_NOTICE, key);
+    };
+
+    _progress = (prefix: string = "", level: LOG_LEVEL = LOG_LEVEL_NOTICE) => {
+        const key = `keepalive-progress-${noticeIndex++}`;
+        return {
+            log: (msg: string) => {
+                this._log(prefix + msg, level, key);
+            },
+            once: (msg: string) => {
+                this._log(prefix + msg, level);
+            },
+            done: (msg: string = "Done") => {
+                this._log(prefix + msg + MARK_DONE, level, key);
+            },
+        };
+    };
+
+    _debug = (msg: unknown, key?: string) => {
+        this._log(msg, LOG_LEVEL_VERBOSE, key);
+    };
+}

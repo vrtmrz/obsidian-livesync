@@ -1,14 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import ObsidianLiveSyncPlugin from "@/main";
-    import {
-        ConfigSync,
-        type IPluginDataExDisplay,
-        pluginIsEnumerating,
-        pluginList,
-        pluginManifestStore,
-        pluginV2Progress,
-    } from "./CmdConfigSync.ts";
+    import type { CustomisationSyncDialogView, IPluginDataExDisplay } from "./customisationSyncView.ts";
     import PluginCombo from "./PluginCombo.svelte";
     import { Menu, type PluginManifest } from "@/deps.ts";
     import { unique } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -19,38 +11,19 @@
         type SYNC_MODE,
         MODE_SHINY,
     } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { normalizePath } from "@/deps";
-    import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
-    import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
-    import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
+    import type { HiddenFileSyncInitialisationView } from "@/features/HiddenFileSync/hiddenFileSyncViews.ts";
     import { $msg as translateMessage } from "@/common/translation";
-    import {
-        REPLICATION_PROGRESS_PRESENTATIONS,
-        USER_INITIATED_REPLICATION_AUTHORITY,
-    } from "@vrtmrz/livesync-commonlib/replication";
-    export let plugin: ObsidianLiveSyncPlugin;
-    export let core :LiveSyncBaseCore;
-    // $: core = plugin.core;
+
+    export let customisationSync: CustomisationSyncDialogView;
+    export let hiddenFileSync: HiddenFileSyncInitialisationView;
 
     $: hideNotApplicable = false;
-    $: thisTerm = core.services.setting.getDeviceAndVaultName();
+    $: thisTerm = customisationSync.getDeviceAndVaultName();
 
-    const addOn = core.getAddOn<ConfigSync>(ConfigSync.name)!;
-    if (!addOn) {
-        const msg = translateMessage(
-            "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue."
-        );
-        Logger(msg, LOG_LEVEL_NOTICE);
-        throw new Error(msg);
-    }
-    const addOnHiddenFileSync = core.getAddOn<HiddenFileSync>(HiddenFileSync.name) as HiddenFileSync;
-    if (!addOnHiddenFileSync) {
-        const msg = translateMessage(
-            "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue."
-        );
-        Logger(msg, LOG_LEVEL_NOTICE);
-        throw new Error(msg);
-    }
+    const catalogue = customisationSync.catalogue;
+    const enumerationActive = customisationSync.enumerationActive;
+    const migrationProgress = customisationSync.migrationProgress;
+    const manifests = customisationSync.manifests;
 
     let list: IPluginDataExDisplay[] = [];
 
@@ -61,21 +34,17 @@
     let applyAllPluse = 0;
     let isMaintenanceMode = false;
     async function requestUpdate() {
-        await addOn.updatePluginList(true);
+        await customisationSync.updatePluginList(true);
     }
     async function requestReload() {
-        await addOn.reloadPluginList(true);
+        await customisationSync.reloadPluginList(true);
     }
-    let allTerms = [] as string[];
-    pluginList.subscribe((e) => {
-        list = e;
-        allTerms = unique(list.map((e) => e.term));
-    });
-    pluginIsEnumerating.subscribe((e) => {
-        loading = e;
-    });
-    onMount(async () => {
-        requestUpdate();
+    let allTerms: string[] = [];
+    $: list = $catalogue;
+    $: allTerms = unique(list.map((entry) => entry.term));
+    $: loading = $enumerationActive;
+    onMount(() => {
+        void requestUpdate();
     });
 
     function filterList(list: IPluginDataExDisplay[], categories: string[]) {
@@ -104,15 +73,11 @@
         SNIPPET: translateMessage("Snippets"),
     };
     async function scanAgain() {
-        await addOn.scanAllConfigFiles(true);
+        await customisationSync.scanAllConfigFiles(true);
         await requestUpdate();
     }
     async function replicate() {
-        await core.services.replication.replicateUserInitiated({
-            trigger: "manual",
-            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
-            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
-        });
+        await customisationSync.synchronise();
     }
     function selectAllNewest(selectMode: boolean) {
         selectNewestPulse++;
@@ -126,17 +91,17 @@
         applyAllPluse++;
     }
     async function applyData(data: IPluginDataExDisplay): Promise<boolean> {
-        return await addOn.applyData(data);
+        return await customisationSync.applyData(data);
     }
     async function compareData(
         docA: IPluginDataExDisplay,
         docB: IPluginDataExDisplay,
         compareEach = false
     ): Promise<boolean> {
-        return await addOn.compareUsingDisplayData(docA, docB, compareEach);
+        return await customisationSync.compareUsingDisplayData(docA, docB, compareEach);
     }
     async function deleteData(data: IPluginDataExDisplay): Promise<boolean> {
-        return await addOn.deleteData(data);
+        return await customisationSync.deleteData(data);
     }
     function askMode(evt: MouseEvent, title: string, key: string) {
         const menu = new Menu();
@@ -161,9 +126,8 @@
     }
     function applyAutomaticSync(key: string, direction: "pushForce" | "pullForce" | "safe") {
         setMode(key, MODE_AUTOMATIC);
-        const configDir = normalizePath(plugin.core.services.API.getSystemConfigDir());
-        const files = (plugin.core.settings.pluginSyncExtendedSetting[key]?.files ?? []).map((e) => `${configDir}/${e}`);
-        addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
+        const files = customisationSync.getConfiguredTargetFiles(key);
+        void hiddenFileSync.initialiseInternalFileSync(direction, true, files);
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {
         const menu = new Menu();
@@ -196,7 +160,7 @@
         applyData,
         compareData,
         deleteData,
-        plugin,
+        customisationSync,
         isMaintenanceMode,
     };
 
@@ -236,22 +200,12 @@
         );
         if (mode == MODE_SELECTIVE) {
             automaticList.delete(key);
-            delete plugin.core.settings.pluginSyncExtendedSetting[key];
             automaticListDisp = automaticList;
         } else {
             automaticList.set(key, mode);
             automaticListDisp = automaticList;
-            if (!(key in plugin.core.settings.pluginSyncExtendedSetting)) {
-                plugin.core.settings.pluginSyncExtendedSetting[key] = {
-                    key,
-                    mode,
-                    files: [],
-                };
-            }
-            plugin.core.settings.pluginSyncExtendedSetting[key].files = files;
-            plugin.core.settings.pluginSyncExtendedSetting[key].mode = mode;
         }
-        core.services.setting.saveSettingData();
+        customisationSync.updateConfiguredMode(key, mode, files);
     }
     function getIcon(mode: SYNC_MODE) {
         if (mode in ICONS) {
@@ -264,7 +218,7 @@
     let automaticListDisp = new Map<string, SYNC_MODE>();
 
     // apply current configuration to the dialogue
-    for (const { key, mode } of Object.values(plugin.core.settings.pluginSyncExtendedSetting)) {
+    for (const { key, mode } of customisationSync.getConfiguredModes()) {
         automaticList.set(key, mode);
     }
 
@@ -273,7 +227,7 @@
     let displayKeys: Record<string, string[]> = {};
 
     function computeDisplayKeys(list: IPluginDataExDisplay[]) {
-        const extraKeys = Object.keys(plugin.core.settings.pluginSyncExtendedSetting);
+        const extraKeys = customisationSync.getConfiguredModes().map(({ key }) => key);
         return [
             ...list,
             ...extraKeys
@@ -303,7 +257,7 @@
         for (const item of deleteItems) {
             await deleteData(item);
         }
-        addOn.reloadPluginList(true);
+        void customisationSync.reloadPluginList(true);
     }
 
     let nameMap = new Map<string, string>();
@@ -324,7 +278,7 @@
         }
         nameMap = newMap;
     }
-    $: updateNameMap($pluginManifestStore);
+    $: updateNameMap($manifests);
 
     let displayEntries = [] as [string, string][];
     $: {
@@ -335,7 +289,7 @@
     $: {
         pluginEntries = groupBy(filterList(list, ["PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]), "name");
     }
-    let useSyncPluginEtc = plugin.core.settings.usePluginEtc;
+    let useSyncPluginEtc = customisationSync.isPluginEtcEnabled();
 </script>
 
 <div class="buttonsWrap">
@@ -357,8 +311,10 @@
     </div>
 </div>
 <div class="loading">
-    {#if loading || $pluginV2Progress !== 0}
-        <span>{translateMessage("Updating list...")}{$pluginV2Progress == 0 ? "" : ` (${$pluginV2Progress})`}</span>
+    {#if loading || $migrationProgress !== 0}
+        <span
+            >{translateMessage("Updating list...")}{$migrationProgress == 0 ? "" : ` (${$migrationProgress})`}</span
+        >
     {/if}
 </div>
 <div class="list">
