@@ -20,6 +20,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     readonly vault: NodeVaultAdapter;
 
     private fileCache = new Map<string, NodeFile>();
+    private hasScannedAllFiles = false;
 
     constructor(
         private basePath: string,
@@ -92,7 +93,10 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     async getFiles(): Promise<NodeFile[]> {
-        if (this.fileCache.size === 0) {
+        // Track the full scan explicitly: refreshFile() also populates the cache, so a non-empty cache does not
+        // mean the directory has been scanned. Relying on the cache size let replication warm the cache before
+        // the daemon's mirror scan and return a truncated listing, which then deleted remote documents (#1143).
+        if (!this.hasScannedAllFiles) {
             await this.scanDirectory();
         }
         return Array.from(this.fileCache.values());
@@ -164,6 +168,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             }
             for (const entryPath of entries.folders) {
                 await this.scanDirectory(entryPath);
+            }
+            if (relativePath === "") {
+                this.hasScannedAllFiles = true;
             }
         } catch (error) {
             // Directory doesn't exist or is not readable
