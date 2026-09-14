@@ -318,6 +318,53 @@ describe("daemon command", () => {
         expect(setTimeoutSpy.mock.calls[afterSuccessCallCount - 1][1]).toBe(150_000);
     });
 
+    it("polling backoff: consecutiveFailures overflow does not produce Infinity interval", async () => {
+        const core = createCoreMock();
+        vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);
+
+        // Startup replicate succeeds; ALL subsequent polls fail.
+        // The bug being guarded against: `Math.pow(2, n)` returns Infinity
+        // once n >= 54, which propagates through Math.min() into setTimeout(),
+        // producing a tight polling loop instead of the intended capped backoff.
+        let callCount = 0;
+        core.services.replication.replicateUnattended = vi.fn(async () => {
+            callCount++;
+            if (callCount === 1) return { status: "completed" as const }; // initial startup replicate
+            throw new Error("persistent failure");
+        });
+
+        const baseMs = 30 * 1000;
+        const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+        await runCommand(makeDaemonOptions(30), createDaemonContext(core));
+
+        // Advance through 100 consecutive failed polls. Each setTimeout delay must
+        // be a finite, positive number — never Infinity, never <= 0.
+        for (let i = 0; i < 100; i++) {
+            const calls = setTimeoutSpy.mock.calls;
+            const lastDelay = calls[calls.length - 1][1] as number;
+            if (!Number.isFinite(lastDelay) || lastDelay <= 0) {
+                throw new Error(
+                    `Overflow detected after ${i + 1} failures: setTimeout delay=${lastDelay} ` +
+                    `(Number.isFinite=${Number.isFinite(lastDelay)})`
+                );
+            }
+            await vi.advanceTimersByTimeAsync(lastDelay);
+        }
+
+        // Every scheduled delay must be finite and positive.
+        for (const call of setTimeoutSpy.mock.calls) {
+            const delay = call[1] as number;
+            expect(Number.isFinite(delay)).toBe(true);
+            expect(delay).toBeGreaterThan(0);
+            // Must remain within the intended cap.
+            expect(delay).toBeLessThanOrEqual(300_000);
+        }
+
+        // We must have actually tested well past the overflow boundary (n=54).
+        expect(callCount).toBeGreaterThan(54);
+    });
+
     it("polling error handling: replicate rejection is caught and written to standard error", async () => {
         const core = createCoreMock();
         vi.mocked(offlineScanner.performFullScan).mockResolvedValue(true);

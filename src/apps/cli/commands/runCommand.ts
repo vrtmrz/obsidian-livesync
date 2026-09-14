@@ -132,7 +132,15 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
                     }
                 } catch (err) {
                     consecutiveFailures++;
-                    currentIntervalMs = Math.min(baseIntervalMs * Math.pow(2, consecutiveFailures), maxIntervalMs);
+                    // Cap the exponent before Math.pow to prevent Infinity overflow.
+                    // Without this guard, `Math.pow(2, n)` becomes Infinity once
+                    // n exceeds 53 (since 2^54 > Number.MAX_SAFE_INTEGER). That would
+                    // propagate through `Math.min(...)` to `setTimeout(fn, Infinity)`,
+                    // which Node clamps to 1ms — producing a tight, non-yielding polling
+                    // loop after enough consecutive failures instead of the intended
+                    // capped exponential backoff.
+                    const cappedExponent = Math.min(consecutiveFailures, 30);
+                    currentIntervalMs = Math.min(baseIntervalMs * Math.pow(2, cappedExponent), maxIntervalMs);
                     writeStderrLine(standardIo, `[Daemon] Poll error (${consecutiveFailures} consecutive):`, err);
                     if (consecutiveFailures >= 5) {
                         writeStderrLine(
