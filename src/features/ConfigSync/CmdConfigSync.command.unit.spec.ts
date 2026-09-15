@@ -52,7 +52,7 @@ vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
 }));
 
 import { cancelTask } from "@/common/utils.ts";
-import { ConfigSync } from "./CmdConfigSync";
+import { ConfigSync, PluginDataExDisplayV2, type IPluginDataExDisplay } from "./CmdConfigSync";
 
 describe("ConfigSync commands", () => {
     it("shows the Customisation Sync command only whilst the feature is enabled", () => {
@@ -109,5 +109,27 @@ describe("ConfigSync commands", () => {
         expect(cancelTask).toHaveBeenCalledWith("config-sync:updated-configuration");
         expect(notices.hide).toHaveBeenCalledWith("config-sync:updated-configuration");
         expect(periodicPluginSweepProcessor.disable).toHaveBeenCalledOnce();
+    });
+});
+
+describe("PluginDataExDisplayV2", () => {
+    const entryWithModifiedTimes = (mtimes: number[]) =>
+        new PluginDataExDisplayV2({
+            documentPath: "ix:device/plugin_main/example",
+            category: "PLUGIN_MAIN",
+            name: "example",
+            term: "device",
+            files: mtimes.map((mtime, index) => ({ filename: `file-${index}`, mtime, data: [] })),
+        } as unknown as IPluginDataExDisplay);
+
+    it("averages millisecond modification times without truncating them to 32 bits", () => {
+        const mtime = Date.UTC(2026, 8, 15);
+        expect(entryWithModifiedTimes([mtime, mtime, mtime]).mtime).toBe(mtime);
+    });
+
+    it("keeps a newer copy newer than an older one", () => {
+        const newer = entryWithModifiedTimes([Date.UTC(2026, 8, 15)]);
+        const older = entryWithModifiedTimes([Date.UTC(2026, 8, 2)]);
+        expect(newer.mtime).toBeGreaterThan(older.mtime);
     });
 });

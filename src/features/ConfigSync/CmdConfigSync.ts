@@ -368,7 +368,8 @@ export class PluginDataExDisplayV2 {
         return this._version;
     }
     get mtime(): number {
-        return ~~this.files.reduce((a, b) => a + b.mtime, 0) / this.files.length;
+        // Millisecond timestamps exceed 32 bits, so `~~` would wrap them.
+        return Math.floor(this.files.reduce((a, b) => a + b.mtime, 0) / this.files.length);
     }
 }
 export type PluginDataEx = {
