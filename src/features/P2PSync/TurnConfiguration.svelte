@@ -68,7 +68,7 @@
                     autocomplete={field.secret ? "new-password" : "off"} autocapitalize="off" spellcheck="false" />
             </label>
         {/each}
-        <p>{translate("The API token is saved with this profile and included in encrypted Setup URI sharing. Temporary TURN credentials are kept in memory only.")}</p>
+        <p>{translate("The API token is saved with this profile and included in Setup URI and QR code sharing. Temporary TURN credentials are kept in memory only.")}</p>
     {/if}
     {#if error}
         <p role="status" class="turn-error">{translateIfAvailable(error)}</p>

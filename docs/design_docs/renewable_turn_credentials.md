@@ -1,6 +1,6 @@
 ---
 date: 2026-09-15
-commonlib-version: "0.1.25-dev.turn-credentials.3"
+commonlib-version: "0.1.25-dev.turn-credentials.4"
 self-hosted-livesync-version: "1.0.28"
 status: unreleased
 ---
@@ -151,21 +151,21 @@ and report a safe error; it must not silently save a plaintext replacement.
 | Destination | Provider API token | Issued TURN username and credential |
 | --- | --- | --- |
 | Saved P2P profile | Included | Omitted |
-| Encrypted Setup URI | Included with the source and Key ID | Omitted |
+| Setup URI and QR code | Included with the source and Key ID | Omitted |
 | Runtime room configuration | Available only to the source | Cached in memory and passed to WebRTC |
 | General report or diagnostic log | Redacted | Redacted |
 
-Encrypted Setup URI sharing is the complete sharing route for managed
-profiles. Preserve the independent main-remote and P2P selections and the
-receiving device's own peer name. Raw profile and unencrypted QR copy actions
-should offer encrypted Setup URI sharing when their output includes a managed
-source, including one in an inactive profile. Never substitute a temporary
-TURN password or silently export a profile missing its API token.
+Setup URI, QR code, and profile sharing include the source configuration as
+ordinary connection settings. Preserve the independent main-remote and P2P
+selections and the receiving device's own peer name. Setup URIs keep their
+existing passphrase encryption; QR codes keep their existing unencrypted
+format and 'FOR YOUR EYES ONLY' display. Include managed sources in inactive
+profiles as well. Issued temporary credentials remain runtime state.
 
 Markdown settings export must not leak tokens through either the top-level
 source or a profile URI. For this first delivery, omit the profile collection,
 its selections, and the source projection together when managed profiles are
-present, and explain that connection sharing uses the encrypted Setup URI.
+present, and explain that connection sharing uses Setup URIs or QR codes.
 Importing Markdown without that group preserves the local profiles and
 selections rather than replacing them with a filtered collection.
 
@@ -404,31 +404,24 @@ LiveSync Setup dialogue, import handler, profile export, Markdown settings,
 and report paths. Existing fixed-field serialisers would otherwise discard
 the source. Generated credentials never populate the manual fields.
 
-Managed profile strings need a distinguishable format,
-`sls+p2p-v2://`. Commonlib `0.1.24` rejects that scheme, whereas it silently
-drops unknown fields in ordinary `sls+p2p://` strings. Manual profiles retain
-their current format. Validate the source before activation; unknown sources
-must not become manual connections.
+P2P profiles keep `sls+p2p://` and carry the optional source descriptor in an
+additional `source` query parameter. Full Setup URIs keep
+`obsidian://setuplivesync?settings=` and encrypt the existing settings object
+directly. QR codes carry the same source through an appended setting index.
+Existing setting indices and the established formats remain unchanged.
 
-Full encrypted Setup URIs also need a distinguishable outer format,
-`obsidian://setuplivesync-v2?settings=`, and a versioned encrypted
-envelope when managed profiles are included. The old import path decrypts and
-merges arbitrary JSON, so a nested profile version alone is insufficient.
-Validate the new envelope before applying settings in every maintained host.
-Apply stored settings schema checks on load and import, including downgrades;
-older clients must not activate a managed profile after dropping its source.
-Document any minimum-client and downgrade requirements with the implementation.
+Missing source settings use the ordinary manual defaults. Older clients follow
+their existing handling of additional fields; this feature adds no URI-version
+gate or stored-settings restriction to prevent them from loading settings.
+Clients which support source descriptors preserve unknown identifiers and
+versions and validate them before activation, rather than silently selecting
+manual TURN when an explicitly configured source is unsupported.
 
-For a selected managed source, save the complete P2P connection in its
-versioned profile and disable the persisted legacy P2P projection: clear its
-Group ID and passphrase, and save `P2P_Enabled` and `P2P_AutoStart` as false.
-A compatible client restores those runtime values from the selected profile.
-This prevents an older client which rejects the profile URI from connecting
-through leftover manual fields. Source-only settings without a configured
-room can remain disabled until setup is complete. The live settings and
-setting-saved notifications retain their usable runtime values. A selected
-manual profile retains its established persisted representation, even when
-another saved profile has a managed source.
+Persist the ordinary P2P settings projection alongside its profile. Keep the
+Group ID, enabled state, and autostart preference consistent with the current
+settings. Optional configuration encryption continues to protect both the
+profile and its source configuration. Issued credentials never populate the
+persisted manual TURN fields.
 
 The P2P data protocol and Group ID remain unchanged. A peer using manually
 configured TURN can communicate with one using issued credentials; validate
@@ -465,7 +458,7 @@ results contain no provider token, TURN username, or TURN credential.
 - Manual configuration, default STUN, and existing Setup URIs retain their
   behaviour. Unsupported managed sources fail explicitly.
 - Provider tokens survive restart, profile selection, optional configuration
-  encryption, and encrypted Setup URI sharing. Reports and logs reveal no
+  encryption, and ordinary Setup URI and QR code sharing. Reports and logs reveal no
   tokens or issued credentials, including inactive and encoded copies.
 - Issued credentials never enter persisted settings, exports, or reports.
 - Equivalent settings and valid credentials reuse the room. Expired

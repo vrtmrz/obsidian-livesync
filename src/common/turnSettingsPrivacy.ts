@@ -21,7 +21,7 @@ export function redactTurnSourceForReport(settings: Partial<ObsidianLiveSyncSett
     }
 }
 
-/** Managed connection profiles are shared through encrypted Setup URIs. */
+/** Managed connection profiles are shared through Setup URIs and QR codes. */
 export function omitManagedTurnProfilesFromMarkdown(settings: Partial<ObsidianLiveSyncSettings>): void {
     if (!hasManagedTurnSettings(settings)) return;
     delete settings.P2P_iceServerSource;

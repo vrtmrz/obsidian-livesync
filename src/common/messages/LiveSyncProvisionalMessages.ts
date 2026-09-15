@@ -16,8 +16,8 @@ export const liveSyncProvisionalEnglishMessages = {
     "TURN Key ID": "TURN Key ID",
     "TURN Key API Token": "TURN Key API Token",
     "Unsupported TURN configuration": "Unsupported TURN configuration",
-    "The API token is saved with this profile and included in encrypted Setup URI sharing. Temporary TURN credentials are kept in memory only.":
-        "The API token is saved with this profile and included in encrypted Setup URI sharing. Temporary TURN credentials are kept in memory only.",
+    "The API token is saved with this profile and included in Setup URI and QR code sharing. Temporary TURN credentials are kept in memory only.":
+        "The API token is saved with this profile and included in Setup URI and QR code sharing. Temporary TURN credentials are kept in memory only.",
     "TURN relay only requires a TURN server or a configured credential source under Advanced Settings.":
         "TURN relay only requires a TURN server or a configured credential source under Advanced Settings.",
     "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.":

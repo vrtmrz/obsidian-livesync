@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { configURIBase, configURIBaseV2 } from "@/common/types";
+    import { configURIBase } from "@/common/types";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
     import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
@@ -29,7 +29,7 @@
         }
     });
 
-    const seemsValid = $derived(setupURI.startsWith(configURIBase) || setupURI.startsWith(configURIBaseV2));
+    const seemsValid = $derived(setupURI.startsWith(configURIBase));
     async function processSetupURI() {
         error = "";
         if (!seemsValid) return;

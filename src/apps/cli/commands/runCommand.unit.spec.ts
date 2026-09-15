@@ -1,7 +1,7 @@
 import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { configURIBase, configURIBaseV2 } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
+import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
@@ -419,7 +419,7 @@ describe("runCommand abnormal cases", () => {
         expect(appliedSettings.useIndexedDBAdapter).toBe(false);
     });
 
-    it("setup imports managed TURN through the versioned encrypted URI", async () => {
+    it("setup imports managed TURN through the existing encrypted URI", async () => {
         const core = createCoreMock();
         const source = {
             version: 1,
@@ -434,7 +434,7 @@ describe("runCommand abnormal cases", () => {
             },
             passphrase
         );
-        expect(setupURI.startsWith(configURIBaseV2)).toBe(true);
+        expect(setupURI.startsWith(configURIBase)).toBe(true);
         expect(setupURI).not.toContain("private-token");
         core.services.context.standardIo.prompt.mockResolvedValue(passphrase);
         await runCommand(makeOptions("setup", [setupURI]), { ...context, core });

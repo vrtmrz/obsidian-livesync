@@ -491,7 +491,7 @@ Setting key: P2P_iceServerSource
 
 Select **Manual** for the existing TURN server fields, or **Cloudflare** for a
 TURN Key ID and TURN Key API Token. The API token is persisted with the profile
-and included in encrypted Setup URI sharing. Issued temporary credentials are
+and included in Setup URI and QR code sharing. Issued temporary credentials are
 kept in memory only. Reports redact the source configuration. See
 [TURN credentials](p2p.md#turn-credentials) for sharing, expiry, and reconnect
 behaviour.

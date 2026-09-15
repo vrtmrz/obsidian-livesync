@@ -18,15 +18,36 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
 });
 
 describe("setupObsidian/qrCode", () => {
-    it("routes inactive managed profiles through encrypted Setup URI sharing", async () => {
-        const settings = {
-            remoteConfigurations: { managed: { uri: "sls+p2p-v2://room?source=private-token" } },
+    it("shows managed TURN settings and inactive profiles through the ordinary QR dialogue", async () => {
+        const source = {
+            version: 1,
+            id: "cloudflare",
+            configuration: { turnKeyId: "turn-key", apiToken: "private-token" },
         };
-        const host = { services: { API: { addLog: vi.fn() }, setting: { currentSettings: () => settings } } } as any;
-        await encodeSetupSettingsAsQR(host);
-        expect(copySetupURI).toHaveBeenCalledWith(host, expect.any(Function));
-        expect(encodeSettingsToQRCodeData).not.toHaveBeenCalled();
-        expect(encodeQR).not.toHaveBeenCalled();
+        const settings = {
+            P2P_iceServerSource: source,
+            remoteConfigurations: {
+                managed: { uri: `sls+p2p://room?source=${encodeURIComponent(JSON.stringify(source))}` },
+            },
+        };
+        const confirmWithMessage = vi.fn();
+        const translate = vi.fn(() => "qr-message");
+        const host = {
+            services: {
+                API: { addLog: vi.fn() },
+                context: createServiceContext({ translate }),
+                setting: { currentSettings: () => settings },
+                UI: { confirm: { confirmWithMessage } },
+            },
+        } as any;
+        vi.mocked(encodeSettingsToQRCodeData).mockReturnValue("encoded-settings");
+        vi.mocked(encodeQR).mockReturnValue("<svg/>");
+
+        expect(await encodeSetupSettingsAsQR(host)).toBe("<svg/>");
+        expect(encodeSettingsToQRCodeData).toHaveBeenCalledWith(settings);
+        expect(translate).toHaveBeenCalledWith("Setup.QRCode", { qr_image: "<svg/>" });
+        expect(confirmWithMessage).toHaveBeenCalledWith("Settings QR Code", "qr-message", ["OK"], "OK");
+        expect(copySetupURI).not.toHaveBeenCalled();
     });
 
     afterEach(() => {

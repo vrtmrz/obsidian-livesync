@@ -23,7 +23,7 @@ describe("TURN credentials in diagnostic reports", () => {
                     id: "inactive",
                     name: "Inactive TURN",
                     isEncrypted: false,
-                    uri: `sls+p2p-v2://room?source=${encodeURIComponent(JSON.stringify(source))}`,
+                    uri: `sls+p2p://room?source=${encodeURIComponent(JSON.stringify(source))}`,
                 },
             },
         };
@@ -34,7 +34,7 @@ describe("TURN credentials in diagnostic reports", () => {
         expect(text).not.toContain(encodeURIComponent(token));
         expect(text).not.toContain("private-key");
         expect(text).not.toContain("encrypted-private-copy");
-        expect(report.pluginConfig.remoteConfigurations.inactive.uri).toBe("sls+p2p-v2://");
+        expect(report.pluginConfig.remoteConfigurations.inactive.uri).toBe("sls+p2p://");
         expect(settings.P2P_iceServerSource).toEqual(source);
         expect(settings.encryptedP2PIceServerSource).toBe("encrypted-private-copy");
     });

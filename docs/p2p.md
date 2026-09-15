@@ -53,13 +53,12 @@ particular TURN provider or operate a credential broker. See Cloudflare's
 [credential instructions](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
 for creating a TURN key and its API token.
 
-The API token is saved with the P2P profile. Use an encrypted Setup URI to share
-it with your other devices. Managed profiles use the versioned Setup URI format
-and require a client which supports that format; update receiving devices
-before importing it. Older clients leave the saved managed P2P connection
-disabled. Select and save a manual TURN configuration in a compatible client
-before downgrading if P2P must remain usable. Plain QR export redirects to
-encrypted Setup URI sharing.
+The API token is saved with the P2P profile and included when sharing settings
+through an existing Setup URI or QR code. Setup URIs retain their existing
+passphrase encryption. QR codes retain their existing unencrypted format and
+'FOR YOUR EYES ONLY' display. Missing source settings use the ordinary manual
+configuration defaults. Receiving clients need support for the selected source
+to acquire its temporary TURN credentials.
 Markdown settings omit the connection profile group when it contains a managed
 TURN source, including inactive profiles, and importing those omitted settings
 preserves this device's existing profiles. Diagnostic reports redact the source

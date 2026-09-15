@@ -1,5 +1,3 @@
-import { copySetupURI } from "@/serviceFeatures/setupObsidian/setupUri";
-import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
@@ -418,15 +416,6 @@ export function paneRemoteConfig(
                                 })
                                 .addItem((item) => {
                                     item.setTitle("📤 Export").onClick(async () => {
-                                        if (config.uri.startsWith("sls+p2p-v2://")) {
-                                            await copySetupURI(
-                                                this.core,
-                                                createInstanceLogFunction("TURN setup sharing", this.services.API),
-                                                true,
-                                                getSettingsFromEditingSettings(this.editingSettings)
-                                            );
-                                            return;
-                                        }
                                         await this.services.UI.promptCopyToClipboard(
                                             `Remote configuration: ${config.name}`,
                                             config.uri

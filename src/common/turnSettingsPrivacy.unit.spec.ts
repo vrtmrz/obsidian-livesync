@@ -20,7 +20,7 @@ function configuredSettings() {
                 id: "managed",
                 name: "Managed TURN",
                 isEncrypted: false,
-                uri: "sls+p2p-v2://room?source=private-token",
+                uri: "sls+p2p://room?source=private-token",
             },
         },
         activeConfigurationId: "central",
@@ -42,7 +42,7 @@ describe("managed TURN settings privacy", () => {
         settings.P2P_iceServerSource.id = "manual";
         expect(hasManagedTurnSettings(settings)).toBe(true);
         omitManagedTurnProfilesFromMarkdown(settings);
-        expect(JSON.stringify(settings)).not.toMatch(/private-token|private-key-id|sls\+p2p-v2/);
+        expect(JSON.stringify(settings)).not.toMatch(/private-token|private-key-id|sls\+p2p/);
         expect(settings).not.toHaveProperty("remoteConfigurations");
         expect(settings).not.toHaveProperty("activeConfigurationId");
         expect(settings).not.toHaveProperty("P2P_ActiveRemoteConfigurationId");
