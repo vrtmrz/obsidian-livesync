@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- CLI: file enumeration now includes current files even after individual path lookups or earlier scans.
+
 ## 1.0.28
 
 9th September, 2026
