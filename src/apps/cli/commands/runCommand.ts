@@ -15,11 +15,6 @@ import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_b
 import type { CLICommandContext, CLIOptions } from "./types";
 import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
-import {
-    performFullScan,
-    VaultScanResults,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
@@ -59,9 +54,9 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         // accept whatever configuration the remote has.
         await core.services.setting.applyPartial({ disableCheckingConfigMismatch: true }, true);
 
-        // 1. Replicate the configured remote into the local database so the
-        // mirror scan has content to work with.
-        log("Replicating from remote...");
+        // Database preparation has already reconciled the local database and Vault.
+        // Replicate before restoring automatic synchronisation.
+        log("Replicating with remote...");
         const replResult = await core.services.replication.replicateUnattended({
             trigger: "daemon",
             interaction: NO_INTERACTION,
@@ -73,17 +68,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         replicationScheduling.markInitialOneShotSatisfied();
         log("Initial replication complete");
 
-        // 2. Mirror scan to reconcile PouchDB ↔ local filesystem.
-        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
-        log("Running mirror scan...");
-        const scanOk = await performFullScan(core, log, errorManager, false, true);
-        if (!scanOk) {
-            writeStderrLine(standardIo, "[Daemon] Mirror scan failed, cannot continue");
-            return false;
-        }
-        log("Mirror scan complete");
-
-        // 3. Re-enable sync.
+        // Re-enable sync.
         const restoreSyncSettings = async () => {
             await core.services.setting.applyPartial(
                 {
@@ -530,9 +515,8 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     if (options.command === "mirror") {
         writeStderrLine(standardIo, "[Command] mirror");
-        const log = (msg: unknown) => writeStderrLine(standardIo, `[Mirror] ${String(msg)}`);
-        const errorManager = new UnresolvedErrorManager(core.services.appLifecycle, core.services.context.events);
-        return (await performFullScan(core, log, errorManager, false, true)) === VaultScanResults.COMPLETED;
+        // Database preparation has already completed the mirror scan.
+        return true;
     }
 
     if (options.command === "remote-add") {

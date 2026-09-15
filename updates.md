@@ -14,6 +14,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+- CLI: daemon and mirror now scan the Vault during database initialisation, following the Obsidian startup sequence. The daemon completes this scan before replication; mirror runs the scan once and still exits with an error if any file cannot be processed.
 - CLI: file enumeration now includes current files even after individual path lookups or earlier scans.
 
 ## 1.0.28

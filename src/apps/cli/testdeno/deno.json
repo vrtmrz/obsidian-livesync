@@ -5,6 +5,7 @@
         "test:p2p:compose": "deno run -A --no-check run-compose-p2p.ts",
         "test:local": "deno test --env-file=.test.env -A --no-check test-setup-put-cat.ts test-mirror.ts test-daemon.ts",
         "test:daemon": "deno test --env-file=.test.env -A --no-check test-daemon.ts",
+        "test:daemon-startup": "deno test --env-file=.test.env -A --no-check test-daemon-startup.ts",
         "test:decoupled-vault": "deno test --env-file=.test.env -A --no-check test-decoupled-vault.ts",
         "test:remote-commands": "deno test --env-file=.test.env -A --no-check test-remote-commands.ts",
         "test:settings-writeback": "deno test -A --no-check test-settings-writeback.ts",
