@@ -199,7 +199,7 @@ jobs:
         if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: npm run test:docker-couchdb:start
 
-      - name: Start MinIO container
+      - name: Start RustFS container
         if: ${{ steps.integration_tests.outputs.present == 'true' }}
         run: npm run test:docker-s3:start
 

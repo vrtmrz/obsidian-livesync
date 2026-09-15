@@ -60,6 +60,32 @@ export async function runScenario(remoteType: RemoteType, encrypt: boolean): Pro
     }
 
     try {
+        if (remoteType === "MINIO") {
+            // The shared S3 fixture also serves the browser and real Obsidian tests.
+            const origin = "app://obsidian.md";
+            const requestedHeaders = ["authorization", "content-type", "x-amz-date", "x-amz-content-sha256"];
+            const preflight = await fetch(`${minioEndpoint}/${minioBucket}`, {
+                method: "OPTIONS",
+                headers: {
+                    Origin: origin,
+                    "Access-Control-Request-Method": "PUT",
+                    "Access-Control-Request-Headers": requestedHeaders.join(","),
+                },
+            });
+            await preflight.body?.cancel();
+            assert(preflight.ok, "The S3 fixture must accept browser preflight requests");
+            const allowedOrigin = preflight.headers.get("access-control-allow-origin");
+            assert(allowedOrigin === "*" || allowedOrigin === origin, "The S3 fixture must allow the Obsidian origin");
+            const allowedHeaders = (preflight.headers.get("access-control-allow-headers") ?? "")
+                .toLowerCase()
+                .split(",")
+                .map((header) => header.trim());
+            assert(allowedHeaders.includes("authorization"), "S3 CORS must explicitly allow the Authorization header");
+            assert(
+                preflight.headers.get("access-control-allow-methods")?.split(/,\s*/).includes("PUT"),
+                "S3 CORS must allow browser uploads"
+            );
+        }
         await initSettingsFile(settingsA);
         await initSettingsFile(settingsB);
         await applyRemoteSyncSettings(settingsA, {
