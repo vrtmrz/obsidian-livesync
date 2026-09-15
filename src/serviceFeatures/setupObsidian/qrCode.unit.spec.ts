@@ -3,6 +3,9 @@ import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/e
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { encodeSetupSettingsAsQR, useSetupQRCodeFeature } from "./qrCode";
 import { encodeQR, encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { copySetupURI } from "./setupUri";
+
+vi.mock("./setupUri", () => ({ copySetupURI: vi.fn() }));
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
     return {
@@ -15,6 +18,17 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
 });
 
 describe("setupObsidian/qrCode", () => {
+    it("routes inactive managed profiles through encrypted Setup URI sharing", async () => {
+        const settings = {
+            remoteConfigurations: { managed: { uri: "sls+p2p-v2://room?source=private-token" } },
+        };
+        const host = { services: { API: { addLog: vi.fn() }, setting: { currentSettings: () => settings } } } as any;
+        await encodeSetupSettingsAsQR(host);
+        expect(copySetupURI).toHaveBeenCalledWith(host, expect.any(Function));
+        expect(encodeSettingsToQRCodeData).not.toHaveBeenCalled();
+        expect(encodeQR).not.toHaveBeenCalled();
+    });
+
     afterEach(() => {
         vi.restoreAllMocks();
         vi.clearAllMocks();

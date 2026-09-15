@@ -16,11 +16,16 @@ export async function askEncryptingPassphrase(host: SetupFeatureHost): Promise<s
     );
 }
 
-export async function copySetupURI(host: SetupFeatureHost, log: LogFunction, stripExtra = true) {
+export async function copySetupURI(
+    host: SetupFeatureHost,
+    log: LogFunction,
+    stripExtra = true,
+    settings = host.services.setting.currentSettings()
+) {
     const encryptingPassphrase = await askEncryptingPassphrase(host);
     if (encryptingPassphrase === false) return;
     const encryptedURI = await encodeSettingsToSetupURI(
-        host.services.setting.currentSettings(),
+        settings,
         encryptingPassphrase,
         [...((stripExtra ? ["pluginSyncExtendedSetting"] : []) as (keyof ObsidianLiveSyncSettings)[])],
         true

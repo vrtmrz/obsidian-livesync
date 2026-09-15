@@ -1,5 +1,5 @@
 import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
-import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
+import { configURIBase, configURIBaseV2 } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
 import {
     DEFAULT_SETTINGS,
     type FilePathWithPrefix,
@@ -298,7 +298,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             throw new Error("setup requires one argument: <setupURI>");
         }
         const setupURI = options.commandArgs[0].trim();
-        if (!setupURI.startsWith(configURIBase)) {
+        if (!setupURI.startsWith(configURIBase) && !setupURI.startsWith(configURIBaseV2)) {
             throw new Error(`setup URI must start with ${configURIBase}`);
         }
         const passphrase = await standardIo.prompt("Enter setup URI passphrase: ");

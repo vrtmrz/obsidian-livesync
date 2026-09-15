@@ -100,6 +100,13 @@ export default defineConfig([
         },
     },
     {
+        files: ["src/integrations/**/*.ts"],
+        rules: {
+            // External-service integrations also run in Node and do not own window UI.
+            "obsidianmd/no-global-this": "off",
+        },
+    },
+    {
         files: ["src/apps/**/*.ts"],
         rules: {
             // Platform adapters implement asynchronous contracts even when a local operation is synchronous.

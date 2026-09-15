@@ -1,3 +1,4 @@
+import { useIceServerSources } from "@/serviceFeatures/useIceServerSources";
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
 import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
@@ -182,7 +183,8 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 const replicator = useP2PReplicatorFeature(
                     core,
                     (_compatibilityReplicator, p2p) => createInteractiveP2PReplication(p2p),
-                    createOpenRebuildUI(this.app)
+                    createOpenRebuildUI(this.app),
+                    { iceServerSources: useIceServerSources(core.services.API.webCompatFetch.bind(core.services.API)) }
                 );
                 setupManager.registerP2PSetupConnectionProbe(replicator.connectionProbe);
                 useP2PReplicatorCommands(core, replicator);

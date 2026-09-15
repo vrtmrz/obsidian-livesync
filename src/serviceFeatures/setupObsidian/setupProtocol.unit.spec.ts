@@ -4,6 +4,7 @@ import { registerSetupProtocolHandler, useSetupProtocolFeature } from "./setupPr
 vi.mock("@/common/types", () => {
     return {
         configURIBase: "mock-config://",
+        configURIBaseV2: "mock-config-v2://",
     };
 });
 
@@ -17,6 +18,19 @@ vi.mock("@/modules/features/SetupManager", () => {
 });
 
 describe("setupObsidian/setupProtocol", () => {
+    it("routes the versioned encrypted payload through the matching URI format", async () => {
+        const handlers = new Map<string, (params: Record<string, string>) => Promise<void>>();
+        const host = {
+            services: { API: { registerProtocolHandler: vi.fn((action, handler) => handlers.set(action, handler)) } },
+        } as any;
+        const setupManager = { onUseSetupURI: vi.fn(), decodeQR: vi.fn() } as any;
+        registerSetupProtocolHandler(host, vi.fn(), setupManager);
+        await handlers.get("setuplivesync-v2")!({ settings: "encrypted settings" });
+        expect(setupManager.onUseSetupURI).toHaveBeenCalledWith("unknown", "mock-config-v2://encrypted%20settings");
+        await handlers.get("setuplivesync-v2")!({ settingsQR: "plain settings" });
+        expect(setupManager.decodeQR).not.toHaveBeenCalled();
+    });
+
     afterEach(() => {
         vi.restoreAllMocks();
         vi.clearAllMocks();

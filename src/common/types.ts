@@ -51,7 +51,7 @@ export type queueItem = {
 
 export const FileWatchEventQueueMax = 10;
 
-export { configURIBase, configURIBaseQR } from "@vrtmrz/livesync-commonlib/compat/common/types";
+export { configURIBase, configURIBaseV2, configURIBaseQR } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 export {
     CHeader,

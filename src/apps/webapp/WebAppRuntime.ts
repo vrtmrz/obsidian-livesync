@@ -1,3 +1,4 @@
+import { useIceServerSources } from "@/serviceFeatures/useIceServerSources";
 /** Browser runtime for Self-hosted LiveSync over the File System Access API. */
 
 import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
@@ -217,7 +218,9 @@ export class WebAppRuntime {
                 useRedFlagFeatures(core);
                 useCheckRemoteSize(core);
                 useRemoteConfiguration(core);
-                this.p2p = useP2PReplicatorFeature(core);
+                this.p2p = useP2PReplicatorFeature(core, undefined, undefined, {
+                    iceServerSources: useIceServerSources(core.services.API.webCompatFetch.bind(core.services.API)),
+                });
                 this.paneHost = {
                     services: core.services,
                     p2p: this.p2p,

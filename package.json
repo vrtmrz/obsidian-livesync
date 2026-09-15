@@ -181,7 +181,7 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "0.1.24",
+        "@vrtmrz/livesync-commonlib": "file:.devmemo.local/packages/vrtmrz-livesync-commonlib-0.1.25-dev.turn-credentials.3.tgz",
         "@vrtmrz/obsidian-plugin-kit": "0.1.4",
         "@vrtmrz/ui-interactions": "0.1.2",
         "diff-match-patch": "^1.0.5",

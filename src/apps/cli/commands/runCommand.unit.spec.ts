@@ -1,7 +1,7 @@
 import { fsPromises as fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import * as processSetting from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { configURIBase } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
+import { configURIBase, configURIBaseV2 } from "@vrtmrz/livesync-commonlib/compat/common/models/shared.const";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
@@ -417,6 +417,31 @@ describe("runCommand abnormal cases", () => {
         expect(appliedSettings.couchDB_DBNAME).toBe("livesync-test-db");
         expect(appliedSettings.isConfigured).toBe(true);
         expect(appliedSettings.useIndexedDBAdapter).toBe(false);
+    });
+
+    it("setup imports managed TURN through the versioned encrypted URI", async () => {
+        const core = createCoreMock();
+        const source = {
+            version: 1,
+            id: "cloudflare",
+            configuration: { turnKeyId: "turn-key", apiToken: "private-token" },
+        };
+        const passphrase = "setup-passphrase";
+        const setupURI = await processSetting.encodeSettingsToSetupURI(
+            {
+                ...DEFAULT_SETTINGS,
+                P2P_iceServerSource: source,
+            },
+            passphrase
+        );
+        expect(setupURI.startsWith(configURIBaseV2)).toBe(true);
+        expect(setupURI).not.toContain("private-token");
+        core.services.context.standardIo.prompt.mockResolvedValue(passphrase);
+        await runCommand(makeOptions("setup", [setupURI]), { ...context, core });
+        expect(core.services.setting.applyExternalSettings).toHaveBeenCalledWith(
+            expect.objectContaining({ P2P_iceServerSource: source }),
+            true
+        );
     });
 
     it("setup rejects encoded URI when passphrase is wrong", async () => {

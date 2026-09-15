@@ -64,6 +64,13 @@ export default defineConfig(
         },
     },
     {
+        files: ["src/integrations/**/*.ts"],
+        rules: {
+            // External-service integrations also run in Node and do not own window UI.
+            "obsidianmd/no-global-this": "off",
+        },
+    },
+    {
         files: ["src/apps/**/*.{ts,js,mjs}"],
         rules: {
             // These applications are inspected by the directory review but accept external command and file data.

@@ -1,3 +1,6 @@
+import { hasManagedTurnSettings } from "@/common/turnSettingsPrivacy";
+import { copySetupURI } from "./setupUri";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import {
     encodeQR,
@@ -9,7 +12,12 @@ import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type { SetupFeatureHost } from "./types";
 
 export async function encodeSetupSettingsAsQR(host: SetupFeatureHost) {
-    const settingString = encodeSettingsToQRCodeData(host.services.setting.currentSettings());
+    const settings = host.services.setting.currentSettings();
+    if (hasManagedTurnSettings(settings)) {
+        await copySetupURI(host, createInstanceLogFunction("SF:SetupQRCode", host.services.API));
+        return "";
+    }
+    const settingString = encodeSettingsToQRCodeData(settings);
     const result = encodeQR(settingString, OutputFormat.SVG);
     if (result === "") {
         return "";

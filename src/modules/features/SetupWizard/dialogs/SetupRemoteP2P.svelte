@@ -1,4 +1,6 @@
 <script lang="ts">
+    import TurnConfiguration from "@/features/P2PSync/TurnConfiguration.svelte";
+    import { validateTurnSettings } from "@/integrations/iceServerSources";
     // import { delay } from "octagonal-wheels/promises";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
     import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
@@ -15,7 +17,7 @@
         P2PMessageSizePresets,
         PREFERRED_BASE,
         RemoteTypes,
-        hasValidP2PTurnServerUrl,
+        hasP2PTurnConfiguration,
         normaliseP2PConnectionPath,
         normaliseP2PMaxWirePayloadBytes,
         type EntryDoc,
@@ -27,7 +29,6 @@
     import { TrysteroReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
     import type { ReplicatorHostEnv } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/types";
     import {
-        copyTo,
         generateP2PRoomId,
         pickP2PSyncSettings,
         type SimpleStore,
@@ -51,7 +52,7 @@
     const context = getDialogContext();
     let error = $state("");
     let connectionPathResetNotice = $state(false);
-    const hasValidTurnServer = $derived(hasValidP2PTurnServerUrl(syncSetting.P2P_turnServers ?? ""));
+    const hasValidTurnServer = $derived(hasP2PTurnConfiguration(syncSetting));
     type Props = GuestDialogProps<SetupRemoteP2PResultType, SetupRemoteP2PInitialData>;
 
     const { setResult, getInitialData }: Props = $props();
@@ -61,7 +62,7 @@
         connectionProbe = initialData?.connectionProbe;
         const initialSettings = initialData?.settings;
         if (initialSettings) {
-            copyTo(initialSettings, syncSetting);
+            syncSetting = pickP2PSyncSettings(initialSettings);
         }
         const initialPeerName = (initialSettings?.P2P_DevicePeerName ?? "").trim();
         if (initialPeerName !== "") {
@@ -100,6 +101,8 @@
     async function checkConnection() {
         try {
             processing = true;
+            const sourceError = validateTurnSettings(syncSetting);
+            if (sourceError) return sourceError;
             const trialRemoteSetting = generateSetting();
             const admission = connectionProbe;
             if (!admission) {
@@ -204,6 +207,8 @@
         }
     }
     function commit() {
+        error = validateTurnSettings(syncSetting) ?? "";
+        if (error) return;
         const setting = pickP2PSyncSettings(generateSetting());
         setResult(setting);
     }
@@ -215,7 +220,8 @@
             syncSetting.P2P_relays.trim() !== "" &&
             syncSetting.P2P_roomID.trim() !== "" &&
             syncSetting.P2P_passphrase.trim() !== "" &&
-            (syncSetting.P2P_DevicePeerName ?? "").trim() !== ""
+            (syncSetting.P2P_DevicePeerName ?? "").trim() !== "" &&
+            validateTurnSettings(syncSetting) === undefined
         );
     });
 </script>
@@ -339,24 +345,24 @@
     </InputRow>
     <InfoNote>
         {translateMessage(
-            "TURN relay only is available when at least one valid TURN server URL is configured under Advanced Settings."
+            "TURN relay only requires a TURN server or a configured credential source under Advanced Settings."
         )}
     </InfoNote>
     <InfoNote notice visible={connectionPathResetNotice}>
         {translateMessage(
-            "TURN relay only requires at least one valid TURN server URL. Connection path has been restored to Automatic."
+            "TURN relay only requires TURN configuration. Connection path has been restored to Automatic."
         )}
     </InfoNote>
 </ExtraItems>
 <ExtraItems title={translateMessage("Advanced Settings")}>
     <InfoNote>
         {translateMessage(
-            "TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank."
+            "Configure TURN when a direct connection cannot be established or when you select TURN relay only."
         )}
     </InfoNote>
-    <InfoNote warning>
+    <InfoNote>
         {translateMessage(
-            "TURN relays the encrypted WebRTC connection only when a direct path cannot be established. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust."
+            "WebRTC encrypts data between your devices, including when it passes through TURN. The TURN provider cannot read the transferred data. It can see network addresses and traffic volume."
         )}
         <a
             href="https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/p2p.md#signalling-relay-and-turn-server"
@@ -364,34 +370,7 @@
             rel="noopener noreferrer">{translateMessage("Learn more about signalling and TURN")}</a
         >.
     </InfoNote>
-    <InputRow label={translateMessage("TURN Server URLs (comma-separated)")}>
-        <textarea
-            name="p2p-turn-servers"
-            placeholder="turn:turn.example.com:3478,turn:turn.example.com:443"
-            autocapitalize="off"
-            spellcheck="false"
-            bind:value={syncSetting.P2P_turnServers}
-            rows="5"
-        ></textarea>
-    </InputRow>
-    <InputRow label={translateMessage("TURN Username")}>
-        <input
-            type="text"
-            name="p2p-turn-username"
-            placeholder={translateMessage("Enter TURN username")}
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            bind:value={syncSetting.P2P_turnUsername}
-        />
-    </InputRow>
-    <InputRow label={translateMessage("TURN Credential")}>
-        <Password
-            name="p2p-turn-credential"
-            placeholder={translateMessage("Enter TURN credential")}
-            bind:value={syncSetting.P2P_turnCredential}
-        />
-    </InputRow>
+    <TurnConfiguration bind:settings={syncSetting} />
 </ExtraItems>
 <InfoNote error visible={error !== ""}>
     {error}
