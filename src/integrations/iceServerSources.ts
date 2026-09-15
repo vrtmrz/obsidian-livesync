@@ -72,14 +72,3 @@ export function validateIceServerSourceConfiguration(
 export function getIceServerSourceDefinition(id: string): IceServerSourceDefinition | undefined {
     return iceServerSourceDefinitions.find((definition) => definition.id === id);
 }
-
-/** Validate the selected settings projection, including an unavailable encrypted source. */
-export function validateTurnSettings(settings: {
-    readonly P2P_iceServerSource?: IceServerSourceDescriptorLike | null;
-    readonly encryptedP2PIceServerSource?: string;
-}): string | undefined {
-    if (!settings.P2P_iceServerSource && settings.encryptedP2PIceServerSource) {
-        return "TURN configuration could not be decrypted.";
-    }
-    return validateIceServerSourceConfiguration(settings.P2P_iceServerSource);
-}

@@ -5,23 +5,24 @@
     import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost";
     import TurnConfiguration from "@/features/P2PSync/TurnConfiguration.svelte";
-    import { validateTurnSettings } from "@/integrations/iceServerSources";
+    import { validateIceServerSourceConfiguration } from "@/integrations/iceServerSources";
 
     let { host }: { host: P2PReplicatorPaneHost } = $props();
     const currentSettings = () => host.services.setting.currentSettings() as P2PSyncSetting;
     function turnSettings(settings: P2PSyncSetting) {
         return {
+            P2P_roomID: settings.P2P_roomID,
             P2P_turnServers: settings.P2P_turnServers,
             P2P_turnUsername: settings.P2P_turnUsername,
             P2P_turnCredential: settings.P2P_turnCredential,
             P2P_iceServerSource: structuredClone(settings.P2P_iceServerSource),
-            encryptedP2PIceServerSource: settings.encryptedP2PIceServerSource,
         };
     }
     let draft = $state(turnSettings(currentSettings()));
     let saved = $state(JSON.stringify(turnSettings(currentSettings())));
     const isModified = $derived(JSON.stringify(draft) !== saved);
-    const sourceError = $derived(validateTurnSettings(draft));
+    const sourceError = $derived(validateIceServerSourceConfiguration(draft.P2P_iceServerSource));
+    const sourceNeedsRoom = $derived(!!draft.P2P_iceServerSource && (draft.P2P_roomID ?? "").trim() === "");
 
     function loadSettings(settings: P2PSyncSetting): void {
         const next = turnSettings(settings);
@@ -31,7 +32,7 @@
     onMount(() => host.services.context.events.onEvent("setting-saved", (settings) => loadSettings(settings as P2PSyncSetting)));
 
     async function save(): Promise<void> {
-        if (sourceError) return;
+        if (sourceError || sourceNeedsRoom) return;
         const values = $state.snapshot(draft);
         await host.services.setting.updateSettings((settings) => {
             const next = { ...settings, ...values, remoteConfigurations: { ...settings.remoteConfigurations } };
@@ -52,7 +53,7 @@
         <p>Configure TURN only when a direct peer-to-peer connection cannot be established.</p>
         <TurnConfiguration bind:settings={draft} />
         <div class="actions">
-            <button type="button" class="button mod-cta" disabled={!isModified || !!sourceError} onclick={save}>
+            <button type="button" class="button mod-cta" disabled={!isModified || !!sourceError || sourceNeedsRoom} onclick={save}>
                 Save TURN settings
             </button>
             <button type="button" class="button" disabled={!isModified} onclick={() => loadSettings(currentSettings())}>

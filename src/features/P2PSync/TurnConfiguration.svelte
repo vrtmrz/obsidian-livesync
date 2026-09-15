@@ -1,21 +1,19 @@
 <script lang="ts">
     import type { P2PConnectionInfo } from "@vrtmrz/livesync-commonlib/compat/common/types";
-    import { iceServerSourceDefinitions, validateTurnSettings } from "@/integrations/iceServerSources";
+    import { iceServerSourceDefinitions, validateIceServerSourceConfiguration } from "@/integrations/iceServerSources";
     import { translateLiveSyncMessage as translate, translateIfAvailable } from "@/common/translation";
 
-    type TurnSettings = Pick<P2PConnectionInfo,
-        "P2P_turnServers" | "P2P_turnUsername" | "P2P_turnCredential" | "P2P_iceServerSource" | "encryptedP2PIceServerSource">;
+    type TurnSettings = Pick<P2PConnectionInfo, "P2P_turnServers" | "P2P_turnUsername" | "P2P_turnCredential" | "P2P_iceServerSource">;
     let { settings = $bindable() }: { settings: TurnSettings } = $props();
-    const sourceId = $derived(settings.P2P_iceServerSource?.id ?? (settings.encryptedP2PIceServerSource ? "unavailable" : "manual"));
+    const sourceId = $derived(settings.P2P_iceServerSource?.id ?? "manual");
     const definition = $derived(iceServerSourceDefinitions.find((source) => source.id === sourceId));
-    const error = $derived(validateTurnSettings(settings));
+    const error = $derived(validateIceServerSourceConfiguration(settings.P2P_iceServerSource));
 
     function selectSource(id: string) {
         const selected = iceServerSourceDefinitions.find((source) => source.id === id);
         settings.P2P_iceServerSource = selected
             ? { version: 1, id, configuration: Object.fromEntries(selected.fields.map((field) => [field.key, ""])) }
             : undefined;
-        settings.encryptedP2PIceServerSource = "";
     }
 
     function fieldValue(key: string): string {

@@ -1,15 +1,24 @@
 import {
-    hasManagedP2PIceServerSource as hasManagedTurnSettings,
+    hasManagedP2PIceServerSource,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 import { iceServerSourceDefinitions } from "@/integrations/iceServerSources";
 
-export { hasManagedTurnSettings };
+/** Include inactive profiles when deciding whether Markdown would disclose source settings. */
+export function hasManagedTurnSettings(settings: Partial<ObsidianLiveSyncSettings>): boolean {
+    return (
+        hasManagedP2PIceServerSource(settings) ||
+        Object.values(settings.remoteConfigurations ?? {}).some(({ uri }) => {
+            if (!uri.startsWith("sls+p2p://")) return false;
+            const queryStart = uri.indexOf("?");
+            return queryStart >= 0 && new URLSearchParams(uri.slice(queryStart + 1).split("#", 1)[0]).has("source");
+        })
+    );
+}
 
 /** Reports retain the selected source label, but no opaque source configuration. */
 export function redactTurnSourceForReport(settings: Partial<ObsidianLiveSyncSettings>): void {
-    if (settings.encryptedP2PIceServerSource) settings.encryptedP2PIceServerSource = "REDACTED";
     if (settings.P2P_iceServerSource !== undefined) {
         settings.P2P_iceServerSource = {
             version: 1,
@@ -25,7 +34,6 @@ export function redactTurnSourceForReport(settings: Partial<ObsidianLiveSyncSett
 export function omitManagedTurnProfilesFromMarkdown(settings: Partial<ObsidianLiveSyncSettings>): void {
     if (!hasManagedTurnSettings(settings)) return;
     delete settings.P2P_iceServerSource;
-    delete settings.encryptedP2PIceServerSource;
     delete settings.remoteConfigurations;
     delete settings.activeConfigurationId;
     delete settings.P2P_ActiveRemoteConfigurationId;
@@ -48,5 +56,4 @@ export function preserveManagedTurnProfilesOnMarkdownImport(
     merged.activeConfigurationId = current.activeConfigurationId;
     merged.P2P_ActiveRemoteConfigurationId = current.P2P_ActiveRemoteConfigurationId;
     merged.P2P_iceServerSource = structuredClone(current.P2P_iceServerSource);
-    merged.encryptedP2PIceServerSource = current.encryptedP2PIceServerSource;
 }

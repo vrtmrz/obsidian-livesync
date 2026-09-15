@@ -9,7 +9,6 @@
 export const liveSyncProvisionalEnglishMessages = {
     "Configure TURN when a direct connection cannot be established or when you select TURN relay only.":
         "Configure TURN when a direct connection cannot be established or when you select TURN relay only.",
-    "TURN configuration could not be decrypted.": "TURN configuration could not be decrypted.",
     "TURN configuration": "TURN configuration",
     Manual: "Manual",
     Cloudflare: "Cloudflare",

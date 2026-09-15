@@ -10,14 +10,13 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
 }));
 
 describe("TURN credentials in diagnostic reports", () => {
-    it("redacts top-level, encrypted, and inactive encoded source copies", async () => {
+    it("redacts top-level and inactive encoded source copies", async () => {
         const token = "private+token/with=symbols";
         const source = { version: 1, id: "cloudflare", configuration: { turnKeyId: "private-key", apiToken: token } };
         const settings = {
             ...DEFAULT_SETTINGS,
             remoteType: REMOTE_P2P,
             P2P_iceServerSource: source,
-            encryptedP2PIceServerSource: "encrypted-private-copy",
             remoteConfigurations: {
                 inactive: {
                     id: "inactive",
@@ -33,9 +32,7 @@ describe("TURN credentials in diagnostic reports", () => {
         expect(text).not.toContain(token);
         expect(text).not.toContain(encodeURIComponent(token));
         expect(text).not.toContain("private-key");
-        expect(text).not.toContain("encrypted-private-copy");
         expect(report.pluginConfig.remoteConfigurations.inactive.uri).toBe("sls+p2p://");
         expect(settings.P2P_iceServerSource).toEqual(source);
-        expect(settings.encryptedP2PIceServerSource).toBe("encrypted-private-copy");
     });
 });

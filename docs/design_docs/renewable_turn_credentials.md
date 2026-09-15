@@ -1,6 +1,6 @@
 ---
 date: 2026-09-15
-commonlib-version: "0.1.25-dev.turn-credentials.4"
+commonlib-version: "0.1.25-dev.turn-credentials.5"
 self-hosted-livesync-version: "1.0.28"
 status: unreleased
 ---
@@ -143,10 +143,12 @@ and expired runtime credentials through the existing room replacement policy.
 The API token is an ordinary sensitive connection setting. Persist it with
 the profile so that restarting a device and configuring another device do
 not require re-entry. This does not claim operating-system keychain storage.
-When optional configuration encryption is enabled, cover both the saved
-profile URI and any top-level settings projection containing the source.
-Failure to encrypt either copy must leave the prior saved settings intact
-and report a safe error; it must not silently save a plaintext replacement.
+Persist the source only in the ordinary P2P profile URI, covered by the
+existing optional configuration encryption. The top-level source is an
+in-memory and sharing projection restored when the selected profile is
+activated. A source draft without a Group ID is not persisted. Failure to
+encrypt a managed profile must leave the prior saved settings intact and
+report a safe error; it must not silently save a plaintext replacement.
 
 | Destination | Provider API token | Issued TURN username and credential |
 | --- | --- | --- |
@@ -419,9 +421,9 @@ manual TURN when an explicitly configured source is unsupported.
 
 Persist the ordinary P2P settings projection alongside its profile. Keep the
 Group ID, enabled state, and autostart preference consistent with the current
-settings. Optional configuration encryption continues to protect both the
-profile and its source configuration. Issued credentials never populate the
-persisted manual TURN fields.
+settings. The source configuration is persisted only inside the profile URI
+and restored by the existing profile activation. Issued credentials never
+populate the persisted manual TURN fields.
 
 The P2P data protocol and Group ID remain unchanged. A peer using manually
 configured TURN can communicate with one using issued credentials; validate

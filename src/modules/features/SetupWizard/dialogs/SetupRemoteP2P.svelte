@@ -1,6 +1,6 @@
 <script lang="ts">
     import TurnConfiguration from "@/features/P2PSync/TurnConfiguration.svelte";
-    import { validateTurnSettings } from "@/integrations/iceServerSources";
+    import { validateIceServerSourceConfiguration } from "@/integrations/iceServerSources";
     // import { delay } from "octagonal-wheels/promises";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
     import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
@@ -101,7 +101,7 @@
     async function checkConnection() {
         try {
             processing = true;
-            const sourceError = validateTurnSettings(syncSetting);
+            const sourceError = validateIceServerSourceConfiguration(syncSetting.P2P_iceServerSource);
             if (sourceError) return sourceError;
             const trialRemoteSetting = generateSetting();
             const admission = connectionProbe;
@@ -207,7 +207,7 @@
         }
     }
     function commit() {
-        error = validateTurnSettings(syncSetting) ?? "";
+        error = validateIceServerSourceConfiguration(syncSetting.P2P_iceServerSource) ?? "";
         if (error) return;
         const setting = pickP2PSyncSettings(generateSetting());
         setResult(setting);
@@ -221,7 +221,7 @@
             syncSetting.P2P_roomID.trim() !== "" &&
             syncSetting.P2P_passphrase.trim() !== "" &&
             (syncSetting.P2P_DevicePeerName ?? "").trim() !== "" &&
-            validateTurnSettings(syncSetting) === undefined
+            validateIceServerSourceConfiguration(syncSetting.P2P_iceServerSource) === undefined
         );
     });
 </script>
