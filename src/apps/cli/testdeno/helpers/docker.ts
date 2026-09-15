@@ -190,7 +190,7 @@ async function dockerOrFail(...args: string[]): Promise<string> {
 
 async function stopAndRemoveContainer(container: string): Promise<void> {
     await docker("stop", container).catch(() => {});
-    await docker("rm", container).catch(() => {});
+    await docker("rm", "-v", container).catch(() => {});
 }
 
 async function cleanupTrackedContainers(reason: string): Promise<void> {
@@ -327,8 +327,22 @@ const COUCHDB_CONTAINER = "couchdb-test";
 const COUCHDB_IMAGE = "couchdb:3.5.0";
 
 const MINIO_CONTAINER = "minio-test";
-const MINIO_IMAGE = "minio/minio";
-const MINIO_MC_IMAGE = "minio/mc";
+// RustFS provides the S3 backend for the existing MINIO test mode.
+const S3_IMAGE = "rustfs/rustfs:1.0.0-rc.6@sha256:97171b3d72cd47dc81000f92ea84de25608bfc35a94c965501afaeb5d99f6035";
+const S3_CLIENT_IMAGE = "rustfs/rc:v0.1.35@sha256:adb45b56539006120f1d790bcc17ee5f9b4d93c1d7e71ed0a24f10267f9d6914";
+const S3_BUCKET_CORS = `<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>PUT</AllowedMethod>
+    <AllowedMethod>POST</AllowedMethod>
+    <AllowedMethod>DELETE</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>*</AllowedHeader>
+    <AllowedHeader>authorization</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+  </CORSRule>
+</CORSConfiguration>`;
 
 export async function stopCouchdb(): Promise<void> {
     await stopAndRemoveContainer(COUCHDB_CONTAINER);
@@ -454,7 +468,7 @@ export async function updateCouchdbDoc(
 }
 
 // ---------------------------------------------------------------------------
-// MinIO
+// S3 (RustFS)
 // ---------------------------------------------------------------------------
 
 function shQuote(value: string): string {
@@ -473,9 +487,10 @@ async function initMinioBucket(
     bucket: string
 ): Promise<boolean> {
     const cmd =
-        `mc alias set myminio ${shQuote(minioEndpoint)} ${shQuote(accessKey)} ${shQuote(secretKey)} >/dev/null 2>&1 && ` +
-        `mc mb --ignore-existing myminio/${shQuote(bucket)} >/dev/null 2>&1`;
-    const r = await docker("run", "--rm", "--network", "host", "--entrypoint", "/bin/sh", MINIO_MC_IMAGE, "-c", cmd);
+        `rc alias set myminio ${shQuote(minioEndpoint)} ${shQuote(accessKey)} ${shQuote(secretKey)} >/dev/null 2>&1 && ` +
+        `rc mb --ignore-existing myminio/${shQuote(bucket)} >/dev/null 2>&1 && ` +
+        `printf %s ${shQuote(S3_BUCKET_CORS)} | rc cors set myminio/${shQuote(bucket)} - >/dev/null 2>&1`;
+    const r = await docker("run", "--rm", "--network", "host", "--entrypoint", "/bin/sh", S3_CLIENT_IMAGE, "-c", cmd);
     return r.code === 0;
 }
 
@@ -487,8 +502,8 @@ async function waitForMinioBucket(
 ): Promise<void> {
     for (let i = 0; i < 30; i++) {
         const checkCmd =
-            `mc alias set myminio ${shQuote(minioEndpoint)} ${shQuote(accessKey)} ${shQuote(secretKey)} >/dev/null 2>&1 && ` +
-            `mc ls myminio/${shQuote(bucket)} >/dev/null 2>&1`;
+            `rc alias set myminio ${shQuote(minioEndpoint)} ${shQuote(accessKey)} ${shQuote(secretKey)} >/dev/null 2>&1 && ` +
+            `rc ls myminio/${shQuote(bucket)} >/dev/null 2>&1`;
         const check = await docker(
             "run",
             "--rm",
@@ -498,7 +513,7 @@ async function waitForMinioBucket(
             "host",
             "--entrypoint",
             "/bin/sh",
-            MINIO_MC_IMAGE,
+            S3_CLIENT_IMAGE,
             "-c",
             checkCmd
         );
@@ -508,7 +523,7 @@ async function waitForMinioBucket(
         await initMinioBucket(minioEndpoint, accessKey, secretKey, bucket);
         await sleep(2000);
     }
-    throw new Error(`MinIO bucket not ready: ${bucket}`);
+    throw new Error(`S3 bucket not ready: ${bucket}`);
 }
 
 export async function startMinio(
@@ -517,10 +532,10 @@ export async function startMinio(
     secretKey: string,
     bucket: string
 ): Promise<void> {
-    console.log("[INFO] stopping leftover MinIO container if present");
+    console.log("[INFO] stopping leftover S3 test container if present");
     await stopMinio().catch(() => {});
 
-    console.log("[INFO] starting MinIO test container");
+    console.log("[INFO] starting RustFS test container");
     await dockerOrFail(
         "run",
         "-d",
@@ -532,20 +547,19 @@ export async function startMinio(
         "-p",
         "9001:9001",
         "-e",
-        `MINIO_ROOT_USER=${accessKey}`,
+        `RUSTFS_ACCESS_KEY=${accessKey}`,
         "-e",
-        `MINIO_ROOT_PASSWORD=${secretKey}`,
+        `RUSTFS_SECRET_KEY=${secretKey}`,
         "-e",
-        `MINIO_SERVER_URL=${minioEndpoint}`,
-        MINIO_IMAGE,
-        "server",
-        "/data",
-        "--console-address",
-        ":9001"
+        "RUSTFS_CONSOLE_ENABLE=true",
+        "-e",
+        "RUSTFS_CORS_ALLOWED_ORIGINS=*",
+        S3_IMAGE,
+        "/data"
     );
     trackContainer(MINIO_CONTAINER);
 
-    console.log(`[INFO] initialising MinIO test bucket: ${bucket}`);
+    console.log(`[INFO] initialising S3 test bucket: ${bucket}`);
     let initialised = false;
     for (let i = 0; i < 5; i++) {
         if (await initMinioBucket(minioEndpoint, accessKey, secretKey, bucket)) {
@@ -555,7 +569,7 @@ export async function startMinio(
         await sleep(2000);
     }
     if (!initialised) {
-        throw new Error(`Could not initialise MinIO bucket after retries: ${bucket}`);
+        throw new Error(`Could not initialise S3 bucket after retries: ${bucket}`);
     }
 
     await waitForMinioBucket(minioEndpoint, accessKey, secretKey, bucket);
