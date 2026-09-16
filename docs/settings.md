@@ -485,6 +485,25 @@ Setting key: P2P_AutoBroadcast
 
 When enabled, this device notifies connected peers after a local change. The notification contains no Vault data. A receiving peer fetches the change only when it follows this device.
 
+#### TURN configuration
+
+Setting key: P2P_managedType
+
+Select **Manual** for the existing TURN server fields, or **Managed (Cloudflare)** for a
+TURN Key ID and TURN Key API Token. The API token is persisted with the profile
+and included in Setup URI and QR code sharing. Issued temporary credentials are
+kept in memory only. Reports redact the provider settings. See
+[TURN credentials](p2p.md#turn-credentials) for sharing, expiry, and reconnect
+behaviour.
+
+#### TURN Key ID and TURN Key API Token
+
+Setting keys: P2P_managedId, P2P_managedToken
+
+These fields appear when **Managed (Cloudflare)** is selected. Enter the TURN key's ID and
+its dedicated API token. The token field is masked. No account ID, custom
+endpoint, or renewal interval is required.
+
 #### TURN Server URLs (comma-separated)
 
 Setting key: P2P_turnServers
@@ -515,7 +534,7 @@ The sender controls the size of its outgoing messages. Select the same conservat
 
 Setting key: P2P_connectionPath
 
-**Automatic** lets WebRTC select a viable direct or TURN-relayed path and is the default. **TURN relay only** forces `iceTransportPolicy: 'relay'` and is available only when the profile contains at least one valid `turn:` or `turns:` URL. Removing the last valid TURN URL while relay-only mode is selected restores **Automatic** and displays a Notice.
+**Automatic** lets WebRTC select a viable direct or TURN-relayed path and is the default. **TURN relay only** forces `iceTransportPolicy: 'relay'` and is available when the profile contains a valid manual TURN URL or a configured TURN credential source. Removing the manual TURN configuration while relay-only mode is selected restores **Automatic** and displays a Notice. A selected credential source which cannot supply credentials prevents the connection from opening; it does not change the connection path.
 
 This choice belongs to the P2P profile and is retained in P2P connection strings and encrypted Setup URIs. Separate profiles may use the same Group ID and credentials with different compatibility choices; only the selected P2P profile is active.
 

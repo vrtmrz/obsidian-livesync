@@ -3,6 +3,7 @@ import {
     type P2PConnectionProbeAdmission,
     type P2PConnectionProbeSettings,
 } from "@vrtmrz/livesync-commonlib/p2p";
+import { P2PConnectionPaths, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 export type P2PSetupConnectionProbeResult =
     | { readonly ok: true }
@@ -20,12 +21,25 @@ export interface P2PSetupConnectionProbe {
 }
 
 /** Interpret the stable P2P owner's admission without constructing transport eagerly. */
-export async function coordinateP2PSetupConnectionProbe(
+export async function coordinateP2PSetupConnectionProbe<T extends P2PConnectionProbeSettings>(
     admission: P2PConnectionProbeAdmission,
-    trialSettings: P2PConnectionProbeSettings,
-    runOwnedTrial: () => Promise<P2PSetupConnectionProbeResult>
+    trialSettings: T,
+    runOwnedTrial: (settings: T) => Promise<P2PSetupConnectionProbeResult>
 ): Promise<P2PSetupConnectionProbeResult> {
-    const settlement = await admission.run(trialSettings, runOwnedTrial);
+    const settlement = await admission.run(trialSettings, () => {
+        // This trial checks signalling only; TURN allocation belongs to an actual connection.
+        const settings: T & Partial<P2PSyncSetting> = { ...trialSettings };
+        delete settings.P2P_managedType;
+        delete settings.P2P_managedId;
+        delete settings.P2P_managedToken;
+        delete settings.P2P_iceServers;
+        delete settings.P2P_iceServersExpiresAt;
+        settings.P2P_turnServers = "";
+        settings.P2P_turnUsername = "";
+        settings.P2P_turnCredential = "";
+        settings.P2P_connectionPath = P2PConnectionPaths.Automatic;
+        return runOwnedTrial(settings);
+    });
     if (settlement.status === "observed-active") return { ok: true };
     if (settlement.status === "blocked") {
         return {

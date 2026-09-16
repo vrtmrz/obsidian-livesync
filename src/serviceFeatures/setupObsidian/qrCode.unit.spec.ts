@@ -3,6 +3,9 @@ import { EVENT_REQUEST_SHOW_SETUP_QR } from "@vrtmrz/livesync-commonlib/compat/e
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { encodeSetupSettingsAsQR, useSetupQRCodeFeature } from "./qrCode";
 import { encodeQR, encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { copySetupURI } from "./setupUri";
+
+vi.mock("./setupUri", () => ({ copySetupURI: vi.fn() }));
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
     return {
@@ -15,6 +18,32 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
 });
 
 describe("setupObsidian/qrCode", () => {
+    it("shows managed TURN settings and inactive profiles through the ordinary QR dialogue", async () => {
+        const settings = {
+            remoteConfigurations: {
+                managed: { uri: "sls+p2p://room?managedType=CF&managedId=turn-key&token=private-token" },
+            },
+        };
+        const confirmWithMessage = vi.fn();
+        const translate = vi.fn(() => "qr-message");
+        const host = {
+            services: {
+                API: { addLog: vi.fn() },
+                context: createServiceContext({ translate }),
+                setting: { currentSettings: () => settings },
+                UI: { confirm: { confirmWithMessage } },
+            },
+        } as any;
+        vi.mocked(encodeSettingsToQRCodeData).mockReturnValue("encoded-settings");
+        vi.mocked(encodeQR).mockReturnValue("<svg/>");
+
+        expect(await encodeSetupSettingsAsQR(host)).toBe("<svg/>");
+        expect(encodeSettingsToQRCodeData).toHaveBeenCalledWith(settings);
+        expect(translate).toHaveBeenCalledWith("Setup.QRCode", { qr_image: "<svg/>" });
+        expect(confirmWithMessage).toHaveBeenCalledWith("Settings QR Code", "qr-message", ["OK"], "OK");
+        expect(copySetupURI).not.toHaveBeenCalled();
+    });
+
     afterEach(() => {
         vi.restoreAllMocks();
         vi.clearAllMocks();

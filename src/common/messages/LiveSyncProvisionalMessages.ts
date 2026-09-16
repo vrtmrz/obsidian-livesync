@@ -7,6 +7,26 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Configure TURN when a direct connection cannot be established or when you select TURN relay only.":
+        "Configure TURN when a direct connection cannot be established or when you select TURN relay only.",
+    "TURN configuration": "TURN configuration",
+    Manual: "Manual",
+    "Managed (Cloudflare)": "Managed (Cloudflare)",
+    "TURN Key ID": "TURN Key ID",
+    "TURN Key API Token": "TURN Key API Token",
+    "Unsupported TURN configuration": "Unsupported TURN configuration",
+    "The API token is saved with this profile and included in Setup URI and QR code sharing. Temporary TURN credentials are kept in memory only.":
+        "The API token is saved with this profile and included in Setup URI and QR code sharing. Temporary TURN credentials are kept in memory only.",
+    "TURN relay only requires a TURN server or a configured credential source under Advanced Settings.":
+        "TURN relay only requires a TURN server or a configured credential source under Advanced Settings.",
+    "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.":
+        "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.",
+    "Enter a TURN Key ID.": "Enter a TURN Key ID.",
+    "TURN Key ID contains unsupported characters.": "TURN Key ID contains unsupported characters.",
+    "Enter a TURN Key API Token.": "Enter a TURN Key API Token.",
+    "TURN Key API Token must use Bearer token syntax.": "TURN Key API Token must use Bearer token syntax.",
+    "The selected TURN configuration is not supported.": "The selected TURN configuration is not supported.",
+
     "Setup Complete: Preparing to Fetch from Another Device": "Setup Complete: Preparing to Fetch from Another Device",
     "The P2P connection has been configured successfully. The initial synchronisation data must now be fetched from an online source device.":
         "The P2P connection has been configured successfully. The initial synchronisation data must now be fetched from an online source device.",
@@ -28,8 +48,8 @@ export const liveSyncProvisionalEnglishMessages = {
         "The project's public signalling relay is a best-effort convenience operated by the project author. It does not store Vault contents, but signalling metadata may be visible to the relay. Availability and log retention are not guaranteed. You can replace it with your own Nostr-compatible relay.",
     "Learn more about P2P connections": "Learn more about P2P connections",
     "Learn more about signalling and TURN": "Learn more about signalling and TURN",
-    "TURN relays the encrypted WebRTC connection only when a direct path cannot be established. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust.":
-        "TURN relays the encrypted WebRTC connection only when a direct path cannot be established. A TURN provider cannot read encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust.",
+    "WebRTC encrypts data between your devices, including when it passes through TURN. The TURN provider cannot read the transferred data. It can see network addresses and traffic volume.":
+        "WebRTC encrypts data between your devices, including when it passes through TURN. The TURN provider cannot read the transferred data. It can see network addresses and traffic volume.",
     "Connection compatibility": "Connection compatibility",
     "P2P message size": "P2P message size",
     Standard: "Standard",
