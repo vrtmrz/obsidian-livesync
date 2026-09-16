@@ -489,7 +489,7 @@ When enabled, this device notifies connected peers after a local change. The not
 
 Setting key: P2P_managedType
 
-Select **Manual** for the existing TURN server fields, or **Cloudflare** for a
+Select **Manual** for the existing TURN server fields, or **Managed (Cloudflare)** for a
 TURN Key ID and TURN Key API Token. The API token is persisted with the profile
 and included in Setup URI and QR code sharing. Issued temporary credentials are
 kept in memory only. Reports redact the provider settings. See
@@ -500,7 +500,7 @@ behaviour.
 
 Setting keys: P2P_managedId, P2P_managedToken
 
-These fields appear when **Cloudflare** is selected. Enter the TURN key's ID and
+These fields appear when **Managed (Cloudflare)** is selected. Enter the TURN key's ID and
 its dedicated API token. The token field is masked. No account ID, custom
 endpoint, or renewal interval is required.
 

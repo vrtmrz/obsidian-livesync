@@ -47,7 +47,7 @@ WebRTC encrypts data between the devices, including when it passes through TURN.
 ## TURN credentials
 
 In **TURN configuration**, select **Manual** to enter your own TURN server URLs,
-username, and credential, or select **Cloudflare** to enter a **TURN Key ID** and
+username, and credential, or select **Managed (Cloudflare)** to enter a **TURN Key ID** and
 **TURN Key API Token**. Cloudflare is optional; the project does not require a
 particular TURN provider or operate a credential broker. See Cloudflare's
 [credential instructions](https://developers.cloudflare.com/realtime/turn/generate-credentials/)

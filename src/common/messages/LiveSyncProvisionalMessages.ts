@@ -11,7 +11,7 @@ export const liveSyncProvisionalEnglishMessages = {
         "Configure TURN when a direct connection cannot be established or when you select TURN relay only.",
     "TURN configuration": "TURN configuration",
     Manual: "Manual",
-    Cloudflare: "Cloudflare",
+    "Managed (Cloudflare)": "Managed (Cloudflare)",
     "TURN Key ID": "TURN Key ID",
     "TURN Key API Token": "TURN Key API Token",
     "Unsupported TURN configuration": "Unsupported TURN configuration",

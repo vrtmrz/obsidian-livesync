@@ -21,7 +21,7 @@
         <span>{translate("TURN configuration")}</span>
         <select aria-label={translate("TURN configuration")} name="p2p-turn-source" value={managedType} onchange={(event) => selectProvider(event.currentTarget.value)}>
             <option value="">{translate("Manual")}</option>
-            <option value={CLOUDFLARE_TURN_TYPE}>{translate("Cloudflare")}</option>
+            <option value={CLOUDFLARE_TURN_TYPE}>{translate("Managed (Cloudflare)")}</option>
             {#if managedType !== "" && managedType !== CLOUDFLARE_TURN_TYPE}
                 <option value={managedType} disabled>{translate("Unsupported TURN configuration")}</option>
             {/if}

@@ -135,7 +135,7 @@ imported room with the local provider token or overwriting the saved profile.
 
 ## Cloudflare integration
 
-The UI presents `Manual` and `Cloudflare`, with `TURN Key ID` and a masked
+The UI presents `Manual` and `Managed (Cloudflare)`, with `TURN Key ID` and a masked
 `TURN Key API Token` input for Cloudflare. It requires no account ID, custom
 endpoint, SDK, credential broker, or renewal interval setting.
 
