@@ -1,6 +1,6 @@
 <script lang="ts">
     import TurnConfiguration from "@/features/P2PSync/TurnConfiguration.svelte";
-    import { validateIceServerSourceConfiguration } from "@/integrations/iceServerSources";
+    import { validateManagedTurnSettings } from "@/integrations/turnSettings";
     // import { delay } from "octagonal-wheels/promises";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
     import Guidance from "@/modules/services/LiveSyncUI/components/Guidance.svelte";
@@ -101,14 +101,14 @@
     async function checkConnection() {
         try {
             processing = true;
-            const sourceError = validateIceServerSourceConfiguration(syncSetting.P2P_iceServerSource);
+            const sourceError = validateManagedTurnSettings(syncSetting);
             if (sourceError) return sourceError;
             const trialRemoteSetting = generateSetting();
             const admission = connectionProbe;
             if (!admission) {
                 throw new Error("The P2P Setup connection probe is not available.");
             }
-            const result = await coordinateP2PSetupConnectionProbe(admission, trialRemoteSetting, async () => {
+            const result = await coordinateP2PSetupConnectionProbe(admission, trialRemoteSetting, async (signallingSettings) => {
                 const map = new Map<string, unknown>();
                 const store = {
                     get: (key: string) => {
@@ -136,7 +136,7 @@
                     const env: ReplicatorHostEnv = {
                         events: context.context.events,
                         translate: context.context.translate,
-                        settings: trialRemoteSetting,
+                        settings: signallingSettings,
                         processReplicatedDocs: async (_docs: PouchDB.Core.ExistingDocument<EntryDoc>[]) => {
                             return;
                         },
@@ -207,7 +207,7 @@
         }
     }
     function commit() {
-        error = validateIceServerSourceConfiguration(syncSetting.P2P_iceServerSource) ?? "";
+        error = validateManagedTurnSettings(syncSetting) ?? "";
         if (error) return;
         const setting = pickP2PSyncSettings(generateSetting());
         setResult(setting);
@@ -221,7 +221,7 @@
             syncSetting.P2P_roomID.trim() !== "" &&
             syncSetting.P2P_passphrase.trim() !== "" &&
             (syncSetting.P2P_DevicePeerName ?? "").trim() !== "" &&
-            validateIceServerSourceConfiguration(syncSetting.P2P_iceServerSource) === undefined
+            validateManagedTurnSettings(syncSetting) === undefined
         );
     });
 </script>

@@ -21,17 +21,11 @@ export const liveSyncProvisionalEnglishMessages = {
         "TURN relay only requires a TURN server or a configured credential source under Advanced Settings.",
     "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.":
         "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.",
-    "Cloudflare TURN configuration is invalid.": "Cloudflare TURN configuration is invalid.",
-    "Cloudflare TURN configuration contains an unsupported field.":
-        "Cloudflare TURN configuration contains an unsupported field.",
     "Enter a TURN Key ID.": "Enter a TURN Key ID.",
     "TURN Key ID contains unsupported characters.": "TURN Key ID contains unsupported characters.",
     "Enter a TURN Key API Token.": "Enter a TURN Key API Token.",
     "TURN Key API Token must use Bearer token syntax.": "TURN Key API Token must use Bearer token syntax.",
-    "TURN configuration source version is not supported.": "TURN configuration source version is not supported.",
-    "TURN configuration source is invalid.": "TURN configuration source is invalid.",
-    "The selected TURN configuration source is not supported.":
-        "The selected TURN configuration source is not supported.",
+    "The selected TURN configuration is not supported.": "The selected TURN configuration is not supported.",
 
     "Setup Complete: Preparing to Fetch from Another Device": "Setup Complete: Preparing to Fetch from Another Device",
     "The P2P connection has been configured successfully. The initial synchronisation data must now be fetched from an online source device.":

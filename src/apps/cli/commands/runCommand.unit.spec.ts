@@ -421,16 +421,15 @@ describe("runCommand abnormal cases", () => {
 
     it("setup imports managed TURN through the existing encrypted URI", async () => {
         const core = createCoreMock();
-        const source = {
-            version: 1,
-            id: "cloudflare",
-            configuration: { turnKeyId: "turn-key", apiToken: "private-token" },
+        const profiles = {
+            turn: { id: "turn", name: "TURN", isEncrypted: false,
+                uri: "sls+p2p://room?managedType=CF&managedId=turn-key&token=private-token" },
         };
         const passphrase = "setup-passphrase";
         const setupURI = await processSetting.encodeSettingsToSetupURI(
             {
                 ...DEFAULT_SETTINGS,
-                P2P_iceServerSource: source,
+                remoteConfigurations: profiles,
             },
             passphrase
         );
@@ -439,7 +438,7 @@ describe("runCommand abnormal cases", () => {
         core.services.context.standardIo.prompt.mockResolvedValue(passphrase);
         await runCommand(makeOptions("setup", [setupURI]), { ...context, core });
         expect(core.services.setting.applyExternalSettings).toHaveBeenCalledWith(
-            expect.objectContaining({ P2P_iceServerSource: source }),
+            expect.objectContaining({ remoteConfigurations: profiles }),
             true
         );
     });

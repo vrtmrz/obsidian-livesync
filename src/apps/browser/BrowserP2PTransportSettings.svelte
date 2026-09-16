@@ -5,7 +5,7 @@
     import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost";
     import TurnConfiguration from "@/features/P2PSync/TurnConfiguration.svelte";
-    import { validateIceServerSourceConfiguration } from "@/integrations/iceServerSources";
+    import { validateManagedTurnSettings } from "@/integrations/turnSettings";
 
     let { host }: { host: P2PReplicatorPaneHost } = $props();
     const currentSettings = () => host.services.setting.currentSettings() as P2PSyncSetting;
@@ -15,21 +15,23 @@
             P2P_turnServers: settings.P2P_turnServers,
             P2P_turnUsername: settings.P2P_turnUsername,
             P2P_turnCredential: settings.P2P_turnCredential,
-            P2P_iceServerSource: structuredClone(settings.P2P_iceServerSource),
+            P2P_managedType: settings.P2P_managedType,
+            P2P_managedId: settings.P2P_managedId,
+            P2P_managedToken: settings.P2P_managedToken,
         };
     }
     let draft = $state(turnSettings(currentSettings()));
     let saved = $state(JSON.stringify(turnSettings(currentSettings())));
     const isModified = $derived(JSON.stringify(draft) !== saved);
-    const sourceError = $derived(validateIceServerSourceConfiguration(draft.P2P_iceServerSource));
-    const sourceNeedsRoom = $derived(!!draft.P2P_iceServerSource && (draft.P2P_roomID ?? "").trim() === "");
+    const sourceError = $derived(validateManagedTurnSettings(draft));
+    const sourceNeedsRoom = $derived(!!draft.P2P_managedType && (draft.P2P_roomID ?? "").trim() === "");
 
     function loadSettings(settings: P2PSyncSetting): void {
         const next = turnSettings(settings);
         draft = next;
         saved = JSON.stringify(next);
     }
-    onMount(() => host.services.context.events.onEvent("setting-saved", (settings) => loadSettings(settings as P2PSyncSetting)));
+    onMount(() => host.services.context.events.onEvent("setting-saved", () => loadSettings(currentSettings())));
 
     async function save(): Promise<void> {
         if (sourceError || sourceNeedsRoom) return;
@@ -38,8 +40,11 @@
             const next = { ...settings, ...values, remoteConfigurations: { ...settings.remoteConfigurations } };
             const profileId = settings.P2P_ActiveRemoteConfigurationId ||
                 (settings.remoteType === REMOTE_P2P ? settings.activeConfigurationId : "");
-            if (profileId && next.remoteConfigurations[profileId]) {
-                upsertRemoteConfigurationInPlace(next, "p2p", { id: profileId });
+            const selected = next.remoteConfigurations[profileId];
+            if (selected?.uri.startsWith("sls+p2p://")) {
+                upsertRemoteConfigurationInPlace(next, "p2p", { id: profileId, activateForP2P: true });
+            } else if (values.P2P_managedType) {
+                upsertRemoteConfigurationInPlace(next, "p2p", { activateForP2P: true });
             }
             return next;
         }, true);

@@ -1,18 +1,15 @@
-import { IceServerSourceError } from "@vrtmrz/livesync-commonlib/p2p";
-import type { IceServerConfiguration, IceServerSource } from "@vrtmrz/livesync-commonlib/p2p";
 import {
     CLOUDFLARE_TURN_CREDENTIAL_ENDPOINT,
     CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS,
-    parseCloudflareIceServerSourceConfiguration,
-    type CloudflareIceServerSourceConfiguration,
-    validateCloudflareIceServerSourceConfiguration,
+    type CloudflareTurnConfiguration,
+    validateCloudflareTurnConfiguration,
 } from "./settings";
 
 /** Fetch-compatible function supplied by the host composition. */
-export type CloudflareIceServerSourceFetch = (input: string | Request, init?: RequestInit) => Promise<Response>;
+export type CloudflareTurnFetch = (input: string | Request, init?: RequestInit) => Promise<Response>;
 
-export interface CloudflareIceServerSourceDependencies {
-    readonly fetch: CloudflareIceServerSourceFetch;
+export interface CloudflareTurnDependencies {
+    readonly fetch: CloudflareTurnFetch;
     readonly now?: () => number;
     readonly requestDeadlineMs?: number;
 }
@@ -21,19 +18,19 @@ export const CLOUDFLARE_TURN_REQUEST_DEADLINE_MS = 15_000 as const;
 export const CLOUDFLARE_TURN_MAX_RESPONSE_BYTES = 32 * 1024;
 export const CLOUDFLARE_TURN_MAX_ICE_SERVER_ENTRIES = 16 as const;
 export const CLOUDFLARE_TURN_MAX_ICE_SERVER_URLS = 32 as const;
-export const CLOUDFLARE_TURN_MIN_REMAINING_LIFETIME_MS = 1_000 as const;
+export const CLOUDFLARE_TURN_MIN_REMAINING_LIFETIME_MS = 30_000 as const;
 
-type IceServerSourceFailureCode = "configuration" | "authentication" | "unavailable" | "invalid-response";
+type TurnFailureCode = "configuration" | "authentication" | "unavailable" | "invalid-response";
 
-const SOURCE_FAILURE_MESSAGES: Record<IceServerSourceFailureCode, string> = {
-    configuration: "The Cloudflare TURN source configuration is invalid.",
+const FAILURE_MESSAGES: Record<TurnFailureCode, string> = {
+    configuration: "The Cloudflare TURN configuration is invalid.",
     authentication: "The Cloudflare TURN credential request was not authorised.",
     unavailable: "The Cloudflare TURN service is unavailable.",
     "invalid-response": "The Cloudflare TURN service returned an invalid response.",
 };
 
-function sourceFailure(code: IceServerSourceFailureCode, retryable: boolean): IceServerSourceError {
-    return new IceServerSourceError(code, SOURCE_FAILURE_MESSAGES[code], retryable);
+function credentialFailure(code: TurnFailureCode, retryable: boolean): Error {
+    return Object.assign(new Error(FAILURE_MESSAGES[code]), { code, retryable });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -123,10 +120,10 @@ function isCredential(value: unknown): value is string {
 
 function normaliseIceServers(value: unknown): readonly RTCIceServer[] {
     if (!isRecord(value) || !Array.isArray(value.iceServers)) {
-        throw sourceFailure("invalid-response", false);
+        throw credentialFailure("invalid-response", false);
     }
     if (value.iceServers.length === 0 || value.iceServers.length > CLOUDFLARE_TURN_MAX_ICE_SERVER_ENTRIES) {
-        throw sourceFailure("invalid-response", false);
+        throw credentialFailure("invalid-response", false);
     }
 
     const servers: RTCIceServer[] = [];
@@ -134,7 +131,7 @@ function normaliseIceServers(value: unknown): readonly RTCIceServer[] {
     let hasTurnServer = false;
 
     for (const candidate of value.iceServers) {
-        if (!isRecord(candidate)) throw sourceFailure("invalid-response", false);
+        if (!isRecord(candidate)) throw credentialFailure("invalid-response", false);
         const rawUrls = candidate.urls;
         const urls =
             typeof rawUrls === "string"
@@ -142,11 +139,11 @@ function normaliseIceServers(value: unknown): readonly RTCIceServer[] {
                 : Array.isArray(rawUrls) && rawUrls.every((url): url is string => typeof url === "string")
                   ? [...rawUrls]
                   : undefined;
-        if (!urls || urls.length === 0) throw sourceFailure("invalid-response", false);
+        if (!urls || urls.length === 0) throw credentialFailure("invalid-response", false);
 
         urlCount += urls.length;
         if (urlCount > CLOUDFLARE_TURN_MAX_ICE_SERVER_URLS || urls.some((url) => !isSupportedIceServerUrl(url))) {
-            throw sourceFailure("invalid-response", false);
+            throw credentialFailure("invalid-response", false);
         }
 
         const turnEntry = urls.some(isTurnUrl);
@@ -154,7 +151,7 @@ function normaliseIceServers(value: unknown): readonly RTCIceServer[] {
         const normalised: RTCIceServer = { urls };
         if (turnEntry) {
             if (!isCredential(candidate.username) || !isCredential(candidate.credential)) {
-                throw sourceFailure("invalid-response", false);
+                throw credentialFailure("invalid-response", false);
             }
             normalised.username = candidate.username;
             normalised.credential = candidate.credential;
@@ -162,7 +159,7 @@ function normaliseIceServers(value: unknown): readonly RTCIceServer[] {
         servers.push(normalised);
     }
 
-    if (!hasTurnServer) throw sourceFailure("invalid-response", false);
+    if (!hasTurnServer) throw credentialFailure("invalid-response", false);
     return Object.freeze(servers);
 }
 
@@ -233,14 +230,14 @@ async function readResponseBody(response: Response): Promise<string> {
     return new TextDecoder().decode(bytes);
 }
 
-function classifyHttpFailure(status: number): IceServerSourceError {
+function classifyHttpFailure(status: number): Error {
     if (status === 401 || status === 403) {
-        return sourceFailure("authentication", false);
+        return credentialFailure("authentication", false);
     }
     if (status === 408 || status === 429 || status >= 500) {
-        return sourceFailure("unavailable", true);
+        return credentialFailure("unavailable", true);
     }
-    return sourceFailure("unavailable", false);
+    return credentialFailure("unavailable", false);
 }
 
 function parseResponseBody(body: string): readonly RTCIceServer[] {
@@ -248,137 +245,119 @@ function parseResponseBody(body: string): readonly RTCIceServer[] {
     try {
         value = JSON.parse(body) as unknown;
     } catch {
-        throw sourceFailure("invalid-response", false);
+        throw credentialFailure("invalid-response", false);
     }
     return normaliseIceServers(value);
 }
 
-function createSource(
-    configuration: CloudflareIceServerSourceConfiguration,
-    dependencies: CloudflareIceServerSourceDependencies
-): IceServerSource {
+/** Acquire one temporary ICE configuration for a new room connection. */
+export async function acquireCloudflareTurnCredentials(
+    configuration: CloudflareTurnConfiguration,
+    dependencies: CloudflareTurnDependencies,
+    signal: AbortSignal
+): Promise<{ iceServers: readonly RTCIceServer[]; expiresAt: number }> {
+    if (validateCloudflareTurnConfiguration(configuration)) throw credentialFailure("configuration", false);
     const now = dependencies.now ?? Date.now;
     const requestDeadlineMs = dependencies.requestDeadlineMs ?? CLOUDFLARE_TURN_REQUEST_DEADLINE_MS;
+    throwIfAborted(signal);
+    const requestStartedAt = now();
+    if (!Number.isFinite(requestStartedAt)) {
+        throw credentialFailure("unavailable", true);
+    }
 
-    return {
-        async acquire(signal: AbortSignal): Promise<IceServerConfiguration> {
-            throwIfAborted(signal);
-            const requestStartedAt = now();
-            if (!Number.isFinite(requestStartedAt)) {
-                throw sourceFailure("unavailable", true);
-            }
-
-            const requestController = new AbortController();
-            let cancelledByCaller = false;
-            let rejectCaller: ((reason?: unknown) => void) | undefined;
-            const callerAbort = new Promise<never>((_resolve, reject) => {
-                rejectCaller = reject;
-            });
-            let timedOut = false;
-            const onAbort = () => {
-                cancelledByCaller = true;
-                requestController.abort();
-                rejectCaller?.(abortError());
-            };
-            signal.addEventListener("abort", onAbort, { once: true });
-            if (signal.aborted) {
-                signal.removeEventListener("abort", onAbort);
-                requestController.abort();
-                throw abortError();
-            }
-            let timeoutId: ReturnType<typeof setTimeout> | undefined;
-            const deadline = new Promise<never>((_resolve, reject) => {
-                timeoutId = globalThis.setTimeout(() => {
-                    timedOut = true;
-                    requestController.abort();
-                    reject(sourceFailure("unavailable", true));
-                }, requestDeadlineMs);
-            });
-
-            const cleanup = () => {
-                if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
-                signal.removeEventListener("abort", onAbort);
-            };
-
-            const endpoint = `${CLOUDFLARE_TURN_CREDENTIAL_ENDPOINT}/${configuration.turnKeyId}/credentials/generate-ice-servers`;
-            let response: Response;
-            try {
-                response = await Promise.race([
-                    dependencies.fetch(endpoint, {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${configuration.apiToken}`,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ ttl: CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS }),
-                        signal: requestController.signal,
-                        redirect: "error",
-                        credentials: "omit",
-                        cache: "no-store",
-                    }),
-                    callerAbort,
-                    deadline,
-                ]);
-            } catch {
-                cleanup();
-                if (cancelledByCaller || signal.aborted) throw abortError();
-                if (timedOut) throw sourceFailure("unavailable", true);
-                throw sourceFailure("unavailable", true);
-            }
-
-            if (cancelledByCaller || signal.aborted) {
-                cleanup();
-                throw abortError();
-            }
-            if (timedOut || requestController.signal.aborted) {
-                cleanup();
-                throw sourceFailure("unavailable", true);
-            }
-            if (response.status !== 201) {
-                cleanup();
-                throw classifyHttpFailure(response.status);
-            }
-
-            let body: string;
-            try {
-                body = await Promise.race([readResponseBody(response), callerAbort, deadline]);
-            } catch (error) {
-                cleanup();
-                if (cancelledByCaller || signal.aborted) throw abortError();
-                if (timedOut) throw sourceFailure("unavailable", true);
-                if (error instanceof BoundedResponseError && error.kind === "read-failed") {
-                    throw sourceFailure("unavailable", true);
-                }
-                throw sourceFailure("invalid-response", false);
-            }
-
-            try {
-                throwIfAborted(signal);
-                const iceServers = parseResponseBody(body);
-                const expiresAt = requestStartedAt + CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS * 1_000;
-                if (!Number.isFinite(expiresAt) || expiresAt <= now() + CLOUDFLARE_TURN_MIN_REMAINING_LIFETIME_MS) {
-                    throw sourceFailure("invalid-response", false);
-                }
-                return { iceServers, expiresAt };
-            } finally {
-                cleanup();
-            }
-        },
+    const requestController = new AbortController();
+    let cancelledByCaller = false;
+    let rejectCaller: ((reason?: unknown) => void) | undefined;
+    const callerAbort = new Promise<never>((_resolve, reject) => {
+        rejectCaller = reject;
+    });
+    let timedOut = false;
+    const onAbort = () => {
+        cancelledByCaller = true;
+        requestController.abort();
+        rejectCaller?.(abortError());
     };
-}
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) {
+        signal.removeEventListener("abort", onAbort);
+        requestController.abort();
+        throw abortError();
+    }
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_resolve, reject) => {
+        timeoutId = globalThis.setTimeout(() => {
+            timedOut = true;
+            requestController.abort();
+            reject(credentialFailure("unavailable", true));
+        }, requestDeadlineMs);
+    });
 
-/**
- * Creates a Cloudflare source after validating its persisted configuration.
- * Validation is synchronous and performs no network request.
- */
-export function createCloudflareIceServerSource(
-    configuration: Readonly<Record<string, unknown>>,
-    dependencies: CloudflareIceServerSourceDependencies
-): IceServerSource {
-    const parsed = parseCloudflareIceServerSourceConfiguration(configuration);
-    if (!parsed) throw sourceFailure("configuration", false);
-    return createSource(parsed, dependencies);
-}
+    const cleanup = () => {
+        if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
+        signal.removeEventListener("abort", onAbort);
+    };
 
-/** Exposes the provider validation for the integration catalogue and UI. */
-export { validateCloudflareIceServerSourceConfiguration };
+    const endpoint = `${CLOUDFLARE_TURN_CREDENTIAL_ENDPOINT}/${configuration.turnKeyId}/credentials/generate-ice-servers`;
+    let response: Response;
+    try {
+        response = await Promise.race([
+            dependencies.fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${configuration.apiToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ttl: CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS }),
+                signal: requestController.signal,
+                redirect: "error",
+                credentials: "omit",
+                cache: "no-store",
+            }),
+            callerAbort,
+            deadline,
+        ]);
+    } catch {
+        cleanup();
+        if (cancelledByCaller || signal.aborted) throw abortError();
+        if (timedOut) throw credentialFailure("unavailable", true);
+        throw credentialFailure("unavailable", true);
+    }
+
+    if (cancelledByCaller || signal.aborted) {
+        cleanup();
+        throw abortError();
+    }
+    if (timedOut || requestController.signal.aborted) {
+        cleanup();
+        throw credentialFailure("unavailable", true);
+    }
+    if (response.status !== 201) {
+        cleanup();
+        throw classifyHttpFailure(response.status);
+    }
+
+    let body: string;
+    try {
+        body = await Promise.race([readResponseBody(response), callerAbort, deadline]);
+    } catch (error) {
+        cleanup();
+        if (cancelledByCaller || signal.aborted) throw abortError();
+        if (timedOut) throw credentialFailure("unavailable", true);
+        if (error instanceof BoundedResponseError && error.kind === "read-failed") {
+            throw credentialFailure("unavailable", true);
+        }
+        throw credentialFailure("invalid-response", false);
+    }
+
+    try {
+        throwIfAborted(signal);
+        const iceServers = parseResponseBody(body);
+        const expiresAt = requestStartedAt + CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS * 1_000;
+        if (!Number.isFinite(expiresAt) || expiresAt <= now() + CLOUDFLARE_TURN_MIN_REMAINING_LIFETIME_MS) {
+            throw credentialFailure("invalid-response", false);
+        }
+        return { iceServers, expiresAt };
+    } finally {
+        cleanup();
+    }
+}

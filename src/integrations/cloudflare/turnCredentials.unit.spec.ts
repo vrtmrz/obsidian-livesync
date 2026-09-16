@@ -2,12 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     CLOUDFLARE_TURN_MAX_RESPONSE_BYTES,
     CLOUDFLARE_TURN_REQUEST_DEADLINE_MS,
-    createCloudflareIceServerSource,
-} from "./iceServerSource";
+    acquireCloudflareTurnCredentials,
+} from "./turnCredentials";
 import {
     CLOUDFLARE_TURN_CREDENTIAL_ENDPOINT,
     CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS,
-    validateCloudflareIceServerSourceConfiguration,
+    validateCloudflareTurnConfiguration,
 } from "./settings";
 
 const configuration = {
@@ -39,7 +39,7 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe("Cloudflare ICE server source", () => {
+describe("Cloudflare TURN credentials", () => {
     it("requests the fixed endpoint with the bearer token and TTL", async () => {
         const now = 1_000_000;
         let requestUrl: string | Request | undefined;
@@ -49,9 +49,13 @@ describe("Cloudflare ICE server source", () => {
             requestInit = init;
             return response(validBody());
         });
-        const source = createCloudflareIceServerSource(configuration, { fetch, now: () => now });
+        const dependencies = { fetch, now: () => now };
 
-        const result = await source.acquire(new AbortController().signal);
+        const result = await acquireCloudflareTurnCredentials(
+            configuration,
+            dependencies,
+            new AbortController().signal
+        );
 
         expect(requestUrl).toBe(`${CLOUDFLARE_TURN_CREDENTIAL_ENDPOINT}/key-123/credentials/generate-ice-servers`);
         expect(requestInit).toMatchObject({
@@ -75,38 +79,50 @@ describe("Cloudflare ICE server source", () => {
             { body: { iceServers: [{ urls: "stun:stun.example.test:3478" }] }, expectedCode: "invalid-response" },
         ];
         for (const testCase of cases) {
-            const source = createCloudflareIceServerSource(configuration, {
+            const dependencies = {
                 fetch: vi.fn(async () => response(testCase.body)),
                 now: () => 1_000_000,
-            });
-            const error = await source.acquire(new AbortController().signal).catch((reason: unknown) => reason);
+            };
+            const error = await acquireCloudflareTurnCredentials(
+                configuration,
+                dependencies,
+                new AbortController().signal
+            ).catch((reason: unknown) => reason);
             expect(error).toMatchObject({ code: testCase.expectedCode });
             expect(String(error)).not.toContain(configuration.apiToken);
             expect(String(error)).not.toContain(configuration.turnKeyId);
         }
 
         const oversized = "x".repeat(CLOUDFLARE_TURN_MAX_RESPONSE_BYTES + 1);
-        const source = createCloudflareIceServerSource(configuration, {
+        const dependencies = {
             fetch: vi.fn(async () => new Response(oversized, { status: 201 })),
             now: () => 1_000_000,
-        });
-        const error = await source.acquire(new AbortController().signal).catch((reason: unknown) => reason);
+        };
+        const error = await acquireCloudflareTurnCredentials(
+            configuration,
+            dependencies,
+            new AbortController().signal
+        ).catch((reason: unknown) => reason);
         expect(error).toMatchObject({ code: "invalid-response" });
     });
 
     it("classifies authentication and transient provider failures", async () => {
-        const authSource = createCloudflareIceServerSource(configuration, {
+        const authDependencies = {
             fetch: vi.fn(async () => response({}, 401)),
-        });
-        await expect(authSource.acquire(new AbortController().signal)).rejects.toMatchObject({
+        };
+        await expect(
+            acquireCloudflareTurnCredentials(configuration, authDependencies, new AbortController().signal)
+        ).rejects.toMatchObject({
             code: "authentication",
             retryable: false,
         });
 
-        const transientSource = createCloudflareIceServerSource(configuration, {
+        const transientDependencies = {
             fetch: vi.fn(async () => response({}, 503)),
-        });
-        await expect(transientSource.acquire(new AbortController().signal)).rejects.toMatchObject({
+        };
+        await expect(
+            acquireCloudflareTurnCredentials(configuration, transientDependencies, new AbortController().signal)
+        ).rejects.toMatchObject({
             code: "unavailable",
             retryable: true,
         });
@@ -121,14 +137,14 @@ describe("Cloudflare ICE server source", () => {
                 });
             });
         });
-        const source = createCloudflareIceServerSource(configuration, { fetch });
-        const cancelled = source.acquire(controller.signal);
+        const dependencies = { fetch };
+        const cancelled = acquireCloudflareTurnCredentials(configuration, dependencies, controller.signal);
         controller.abort();
         await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
 
         vi.useFakeTimers();
-        const timedSource = createCloudflareIceServerSource(configuration, { fetch });
-        const timed = timedSource.acquire(new AbortController().signal);
+        const timedDependencies = { fetch };
+        const timed = acquireCloudflareTurnCredentials(configuration, timedDependencies, new AbortController().signal);
         const assertion = expect(timed).rejects.toMatchObject({ code: "unavailable", retryable: true });
         await vi.advanceTimersByTimeAsync(CLOUDFLARE_TURN_REQUEST_DEADLINE_MS);
         await assertion;
@@ -136,29 +152,28 @@ describe("Cloudflare ICE server source", () => {
 
     it("rejects an issuance which has no usable remaining lifetime", async () => {
         let now = 1_000_000;
-        const source = createCloudflareIceServerSource(configuration, {
+        const dependencies = {
             fetch: vi.fn(async () => {
                 now += CLOUDFLARE_TURN_CREDENTIAL_TTL_SECONDS * 1_000;
                 return response(validBody());
             }),
             now: () => now,
-        });
-        await expect(source.acquire(new AbortController().signal)).rejects.toMatchObject({
+        };
+        await expect(
+            acquireCloudflareTurnCredentials(configuration, dependencies, new AbortController().signal)
+        ).rejects.toMatchObject({
             code: "invalid-response",
         });
     });
 });
 
-describe("Cloudflare ICE source validation", () => {
-    it("rejects unknown fields and malformed bearer credentials", () => {
-        expect(validateCloudflareIceServerSourceConfiguration({ ...configuration, unexpected: "value" })).toContain(
-            "unsupported field"
-        );
+describe("Cloudflare TURN input validation", () => {
+    it("rejects unsafe key IDs and malformed bearer credentials", () => {
         expect(
-            validateCloudflareIceServerSourceConfiguration({ turnKeyId: "key/id", apiToken: configuration.apiToken })
+            validateCloudflareTurnConfiguration({ turnKeyId: "key/id", apiToken: configuration.apiToken })
         ).toContain("unsupported characters");
-        expect(
-            validateCloudflareIceServerSourceConfiguration({ ...configuration, apiToken: "token with spaces" })
-        ).toContain("Bearer token syntax");
+        expect(validateCloudflareTurnConfiguration({ ...configuration, apiToken: "token with spaces" })).toContain(
+            "Bearer token syntax"
+        );
     });
 });

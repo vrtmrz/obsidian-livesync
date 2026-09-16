@@ -56,16 +56,16 @@ for creating a TURN key and its API token.
 The API token is saved with the P2P profile and included when sharing settings
 through an existing Setup URI or QR code. Setup URIs retain their existing
 passphrase encryption. QR codes retain their existing unencrypted format and
-'FOR YOUR EYES ONLY' display. Missing source settings use the ordinary manual
-configuration defaults. Receiving clients need support for the selected source
+'FOR YOUR EYES ONLY' display. Missing provider settings use the ordinary manual
+configuration defaults. Receiving clients need support for the selected provider
 to acquire its temporary TURN credentials.
 Markdown settings omit the connection profile group when it contains a managed
-TURN source, including inactive profiles, and importing those omitted settings
-preserves this device's existing profiles. Diagnostic reports redact the source
-configuration. Optional configuration encryption also covers the saved token.
+TURN provider, including inactive profiles, and importing those omitted settings
+preserves this device's existing profiles. Diagnostic reports redact provider settings. The existing profile-URI
+encryption also covers the saved token.
 
-Each device requests temporary TURN credentials before opening a room when no
-valid credentials are cached. Cloudflare credentials have a requested lifetime
+Each device requests temporary TURN credentials when opening a new room.
+An existing room reuses its credentials while they remain valid. Cloudflare credentials have a requested lifetime
 of 24 hours and remain in memory only. Expiry is checked when LiveSync next
 reconciles the room connection. If necessary, it replaces the room and obtains
 new credentials. There is no periodic renewal: if a long-lived room cannot
@@ -82,7 +82,7 @@ interrupted manual operation, use **Replicate now** again.
 `P2P Configuration` includes a separate `Connection compatibility` section. Its defaults preserve the existing transport behaviour:
 
 - **P2P message size** defaults to **Standard**. **Reduced**, **Conservative**, and **Maximum compatibility** progressively limit outgoing P2P messages when a network path appears to drop larger WebRTC messages. This is not a Vault Chunk size or an IP MTU. Smaller values add framing and processing overhead.
-- **Connection path** defaults to **Automatic**, which lets WebRTC select a viable direct or TURN-relayed path. **TURN relay only** forces the encrypted connection through TURN and is available when the profile contains a valid manual TURN URL or a configured TURN credential source.
+- **Connection path** defaults to **Automatic**, which lets WebRTC select a viable direct or TURN-relayed path. **TURN relay only** forces the encrypted connection through TURN and is available when the profile contains a valid manual TURN URL or a configured TURN provider.
 
 The sending device controls its outgoing message size. Select the same conservative preset on every device which may send across the constrained path. Existing devices do not receive the choice retrospectively merely because another device changed it.
 

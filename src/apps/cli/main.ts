@@ -1,4 +1,4 @@
-import { useIceServerSources } from "@/serviceFeatures/useIceServerSources";
+import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore, type StartupDatabaseOptions } from "@/LiveSyncBaseCore";
@@ -526,7 +526,7 @@ export async function main(
             }
             // Register P2P replicator feature.
             p2pReplicator = useP2PReplicatorFeature(core, undefined, undefined, {
-                iceServerSources: useIceServerSources(core.services.API.webCompatFetch.bind(core.services.API)),
+                prepareP2PSettings: useP2PSettingsPreparation(core.services.API.webCompatFetch.bind(core.services.API)),
             });
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {

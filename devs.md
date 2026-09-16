@@ -189,7 +189,7 @@ steps required to add a built-in provider.
 
 Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, connection-probe admission, directory, peer-admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact implemented ownership and shutdown boundaries are recorded in Commonlib's [P2P transport lifecycle](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/p2p-transport-lifecycle.md) design document.
 
-The proposed [TURN credential sources design](docs/design_docs/renewable_turn_credentials.md) covers credential expiry in the existing room reuse decision, replication continuation after room replacement, persisted and shared provider tokens, report redaction, and optional integrations on the device. It records the Commonlib work and compatibility boundaries before implementation.
+The [TURN connection settings design](docs/design_docs/renewable_turn_credentials.md) describes how the host prepares temporary ICE credentials in a connection-only settings copy. It covers room reuse and expiry, replication continuation, profile persistence and sharing, and report redaction.
 
 ### Conflict Merge Policy
 

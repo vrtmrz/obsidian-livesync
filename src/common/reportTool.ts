@@ -1,4 +1,4 @@
-import { redactTurnSourceForReport } from "./turnSettingsPrivacy";
+import { redactTurnSettingsForReport } from "./turnSettingsPrivacy";
 import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
@@ -68,7 +68,7 @@ export async function generateReport(settings: ObsidianLiveSyncSettings, core: L
         delete pluginConfig[key as keyof ObsidianLiveSyncSettings];
     }
 
-    redactTurnSourceForReport(pluginConfig);
+    redactTurnSettingsForReport(pluginConfig);
     pluginConfig.couchDB_DBNAME = REDACTED;
     pluginConfig.couchDB_PASSWORD = REDACTED;
     const scheme = pluginConfig.couchDB_URI.startsWith("http:")

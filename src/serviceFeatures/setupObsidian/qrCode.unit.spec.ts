@@ -19,15 +19,9 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/API/processSetting", () => {
 
 describe("setupObsidian/qrCode", () => {
     it("shows managed TURN settings and inactive profiles through the ordinary QR dialogue", async () => {
-        const source = {
-            version: 1,
-            id: "cloudflare",
-            configuration: { turnKeyId: "turn-key", apiToken: "private-token" },
-        };
         const settings = {
-            P2P_iceServerSource: source,
             remoteConfigurations: {
-                managed: { uri: `sls+p2p://room?source=${encodeURIComponent(JSON.stringify(source))}` },
+                managed: { uri: "sls+p2p://room?managedType=CF&managedId=turn-key&token=private-token" },
             },
         };
         const confirmWithMessage = vi.fn();
