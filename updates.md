@@ -18,10 +18,6 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 Unusually for this project, I have added a feature that relies on a particular infrastructure provider. I made this choice for the convenience it offers.
 
-### A note on support for individual services
-
-As a rule, I intend to avoid features that depend on a particular service. Still, I think there is room for them when they are entirely optional, clearly explained, and maintainable. Even then, I would want open alternatives to remain available. I will write more about this principle separately.
-
 ### Peer-to-peer synchronisation
 
 #### New Feature
@@ -37,6 +33,10 @@ As a rule, I intend to avoid features that depend on a particular service. Still
 
 - The CLI daemon now synchronises files already present at start-up and picks up edits and deletions made while it was stopped.
 - CLI Vault scans no longer miss files after an earlier scan or file lookup. This incorporates an adapted version of the fix proposed in PR #1188. Thank you to @YakupEmreYerli for the fix and regression tests, and to @nsanitas for the detailed report and analysis in #1143!
+
+### Miscellaneous
+
+In general, I would prefer to avoid features that depend on a particular service. Still, I think there is room for them when they are entirely optional, clearly explained, and maintainable. Even then, I would want open alternatives to remain available. I will write more about this principle separately.
 
 ## 1.0.28
 
