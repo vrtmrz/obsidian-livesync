@@ -46,7 +46,7 @@ LiveSync will expose a separate `Connection path` choice:
 - `Automatic` retains normal ICE selection and is the default.
 - `TURN relay only` supplies `iceTransportPolicy: 'relay'` and prevents direct or server-reflexive candidates from being selected.
 
-`TURN relay only` is enabled only when at least one syntactically valid `turn:` or `turns:` URL is configured. If the last valid TURN URL is removed while relay-only mode is selected, the dialogue restores `Automatic` and displays a concise explanation.
+`TURN relay only` is enabled when a managed TURN provider is selected or at least one syntactically valid manual `turn:` or `turns:` URL is configured. If neither is available while relay-only mode is selected, the dialogue restores `Automatic` and displays a concise explanation. Selecting a managed provider does not itself force relay use; `Automatic` retains normal ICE selection.
 
 The route policy is an ordinary P2P profile property. It is retained in P2P connection strings and encrypted Setup URIs so that an imported compatibility profile has reproducible transport behaviour.
 

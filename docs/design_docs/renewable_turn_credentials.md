@@ -1,6 +1,6 @@
 ---
 date: 2026-09-16
-commonlib-version: "0.1.25-dev.turn-credentials.6"
+commonlib-version: "0.1.25"
 self-hosted-livesync-version: "1.0.28"
 status: unreleased
 ---
@@ -65,6 +65,10 @@ Its HTTP request must settle on cancellation and has a bounded deadline. The roo
 owner also stops waiting for preparation when the connection request is retired.
 An explicitly managed configuration requires a preparation hook and usable ICE
 credentials; acquisition failure does not select a fallback provider or route.
+Managed credential acquisition is independent of the connection path. `Automatic`
+retains normal ICE selection, including direct candidates; only `TURN relay only`
+forces relay use. Acquisition must still succeed before opening a managed room
+when `Automatic` is selected.
 
 ## Room reuse and expiry
 
@@ -137,8 +141,10 @@ endpoint, SDK, credential broker, or renewal interval setting.
 
 The provider function uses Cloudflare's
 [credential-generation endpoint](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
-and converts its response into ICE servers. The implementation requests a 24-hour
-lifetime and derives local expiry from the clock before the request starts.
+and converts its response into ICE servers. The implementation requests a fixed
+24-hour lifetime and derives local expiry from the clock before the request starts.
+This lifetime applies to the issued TURN credentials, not the provider API token.
+There is currently no setting to change it.
 
 The HTTP boundary uses the injected standard fetch adapter with cancellation,
 a 15-second deadline, refused redirects, omitted cookies, and disabled caching.
