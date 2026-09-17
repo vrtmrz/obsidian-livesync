@@ -209,6 +209,25 @@ Ordinary file saves and incoming reflection use that provenance even before a co
 
 This policy is intentionally aligned with the conflict checkboxes and compatibility settings: automatic merge should remove avoidable prompts, but it must not silently choose between overlapping user intentions.
 
+### Multiple-device conflict regression tests
+
+`src/serviceModules/FileHandler.multidevice.integration.spec.ts` tests the installed Commonlib package through LiveSync's shared file handler, the CLI `resolve` command dispatcher, and the shared conflict-resolution operations. Run it against the isolated CouchDB test service configured by `hostname`, `username`, and `password` in `.test.env`:
+
+```bash
+npm run test:integration -- src/serviceModules/FileHandler.multidevice.integration.spec.ts --maxWorkers=1
+```
+
+Each simulated device owns a separate real PouchDB database, `LiveSyncLocalDB` managers, file content, and provenance record. Devices first share one revision, edit while disconnected, and then replicate their Metadata and Chunks through real CouchDB. File reflection is deliberately delayed after replication to reproduce the interval in which the database has advanced but the file still contains older content. All edits use equal modification times, so the tests require revision and content checks rather than timestamp ordering.
+
+The five cases cover:
+
+- Three and four editing devices: every branch and its content reaches every device. Reprocessing unchanged files while conflicts exist makes no database writes. The CLI selects a non-winning revision, removes the other branches, and reflects the selected content. After resolution replicates, unchanged files from losing branches reflect the selected content without creating revisions or restoring conflicts.
+- A genuine edit on a losing device after three-way resolution: the new revision extends that device's recorded branch, and both the selected result and the new edit remain readable on every replica.
+- Four devices with missing provenance: a file matching the original historical ancestor becomes a fresh independent conflict, preserving both contents. Historical equality does not justify discarding it.
+- Four devices with a compacted, unreadable recorded base: the remaining file is preserved as an independent conflict. In both uncertain-base cases, repeated processing after provenance loss creates no duplicates, and the CLI can select the independent root and propagate its resolution.
+
+This is a service integration test, not a CLI subprocess or Obsidian runtime test. The file and provenance stores are in-memory fixtures; automatic conflict callbacks are observed without running interactive or automatic merge policies. PouchDB revision creation, chunk storage and retrieval, compaction, CouchDB replication, the CLI command dispatcher, and its resolution operations are real. CLI argument parsing, persistent host stores, file watchers, mobile suspension, and Obsidian dialogues remain covered separately or require their own runtime checks.
+
 ### File Structure Conventions
 
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
