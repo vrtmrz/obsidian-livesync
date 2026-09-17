@@ -307,10 +307,19 @@ cli_test_wait_for_minio_bucket() {
     local delay_sec=2
     local i
     for ((i = 1; i <= retries; i++)); do
-        if docker run --rm --network host --entrypoint=/bin/sh minio/mc -c "mc alias set myminio $minio_endpoint $minio_access_key $minio_secret_key >/dev/null 2>&1 && mc ls myminio/$minio_bucket >/dev/null 2>&1"; then
+        if docker run --rm --network host --entrypoint=/bin/sh \
+            rustfs/rc:v0.1.35@sha256:adb45b56539006120f1d790bcc17ee5f9b4d93c1d7e71ed0a24f10267f9d6914 \
+            -c 'set -e
+rc alias set myminio "$1" "$2" "$3" >/dev/null 2>&1
+rc ls "myminio/$4" >/dev/null 2>&1
+' sh "$minio_endpoint" "$minio_access_key" "$minio_secret_key" "$minio_bucket"; then
             return 0
         fi
-        bucketName="$minio_bucket" bash "$CLI_DIR/util/minio-init.sh" >/dev/null 2>&1 || true
+        minioEndpoint="$minio_endpoint" \
+        accessKey="$minio_access_key" \
+        secretKey="$minio_secret_key" \
+        bucketName="$minio_bucket" \
+        bash "$CLI_DIR/util/minio-init.sh" >/dev/null 2>&1 || true
         sleep "$delay_sec"
     done
     return 1
@@ -323,26 +332,34 @@ cli_test_start_minio() {
     local minio_bucket="$4"
     local minio_init_ok=0
 
-    echo "[INFO] stopping leftover MinIO container if present"
+    echo "[INFO] stopping leftover RustFS container if present"
     cli_test_stop_minio
 
-    echo "[INFO] starting MinIO test container"
-    bucketName="$minio_bucket" bash "$CLI_DIR/util/minio-start.sh"
+    echo "[INFO] starting RustFS test container"
+    minioEndpoint="$minio_endpoint" \
+    accessKey="$minio_access_key" \
+    secretKey="$minio_secret_key" \
+    bucketName="$minio_bucket" \
+    bash "$CLI_DIR/util/minio-start.sh"
 
-    echo "[INFO] initialising MinIO test bucket: $minio_bucket"
+    echo "[INFO] initialising RustFS test bucket: $minio_bucket"
     for _ in 1 2 3 4 5; do
-        if bucketName="$minio_bucket" bash "$CLI_DIR/util/minio-init.sh"; then
+        if minioEndpoint="$minio_endpoint" \
+            accessKey="$minio_access_key" \
+            secretKey="$minio_secret_key" \
+            bucketName="$minio_bucket" \
+            bash "$CLI_DIR/util/minio-init.sh"; then
             minio_init_ok=1
             break
         fi
         sleep 2
     done
     if [[ "$minio_init_ok" != "1" ]]; then
-        echo "[FAIL] could not initialise MinIO bucket after retries: $minio_bucket" >&2
+        echo "[FAIL] could not initialise RustFS bucket after retries: $minio_bucket" >&2
         exit 1
     fi
     if ! cli_test_wait_for_minio_bucket "$minio_endpoint" "$minio_access_key" "$minio_secret_key" "$minio_bucket"; then
-        echo "[FAIL] MinIO bucket not ready: $minio_bucket" >&2
+        echo "[FAIL] RustFS bucket not ready: $minio_bucket" >&2
         exit 1
     fi
 }

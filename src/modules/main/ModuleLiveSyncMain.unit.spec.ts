@@ -25,6 +25,7 @@ describe("ModuleLiveSyncMain", () => {
         const log = vi.fn();
         const host = {
             core: {
+                startupDatabaseOptions: {},
                 services: {
                     appLifecycle: {
                         onLayoutReady: vi.fn(async () => true),
@@ -58,6 +59,7 @@ describe("ModuleLiveSyncMain", () => {
         };
         const host = {
             core: {
+                startupDatabaseOptions: {},
                 services: { appLifecycle },
             },
             services: {
@@ -76,5 +78,34 @@ describe("ModuleLiveSyncMain", () => {
 
         expect(result).toBe(true);
         expect(log).toHaveBeenCalledWith("Ui.Common.SomeFilesCouldNotBeSynchronised", LOG_LEVEL_NOTICE);
+    });
+
+    it("passes strict startup database options to initialisation", async () => {
+        const initialiseDatabase = vi.fn(async () => false);
+        const host = {
+            core: {
+                startupDatabaseOptions: {
+                    ignoreSuspending: true,
+                    continueOnFileFailure: false,
+                },
+                services: {
+                    appLifecycle: {
+                        onLayoutReady: vi.fn(async () => true),
+                    },
+                },
+            },
+            services: {
+                databaseEvents: { initialiseDatabase },
+            },
+            settings: {
+                suspendFileWatching: false,
+                suspendParseReplicationResult: false,
+            },
+            _log: vi.fn(),
+        };
+
+        await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
+
+        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, true, false);
     });
 });

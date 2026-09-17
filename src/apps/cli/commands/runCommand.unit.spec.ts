@@ -419,6 +419,30 @@ describe("runCommand abnormal cases", () => {
         expect(appliedSettings.useIndexedDBAdapter).toBe(false);
     });
 
+    it("setup imports managed TURN through the existing encrypted URI", async () => {
+        const core = createCoreMock();
+        const profiles = {
+            turn: { id: "turn", name: "TURN", isEncrypted: false,
+                uri: "sls+p2p://room?managedType=CF&managedId=turn-key&token=private-token" },
+        };
+        const passphrase = "setup-passphrase";
+        const setupURI = await processSetting.encodeSettingsToSetupURI(
+            {
+                ...DEFAULT_SETTINGS,
+                remoteConfigurations: profiles,
+            },
+            passphrase
+        );
+        expect(setupURI.startsWith(configURIBase)).toBe(true);
+        expect(setupURI).not.toContain("private-token");
+        core.services.context.standardIo.prompt.mockResolvedValue(passphrase);
+        await runCommand(makeOptions("setup", [setupURI]), { ...context, core });
+        expect(core.services.setting.applyExternalSettings).toHaveBeenCalledWith(
+            expect.objectContaining({ remoteConfigurations: profiles }),
+            true
+        );
+    });
+
     it("setup rejects encoded URI when passphrase is wrong", async () => {
         const core = createCoreMock();
         const setupURI = await createSetupURI("correct-passphrase");

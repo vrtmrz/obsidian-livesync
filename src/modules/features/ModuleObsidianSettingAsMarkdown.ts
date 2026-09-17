@@ -1,3 +1,8 @@
+import {
+    hasManagedTurnSettings,
+    omitManagedTurnProfilesFromMarkdown,
+    preserveManagedTurnProfilesOnMarkdownImport,
+} from "@/common/turnSettingsPrivacy";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
@@ -129,6 +134,7 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
 
         let settingToApply = { ...DEFAULT_SETTINGS } as ObsidianLiveSyncSettings;
         settingToApply = { ...settingToApply, ...newSetting };
+        preserveManagedTurnProfilesOnMarkdownImport(newSetting, this.settings, settingToApply);
         if (!settingToApply?.writeCredentialsForSettingSync) {
             //New setting does not contains credentials.
             settingToApply.couchDB_USER = this.settings.couchDB_USER;
@@ -208,11 +214,18 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
             delete saveData.couchDB_CustomHeaders;
             delete saveData.bucketCustomHeaders;
         }
+        omitManagedTurnProfilesFromMarkdown(saveData);
         return saveData;
     }
 
     async saveSettingToMarkdown(filename: string) {
         const saveData = this.generateSettingForMarkdown();
+        if (hasManagedTurnSettings(this.settings)) {
+            this._log(
+                "Share TURN provider credentials through an encrypted Setup URI. Connection profiles are omitted from Markdown settings.",
+                LOG_LEVEL_INFO
+            );
+        }
         const file = await this.core.storageAccess.isExists(filename);
 
         if (!file) {

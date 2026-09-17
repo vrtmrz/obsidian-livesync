@@ -12,6 +12,32 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.29
+
+16th September, 2026
+
+Unusually for this project, I have added a feature that relies on a particular infrastructure provider. I made this choice for the convenience it offers.
+
+### Peer-to-peer synchronisation
+
+#### New Feature
+
+- P2P synchronisation now supports **Managed (Cloudflare)** TURN to help devices connect when a direct connection is unavailable. Enter your TURN Key ID and API token, and LiveSync obtains temporary TURN credentials automatically. (#1182)
+
+    - Managed TURN settings are saved with your encrypted P2P profile and included when you share it through a Setup URI or QR code.
+    - Your API token is omitted from generated reports.
+
+### Command-line tool
+
+#### Fixed
+
+- The CLI daemon now synchronises files already present at start-up and picks up edits and deletions made while it was stopped.
+- CLI Vault scans no longer miss files after an earlier scan or file lookup. This incorporates an adapted version of the fix proposed in PR #1188. Thank you to @YakupEmreYerli for the fix and regression tests, and to @nsanitas for the detailed report and analysis in #1143!
+
+### Miscellaneous
+
+In general, I would prefer to avoid features that depend on a particular service. Still, I think there is room for them when they are entirely optional, clearly explained, and maintainable. Even then, I would want open alternatives to remain available. I will write more about this principle separately.
+
 ## 1.0.28
 
 9th September, 2026
@@ -96,15 +122,3 @@ For now, I am addressing the issues I can resolve first. I hope this helps.
 #### Fixed
 
 - The systemd installer now finds the repository root correctly, installs every generated bundle chunk and required production dependency, checks the installed command before activation, and reports success only when the service remains active.
-
-## 1.0.23
-
-2nd September, 2026
-
-I am sorry to make this release while several pull requests are still awaiting merge, but I believe that the safeguards provided by this work are significant, so I have decided to release it. I will merge the remaining pull requests in turn. Thank you for bearing with me while I have been less active recently.
-
-### Synchronisation and storage
-
-#### Fixed
-
-- **Sync now** once again keeps routine progress quiet, while still opening recovery dialogues when a decision is required. Repeated OneShot Sync requests received while an earlier attempt is running are now ignored instead of starting overlapping work.

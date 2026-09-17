@@ -1,105 +1,67 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
+    import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import type { P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
-
     import type { P2PReplicatorPaneHost } from "@/features/P2PSync/P2PReplicator/P2PReplicatorPaneHost";
+    import TurnConfiguration from "@/features/P2PSync/TurnConfiguration.svelte";
+    import { validateManagedTurnSettings } from "@/integrations/turnSettings";
 
-    interface Props {
-        host: P2PReplicatorPaneHost;
-    }
-
-    let { host }: Props = $props();
+    let { host }: { host: P2PReplicatorPaneHost } = $props();
     const currentSettings = () => host.services.setting.currentSettings() as P2PSyncSetting;
-    const initialSettings = currentSettings();
-
-    let savedTurnServers = $state(initialSettings.P2P_turnServers);
-    let savedTurnUsername = $state(initialSettings.P2P_turnUsername);
-    let savedTurnCredential = $state(initialSettings.P2P_turnCredential);
-    let turnServers = $state(initialSettings.P2P_turnServers);
-    let turnUsername = $state(initialSettings.P2P_turnUsername);
-    let turnCredential = $state(initialSettings.P2P_turnCredential);
-
-    const isTurnServersModified = $derived(turnServers !== savedTurnServers);
-    const isTurnUsernameModified = $derived(turnUsername !== savedTurnUsername);
-    const isTurnCredentialModified = $derived(turnCredential !== savedTurnCredential);
-    const isModified = $derived(
-        isTurnServersModified || isTurnUsernameModified || isTurnCredentialModified
-    );
+    function turnSettings(settings: P2PSyncSetting) {
+        return {
+            P2P_roomID: settings.P2P_roomID,
+            P2P_turnServers: settings.P2P_turnServers,
+            P2P_turnUsername: settings.P2P_turnUsername,
+            P2P_turnCredential: settings.P2P_turnCredential,
+            P2P_managedType: settings.P2P_managedType,
+            P2P_managedId: settings.P2P_managedId,
+            P2P_managedToken: settings.P2P_managedToken,
+        };
+    }
+    let draft = $state(turnSettings(currentSettings()));
+    let saved = $state(JSON.stringify(turnSettings(currentSettings())));
+    const isModified = $derived(JSON.stringify(draft) !== saved);
+    const sourceError = $derived(validateManagedTurnSettings(draft));
+    const sourceNeedsRoom = $derived(!!draft.P2P_managedType && (draft.P2P_roomID ?? "").trim() === "");
 
     function loadSettings(settings: P2PSyncSetting): void {
-        savedTurnServers = settings.P2P_turnServers;
-        savedTurnUsername = settings.P2P_turnUsername;
-        savedTurnCredential = settings.P2P_turnCredential;
-        turnServers = savedTurnServers;
-        turnUsername = savedTurnUsername;
-        turnCredential = savedTurnCredential;
+        const next = turnSettings(settings);
+        draft = next;
+        saved = JSON.stringify(next);
     }
-
-    onMount(() =>
-        host.services.context.events.onEvent("setting-saved", (settings) => {
-            loadSettings(settings as P2PSyncSetting);
-        })
-    );
+    onMount(() => host.services.context.events.onEvent("setting-saved", () => loadSettings(currentSettings())));
 
     async function save(): Promise<void> {
-        await host.services.setting.applyPartial(
-            {
-                P2P_turnServers: turnServers,
-                P2P_turnUsername: turnUsername,
-                P2P_turnCredential: turnCredential,
-            },
-            true
-        );
+        if (sourceError || sourceNeedsRoom) return;
+        const values = $state.snapshot(draft);
+        await host.services.setting.updateSettings((settings) => {
+            const next = { ...settings, ...values, remoteConfigurations: { ...settings.remoteConfigurations } };
+            const profileId = settings.P2P_ActiveRemoteConfigurationId ||
+                (settings.remoteType === REMOTE_P2P ? settings.activeConfigurationId : "");
+            const selected = next.remoteConfigurations[profileId];
+            if (selected?.uri.startsWith("sls+p2p://")) {
+                upsertRemoteConfigurationInPlace(next, "p2p", { id: profileId, activateForP2P: true });
+            } else if (values.P2P_managedType) {
+                upsertRemoteConfigurationInPlace(next, "p2p", { activateForP2P: true });
+            }
+            return next;
+        }, true);
         loadSettings(currentSettings());
-    }
-
-    function revert(): void {
-        turnServers = savedTurnServers;
-        turnUsername = savedTurnUsername;
-        turnCredential = savedTurnCredential;
     }
 </script>
 
 <section class="browser-p2p-transport-settings">
     <details>
         <summary>Optional TURN server settings</summary>
-        <p>
-            Configure TURN only when a direct peer-to-peer connection cannot be established.
-        </p>
-        <label class:is-dirty={isTurnServersModified}>
-            <span>TURN Server URLs (comma-separated)</span>
-            <input
-                type="text"
-                placeholder="turn:turn.example.com:3478"
-                bind:value={turnServers}
-                autocomplete="off"
-                spellcheck="false"
-                autocorrect="off"
-            />
-        </label>
-        <label class:is-dirty={isTurnUsernameModified}>
-            <span>TURN Username</span>
-            <input
-                type="text"
-                placeholder="Enter TURN username"
-                bind:value={turnUsername}
-                autocomplete="off"
-            />
-        </label>
-        <label class:is-dirty={isTurnCredentialModified}>
-            <span>TURN Credential</span>
-            <input
-                type="password"
-                placeholder="Enter TURN credential"
-                bind:value={turnCredential}
-                autocomplete="new-password"
-            />
-        </label>
+        <p>Configure TURN only when a direct peer-to-peer connection cannot be established.</p>
+        <TurnConfiguration bind:settings={draft} />
         <div class="actions">
-            <button type="button" class="button mod-cta" disabled={!isModified} onclick={save}>
+            <button type="button" class="button mod-cta" disabled={!isModified || !!sourceError || sourceNeedsRoom} onclick={save}>
                 Save TURN settings
             </button>
-            <button type="button" class="button" disabled={!isModified} onclick={revert}>
+            <button type="button" class="button" disabled={!isModified} onclick={() => loadSettings(currentSettings())}>
                 Revert TURN settings
             </button>
         </div>
@@ -107,27 +69,7 @@
 </section>
 
 <style>
-    .browser-p2p-transport-settings {
-        margin-bottom: 1rem;
-    }
-    p {
-        margin: 0.75rem 0;
-    }
-    label {
-        display: grid;
-        gap: 0.25rem;
-        margin: 0.75rem 0;
-    }
-    label.is-dirty {
-        background-color: var(--background-modifier-error);
-    }
-    input {
-        box-sizing: border-box;
-        width: 100%;
-    }
-    .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
+    .browser-p2p-transport-settings { margin-bottom: 1rem; }
+    p { margin: 0.75rem 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 </style>

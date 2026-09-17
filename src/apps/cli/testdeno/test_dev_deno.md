@@ -99,11 +99,12 @@ This file corresponds to settings helpers in `test-helpers.sh`.
 
 ### `helpers/docker.ts`
 
-- Starts, stops, and initialises CouchDB directly from Deno.
+- Starts, stops, and initialises CouchDB and RustFS directly from Deno.
 - Configures CouchDB via `fetch + retry`.
+- Initialises S3 buckets using the RustFS `rc` client, including CORS for signed browser requests.
 - Starts and stops the P2P relay through the same Docker runner.
 
-Both CouchDB and P2P relay flows are bash-independent.
+These flows do not require Bash on the host. The S3 matrix tasks, environment variables, and container name retain their existing `minio` names for compatibility; RustFS provides the test backend. The RustFS server and `rc` client images are pinned by version and digest.
 
 ### `helpers/backgroundCli.ts`
 
@@ -328,7 +329,7 @@ The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` runs automati
 
 ## Current limitations
 
-- MinIO startup and matrix coverage are ported. Current limits are elsewhere, not setup URI generation.
+- S3 startup and matrix coverage use RustFS. Current limits are elsewhere, not setup URI generation.
 
 ---
 

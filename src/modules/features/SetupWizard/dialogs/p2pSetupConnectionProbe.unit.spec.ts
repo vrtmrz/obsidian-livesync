@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ACTIVE_P2P_RELAY_BINDING_CONFLICT, type P2PConnectionProbeAdmission } from "@vrtmrz/livesync-commonlib/p2p";
+import { DEFAULT_SETTINGS, P2PConnectionPaths } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     coordinateP2PSetupConnectionProbe,
     probeP2PSetupConnection,
@@ -7,6 +8,40 @@ import {
 } from "./p2pSetupConnectionProbe";
 
 describe("P2P setup connection probe", () => {
+    it("constructs a signalling-only trial when the draft selects managed TURN", async () => {
+        const settings = {
+            ...DEFAULT_SETTINGS,
+            P2P_managedType: "CF",
+            P2P_managedId: "test-key",
+            P2P_managedToken: "test-token",
+            P2P_iceServers: [
+                { urls: "turn:temporary.example.test", username: "issued-user", credential: "issued-password" },
+            ],
+            P2P_iceServersExpiresAt: 123456789,
+            P2P_turnServers: "turn:unused.example.test:3478",
+            P2P_turnUsername: "unused-user",
+            P2P_turnCredential: "unused-password",
+            P2P_connectionPath: P2PConnectionPaths.Relay,
+        };
+        const admission: P2PConnectionProbeAdmission = {
+            run: async (_settings, trial) => ({ status: "trial", result: await trial() }),
+        };
+        const result = await coordinateP2PSetupConnectionProbe(admission, settings, async (trial = settings) => {
+            expect(trial.P2P_managedType).toBeUndefined();
+            expect(trial.P2P_managedToken).toBeUndefined();
+            expect(trial.P2P_iceServers).toBeUndefined();
+            expect(trial.P2P_iceServersExpiresAt).toBeUndefined();
+            expect(trial.P2P_turnServers).toBe("");
+            expect(trial.P2P_turnUsername).toBe("");
+            expect(trial.P2P_turnCredential).toBe("");
+            expect(trial.P2P_connectionPath).toBe(P2PConnectionPaths.Automatic);
+            return { ok: true };
+        });
+        expect(result).toEqual({ ok: true });
+        expect(settings.P2P_managedToken).toBe("test-token");
+        expect(settings.P2P_connectionPath).toBe(P2PConnectionPaths.Relay);
+    });
+
     it("uses a compatible active signalling connection without constructing a trial", async () => {
         const runOwnedTrial = vi.fn(async (): Promise<P2PSetupConnectionProbeResult> => ({ ok: true }));
         const admission: P2PConnectionProbeAdmission = {

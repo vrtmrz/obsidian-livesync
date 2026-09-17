@@ -52,6 +52,37 @@ Deno.test({
             assertEquals(await page.getByPlaceholder("Enter TURN username").inputValue(), "browser-turn-user");
             assertEquals(await page.getByPlaceholder("Enter TURN credential").inputValue(), "browser-turn-credential");
             assertEquals(await page.getByRole("button", { name: "Connect", exact: true }).isVisible(), true);
+
+            await page.getByLabel("TURN configuration", { exact: true }).selectOption("CF");
+            assertEquals(await saveTurn.isDisabled(), true);
+            await page.getByLabel("TURN Key ID", { exact: true }).fill("browser-turn-key");
+            const tokenField = page.getByLabel("TURN Key API Token", { exact: true });
+            assertEquals(await tokenField.getAttribute("type"), "password");
+            await tokenField.fill("browser-api-token");
+            await saveTurn.click();
+            await waitFor(async () => await saveTurn.isDisabled(), "WebPeer did not save its managed TURN profile");
+            assertEquals(await page.getByPlaceholder("anything-you-like").inputValue(), "browser-e2e-room");
+            await page.reload();
+            await page.getByRole("heading", { name: "Peer to Peer Replicator", exact: true }).waitFor();
+            assertEquals(await page.getByPlaceholder("anything-you-like").inputValue(), "browser-e2e-room");
+            await page.getByText("Optional TURN server settings", { exact: true }).click();
+            assertEquals(await page.getByLabel("TURN configuration", { exact: true }).inputValue(), "CF");
+            assertEquals(await page.getByLabel("TURN Key ID", { exact: true }).inputValue(), "browser-turn-key");
+            assertEquals(
+                await page.getByLabel("TURN Key API Token", { exact: true }).inputValue(),
+                "browser-api-token"
+            );
+            await page.getByPlaceholder("iphone-16").fill("browser-e2e-peer-renamed");
+            await save.click();
+            await waitFor(async () => await save.isDisabled(), "WebPeer did not save its updated device name");
+            assertEquals(await page.getByLabel("TURN configuration", { exact: true }).inputValue(), "CF");
+            assertEquals(
+                await page.getByLabel("TURN Key API Token", { exact: true }).inputValue(),
+                "browser-api-token"
+            );
+            await page.getByLabel("TURN configuration", { exact: true }).selectOption("");
+            assertEquals(await page.getByPlaceholder("Enter TURN username").inputValue(), "browser-turn-user");
+            assertEquals(await page.getByPlaceholder("Enter TURN credential").inputValue(), "browser-turn-credential");
             assertNoPageFailures();
         } finally {
             await browser.close();
