@@ -4,6 +4,7 @@ import {
     type CloudflareTurnConfiguration,
     validateCloudflareTurnConfiguration,
 } from "./settings";
+import { compatGlobal, type CompatTimeoutHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 /** Fetch-compatible function supplied by the host composition. */
 export type CloudflareTurnFetch = (input: string | Request, init?: RequestInit) => Promise<Response>;
@@ -283,9 +284,9 @@ export async function acquireCloudflareTurnCredentials(
         requestController.abort();
         throw abortError();
     }
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let timeoutId: CompatTimeoutHandle | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
-        timeoutId = globalThis.setTimeout(() => {
+        timeoutId = compatGlobal.setTimeout(() => {
             timedOut = true;
             requestController.abort();
             reject(credentialFailure("unavailable", true));
@@ -293,7 +294,7 @@ export async function acquireCloudflareTurnCredentials(
     });
 
     const cleanup = () => {
-        if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
+        if (timeoutId !== undefined) compatGlobal.clearTimeout(timeoutId);
         signal.removeEventListener("abort", onAbort);
     };
 
