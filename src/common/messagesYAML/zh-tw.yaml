@@ -139,8 +139,6 @@ username: 使用者名稱
 "↑: Overwrite Remote": ↑：覆寫遠端
 "↓: Overwrite Local": ↓：覆寫本機
 "⇅: Use newer": ⇅：使用較新版本
-AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.: 附加模組（ConfigSync）尚未載入。這是非常異常的情況，請回報此問題。
-AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.: 附加模組（HiddenFileSync）尚未載入。這是非常異常的情況，請回報此問題。
 All the same or non-existent: 全部相同或不存在
 Apply All Selected: 套用所有已選取項目
 Automatic: 自動

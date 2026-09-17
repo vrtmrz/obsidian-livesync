@@ -67,8 +67,6 @@ export function paneCustomisationSync(
                     .setButtonText("Open")
                     .setDisabled(false)
                     .onClick(() => {
-                        // this.plugin.getAddOn<ConfigSync>(ConfigSync.name)?.showPluginSyncModal();
-                        // this.plugin.addOnConfigSync.showPluginSyncModal();
                         eventHub.emitEvent(EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG);
                     });
             })

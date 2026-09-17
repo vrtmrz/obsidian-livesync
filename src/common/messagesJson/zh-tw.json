@@ -46,8 +46,6 @@
     "Active Remote Configuration": "目前啟用的遠端設定",
     "Add default patterns": "新增預設模式",
     "Add new connection": "新增連線",
-    "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.": "附加模組（ConfigSync）尚未載入。這是非常異常的情況，請回報此問題。",
-    "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.": "附加模組（HiddenFileSync）尚未載入。這是非常異常的情況，請回報此問題。",
     "Advanced": "進階",
     "Advanced Settings": "進階設定",
     "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.": "重新啟動後，此裝置上的資料將以「主要複本」的形式上傳到伺服器。請注意，伺服器上任何非預期的現有資料都會被完全覆寫。",
