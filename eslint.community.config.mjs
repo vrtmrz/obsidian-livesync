@@ -52,7 +52,7 @@ export default defineConfig(
             "obsidianmd/rule-custom-message": "off",
             "no-console": "warn",
             "obsidianmd/no-unsupported-api": "error",
-            // Reject direct globalThis access even when routine checks use --quiet.
+            // Treat direct globalThis access as an error so the CI gate rejects it.
             "obsidianmd/no-global-this": "error",
             // Keep legacy type-safety debt visible while reserving errors for directory-review blockers.
             "@typescript-eslint/no-unsafe-argument": "warn",

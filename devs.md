@@ -29,18 +29,7 @@ npm run build
 
 #### Community Review dependency installation
 
-Community Review installs dependencies independently before applying type-aware source rules. A successful installation with the npm version bundled with the repository's current Node.js CI does not prove that the lockfile is accepted by the scanner's npm version.
-
-After changing `package.json`, a workspace manifest, or `package-lock.json`, verify both installation paths:
-
-```bash
-npm ci --ignore-scripts
-npx --yes npm@10.9.2 ci --ignore-scripts
-```
-
-The npm 10.9.2 command is the current project-side compatibility check for the Community Review installation path. Update this check when the scanner runtime changes.
-
-If Community Review reports widespread TypeScript `error` types across unrelated external packages, confirm that dependency installation completed successfully before changing source imports, declarations, or lint rules. An installation failure can make every unresolved external type appear as downstream unsafe-type findings.
+After changing a dependency manifest or lockfile, follow the [npm 10 clean-installation check](test/README.md#npm-10-clean-installation-check) before the normal source and unit checks. The test guide records the command used by CI and the distinction between installation failures and source diagnostics.
 
 ### Commands
 
@@ -76,6 +65,8 @@ To facilitate development and testing, the build process can automatically copy 
 - Development builds auto-copy to these paths on build whilst `npm run dev` is running (watch mode)
 
 ### Testing Infrastructure
+
+See the [test procedures](test/README.md) for clean-installation checks, local validation commands, and links to each runtime suite.
 
 - **Vitest**:
     - **Unit Tests** (`vitest.config.unit.ts`): Unit tests run in Node.js (excluding harnesses and integration tests). Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`). Executed via `npm run test:unit`.
@@ -209,24 +200,7 @@ Ordinary file saves and incoming reflection use that provenance even before a co
 
 This policy is intentionally aligned with the conflict checkboxes and compatibility settings: automatic merge should remove avoidable prompts, but it must not silently choose between overlapping user intentions.
 
-### Multiple-device conflict regression tests
-
-`src/serviceModules/FileHandler.multidevice.integration.spec.ts` tests the installed Commonlib package through LiveSync's shared file handler, the CLI `resolve` command dispatcher, and the shared conflict-resolution operations. Run it against the isolated CouchDB test service configured by `hostname`, `username`, and `password` in `.test.env`:
-
-```bash
-npm run test:integration -- src/serviceModules/FileHandler.multidevice.integration.spec.ts --maxWorkers=1
-```
-
-Each simulated device owns a separate real PouchDB database, `LiveSyncLocalDB` managers, file content, and provenance record. Devices first share one revision, edit while disconnected, and then replicate their Metadata and Chunks through real CouchDB. File reflection is deliberately delayed after replication to reproduce the interval in which the database has advanced but the file still contains older content. All edits use equal modification times, so the tests require revision and content checks rather than timestamp ordering.
-
-The five cases cover:
-
-- Three and four editing devices: every branch and its content reaches every device. Reprocessing unchanged files while conflicts exist makes no database writes. The CLI selects a non-winning revision, removes the other branches, and reflects the selected content. After resolution replicates, unchanged files from losing branches reflect the selected content without creating revisions or restoring conflicts.
-- A genuine edit on a losing device after three-way resolution: the new revision extends that device's recorded branch, and both the selected result and the new edit remain readable on every replica.
-- Four devices with missing provenance: a file matching the original historical ancestor becomes a fresh independent conflict, preserving both contents. Historical equality does not justify discarding it.
-- Four devices with a compacted, unreadable recorded base: the remaining file is preserved as an independent conflict. In both uncertain-base cases, repeated processing after provenance loss creates no duplicates, and the CLI can select the independent root and propagate its resolution.
-
-This is a service integration test, not a CLI subprocess or Obsidian runtime test. The file and provenance stores are in-memory fixtures; automatic conflict callbacks are observed without running interactive or automatic merge policies. PouchDB revision creation, chunk storage and retrieval, compaction, CouchDB replication, the CLI command dispatcher, and its resolution operations are real. CLI argument parsing, persistent host stores, file watchers, mobile suspension, and Obsidian dialogues remain covered separately or require their own runtime checks.
+The [multiple-device conflict test procedure](test/README.md#multiple-device-conflict-regression-tests) documents the five CouchDB-backed cases, execution steps, expected results, and coverage boundaries.
 
 ### File Structure Conventions
 
