@@ -75,10 +75,16 @@ After changing plug-in source, use the focused wrapper rather than invoking a sc
 ```bash
 npm run test:e2e:obsidian:focused -- settings-ui
 npm run test:e2e:obsidian:focused -- two-vault-sync
+npm run test:e2e:obsidian:focused -- stale-file-restart
+npm run test:e2e:obsidian:focused -- folder-batch
 npm run test:e2e:obsidian:focused -- security-seed-reconnect
 ```
 
 The wrapper accepts only maintained real-Obsidian scenario names; run it with `--help` for the current list. It deliberately does not manage CouchDB, Object Storage, or the P2P signalling relay. Start the required fixture first, or use the complete service-managed suite.
+
+`folder-batch` needs no remote service. It creates 24 notes in nested folders, renames and deletes the parent through the Obsidian Vault API, and checks descendant events, content, Chunks, deletion markers, and provenance. A note outside the parent must remain writable.
+
+`stale-file-restart` needs no remote service. It advances the local database while old Vault bytes remain, persists pending storage events, and restarts the same isolated Vault and profile. It checks that an unchanged file with exact provenance receives the newer database content without creating a revision, that unknown-origin content is preserved on a fresh independent branch, and that losing provenance and processing the file again does not duplicate or automatically merge that branch. The database advance and pending snapshot are controlled fixtures; startup processing, persistence, file reflection, and conflict checking run in real Obsidian. The scenario does not simulate a mobile operating system suspending the application.
 
 The principal entry points are:
 

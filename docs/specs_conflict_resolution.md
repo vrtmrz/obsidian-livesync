@@ -28,24 +28,27 @@ The modifiers defined under [Revision](glossary.md#revision) describe independen
 | The Vault displays conflict leaf `C`                 | `W`                | `C`                                                 | `C`                                                  |
 | The database advances before Vault reflection        | new winner `W2`    | previous revision `R`, while the Vault is unchanged | `R`                                                  |
 | A local edit of displayed revision `R` is pending    | independent        | none, or a coincidental content match               | `R`, as the branch which the edit must extend        |
-| Provenance is missing and exactly one revision fits  | independent        | `M`                                                 | none, then `M` after safe reconstruction             |
+| Provenance is missing and exactly one current non-deleted leaf fits | independent | `M` | none, then `M` after safe reconstruction |
 | Provenance is missing and several revisions fit      | independent        | every matching revision                             | none                                                 |
 | A logical-deletion winner agrees with an absent file | deleted winner `D` | `D`, and possibly other logical-deletion revisions  | none; an absent file retains no displayed provenance |
 
 At most one revision is the winner, more than one revision can be Vault-matching, and at most one revision can be displayed for a path on one device. A displayed revision may stop matching the Vault while a local edit is pending, but its branch identity remains authoritative until that edit is stored or the relationship is safely reconstructed.
 
-## Implemented 1.0 guarantees
+## File saving and reflection guarantees
 
 - Automatic text and structured-data merge uses the nearest `available` revision ID which is present in both leaf histories.
 - Missing or compacted history stops conservative automatic merge instead of guessing a base.
-- A receiving Vault file which exactly matches any available revision in the document tree is treated as previously synchronised content. This includes an ancestor below a deleted losing leaf.
-- A receiving Vault file whose bytes do not match any available revision is preserved as an unsynchronised local change.
+- A Vault file which still matches its exact recorded revision is unchanged. An ordinary save does not append those stale bytes to a newer database revision; a newer, unconflicted database result is reflected through the existing file-reflection path.
+- A file which differs from its readable recorded revision is an edit of that revision, even if its bytes match another historical revision. Saving and incoming overwrite protection use the same rule.
+- Without a readable recorded revision, current non-deleted leaves are checked for duplicate content. If none matches, the file is preserved as a fresh independent root under the same document ID. Its unknown ancestry cannot supply a three-way merge base.
 - File bytes, rather than path, size, modification time, or revision generation, determine whether content is known.
 - Three or more current versions are reviewed one pair at a time in a deterministic order, with each completed pair committed before the next pair is read.
-- Each device records the exact revision most recently reflected in each Vault file. An edit, deletion, or case-only rename made while a conflict is active extends that displayed branch rather than the deterministic database winner.
+- Each device records the exact revision most recently reflected in each Vault file. An ordinary edit extends that displayed branch even before a conflict exists. Conflict-time deletion and case-only rename retain their separate displayed-branch contracts.
 - A cross-path rename stores the target before logically deleting only the displayed source branch.
 
-The all-branch history check prevents a resolved conflict from being recreated merely because the receiving Vault still contains the known losing version. If the user has edited that version again, its bytes differ and the overwrite guard preserves it.
+The recorded revision can belong to a deleted losing branch. If its readable body still matches the Vault, the propagated resolution can be reflected without recreating the conflict. A historical byte match without that record does not establish that the file is unchanged: it may be an intentional revert. Existing Vaults can lack records, so an upgrade, reset, or unavailable old body can expose additional conflicts requiring review.
+
+The explicit **Always overwrite with a newer file** option retains its existing modification-time policy. An independent branch prevents an inferred three-way merge; it does not disable the user's selected conflict-resolution option. Metadata and Chunks retain their existing format, and matching chunks can be shared between branches.
 
 ## Resolution patterns
 
@@ -55,8 +58,10 @@ The all-branch history check prevents a resolved conflict from being recreated m
 | Text or structured data has an available shared base and non-overlapping changes | Perform a conservative three-way merge.                           |
 | One side deletes content which the other leaves unchanged                        | Preserve the deletion.                                            |
 | One side deletes content which the other modifies                                | Ask the user.                                                     |
-| A receiving file matches a revision available anywhere in the tree               | Apply the propagated database result.                             |
-| A receiving file matches no available revision                                   | Preserve it and ask the user.                                     |
+| A receiving file matches its exact readable recorded revision                    | Apply the propagated database result under the existing conflict policy. |
+| A receiving file differs from its readable recorded revision                     | Preserve the edit as a child of that exact revision.               |
+| Provenance is unknown and no current non-deleted leaf matches the file            | Preserve a fresh independent branch for conflict resolution.       |
+| Provenance is unknown and current non-deleted leaves already hold the file bytes  | Avoid duplicate storage; infer provenance only for a unique match. |
 | A required body or shared ancestor is missing or compacted                       | Ask the user.                                                     |
 | Binary contents differ                                                           | Prefer an explicit user selection; semantic merge is unavailable. |
 
@@ -138,13 +143,17 @@ LiveSync composes Commonlib's injected `FileReflectionProvenance` with its local
 path -> { revision, observedStorageMtime? }
 ```
 
-`revision` identifies the exact database revision which most recently produced the displayed Vault file. `observedStorageMtime` is the raw local modification time observed after reflection. It is not rounded, combined with another device's value, or used as proof of branch identity. No content hash is persisted.
+`revision` identifies the exact database revision most recently saved from or reflected in this device's Vault. It is the base for subsequent local edits, rather than a certificate that the current file still contains those bytes. `observedStorageMtime` is the raw local modification time of the saved snapshot or the file observed after reflection. It is not rounded, combined with another device's value, or used as proof of branch identity. No content hash is persisted.
 
 The record changes only after a successful database-to-Vault reflection or Vault-to-database write. Reading a file does not change it. The recorded revision remains authoritative even if the user edits the file to bytes which equal another branch; otherwise content equality could silently move the edit to a branch which was not displayed.
 
+Saving and reflection for the same Metadata document run one at a time, including the final provenance update. An ordinary save holds one captured file body and its base until the database write completes. An edit made while that save is running belongs to the next operation; the save does not reread the file to prove that it remained unchanged. Different files retain their existing concurrency limits, and the handler acquires the lock before loading a file body from storage. Conflict checking runs after the lock is released so that an immediate resolution can safely call the file handler again. The host queues count document-lock waiters against their concurrency limits, so a burst for one document can temporarily delay unrelated files.
+
+The common lock does not stop Obsidian edits, external filesystem writes, or replication into the database. Incoming overwrite and deletion protection still checks current storage. Pending events restored at startup retain bounded rechecks because they run before file watching begins and cannot rely on another change notification.
+
 LiveSync creates the namespaced store handle during service composition, before the key-value database is open. The sequential `onSettingLoaded` lifecycle opens that database before Vault scanning, watching, or replication starts. Store operations do not wait for implicit readiness: a lifecycle violation fails promptly, avoiding an indefinite or self-referential initialisation wait. Local database reset is a transient unavailable boundary, after which scanning reconstructs derived state.
 
-When no record exists, LiveSync may reconstruct the displayed revision only if the current Vault bytes match exactly one available revision body. No match, or identical content in multiple revisions, cannot prove branch identity.
+For ordinary saves and incoming reflection, a missing or unreadable recorded base permits reconstruction only from exactly one matching current non-deleted leaf. Matching several current leaves avoids duplicate storage but does not identify a displayed branch. No current match creates an independent branch, even when an older ancestor has the same bytes. Deletion and rename retain their existing provenance-recovery contracts.
 
 ## Operations while a conflict exists
 
@@ -231,7 +240,7 @@ If the user renames `draft.md` to `published.md`, LiveSync stores `published.md`
 
 ### A remote resolution reaches a device which still shows the losing content
 
-Android may resolve a conflict and continue editing while Mac still shows the losing revision. When Mac receives the resolved tree, LiveSync searches every available branch and recognises Mac's unchanged bytes as content which was already synchronised below the deleted losing leaf. It can apply Android's resolution without asking Mac to resolve the same unchanged conflict again.
+Android may resolve a conflict and continue editing while Mac still shows the losing revision. When Mac receives the resolved tree, LiveSync compares Mac's bytes with the exact revision recorded for its Vault. If that body remains readable and matches, it can apply Android's resolution without asking Mac to resolve the same unchanged conflict again.
 
 If the user edited the file on Mac before the resolution arrived, the bytes no longer match that historical revision. LiveSync preserves the Mac edit as an unsynchronised conflict instead of overwriting it.
 
@@ -243,15 +252,15 @@ The first decision has already changed the ordinary revision tree. On restart, L
 
 ### The device-local record is missing
 
-A local-database reset removes revision provenance. On the next scan, if the Vault file matches exactly one available revision, LiveSync can reconstruct which branch was displayed and continue from it. If the bytes match multiple revisions, or no available revision, the branch remains unproved.
+A local-database reset removes revision provenance. When an ordinary save or incoming reflection examines the file, exactly one matching current non-deleted leaf can reconstruct the record. Multiple current matches prevent duplicate storage but leave branch identity unproved. A match only in past history is insufficient; differing current content is preserved as an independent branch. An unchanged-time scan alone does not guarantee that a record is created.
 
-In that unproved state, an edit is retained as another manual-resolution branch. A deletion leaves all existing branches intact. A cross-path rename stores the target but leaves every source branch for review. The result can require an extra decision, but it does not discard data by guessing the winner.
+If no current non-deleted leaf contains the file bytes, an ordinary save retains them as another independent branch. An unproven deletion leaves all existing branches intact. A cross-path rename stores the target but leaves every unproven source branch for review. The result can require an extra decision, but it does not discard data by guessing the winner.
 
 ### Start-up or reset overlaps a provenance operation
 
 LiveSync creates the provenance handle during composition, then opens its backing store during the sequential settings lifecycle before starting scans, watchers, or replication. If the store cannot open, start-up stops rather than leaving file processing waiting indefinitely.
 
-During reset, the store can be temporarily unavailable. A racing provenance lookup fails promptly and follows the same conservative missing-record behaviour. After reopen, scanning can reconstruct a record when one exact revision body matches the Vault file.
+During reset, the store can be temporarily unavailable. A racing provenance lookup fails promptly and follows the same conservative missing-record behaviour. After reopen, ordinary saving or reflection can reconstruct a record from a unique matching current non-deleted leaf.
 
 ## Unsafe shortcuts
 
@@ -260,6 +269,7 @@ Do not:
 - infer a common ancestor from generation numbers alone;
 - assume that the PouchDB winner is the version currently displayed in the Vault;
 - replace recorded displayed provenance merely because current bytes match another branch;
+- classify a file as unchanged solely because it matches an ancestor somewhere in history;
 - discard local content when revision-history lookup fails;
 - infer revision identity from path, size, modification time, or content hash without a revision ID;
 - select the newest modification time unless the user has explicitly chosen that destructive policy; or
@@ -267,7 +277,9 @@ Do not:
 
 ## Verification
 
-Commonlib's real-PouchDB and injected-boundary unit tests cover unequal branch lengths, exact shared ancestry, deterministic ordering of multiple current leaves, a sensible stage followed by reconstruction of a manual pair, content below a deleted losing leaf, recorded and reconstructed branch identity, ambiguous matches, conflict-time editing, missing-body preservation when parent metadata is available, refusal to invent a parent for a generation-one revision, logical deletion, case-only rename, cross-path rename, and safe unproven fallbacks.
+LiveSync also exercises three and four independently editing devices through real CouchDB, using the installed Commonlib package and the CLI conflict-resolution command dispatcher. These tests check unchanged losing files before and after resolution, genuine edits on a losing branch, missing provenance, compacted bases, independent-root deduplication, and propagation of the selected result. See the [multiple-device regression procedure and coverage boundaries](../test/README.md#multiple-device-conflict-regression-tests).
+
+Commonlib owns the real-PouchDB and injected-boundary tests for revision ancestry, content preservation, provenance, independent branches, and repeated file events. LiveSync owns persistent host composition and actual Obsidian restart coverage. The focused `test:e2e:obsidian:stale-file-restart` scenario advances the local DB while old Vault bytes remain, persists pending file events, and restarts the same isolated profile. It requires an unchanged recorded file to reflect the DB without a new revision, an unknown file to remain on an independent branch alongside the DB content, and repeated processing after provenance loss to leave those branches unchanged. It uses real local storage and startup processing; transport replication and mobile lifecycle coverage are separate.
 
 LiveSync's optional real-Obsidian two-Vault checks have two scopes. `E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT=true` resolves and edits a Markdown conflict, propagates it to a Vault which still displays the deleted losing content, and requires one current result to remain. `E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS=true` edits, deletes, case-renames, and cross-path-renames files while conflicts remain active; it verifies the parent revision of each resulting branch, replicates those exact trees, and confirms that the other conflict branches remain intact.
 

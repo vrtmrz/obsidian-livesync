@@ -52,6 +52,8 @@ export default defineConfig(
             "obsidianmd/rule-custom-message": "off",
             "no-console": "warn",
             "obsidianmd/no-unsupported-api": "error",
+            // Treat direct globalThis access as an error so the CI gate rejects it.
+            "obsidianmd/no-global-this": "error",
             // Keep legacy type-safety debt visible while reserving errors for directory-review blockers.
             "@typescript-eslint/no-unsafe-argument": "warn",
             "@typescript-eslint/no-unsafe-assignment": "warn",
@@ -61,13 +63,6 @@ export default defineConfig(
             "@typescript-eslint/no-base-to-string": "warn",
             "@typescript-eslint/no-redundant-type-constituents": "warn",
             "@typescript-eslint/no-unnecessary-type-assertion": "warn",
-        },
-    },
-    {
-        files: ["src/integrations/**/*.ts"],
-        rules: {
-            // External-service integrations also run in Node and do not own window UI.
-            "obsidianmd/no-global-this": "off",
         },
     },
     {

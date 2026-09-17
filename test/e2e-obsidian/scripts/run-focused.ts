@@ -25,6 +25,8 @@ const focusedScenarios = new Set([
     "p2p-setup-uri-workflow",
     "partial-startup-file-failure",
     "startup-scan",
+    "stale-file-restart",
+    "folder-batch",
     "setup-uri-workflow",
     "two-vault-sync",
     "security-seed-reconnect",

@@ -997,14 +997,26 @@ async function runMarkdownAutoMerge(
 
     session = await startConfiguredSession(context, vaultA, conflictOverrides);
     const baseOnA = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, conflictPath);
-    await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, left, baseOnA.rev);
-    await writeVaultFile(vaultA.path, conflictPath, left);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, conflictPath, left);
+    const storedLeft = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictPath,
+        (branch) => branch.content === left
+    );
+    assertEqual(storedLeft.parentRev, baseOnA.rev, "Vault A's edit did not extend its displayed base.");
     await pushLocalChanges(context.cliBinary, session.cliEnv);
     await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB, conflictOverrides);
-    await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, right, baseOnB.rev);
-    await writeVaultFile(vaultB.path, conflictPath, right);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, conflictPath, right);
+    const storedRight = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictPath,
+        (branch) => branch.content === right
+    );
+    assertEqual(storedRight.parentRev, baseOnB.rev, "Vault B's edit did not extend its displayed base.");
     await pushLocalChanges(context.cliBinary, session.cliEnv);
     const conflict = await waitForFileConflict(context.cliBinary, session.cliEnv, conflictPath);
     const leftBranch = conflict.branches.find((branch) => branch.content === left);
@@ -1028,8 +1040,18 @@ async function runMarkdownAutoMerge(
     );
 
     const afterResolution = `${merged.trimEnd()}\n\nPost-resolution edit on B.\n`;
-    await storeFileRevision(context.cliBinary, session.cliEnv, conflictPath, afterResolution, mergedRev);
-    await writeVaultFile(vaultB.path, conflictPath, afterResolution);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, conflictPath, afterResolution);
+    const storedAfterResolution = await waitForConflictBranch(
+        context.cliBinary,
+        session.cliEnv,
+        conflictPath,
+        (branch) => branch.content === afterResolution
+    );
+    assertEqual(
+        storedAfterResolution.parentRev,
+        mergedRev,
+        "The post-resolution edit did not extend the merged revision."
+    );
     await pushLocalChanges(context.cliBinary, session.cliEnv);
     await stopTrackedSession(context, session);
 

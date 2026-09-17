@@ -83,6 +83,40 @@ function setup(options: SetupOptions = {}) {
 }
 
 describe("ReplicateResultProcessor", () => {
+    it("resumes another document after in-flight updates to one document fill the application slots", async () => {
+        const hotGate = promiseWithResolvers<boolean>();
+        const { processor, processSynchroniseResult } = setup({
+            processSynchroniseResult: async (entry) => {
+                if ((entry as { _id: string })._id === "hot-queue") return await hotGate.promise;
+                return true;
+            },
+        });
+        try {
+            for (let index = 1; index <= 10; index++) {
+                // A queued duplicate is coalesced; a new notification for a document
+                // already being processed can occupy another application slot.
+                processor.enqueueAll([note("hot-queue")]);
+                await vi.waitFor(() => expect(processor["_processingChanges"]).toHaveLength(index));
+            }
+            processor.enqueueAll([note("unrelated-queue")]);
+            await vi.waitFor(() => {
+                expect(processor["_semaphore"].waiting).toBeGreaterThan(0);
+                expect(processSynchroniseResult).toHaveBeenCalledTimes(1);
+            });
+            expect(processor["_queuedChanges"].map((entry) => entry._id)).toEqual(["unrelated-queue"]);
+        } finally {
+            hotGate.resolve(true);
+            await vi.waitFor(() => {
+                expect(processor["_processingChanges"]).toHaveLength(0);
+                expect(processor["_queuedChanges"]).toHaveLength(0);
+            });
+        }
+        expect(processSynchroniseResult).toHaveBeenCalledTimes(11);
+        expect(processSynchroniseResult.mock.calls.some(([entry]) =>
+            (entry as { _id: string })._id === "unrelated-queue"
+        )).toBe(true);
+    });
+
     it("suspends result application while the application is not ready", () => {
         const { isReady, processor } = setup({ applicationReady: false });
 
