@@ -32,7 +32,8 @@
     export let core :LiveSyncBaseCore;
     // $: core = plugin.core;
 
-    $: hideNotApplicable = false;
+    // Comparing every copy is only worth it while the user asks to hide the unchanged ones.
+    $: hideNotApplicable = hideEven;
     $: thisTerm = core.services.setting.getDeviceAndVaultName();
 
     const addOn = core.getAddOn<ConfigSync>(ConfigSync.name)!;
