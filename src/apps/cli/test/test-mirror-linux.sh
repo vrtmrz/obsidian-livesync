@@ -7,6 +7,8 @@
 #   3. DB-deleted file     → NOT restored to storage  (UPDATE STORAGE skip)
 #   4. Both, storage newer → DB updated               (SYNC: STORAGE → DB)
 #   5. Both, DB newer      → storage updated          (SYNC: DB → STORAGE)
+#   6. Compatibility mode → omitted vault-path works
+#   7. Unknown local origin → conflict preserved, deduplicated, and resolved
 #
 # Not covered (require precise mtime control or artificial conflict injection):
 #   - Both, equal mtime → no-op  (EVEN)
@@ -43,7 +45,8 @@ cli_test_init_settings_file "$SETTINGS_FILE"
 # isConfigured=true is required for mirror (canProceedScan checks this)
 cli_test_mark_settings_configured "$SETTINGS_FILE"
 
-# Enable writeDocumentsIfConflicted to resolve unsynced conflicts during mirror
+# Allow incoming DB content to be reflected when conflicts exist (Case 5).
+# This does not resolve conflicts or authorise overwriting DB content.
 node -e '
 const fs = require("fs");
 const file = process.argv[1];
@@ -181,6 +184,11 @@ echo "=== Case 4: storage newer → DB updated (Separated Paths) ==="
 # Seed DB with old content (mtime ≈ now)
 printf 'old content\n' | run_cli "$DB_DIR" --settings "$DB_SETTINGS" put test/sync-storage-newer.md
 
+# Establish the file's recorded base before making an ordinary local edit.
+# A direct put followed by unrelated local content has unknown provenance.
+run_mirror_test
+cli_test_assert_equal "old content" "$(cat "$VAULT_DIR/test/sync-storage-newer.md")" "Case 4 base was not reflected"
+
 # Write new content to storage with a timestamp 1 hour in the future
 printf 'new content\n' > "$VAULT_DIR/test/sync-storage-newer.md"
 touch -t "$(portable_touch_timestamp '+1 hour')" "$VAULT_DIR/test/sync-storage-newer.md"
@@ -188,6 +196,8 @@ touch -t "$(portable_touch_timestamp '+1 hour')" "$VAULT_DIR/test/sync-storage-n
 run_mirror_test
 
 DB_RESULT_FILE="$WORK_DIR/case4-pull.txt"
+CASE4_INFO="$(run_cli "$DB_DIR" --settings "$DB_SETTINGS" info test/sync-storage-newer.md)"
+cli_test_assert_equal "N/A" "$(printf '%s' "$CASE4_INFO" | cli_test_json_string_field_from_stdin conflicts)" "Ordinary local edit unexpectedly created a conflict"
 run_cli "$DB_DIR" --settings "$DB_SETTINGS" pull test/sync-storage-newer.md "$DB_RESULT_FILE"
 if cmp -s "$VAULT_DIR/test/sync-storage-newer.md" "$DB_RESULT_FILE"; then
     assert_pass "DB updated to match newer storage file"
@@ -237,6 +247,55 @@ if [[ "$(cat "$CAT_RESULT")" == "compat-content" ]]; then
 else
     assert_fail "Compatibility mode failed to sync file into DB"
 fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Case 7: Unknown local origin must preserve both contents, regardless of mtime
+# ─────────────────────────────────────────────────────────────────────────────
+echo ""
+echo "=== Case 7: unknown local origin → preserve and resolve conflict ==="
+
+UNKNOWN_PATH="test/unknown-origin.md"
+printf 'original DB content\n' | run_cli "$DB_DIR" --settings "$DB_SETTINGS" put "$UNKNOWN_PATH"
+printf 'unrelated local content\n' > "$VAULT_DIR/$UNKNOWN_PATH"
+touch -t "$(portable_touch_timestamp '+1 hour')" "$VAULT_DIR/$UNKNOWN_PATH"
+run_mirror_test
+
+UNKNOWN_INFO="$(run_cli "$DB_DIR" --settings "$DB_SETTINGS" info "$UNKNOWN_PATH")"
+WINNER="$(printf '%s' "$UNKNOWN_INFO" | cli_test_json_string_field_from_stdin revision)"
+CONFLICT="$(printf '%s' "$UNKNOWN_INFO" | cli_test_json_string_field_from_stdin conflicts)"
+if [[ ! "$WINNER" =~ ^1-[[:xdigit:]]+$ || ! "$CONFLICT" =~ ^1-[[:xdigit:]]+$ || "$WINNER" == "$CONFLICT" ]]; then
+    echo "[FAIL] Expected two independent non-deleted root revisions: $UNKNOWN_INFO" >&2
+    exit 1
+fi
+
+# Do not assume which randomly identified root PouchDB selects as the winner.
+LOCAL_REV=""
+DB_REV=""
+for revision in "$WINNER" "$CONFLICT"; do
+    CONTENT="$(run_cli "$DB_DIR" --settings "$DB_SETTINGS" cat-rev "$UNKNOWN_PATH" "$revision" | cli_test_sanitise_cat_stdout)"
+    case "$CONTENT" in
+        'unrelated local content') LOCAL_REV="$revision" ;;
+        'original DB content') DB_REV="$revision" ;;
+        *) echo "[FAIL] Unexpected content for $revision: $CONTENT" >&2; exit 1 ;;
+    esac
+done
+[[ -n "$LOCAL_REV" && -n "$DB_REV" ]] || { echo "[FAIL] Both contents must remain readable" >&2; exit 1; }
+
+# Force another ordinary save of the same unknown bytes, even if incoming
+# reflection replaced the file under writeDocumentsIfConflicted.
+printf 'unrelated local content\n' > "$VAULT_DIR/$UNKNOWN_PATH"
+touch -t "$(portable_touch_timestamp '+1 hour')" "$VAULT_DIR/$UNKNOWN_PATH"
+run_mirror_test
+REPEATED_INFO="$(run_cli "$DB_DIR" --settings "$DB_SETTINGS" info "$UNKNOWN_PATH")"
+cli_test_assert_equal "$WINNER" "$(printf '%s' "$REPEATED_INFO" | cli_test_json_string_field_from_stdin revision)" "Repeated mirror changed the winning revision"
+cli_test_assert_equal "$CONFLICT" "$(printf '%s' "$REPEATED_INFO" | cli_test_json_string_field_from_stdin conflicts)" "Repeated mirror created another conflict"
+
+run_cli "$DB_DIR" --vault "$VAULT_DIR" --settings "$DB_SETTINGS" resolve "$UNKNOWN_PATH" "$LOCAL_REV"
+RESOLVED_INFO="$(run_cli "$DB_DIR" --settings "$DB_SETTINGS" info "$UNKNOWN_PATH")"
+cli_test_assert_equal "N/A" "$(printf '%s' "$RESOLVED_INFO" | cli_test_json_string_field_from_stdin conflicts)" "CLI resolve left a conflict"
+cli_test_assert_equal "$LOCAL_REV" "$(printf '%s' "$RESOLVED_INFO" | cli_test_json_string_field_from_stdin revision)" "CLI resolve selected the wrong revision"
+cli_test_assert_equal "unrelated local content" "$(cat "$VAULT_DIR/$UNKNOWN_PATH")" "CLI resolve did not reflect the selected content"
+assert_pass "Unknown local content was preserved, deduplicated, and resolved through the CLI"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Summary

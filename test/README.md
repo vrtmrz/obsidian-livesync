@@ -52,6 +52,31 @@ After pushing, confirm that the `Unit Tests` job passed for the exact commit bei
 
 The local checks and CI use the project's installed rule versions and configured file scope. Record the authenticated external Community Review result separately when that review is required; the project-side checks do not replace it. When the external review reports additional findings, retain its relevant output and investigate differences in installation, type resolution, scope, or rules.
 
+## CLI mirror regression tests
+
+Run the native CLI subprocess suite after building the CLI:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=3072 npm run build --workspace self-hosted-livesync-cli
+cd src/apps/cli/testdeno
+deno test -A --no-check test-mirror.ts
+```
+
+The expected result is seven passing steps. These cover storage-only and database-only files, database deletion, an ordinary local edit, incoming database content, an omitted Vault path, and local content with unknown provenance.
+
+For an ordinary local edit, first reflect the database content into the Vault, confirm its bytes, and then edit that file. The next `mirror` must store the edit without a conflict. For unknown provenance, use `put` to seed only the database and independently create different local content with a newer modification time. The next `mirror` must preserve two independent non-deleted revisions. Read both with `cat-rev`, submit the same local bytes again to check that no additional revision appears, and use `resolve` to select the local content. Confirm that the conflict is gone and the selected content is reflected into the Vault.
+
+`put` deliberately bypasses file provenance, whereas `push` records it. Substituting one for the other changes the scenario. The tests enable `writeDocumentsIfConflicted` for incoming reflection; this setting does not authorise an ordinary save to replace unrelated database content or resolve the conflict. Do not assume which independent root PouchDB selects as the winner.
+
+The [CLI Docker workflow](../.github/workflows/cli-docker.yml) runs the corresponding Bash suite. From the repository root, build and check that path with:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=3072 npm run build:docker --workspace self-hosted-livesync-cli
+npm run test:e2e:docker:mirror --workspace self-hosted-livesync-cli
+```
+
+The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Deno and Bash suites.
+
 ## Multiple-device conflict regression tests
 
 ### Preparation and execution
