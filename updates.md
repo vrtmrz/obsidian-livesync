@@ -27,6 +27,14 @@ Unusually for this project, I have added a feature that relies on a particular i
     - Managed TURN settings are saved with your encrypted P2P profile and included when you share it through a Setup URI or QR code.
     - Your API token is omitted from generated reports.
 
+### Synchronisation
+
+#### Fixed
+
+- Fixed a case where unchanged local files could overwrite newer synchronised content after a restart. (#994)
+- Local content whose origin cannot be established is now preserved as a conflict, allowing you to review and choose which version to keep.
+- The same protection applies to ordinary file synchronisation in the command-line tool.
+
 ### Command-line tool
 
 #### Fixed
