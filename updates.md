@@ -12,6 +12,16 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Fixed
+
+- Fixed a case where unchanged local files could overwrite newer synchronised content after a restart. (#994)
+- Local content whose origin cannot be established is now preserved as a conflict, allowing you to review and choose which version to keep.
+- The same protection applies to ordinary file synchronisation in the command-line tool.
+- Fast Fetch now avoids repeated requests for the same Security Seed during a transfer, reducing network traffic during initial setup.
+- Object Storage synchronisation now reads fresh synchronisation parameters before it can write to the remote, then reuses them for that transfer. A failed parameter read stops the transfer before writing.
+
 ## 1.0.29
 
 16th September, 2026

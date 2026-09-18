@@ -21,8 +21,19 @@ function createSecuritySeedResourceFactory(
     return (setting) => {
         const snapshot = snapshotRemoteSettings(setting);
         const replicator = createReplicator();
+        let readPromise: Promise<Uint8Array<ArrayBuffer>> | undefined;
+        const read = () => {
+            if (readPromise) return readPromise;
+            const pending = Promise.resolve().then(() => replicator.getReplicationPBKDF2Salt(snapshot, true));
+            readPromise = pending;
+            // A failed read must not poison a later retry within the same resource.
+            void pending.catch(() => {
+                if (readPromise === pending) readPromise = undefined;
+            });
+            return pending;
+        };
         return Promise.resolve({
-            read: () => replicator.getReplicationPBKDF2Salt(snapshot, true),
+            read,
             dispose: createReplicatorDisposer(replicator),
         });
     };
