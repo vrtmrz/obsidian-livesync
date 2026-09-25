@@ -12,6 +12,16 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.31-0.diagnostic.1189.b.0
+
+25th September, 2026
+
+This release is for diagnostic purposes only and is not intended for everyday use. Please bear this in mind.
+
+### Diagnostics
+
+- Diagnostic build B scans one local file at a time during Fast Setup and other file scans, while build A scans up to ten. Use the two builds to see whether scan load contributes to the restarts reported in #1189. The device-local diagnostic record remains available in both builds.
+
 ## 1.0.31-0.diagnostic.1189.a.0
 
 25th September, 2026
