@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.31-0.diagnostic.1189.a.0
+
+25th September, 2026
+
+This release is for diagnostic purposes only and is not intended for everyday use. Please bear this in mind.
+
 ### Diagnostics
 
 - Issue #1189 diagnostic builds keep a device-local record of Fast Setup progress across restarts. After an interrupted attempt, the automatic retry pauses so you can copy or save the record before trying again.
