@@ -19,6 +19,7 @@ import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common
 import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { isP2PMainRemote } from "@/common/remoteConfiguration";
 import { $msg } from "@/common/translation";
+import type { Issue1189Diagnostics } from "./issue1189Diagnostics";
 
 /**
  * Flag file handler interface, similar to target filter pattern.
@@ -128,7 +129,8 @@ export function createFetchAllFlagHandler(
         | "database",
         "storageAccess" | "rebuilder" | "fileHandler"
     >,
-    log: LogFunction
+    log: LogFunction,
+    diagnostics?: Issue1189Diagnostics
 ): FlagFileHandler {
     // Check if fetch all flag is active
     const isFlagActive = async () =>
@@ -143,6 +145,11 @@ export function createFetchAllFlagHandler(
 
     // Handle the fetch all scheduled operation
     const onScheduled = async () => {
+        if (diagnostics?.shouldPauseFetch()) {
+            diagnostics.pause();
+            log("An earlier Fast Setup attempt stopped unexpectedly. Use 'Copy diagnostic record', then 'Resume diagnostic attempt' to continue.", LOG_LEVEL_NOTICE);
+            return false;
+        }
         // Select the remote database if there are multiple remotes configured.
         const isRemoteActivated = await askAndActivateRemoteDatabase(host, log);
         if (!isRemoteActivated) {
@@ -150,7 +157,7 @@ export function createFetchAllFlagHandler(
         }
 
         // Ask user for use Fast Setup
-        const useFastSetup = await askAndPerformFastSetupOnScheduledFetchAll(host, log, cleanupFlag);
+        const useFastSetup = await askAndPerformFastSetupOnScheduledFetchAll(host, log, cleanupFlag, diagnostics);
         if (useFastSetup !== undefined) {
             return useFastSetup;
         }
@@ -567,10 +574,11 @@ export function useRedFlagFeatures(
         | "keyValueDB"
         | "database",
         "storageAccess" | "rebuilder" | "fileHandler"
-    >
+    >,
+    diagnostics?: Issue1189Diagnostics
 ) {
     const log = createInstanceLogFunction("SF:RedFlag", host.services.API);
-    const handlerFetch = createFetchAllFlagHandler(host, log);
+    const handlerFetch = createFetchAllFlagHandler(host, log, diagnostics);
     const handlerRebuild = createRebuildFlagHandler(host, log);
     const handlerSuspend = createSuspendFlagHandler(host, log);
     host.services.appLifecycle.onLayoutReady.addHandler(flagHandlerToEventHandler(handlerFetch), handlerFetch.priority);

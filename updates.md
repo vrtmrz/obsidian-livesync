@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Diagnostics
+
+- Issue #1189 diagnostic builds keep a device-local record of Fast Setup progress across restarts. After an interrupted attempt, the automatic retry pauses so you can copy or save the record before trying again.
+
 ## 1.0.30
 
 18th September, 2026

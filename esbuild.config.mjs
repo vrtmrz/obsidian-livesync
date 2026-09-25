@@ -12,6 +12,10 @@ import { terserOption } from "./terser.config.mjs";
 import path from "node:path";
 
 const prod = process.argv[2] === "production" || process.env?.BUILD_MODE === "production";
+const issue1189Variant = process.env.ISSUE_1189_VARIANT ?? "normal";
+if (issue1189Variant !== "normal" && issue1189Variant !== "serial") {
+    throw new Error("ISSUE_1189_VARIANT must be 'normal' or 'serial'.");
+}
 const keepTest = true; //!prod;
 
 const manifestJson = JSON.parse(fs.readFileSync("./manifest.json") + "");
@@ -181,6 +185,7 @@ const context = await esbuild.context({
     entryPoints: ["src/main.ts"],
     bundle: true,
     define: {
+        ISSUE_1189_VARIANT: JSON.stringify(issue1189Variant),
         MANIFEST_VERSION: `"${manifestJson.version}"`,
         PACKAGE_VERSION: `"${packageJson.version}"`,
         UPDATE_INFO: `${updateInfo}`,

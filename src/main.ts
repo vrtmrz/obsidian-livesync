@@ -51,9 +51,13 @@ import { useInteractiveConflictResolutionFeature } from "./serviceFeatures/inter
 import { ConflictResolveModal } from "./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianReplicationRibbon.ts";
 import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
+import { createIssue1189Diagnostics, type Issue1189Diagnostics, type Issue1189Variant } from "./serviceFeatures/issue1189Diagnostics";
+declare const ISSUE_1189_VARIANT: Issue1189Variant;
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
+    issue1189Diagnostics?: Issue1189Diagnostics;
+    private stopIssue1189Timer?: () => void;
 
     /**
      * Initialise service modules.
@@ -174,6 +178,49 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return addOns;
             },
             (core) => {
+                const diagnostics = createIssue1189Diagnostics(
+                    core.services.setting,
+                    core.services.API.getSystemVaultName(),
+                    ISSUE_1189_VARIANT
+                );
+                this.issue1189Diagnostics = diagnostics;
+                core.services.appLifecycle.onLoaded.addHandler(() => {
+                    this.stopIssue1189Timer = diagnostics.startTimer(window.setTimeout.bind(window), window.clearTimeout.bind(window));
+                    core.services.API.addCommand({
+                        id: "copy-issue-1189-diagnostics",
+                        name: "Copy diagnostic record",
+                        callback: () => {
+                            if (!navigator.clipboard) {
+                                new Notice("Could not copy the diagnostic record.");
+                                return;
+                            }
+                            void navigator.clipboard.writeText(diagnostics.report()).then(
+                                () => new Notice("Diagnostic record copied."),
+                                () => new Notice("Could not copy the diagnostic record.")
+                            );
+                        },
+                    });
+                    core.services.API.addCommand({
+                        id: "save-issue-1189-diagnostics",
+                        name: "Save diagnostic record",
+                        callback: () => {
+                            const path = `${this.manifest.dir}/issue-1189-diagnostics.json`;
+                            void this.app.vault.adapter.write(path, diagnostics.report()).then(
+                                () => new Notice("Diagnostic record saved in the plug-in folder."),
+                                () => new Notice("Could not save the diagnostic record.")
+                            );
+                        },
+                    });
+                    core.services.API.addCommand({
+                        id: "resume-issue-1189-fast-setup",
+                        name: "Resume diagnostic attempt",
+                        callback: () => {
+                            diagnostics.allowResume();
+                            core.services.appLifecycle.performRestart();
+                        },
+                    });
+                    return Promise.resolve(true);
+                });
                 //TODO Fix: useXXXX
                 const featuresInitialiser = enableI18nFeature;
                 const curriedFeature = () => featuresInitialiser(core);
@@ -196,8 +243,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useSetupQRCodeFeature(core);
                 useSetupURIFeature(core);
                 useSetupManagerHandlersFeature(core, setupManager);
-                useOfflineScanner(core);
-                useRedFlagFeatures(core);
+                useOfflineScanner(core, {
+                    fileConcurrency: ISSUE_1189_VARIANT === "serial" ? 1 : 10,
+                    onFileActivity: (activity) => diagnostics.onFileActivity(activity),
+                });
+                useRedFlagFeatures(core, diagnostics);
                 useCheckRemoteSize(core);
                 useInteractiveConflictResolutionFeature(core, (filename, conflictCheckResult) => {
                     return new ConflictResolveModal(this.app, filename, conflictCheckResult);
@@ -224,6 +274,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         void this._startUp();
     }
     override onunload(): void {
+        this.stopIssue1189Timer?.();
         return void this.core.services.control.onUnload();
     }
 }

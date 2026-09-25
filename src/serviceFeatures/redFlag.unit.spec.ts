@@ -401,6 +401,20 @@ describe("Red Flag Feature", () => {
     });
 
     describe("Fetch All Flag Handler", () => {
+        it("pauses an interrupted diagnostic attempt before fetching or deleting its flag", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            host.mocks.storageAccess.files.add(FlagFilesOriginal.FETCH_ALL);
+            const diagnostics = { shouldPauseFetch: () => true, pause: vi.fn() };
+
+            const result = await createFetchAllFlagHandler(host as any, log, diagnostics as any).handle();
+
+            expect(result).toBe(false);
+            expect(diagnostics.pause).toHaveBeenCalledOnce();
+            expect(host.mocks.rebuilder.$fetchLocalDBFast).not.toHaveBeenCalled();
+            expect(host.mocks.storageAccess.files.has(FlagFilesOriginal.FETCH_ALL)).toBe(true);
+        });
+
         it("should detect fetch all flag using original filename", async () => {
             const host = createHostMock();
             const log = createLoggerMock();

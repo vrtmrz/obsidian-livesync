@@ -11,6 +11,7 @@ import {
     type FullScanOptions,
 } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { adjustSettingToRemoteIfNeeded, cancelScheduledInitialisation, processVaultInitialisation } from "./redFlag";
+import type { Issue1189Diagnostics } from "./issue1189Diagnostics";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
 export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";
@@ -188,7 +189,8 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         "storageAccess" | "rebuilder" | "fileHandler"
     >,
     log: LogFunction,
-    cleanupFlag: () => Promise<void>
+    cleanupFlag: () => Promise<void>,
+    diagnostics?: Issue1189Diagnostics
 ): Promise<boolean | undefined> {
     const result = await askSimpleFetchMode(host);
     if (result === "cancelled") {
@@ -215,9 +217,11 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
 
     const performFastSetup = async () => {
         // 1. Perform fast DB fetch (download remote DB content to local DB)
+        diagnostics?.markPhase("fetch", "downloading");
         await host.serviceModules.rebuilder.$fetchLocalDBFast(false);
 
         // 2. Call the extended synchroniseAllFilesBetweenDBandStorage to reflect changes in storage
+        diagnostics?.markPhase("reflect");
         const errorManager = new UnresolvedErrorManager(host.services.appLifecycle, host.services.context.events);
         const syncResult = await synchroniseAllFilesBetweenDBandStorage(
             host,
@@ -228,6 +232,8 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
                 showingNotice: true,
                 omitEvents: true,
                 ignoreSuspending: true,
+                fileConcurrency: diagnostics?.variant === "serial" ? 1 : 10,
+                onFileActivity: diagnostics ? (activity) => diagnostics.onFileActivity(activity) : undefined,
             })
         );
         if (!syncResult) {
@@ -244,9 +250,11 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
                 return false;
             }
         }
+        diagnostics?.markPhase("finalise");
         await host.serviceModules.rebuilder.finishRebuild();
         await cleanupFlag();
         clearRememberedSimpleFetchMode(host);
+        diagnostics?.markComplete();
         log("Simple fetch and scan operation completed.", LOG_LEVEL_NOTICE);
         return true;
     };

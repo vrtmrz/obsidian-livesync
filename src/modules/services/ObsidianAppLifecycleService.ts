@@ -10,6 +10,7 @@ declare module "obsidian" {
 // InjectableAppLifecycleService
 export class ObsidianAppLifecycleService<T extends ObsidianServiceContext> extends AppLifecycleServiceBase<T> {
     performRestart(): void {
+        this.context.liveSyncPlugin.issue1189Diagnostics?.markRestartRequested();
         void this.context.plugin.app.commands.executeCommandById("app:reload");
     }
 }
