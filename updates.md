@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Fixed
+
+- On start-up, an unchanged file with a missing local revision record can be recognised before newer content arrives, avoiding an unnecessary conflict. Files with actual local edits still require conflict review. (#1207)
+
 ## 1.0.30
 
 18th September, 2026
