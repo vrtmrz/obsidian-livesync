@@ -12,14 +12,18 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.31
+
+26th September, 2026
+
 ### Synchronisation and storage
 
 #### Fixed
 
 - Files with colons in their names now retain their full paths in synchronisation data instead of appearing as incorrectly named copies at the Vault root. (#1206)
     - Obsidian may refuse to create a missing file with such a name. LiveSync also treats these names as invalid on Windows and Android, so the file may not appear in those devices' Vaults. Existing misplaced copies are left for you to review; this change does not remove them automatically.
-- Received changes are applied again while remediation mode is active. That mode prevents the scan which readiness depends upon, so nothing had been applied since the plug-in began waiting for readiness, not even changes older than the configured modification-time limit. The limit itself is still enforced for every change, and application waits for a usable local database so that a change arriving during a fetch is not dropped.
-- A scheduled fetch no longer offers Simple Fetch while remediation mode is active. Simple Fetch reconciles the Vault with the local database past the restriction, which could store the current files or apply changes newer than the limit; the detailed flow states the restriction and offers to clear it first (#1202). Thank you to @kimjansheden for both fixes and the regression tests in PR #1208!
+- Received changes within the configured modification-time limit are applied to the Vault again while remediation mode is active. Changes newer than the limit remain blocked; changes arriving while a fetch makes the local database unavailable are kept for a later attempt.
+- A scheduled fetch no longer offers Simple Fetch while remediation mode is active. This prevents the fetch from bypassing the modification-time limit; the detailed flow explains the restriction and offers to clear it first (#1202). Thank you to @kimjansheden for both fixes and the regression tests in PR #1208!
 - On start-up, an unchanged file with a missing local revision record can be recognised before newer content arrives, avoiding an unnecessary conflict. Files with actual local edits still require conflict review. (#1207)
 
 ## 1.0.30
@@ -87,61 +91,3 @@ For now, I am addressing the issues I can resolve first. I hope this helps.
 #### Fixed
 
 - First-time Object Storage setup now completes when **Use Custom HTTP Handler** is enabled for an empty remote, including a new Cloudflare R2 bucket. LiveSync can now create the remote state required to begin synchronisation. (#1166)
-
-## 1.0.26
-
-~~1.0.25~~ was cancelled because pre-release validation found that LiveSync could appear to finish synchronising even though Android had not written a received file to the Vault; the warning appeared only after restart.
-
-6th September, 2026
-
-### Synchronisation and storage
-
-#### Fixed
-
-- Files inside a folder are no longer silently removed from synchronisation when an external tool changes only the letter case of that folder while Obsidian is running. This prevents the stale deletion from reaching other devices or later removing the local file. Moving files into ignored or otherwise excluded locations retains the existing behaviour, and the folder-name case itself may still differ between devices. (#1168)
-- A problem processing one file during ordinary start-up no longer prevents every other file from synchronising. LiveSync warns about the affected files and can retry them later; Fetch and Rebuild still stop if they cannot finish safely. (#1164)
-- When LiveSync cannot finish preparing this device for synchronisation, it now says that synchronisation is unavailable and directs you to generate a report, instead of remaining at 'Not ready'. (#1164)
-
-#### Improved
-
-- When LiveSync cannot write a received file to the Vault, it now warns immediately instead of appearing to have synchronised it successfully. The generated report identifies the affected path, and a later scan can try it again.
-
-### Conflict handling and recovery
-
-#### Improved
-
-- Conflict resolution dialogues now close when the same file is resolved elsewhere or when the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the older one.
-
-### Setup and compatibility
-
-#### Improved
-
-- Unconfigured Vaults now stay focused on setup instead of running Config Doctor or incomplete-document checks before they can be used. Returning a configured Vault to an unconfigured state also stops those checks until the requested restart. (#1161)
-- When the active file contains a file or folder name longer than 255 UTF-8 bytes, LiveSync now explains that the path may not work on some Android and Linux file systems. It does not rename or reject the file. (#1164)
-
-## 1.0.24
-
-3rd September, 2026
-
-### Interface and translation
-
-#### Fixed
-
-- The Setup Wizard now correctly explains that the existing-device path adds this device to an existing synchronisation (PR #1118). Thank you to @nikhilmaddirala for the contribution!
-- Spanish translations now resolve the **Display language** placeholder, cover previously untranslated Setup Wizard and CouchDB text, translate user-facing Config Doctor values and confirmation controls, and use Spanish sentence case (PR #1129). Thank you to @zeedif for the contribution!
-
-#### Improved
-
-- The Setup Wizard now shows the passphrase and **Obfuscate Properties** controls only after E2EE is enabled, provides a password-visibility button, allows longer translated labels to wrap, and keeps the invitation link compact on desktop while preserving its mobile touch target (PR #1130). Thank you to @zeedif for the contribution!
-
-### Synchronisation and storage
-
-#### Fixed
-
-- **Overwrite Server Data with This Device's Files** now keeps this device's synchronisation settings instead of reapplying settings from the remote database which is about to be replaced. Enabling E2EE before a rebuild therefore remains enabled and uploads encrypted data. (#1146)
-
-### Command-line tool
-
-#### Fixed
-
-- The systemd installer now finds the repository root correctly, installs every generated bundle chunk and required production dependency, checks the installed command before activation, and reports success only when the service remains active.
