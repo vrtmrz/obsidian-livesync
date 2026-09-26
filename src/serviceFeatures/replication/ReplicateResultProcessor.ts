@@ -35,7 +35,7 @@ type ReplicateResultProcessorSettings = Pick<
 >;
 type ReplicateResultProcessorServices = Pick<
     LiveSyncBaseCore["services"],
-    "appLifecycle" | "path" | "replication" | "vault"
+    "appLifecycle" | "database" | "path" | "replication" | "vault"
 >;
 
 /**
@@ -115,10 +115,27 @@ export class ReplicateResultProcessor {
     // If true, the processing queue processor bails the loop.
     private _suspended: boolean = false;
 
+    /**
+     * Whether the application accepts replicated documents being applied.
+     *
+     * Remediation mode refuses the reconciliation scan which readiness depends upon, so the
+     * application stays unready for as long as the modification-time limit is configured.
+     * Applying the received documents is what that mode exists for, and `parseDocumentChange` keeps
+     * each one within the limit, so readiness is not required while the mode is active.
+     */
+    private get acceptsResultApplication() {
+        if (this.services.appLifecycle.isReady()) return true;
+        if (this.context.currentSettings().maxMTimeForReflectEvents <= 0) return false;
+        // A fetch resets the local database, and a remote which reflects while fetching leaves this
+        // processor unsuspended throughout. A document applied then cannot gather its chunks and is
+        // dropped, so the database itself must still be usable.
+        return this.services.database.isDatabaseReady();
+    }
+
     public get isSuspended() {
         return (
             this._suspended ||
-            !this.services.appLifecycle.isReady() ||
+            !this.acceptsResultApplication ||
             this.context.currentSettings().suspendParseReplicationResult ||
             this.services.appLifecycle.isSuspended()
         );

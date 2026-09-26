@@ -1,7 +1,11 @@
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { describe, expect, it, vi } from "vitest";
-import { VER, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VER, type EntryDoc, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    isValidFilenameInAndroid,
+    isValidFilenameInWidows,
+} from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import {
     defaultLogger,
     LOG_LEVEL_DEBUG,
@@ -28,6 +32,9 @@ function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
 
 type SetupOptions = {
     applicationReady?: boolean;
+    databaseReady?: boolean;
+    maxMTimeForReflectEvents?: number;
+    isValidPath?: (path: string) => boolean;
     processSynchroniseResult?: (entry: unknown) => Promise<boolean>;
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
 };
@@ -38,9 +45,12 @@ function setup(options: SetupOptions = {}) {
     const runBoundedLocalApplicationActivity = vi.fn(async (task: () => Promise<void>) => await task());
     const onCloseActiveReplication = vi.fn(async () => true);
     const isReady = vi.fn(() => options.applicationReady ?? true);
+    const isValidPath = vi.fn(options.isValidPath ?? (() => true));
+    const getDBEntryFromMeta = vi.fn(async (entry: object) => ({ ...entry, data: "x" }));
     const core = {
         services: {
             appLifecycle: { isReady, isSuspended: () => false },
+            database: { isDatabaseReady: () => options.databaseReady ?? true },
             path: { getPath: (entry: { path: string }) => entry.path },
             replication: {
                 databaseQueueCount: reactiveSource(0),
@@ -54,17 +64,20 @@ function setup(options: SetupOptions = {}) {
             vault: {
                 isTargetFile: vi.fn(async () => true),
                 isFileSizeTooLarge: vi.fn(() => false),
-                isValidPath: vi.fn(() => true),
+                isValidPath,
             },
         },
         kvDB: { set: setSnapshot },
         localDatabase: {
             getRaw: vi.fn(async (id: string) => ({ _id: id, _rev: "1-test" })),
-            getDBEntryFromMeta: vi.fn(async (entry: object) => ({ ...entry, data: "x" })),
+            getDBEntryFromMeta,
         },
     };
     const processor = new ReplicateResultProcessor({
-        currentSettings: () => ({ maxMTimeForReflectEvents: 0, suspendParseReplicationResult: false }),
+        currentSettings: () => ({
+            maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
+            suspendParseReplicationResult: false,
+        }),
         getKeyValueDB: () => core.kvDB,
         getLocalDatabase: () => core.localDatabase,
         requestActiveReplicatorRetirement: () => {
@@ -74,7 +87,9 @@ function setup(options: SetupOptions = {}) {
         services: core.services,
     } as never);
     return {
+        getDBEntryFromMeta,
         isReady,
+        isValidPath,
         onCloseActiveReplication,
         processor,
         processSynchroniseResult,
@@ -83,6 +98,24 @@ function setup(options: SetupOptions = {}) {
 }
 
 describe("ReplicateResultProcessor", () => {
+    it.each([
+        ["Windows", isValidFilenameInWidows],
+        ["Android", isValidFilenameInAndroid],
+    ])("does not reflect a replicated colon path into the %s Vault", async (_platform, validatePath) => {
+        const path = "Folder/Poem: Example.md" as FilePathWithPrefix;
+        const document = { ...note("colon-path"), path };
+        const { getDBEntryFromMeta, isValidPath, processor, processSynchroniseResult } = setup({
+            isValidPath: validatePath,
+        });
+
+        processor.enqueueAll([document]);
+
+        await vi.waitFor(() => expect(isValidPath).toHaveBeenCalledWith(path));
+        await vi.waitFor(() => expect(processor["_processingChanges"]).toHaveLength(0));
+        expect(getDBEntryFromMeta).toHaveBeenCalledWith(expect.objectContaining({ path }), false, true);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+    });
+
     it("resumes another document after in-flight updates to one document fill the application slots", async () => {
         const hotGate = promiseWithResolvers<boolean>();
         const { processor, processSynchroniseResult } = setup({
@@ -122,6 +155,45 @@ describe("ReplicateResultProcessor", () => {
 
         expect(processor.isSuspended).toBe(true);
         expect(isReady).toHaveBeenCalledOnce();
+    });
+
+    it("applies results in remediation mode, which never reports readiness", () => {
+        const { processor } = setup({
+            applicationReady: false,
+            maxMTimeForReflectEvents: Date.parse("2026-09-01T00:00:00Z"),
+        });
+
+        expect(processor.isSuspended).toBe(false);
+    });
+
+    it("holds results in remediation mode while the local database is being rebuilt", () => {
+        const { processor } = setup({
+            applicationReady: false,
+            databaseReady: false,
+            maxMTimeForReflectEvents: Date.parse("2026-09-01T00:00:00Z"),
+        });
+
+        expect(processor.isSuspended).toBe(true);
+    });
+
+    it("still skips a document modified after the limit while the application is unready", async () => {
+        const maxMTimeForReflectEvents = Date.parse("2026-09-01T00:00:00Z");
+        const { processor, processSynchroniseResult } = setup({
+            applicationReady: false,
+            maxMTimeForReflectEvents,
+        });
+
+        const tooRecent = {
+            ...note("too-recent"),
+            mtime: maxMTimeForReflectEvents + 1,
+        } as PouchDB.Core.ExistingDocument<EntryDoc>;
+        processor.enqueueAll([tooRecent]);
+
+        await vi.waitFor(() => {
+            expect(processor["_queuedChanges"]).toHaveLength(0);
+            expect(processor["_processingChanges"]).toHaveLength(0);
+        });
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
     });
 
     it("retires active ownership when a newer remote version is observed", async () => {
