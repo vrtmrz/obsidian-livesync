@@ -2235,10 +2235,6 @@ Ui:
             Scram: Scram!
             SendChunks: Send chunks
             Syncing: Syncing
-            WarningLockedReadyAction: I am ready, unlock the database
-            WarningLockedReadyText: To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.
-            WarningLockedResolveAction: I have made a backup, mark this device as resolved
-            WarningLockedResolveText: The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.
             WriteRedFlagAndRestart: Flag and restart
         Patches:
             CompatibilityConflict: Compatibility (Conflict Behaviour)
@@ -2456,3 +2452,7 @@ You should perform this operation only in exceptional circumstances, such as whe
     when the server data is completely corrupted, when changes on all other
     devices are no longer needed, or when the database size has become unusually
     large in comparison to the Vault size.
+"I am ready, unlock the database": "I am ready, unlock the database"
+"To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.": "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved."
+"I have made a backup, mark this device as resolved": "I have made a backup, mark this device as resolved"
+"The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.": "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved."

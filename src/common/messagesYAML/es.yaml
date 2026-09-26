@@ -2315,20 +2315,6 @@ Ui:
       Scram: ¡Parada de emergencia!
       SendChunks: Enviar los chunks
       Syncing: Sincronización
-      WarningLockedReadyAction: Estoy listo, desbloquear la base de datos
-      WarningLockedReadyText: Para evitar que el vault se corrompa, la base de datos
-        remota se ha bloqueado para la sincronización. (Este dispositivo está
-        marcado como «resuelto».) Cuando todos tus dispositivos estén marcados
-        como «resueltos», desbloquea la base de datos. Este aviso seguirá
-        apareciendo hasta que la replicación confirme que el dispositivo está
-        resuelto.
-      WarningLockedResolveAction: He hecho una copia de seguridad, marcar este dispositivo como resuelto
-      WarningLockedResolveText: La base de datos remota está bloqueada para la
-        sincronización a fin de evitar que el vault se corrompa, porque este
-        dispositivo no está marcado como «resuelto». Haz una copia de seguridad
-        de tu vault, restablece la base de datos local y selecciona «Marcar este
-        dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la
-        replicación confirme que el dispositivo está resuelto.
       WriteRedFlagAndRestart: Marcar y reiniciar
     Patches:
       CompatibilityConflict: Compatibilidad (comportamiento ante conflictos)
@@ -2695,3 +2681,7 @@ You should perform this operation only in exceptional circumstances, such as whe
   los datos del servidor estén completamente corruptos, cuando ya no necesites
   los cambios de los demás dispositivos o cuando el tamaño de la base de datos
   sea inusualmente grande respecto al del Vault."
+"I am ready, unlock the database": "Estoy listo, desbloquear la base de datos"
+"To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.": "Para evitar que el vault se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto."
+"I have made a backup, mark this device as resolved": "He hecho una copia de seguridad, marcar este dispositivo como resuelto"
+"The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.": "La base de datos remota está bloqueada para la sincronización a fin de evitar que el vault se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu vault, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto."

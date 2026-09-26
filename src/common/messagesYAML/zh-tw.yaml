@@ -1383,10 +1383,6 @@ Ui:
       Scram: 緊急處置
       SendChunks: 傳送 chunks
       Syncing: 同步中
-      WarningLockedReadyAction: 我已準備好，解鎖資料庫
-      WarningLockedReadyText: 為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。
-      WarningLockedResolveAction: 我已完成備份，將此裝置標記為已處理
-      WarningLockedResolveText: 由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。
       WriteRedFlagAndRestart: 標記後重新啟動
     Patches:
       CompatibilityConflict: 相容性（衝突行為）
@@ -1839,3 +1835,7 @@ Setup:
 "Garbage Collection completed. Deleted chunks: ${deletedChunks} / ${totalChunks}. Time taken: ${seconds} seconds.": |-
   垃圾回收完成。已刪除 chunks：${deletedChunks} / ${totalChunks}。耗時：${seconds} 秒。
 "Failed to start replication after Garbage Collection.": 垃圾回收後無法啟動複寫。
+"I am ready, unlock the database": "我已準備好，解鎖資料庫"
+"To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.": "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。"
+"I have made a backup, mark this device as resolved": "我已完成備份，將此裝置標記為已處理"
+"The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.": "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。"
