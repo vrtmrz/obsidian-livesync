@@ -51,6 +51,7 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
                 : await task(),
         services: {
             appLifecycle: services.appLifecycle,
+            database: services.database,
             path: services.path,
             replication: services.replication,
             vault: services.vault,

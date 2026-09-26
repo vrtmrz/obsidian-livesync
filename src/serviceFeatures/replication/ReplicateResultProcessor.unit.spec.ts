@@ -32,6 +32,8 @@ function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
 
 type SetupOptions = {
     applicationReady?: boolean;
+    databaseReady?: boolean;
+    maxMTimeForReflectEvents?: number;
     isValidPath?: (path: string) => boolean;
     processSynchroniseResult?: (entry: unknown) => Promise<boolean>;
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
@@ -48,6 +50,7 @@ function setup(options: SetupOptions = {}) {
     const core = {
         services: {
             appLifecycle: { isReady, isSuspended: () => false },
+            database: { isDatabaseReady: () => options.databaseReady ?? true },
             path: { getPath: (entry: { path: string }) => entry.path },
             replication: {
                 databaseQueueCount: reactiveSource(0),
@@ -71,7 +74,10 @@ function setup(options: SetupOptions = {}) {
         },
     };
     const processor = new ReplicateResultProcessor({
-        currentSettings: () => ({ maxMTimeForReflectEvents: 0, suspendParseReplicationResult: false }),
+        currentSettings: () => ({
+            maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
+            suspendParseReplicationResult: false,
+        }),
         getKeyValueDB: () => core.kvDB,
         getLocalDatabase: () => core.localDatabase,
         requestActiveReplicatorRetirement: () => {
@@ -149,6 +155,45 @@ describe("ReplicateResultProcessor", () => {
 
         expect(processor.isSuspended).toBe(true);
         expect(isReady).toHaveBeenCalledOnce();
+    });
+
+    it("applies results in remediation mode, which never reports readiness", () => {
+        const { processor } = setup({
+            applicationReady: false,
+            maxMTimeForReflectEvents: Date.parse("2026-09-01T00:00:00Z"),
+        });
+
+        expect(processor.isSuspended).toBe(false);
+    });
+
+    it("holds results in remediation mode while the local database is being rebuilt", () => {
+        const { processor } = setup({
+            applicationReady: false,
+            databaseReady: false,
+            maxMTimeForReflectEvents: Date.parse("2026-09-01T00:00:00Z"),
+        });
+
+        expect(processor.isSuspended).toBe(true);
+    });
+
+    it("still skips a document modified after the limit while the application is unready", async () => {
+        const maxMTimeForReflectEvents = Date.parse("2026-09-01T00:00:00Z");
+        const { processor, processSynchroniseResult } = setup({
+            applicationReady: false,
+            maxMTimeForReflectEvents,
+        });
+
+        const tooRecent = {
+            ...note("too-recent"),
+            mtime: maxMTimeForReflectEvents + 1,
+        } as PouchDB.Core.ExistingDocument<EntryDoc>;
+        processor.enqueueAll([tooRecent]);
+
+        await vi.waitFor(() => {
+            expect(processor["_queuedChanges"]).toHaveLength(0);
+            expect(processor["_processingChanges"]).toHaveLength(0);
+        });
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
     });
 
     it("retires active ownership when a newer remote version is observed", async () => {
