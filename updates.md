@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation and storage
+
+#### Fixed
+
+- The receiving device now accepts encrypted file information when both end-to-end encryption and Path Obfuscation are enabled. The 1.0.31 pre-release could reject this information, leaving files from another device absent from the Vault.
+
 ## 1.0.31
 
 26th September, 2026
