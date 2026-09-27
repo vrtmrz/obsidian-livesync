@@ -22,7 +22,9 @@ type SetupOptions = {
 function setup(options: SetupOptions = {}) {
     const defaultLocalDatabase = {
         localDatabase: {},
-        getRaw: vi.fn(async () => { throw { status: 404 }; }),
+        getRaw: vi.fn(async () => {
+            throw { status: 404 };
+        }),
     };
     const {
         getLocalDatabase = () => defaultLocalDatabase,
@@ -182,60 +184,5 @@ describe("replication serviceFeature composition", () => {
         expect(onCloseActiveReplication).toHaveBeenCalledOnce();
 
         retirement.resolve(true);
-    });
-
-    it("persists a blocked batch before its replication callback settles", async () => {
-        const writeFinished = promiseWithResolvers<void>();
-        const writes: Array<{ queued: Array<{ _id: string }> }> = [];
-        const { parseHandler } = setup({
-            keyValueDB: {
-                kvDB: {
-                    get: vi.fn(async () => undefined),
-                    set: vi.fn(async (_key, value) => {
-                        writes.push(value as { queued: Array<{ _id: string }> });
-                        await writeFinished.promise;
-                    }),
-                },
-            },
-        });
-        const pending = {
-            _id: "checkpointed-note",
-            _rev: "1-test",
-            type: "plain",
-            path: "checkpointed-note.md",
-        } as PouchDB.Core.ExistingDocument<EntryDoc>;
-        const unknownVersion = {
-            _id: VERSIONING_DOCID,
-            _rev: "2-unknown",
-            type: "versioninfo",
-            version: REMOTE_FEATURE_GENERATION,
-            used_features: ["future-format-v7"],
-        } as PouchDB.Core.ExistingDocument<EntryDoc>;
-        let callbackSettled = false;
-        const callback = parseHandler!([pending, unknownVersion]).then((result) => {
-            callbackSettled = true;
-            return result;
-        });
-
-        await vi.waitFor(() => expect(writes.length).toBeGreaterThan(0));
-        expect(callbackSettled).toBe(false);
-        writeFinished.resolve();
-        await expect(callback).resolves.toBe(true);
-        expect(writes[writes.length - 1]?.queued.map((entry) => entry._id)).toContain(pending._id);
-    });
-
-    it("refuses another replication after observing an unknown feature locally", async () => {
-        const { beforeReplicateHandlers, parseHandler } = setup();
-        const unknownVersion = {
-            _id: VERSIONING_DOCID,
-            _rev: "2-unknown",
-            type: "versioninfo",
-            version: REMOTE_FEATURE_GENERATION,
-            used_features: ["future-format-v7"],
-        } as PouchDB.Core.ExistingDocument<EntryDoc>;
-
-        await parseHandler!([unknownVersion]);
-
-        await expect(beforeReplicateHandlers.get(100)!(false)).resolves.toBe(false);
     });
 });

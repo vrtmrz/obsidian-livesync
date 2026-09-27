@@ -5,7 +5,6 @@ import {
     DEFAULT_SETTINGS,
     LOG_LEVEL_NOTICE,
     type ObsidianLiveSyncSettings,
-    type EncryptionSettings,
     LOG_LEVEL_VERBOSE,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Menu, type ButtonComponent } from "@/deps.ts";
@@ -32,13 +31,11 @@ import {
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import type { RemoteConfigurationResult } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import SetupRemote from "@/modules/features/SetupWizard/dialogs/SetupRemote.svelte";
-import SetupRemoteE2EE from "@/modules/features/SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import SetupRemoteCouchDB from "@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte";
 import SetupRemoteBucket from "@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte";
 import type {
     SetupRemoteCouchDBInitialData,
     SetupRemoteCouchDBResultType,
-    SetupRemoteE2EEResultType,
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes.ts";
 import { syncActivatedRemoteSettings } from "./remoteConfigBuffer.ts";
 
@@ -119,34 +116,15 @@ export function paneRemoteConfig(
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
-                            const e2eeConf = await setupManager.dialogManager.openWithExplicitCancel<
-                                SetupRemoteE2EEResultType,
-                                EncryptionSettings
-                            >(SetupRemoteE2EE, originalSettings);
-                            if (e2eeConf === "cancelled") {
-                                return;
-                            }
-                            const onlyInternalMetadataPreferenceChanged =
-                                originalSettings.encryptInternalMetadata !== e2eeConf.encryptInternalMetadata &&
-                                originalSettings.encrypt === e2eeConf.encrypt &&
-                                originalSettings.passphrase === e2eeConf.passphrase &&
-                                originalSettings.E2EEAlgorithm === e2eeConf.E2EEAlgorithm &&
-                                originalSettings.usePathObfuscation === e2eeConf.usePathObfuscation;
-                            if (onlyInternalMetadataPreferenceChanged) {
-                                await this.services.setting.applyPartial(
-                                    { encryptInternalMetadata: e2eeConf.encryptInternalMetadata },
-                                    true
-                                );
-                                this.editingSettings.encryptInternalMetadata = e2eeConf.encryptInternalMetadata;
+                            const applied = await setupManager.onlyE2EEConfiguration(UserMode.Update, originalSettings);
+                            if (applied) {
+                                this.editingSettings.encryptInternalMetadata =
+                                    this.core.settings.encryptInternalMetadata;
                                 if (this.initialSettings) {
-                                    this.initialSettings.encryptInternalMetadata = e2eeConf.encryptInternalMetadata;
+                                    this.initialSettings.encryptInternalMetadata =
+                                        this.core.settings.encryptInternalMetadata;
                                 }
                                 this.requestUpdate();
-                            } else {
-                                await setupManager.onConfirmApplySettingsFromWizard(
-                                    { ...originalSettings, ...e2eeConf },
-                                    UserMode.Update
-                                );
                             }
                             updateE2EESummary();
                         })

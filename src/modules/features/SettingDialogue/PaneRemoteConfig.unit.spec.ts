@@ -162,24 +162,15 @@ describe("paneRemoteConfig", () => {
             encryptInternalMetadata: false,
             remoteConfigurations: {},
         };
-        const applyPartial = vi.fn(async () => {});
-        const onConfirmApplySettingsFromWizard = vi.fn(async () => {});
         const setupManager = {
-            dialogManager: {
-                openWithExplicitCancel: vi.fn(async () => ({
-                    encrypt: true,
-                    passphrase: "passphrase",
-                    E2EEAlgorithm: "v2",
-                    usePathObfuscation: true,
-                    encryptInternalMetadata: true,
-                })),
-            },
-            onConfirmApplySettingsFromWizard,
+            onlyE2EEConfiguration: vi.fn(async () => {
+                host.core.settings.encryptInternalMetadata = true;
+                return true;
+            }),
         };
         const host = {
             editingSettings: { ...originalSettings },
             initialSettings: { ...originalSettings },
-            services: { setting: { applyPartial } },
             core: {
                 settings: { ...originalSettings },
                 getModule: vi.fn(() => setupManager),
@@ -198,8 +189,7 @@ describe("paneRemoteConfig", () => {
         paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
         await runtime.clickHandlers[0]();
 
-        expect(applyPartial).toHaveBeenCalledWith({ encryptInternalMetadata: true }, true);
-        expect(onConfirmApplySettingsFromWizard).not.toHaveBeenCalled();
+        expect(setupManager.onlyE2EEConfiguration).toHaveBeenCalledOnce();
         expect(host.editingSettings.encryptInternalMetadata).toBe(true);
         expect(host.initialSettings.encryptInternalMetadata).toBe(true);
         expect(host.requestUpdate).toHaveBeenCalledOnce();

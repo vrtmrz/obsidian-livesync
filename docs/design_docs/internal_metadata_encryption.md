@@ -75,70 +75,44 @@ for compatible clients in the explanation. Do not set `requireRebuild` or
 operations and restart. `recommendRebuild` currently exists only as an unused
 rule field, so setting it alone does not display an explanation.
 
-## Receiving a changed version document
+## Admission and received version documents
 
-The existing path is:
+The remote version document is the source of feature requirements. Commonlib
+checks it before replication, Fast Fetch, and direct access. The milestone keeps
+the existing Tweak comparison and Rebuild lock. An accepted writer declares the
+feature before using it, including the writer admitted to a locked rebuilt
+remote; an unaccepted device remains blocked by that lock.
 
-1. Commonlib receives a CouchDB replication change and calls
-   `parseSynchroniseResult` with the received documents.
-2. The replication service feature passes them to
-   `ReplicateResultProcessor.enqueueAll`.
-3. `processIfNonDocumentChange` recognises `type: versioninfo` and requests active
-   Replicator retirement when `version > VER`.
-4. The owner closes admission, requests transfer cancellation, drains its work,
-   and closes the instance. The result callback does not wait for that transition.
+Retain the existing received-version path through `parseSynchroniseResult`,
+`enqueueAll`, and `processIfNonDocumentChange`. Replace its numeric comparison
+with the shared assessment so unknown names at the same generation are also
+reported. Known features, reordered lists, and ordinary revision updates do not
+retire the connection. Unsupported or malformed control documents request
+retirement through the existing Replicator owner and display the reason.
+The callback must not await retirement of the operation which delivered it.
 
-Retain this observation path, but use Commonlib's complete assessment of the
-identified control document. A changed `used_features` list must be inspected
-even when the numeric version is unchanged. A mere revision change, list reorder,
-or duplicate known identifier does not require an interruption.
-
-Inspect the entire batch's control information before passing any file entries
-to normal or optional processing. Recognise the fixed control-document ID and
-validate its type and contents. A deleted or malformed control document is a
-rejection, not a successful empty update.
-
-When all requirements remain supported, refresh the assessment and affected
-shared-setting checks; a newly added feature retires the current writer so its
-next admission rechecks the shared Tweak policy. When a requirement is
-unknown or incompatible, synchronously record the block for the affected
-database, stop admitting new reflection and database operations, and request
-retirement through the existing owner. Notify with the unknown identifiers as
-text, using a generic message when no descriptive label exists.
-
-File application and remote transfer have separate lifetimes. Requesting owner
-retirement alone is not the application block. Keep the block separate from
-temporary lifecycle suspension so an ordinary resume event cannot clear it.
-Queued or waiting work checks it before starting another write; notifications
-from an old physical database must not affect its replacement.
-
-Do not await `onCloseActiveReplication` inside the callback which delivered the
-change. That callback can belong to work which retirement must drain. Establish
-the block immediately, request retirement without awaiting it there, and let the
-owner perform cancellation and close in its existing order.
+This is an admission check and a best-effort stop for exceptional changes during
+an active connection. It does not fence every queued file application, roll back
+accepted writes, or guarantee an atomic change across live devices. Feature
+changes are an infrequent administrative operation: update all devices first,
+then enable the preference and use the recommended manual Rebuild. Rebuild
+locks the remote using the existing workflow; changing this preference alone
+does not lock it. The action to proceed without rebuilding explicitly reminds
+the person to update every other device, including currently connected devices.
 
 ## Persistence and recovery boundaries
 
-A CouchDB replication notification can arrive after the documents have entered
-the local DB. Already-started network and filesystem operations may settle.
-This feature does not promise rollback or atomic revocation of those operations.
+Do not retain a second feature list, highest generation, or rejection flag in
+KV storage. Do not add compatibility checks to pending-work snapshot recovery
+or make that recovery a new prerequisite for application readiness. Preserve
+the existing queue and startup behaviour. A later attempt checks the current
+remote declaration, including after restart. Declared features remain on the
+remote when the write preference is disabled because older data can still use
+them; manually shortening that declaration is not a supported migration.
 
-Preserve pending work or durable reconciliation information when stopping. A
-checkpoint may already include the documents which have not reached the Vault.
-Do not drop those documents or depend on an ordinary reconnect to send them
-again. A compatible client must reassess and reprocess or explicitly reacquire
-them before lifting the applicable block.
-Persist a blocked pending-work snapshot before the received-change callback
-settles, while requesting owner retirement separately to avoid a circular wait.
-
-Restore compatibility checks before replication result application and the next
-ordinary synchronisation. Retain observed feature requirements with the pending
-work snapshot so that a shortened version-document list does not release a
-blocked local database on restart. A dismissed Notice or a changed connection
-does not establish that the affected local data has become interpretable.
-An older local generation without feature declarations remains readable during
-normal application and cleaned-remote recovery; remote migration remains the
-responsibility of the replication admission check.
+After updating clients, use normal reconnection and the existing Hatch
+inspection or Fetch workflow if reconciliation is needed. This feature does not
+repair unrelated KV inconsistencies or the existing readiness queue behaviour.
 
 Garbage Collection V3 is a beta manual operation which begins with an ordinary
 bidirectional synchronisation. That admission checks the remote feature
@@ -156,40 +130,18 @@ Keep focused tests for settings defaults and imports, the Doctor condition
 matrix, acceptance and dismissal, connection replacement, and absence of an
 automatic Rebuild, Fetch, or restart for this rule.
 
-Add deterministic runtime tests for feature-only changes, version documents
-first and last in a batch, unknown-name presentation, duplicate notifications,
-queued and waiting reflection, stale database callbacks, restart, checkpointed
-but unapplied documents, and cancellation without a circular wait.
+Keep unit tests for known and unknown feature notifications, generic identifier
+presentation, retirement without a circular wait, and the unchanged snapshot
+behaviour after KV failure or obsolete snapshot fields. The previous batch
+fences, physical-database tracking, and persistent rejection tests are outside
+this design; they must not imply an atomic live migration guarantee.
 
-Before this implementation, the host processor was checked with a focused unit probe: a numeric
-incompatibility requests retirement, but the processor still applies a note in
-the same batch when its host remains ready. A same-version document with an
-unknown feature does not request retirement. These observations motivated the
-new checks.
-
-Extend real Obsidian Hidden File Sync and Customisation Sync scenarios and the
-CLI interoperability checks. Inspect raw CouchDB documents as well as restored
-files. Exercise an active connection when another client changes the feature
-requirements, and verify that previously accepted data survives the stop.
-Pending-work restoration and recovery with a compatible client are separate
-boundaries.
-
-The local packed Commonlib 0.1.30 candidate passed Commonlib unit and boundary
-tests and the LiveSync build, type checks, and unit tests. Real Obsidian 1.12.7
-passed the Hidden File Sync, Customisation Sync, and encrypted CLI-to-Obsidian
-scenarios. The dedicated active-connection scenario changed a generation 12
-remote to generation 13 with an unknown feature whilst continuous replication
-was running. The local control document arrived, the active Replicator retired,
-a subsequent replication was refused, and an earlier accepted note stayed in
-the Vault. The same real Obsidian scenario now shortens both control-document
-feature lists and restarts the Vault. The saved observation remains associated
-with the same physical database, and both OneShot and Continuous replication
-are refused. Focused host tests cover both batch orders, pending-work snapshots,
-stale callbacks, and the older local-generation case. Recovery after upgrading
-to a future client that understands the unknown feature has not been exercised
-in real Obsidian. The existing [readiness queue issue](https://github.com/vrtmrz/obsidian-livesync/issues/1200)
-still affects when restored pending documents resume after the application
-becomes ready; snapshot preservation alone does not resolve that issue.
+Use real Obsidian Hidden File Sync and Customisation Sync scenarios to inspect
+raw CouchDB Metadata and restore content in another Vault. Check the admitted
+writer on a locked remote, unknown-feature rejection before and during
+replication, and remote-based rejection after restart. Retain the encrypted
+CLI-to-Obsidian interoperability scenario. A future client upgrade that adds
+support for an unknown feature is a separate validation boundary.
 
 Keep the primary-language settings and troubleshooting guides, the
 database-compatibility ADR, and Unreleased notes aligned with this behaviour.

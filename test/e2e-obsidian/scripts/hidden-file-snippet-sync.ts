@@ -368,13 +368,20 @@ async function uploadHiddenFile(
         return ids.has(entry.id) && entry.children.every((childId) => ids.has(childId));
     });
     const remoteEntry = await fetchCouchDbDocument(context.couchDb, context.dbName, entry.id);
-    if (!remoteEntry.path?.startsWith("/\\:") || remoteEntry.children?.length !== 0 ||
-        remoteEntry.ctime !== 0 || remoteEntry.mtime !== 0 || remoteEntry.size !== 0) {
+    if (
+        !remoteEntry.path?.startsWith("/\\:") ||
+        remoteEntry.children?.length !== 0 ||
+        remoteEntry.ctime !== 0 ||
+        remoteEntry.mtime !== 0 ||
+        remoteEntry.size !== 0
+    ) {
         throw new Error(`Hidden File Sync Metadata was not encrypted for ${entry.id}.`);
     }
     const versionInfo = await fetchCouchDbDocument(context.couchDb, context.dbName, VERSIONING_DOCID);
-    if (versionInfo.version !== REMOTE_FEATURE_GENERATION ||
-        !(versionInfo.used_features as unknown[] | undefined)?.includes(ENCRYPTED_INTERNAL_METADATA_FEATURE)) {
+    if (
+        versionInfo.version !== REMOTE_FEATURE_GENERATION ||
+        !(versionInfo.used_features as unknown[] | undefined)?.includes(ENCRYPTED_INTERNAL_METADATA_FEATURE)
+    ) {
         throw new Error("The remote feature list does not declare encrypted internal Metadata.");
     }
     return entry;
@@ -400,6 +407,29 @@ async function runCreateRoundTrip(
     await writeVaultFile(vaultA.path, snippetPath, snippetContent);
     let session = await startConfiguredSession(context, vaultA);
     const entry = await uploadHiddenFile(context, session, snippetPath);
+    await evalObsidianJson(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            "const rebuilder=app.plugins.plugins['obsidian-livesync'].core.rebuilder;",
+            "const inform=rebuilder.informOptionalFeatures;",
+            "rebuilder.informOptionalFeatures=async()=>{};",
+            "try{await rebuilder.$rebuildRemote();}finally{rebuilder.informOptionalFeatures=inform;}",
+            "return JSON.stringify(true);",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    const rebuiltVersion = await fetchCouchDbDocument(context.couchDb, context.dbName, VERSIONING_DOCID);
+    const rebuiltEntry = await fetchCouchDbDocument(context.couchDb, context.dbName, entry.id);
+    if (
+        rebuiltVersion.version !== REMOTE_FEATURE_GENERATION ||
+        !(rebuiltVersion.used_features as unknown[] | undefined)?.includes(ENCRYPTED_INTERNAL_METADATA_FEATURE) ||
+        !rebuiltEntry.path?.startsWith("/\\:")
+    ) {
+        throw new Error("Remote Rebuild did not declare and encrypt internal Metadata for its accepted writer.");
+    }
+    console.log("Remote Rebuild declared the feature and preserved encrypted Hidden File Sync Metadata.");
     await session.app.stop();
 
     session = await startConfiguredSession(context, vaultB);
@@ -588,11 +618,14 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
         await withObsidianPage(port, async (page) => {
             const deadline = Date.now() + timeoutMs;
             while ((await page.locator(".notice:visible").count()) > 0 && Date.now() < deadline) {
-                await page.locator(".notice:visible").first().click({
-                    force: true,
-                    position: { x: 2, y: 2 },
-                    timeout: timeoutMs,
-                });
+                await page
+                    .locator(".notice:visible")
+                    .first()
+                    .click({
+                        force: true,
+                        position: { x: 2, y: 2 },
+                        timeout: timeoutMs,
+                    });
             }
             assertEqual(
                 await page.locator(".notice:visible").count(),
@@ -724,17 +757,15 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
 
         const result = await withObsidianPage(port, async (page) => {
             await page.evaluate((stateKey) => {
-                const state = (globalThis as unknown as Record<
-                    string,
-                    { releasePreparation?: () => void } | undefined
-                >)[stateKey];
+                const state = (
+                    globalThis as unknown as Record<string, { releasePreparation?: () => void } | undefined>
+                )[stateKey];
                 state?.releasePreparation?.();
             }, hiddenFileInitialisationStateKey);
             await page.waitForFunction(
                 (stateKey) =>
-                    (globalThis as unknown as Record<string, { reachedInitialisation?: boolean } | undefined>)[
-                        stateKey
-                    ]?.reachedInitialisation === true,
+                    (globalThis as unknown as Record<string, { reachedInitialisation?: boolean } | undefined>)[stateKey]
+                        ?.reachedInitialisation === true,
                 hiddenFileInitialisationStateKey,
                 { timeout: timeoutMs }
             );

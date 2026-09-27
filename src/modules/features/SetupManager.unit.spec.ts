@@ -659,3 +659,23 @@ describe("SetupManager", () => {
         expect(setting.currentSettings().P2P_ActiveRemoteConfigurationId).toBe("existing");
     });
 });
+
+describe("internal Metadata configuration", () => {
+    it.each([true, false])(
+        "applies the preference only after accepting the no-Rebuild warning (%s)",
+        async (accept) => {
+            const { manager, setting, dialogManager, core } = createSetupManager();
+            const current = { ...setting.settings, encryptInternalMetadata: false, remoteType: REMOTE_COUCHDB };
+            dialogManager.openWithExplicitCancel.mockResolvedValue({ ...current, encryptInternalMetadata: true });
+            const ask = vi.fn(async (_message: string, choices: string[]) => (accept ? choices[0] : "Cancel"));
+            core.confirm = { askSelectStringDialogue: ask };
+            const apply = vi.spyOn(setting, "applyPartial").mockResolvedValue(undefined);
+            await expect(manager.onlyE2EEConfiguration(UserMode.Update, current)).resolves.toBe(accept);
+            expect(ask.mock.calls[0][1][0]).toContain("update every other device first");
+            expect(ask.mock.calls[0][0]).toContain("currently running LiveSync");
+            expect(apply).toHaveBeenCalledTimes(accept ? 1 : 0);
+            expect(core.rebuilder.scheduleRebuild).not.toHaveBeenCalled();
+            expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
+        }
+    );
+});

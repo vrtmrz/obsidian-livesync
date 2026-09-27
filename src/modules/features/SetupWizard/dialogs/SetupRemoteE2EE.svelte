@@ -105,7 +105,8 @@
         (Obfuscate Properties). The remote type is selected later in this setup wizard.
         <br />
         It protects Metadata written after the option is enabled; existing Metadata is not rewritten. A manual remote
-        Rebuild is strongly recommended to protect existing Metadata.
+        Rebuild is strongly recommended to protect existing Metadata. Update every other synchronising device to a compatible
+        version before enabling this option, including devices currently running LiveSync.
     </InfoNote>
 
     <ExtraItems title={translateMessage("Advanced")}>

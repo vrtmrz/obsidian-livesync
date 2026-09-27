@@ -32,9 +32,6 @@ const unknownFeature = "future-format-v7";
 type FeatureState = {
     version: number | null;
     features: string[];
-    snapshotFeatures: string[];
-    snapshotDatabaseId: string | null;
-    databaseId: string | null;
     hasActiveReplicator: boolean;
 };
 
@@ -46,14 +43,9 @@ async function readFeatureState(cliBinary: string, env: NodeJS.ProcessEnv): Prom
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
             `const id=${JSON.stringify(VERSIONING_DOCID)};`,
             "const info=await core.localDatabase.getRaw(id).catch(()=>null);",
-            "const snapshot=await core.kvDB.get('replicationResultProcessorSnapshot');",
-            "const databaseId=await core.localDatabase.localDatabase.id();",
             "return JSON.stringify({",
             "version:typeof info?.version==='number'?info.version:null,",
             "features:Array.isArray(info?.used_features)?info.used_features:[],",
-            "snapshotFeatures:Array.isArray(snapshot?.observedFeatures)?snapshot.observedFeatures:[],",
-            "snapshotDatabaseId:snapshot?.databaseId??null,",
-            "databaseId,",
             "hasActiveReplicator:!!core.services.replicator.getActiveReplicator(),",
             "});",
             "})()",
@@ -153,12 +145,8 @@ async function main(): Promise<void> {
         const observed = await waitForState(
             cli.binary,
             session.cliEnv,
-            (state) =>
-                state.version === 13 &&
-                state.features.includes(unknownFeature) &&
-                state.snapshotFeatures.includes(unknownFeature) &&
-                !state.hasActiveReplicator,
-            "the live feature change, durable observation, and Replicator retirement"
+            (state) => state.version === 13 && state.features.includes(unknownFeature) && !state.hasActiveReplicator,
+            "the live feature change and Replicator retirement"
         );
 
         const replicated = await evalObsidianJson<boolean>(
@@ -171,25 +159,6 @@ async function main(): Promise<void> {
         if (acceptedAfterStop !== acceptedContent)
             throw new Error("Previously accepted Vault content changed on stop.");
 
-        // Shorten both visible lists so only the snapshot can retain the observed requirement.
-        const shortenedRemoteVersion = await fetchCouchDbDocument(couchDb, dbName, VERSIONING_DOCID);
-        await putCouchDbDocument(couchDb, dbName, { ...shortenedRemoteVersion, used_features: [] });
-        const shortenedLocalFeatures = await evalObsidianJson<string[]>(
-            cli.binary,
-            [
-                "(async()=>{",
-                "const core=app.plugins.plugins['obsidian-livesync'].core;",
-                `const id=${JSON.stringify(VERSIONING_DOCID)};`,
-                "const info=await core.localDatabase.getRaw(id);",
-                "await core.localDatabase.putRaw({...info,used_features:[]});",
-                "return JSON.stringify((await core.localDatabase.getRaw(id)).used_features);",
-                "})()",
-            ].join(""),
-            session.cliEnv
-        );
-        if (shortenedLocalFeatures.length !== 0)
-            throw new Error("The local control document did not shorten for the restart scenario.");
-
         await session.app.stop();
         session = undefined;
         session = await startObsidianLiveSyncSession({ binary, cliBinary: cli.binary, vault });
@@ -197,36 +166,40 @@ async function main(): Promise<void> {
         const afterRestart = await waitForState(
             cli.binary,
             session.cliEnv,
-            (state) =>
-                state.version === 13 && state.features.length === 0 && state.snapshotFeatures.includes(unknownFeature),
-            "the retained unknown feature after restart"
+            (state) => state.version === 13 && state.features.includes(unknownFeature),
+            "the remote feature requirement after restart"
         );
-        if (afterRestart.snapshotDatabaseId !== afterRestart.databaseId)
-            throw new Error("The retained feature observation belongs to a different physical database.");
         const replicatedAfterRestart = await evalObsidianJson<boolean>(
             cli.binary,
             "(async()=>JSON.stringify(!!(await app.plugins.plugins['obsidian-livesync'].core.services.replication.replicate(true))))()",
             session.cliEnv
         );
-        const continuousAfterRestart = await evalObsidianJson<{ status: string }>(
+        const continuousAfterRestart = await evalObsidianJson<{ requestStatus: string; connected: boolean }>(
             cli.binary,
             [
                 "(async()=>{",
                 "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                "const replicator=core.services.replicator.getActiveReplicator();",
+                "const original=replicator.openContinuousReplication;",
+                "let completion;",
+                "replicator.openContinuousReplication=function(...args){completion=original.apply(this,args);return completion;};",
+                "try{",
                 "const result=await core.services.replication.startContinuous({trigger:'daemon',interaction:{kind:'forbidden'}});",
-                "return JSON.stringify(result);",
+                "if(!completion) throw new Error('The continuous provider did not attempt its remote check');",
+                "return JSON.stringify({requestStatus:result.status,connected:await completion});",
+                "}finally{replicator.openContinuousReplication=original;}",
                 "})()",
             ].join(""),
             session.cliEnv
         );
-        if (replicatedAfterRestart || continuousAfterRestart.status !== "blocked")
+        if (replicatedAfterRestart || continuousAfterRestart.connected !== false)
             throw new Error(
-                `Replication resumed after restart despite a previously observed unknown feature: ${JSON.stringify({ afterRestart, replicatedAfterRestart, continuousAfterRestart })}`
+                `Replication resumed after restart despite an unknown remote feature: ${JSON.stringify({ afterRestart, replicatedAfterRestart, continuousAfterRestart })}`
             );
         if ((await readFile(fullPath, "utf-8")) !== acceptedContent)
             throw new Error("Previously accepted Vault content changed after restart.");
         console.log(
-            `Active feature change retired the Replicator; a shortened control document did not clear the block after restart: ${JSON.stringify({ observed, afterRestart })}`
+            `Active feature change retired the Replicator; the remote declaration refused synchronisation after restart: ${JSON.stringify({ observed, afterRestart })}`
         );
     } finally {
         await session?.app.stop();
