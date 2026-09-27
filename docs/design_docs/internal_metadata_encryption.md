@@ -181,10 +181,15 @@ scenarios. The dedicated active-connection scenario changed a generation 12
 remote to generation 13 with an unknown feature whilst continuous replication
 was running. The local control document arrived, the active Replicator retired,
 a subsequent replication was refused, and an earlier accepted note stayed in
-the Vault. Focused host tests cover both batch orders, pending-work snapshots,
-restart, stale callbacks, and the older local-generation case. Recovery after
-upgrading to a future client that understands the unknown feature has not been
-exercised in real Obsidian.
+the Vault. The same real Obsidian scenario now shortens both control-document
+feature lists and restarts the Vault. The saved observation remains associated
+with the same physical database, and both OneShot and Continuous replication
+are refused. Focused host tests cover both batch orders, pending-work snapshots,
+stale callbacks, and the older local-generation case. Recovery after upgrading
+to a future client that understands the unknown feature has not been exercised
+in real Obsidian. The existing [readiness queue issue](https://github.com/vrtmrz/obsidian-livesync/issues/1200)
+still affects when restored pending documents resume after the application
+becomes ready; snapshot preservation alone does not resolve that issue.
 
 Keep the primary-language settings and troubleshooting guides, the
 database-compatibility ADR, and Unreleased notes aligned with this behaviour.
