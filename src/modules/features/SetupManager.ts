@@ -346,12 +346,12 @@ export class SetupManager extends AbstractModule {
             if (e2eeConf.encryptInternalMetadata && currentSetting.remoteType === REMOTE_COUCHDB) {
                 const proceed = "Enable without rebuilding — update every other device first";
                 const choice = await this.core.confirm.askSelectStringDialogue(
-                    "A manual remote Rebuild is strongly recommended to protect existing Metadata. " +
+                    "A manual remote Rebuild is strongly recommended to protect existing file properties. " +
                         "Before continuing without rebuilding, update every other synchronising device to a version " +
                         "which supports this option, including devices currently running LiveSync. " +
-                        "Existing Metadata remains unchanged until it is rewritten or rebuilt.",
+                        "Existing properties remain unchanged until they are rewritten or rebuilt.",
                     [proceed, "Cancel"],
-                    { title: "Encrypt internal file Metadata", defaultAction: "Cancel" }
+                    { title: "Encrypt internal file Properties", defaultAction: "Cancel" }
                 );
                 if (choice !== proceed) return false;
             }

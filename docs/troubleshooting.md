@@ -96,7 +96,7 @@ Current releases automatically align compatible settings which control how new c
 
 A missing legacy file-name case setting means case-insensitive handling. It matches an explicit disabled setting and does not require a rebuild for that difference. An explicitly enabled setting can use different document IDs and still requires a compatibility decision against either value. Other configuration differences shown in the dialogue must still be resolved.
 
-If the mismatch names **Encrypt internal file Metadata**, update every device before accepting that preference. It affects subsequent Metadata writes for Hidden File Sync and Customisation Sync; it does not automatically protect existing Metadata. A manual remote Rebuild is strongly recommended if you need to protect existing paths, times, sizes, and Chunk references.
+If the mismatch names **Encrypt internal file Properties**, update every device before accepting that preference. It affects subsequent Metadata writes for Hidden File Sync and Customisation Sync; it does not automatically protect existing Metadata. A manual remote Rebuild is strongly recommended if you need to protect existing paths, times, sizes, and Chunk references.
 
 The `Sync now` command keeps routine replication progress quiet so that it is convenient to assign to a keyboard shortcut; assign one in Obsidian if that suits your workflow. A quiet command may still open this dialogue when a mismatch or another decision requires your attention.
 

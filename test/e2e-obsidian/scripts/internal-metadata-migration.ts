@@ -164,9 +164,9 @@ async function main(): Promise<void> {
                 .getByRole("button", { name: "Configure", exact: true })
                 .click();
             const dialog = await waitForVisibleObsidianDialogue(navigator.page, "End-to-End Encryption");
-            await dialog.getByLabel("Encrypt internal file Metadata", { exact: true }).check();
+            await dialog.getByLabel("Encrypt internal file Properties", { exact: true }).check();
             await dialog.getByRole("button", { name: "Proceed", exact: true }).click();
-            const warning = await waitForVisibleObsidianDialogue(navigator.page, "Encrypt internal file Metadata");
+            const warning = await waitForVisibleObsidianDialogue(navigator.page, "Encrypt internal file Properties");
             await warning
                 .getByRole("button", {
                     name: "Enable without rebuilding — update every other device first",
@@ -221,7 +221,7 @@ async function main(): Promise<void> {
         await withObsidianPage(session!.remoteDebuggingPort, async (page) => {
             const dialog = await waitForVisibleObsidianDialogue(page, "Configuration Mismatch Detected");
             await dialog
-                .getByText("Encrypt internal file Metadata", { exact: false })
+                .getByText("Encrypt internal file Properties", { exact: false })
                 .first()
                 .waitFor({ state: "visible" });
             await dialog.getByRole("button", { name: "Dismiss", exact: true }).click();

@@ -245,7 +245,7 @@ Setting key: usePathObfuscation
 
 In default, the path of the file is not obfuscated to improve the performance. If you enable this, the path of the file will be obfuscated. This is useful when you want to hide the path of the file.
 
-#### Encrypt internal file Metadata
+#### Encrypt internal file Properties
 
 Setting key: encryptInternalMetadata
 

@@ -93,7 +93,7 @@
         </InfoNote>
     {/if}
 
-    <InputRow label="Encrypt internal file Metadata">
+    <InputRow label="Encrypt internal file Properties">
         <input
             type="checkbox"
             bind:checked={encryptionSettings.encryptInternalMetadata}
@@ -101,11 +101,13 @@
         />
     </InputRow>
     <InfoNote>
-        This option applies only to CouchDB and requires End-to-End Encryption, the V2 algorithm, and Property Encryption
+        This option encrypts file properties used by Hidden File Sync and Customisation Sync.
+        <br />
+        It applies only to CouchDB and requires End-to-End Encryption, the V2 algorithm, and Property Encryption
         (Obfuscate Properties). The remote type is selected later in this setup wizard.
         <br />
-        It protects Metadata written after the option is enabled; existing Metadata is not rewritten. A manual remote
-        Rebuild is strongly recommended to protect existing Metadata. Update every other synchronising device to a compatible
+        It protects properties written after the option is enabled; existing properties are not rewritten. A manual remote
+        Rebuild is strongly recommended to protect existing properties. Update every other synchronising device to a compatible
         version before enabling this option, including devices currently running LiveSync.
     </InfoNote>
 
