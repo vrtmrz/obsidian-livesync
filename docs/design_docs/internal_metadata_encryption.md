@@ -123,6 +123,8 @@ first Chunk-reference count because it does not start with that synchronisation.
 Use the same Commonlib assessment at the CLI, Fast Fetch, and direct-access
 boundaries. The Obsidian result processor is one consumer, not the only place
 which determines compatibility. Keep unrelated Vaults and databases operational.
+Fast Fetch checks the remote declaration before opening or resetting the local
+database, both for a fresh Fetch and for checkpoint resumption.
 
 ## Verification and documentation
 
@@ -142,6 +144,12 @@ writer on a locked remote, unknown-feature rejection before and during
 replication, and remote-based rejection after restart. Retain the encrypted
 CLI-to-Obsidian interoperability scenario. A future client upgrade that adds
 support for an unknown feature is a separate validation boundary.
+
+Also exercise enabling the preference through the settings UI without Rebuild:
+retain unchanged plaintext Metadata, encrypt rewritten entries with stable IDs,
+reject a second device's mismatched preference, and restore both representations
+after alignment. With the preference subsequently OFF, verify that Fast Fetch
+still decodes encrypted Metadata and preserves the remote feature declaration.
 
 Keep the primary-language settings and troubleshooting guides, the
 database-compatibility ADR, and Unreleased notes aligned with this behaviour.
