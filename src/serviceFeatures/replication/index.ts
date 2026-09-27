@@ -98,19 +98,21 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
         clearHandlers();
         return Promise.resolve(true);
     });
-    services.databaseEvents.onDatabaseInitialised.addHandler(() => {
-        fireAndForget(() => resultProcessor.restoreFromSnapshotOnce());
-        return Promise.resolve(true);
+    services.databaseEvents.onDatabaseInitialised.addHandler(async () => {
+        await resultProcessor.restoreFromSnapshotOnce();
+        return true;
     });
     services.appLifecycle.onSettingLoaded.addHandler(initialiseAutomaticReplicationTriggers);
-    services.replication.parseSynchroniseResult.addHandler((documents) => {
-        resultProcessor.enqueueAll(documents);
-        return Promise.resolve(true);
+    services.replication.parseSynchroniseResult.addHandler(async (documents, sourceDatabase) => {
+        resultProcessor.enqueueAll(documents, sourceDatabase);
+        await resultProcessor.persistBlockedSnapshot();
+        return true;
     });
     services.replication.onBeforeReplicate.addHandler(onlinePreflight, 10);
     services.replication.onPrepareCentralRemoteReplication.addHandler(securitySeedPreflight);
     services.replication.onBeforeReplicate.addHandler(async () => {
         await resultProcessor.restoreFromSnapshotOnce();
+        if (resultProcessor.isCompatibilityBlocked) return false;
         unresolvedErrorManager.clearErrors();
         return true;
     }, 100);

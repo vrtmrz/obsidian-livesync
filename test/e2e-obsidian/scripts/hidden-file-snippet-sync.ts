@@ -1,5 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { VERSIONING_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import {
     assertLocatorHasMinimumTouchTarget,
     assertLocatorWithinSafeArea,
@@ -11,6 +13,7 @@ import {
     assertCouchDbReachable,
     createCouchDbDatabase,
     deleteCouchDbDatabase,
+    fetchCouchDbDocument,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
     waitForCouchDbDocs,
@@ -324,6 +327,10 @@ async function startConfiguredSession(
         dbName: context.dbName,
     };
     const hiddenFileSettings = {
+        encrypt: true,
+        passphrase: "internal-metadata-e2e-secret",
+        usePathObfuscation: true,
+        encryptInternalMetadata: true,
         syncInternalFiles: true,
         syncInternalFilesBeforeReplication: true,
         watchInternalFileChanges: false,
@@ -360,6 +367,16 @@ async function uploadHiddenFile(
         const ids = new Set(docs.map((doc) => doc._id));
         return ids.has(entry.id) && entry.children.every((childId) => ids.has(childId));
     });
+    const remoteEntry = await fetchCouchDbDocument(context.couchDb, context.dbName, entry.id);
+    if (!remoteEntry.path?.startsWith("/\\:") || remoteEntry.children?.length !== 0 ||
+        remoteEntry.ctime !== 0 || remoteEntry.mtime !== 0 || remoteEntry.size !== 0) {
+        throw new Error(`Hidden File Sync Metadata was not encrypted for ${entry.id}.`);
+    }
+    const versionInfo = await fetchCouchDbDocument(context.couchDb, context.dbName, VERSIONING_DOCID);
+    if (versionInfo.version !== REMOTE_FEATURE_GENERATION ||
+        !(versionInfo.used_features as unknown[] | undefined)?.includes(ENCRYPTED_INTERNAL_METADATA_FEATURE)) {
+        throw new Error("The remote feature list does not declare encrypted internal Metadata.");
+    }
     return entry;
 }
 

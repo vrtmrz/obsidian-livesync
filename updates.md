@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Privacy and compatibility
+
+#### New Feature
+
+- Hidden File Sync and Customisation Sync can now encrypt their paths, times, sizes, and Chunk references in CouchDB Metadata when E2EE V2 and Property Encryption are enabled. The preference is enabled for new Vaults and remains off for existing configurations until selected. It protects future writes; protecting existing Metadata also requires a manual remote Rebuild after all devices have been updated.
+- CouchDB records the features its data uses. Clients now stop synchronisation and pending file reflection when they encounter an unknown feature, and show its identifier so that the required update can be identified.
+
 ## 1.0.32
 
 27th September, 2026

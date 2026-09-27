@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
     buttonClasses: [] as string[],
+    clickHandlers: [] as Array<() => Promise<void> | void>,
     panels: [] as Array<{ destroy: ReturnType<typeof vi.fn> }>,
     settingClasses: [] as string[],
 }));
@@ -51,7 +52,8 @@ vi.mock("./LiveSyncSetting.ts", () => ({
                 setDestructive() {
                     return this;
                 },
-                onClick() {
+                onClick(callback: () => Promise<void> | void) {
+                    runtime.clickHandlers.push(callback);
                     return this;
                 },
                 setButtonText() {
@@ -97,6 +99,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/ConnectionString", () => ({
     },
 }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemote.svelte", () => ({ default: {} }));
+vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte", () => ({ default: {} }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
@@ -114,6 +117,7 @@ function createPanelElement(): HTMLElement {
 
 afterEach(() => {
     runtime.buttonClasses.length = 0;
+    runtime.clickHandlers.length = 0;
     runtime.panels.length = 0;
     runtime.settingClasses.length = 0;
     vi.clearAllMocks();
@@ -147,5 +151,57 @@ describe("paneRemoteConfig", () => {
         lifetimeComponent.unload();
 
         expect(runtime.panels[0].destroy).toHaveBeenCalledOnce();
+    });
+
+    it("applies an internal Metadata preference change without scheduling setup initialisation", async () => {
+        const originalSettings = {
+            encrypt: true,
+            passphrase: "passphrase",
+            E2EEAlgorithm: "v2",
+            usePathObfuscation: true,
+            encryptInternalMetadata: false,
+            remoteConfigurations: {},
+        };
+        const applyPartial = vi.fn(async () => {});
+        const onConfirmApplySettingsFromWizard = vi.fn(async () => {});
+        const setupManager = {
+            dialogManager: {
+                openWithExplicitCancel: vi.fn(async () => ({
+                    encrypt: true,
+                    passphrase: "passphrase",
+                    E2EEAlgorithm: "v2",
+                    usePathObfuscation: true,
+                    encryptInternalMetadata: true,
+                })),
+            },
+            onConfirmApplySettingsFromWizard,
+        };
+        const host = {
+            editingSettings: { ...originalSettings },
+            initialSettings: { ...originalSettings },
+            services: { setting: { applyPartial } },
+            core: {
+                settings: { ...originalSettings },
+                getModule: vi.fn(() => setupManager),
+            },
+            lifetimeComponent: { register: vi.fn() },
+            requestUpdate: vi.fn(),
+        };
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "E2EE Configuration") {
+                    callback(createPanelElement());
+                }
+            },
+        }));
+
+        paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
+        await runtime.clickHandlers[0]();
+
+        expect(applyPartial).toHaveBeenCalledWith({ encryptInternalMetadata: true }, true);
+        expect(onConfirmApplySettingsFromWizard).not.toHaveBeenCalled();
+        expect(host.editingSettings.encryptInternalMetadata).toBe(true);
+        expect(host.initialSettings.encryptInternalMetadata).toBe(true);
+        expect(host.requestUpdate).toHaveBeenCalledOnce();
     });
 });

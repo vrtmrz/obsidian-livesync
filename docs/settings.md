@@ -245,6 +245,14 @@ Setting key: usePathObfuscation
 
 In default, the path of the file is not obfuscated to improve the performance. If you enable this, the path of the file will be obfuscated. This is useful when you want to hide the path of the file.
 
+#### Encrypt internal file Metadata
+
+Setting key: encryptInternalMetadata
+
+For CouchDB, this encrypts paths, times, sizes, and Chunk references in the Metadata used by Hidden File Sync and Customisation Sync. It requires E2EE V2 and **Property Encryption**. New Vaults enable the preference by default, but it has no effect until those prerequisites are enabled. Existing Vaults and older Setup URIs and QR codes keep it disabled unless you enable it.
+
+Enabling the preference protects future Metadata writes. Existing Metadata and earlier revisions can remain readable in the remote database. If you want to protect existing Metadata too, prepare the authoritative data, update every device to a compatible version, and manually Rebuild the remote database. LiveSync does not gather data or start a Rebuild when you change this preference. Plaintext and encrypted Metadata can coexist during the transition. Document IDs, revision information, document counts, and ciphertext lengths remain visible.
+
 #### Encryption Algorithm
 
 Setting key: E2EEAlgorithm

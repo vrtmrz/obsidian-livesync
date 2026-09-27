@@ -1,7 +1,12 @@
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { describe, expect, it, vi } from "vitest";
-import { VER, type EntryDoc, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    VERSIONING_DOCID,
+    type EntryDoc,
+    type FilePathWithPrefix,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import {
     isValidFilenameInAndroid,
     isValidFilenameInWidows,
@@ -37,6 +42,10 @@ type SetupOptions = {
     isValidPath?: (path: string) => boolean;
     processSynchroniseResult?: (entry: unknown) => Promise<boolean>;
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
+    getSnapshot?: (key: string) => Promise<unknown>;
+    localVersionInfo?: unknown;
+    isTargetFile?: (path: string) => Promise<boolean>;
+    databaseId?: string;
 };
 
 function setup(options: SetupOptions = {}) {
@@ -47,6 +56,9 @@ function setup(options: SetupOptions = {}) {
     const isReady = vi.fn(() => options.applicationReady ?? true);
     const isValidPath = vi.fn(options.isValidPath ?? (() => true));
     const getDBEntryFromMeta = vi.fn(async (entry: object) => ({ ...entry, data: "x" }));
+    const localPhysicalDatabase = {
+        ...(options.databaseId ? { id: vi.fn(async () => options.databaseId) } : {}),
+    } as PouchDB.Database<EntryDoc>;
     const core = {
         services: {
             appLifecycle: { isReady, isSuspended: () => false },
@@ -62,14 +74,21 @@ function setup(options: SetupOptions = {}) {
             },
             replicator: { onCloseActiveReplication, runBoundedLocalApplicationActivity },
             vault: {
-                isTargetFile: vi.fn(async () => true),
+                isTargetFile: vi.fn(options.isTargetFile ?? (async () => true)),
                 isFileSizeTooLarge: vi.fn(() => false),
                 isValidPath,
             },
         },
-        kvDB: { set: setSnapshot },
+        kvDB: { set: setSnapshot, get: vi.fn(options.getSnapshot ?? (async () => undefined)) },
         localDatabase: {
-            getRaw: vi.fn(async (id: string) => ({ _id: id, _rev: "1-test" })),
+            localDatabase: localPhysicalDatabase,
+            getRaw: vi.fn(async (id: string) => {
+                if (id === VERSIONING_DOCID) {
+                    if (options.localVersionInfo === undefined) throw { status: 404 };
+                    return options.localVersionInfo;
+                }
+                return { _id: id, _rev: "1-test" };
+            }),
             getDBEntryFromMeta,
         },
     };
@@ -88,6 +107,9 @@ function setup(options: SetupOptions = {}) {
     } as never);
     return {
         getDBEntryFromMeta,
+        isTargetFile: core.services.vault.isTargetFile,
+        localPhysicalDatabase,
+        localDatabase: core.localDatabase,
         isReady,
         isValidPath,
         onCloseActiveReplication,
@@ -145,9 +167,9 @@ describe("ReplicateResultProcessor", () => {
             });
         }
         expect(processSynchroniseResult).toHaveBeenCalledTimes(11);
-        expect(processSynchroniseResult.mock.calls.some(([entry]) =>
-            (entry as { _id: string })._id === "unrelated-queue"
-        )).toBe(true);
+        expect(
+            processSynchroniseResult.mock.calls.some(([entry]) => (entry as { _id: string })._id === "unrelated-queue")
+        ).toBe(true);
     });
 
     it("suspends result application while the application is not ready", () => {
@@ -199,15 +221,260 @@ describe("ReplicateResultProcessor", () => {
     it("retires active ownership when a newer remote version is observed", async () => {
         const { onCloseActiveReplication, processor } = setup();
         const versionInfo = {
-            _id: "versioninfo",
+            _id: VERSIONING_DOCID,
             _rev: "1-test",
             type: "versioninfo",
-            version: VER + 1,
+            version: REMOTE_FEATURE_GENERATION + 1,
         } as unknown as PouchDB.Core.ExistingDocument<EntryDoc>;
 
         processor.enqueueAll([versionInfo]);
 
         await vi.waitFor(() => expect(onCloseActiveReplication).toHaveBeenCalledOnce());
+    });
+
+    it("continues applying documents after restoring a legacy local version document", async () => {
+        const { onCloseActiveReplication, processor, processSynchroniseResult } = setup({
+            localVersionInfo: {
+                _id: VERSIONING_DOCID,
+                type: "versioninfo",
+                version: 11,
+            },
+        });
+
+        await processor.restoreFromSnapshotOnce();
+        processor.enqueueAll([note("legacy-database-note")]);
+
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(processor.isSuspended).toBe(false);
+        expect(onCloseActiveReplication).not.toHaveBeenCalled();
+    });
+
+    it.each(["first", "last"] as const)(
+        "holds an entire received batch when an unknown feature is %s",
+        async (position) => {
+            const { onCloseActiveReplication, processor, processSynchroniseResult } = setup();
+            const versionInfo = {
+                _id: VERSIONING_DOCID,
+                _rev: "2-unknown",
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: ["future-format-v7"],
+            } as PouchDB.Core.ExistingDocument<EntryDoc>;
+            const document = note("pending-after-compatibility-change");
+            processor.enqueueAll(position === "first" ? [versionInfo, document] : [document, versionInfo]);
+
+            await vi.waitFor(() => expect(onCloseActiveReplication).toHaveBeenCalledOnce());
+            await Promise.resolve();
+            expect(processor.isSuspended).toBe(true);
+            expect(processSynchroniseResult).not.toHaveBeenCalled();
+            processor.resume();
+            await Promise.resolve();
+            expect(processSynchroniseResult).not.toHaveBeenCalled();
+        }
+    );
+
+    it("continues when a newly received feature is supported", async () => {
+        const { onCloseActiveReplication, processor, processSynchroniseResult } = setup();
+        const versionInfo = {
+            _id: VERSIONING_DOCID,
+            _rev: "2-supported",
+            type: "versioninfo",
+            version: REMOTE_FEATURE_GENERATION,
+            used_features: [ENCRYPTED_INTERNAL_METADATA_FEATURE],
+        } as PouchDB.Core.ExistingDocument<EntryDoc>;
+
+        processor.enqueueAll([versionInfo, note("supported-update")]);
+
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(onCloseActiveReplication).not.toHaveBeenCalled();
+    });
+
+    it("rechecks shared writer settings when a supported feature is added to an active database", async () => {
+        const { onCloseActiveReplication, processor } = setup({
+            localVersionInfo: {
+                _id: VERSIONING_DOCID,
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: [],
+            },
+        });
+        await processor.restoreFromSnapshotOnce();
+        const versionInfo = {
+            _id: VERSIONING_DOCID,
+            _rev: "2-supported",
+            type: "versioninfo",
+            version: REMOTE_FEATURE_GENERATION,
+            used_features: [ENCRYPTED_INTERNAL_METADATA_FEATURE],
+        } as PouchDB.Core.ExistingDocument<EntryDoc>;
+
+        processor.enqueueAll([versionInfo]);
+        processor.enqueueAll([{ ...versionInfo, _rev: "3-same-features" }]);
+
+        expect(onCloseActiveReplication).toHaveBeenCalledOnce();
+        expect(processor.isSuspended).toBe(false);
+    });
+
+    it("retains an in-flight note when a feature change arrives during an asynchronous check", async () => {
+        const targetCheck = promiseWithResolvers<boolean>();
+        const { isTargetFile, onCloseActiveReplication, processor, processSynchroniseResult } = setup({
+            isTargetFile: async () => targetCheck.promise,
+        });
+        const pending = note("in-flight");
+        processor.enqueueAll([pending]);
+        await vi.waitFor(() => expect(isTargetFile).toHaveBeenCalledOnce());
+
+        processor.enqueueAll([
+            {
+                _id: VERSIONING_DOCID,
+                _rev: "2-unknown",
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: ["future-format-v7"],
+            } as PouchDB.Core.ExistingDocument<EntryDoc>,
+        ]);
+        targetCheck.resolve(true);
+
+        await vi.waitFor(() => expect(processor["_processingChanges"]).toHaveLength(0));
+        expect(processor["_queuedChanges"]).toContain(pending);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(onCloseActiveReplication).toHaveBeenCalledOnce();
+    });
+
+    it("restores a checkpointed note only after assessing the persisted version document", async () => {
+        const pending = note("checkpointed");
+        const { onCloseActiveReplication, processor, processSynchroniseResult } = setup({
+            localVersionInfo: {
+                _id: VERSIONING_DOCID,
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: ["future-format-v7"],
+            },
+            getSnapshot: async () => ({ processing: [pending], queued: [] }),
+        });
+
+        await processor.restoreFromSnapshotOnce();
+
+        expect(processor.isSuspended).toBe(true);
+        expect(processor["_queuedChanges"]).toContain(pending);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(onCloseActiveReplication).toHaveBeenCalledOnce();
+    });
+
+    it("retains an observed unknown feature when the local version list is later shortened", async () => {
+        let snapshot: unknown;
+        const first = setup({
+            databaseId: "same-database",
+            setSnapshot: async (_key, value) => {
+                snapshot = value;
+            },
+        });
+        const pending = note("checkpointed-after-list-change");
+        first.processor.enqueueAll([
+            {
+                _id: VERSIONING_DOCID,
+                _rev: "2-unknown",
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: ["future-format-v7"],
+            } as PouchDB.Core.ExistingDocument<EntryDoc>,
+            pending,
+        ]);
+        await vi.waitFor(() => expect(snapshot).toBeDefined());
+
+        const resumed = setup({
+            databaseId: "same-database",
+            localVersionInfo: {
+                _id: VERSIONING_DOCID,
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: [],
+            },
+            getSnapshot: async () => snapshot,
+        });
+        await resumed.processor.restoreFromSnapshotOnce();
+
+        expect(resumed.processor.isSuspended).toBe(true);
+        expect(resumed.processor["_queuedChanges"]).toContain(pending);
+        expect(resumed.processSynchroniseResult).not.toHaveBeenCalled();
+        expect(resumed.onCloseActiveReplication).toHaveBeenCalledOnce();
+    });
+
+    it("does not restore pending work belonging to a replaced physical database", async () => {
+        const pending = note("old-database");
+        const { processor, processSynchroniseResult } = setup({
+            databaseId: "replacement-database",
+            getSnapshot: async () => ({ databaseId: "retired-database", processing: [pending], queued: [] }),
+        });
+
+        await processor.restoreFromSnapshotOnce();
+
+        expect(processor["_queuedChanges"]).toHaveLength(0);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(processor.isSuspended).toBe(false);
+    });
+
+    it("reports unknown identifiers and retires only once for repeated notifications", () => {
+        const log = vi.fn((_message: unknown, _level?: number) => undefined);
+        setGlobalLogFunction(log);
+        try {
+            const { onCloseActiveReplication, processor } = setup();
+            const versionInfo = {
+                _id: VERSIONING_DOCID,
+                _rev: "2-unknown",
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: ["future-format-v7"],
+            } as PouchDB.Core.ExistingDocument<EntryDoc>;
+
+            processor.enqueueAll([versionInfo]);
+            processor.enqueueAll([versionInfo]);
+
+            expect(onCloseActiveReplication).toHaveBeenCalledOnce();
+            expect(log).toHaveBeenCalledWith(
+                "[ReplicateResultProcessor] Unknown features are in use: future-format-v7",
+                LOG_LEVEL_NOTICE,
+                undefined
+            );
+        } finally {
+            setGlobalLogFunction(defaultLogger);
+        }
+    });
+
+    it("ignores a late feature notification from a replaced physical database", () => {
+        const { onCloseActiveReplication, processor } = setup();
+        const oldPhysicalDatabase = {} as PouchDB.Database<EntryDoc>;
+        const versionInfo = {
+            _id: VERSIONING_DOCID,
+            _rev: "2-unknown",
+            type: "versioninfo",
+            version: REMOTE_FEATURE_GENERATION,
+            used_features: ["future-format-v7"],
+        } as PouchDB.Core.ExistingDocument<EntryDoc>;
+
+        processor.enqueueAll([versionInfo], oldPhysicalDatabase);
+
+        expect(processor.isSuspended).toBe(false);
+        expect(onCloseActiveReplication).not.toHaveBeenCalled();
+    });
+
+    it("reassesses compatibility for a replacement local database", async () => {
+        const { localDatabase, onCloseActiveReplication, processor } = setup();
+        processor.enqueueAll([
+            {
+                _id: VERSIONING_DOCID,
+                _rev: "2-unknown",
+                type: "versioninfo",
+                version: REMOTE_FEATURE_GENERATION,
+                used_features: ["future-format-v7"],
+            } as PouchDB.Core.ExistingDocument<EntryDoc>,
+        ]);
+        expect(processor.isSuspended).toBe(true);
+
+        localDatabase.localDatabase = {} as PouchDB.Database<EntryDoc>;
+        await processor.restoreFromSnapshotOnce();
+
+        expect(processor.isSuspended).toBe(false);
+        expect(onCloseActiveReplication).toHaveBeenCalledOnce();
     });
 
     it("scans normal-file metadata without loading chunk documents and requeues it", async () => {
