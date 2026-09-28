@@ -39,6 +39,7 @@ process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
 process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "30000";
 
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_SETUP_URI_TIMEOUT_MS ?? 30000);
+const e2eePassphrase = `%${randomBytes(24).toString("base64url")}`;
 const notePath = "E2E/manual-couchdb/from-first-device.md";
 const noteContent = "# Manual CouchDB setup\n\nThis note was sent by the manually configured first device.\n";
 const returnNotePath = "E2E/manual-couchdb/from-second-device.md";
@@ -147,8 +148,7 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
             .locator('input[type="checkbox"]')
             .first()
             .check({ timeout: uiTimeoutMs });
-        const passphraseValue = randomBytes(24).toString("base64url");
-        await passphraseInput.fill(passphraseValue);
+        await passphraseInput.fill(e2eePassphrase);
         const passwordToggle = encryption.locator("button.sls-password-toggle");
         await passwordToggle.click({ timeout: uiTimeoutMs });
         assertEqual(
@@ -158,7 +158,7 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
         );
         assertEqual(
             await passphraseInput.inputValue(),
-            passphraseValue,
+            e2eePassphrase,
             "Toggling visibility changed the passphrase value."
         );
         await passwordToggle.click({ timeout: uiTimeoutMs });
@@ -169,7 +169,7 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
         );
         assertEqual(
             await passphraseInput.inputValue(),
-            passphraseValue,
+            e2eePassphrase,
             "Re-masking the passphrase changed its value."
         );
     });
@@ -301,6 +301,23 @@ async function assertPersistedE2EE(vault: TemporaryVault): Promise<void> {
     if (typeof persisted.encryptedPassphrase !== "string" || persisted.encryptedPassphrase.length === 0) {
         throw new Error("Manual CouchDB setup did not persist an encrypted E2EE passphrase.");
     }
+    if (JSON.stringify(persisted).includes(e2eePassphrase)) {
+        throw new Error("Manual CouchDB setup persisted the E2EE passphrase in plain text.");
+    }
+}
+
+async function assertRestoredE2EEPassphrase(session: ObsidianLiveSyncSession, cliBinary: string): Promise<void> {
+    const restored = await evalObsidianJson<boolean>(
+        cliBinary,
+        [
+            "(()=>{",
+            "const settings=app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings();",
+            `return JSON.stringify(settings.passphrase === ${JSON.stringify(e2eePassphrase)});`,
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    assertEqual(restored, true, "The E2EE passphrase was not restored after Obsidian restarted.");
 }
 
 async function setRemotePreferredE2EEDisabled(context: RunnerContext): Promise<void> {
@@ -454,6 +471,7 @@ async function main(): Promise<void> {
 
         session = await startUnconfiguredSession(context, vaultA);
         try {
+            await assertRestoredE2EEPassphrase(session, context.cliBinary);
             await scheduleRemoteOverwrite(session.remoteDebuggingPort);
             screenshots.push(await confirmRebuild(session.remoteDebuggingPort, e2eeRebuildCaptures));
             screenshots.push(

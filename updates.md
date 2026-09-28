@@ -23,6 +23,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We can now see which unsupported feature prevents a client from synchronising with CouchDB.
     - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
 
+#### Fixed
+
+- We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
+    - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
+
 ## 1.0.32
 
 27th September, 2026
