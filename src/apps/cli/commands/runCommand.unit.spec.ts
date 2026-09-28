@@ -419,6 +419,38 @@ describe("runCommand abnormal cases", () => {
         expect(appliedSettings.useIndexedDBAdapter).toBe(false);
     });
 
+    it("setup opens Ephemeral in its window and leaves settings untouched afterwards", async () => {
+        const end = Date.parse("2026-10-01T00:00:00Z");
+        const clock = vi.spyOn(Date, "now").mockReturnValue(end - 1_000);
+        const passphrase = "time-bound-passphrase";
+        try {
+            const { uri, usableUntil } = await processSetting.encodeTimeBoundSetupURI(
+                { ...DEFAULT_SETTINGS, isConfigured: true, couchDB_DBNAME: "time-bound-vault" },
+                passphrase
+            );
+            expect(usableUntil).toBe(end);
+
+            const inWindow = createCoreMock();
+            inWindow.services.context.standardIo.prompt.mockResolvedValue(passphrase);
+            await runCommand(makeOptions("setup", [uri.trim()]), { ...context, core: inWindow });
+            expect(inWindow.services.setting.applyExternalSettings).toHaveBeenCalledWith(
+                expect.objectContaining({ couchDB_DBNAME: "time-bound-vault" }),
+                true
+            );
+
+            clock.mockReturnValue(end);
+            const outOfWindow = createCoreMock();
+            outOfWindow.services.context.standardIo.prompt.mockResolvedValue(passphrase);
+            await expect(runCommand(makeOptions("setup", [uri.trim()]), { ...context, core: outOfWindow })).rejects.toThrow(
+                "Cannot open Setup URI"
+            );
+            expect(outOfWindow.services.setting.applyExternalSettings).not.toHaveBeenCalled();
+            expect(outOfWindow.services.control.applySettings).not.toHaveBeenCalled();
+        } finally {
+            clock.mockRestore();
+        }
+    });
+
     it("setup imports managed TURN through the existing encrypted URI", async () => {
         const core = createCoreMock();
         const profiles = {

@@ -136,3 +136,4 @@ deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.co
 ```
 
 The generated Setup URI contains the encrypted room, relay, and Vault settings. It deliberately omits the device-specific name. Store the URI and its passphrase separately. After importing it on the first device, continue from the initialisation step above, then generate a fresh Setup URI for an additional device from that working device.
+The generator prints the exact end time of its default Ephemeral URI. Set `uri_mode=persistent` before running it if the URI must remain usable without a time condition.

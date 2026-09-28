@@ -1,12 +1,14 @@
 import {
   createNewVaultSettings,
-  encodeSettingsToSetupURI,
+  encodeTimeBoundSetupURI,
   generateP2PRoomId,
+  isTimeBoundSetupURIUsableNow,
   type ObsidianLiveSyncSettings,
   P2P_DEFAULT_SETTINGS,
   PREFERRED_BASE,
   PREFERRED_JOURNAL_SYNC,
   PREFERRED_SETTING_SELF_HOSTED,
+  type TimeBoundSetupURIMode,
   upsertRemoteConfigurationInPlace,
 } from "./livesync-commonlib.ts";
 
@@ -19,6 +21,8 @@ export interface GeneratedSetupURI {
   remoteType: SetupRemoteType;
   setupURI: string;
   setupPassphrase: string;
+  mode: TimeBoundSetupURIMode;
+  usableUntil: number | null;
 }
 
 function requireValue(
@@ -147,6 +151,14 @@ function parseRemoteType(
   throw new Error("remote_type must be couchdb, s3, or p2p");
 }
 
+function parseSetupURIMode(
+  environment: SetupGeneratorEnvironment,
+): TimeBoundSetupURIMode {
+  const mode = environment.uri_mode?.trim().toLowerCase() || "ephemeral";
+  if (mode === "ephemeral" || mode === "persistent") return mode;
+  throw new Error("uri_mode must be ephemeral or persistent");
+}
+
 export function createSetupSettings(
   environment: SetupGeneratorEnvironment,
 ): { remoteType: SetupRemoteType; settings: ObsidianLiveSyncSettings } {
@@ -165,19 +177,54 @@ export async function generateSetupURI(
 ): Promise<GeneratedSetupURI> {
   const setupPassphrase = environment.uri_passphrase?.trim() ||
     generateSecret();
+  const mode = parseSetupURIMode(environment);
   const { remoteType, settings } = createSetupSettings(environment);
-  const setupURI = await encodeSettingsToSetupURI(settings, setupPassphrase, [
-    "pluginSyncExtendedSetting",
-    "doNotUseFixedRevisionForChunks",
-  ], true);
-  return { remoteType, setupURI: setupURI.trim(), setupPassphrase };
+  const { uri, usableUntil } = await encodeTimeBoundSetupURI(
+    settings,
+    setupPassphrase,
+    {
+      mode,
+      removeProperties: [
+        "pluginSyncExtendedSetting",
+        "doNotUseFixedRevisionForChunks",
+      ],
+      skipDefaultValue: true,
+    },
+  );
+  if (!isTimeBoundSetupURIUsableNow(usableUntil)) {
+    throw new Error("Setup URI time window changed during generation");
+  }
+  return {
+    remoteType,
+    setupURI: uri.trim(),
+    setupPassphrase,
+    mode,
+    usableUntil,
+  };
 }
 
 export async function runSetupURIGenerator(
   environment: SetupGeneratorEnvironment = Deno.env.toObject(),
 ): Promise<void> {
-  const generated = await generateSetupURI(environment);
+  let generated = await generateSetupURI(environment);
+  if (!isTimeBoundSetupURIUsableNow(generated.usableUntil)) {
+    generated = await generateSetupURI(environment);
+  }
+  if (!isTimeBoundSetupURIUsableNow(generated.usableUntil)) {
+    throw new Error("Setup URI time window changed before it could be shown");
+  }
   console.log(`\nGenerated ${generated.remoteType} Setup URI.`);
+  if (generated.usableUntil === null) {
+    console.log(
+      "Persistent: no time condition. Older clients can open this format.",
+    );
+  } else {
+    console.log(
+      `Ephemeral: usable until ${
+        new Date(generated.usableUntil).toISOString()
+      } (UTC).`,
+    );
+  }
   console.log(
     "Your passphrase for the Setup URI is:",
     generated.setupPassphrase,

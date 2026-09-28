@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
+import { decryptString } from "@vrtmrz/livesync-commonlib/compat/encryption/stringEncryption";
 import { $msg } from "../../../src/common/translation.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { createE2eCouchDbPluginData, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
@@ -53,7 +55,7 @@ type ObsidianVaultFile = {
 };
 
 type ObsidianTestApp = {
-    commands?: { executeCommandById(commandId: string): boolean };
+    commands?: { commands?: Record<string, unknown>; executeCommandById(commandId: string): boolean };
     plugins?: { plugins: Record<string, LiveSyncTestPlugin | undefined> };
     vault?: {
         delete(file: ObsidianVaultFile, force: boolean): Promise<void>;
@@ -656,6 +658,116 @@ async function verifySetupUriDialogue(mode: DialogueMode): Promise<string> {
     return screenshotPath;
 }
 
+async function verifyGenerateSetupUriDialogue(mode: DialogueMode): Promise<string> {
+    const passphrase = "dialogue-test-passphrase";
+    const port = obsidianRemoteDebuggingPort();
+    const modalByTitle = (page: import("playwright").Page, title: string) =>
+        page.locator(".modal-container").filter({
+            has: page.locator(".modal-title").filter({ hasText: title }),
+        });
+    const openAndEnterPassphrase = async () => {
+        const opened = await withObsidianPage(port, async (page) => {
+            await page.waitForFunction(
+                (commandId) => {
+                    const app = (globalThis as ObsidianTestGlobal).app;
+                    return Boolean(
+                        app?.plugins?.plugins["obsidian-livesync"]?.core?.settings.isConfigured &&
+                            app.commands?.commands?.[commandId]
+                    );
+                },
+                "obsidian-livesync:livesync-copysetupuri",
+                { timeout: uiTimeoutMs }
+            );
+            return await page.evaluate(
+                (commandId) =>
+                    (globalThis as ObsidianTestGlobal).app?.commands?.executeCommandById(commandId) === true,
+                "obsidian-livesync:livesync-copysetupuri"
+            );
+        });
+        if (!opened) throw new Error("The Setup URI generation command was not registered.");
+        await withObsidianPage(port, async (page) => {
+            const prompt = modalByTitle(page, "Encrypt your settings");
+            await prompt.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await prompt.locator('input[type="password"]').fill(passphrase);
+            await prompt.getByRole("button", { name: "OK", exact: true }).click({ timeout: uiTimeoutMs });
+        });
+    };
+    const selectMode = async (selected: "Time-bound" | "Compatible (no time limit)") => {
+        if (selected === "Time-bound") {
+            await captureObsidianDialogue(
+                port,
+                `setup-uri-availability${mode === "mobile" ? "-mobile" : ""}.png`,
+                async (page) => {
+                    const choice = modalByTitle(page, "Setup URI availability");
+                    await choice.getByRole("button", { name: "Time-bound", exact: true }).waitFor({
+                        state: "visible",
+                        timeout: uiTimeoutMs,
+                    });
+                }
+            );
+        }
+        await withObsidianPage(port, async (page) => {
+            const choice = modalByTitle(page, "Setup URI availability");
+            await choice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await choice.getByText("Time-bound Setup URIs can be opened until", { exact: false }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+            await choice.getByRole("button", { name: "Time-bound", exact: true }).waitFor({
+                state: "visible", timeout: uiTimeoutMs,
+            });
+            if (mode === "mobile") await assertMobileDialogueLayout(page, choice, "Setup URI availability dialogue");
+            await choice.getByRole("button", { name: selected, exact: true }).click({ timeout: uiTimeoutMs });
+        });
+    };
+    const getResultURI = async () =>
+        await withObsidianPage(port, async (page) => {
+            const result = modalByTitle(page, "Your Setup URI is ready to be copied");
+            await result.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            if (mode === "mobile") await assertMobileDialogueLayout(page, result, "Generated Setup URI dialogue");
+            return await result.locator("textarea[readonly]").inputValue();
+        });
+    const closeResult = async () => {
+        await withObsidianPage(port, async (page) => {
+            const result = modalByTitle(page, "Your Setup URI is ready to be copied");
+            await result.getByRole("button", { name: $msg("Ok"), exact: true }).click({ timeout: uiTimeoutMs });
+            await result.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        });
+    };
+
+    await openAndEnterPassphrase();
+    await selectMode("Time-bound");
+    const uri = await getResultURI();
+    if (!uri.startsWith("obsidian://setuplivesync?settings=")) {
+        throw new Error("The generation dialogues did not produce a Setup URI.");
+    }
+    const decoded = await decodeSettingsFromSetupURI(uri, passphrase);
+    if (!decoded || !decoded.isConfigured) throw new Error("The generated Time-bound URI could not be opened.");
+    const screenshot = await captureObsidianDialogue(
+        port,
+        `generated-setup-uri${mode === "mobile" ? "-mobile" : ""}.png`,
+        async (page) => {
+            const result = modalByTitle(page, "Your Setup URI is ready to be copied");
+            await result.locator("textarea[readonly]").waitFor({ state: "visible", timeout: uiTimeoutMs });
+        }
+    );
+    await closeResult();
+
+    if (mode === "desktop") {
+        await openAndEnterPassphrase();
+        await selectMode("Compatible (no time limit)");
+        const compatibleURI = await getResultURI();
+        const encrypted = new URL(compatibleURI).searchParams.get("settings");
+        if (!encrypted?.startsWith("%$")) throw new Error("Compatible changed the encrypted URI format.");
+        const oldFormatSettings = JSON.parse(await decryptString(encrypted, passphrase)) as Record<string, unknown>;
+        if (oldFormatSettings.isConfigured !== true) {
+            throw new Error("Compatible did not retain the original passphrase encryption format.");
+        }
+        await closeResult();
+    }
+    return screenshot;
+}
+
 async function verifyCompatibleMismatchAutoAdjustment(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         await page.evaluate((stateKey) => {
@@ -1228,6 +1340,19 @@ async function main(): Promise<void> {
             throw error;
         }
 
+        if (process.env.E2E_OBSIDIAN_ONLY_SETUP_URI_GENERATION === "true") {
+            const desktopScreenshot = await verifyGenerateSetupUriDialogue("desktop");
+            console.log(`Desktop Setup URI generation passed. Screenshot: ${desktopScreenshot}`);
+            await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), true, uiTimeoutMs);
+            try {
+                const mobileScreenshot = await verifyGenerateSetupUriDialogue("mobile");
+                console.log(`Mobile Setup URI generation passed. Screenshot: ${mobileScreenshot}`);
+            } finally {
+                await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), false, uiTimeoutMs);
+            }
+            return;
+        }
+
         const remoteSizeScreenshots = await verifyRemoteSizeNoticeAndDialogue();
         console.log(
             `Compatibility review actions were stacked vertically, and the remote-size startup notice opened an untimed review dialogue successfully. Screenshots: ${remoteSizeScreenshots.compatibilityReview}, ${remoteSizeScreenshots.notice}, ${remoteSizeScreenshots.dialogue}`
@@ -1245,6 +1370,8 @@ async function main(): Promise<void> {
         );
         const setupUriScreenshot = await verifySetupUriDialogue("desktop");
         console.log(`Setup URI dialogue mounted and closed successfully. Screenshot: ${setupUriScreenshot}`);
+        const generatedSetupUriScreenshot = await verifyGenerateSetupUriDialogue("desktop");
+        console.log(`Time-bound and Compatible generation passed. Screenshot: ${generatedSetupUriScreenshot}`);
         await verifyCompatibleAlignmentSettingDefault();
         console.log("The undefined compatible-setting preference is displayed with its effective enabled default.");
         const mismatchScreenshots = await verifyConfigurationMismatchDialogues();
@@ -1278,6 +1405,8 @@ async function main(): Promise<void> {
             console.log(
                 `Mobile Setup URI dialogue passed viewport, safe-area, and touch-target checks. Screenshot: ${mobileSetupUriScreenshot}`
             );
+            const mobileGeneratedSetupUriScreenshot = await verifyGenerateSetupUriDialogue("mobile");
+            console.log(`Mobile Time-bound generation passed. Screenshot: ${mobileGeneratedSetupUriScreenshot}`);
         } finally {
             await setObsidianMobileTestMode(obsidianRemoteDebuggingPort(), false, uiTimeoutMs);
         }

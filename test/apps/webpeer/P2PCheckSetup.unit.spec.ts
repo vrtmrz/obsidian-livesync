@@ -1,7 +1,7 @@
 import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { DEFAULT_SETTINGS, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
     P2P_CHECK_APP_ID,
@@ -25,6 +25,7 @@ describe("P2P connection-check setup", () => {
             expect(generated.target).toBe(target);
             expect(generated.setupPassphrase).toMatch(/^[a-z2-9]{4}(?:-[a-z2-9]{4}){3}$/);
             expect(generated.setupURI).toMatch(/^obsidian:\/\/setuplivesync\?settings=/);
+            expect(generated.setupURIUsableUntil).toBeGreaterThan(Date.now());
             expect(effective).toEqual(
                 expect.objectContaining({
                     remoteType: REMOTE_P2P,
@@ -93,6 +94,18 @@ describe("P2P connection-check setup", () => {
             expect("P2P_useDiagRTC" in browserRemote.settings).toBe(false);
         }
     );
+
+    it("uses the current UTC window and rejects the generated URI at its boundary", async () => {
+        const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-28T12:00:00Z"));
+        try {
+            const generated = await generateP2PCheckSetup("desktop");
+            expect(generated.setupURIUsableUntil).toBe(Date.parse("2026-10-01T00:00:00Z"));
+            clock.mockReturnValue(generated.setupURIUsableUntil);
+            await expect(decodeSettingsFromSetupURI(generated.setupURI, generated.setupPassphrase)).rejects.toThrow();
+        } finally {
+            clock.mockRestore();
+        }
+    });
 
     it("creates independent rooms and secrets for separate checks", async () => {
         const first = await generateP2PCheckSetup("desktop");

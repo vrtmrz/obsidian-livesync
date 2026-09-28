@@ -169,3 +169,41 @@ Deno.test({
         }
     },
 });
+
+Deno.test({
+    name: "WebPeer: an imported device can still be checked after its Setup URI window ends",
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        const server = await startStaticServer(webPeerDist);
+        const browser = await chromium.launch({ headless: true });
+        try {
+            const page = await browser.newPage();
+            try {
+                await page.goto(`${server.baseUrl}check.html`);
+                await page.getByRole("button", { name: "Prepare desktop check", exact: true }).click();
+                await page.getByAltText("Setup URI QR code for the desktop check", { exact: true }).waitFor();
+
+                // The target device has imported the URI; only the browser monitor is still pending.
+                await page.evaluate(() => {
+                    const originalNow = Date.now;
+                    Date.now = () => originalNow() + 8 * 24 * 60 * 60 * 1_000;
+                    window.dispatchEvent(new Event("focus"));
+                });
+                await page.getByText(/This Setup URI is outside its time window/).first().waitFor();
+
+                assertEquals(await page.getByLabel("Setup URI", { exact: true }).count(), 0);
+                assertEquals(await page.getByAltText("Setup URI QR code for the desktop check").count(), 0);
+                assertEquals(
+                    await page.getByRole("button", { name: "Start connection monitor", exact: true }).isEnabled(),
+                    true
+                );
+            } finally {
+                await page.close();
+            }
+        } finally {
+            await browser.close();
+            await server.close();
+        }
+    },
+});

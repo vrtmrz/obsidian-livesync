@@ -20,6 +20,14 @@ Deno.test("generates an Object Storage Setup URI with a selected S3 profile", as
     passphrase: "vault-secret",
     uri_passphrase: "setup-secret",
   });
+  assert(
+    generated.mode === "ephemeral",
+    "the default Setup URI mode was not Ephemeral",
+  );
+  assert(
+    generated.usableUntil !== null && generated.usableUntil > Date.now(),
+    "the Ephemeral Setup URI did not report its usable end time",
+  );
   const decoded = await decodeSettingsFromSetupURI(
     generated.setupURI,
     generated.setupPassphrase,
@@ -120,4 +128,34 @@ Deno.test("generates a random-room P2P Setup URI without copying a device identi
     profiles[0].uri.startsWith("sls+p2p://"),
     "the selected profile was not a P2P connection URI",
   );
+});
+
+Deno.test("generates a Persistent Setup URI on explicit request", async () => {
+  const generated = await generateSetupURI({
+    remote_type: "p2p",
+    passphrase: "vault-secret",
+    uri_passphrase: "setup-secret",
+    uri_mode: "persistent",
+  });
+  assert(generated.mode === "persistent", "the explicit mode was not retained");
+  assert(
+    generated.usableUntil === null,
+    "Persistent unexpectedly has a time condition",
+  );
+  const decoded = await decodeSettingsFromSetupURI(
+    generated.setupURI,
+    generated.setupPassphrase,
+  );
+  assert(decoded, "the Persistent Setup URI could not be opened");
+});
+
+Deno.test("rejects an unknown Setup URI mode", async () => {
+  let rejected = false;
+  try {
+    await generateSetupURI({ uri_mode: "later" });
+  } catch (error) {
+    rejected = error instanceof Error &&
+      error.message === "uri_mode must be ephemeral or persistent";
+  }
+  assert(rejected, "the generator accepted an unknown Setup URI mode");
 });

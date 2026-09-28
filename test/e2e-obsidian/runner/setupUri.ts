@@ -150,6 +150,12 @@ export async function generateSetupURIFromDevice(
         const prompt = modalByTitle(page, promptTitle);
         await prompt.getByRole("button", { name: "OK", exact: true }).click({ timeout: uiTimeoutMs });
         await prompt.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        const choice = modalByTitle(page, "Setup URI availability");
+        await choice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await choice.getByText("Time-bound Setup URIs can be opened until", { exact: false }).waitFor({
+            state: "visible", timeout: uiTimeoutMs,
+        });
+        await choice.getByRole("button", { name: "Time-bound", exact: true }).click({ timeout: uiTimeoutMs });
     });
 
     const resultTitle = "Your Setup URI is ready to be copied";
