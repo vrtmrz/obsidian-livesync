@@ -47,6 +47,12 @@ Do not switch to P2P or reset the database as the first response. Check:
 
 If the remote is healthy but one device's local database is not, use [Reset Synchronisation on This Device](recovery.md#reset-synchronisation-on-this-device) only after backing up unsynchronised local files.
 
+## An unchanged file appears as a conflict after restart
+
+If the log says `Preserved unsynchronised local changes as a conflict`, keep both versions available until you have checked their contents. The message means that LiveSync could not prove that the Vault file was unchanged; it does not establish that you edited the file. Use **Inspect conflicts and file/database differences** in Hatch to review the current branches before selecting a version.
+
+At start-up, LiveSync can restore a missing device-local revision record when the file still exactly matches the current local database revision. If a newer revision has already arrived, that match may no longer exist. LiveSync then preserves the old file for review because it cannot distinguish an unchanged copy from an intentional edit back to older content. A new release cannot resolve a conflict which was already created merely by recognising a historical content match. If the problem recurs, include the first relevant log entries, plug-in versions on both devices, and a redacted full report with the issue steps.
+
 ## Synchronisation is paused for compatibility review
 
 A compatibility review is separate from the Change Log. It can appear after an internal database or settings-format change, or when a configured Vault is copied, restored, or opened in a new Obsidian profile without its device-local acknowledgement.

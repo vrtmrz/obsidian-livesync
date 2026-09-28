@@ -8,11 +8,17 @@ process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "60000";
 const originalRoot = "batch/original";
 const renamedRoot = "batch/renamed";
 const outsidePath = "batch/outside.md";
+const missingColonPath = "batch/incoming/Poem: Example.md";
 const folders = ["alpha", "alpha/deep", "beta"];
 const notes = Array.from({ length: 24 }, (_, index) => ({
     relativePath: `${folders[index % folders.length]}/note-${index}.md`,
     body: `# Descendant ${index}\n\nThis body must survive a parent folder rename.\n`,
 }));
+notes.push(
+    { relativePath: "alpha/Poem: Example.md", body: "First poem\n" },
+    { relativePath: "beta/Poem: Example.md", body: "Second poem\n" },
+    { relativePath: "alpha/deep/Poem: Part: Example.md", body: "Poem with multiple colons\n" }
+);
 
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
@@ -45,7 +51,7 @@ async function main(): Promise<void> {
             localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
         });
         await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
-        const result = await evalObsidianJson<{ descendants: number; renamed: number; deleted: number }>(
+        const result = await evalObsidianJson<{ descendants: number; renamed: number; deleted: number; missingRejected: boolean }>(
             cliBinary,
             `(async()=>{
                 const core=app.plugins.plugins['obsidian-livesync'].core;
@@ -54,6 +60,7 @@ async function main(): Promise<void> {
                 const originalRoot=${JSON.stringify(originalRoot)};
                 const renamedRoot=${JSON.stringify(renamedRoot)};
                 const outsidePath=${JSON.stringify(outsidePath)};
+                const missingColonPath=${JSON.stringify(missingColonPath)};
                 const renamed=new Set(), deleted=new Set();
                 const refs=[
                     app.vault.on('rename',(file,oldPath)=>{
@@ -112,11 +119,23 @@ async function main(): Promise<void> {
                     await app.vault.createFolder(originalRoot);
                     for(const folder of ${JSON.stringify(folders)})
                         await app.vault.createFolder(originalRoot+'/'+folder);
-                    await Promise.all(notes.map(note=>app.vault.create(originalRoot+'/'+note.relativePath,note.body)));
+                    // Obsidian indexes imported colon names but rejects them in Vault.create.
+                    await Promise.all(notes.map(note=>note.relativePath.includes(':')
+                        ? app.vault.adapter.write(originalRoot+'/'+note.relativePath,note.body)
+                        : app.vault.create(originalRoot+'/'+note.relativePath,note.body)));
                     await app.vault.create(outsidePath,'Outside note');
                     await waitFor('Initial batch',async()=>[
                         ...await liveBatch(originalRoot), ...await liveErrors(outsidePath,'Outside note'),
                     ]);
+                    for(const note of notes){
+                        const path=originalRoot+'/'+note.relativePath;
+                        if(!await core.serviceModules.fileHandler.dbToStorage(await meta(path),null,true))
+                            throw new Error('Database reflection failed: '+path);
+                    }
+                    await waitFor('Reflected batch',()=>liveBatch(originalRoot));
+                    const expectedPaths=new Set([outsidePath,...notes.map(note=>originalRoot+'/'+note.relativePath)]);
+                    const unexpected=app.vault.getFiles().map(file=>file.path).filter(path=>!expectedPaths.has(path));
+                    if(unexpected.length) throw new Error('Unexpected reflected files: '+unexpected.join(', '));
                     const originalIds=await Promise.all(notes.map(async note=>(await meta(originalRoot+'/'+note.relativePath))._id));
 
                     // Rename the parent once: Obsidian must emit every descendant event.
@@ -144,7 +163,40 @@ async function main(): Promise<void> {
                     if(app.vault.getAbstractFileByPath(renamedRoot)) throw new Error('Deleted folder remains');
                     await app.vault.modify(app.vault.getAbstractFileByPath(outsidePath),'Outside note updated');
                     await waitFor('Outside update',()=>liveErrors(outsidePath,'Outside note updated'));
-                    return JSON.stringify({descendants:notes.length,renamed:renamed.size,deleted:deleted.size});
+
+                    // A received database entry must not create a different Vault file when Obsidian rejects its name.
+                    const filesBefore=new Set(app.vault.getFiles().map(file=>file.path));
+                    const incomingBody='Received colon note\\n';
+                    const incomingData=new Blob([incomingBody],{type:'text/plain'});
+                    const incomingId=await core.services.path.path2id(missingColonPath);
+                    const incomingTime=Date.now();
+                    const saved=await core.localDatabase.putDBEntry({
+                        _id:incomingId,path:missingColonPath,data:incomingData,
+                        ctime:incomingTime,mtime:incomingTime,size:incomingData.size,
+                        children:[],datatype:'plain',type:'plain',eden:{},
+                    });
+                    if(!saved?.ok) throw new Error('Could not seed received Metadata: '+missingColonPath);
+                    const incomingMeta=await meta(missingColonPath);
+                    if(!incomingMeta || incomingMeta._id!==incomingId || incomingMeta.path!==missingColonPath)
+                        throw new Error('Received Metadata has the wrong path: '+missingColonPath);
+                    const incomingEntry=await core.localDatabase.getDBEntry(missingColonPath,{rev:incomingMeta._rev},false,true,true);
+                    if(!incomingEntry || getContent(incomingEntry)!==incomingBody)
+                        throw new Error('Received content could not be read: '+missingColonPath);
+                    let creationFailure='';
+                    try{
+                        const reflected=await core.serviceModules.fileHandler.dbToStorage(incomingMeta,null,true);
+                        if(reflected) throw new Error('Obsidian unexpectedly created: '+missingColonPath);
+                    }catch(error){
+                        creationFailure=String(error);
+                        if(!creationFailure.includes('File name cannot contain')) throw error;
+                    }
+                    if(!creationFailure) throw new Error('Missing name rejection: '+missingColonPath);
+                    const filesAfter=app.vault.getFiles().map(file=>file.path);
+                    const newFiles=filesAfter.filter(path=>!filesBefore.has(path));
+                    if(newFiles.length) throw new Error('Received note was written under another name: '+newFiles.join(', '));
+                    if((await meta(missingColonPath))?.path!==missingColonPath)
+                        throw new Error('Received Metadata changed after rejection: '+missingColonPath);
+                    return JSON.stringify({descendants:notes.length,renamed:renamed.size,deleted:deleted.size,missingRejected:true});
                 }finally{
                     for(const ref of refs) app.vault.offref(ref);
                 }
@@ -153,7 +205,8 @@ async function main(): Promise<void> {
         );
         console.log(
             `Folder batch: ${result.descendants} descendants persisted, renamed, and deleted; ` +
-                `${result.renamed} rename and ${result.deleted} delete events observed; outside note remained writable.`
+                `${result.renamed} rename and ${result.deleted} delete events observed; outside note remained writable; ` +
+                `missing colon note rejected without an alternate file: ${result.missingRejected}.`
         );
     } finally {
         if (session) await session.app.stop();

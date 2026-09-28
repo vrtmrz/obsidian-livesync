@@ -190,6 +190,20 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
     log: LogFunction,
     cleanupFlag: () => Promise<void>
 ): Promise<boolean | undefined> {
+    if (host.services.setting.currentSettings().maxMTimeForReflectEvents > 0) {
+        // Simple Fetch reconciles storage with the local database after fetching, past the check which
+        // refuses that scan in remediation mode. Skipping only the scan would restore nothing from most
+        // remotes: reflection of received documents stays suspended while Simple Fetch fetches, so Object
+        // Storage and P2P remotes discard them, and CouchDB Fast Fetch writes them straight into the
+        // database. The detailed flow at least states the restriction and offers to clear it before
+        // rebuilding, instead of quietly reconciling past it.
+        log(
+            "Remediation mode is active, so the detailed fetch flow is used instead of Simple Fetch.",
+            LOG_LEVEL_NOTICE
+        );
+        clearRememberedSimpleFetchMode(host);
+        return undefined;
+    }
     const result = await askSimpleFetchMode(host);
     if (result === "cancelled") {
         log("Fetch cancelled by user.", LOG_LEVEL_NOTICE);

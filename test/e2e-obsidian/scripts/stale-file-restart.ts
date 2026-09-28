@@ -10,6 +10,7 @@ import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../r
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const paths = ["stale-known.md", "stale-unknown.md"];
+const recoveredPath = "stale-recovered.md";
 const oldContent = "# Note\nKeep\n\nTail\n\nFooter\n";
 const newContent = oldContent.replace(
     "Footer\n",
@@ -26,7 +27,7 @@ async function readState(cliBinary: string, env: NodeJS.ProcessEnv): Promise<Fil
             const core=app.plugins.plugins['obsidian-livesync'].core;
             const store=core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1');
             const states=[];
-            for(const path of ${JSON.stringify(paths)}){
+            for(const path of ${JSON.stringify([...paths, recoveredPath])}){
                 const meta=await core.localDatabase.getDBEntryMeta(path,{conflicts:true},true);
                 const branches=[];
                 for(const rev of [meta._rev,...(meta._conflicts??[])]){
@@ -82,16 +83,16 @@ async function main(): Promise<void> {
         await evalObsidianJson(
             cliBinary,
             `(async()=>{
-            for(const path of ${JSON.stringify(paths)}) await app.vault.create(path,${JSON.stringify(oldContent)});
+            for(const path of ${JSON.stringify([...paths, recoveredPath])}) await app.vault.create(path,${JSON.stringify(oldContent)});
             return JSON.stringify(true);
         })()`,
             session.cliEnv
         );
-        for (const path of paths) await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, path);
+        for (const path of [...paths, recoveredPath]) await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, path);
 
         // Drain real Vault events before creating a persisted pending-event fixture.
         // The DB advances without reflecting it in the Vault, as on an offline device.
-        const fixture = await evalObsidianJson<{ current: string[]; original: string[] }>(
+        const fixture = await evalObsidianJson<{ current: string[]; original: string[]; recovered: string }>(
             cliBinary,
             `(async()=>{
             const core=app.plugins.plugins['obsidian-livesync'].core;
@@ -110,8 +111,11 @@ async function main(): Promise<void> {
                 else await store.delete(path);
                 snapshot.push({type:'CHANGED',key:'CHANGED-'+path,args:{file}});
             }
+            const recovered=${JSON.stringify(recoveredPath)};
+            const recoveredMeta=await core.localDatabase.getDBEntryMeta(recovered,{},true);
+            await store.delete(recovered);
             await core.kvDB.set('storage-event-manager-snapshot',snapshot);
-            return JSON.stringify({current,original});
+            return JSON.stringify({current,original,recovered:recoveredMeta._rev});
         })()`,
             session.cliEnv
         );
@@ -120,7 +124,7 @@ async function main(): Promise<void> {
 
         session = await startObsidianLiveSyncSession({ binary, cliBinary, vault });
         await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
-        const [known, unknown] = await readState(cliBinary, session.cliEnv);
+        const [known, unknown, recovered] = await readState(cliBinary, session.cliEnv);
         assertEqual(known.rev, fixture.current[0], "An unchanged stale file created a revision during restart.");
         assertEqual(known.branches.length, 1, "An unchanged stale file created a conflict.");
         assertEqual(known.content, newContent, "The newer DB content was not reflected after suppressing the save.");
@@ -134,6 +138,32 @@ async function main(): Promise<void> {
         if (!unknown.branches.some((branch) => branch.content === newContent)) {
             throw new Error("The remote additions were lost.");
         }
+        assertEqual(recovered.rev, fixture.recovered, "Unchanged recovery added a database revision.");
+        assertEqual(recovered.branches.length, 1, "Unchanged recovery created a conflict.");
+        assertEqual(recovered.content, oldContent, "Unchanged recovery modified the Vault file.");
+        assertEqual(recovered.provenance, fixture.recovered, "Start-up did not recover missing file provenance.");
+
+        const receivedRevision = await evalObsidianJson<string>(
+            cliBinary,
+            `(async()=>{
+                const core=app.plugins.plugins['obsidian-livesync'].core;
+                const path=${JSON.stringify(recoveredPath)};
+                const meta=await core.localDatabase.getDBEntryMeta(path,{},true);
+                const file=await core.storageAccess.getFileStub(path);
+                const data=new Blob([${JSON.stringify(newContent)}],{type:'text/plain'});
+                const result=await core.localDatabase.putDBEntry({...meta,data,mtime:file.stat.mtime+60000,
+                    size:data.size,children:[]},false,meta._rev);
+                if(!result?.ok) throw new Error('Could not advance '+path);
+                if(!await core.fileHandler.dbToStorage(path,path,false)) throw new Error('Could not reflect '+path);
+                return JSON.stringify(result.rev);
+            })()`,
+            session.cliEnv
+        );
+        const [, , received] = await readState(cliBinary, session.cliEnv);
+        assertEqual(received.rev, receivedRevision, "Incoming revision was not retained.");
+        assertEqual(received.branches.length, 1, "Incoming revision created a conflict after recovery.");
+        assertEqual(received.content, newContent, "Incoming revision was not reflected after recovery.");
+        assertEqual(received.provenance, receivedRevision, "Incoming reflection did not record its revision.");
 
         await evalObsidianJson(
             cliBinary,
@@ -174,7 +204,7 @@ async function main(): Promise<void> {
         assertEqual(resolved.branches.length, 1, "The explicit newer-file option did not resolve the conflict.");
         assertEqual(resolved.content, newContent, "The newer-file option did not reflect the newer DB version.");
         console.log(
-            "Stale-file restart: known content reflected; unknown content preserved without duplicate branches; explicit newer-file resolution retained."
+            "Stale-file restart: missing unchanged provenance recovered; later update reflected; unknown content preserved; explicit newer-file resolution retained."
         );
     } finally {
         if (session) await session.app.stop();

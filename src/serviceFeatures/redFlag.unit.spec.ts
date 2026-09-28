@@ -771,6 +771,24 @@ describe("Red Flag Feature", () => {
     });
 
     describe("askAndPerformFastSetupOnScheduledFetchAll", () => {
+        it("uses the detailed flow instead of Simple Fetch while remediation mode is active", async () => {
+            const host = createHostMock();
+            const log = createLoggerMock();
+            const cleanupFlag = vi.fn().mockResolvedValue(undefined);
+
+            Object.assign(host.mocks.setting.settings, {
+                maxMTimeForReflectEvents: Date.parse("2026-09-01T00:00:00Z"),
+            });
+
+            await expect(askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag)).resolves.toBe(
+                undefined
+            );
+
+            expect(host.mocks.ui.confirm.confirmWithMessage).not.toHaveBeenCalled();
+            expect(host.mocks.setting.deleteSmallConfig).toHaveBeenCalledWith("simple-fetch-mode");
+            expect(cleanupFlag).not.toHaveBeenCalled();
+        });
+
         it("releases both reflection suspensions after Fast Setup succeeds", async () => {
             const host = createHostMock();
             const log = createLoggerMock();
