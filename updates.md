@@ -16,8 +16,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### New Feature
 
-- Hidden File Sync and Customisation Sync can now encrypt their paths, times, sizes, and Chunk references in CouchDB Metadata when E2EE V2 and Property Encryption are enabled. The preference is enabled for new Vaults and remains off for existing configurations until selected. It protects future writes; protecting existing Metadata also requires a manual remote Rebuild after all devices have been updated.
-- CouchDB records the features its data uses. Clients check these requirements before synchronisation and show any unknown feature identifiers. Receiving an unsupported requirement also stops the active replication.
+- We can now keep the file properties used by Hidden File Sync and Customisation Sync private in CouchDB.
+    - **Encrypt internal file Properties** extends E2EE V2 and Property Encryption to their paths, times, sizes, and Chunk references.
+    - Existing configurations keep this preference disabled. New Vaults enable it for use when the required encryption settings are active.
+    - Update every synchronising device before enabling it. It protects future writes; a manual remote Rebuild is strongly recommended to protect existing properties.
+- We can now see which unsupported feature prevents a client from synchronising with CouchDB.
+    - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
 
 ## 1.0.32
 
