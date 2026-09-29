@@ -24,7 +24,7 @@ export function paneMaintenance(
         paneEl,
         "div",
         {
-            text: "The remote database is locked for synchronization to prevent vault corruption because this device isn't marked as 'resolved'. Please backup your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until the device is confirmed as resolved by replication.",
+            text: $msg("The remote database is locked for synchronization to prevent vault corruption because this device isn't marked as 'resolved'. Please backup your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until the device is confirmed as resolved by replication."),
             cls: "op-warn",
         },
         (c) => {
@@ -32,7 +32,7 @@ export function paneMaintenance(
                 c,
                 "button",
                 {
-                    text: "I've made a backup, mark this device 'resolved'",
+                    text: $msg("I've made a backup, mark this device 'resolved'"),
                     cls: "mod-warning",
                 },
                 (e) => {
@@ -51,7 +51,7 @@ export function paneMaintenance(
         paneEl,
         "div",
         {
-            text: "To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database. This warning kept showing until confirming the device is resolved by the replication",
+            text: $msg("To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database. This warning kept showing until confirming the device is resolved by the replication"),
             cls: "op-warn",
         },
         (c) =>
@@ -59,7 +59,7 @@ export function paneMaintenance(
                 c,
                 "button",
                 {
-                    text: "I'm ready, unlock the database",
+                    text: $msg("I'm ready, unlock the database"),
                     cls: "mod-warning",
                 },
                 (e) => {
@@ -74,13 +74,13 @@ export function paneMaintenance(
         visibleOnly(isRemoteLocked)
     );
 
-    void addPanel(paneEl, "Scram!").then((paneEl) => {
+    void addPanel(paneEl, $msg("Scram!")).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Lock Server")
-            .setDesc("Lock the remote server to prevent synchronization with other devices.")
+            .setName($msg("Lock Server"))
+            .setDesc($msg("Lock the remote server to prevent synchronization with other devices."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Lock")
+                    .setButtonText($msg("Lock"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.services.replication.markLocked();
@@ -89,11 +89,11 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnCouchDBOrMinIO);
 
         new Setting(paneEl)
-            .setName("Emergency restart")
-            .setDesc("Disables all synchronization and restart.")
+            .setName($msg("Emergency restart"))
+            .setDesc($msg("Disables all synchronization and restart."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Flag and restart")
+                    .setButtonText($msg("Flag and restart"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.core.storageAccess.writeFileAuto(FlagFilesOriginal.SUSPEND_ALL, "");
@@ -102,13 +102,13 @@ export function paneMaintenance(
             );
     });
 
-    void addPanel(paneEl, "Reset Synchronisation information").then((paneEl) => {
+    void addPanel(paneEl, $msg("Reset Synchronisation information")).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Reset Synchronisation on This Device")
-            .setDesc("Restore or reconstruct local database from remote.")
+            .setName($msg("Reset Synchronisation on This Device"))
+            .setDesc($msg("Restore or reconstruct local database from remote."))
             .addButton((button) =>
                 button
-                    .setButtonText("Schedule and Restart")
+                    .setButtonText($msg("Schedule and Restart"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(async () => {
@@ -117,11 +117,11 @@ export function paneMaintenance(
                     })
             );
         new Setting(paneEl)
-            .setName("Overwrite Server Data with This Device's Files")
-            .setDesc("Rebuild local and remote database with local files.")
+            .setName($msg("Overwrite Server Data with This Device's Files"))
+            .setDesc($msg("Rebuild local and remote database with local files."))
             .addButton((button) =>
                 button
-                    .setButtonText("Schedule and Restart")
+                    .setButtonText($msg("Schedule and Restart"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(async () => {
@@ -131,13 +131,13 @@ export function paneMaintenance(
             );
     });
 
-    void addPanel(paneEl, "Syncing", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
+    void addPanel(paneEl, $msg("Syncing"), () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Resend")
-            .setDesc("Resend all chunks to the remote.")
+            .setName($msg("Resend"))
+            .setDesc($msg("Resend all chunks to the remote."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Send chunks")
+                    .setButtonText($msg("Send chunks"))
                     .setDisabled(false)
                     .onClick(async () => {
                         if (this.core.replicator instanceof LiveSyncCouchDBReplicator) {
@@ -148,13 +148,15 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnCouchDB);
 
         new Setting(paneEl)
-            .setName("Reset journal received history")
+            .setName($msg("Reset journal received history"))
             .setDesc(
-                "Initialise journal received history. On the next sync, every item except this device sent will be downloaded again."
+                $msg(
+                    "Initialise journal received history. On the next sync, every item except this device sent will be downloaded again."
+                )
             )
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Reset received")
+                    .setButtonText($msg("Reset received"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
@@ -168,13 +170,15 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnMinIO);
 
         new Setting(paneEl)
-            .setName("Reset journal sent history")
+            .setName($msg("Reset journal sent history"))
             .setDesc(
-                "Initialise journal sent history. On the next sync, every item except this device received will be sent again."
+                $msg(
+                    "Initialise journal sent history. On the next sync, every item except this device received will be sent again."
+                )
             )
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Reset sent history")
+                    .setButtonText($msg("Reset sent history"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
@@ -188,13 +192,13 @@ export function paneMaintenance(
             )
             .addOnUpdate(this.onlyOnMinIO);
     });
-    void addPanel(paneEl, "Garbage Collection V3 (Beta)", (e) => e, this.onlyOnCouchDB).then((paneEl) => {
+    void addPanel(paneEl, $msg("Garbage Collection V3 (Beta)"), (e) => e, this.onlyOnCouchDB).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Perform Garbage Collection")
-            .setDesc("Perform Garbage Collection to remove unused chunks and reduce database size.")
+            .setName($msg("Perform Garbage Collection"))
+            .setDesc($msg("Perform Garbage Collection to remove unused chunks and reduce database size."))
             .addButton((button) =>
                 button
-                    .setButtonText("Perform Garbage Collection")
+                    .setButtonText($msg("Perform Garbage Collection"))
                     .setDisabled(false)
                     .onClick(() => {
                         this.closeSetting();
@@ -289,15 +293,17 @@ export function paneMaintenance(
     //     }
     // );
 
-    void addPanel(paneEl, "Rebuilding Operations (Remote Only)", () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
+    void addPanel(paneEl, $msg("Rebuilding Operations (Remote Only)"), () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
         new Setting(paneEl)
-            .setName("Perform cleanup")
+            .setName($msg("Perform cleanup"))
             .setDesc(
-                "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
+                $msg(
+                    "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
+                )
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Perform")
+                    .setButtonText($msg("Perform"))
                     .setDisabled(false)
                     .onClick(async () => {
                         const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
@@ -312,11 +318,11 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnCouchDB);
 
         new Setting(paneEl)
-            .setName("Overwrite remote")
-            .setDesc("Overwrite remote with local DB and passphrase.")
+            .setName($msg("Overwrite remote"))
+            .setDesc($msg("Overwrite remote with local DB and passphrase."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Send")
+                    .setButtonText($msg("Send"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.rebuildDB("remoteOnly");
@@ -324,11 +330,11 @@ export function paneMaintenance(
             );
 
         new Setting(paneEl)
-            .setName("Reset all journal counter")
-            .setDesc("Initialise all journal history, On the next sync, every item will be received and sent.")
+            .setName($msg("Reset all journal counter"))
+            .setDesc($msg("Initialise all journal history, On the next sync, every item will be received and sent."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Reset all")
+                    .setButtonText($msg("Reset all"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().resetCheckpointInfo();
@@ -338,11 +344,11 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnMinIO);
 
         new Setting(paneEl)
-            .setName("Purge all journal counter")
-            .setDesc("Purge all download/upload cache.")
+            .setName($msg("Purge all journal counter"))
+            .setDesc($msg("Purge all download/upload cache."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Reset all")
+                    .setButtonText($msg("Reset all"))
                     .setDisabled(false)
                     .onClick(() => {
                         this.getMinioJournalSyncClient().resetAllCaches();
@@ -352,11 +358,11 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnMinIO);
 
         new Setting(paneEl)
-            .setName("Fresh Start Wipe")
-            .setDesc("Delete all data on the remote server.")
+            .setName($msg("Fresh Start Wipe"))
+            .setDesc($msg("Delete all data on the remote server."))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Delete")
+                    .setButtonText($msg("Delete"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
@@ -379,7 +385,7 @@ export function paneMaintenance(
             .addOnUpdate(this.onlyOnMinIO);
     });
 
-    void addPanel(paneEl, "Reset").then((paneEl) => {
+    void addPanel(paneEl, $msg("Reset")).then((paneEl) => {
         new Setting(paneEl)
             .setName($msg("obsidianLiveSyncSettingTab.nameDiscardSettings"))
             .addButton((button) => {
@@ -405,10 +411,10 @@ export function paneMaintenance(
             .addOnUpdate(visibleOnly(() => this.isConfiguredAs("isConfigured", true)));
 
         new Setting(paneEl)
-            .setName("Delete local database to reset or uninstall Self-hosted LiveSync")
+            .setName($msg("Delete local database to reset or uninstall Self-hosted LiveSync"))
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Delete")
+                    .setButtonText($msg("Delete"))
                     .setDisabled(false)
                     .onClick(async () => {
                         await this.services.database.resetDatabase();

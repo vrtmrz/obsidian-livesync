@@ -18,7 +18,7 @@ import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
 import { $msg } from "@/common/translation";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
-    void addPanel(paneEl, "Compatibility (Metadata)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Metadata)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("deleteMetadataOfDeletedFiles");
 
         new Setting(paneEl).autoWireNumeric("automaticallyDeleteMetadataOfDeletedFiles", {
@@ -26,12 +26,12 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         });
     });
 
-    void addPanel(paneEl, "Compatibility (Conflict Behaviour)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Conflict Behaviour)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableMarkdownAutoMerge");
         new Setting(paneEl).autoWireToggle("writeDocumentsIfConflicted");
     });
 
-    void addPanel(paneEl, "Compatibility (Database structure)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Database structure)")).then((paneEl) => {
         const migrateAllToIndexedDB = async () => {
             const dbToName = this.core.localDatabase.dbname + SuffixDatabaseName + ExtraSuffixIndexedDB;
             const options = {
@@ -80,16 +80,20 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             const useIndexedDBAdapter = usesLegacyIndexedDBAdapter(this.editingSettings);
             const infoClass = useIndexedDBAdapter ? "op-warn" : "op-warn-info";
             paneEl.createDiv({
-                text: "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead.",
+                text: $msg(
+                    "The IndexedDB adapter often offers superior performance in certain scenarios, but it has been found to cause memory leaks when used with LiveSync mode. When using LiveSync mode, please use IDB adapter instead."
+                ),
                 cls: infoClass,
             });
             paneEl.createDiv({
-                text: "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding.",
+                text: $msg(
+                    "Changing this setting requires migrating existing data (a bit time may be taken) and restarting Obsidian. Please make sure to back up your data before proceeding."
+                ),
                 cls: "op-warn-info",
             });
             const setting = new Setting(paneEl)
-                .setName("Database Adapter")
-                .setDesc("Select the database adapter to use. ");
+                .setName($msg("Database Adapter"))
+                .setDesc($msg("Select the database adapter to use."));
             const el = setting.controlEl.createDiv({});
             el.setText(`Current adapter: ${useIndexedDBAdapter ? "IndexedDB" : "IDB"}`);
             if (!useIndexedDBAdapter) {
@@ -119,10 +123,10 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         new Setting(paneEl).autoWireToggle("handleFilenameCaseSensitive", { holdValue: true });
     });
 
-    void addPanel(paneEl, "Compatibility (Internal API Usage)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Internal API Usage)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("watchInternalFileChanges", { invert: true });
     });
-    void addPanel(paneEl, "Compatibility (Remote Database)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Remote Database)")).then((paneEl) => {
         new Setting(paneEl).autoWireDropDown("E2EEAlgorithm", {
             options: E2EEAlgorithmNames,
         });
@@ -136,7 +140,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         ),
     });
 
-    void addPanel(paneEl, "Edge case addressing (Database)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Edge case addressing (Database)")).then((paneEl) => {
         new Setting(paneEl)
             .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
             .addApplyButton(["additionalSuffixOfDatabaseName"]);
@@ -161,13 +165,13 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             await this.core.localDatabase._prepareHashFunctions();
         });
     });
-    void addPanel(paneEl, "Edge case addressing (Behaviour)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Edge case addressing (Behaviour)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("doNotSuspendOnFetching");
         new Setting(paneEl).autoWireToggle("doNotDeleteFolder");
         new Setting(paneEl).autoWireToggle("processSizeMismatchedFiles");
     });
 
-    void addPanel(paneEl, "Edge case addressing (Processing)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Edge case addressing (Processing)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableWorkerForGeneratingChunks");
 
         new Setting(paneEl).autoWireToggle("processSmallFilesInUIThread", {
@@ -177,10 +181,10 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     // void addPanel(paneEl, "Edge case addressing (Networking)").then((paneEl) => {
     // new Setting(paneEl).autoWireToggle("useRequestAPI");
     // });
-    void addPanel(paneEl, "Compatibility (Trouble addressed)").then((paneEl) => {
+    void addPanel(paneEl, $msg("Compatibility (Trouble addressed)")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("disableCheckingConfigMismatch");
     });
-    void addPanel(paneEl, "Remediation").then((paneEl) => {
+    void addPanel(paneEl, $msg("Remediation")).then((paneEl) => {
         const setting = setSettingAdditionalActionsState(new Setting(paneEl));
         const dateEl = setting.controlEl.createSpan();
         setting
