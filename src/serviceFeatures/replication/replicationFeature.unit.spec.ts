@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { VER, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VERSIONING_DOCID, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { useReplicationFeature } from "./index";
 
@@ -19,8 +20,14 @@ type SetupOptions = {
 };
 
 function setup(options: SetupOptions = {}) {
+    const defaultLocalDatabase = {
+        localDatabase: {},
+        getRaw: vi.fn(async () => {
+            throw { status: 404 };
+        }),
+    };
     const {
-        getLocalDatabase = () => ({}),
+        getLocalDatabase = () => defaultLocalDatabase,
         keyValueDB = {
             kvDB: {
                 get: vi.fn(async () => undefined),
@@ -39,7 +46,7 @@ function setup(options: SetupOptions = {}) {
         API: { isMobile: vi.fn(() => false), isOnline: true },
         appLifecycle: {
             getUnresolvedMessages: { addHandler: vi.fn() },
-            isReady: true,
+            isReady: vi.fn(() => true),
             isSuspended: vi.fn(() => false),
             onSettingLoaded: { addHandler: vi.fn() },
         },
@@ -48,6 +55,7 @@ function setup(options: SetupOptions = {}) {
         keyValueDB,
         path: { getPath: vi.fn((entry: { path: string }) => entry.path) },
         replication: {
+            replicationResultCount: { value: 0 },
             onBeforeReplicate: {
                 addHandler: vi.fn((handler: BooleanHandler, priority = 0) => {
                     beforeReplicateHandlers.set(priority, handler);
@@ -165,10 +173,10 @@ describe("replication serviceFeature composition", () => {
         const onCloseActiveReplication = vi.fn(() => retirement.promise);
         const harness = setup({ onCloseActiveReplication });
         const versionInfo = {
-            _id: "versioninfo",
+            _id: VERSIONING_DOCID,
             _rev: "1-test",
             type: "versioninfo",
-            version: VER + 1,
+            version: REMOTE_FEATURE_GENERATION + 1,
         } as unknown as PouchDB.Core.ExistingDocument<EntryDoc>;
 
         expect(harness.parseHandler).toBeDefined();

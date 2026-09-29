@@ -12,6 +12,22 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Privacy and compatibility
+
+#### New Feature
+
+- We can now keep the file properties used by Hidden File Sync and Customisation Sync private in CouchDB.
+    - **Encrypt internal file Properties** extends E2EE V2 and Property Encryption to their paths, times, sizes, and Chunk references.
+    - Existing configurations keep this preference disabled. New Vaults enable it for use when the required encryption settings are active.
+    - Update every synchronising device before enabling it. It protects future writes; a manual remote Rebuild is strongly recommended to protect existing properties.
+- We can now see which unsupported feature prevents a client from synchronising with CouchDB.
+    - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
+
+#### Fixed
+
+- We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
+    - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
+
 ## 1.0.32
 
 27th September, 2026

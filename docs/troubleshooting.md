@@ -96,6 +96,8 @@ Current releases automatically align compatible settings which control how new c
 
 A missing legacy file-name case setting means case-insensitive handling. It matches an explicit disabled setting and does not require a rebuild for that difference. An explicitly enabled setting can use different document IDs and still requires a compatibility decision against either value. Other configuration differences shown in the dialogue must still be resolved.
 
+If the mismatch names **Encrypt internal file Properties**, update every device before accepting that preference. It affects subsequent Metadata writes for Hidden File Sync and Customisation Sync; it does not automatically protect existing Metadata. A manual remote Rebuild is strongly recommended if you need to protect existing paths, times, sizes, and Chunk references.
+
 The `Sync now` command keeps routine replication progress quiet so that it is convenient to assign to a keyboard shortcut; assign one in Obsidian if that suits your workflow. A quiet command may still open this dialogue when a mismatch or another decision requires your attention.
 
 The available actions depend on when the mismatch is found:
@@ -108,6 +110,10 @@ The available actions depend on when the mismatch is found:
 ![Configuration mismatch dialogue](tweak_mismatch_dialogue.png)
 
 Historic defect notices and renamed controls are retained in the [0.25 release history](releases/0.25.md) and [legacy release history](releases/legacy.md), rather than in the current troubleshooting path.
+
+## The remote database uses an unknown feature
+
+When a notice identifies an unknown feature, update this device and every other client of the same CouchDB database, including the CLI. The notice includes the feature identifier even if this version has no descriptive name for it. New synchronisation is refused, and receiving an unsupported requirement stops active replication, because an older client may not interpret the Metadata and its Chunk references correctly. Already queued file changes are not rolled back. The cleaned-remote recovery path also checks compatibility before counting Chunk references. Do not remove the feature name from the remote version document to bypass the check. After updating, reconnect and review any pending file changes before running Garbage Collection.
 
 ## Setup and settings questions
 

@@ -116,7 +116,16 @@ export function paneRemoteConfig(
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
-                            await setupManager.onlyE2EEConfiguration(UserMode.Update, originalSettings);
+                            const applied = await setupManager.onlyE2EEConfiguration(UserMode.Update, originalSettings);
+                            if (applied) {
+                                this.editingSettings.encryptInternalMetadata =
+                                    this.core.settings.encryptInternalMetadata;
+                                if (this.initialSettings) {
+                                    this.initialSettings.encryptInternalMetadata =
+                                        this.core.settings.encryptInternalMetadata;
+                                }
+                                this.requestUpdate();
+                            }
                             updateE2EESummary();
                         })
                         .setButtonText("Configure")
@@ -243,6 +252,7 @@ export function paneRemoteConfig(
                 ...DEFAULT_SETTINGS,
                 encrypt: this.editingSettings.encrypt,
                 usePathObfuscation: this.editingSettings.usePathObfuscation,
+                encryptInternalMetadata: this.editingSettings.encryptInternalMetadata,
                 passphrase: this.editingSettings.passphrase,
                 configPassphraseStore: this.editingSettings.configPassphraseStore,
             });

@@ -26,7 +26,8 @@
         passphrase: "",
         E2EEAlgorithm: DEFAULT_SETTINGS.E2EEAlgorithm,
         usePathObfuscation: true,
-    } as EncryptionSettings;
+        encryptInternalMetadata: true,
+    };
 
     let encryptionSettings = $state<EncryptionSettings>({ ...default_encryption });
 
@@ -42,6 +43,11 @@
         if (!encryptionSettings.encrypt) return true;
         return encryptionSettings.passphrase.trim().length >= 1;
     });
+    let canEncryptInternalMetadata = $derived(
+        encryptionSettings.encrypt &&
+            encryptionSettings.E2EEAlgorithm === E2EEAlgorithms.V2 &&
+            encryptionSettings.usePathObfuscation
+    );
 
     function commit() {
         setResult(pickEncryptionSettings(encryptionSettings));
@@ -86,6 +92,24 @@
             )}
         </InfoNote>
     {/if}
+
+    <InputRow label="Encrypt internal file Properties">
+        <input
+            type="checkbox"
+            bind:checked={encryptionSettings.encryptInternalMetadata}
+            disabled={!canEncryptInternalMetadata}
+        />
+    </InputRow>
+    <InfoNote>
+        This option encrypts file properties used by Hidden File Sync and Customisation Sync.
+        <br />
+        It applies only to CouchDB and requires End-to-End Encryption, the V2 algorithm, and Property Encryption
+        (Obfuscate Properties). The remote type is selected later in this setup wizard.
+        <br />
+        It protects properties written after the option is enabled; existing properties are not rewritten. A manual remote
+        Rebuild is strongly recommended to protect existing properties. Update every other synchronising device to a compatible
+        version before enabling this option, including devices currently running LiveSync.
+    </InfoNote>
 
     <ExtraItems title={translateMessage("Advanced")}>
         <InputRow label={translateMessage("Encryption Algorithm")}>

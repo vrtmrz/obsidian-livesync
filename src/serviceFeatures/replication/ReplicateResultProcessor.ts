@@ -1,6 +1,7 @@
+import { assessRemoteFeatureDocument, describeRemoteFeatureRejection } from "@vrtmrz/livesync-commonlib/replication";
 import {
     SYNCINFO_ID,
-    VER,
+    VERSIONING_DOCID,
     type AnyEntry,
     type EntryDoc,
     type EntryLeaf,
@@ -274,13 +275,14 @@ export class ReplicateResultProcessor {
             this.log(`Processed chunk: ${shortenId(change._id)}`, LOG_LEVEL_DEBUG);
             return true;
         }
-        if (change.type == "versioninfo") {
+        if (change._id === VERSIONING_DOCID || change.type === "versioninfo") {
             this.log(`Version info document received: ${change._id}`, LOG_LEVEL_VERBOSE);
-            if (change.version > VER) {
+            const assessment = assessRemoteFeatureDocument(change);
+            if (assessment.status !== "supported" && assessment.status !== "older-generation") {
                 // Fence and retire the active publication through its owner.
                 this.context.requestActiveReplicatorRetirement();
                 this.log(
-                    `Remote database updated to incompatible version. update your Self-hosted LiveSync plugin.`,
+                    `${describeRemoteFeatureRejection(assessment)} Update Self-hosted LiveSync before synchronising.`,
                     LOG_LEVEL_NOTICE
                 );
             }
