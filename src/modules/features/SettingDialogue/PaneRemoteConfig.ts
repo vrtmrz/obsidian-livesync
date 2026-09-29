@@ -47,6 +47,12 @@ function getSettingsFromEditingSettings(editingSettings: AllSettings): ObsidianL
     }
     return workObj;
 }
+
+function syncIdDerivationSettings(target: Partial<ObsidianLiveSyncSettings>, source: ObsidianLiveSyncSettings): void {
+    target.idDerivationVersion = source.idDerivationVersion;
+    target.idDerivationKey = source.idDerivationKey;
+}
+
 function createRemoteConfigurationId(): string {
     return `remote-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -116,6 +122,8 @@ export function paneRemoteConfig(
                         .onClick(async () => {
                             const setupManager = this.core.getModule(SetupManager);
                             const originalSettings = getSettingsFromEditingSettings(this.editingSettings);
+                            const originalIdDerivationVersion = this.core.settings.idDerivationVersion;
+                            const originalIdDerivationKey = this.core.settings.idDerivationKey;
                             const applied = await setupManager.onlyE2EEConfiguration(UserMode.Update, originalSettings);
                             if (applied) {
                                 this.editingSettings.encryptInternalMetadata =
@@ -123,6 +131,16 @@ export function paneRemoteConfig(
                                 if (this.initialSettings) {
                                     this.initialSettings.encryptInternalMetadata =
                                         this.core.settings.encryptInternalMetadata;
+                                }
+                                this.requestUpdate();
+                            }
+                            if (
+                                this.core.settings.idDerivationVersion !== originalIdDerivationVersion ||
+                                this.core.settings.idDerivationKey !== originalIdDerivationKey
+                            ) {
+                                syncIdDerivationSettings(this.editingSettings, this.core.settings);
+                                if (this.initialSettings) {
+                                    syncIdDerivationSettings(this.initialSettings, this.core.settings);
                                 }
                                 this.requestUpdate();
                             }
@@ -164,9 +182,11 @@ export function paneRemoteConfig(
                 const currentConfigs = cloneRemoteConfigurations(this.core.settings.remoteConfigurations);
                 this.editingSettings.remoteConfigurations = currentConfigs;
                 this.editingSettings.activeConfigurationId = this.core.settings.activeConfigurationId;
+                syncIdDerivationSettings(this.editingSettings, this.core.settings);
                 if (this.initialSettings) {
                     this.initialSettings.remoteConfigurations = cloneRemoteConfigurations(currentConfigs);
                     this.initialSettings.activeConfigurationId = this.core.settings.activeConfigurationId;
+                    syncIdDerivationSettings(this.initialSettings, this.core.settings);
                 }
             };
             const persistRemoteConfigurations = async (synchroniseActiveRemote: boolean = false) => {
@@ -254,6 +274,8 @@ export function paneRemoteConfig(
                 usePathObfuscation: this.editingSettings.usePathObfuscation,
                 encryptInternalMetadata: this.editingSettings.encryptInternalMetadata,
                 passphrase: this.editingSettings.passphrase,
+                idDerivationVersion: this.editingSettings.idDerivationVersion,
+                idDerivationKey: this.editingSettings.idDerivationKey,
                 configPassphraseStore: this.editingSettings.configPassphraseStore,
             });
             const addRemoteConfiguration = async () => {

@@ -3,13 +3,14 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { Worker } from "node:worker_threads";
 import { encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
-    assertE2eCompatibilityMarker,
     assertE2eCompatibilityUnpaused,
     pushLocalChanges,
     type ConfiguredSettings,
@@ -53,11 +54,17 @@ process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
 const execFileAsync = promisify(execFile);
 const useCustomRequestHandler = process.argv.includes("--custom-http-handler");
 const useQRCode = process.argv.includes("--qr");
+const uriMode = process.argv.includes("--compatible") ? "persistent" : "ephemeral";
 const captures: SetupCaptureNames = useQRCode
     ? { scenario: "object-storage-qr", guide: "object-storage-qr-setup" }
-    : useCustomRequestHandler
-      ? { scenario: "object-storage-custom-http-handler-setup-uri", guide: "object-storage-custom-http-handler-setup" }
-      : { scenario: "object-storage-setup-uri", guide: "object-storage-setup" };
+    : uriMode === "persistent"
+      ? { scenario: "object-storage-compatible-uri", guide: "object-storage-compatible-setup" }
+      : useCustomRequestHandler
+        ? {
+              scenario: "object-storage-custom-http-handler-setup-uri",
+              guide: "object-storage-custom-http-handler-setup",
+          }
+        : { scenario: "object-storage-setup-uri", guide: "object-storage-setup" };
 const noteFromFirst = "E2E/object-storage/from-first.md";
 const noteFromSecond = "E2E/object-storage/from-second.md";
 const firstContent =
@@ -123,10 +130,61 @@ async function generateBootstrapSetupURI(
         ...(useCustomRequestHandler ? { use_custom_request_handler: "true" } : {}),
         passphrase: randomBytes(24).toString("base64url"),
         uri_passphrase: setupPassphrase,
+        uri_mode: uriMode,
     });
     const setupURI = output.split(/\r?\n/u).find((line) => line.startsWith("obsidian://setuplivesync?settings="));
     if (!setupURI) throw new Error("The public Setup URI generator did not emit an Object Storage Setup URI.");
     return { setupURI, setupPassphrase };
+}
+
+async function expiredSetupURI(settings: ObsidianLiveSyncSettings, setupPassphrase: string): Promise<SetupArtifact> {
+    // Only this fixture worker uses a past clock; Obsidian and the runner keep real time.
+    const worker = new Worker(
+        `
+        const { parentPort, workerData } = require('node:worker_threads');
+        Date.now = () => Date.UTC(2024, 0, 1);
+        import('@vrtmrz/livesync-commonlib/setup-uri').then(async ({ encodeTimeBoundSetupURI }) => {
+            const result = await encodeTimeBoundSetupURI(workerData.settings, workerData.setupPassphrase);
+            parentPort.postMessage(result.uri);
+        });
+    `,
+        { eval: true, workerData: { settings, setupPassphrase } }
+    );
+    try {
+        const setupURI = await new Promise<string>((resolve, reject) => {
+            worker.once("message", resolve);
+            worker.once("error", reject);
+            worker.once("exit", (code) => reject(new Error(`The expired URI fixture exited with ${code}.`)));
+        });
+        return { setupURI, setupPassphrase };
+    } finally {
+        await worker.terminate();
+    }
+}
+
+async function assertIndependentIdKey(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault,
+    expectedKey: string
+): Promise<void> {
+    const matches = await evalObsidianJson<boolean>(
+        context.cliBinary,
+        `(() => {
+        const settings = app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings();
+        return JSON.stringify(settings.encrypt && settings.usePathObfuscation &&
+            settings.idDerivationVersion === 1 && settings.idDerivationKey === ${JSON.stringify(expectedKey)});
+    })()`,
+        session.cliEnv
+    );
+    assertEqual(matches, true, "The device did not retain the shared independent ID key and Path Obfuscation.");
+    const raw = await readFile(join(vault.path, ".obsidian/plugins/obsidian-livesync/data.json"), "utf8");
+    const saved = JSON.parse(raw) as Record<string, unknown>;
+    assertEqual(saved.idDerivationVersion, 1, "The independent ID version was not saved.");
+    assertEqual(saved.idDerivationKey, "", "The ID key was saved in plain text.");
+    if (!saved.encryptedIdDerivationKey || raw.includes(expectedKey)) {
+        throw new Error("The shared ID key was not encrypted in local settings.");
+    }
 }
 
 async function startSession(
@@ -297,6 +355,18 @@ async function main(): Promise<void> {
     const objectStorage = await loadObjectStorageConfig();
     const bucketPrefix = makeUniqueBucketPrefix("setup-uri-workflow");
     const bootstrapArtifact = await generateBootstrapSetupURI(objectStorage, bucketPrefix, useCustomRequestHandler);
+    const bootstrapSettings = await decodeSettingsFromSetupURI(
+        bootstrapArtifact.setupURI,
+        bootstrapArtifact.setupPassphrase
+    );
+    if (!bootstrapSettings || bootstrapSettings.idDerivationVersion !== 1 || !bootstrapSettings.idDerivationKey) {
+        throw new Error("The public Setup URI generator did not configure an independent ID key.");
+    }
+    const idKey = bootstrapSettings.idDerivationKey;
+    const rejectedArtifacts = [
+        { ...bootstrapArtifact, setupPassphrase: "incorrect-setup-passphrase" },
+        await expiredSetupURI(bootstrapSettings as ObsidianLiveSyncSettings, bootstrapArtifact.setupPassphrase),
+    ];
     const vaultA = await createTemporaryVault();
     const vaultB = await createTemporaryVault();
     const [portA, portB] = sessionPorts();
@@ -308,13 +378,14 @@ async function main(): Promise<void> {
         console.log(`Temporary Object Storage target: ${objectStorage.bucket}/${bucketPrefix}`);
 
         const sessionA = await startSession(context, vaultA, portA);
-        screenshots.push(await enterSetupURI(portA, "new", bootstrapArtifact, captures));
+        screenshots.push(await enterSetupURI(portA, "new", bootstrapArtifact, captures, rejectedArtifacts));
         screenshots.push(await captureAndStartInitialisation(portA, "new", captures));
         screenshots.push(await confirmRebuild(portA, captures));
         screenshots.push(await continueWithoutRemoteSettings(portA, captures));
         screenshots.push(await acknowledgeDisabledOptionalFeatures(portA, captures));
         const firstState = await finishInitialisation(portA, context.cliBinary, sessionA.cliEnv);
         await assertE2eCompatibilityUnpaused(context.cliBinary, sessionA.cliEnv, portA);
+        await assertIndependentIdKey(context, sessionA, vaultA, idKey);
         assertEqual(
             firstState.endpoint,
             objectStorage.endpoint,
@@ -337,9 +408,22 @@ async function main(): Promise<void> {
         );
 
         await writeNote(context.cliBinary, sessionA.cliEnv, noteFromFirst, firstContent);
+        const firstEntry = await waitForLocalDatabaseEntry(context.cliBinary, sessionA.cliEnv, noteFromFirst);
+        if (
+            !/^f:[0-9a-f]{64}$/u.test(firstEntry.id) ||
+            firstEntry.children.length === 0 ||
+            firstEntry.children.some((id) => !/^h:\+[0-9a-f]{64}$/u.test(id))
+        ) {
+            throw new Error("The source note did not use independent document and Chunk IDs.");
+        }
         await pushLocalChanges(context.cliBinary, sessionA.cliEnv);
         await waitForObjectStorageData(objectStorage, bucketPrefix);
-        const generated = await generateSetupURIFromDevice(portA, randomBytes(24).toString("base64url"), captures);
+        const generated = await generateSetupURIFromDevice(
+            portA,
+            randomBytes(24).toString("base64url"),
+            captures,
+            uriMode
+        );
         if (generated.artifact.setupURI === bootstrapArtifact.setupURI) {
             throw new Error("The first device returned the bootstrap Setup URI instead of generating a new one.");
         }
@@ -377,7 +461,7 @@ async function main(): Promise<void> {
         await stopSession(context, sessionA);
 
         const sessionB = await startSession(context, vaultB, portB);
-        const initialMarker = await assertE2eCompatibilityMarker(context.cliBinary, sessionB.cliEnv);
+        const initialMarker = await assertE2eCompatibilityUnpaused(context.cliBinary, sessionB.cliEnv, portB);
         if (qrSettings) {
             assertEqual(
                 initialMarker.additionalSuffix === `-${qrSettings.additionalSuffixOfDatabaseName}`,
@@ -412,6 +496,7 @@ async function main(): Promise<void> {
         screenshots.push(...(await confirmFastFetch(portB, captures)));
         const secondState = await finishInitialisation(portB, context.cliBinary, sessionB.cliEnv);
         const fetchedMarker = await assertE2eCompatibilityUnpaused(context.cliBinary, sessionB.cliEnv, portB);
+        await assertIndependentIdKey(context, sessionB, vaultB, idKey);
         assertEqual(
             secondState.endpoint,
             objectStorage.endpoint,
@@ -429,6 +514,13 @@ async function main(): Promise<void> {
         );
         await pushLocalChanges(context.cliBinary, sessionB.cliEnv);
         await waitForPathContent(vaultB, noteFromFirst, firstContent);
+        const importedEntry = await waitForLocalDatabaseEntry(context.cliBinary, sessionB.cliEnv, noteFromFirst);
+        assertEqual(importedEntry.id, firstEntry.id, "Import changed the obfuscated document ID.");
+        assertEqual(
+            JSON.stringify(importedEntry.children),
+            JSON.stringify(firstEntry.children),
+            "Import changed the Chunk IDs."
+        );
         screenshots.push(
             await captureNote(
                 portB,
@@ -439,10 +531,12 @@ async function main(): Promise<void> {
         );
 
         await writeNote(context.cliBinary, sessionB.cliEnv, noteFromSecond, secondContent);
+        const secondEntry = await waitForLocalDatabaseEntry(context.cliBinary, sessionB.cliEnv, noteFromSecond);
         await pushLocalChanges(context.cliBinary, sessionB.cliEnv);
         await stopSession(context, sessionB);
         const returningSessionB = await startSession(context, vaultB, portB);
         await waitForLiveSyncCoreReady(context.cliBinary, returningSessionB.cliEnv);
+        await assertIndependentIdKey(context, returningSessionB, vaultB, idKey);
         const restartedMarker = await assertE2eCompatibilityUnpaused(
             context.cliBinary,
             returningSessionB.cliEnv,
@@ -459,10 +553,22 @@ async function main(): Promise<void> {
         const returningSessionA = await startSession(context, vaultA, portA);
         await waitForLiveSyncCoreReady(context.cliBinary, returningSessionA.cliEnv);
         await assertE2eCompatibilityUnpaused(context.cliBinary, returningSessionA.cliEnv, portA);
+        await assertIndependentIdKey(context, returningSessionA, vaultA, idKey);
         // Deliberately omit manual replication here. Object Storage reports
         // Continuous as not applicable, so startup scheduling must honour the
         // retained syncOnStart setting by running an unattended OneShot.
         await waitForPathContent(vaultA, noteFromSecond, secondContent);
+        const returnedEntry = await waitForLocalDatabaseEntry(
+            context.cliBinary,
+            returningSessionA.cliEnv,
+            noteFromSecond
+        );
+        assertEqual(returnedEntry.id, secondEntry.id, "The return journey changed the obfuscated document ID.");
+        assertEqual(
+            JSON.stringify(returnedEntry.children),
+            JSON.stringify(secondEntry.children),
+            "The return journey changed the Chunk IDs."
+        );
         screenshots.push(
             await captureNote(
                 portA,

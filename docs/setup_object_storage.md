@@ -31,7 +31,7 @@ deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.co
 
 For providers which require them, set `force_path_style`, `use_custom_request_handler`, or `bucket_custom_headers` as described in the [setup utility reference](../utils/readme.md#object-storage).
 
-Store the generated Setup URI and Setup URI passphrase separately. The URI is encrypted, but it contains the Object Storage credentials.
+Store the generated Setup URI and Setup URI passphrase separately. The URI is encrypted, but it contains the Object Storage credentials. The generator also prints an ID recovery code; reuse it through `id_recovery_code` if you regenerate a URI for the same Vault. A new run without it creates a different ID key. The [setup utility reference](../utils/readme.md#setup-uri-generation) describes the `id_mode=legacy` option for existing Vaults.
 The generator prints the exact end time of its default Ephemeral URI. Set `uri_mode=persistent` before running it if the URI must remain usable without a time condition.
 
 ## Set up the first device

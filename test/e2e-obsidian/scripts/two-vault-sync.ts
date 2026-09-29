@@ -1,11 +1,16 @@
 import { mkdir, readFile, rename as renameFilesystemPath, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { SALT_OF_PASSPHRASE } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { encryptString } from "@vrtmrz/livesync-commonlib/compat/encryption/stringEncryption";
+import { deriveIdKey } from "@vrtmrz/livesync-commonlib/settings";
+import { CENTRAL_COMPATIBILITY_REJECTION_REASONS } from "@vrtmrz/livesync-commonlib/replication";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
     assertCouchDbReachable,
     createCouchDbDatabase,
     deleteCouchDbDatabase,
     fetchAllCouchDbDocs,
+    fetchCouchDbLocalDocs,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
     waitForCouchDbDocs,
@@ -18,6 +23,7 @@ import {
     assertE2eCompatibilityUnpaused,
     configureCouchDb,
     createE2eCouchDbPluginData,
+    createE2eObsidianDeviceLocalState,
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
@@ -439,7 +445,8 @@ async function renameNoteViaObsidian(cliBinary: string, env: NodeJS.ProcessEnv, 
 async function startConfiguredSession(
     context: RunnerContext,
     vault: TemporaryVault,
-    overrides: Record<string, unknown> = {}
+    overrides: Record<string, unknown> = {},
+    persistedOverrides: Record<string, unknown> = overrides
 ): Promise<ObsidianLiveSyncSession> {
     const couchDbSettings = {
         uri: context.couchDb.uri,
@@ -452,7 +459,7 @@ async function startConfiguredSession(
         cliBinary: context.cliBinary,
         vault,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-        pluginData: createE2eCouchDbPluginData(couchDbSettings, overrides),
+        pluginData: createE2eCouchDbPluginData(couchDbSettings, persistedOverrides),
     });
     context.activeSessions.add(session);
     try {
@@ -961,6 +968,193 @@ async function runEncryptedRoundTrip(
     console.log("Two-vault encrypted note synchronisation round-tripped.");
 }
 
+async function runIndependentIdRoundTrip(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault
+): Promise<void> {
+    const source = "real-obsidian-e2e-independent-id-source";
+    const key = await deriveIdKey(source);
+    const content = "# Shared content with an independent ID key.\n";
+    const pathA = "E2E/independent-ids/from-a.md";
+    const pathB = "E2E/independent-ids/from-b.md";
+    const overrides = {
+        encrypt: true,
+        passphrase: "real-obsidian-e2e-independent-passphrase",
+        usePathObfuscation: true,
+        E2EEAlgorithm: "v2",
+        idDerivationVersion: 1,
+        idDerivationKey: key,
+    };
+    const persistedOverrides = {
+        ...overrides,
+        idDerivationKey: "",
+        encryptedIdDerivationKey: await encryptString(key, `*${SALT_OF_PASSPHRASE}`),
+    };
+
+    let session = await startConfiguredSession(context, vaultA, overrides, persistedOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, pathA, content);
+    const entryA = await uploadNote(context, session, pathA);
+    if (entryA.children.length === 0) throw new Error("Independent ID mode produced no Chunks.");
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, overrides, persistedOverrides);
+    await syncAndApply(context, session);
+    await waitForPathContent(vaultB.path, pathA, (received) => received === content);
+    const receivedA = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, pathA);
+    assertEqual(receivedA.id, entryA.id, "The second device did not preserve the obfuscated document ID.");
+
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, pathB, content);
+    const entryB = await uploadNote(context, session, pathB);
+    assertEqual(
+        JSON.stringify(entryB.children),
+        JSON.stringify(entryA.children),
+        "The second device did not reuse the same content-derived Chunk IDs."
+    );
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultA, overrides, persistedOverrides);
+    await syncAndApply(context, session);
+    await waitForPathContent(vaultA.path, pathB, (received) => received === content);
+    const receivedB = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, pathB);
+    assertEqual(receivedB.id, entryB.id, "The first device did not preserve the return document ID.");
+    await stopTrackedSession(context, session);
+    console.log("Two real Obsidian devices shared independent document and Chunk IDs in both directions.");
+
+    for (const [label, candidateKey] of [
+        ["different key", "cd".repeat(32)],
+        ["legacy IDs", ""],
+    ] as const) {
+        const remoteBefore = await fetchAllCouchDbDocs(context.couchDb, context.dbName);
+        const checkpointsBefore = await fetchCouchDbLocalDocs(context.couchDb, context.dbName);
+        const rejectedVault = await createTemporaryVault();
+        let rejectedSession: ObsidianLiveSyncSession | undefined;
+        try {
+            rejectedSession = await startObsidianLiveSyncSession({
+                binary: context.binary,
+                cliBinary: context.cliBinary,
+                vault: rejectedVault,
+                localStorageEntries: createE2eObsidianDeviceLocalState(rejectedVault.name),
+                pluginData: createE2eCouchDbPluginData(
+                    { ...context.couchDb, dbName: context.dbName },
+                    {
+                        ...overrides,
+                        idDerivationVersion: candidateKey ? 1 : 0,
+                        idDerivationKey: "",
+                        encryptedIdDerivationKey: candidateKey
+                            ? await encryptString(candidateKey, `*${SALT_OF_PASSPHRASE}`)
+                            : "",
+                    }
+                ),
+            });
+            context.activeSessions.add(rejectedSession);
+            await waitForLiveSyncCoreReady(context.cliBinary, rejectedSession.cliEnv);
+            const unsentPath = "E2E/independent-ids/rejected.md";
+            await writeNoteViaObsidian(context.cliBinary, rejectedSession.cliEnv, unsentPath, content);
+            await waitForLocalDatabaseEntry(context.cliBinary, rejectedSession.cliEnv, unsentPath);
+            const attempt = await evalObsidianJson<{ admitted: boolean; reason: string; replicated: boolean }>(
+                context.cliBinary,
+                [
+                    "(async()=>{",
+                    "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                    "const replicator=core.services.replicator.getActiveReplicator();",
+                    "const settings=core.services.setting.currentSettings();",
+                    "let reason='';",
+                    "const connection=await replicator.checkReplicationConnectivity(settings,false,false,false,false,undefined,(decision)=>{reason=decision.reason??'';});",
+                    "if(connection) await connection.close();",
+                    "const replicated=await core.services.replication.replicate(true);",
+                    "return JSON.stringify({admitted:!!connection,reason,replicated:!!replicated});",
+                    "})()",
+                ].join(""),
+                rejectedSession.cliEnv
+            );
+            assertEqual(attempt.admitted, false, `CouchDB admitted ${label} for obfuscated document IDs.`);
+            assertEqual(
+                attempt.reason,
+                CENTRAL_COMPATIBILITY_REJECTION_REASONS.ID_DERIVATION_MISMATCH,
+                `CouchDB rejected ${label} for an unrelated reason.`
+            );
+            assertEqual(attempt.replicated, false, `Ordinary replication accepted ${label}.`);
+            assertEqual(
+                await pathExists(rejectedVault.path, pathA),
+                false,
+                "A rejected device received a remote note."
+            );
+            await stopTrackedSession(context, rejectedSession);
+            rejectedSession = undefined;
+            assertEqual(
+                JSON.stringify(await fetchAllCouchDbDocs(context.couchDb, context.dbName)),
+                JSON.stringify(remoteBefore),
+                `A rejected ${label} connection changed remote documents.`
+            );
+            assertEqual(
+                JSON.stringify(await fetchCouchDbLocalDocs(context.couchDb, context.dbName)),
+                JSON.stringify(checkpointsBefore),
+                `A rejected ${label} connection changed remote checkpoints.`
+            );
+        } finally {
+            if (rejectedSession) await stopTrackedSession(context, rejectedSession);
+            await rejectedVault.dispose();
+        }
+    }
+    console.log("Ordinary CouchDB replication rejected different and legacy document ID keys without remote writes.");
+}
+
+async function runDifferentChunkIdKeysRoundTrip(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault
+): Promise<void> {
+    const keyA = await deriveIdKey("real-obsidian-e2e-chunk-source-a");
+    const keyB = await deriveIdKey("real-obsidian-e2e-chunk-source-b");
+    const content = "# Shared content with different Chunk ID keys.\n";
+    const pathA = "E2E/chunk-id-keys/from-a.md";
+    const pathB = "E2E/chunk-id-keys/from-b.md";
+    const commonSettings = {
+        encrypt: true,
+        passphrase: "real-obsidian-e2e-chunk-passphrase",
+        usePathObfuscation: false,
+        E2EEAlgorithm: "v2",
+        idDerivationVersion: 1,
+    };
+    const settingsFor = (key: string) => ({ ...commonSettings, idDerivationKey: key });
+    const persistedSettingsFor = async (key: string) => ({
+        ...settingsFor(key),
+        idDerivationKey: "",
+        encryptedIdDerivationKey: await encryptString(key, `*${SALT_OF_PASSPHRASE}`),
+    });
+    const persistedA = await persistedSettingsFor(keyA);
+    const persistedB = await persistedSettingsFor(keyB);
+
+    let session = await startConfiguredSession(context, vaultA, settingsFor(keyA), persistedA);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, pathA, content);
+    const entryA = await uploadNote(context, session, pathA);
+    if (entryA.children.length === 0) throw new Error("The first device produced no Chunks.");
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, settingsFor(keyB), persistedB);
+    await syncAndApply(context, session);
+    await waitForPathContent(vaultB.path, pathA, (received) => received === content);
+    const receivedA = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, pathA);
+    assertEqual(receivedA.id, entryA.id, "The second device changed the visible document ID.");
+
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, pathB, content);
+    const entryB = await uploadNote(context, session, pathB);
+    if (entryB.children.length === 0) throw new Error("The second device produced no Chunks.");
+    if (JSON.stringify(entryB.children) === JSON.stringify(entryA.children)) {
+        throw new Error("Different ID keys unexpectedly generated the same Chunk IDs.");
+    }
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultA, settingsFor(keyA), persistedA);
+    await syncAndApply(context, session);
+    await waitForPathContent(vaultA.path, pathB, (received) => received === content);
+    const receivedB = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, pathB);
+    assertEqual(receivedB.id, entryB.id, "The first device changed the return document ID.");
+    await stopTrackedSession(context, session);
+    console.log("Two real Obsidian devices exchanged notes with different Chunk ID keys and visible document paths.");
+}
+
 async function runMarkdownAutoMerge(
     context: RunnerContext,
     vaultA: TemporaryVault,
@@ -1085,10 +1279,9 @@ async function runConflictTimeStorageOperations(
         showMergeDialogOnlyOnActive: true,
         handleFilenameCaseSensitive: false,
     };
-    const baseContent = Object.fromEntries(paths.map((path) => [path, `# Conflict operation\n\nBase for ${path}.\n`])) as Record<
-        (typeof paths)[number],
-        string
-    >;
+    const baseContent = Object.fromEntries(
+        paths.map((path) => [path, `# Conflict operation\n\nBase for ${path}.\n`])
+    ) as Record<(typeof paths)[number], string>;
     const leftContent = Object.fromEntries(
         paths.map((path) => [path, `${baseContent[path]}\nEdit made on Vault A.\n`])
     ) as Record<(typeof paths)[number], string>;
@@ -1129,7 +1322,9 @@ async function runConflictTimeStorageOperations(
     const initialBranchRevisions = new Map<string, Set<string>>();
     for (const path of paths) {
         const state = await waitForFileConflict(context.cliBinary, session.cliEnv, path);
-        const displayedBranch = state.branches.find((branch) => branch.content === rightContent[path] && !branch.deleted);
+        const displayedBranch = state.branches.find(
+            (branch) => branch.content === rightContent[path] && !branch.deleted
+        );
         if (!displayedBranch) {
             throw new Error(`Could not identify the branch displayed by Vault B: ${path}; ${JSON.stringify(state)}`);
         }
@@ -1170,12 +1365,7 @@ async function runConflictTimeStorageOperations(
         "A conflict-time deletion did not extend the displayed revision."
     );
 
-    await renameNoteViaObsidian(
-        context.cliBinary,
-        session.cliEnv,
-        conflictCaseFromPath,
-        conflictCaseToPath
-    );
+    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, conflictCaseFromPath, conflictCaseToPath);
     const caseRenamedBranch = await waitForConflictBranch(
         context.cliBinary,
         session.cliEnv,
@@ -1216,12 +1406,7 @@ async function runConflictTimeStorageOperations(
         "A conflict-time case-only rename did not record the new displayed revision."
     );
 
-    await renameNoteViaObsidian(
-        context.cliBinary,
-        session.cliEnv,
-        conflictRenameFromPath,
-        conflictRenameToPath
-    );
+    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, conflictRenameFromPath, conflictRenameToPath);
     const renamedTarget = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, conflictRenameToPath);
     const renamedSourceDeletion = await waitForConflictBranch(
         context.cliBinary,
@@ -1367,10 +1552,13 @@ async function main(): Promise<void> {
     const couchDb = await loadCouchDbConfig();
     const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "two-vault-sync");
     const encryptedDbName = makeUniqueDatabaseName(couchDb.dbPrefix, "two-vault-sync-e2ee");
+    const independentDbName = makeUniqueDatabaseName(couchDb.dbPrefix, "two-vault-sync-independent-ids");
     const vaultA = await createTemporaryVault();
     const vaultB = await createTemporaryVault();
     const encryptedVaultA = await createTemporaryVault();
     const encryptedVaultB = await createTemporaryVault();
+    const independentVaultA = await createTemporaryVault();
+    const independentVaultB = await createTemporaryVault();
     const context: RunnerContext = {
         binary,
         cliBinary: cli.binary,
@@ -1385,11 +1573,19 @@ async function main(): Promise<void> {
         dbName: encryptedDbName,
         activeSessions: new Set(),
     };
+    const independentContext: RunnerContext = {
+        binary,
+        cliBinary: cli.binary,
+        couchDb,
+        dbName: independentDbName,
+        activeSessions: new Set(),
+    };
 
     try {
         await assertCouchDbReachable(couchDb);
         await createCouchDbDatabase(couchDb, dbName);
         await createCouchDbDatabase(couchDb, encryptedDbName);
+        await createCouchDbDatabase(couchDb, independentDbName);
 
         console.log(`Using Obsidian executable: ${binary}`);
         console.log(`Temporary vault A: ${vaultA.path}`);
@@ -1398,11 +1594,13 @@ async function main(): Promise<void> {
         console.log(`Temporary encrypted CouchDB database: ${encryptedDbName}`);
 
         const onlyParentCaseDeletion = process.env.E2E_OBSIDIAN_ONLY_PARENT_CASE_DELETION === "true";
+        const onlyIndependentIds = process.env.E2E_OBSIDIAN_ONLY_INDEPENDENT_IDS === "true";
+        const onlyDifferentChunkIdKeys = process.env.E2E_OBSIDIAN_ONLY_DIFFERENT_CHUNK_ID_KEYS === "true";
         if (onlyParentCaseDeletion) {
             await runParentCaseDeletionProtection(context, vaultA, vaultB);
         }
         const onlyConflictOperations = process.env.E2E_OBSIDIAN_ONLY_CONFLICT_OPERATIONS === "true";
-        if (!onlyParentCaseDeletion && !onlyConflictOperations) {
+        if (!onlyParentCaseDeletion && !onlyConflictOperations && !onlyIndependentIds && !onlyDifferentChunkIdKeys) {
             await runCreateUpdateDelete(context, vaultA, vaultB);
             await runRename(context, vaultA, vaultB);
             await runCaseOnlyRename(context, vaultA, vaultB);
@@ -1416,22 +1614,35 @@ async function main(): Promise<void> {
         ) {
             await runConflictTimeStorageOperations(context, vaultA, vaultB);
         }
-        if (!onlyParentCaseDeletion && !onlyConflictOperations) {
+        if (!onlyParentCaseDeletion && !onlyConflictOperations && !onlyIndependentIds && !onlyDifferentChunkIdKeys) {
             await runTargetMismatch(context, vaultA, vaultB);
             await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
+        }
+        if (!onlyParentCaseDeletion && !onlyConflictOperations) {
+            if (onlyDifferentChunkIdKeys) {
+                await runDifferentChunkIdKeysRoundTrip(independentContext, independentVaultA, independentVaultB);
+            } else {
+                await runIndependentIdRoundTrip(independentContext, independentVaultA, independentVaultB);
+            }
         }
     } finally {
         await stopTrackedSessions(context);
         await stopTrackedSessions(encryptedContext);
+        await stopTrackedSessions(independentContext);
         await vaultA.dispose();
         await vaultB.dispose();
         await encryptedVaultA.dispose();
         await encryptedVaultB.dispose();
+        await independentVaultA.dispose();
+        await independentVaultB.dispose();
         if (process.env.E2E_OBSIDIAN_KEEP_COUCHDB !== "true") {
             await deleteCouchDbDatabase(couchDb, dbName).catch((error: unknown) => {
                 console.warn(error instanceof Error ? error.message : error);
             });
             await deleteCouchDbDatabase(couchDb, encryptedDbName).catch((error: unknown) => {
+                console.warn(error instanceof Error ? error.message : error);
+            });
+            await deleteCouchDbDatabase(couchDb, independentDbName).catch((error: unknown) => {
                 console.warn(error instanceof Error ? error.message : error);
             });
         }

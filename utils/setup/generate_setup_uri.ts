@@ -23,6 +23,42 @@ export interface GeneratedSetupURI {
   setupPassphrase: string;
   mode: TimeBoundSetupURIMode;
   usableUntil: number | null;
+  idRecoveryCode?: string;
+}
+
+const ID_RECOVERY_CODE_PREFIX = "sls-id-v1:";
+const ID_RECOVERY_CODE_PATTERN = /^sls-id-v1:([0-9a-f]{64})$/u;
+
+function generateRandomIdKey(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
+function configureIdDerivation(
+  settings: ObsidianLiveSyncSettings,
+  environment: SetupGeneratorEnvironment,
+): string | undefined {
+  const mode = environment.id_mode?.trim().toLowerCase() || "random";
+  if (mode !== "random" && mode !== "legacy") {
+    throw new Error("id_mode must be random or legacy");
+  }
+  const suppliedCode = environment.id_recovery_code?.trim();
+  if (mode === "legacy") {
+    if (suppliedCode) {
+      throw new Error("id_recovery_code cannot be used with id_mode=legacy");
+    }
+    return undefined;
+  }
+  const key = suppliedCode
+    ? ID_RECOVERY_CODE_PATTERN.exec(suppliedCode)?.[1]
+    : generateRandomIdKey();
+  if (!key) {
+    throw new Error("id_recovery_code must be a valid sls-id-v1 recovery code");
+  }
+  Object.assign(settings, { idDerivationVersion: 1, idDerivationKey: key });
+  return `${ID_RECOVERY_CODE_PREFIX}${key}`;
 }
 
 function requireValue(
@@ -179,6 +215,7 @@ export async function generateSetupURI(
     generateSecret();
   const mode = parseSetupURIMode(environment);
   const { remoteType, settings } = createSetupSettings(environment);
+  const idRecoveryCode = configureIdDerivation(settings, environment);
   const { uri, usableUntil } = await encodeTimeBoundSetupURI(
     settings,
     setupPassphrase,
@@ -200,6 +237,7 @@ export async function generateSetupURI(
     setupPassphrase,
     mode,
     usableUntil,
+    idRecoveryCode,
   };
 }
 
@@ -230,6 +268,12 @@ export async function runSetupURIGenerator(
     generated.setupPassphrase,
   );
   console.log("This passphrase is never shown again, so store it safely.");
+  if (generated.idRecoveryCode) {
+    console.log("ID recovery code:", generated.idRecoveryCode);
+    console.log(
+      "Use id_recovery_code with this value and reuse the same remote settings when generating another Setup URI for the same Vault.",
+    );
+  }
   console.log(generated.setupURI);
 }
 

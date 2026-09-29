@@ -193,6 +193,58 @@ describe("SetupManager", () => {
         expect(setting.currentSettings().activeConfigurationId).toBe("legacy-couchdb");
     });
 
+    it("compatibility: treats omitted ID derivation fields in a Setup URI as legacy defaults", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const savedKey = "12".repeat(32);
+        setting.settings = {
+            ...createLegacyRemoteSetting(),
+            isConfigured: true,
+            idDerivationVersion: 1,
+            idDerivationKey: savedKey,
+        };
+        const imported = {
+            ...createLegacyRemoteSetting(),
+            isConfigured: true,
+        } as Partial<ObsidianLiveSyncSettings>;
+        delete imported.idDerivationVersion;
+        delete imported.idDerivationKey;
+        vi.spyOn(setting, "adjustSettings").mockImplementation((settings) => Promise.resolve(settings));
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(imported).mockResolvedValueOnce("cancelled");
+
+        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://legacy-settings");
+
+        const mergedSettings = vi.mocked(setting.adjustSettings).mock.calls[0][0];
+        expect(mergedSettings.idDerivationVersion).toBe(0);
+        expect(mergedSettings.idDerivationKey).toBe("");
+        expect(setting.currentSettings().idDerivationKey).toBe(savedKey);
+    });
+
+    it("does not inherit the missing half of a partially present Setup URI ID configuration", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const savedKey = "34".repeat(32);
+        setting.settings = {
+            ...createLegacyRemoteSetting(),
+            isConfigured: true,
+            idDerivationVersion: 1,
+            idDerivationKey: savedKey,
+        };
+        const imported = {
+            ...createLegacyRemoteSetting(),
+            isConfigured: true,
+            idDerivationVersion: 1,
+        } as Partial<ObsidianLiveSyncSettings>;
+        delete imported.idDerivationKey;
+        vi.spyOn(setting, "adjustSettings").mockImplementation((settings) => Promise.resolve(settings));
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce(imported).mockResolvedValueOnce("cancelled");
+
+        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://partial-settings");
+
+        const mergedSettings = vi.mocked(setting.adjustSettings).mock.calls[0][0];
+        expect(mergedSettings.idDerivationVersion).toBe(1);
+        expect(mergedSettings.idDerivationKey).toBe("");
+        expect(setting.currentSettings().idDerivationKey).toBe(savedKey);
+    });
+
     it("compatibility: normalises imported flat remote settings from QR data before applying", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         vi.mocked(decodeSettingsFromQRCodeData).mockReturnValue(createLegacyRemoteSetting());
@@ -206,6 +258,79 @@ describe("SetupManager", () => {
             "sls+http://user:password@localhost:5984"
         );
         expect(setting.currentSettings().activeConfigurationId).toBe("legacy-couchdb");
+    });
+
+    it("compatibility: applies legacy defaults when QR data omits ID derivation fields", async () => {
+        const { manager, setting, dialogManager } = createSetupManager();
+        const savedKey = "56".repeat(32);
+        setting.settings = {
+            ...createLegacyRemoteSetting(),
+            isConfigured: true,
+            idDerivationVersion: 1,
+            idDerivationKey: savedKey,
+        };
+        const imported = { ...createLegacyRemoteSetting(), isConfigured: true } as Partial<ObsidianLiveSyncSettings>;
+        delete imported.idDerivationVersion;
+        delete imported.idDerivationKey;
+        vi.mocked(decodeSettingsFromQRCodeData).mockReturnValue(imported as ObsidianLiveSyncSettings);
+        vi.spyOn(setting, "adjustSettings").mockImplementation((settings) => Promise.resolve(settings));
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("cancelled");
+
+        await manager.decodeQR("qr-data");
+
+        const mergedSettings = vi.mocked(setting.adjustSettings).mock.calls[0][0];
+        expect(mergedSettings.idDerivationVersion).toBe(0);
+        expect(mergedSettings.idDerivationKey).toBe("");
+        expect(setting.currentSettings().idDerivationKey).toBe(savedKey);
+    });
+
+    it("rejects invalid QR settings before applying them", async () => {
+        const { manager, setting } = createSetupManager();
+        vi.mocked(decodeSettingsFromQRCodeData).mockImplementationOnce(() => {
+            throw new Error("Invalid ID derivation key");
+        });
+        const applyExternalSettings = vi.spyOn(setting, "applyExternalSettings");
+
+        await expect(manager.decodeQR("invalid-qr")).resolves.toBe(false);
+        expect(applyExternalSettings).not.toHaveBeenCalled();
+    });
+
+    it("requires the normal Fetch choice when ID derivation changes with the Metadata preference", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        const currentSettings: ObsidianLiveSyncSettings = {
+            ...createLegacyRemoteSetting(),
+            isConfigured: true,
+            encrypt: true,
+            passphrase: "e2ee-passphrase",
+            usePathObfuscation: true,
+            encryptInternalMetadata: false,
+            idDerivationVersion: 0,
+            idDerivationKey: "",
+        };
+        const nextIdKey = "78".repeat(32);
+        setting.settings = currentSettings;
+        const applyPartial = vi.spyOn(setting, "applyPartial");
+        core.confirm = {
+            askSelectStringDialogue: vi.fn(() =>
+                Promise.resolve("Enable without rebuilding — update every other device first")
+            ),
+        };
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({
+                ...currentSettings,
+                encryptInternalMetadata: true,
+                idDerivationVersion: 1,
+                idDerivationKey: nextIdKey,
+            })
+            .mockResolvedValueOnce("existing-user")
+            .mockResolvedValueOnce("apply");
+
+        await manager.onlyE2EEConfiguration(UserMode.Update, currentSettings);
+
+        expect(applyPartial).not.toHaveBeenCalled();
+        expect(core.rebuilder.scheduleFetch).toHaveBeenCalledWith(expect.any(Function));
+        expect(setting.currentSettings().idDerivationVersion).toBe(1);
+        expect(setting.currentSettings().idDerivationKey).toBe(nextIdKey);
     });
 
     it("reserves Rebuild before saving a new-user configuration", async () => {

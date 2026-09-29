@@ -402,14 +402,24 @@ passphrase and cancellation. The WebPeer browser test confirms that its monitor
 remains available after the URI window ends for a device which has already
 imported the URI.
 
-The subsequent update to published Commonlib 0.1.33 passes a clean `npm ci`,
-matching npm and frozen Deno lock integrity, source checks, the production build,
-1,042 unit tests, and eight Deno setup-tool tests. A consumer check of the public
-hashing entry covers key changes, E2EE suspension, and cache retirement. The real
-Obsidian two-Vault workflow also passes ordinary and encrypted note transfers.
+The current Commonlib 0.1.33 integration includes the merged host changes from
+PR #1222 and PR #1225. npm 10 and normal clean installations preserve the lockfile;
+source checks, the production build, 1,064 unit tests, and ten Deno setup-tool
+tests pass. Both URI modes preserve ID recovery and explicit legacy ID selection.
 
-The downstream change depends on PR #1222's host compatibility integration;
-relaxing only the version check would bypass its compatibility contract. These
-results do not establish a mobile performance bound. The first implementation
-changes only primary-language resources; translation changes require separate
-scope.
+Real Obsidian tests cover independent ID keys through Time-bound, Compatible,
+and QR setup, encrypted local persistence, natural restarts of both devices,
+and bidirectional note transfers with stable document and Chunk IDs. Incorrect
+passphrases and past-window URIs leave runtime and persisted settings unchanged.
+The past clock belongs to an isolated fixture worker, not Obsidian or the host.
+CouchDB tests also cover a custom ID source and recovery code, rejection of
+incompatible document keys before remote writes, and the Doctor's decline,
+reminder, dismissal, and later acceptance paths. The detailed commands and the
+remaining published-artefact and physical-device checks are recorded in the
+[real Obsidian test guide](../../test/e2e-obsidian/README.md#combined-setup-and-security-regression-checks).
+
+Compatible preserves the URI encryption format; each receiving client must
+still support the shared settings and the remote's declared features. The host
+compatibility checks from PR #1222 remain necessary. These results do not
+establish a mobile performance bound. The first implementation changes only
+primary-language resources; translation changes require separate scope.

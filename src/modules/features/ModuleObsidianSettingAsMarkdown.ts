@@ -140,6 +140,8 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
             settingToApply.couchDB_USER = this.settings.couchDB_USER;
             settingToApply.couchDB_PASSWORD = this.settings.couchDB_PASSWORD;
             settingToApply.passphrase = this.settings.passphrase;
+            settingToApply.idDerivationVersion = this.settings.idDerivationVersion;
+            settingToApply.idDerivationKey = this.settings.idDerivationKey;
         }
         const oldSetting = this.generateSettingForMarkdown(
             this.settings,
@@ -203,11 +205,13 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
         const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
         delete saveData.encryptedCouchDBConnection;
         delete saveData.encryptedPassphrase;
+        delete saveData.encryptedIdDerivationKey;
         delete saveData.additionalSuffixOfDatabaseName;
         if (!saveData.writeCredentialsForSettingSync && !keepCredential) {
             delete saveData.couchDB_USER;
             delete saveData.couchDB_PASSWORD;
             delete saveData.passphrase;
+            delete saveData.idDerivationKey;
             delete saveData.jwtKey;
             delete saveData.jwtKid;
             delete saveData.jwtSub;

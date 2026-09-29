@@ -16,6 +16,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### New Feature
 
+- An optional saved ID key can generate encrypted Chunk IDs and obfuscated Metadata document IDs independently of the current E2EE passphrase.
+    - New Vaults use a random key by default; existing Vaults keep their current ID configuration by default. You can also derive a key from the current E2EE passphrase, enter a separate source, or import a recovery code. The source is not retained; the saved key can be revealed locally as a recovery code.
+    - The saved key stays in place when the E2EE passphrase changes or E2EE is turned off. Share it with another device through a protected Setup URI. Changing document IDs on an existing remote requires the usual Rebuild and Fetch procedure.
 - We can now keep the file properties used by Hidden File Sync and Customisation Sync private in CouchDB.
     - **Encrypt internal file Properties** extends E2EE V2 and Property Encryption to their paths, times, sizes, and Chunk references.
     - Existing configurations keep this preference disabled. New Vaults enable it for use when the required encryption settings are active.
@@ -23,12 +26,21 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We can now see which unsupported feature prevents a client from synchronising with CouchDB.
     - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
 
+- We can now compare ID generation performance on a desktop or mobile device through **Open review harness**, available with the developers' debug tools enabled.
+    - The copied report includes legacy and independent ID timings and, where available, approximate JavaScript heap samples. The measurement uses fixed test data and keeps our Vault and settings unchanged.
+
 #### Fixed
 
 - We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
     - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
 
 ### Setup
+
+#### New Feature
+
+- We can now share a Setup URI with a displayed time limit, or choose **Compatible** for reuse without a time limit.
+    - **Time-bound** uses the current fixed seven-day UTC window, so the displayed end may be less than seven days away. Compatible retains the existing URI format; receiving devices still need to support the shared settings.
+    - The time condition applies when opening the URI. It does not revoke imported credentials or prevent reuse after rolling the device clock back.
 
 #### Improved
 

@@ -36,6 +36,10 @@ const testSteps: Step[] = [
         args: ["run", "test:e2e:obsidian:object-storage-setup-uri-workflow"],
     },
     {
+        name: "Object Storage Compatible Setup URI workflow",
+        args: ["run", "test:e2e:obsidian:object-storage-compatible-setup-uri-workflow"],
+    },
+    {
         name: "Object Storage QR workflow",
         args: ["run", "test:e2e:obsidian:object-storage-qr-workflow"],
     },
