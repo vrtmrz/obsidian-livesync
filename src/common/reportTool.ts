@@ -80,6 +80,8 @@ export async function generateReport(settings: ObsidianLiveSyncSettings, core: L
     pluginConfig.couchDB_USER = REDACTED;
     pluginConfig.passphrase = REDACTED;
     pluginConfig.encryptedPassphrase = REDACTED;
+    pluginConfig.idDerivationKey = REDACTED;
+    pluginConfig.encryptedIdDerivationKey = REDACTED;
     pluginConfig.encryptedCouchDBConnection = REDACTED;
     pluginConfig.accessKey = REDACTED;
     pluginConfig.secretKey = REDACTED;

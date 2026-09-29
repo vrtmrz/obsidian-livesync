@@ -194,4 +194,51 @@ describe("paneRemoteConfig", () => {
         expect(host.initialSettings.encryptInternalMetadata).toBe(true);
         expect(host.requestUpdate).toHaveBeenCalledOnce();
     });
+
+    it("copies applied ID derivation settings into both dialogue buffers", async () => {
+        const nextIdKey = "ab".repeat(32);
+        const originalSettings = {
+            encrypt: true,
+            passphrase: "passphrase",
+            E2EEAlgorithm: "v2",
+            usePathObfuscation: true,
+            encryptInternalMetadata: false,
+            idDerivationVersion: 0,
+            idDerivationKey: "",
+            remoteConfigurations: {},
+        };
+        const setupManager = {
+            onlyE2EEConfiguration: vi.fn(() => {
+                host.core.settings.idDerivationVersion = 1;
+                host.core.settings.idDerivationKey = nextIdKey;
+                return Promise.resolve(false);
+            }),
+        };
+        const host = {
+            editingSettings: { ...originalSettings },
+            initialSettings: { ...originalSettings },
+            core: {
+                settings: { ...originalSettings },
+                getModule: vi.fn(() => setupManager),
+            },
+            lifetimeComponent: { register: vi.fn() },
+            requestUpdate: vi.fn(),
+        };
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "E2EE Configuration") {
+                    callback(createPanelElement());
+                }
+            },
+        }));
+
+        paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
+        await runtime.clickHandlers[0]();
+
+        expect(host.editingSettings.idDerivationVersion).toBe(1);
+        expect(host.editingSettings.idDerivationKey).toBe(nextIdKey);
+        expect(host.initialSettings.idDerivationVersion).toBe(1);
+        expect(host.initialSettings.idDerivationKey).toBe(nextIdKey);
+        expect(host.requestUpdate).toHaveBeenCalledOnce();
+    });
 });

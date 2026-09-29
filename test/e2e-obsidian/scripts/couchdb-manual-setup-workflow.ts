@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DEVICE_ID_PREFERRED, MILESTONE_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { deriveIdKey, formatIdRecoveryCode } from "@vrtmrz/livesync-commonlib/settings";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
     assertCouchDbReachable,
@@ -99,7 +100,12 @@ async function captureFailure(session: ObsidianLiveSyncSession, label: string): 
     }
 }
 
-async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, dbName: string): Promise<string[]> {
+async function enterManualCouchDBSettings(
+    port: number,
+    couchDb: CouchDbConfig,
+    dbName: string,
+    independentIdSource?: string
+): Promise<string[]> {
     const screenshots: string[] = [];
     await withObsidianPage(port, async (page) => {
         const invitation = page.locator(".notice").filter({ hasText: "Welcome to Self-hosted LiveSync" });
@@ -134,12 +140,41 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
             0,
             "The Obfuscate Properties row was present before end-to-end encryption was enabled."
         );
+        const disabledIdChoices = encryption.locator("fieldset.sls-id-choices").first();
+        assertEqual(
+            await disabledIdChoices.evaluate((element) => element.hasAttribute("disabled")),
+            true,
+            "The ID configuration was enabled while E2EE was off."
+        );
+        for (const value of ["keep", "random", "custom"]) {
+            assertEqual(
+                await disabledIdChoices.locator(`input[value="${value}"]`).isDisabled(),
+                true,
+                `The ${value} ID configuration was enabled while E2EE was off.`
+            );
+        }
+        const disabledIdScreenshot = join(
+            process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e",
+            "guide-couchdb-manual-id-generation-disabled.png"
+        );
+        await disabledIdChoices.screenshot({ path: disabledIdScreenshot });
+        screenshots.push(disabledIdScreenshot);
+        assertEqual(
+            await disabledIdChoices.evaluate((element) => Number(getComputedStyle(element).opacity) < 1),
+            true,
+            "The disabled ID configuration did not look disabled in the default theme."
+        );
         await encryption
             .locator("label.row")
             .filter({ hasText: "End-to-End Encryption" })
             .locator('input[type="checkbox"]')
             .first()
             .check({ timeout: uiTimeoutMs });
+        assertEqual(
+            await disabledIdChoices.evaluate((element) => Number(getComputedStyle(element).opacity)),
+            1,
+            "The ID configuration remained dimmed after E2EE was enabled."
+        );
         const passphraseInput = encryption.locator('input[name="e2ee-passphrase"]');
         await passphraseInput.waitFor({ state: "visible", timeout: uiTimeoutMs });
         await encryption
@@ -149,7 +184,85 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
             .first()
             .check({ timeout: uiTimeoutMs });
         await passphraseInput.fill(e2eePassphrase);
-        const passwordToggle = encryption.locator("button.sls-password-toggle");
+        const idChoices = encryption.locator('input[type="radio"][name="id-derivation-choice"]');
+        assertEqual(await idChoices.count(), 3, "The three ID configurations were not all shown.");
+        for (const value of ["keep", "random", "custom"]) {
+            assertEqual(
+                await encryption.locator(`input[name="id-derivation-choice"][value="${value}"]`).isVisible(),
+                true,
+                `The ${value} ID configuration was not visible.`
+            );
+        }
+        const keepChoice = encryption.locator('input[name="id-derivation-choice"][value="keep"]');
+        const randomChoice = encryption.locator('input[name="id-derivation-choice"][value="random"]');
+        const customChoice = encryption.locator('input[name="id-derivation-choice"][value="custom"]');
+        assertEqual(await randomChoice.isChecked(), true, "The default ID configuration was not random.");
+        assertEqual(
+            await encryption.getByText("Keep current configuration", { exact: true }).count(),
+            1,
+            "The current-configuration choice was not labelled consistently."
+        );
+        assertEqual(
+            await encryption.getByText("Current configuration: no ID key is saved.", { exact: false }).count(),
+            1,
+            "The current legacy configuration was not explained."
+        );
+        await keepChoice.check({ timeout: uiTimeoutMs });
+        assertEqual(
+            await encryption.getByText("Changing the E2EE passphrase changes IDs", { exact: false }).count(),
+            1,
+            "Keeping legacy IDs did not explain the effect of changing the E2EE passphrase."
+        );
+        await randomChoice.check({ timeout: uiTimeoutMs });
+        if (independentIdSource) {
+            await customChoice.check({ timeout: uiTimeoutMs });
+            const customChoices = encryption.locator('input[type="radio"][name="id-custom-choice"]');
+            assertEqual(await customChoices.count(), 3, "The three custom ID inputs were not all shown.");
+            for (const value of ["passphrase", "source", "recovery"]) {
+                assertEqual(
+                    await encryption.locator(`input[name="id-custom-choice"][value="${value}"]`).isVisible(),
+                    true,
+                    `The ${value} custom ID input was not visible.`
+                );
+            }
+            const sourceChoice = encryption.locator('input[name="id-custom-choice"][value="source"]');
+            assertEqual(await sourceChoice.isChecked(), true, "The custom ID input was not selected by default.");
+            await encryption
+                .locator('input[name="id-custom-choice"][value="passphrase"]')
+                .check({ timeout: uiTimeoutMs });
+            assertEqual(
+                await encryption.locator('input[name="id-derivation-source"]').count(),
+                0,
+                "The E2EE passphrase choice exposed a second source input."
+            );
+            await encryption
+                .locator('input[name="id-custom-choice"][value="recovery"]')
+                .check({ timeout: uiTimeoutMs });
+            assertEqual(
+                await encryption.locator('input[name="id-derivation-source"]').getAttribute("placeholder"),
+                "Enter an ID recovery code",
+                "The recovery-code choice did not request a recovery code."
+            );
+            const recoveryChoice = encryption.locator('input[name="id-custom-choice"][value="recovery"]');
+            await sourceChoice.check({ timeout: uiTimeoutMs });
+            const sourceInput = encryption.locator('input[name="id-derivation-source"]');
+            await sourceInput.fill("");
+            await encryption.getByRole("button", { name: "Proceed", exact: true }).click({ timeout: uiTimeoutMs });
+            assertEqual(
+                await encryption.getByText("An ID source is required to enable this option.", { exact: false }).count(),
+                1,
+                "A first-time independent ID configuration did not require a source."
+            );
+            assertEqual(
+                await encryption.isVisible(),
+                true,
+                "The E2EE dialogue closed after a first-time ID source was omitted."
+            );
+            await recoveryChoice.check({ timeout: uiTimeoutMs });
+            await sourceChoice.check({ timeout: uiTimeoutMs });
+            await sourceInput.fill(independentIdSource);
+        }
+        const passwordToggle = passphraseInput.locator("..").locator("button.sls-password-toggle");
         await passwordToggle.click({ timeout: uiTimeoutMs });
         assertEqual(
             await passphraseInput.getAttribute("type"),
@@ -167,16 +280,13 @@ async function enterManualCouchDBSettings(port: number, couchDb: CouchDbConfig, 
             "password",
             "Toggling visibility again did not re-mask the passphrase."
         );
-        assertEqual(
-            await passphraseInput.inputValue(),
-            e2eePassphrase,
-            "Re-masking the passphrase changed its value."
-        );
+        assertEqual(await passphraseInput.inputValue(), e2eePassphrase, "Re-masking the passphrase changed its value.");
     });
     screenshots.push(await captureGuideDialogue(port, "guide-couchdb-manual-encryption.png", "End-to-End Encryption"));
     await withObsidianPage(port, async (page) => {
         const encryption = modalByTitle(page, "End-to-End Encryption");
         await encryption.getByRole("button", { name: "Proceed", exact: true }).click({ timeout: uiTimeoutMs });
+        await encryption.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
 
     screenshots.push(
@@ -288,13 +398,18 @@ async function waitForRemoteEntry(context: RunnerContext, entry: { id: string; c
     });
 }
 
-async function assertPersistedE2EE(vault: TemporaryVault): Promise<void> {
-    const persisted = JSON.parse(
-        await readFile(join(vault.path, ".obsidian", "plugins", "obsidian-livesync", "data.json"), "utf8")
-    ) as {
+async function assertPersistedE2EE(vault: TemporaryVault, independentIdSource?: string): Promise<void> {
+    const rawSettings = await readFile(
+        join(vault.path, ".obsidian", "plugins", "obsidian-livesync", "data.json"),
+        "utf8"
+    );
+    const persisted = JSON.parse(rawSettings) as {
         encrypt?: unknown;
         encryptedPassphrase?: unknown;
         passphrase?: unknown;
+        idDerivationVersion?: unknown;
+        idDerivationKey?: unknown;
+        encryptedIdDerivationKey?: unknown;
     };
     assertEqual(persisted.encrypt, true, "Manual CouchDB setup did not persist E2EE as enabled.");
     assertEqual(persisted.passphrase, "", "Manual CouchDB setup persisted the E2EE passphrase in plain text.");
@@ -303,6 +418,14 @@ async function assertPersistedE2EE(vault: TemporaryVault): Promise<void> {
     }
     if (JSON.stringify(persisted).includes(e2eePassphrase)) {
         throw new Error("Manual CouchDB setup persisted the E2EE passphrase in plain text.");
+    }
+    assertEqual(persisted.idDerivationVersion, 1, "The independent ID mode was not persisted.");
+    assertEqual(persisted.idDerivationKey, "", "The derived ID key was stored in plain text.");
+    if (typeof persisted.encryptedIdDerivationKey !== "string" || !persisted.encryptedIdDerivationKey) {
+        throw new Error("The derived ID key was not encrypted in local settings.");
+    }
+    if (independentIdSource) {
+        if (rawSettings.includes(independentIdSource)) throw new Error("The ID source was stored in local settings.");
     }
 }
 
@@ -318,6 +441,126 @@ async function assertRestoredE2EEPassphrase(session: ObsidianLiveSyncSession, cl
         session.cliEnv
     );
     assertEqual(restored, true, "The E2EE passphrase was not restored after Obsidian restarted.");
+}
+
+async function assertCurrentIdDerivationKey(
+    session: ObsidianLiveSyncSession,
+    cliBinary: string,
+    expected: string,
+    context: string
+): Promise<void> {
+    const settings = await evalObsidianJson<{ idDerivationVersion: number; idDerivationKey: string }>(
+        cliBinary,
+        [
+            "(()=>{",
+            "const settings=app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings();",
+            "return JSON.stringify({idDerivationVersion:settings.idDerivationVersion,idDerivationKey:settings.idDerivationKey});",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    assertEqual(settings.idDerivationVersion, 1, `${context}: the independent ID version was not retained.`);
+    assertEqual(settings.idDerivationKey, expected, `${context}: the saved ID key changed.`);
+}
+
+async function assertRecoveryCodeCanBeRevealed(
+    session: ObsidianLiveSyncSession,
+    cliBinary: string,
+    source: string
+): Promise<void> {
+    const port = session.remoteDebuggingPort;
+    const expected = formatIdRecoveryCode(await deriveIdKey(source));
+    await withObsidianPage(port, async (page) => {
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        const remotePage = await settingsNavigator.openPage("Remote Configuration");
+        await remotePage
+            .locator(".setting-item")
+            .filter({ hasText: "Configure E2EE" })
+            .getByRole("button", { name: "Configure", exact: true })
+            .click({ timeout: uiTimeoutMs });
+        const encryption = modalByTitle(page, "End-to-End Encryption");
+        await encryption.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        assertEqual(
+            await encryption.locator('input[name="id-derivation-choice"][value="keep"]').isChecked(),
+            true,
+            "An existing ID key was not selected for reuse."
+        );
+        assertEqual(
+            await encryption.getByText("Current configuration: a saved ID key is used.").count(),
+            1,
+            "The saved ID key was not explained."
+        );
+        await encryption.getByRole("button", { name: "Show current recovery code" }).click({ timeout: uiTimeoutMs });
+        assertEqual(
+            await encryption.getByRole("textbox", { name: "Current ID recovery code" }).inputValue(),
+            expected,
+            "The displayed recovery code did not contain the saved ID key."
+        );
+        await encryption.locator('input[name="id-derivation-choice"][value="custom"]').check({ timeout: uiTimeoutMs });
+        await encryption.locator('input[name="id-custom-choice"][value="recovery"]').check({ timeout: uiTimeoutMs });
+        const recoveryInput = encryption.locator('input[name="id-derivation-source"]');
+        await recoveryInput.fill("not-a-recovery-code");
+        await encryption.getByRole("button", { name: "Proceed" }).click({ timeout: uiTimeoutMs });
+        assertEqual(
+            await encryption.getByText("The ID source or recovery code is invalid.", { exact: false }).count(),
+            1,
+            "The recovery-code choice accepted an ordinary source string."
+        );
+        await recoveryInput.fill(expected);
+        await encryption.getByRole("button", { name: "Proceed" }).click({ timeout: uiTimeoutMs });
+        await encryption.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        assertEqual(
+            await modalByTitle(page, "Mostly Complete: Decision Required").count(),
+            0,
+            "Recovering the existing ID key opened a new setup decision."
+        );
+    });
+    const expectedIdKey = await deriveIdKey(source);
+    await assertCurrentIdDerivationKey(session, cliBinary, expectedIdKey, "Recovering the saved ID key");
+
+    await withObsidianPage(port, async (page) => {
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        const remotePage = await settingsNavigator.openPage("Remote Configuration");
+        await remotePage
+            .locator(".setting-item")
+            .filter({ hasText: "Configure E2EE" })
+            .getByRole("button", { name: "Configure", exact: true })
+            .click({ timeout: uiTimeoutMs });
+        const encryption = modalByTitle(page, "End-to-End Encryption");
+        await encryption.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await encryption.locator('input[name="id-derivation-choice"][value="custom"]').check({ timeout: uiTimeoutMs });
+        await encryption.locator('input[name="id-custom-choice"][value="source"]').check({ timeout: uiTimeoutMs });
+        const sourceInput = encryption.locator('input[name="id-derivation-source"]');
+        await sourceInput.fill("");
+        assertEqual(await sourceInput.inputValue(), "", "The independent ID source input was not empty.");
+        assertEqual(
+            await encryption.getByText("Leave this input empty to keep the saved ID key.", { exact: true }).count(),
+            1,
+            "The configured ID source did not explain that an empty input keeps the saved ID key."
+        );
+        await encryption.getByRole("button", { name: "Proceed", exact: true }).click({ timeout: uiTimeoutMs });
+        await encryption.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        assertEqual(
+            await modalByTitle(page, "Mostly Complete: Decision Required").count(),
+            0,
+            "Keeping the saved ID key after an empty source opened a new setup decision."
+        );
+    });
+    await assertCurrentIdDerivationKey(session, cliBinary, expectedIdKey, "Saving an empty custom ID source");
+}
+
+async function readDocumentId(cliBinary: string, environment: NodeJS.ProcessEnv, path: string): Promise<string> {
+    return await evalObsidianJson<string>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "return JSON.stringify(await core.services.path.path2id(path));",
+            "})()",
+        ].join(""),
+        environment
+    );
 }
 
 async function setRemotePreferredE2EEDisabled(context: RunnerContext): Promise<void> {
@@ -430,6 +673,10 @@ async function main(): Promise<void> {
     };
     const screenshots: string[] = [];
     let secondDeviceArtifact: SetupArtifact | undefined;
+    const independentIdSource =
+        process.env.E2E_OBSIDIAN_INDEPENDENT_IDS === "true" ? randomBytes(32).toString("base64url") : undefined;
+    let firstEntryId: string | undefined;
+    let returnEntryId: string | undefined;
 
     try {
         await assertCouchDbReachable(couchDb);
@@ -440,7 +687,9 @@ async function main(): Promise<void> {
 
         let session = await startUnconfiguredSession(context, vaultA);
         try {
-            screenshots.push(...(await enterManualCouchDBSettings(session.remoteDebuggingPort, couchDb, dbName)));
+            screenshots.push(
+                ...(await enterManualCouchDBSettings(session.remoteDebuggingPort, couchDb, dbName, independentIdSource))
+            );
             screenshots.push(await captureAndStartInitialisation(session.remoteDebuggingPort, "new", captures));
             screenshots.push(await confirmRebuild(session.remoteDebuggingPort, captures));
             screenshots.push(await continueWithoutRemoteSettings(session.remoteDebuggingPort, captures));
@@ -453,10 +702,14 @@ async function main(): Promise<void> {
                 1,
                 "Manual CouchDB setup did not persist exactly one remote profile."
             );
-            await assertPersistedE2EE(vaultA);
+            await assertPersistedE2EE(vaultA, independentIdSource);
+            if (independentIdSource) {
+                await assertRecoveryCodeCanBeRevealed(session, context.cliBinary, independentIdSource);
+            }
 
             await writeNoteViaObsidian(context.cliBinary, session.cliEnv, notePath, noteContent);
             const entry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, notePath);
+            firstEntryId = entry.id;
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForRemoteEntry(context, entry);
         } catch (error) {
@@ -479,9 +732,12 @@ async function main(): Promise<void> {
             );
             await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
-            await assertPersistedE2EE(vaultA);
+            await assertPersistedE2EE(vaultA, independentIdSource);
 
             const rebuiltEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, notePath);
+            if (independentIdSource) {
+                assertEqual(rebuiltEntry.id, firstEntryId, "Rebuild changed the configured document ID.");
+            }
             await waitForRemoteEntry(context, rebuiltEntry);
             await assertRemoteEntryEncrypted(context, rebuiltEntry, notePath, noteContent);
             await assertRemotePreferredE2EE(context, true);
@@ -512,11 +768,20 @@ async function main(): Promise<void> {
             screenshots.push(...(await confirmFastFetch(session.remoteDebuggingPort, captures)));
             await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await assertPersistedE2EE(vaultB, independentIdSource);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForVaultFile(vaultB, notePath, noteContent);
+            if (independentIdSource) {
+                assertEqual(
+                    await readDocumentId(context.cliBinary, session.cliEnv, notePath),
+                    firstEntryId,
+                    "The Setup URI did not restore the document ID key on the second device."
+                );
+            }
 
             await writeNoteViaObsidian(context.cliBinary, session.cliEnv, returnNotePath, returnNoteContent);
             const returnEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, returnNotePath);
+            returnEntryId = returnEntry.id;
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForRemoteEntry(context, returnEntry);
         } catch (error) {
@@ -531,6 +796,13 @@ async function main(): Promise<void> {
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForVaultFile(vaultA, returnNotePath, returnNoteContent);
+            if (independentIdSource) {
+                assertEqual(
+                    await readDocumentId(context.cliBinary, session.cliEnv, returnNotePath),
+                    returnEntryId,
+                    "The first device did not retain the shared document ID key."
+                );
+            }
         } catch (error) {
             await captureFailure(session, "return-journey");
             throw error;

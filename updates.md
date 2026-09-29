@@ -16,12 +16,18 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### New Feature
 
+- An optional saved ID key can generate encrypted Chunk IDs and obfuscated Metadata document IDs independently of the current E2EE passphrase.
+    - New Vaults use a random key by default; existing Vaults keep their current ID configuration by default. You can also derive a key from the current E2EE passphrase, enter a separate source, or import a recovery code. The source is not retained; the saved key can be revealed locally as a recovery code.
+    - The saved key stays in place when the E2EE passphrase changes or E2EE is turned off. Share it with another device through a protected Setup URI. Changing document IDs on an existing remote requires the usual Rebuild and Fetch procedure.
 - We can now keep the file properties used by Hidden File Sync and Customisation Sync private in CouchDB.
     - **Encrypt internal file Properties** extends E2EE V2 and Property Encryption to their paths, times, sizes, and Chunk references.
     - Existing configurations keep this preference disabled. New Vaults enable it for use when the required encryption settings are active.
     - Update every synchronising device before enabling it. It protects future writes; a manual remote Rebuild is strongly recommended to protect existing properties.
 - We can now see which unsupported feature prevents a client from synchronising with CouchDB.
     - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
+
+- We can now compare ID generation performance on a desktop or mobile device through **Open review harness**, available with the developers' debug tools enabled.
+    - The copied report includes legacy and independent ID timings and, where available, approximate JavaScript heap samples. The measurement uses fixed test data and keeps our Vault and settings unchanged.
 
 #### Fixed
 
