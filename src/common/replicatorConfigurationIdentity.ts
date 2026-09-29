@@ -43,7 +43,10 @@ function projectHeaders(value: string): readonly (readonly [name: string, value:
 }
 
 function projectRemoteSecurity(settings: RemoteDBSettings) {
-    return settings.encrypt
+    return [
+        settings.idDerivationVersion,
+        settings.idDerivationKey,
+        settings.encrypt
         ? ([
               "encrypted",
               settings.passphrase,
@@ -51,7 +54,8 @@ function projectRemoteSecurity(settings: RemoteDBSettings) {
               settings.E2EEAlgorithm,
               settings.permitEmptyPassphrase,
           ] as const)
-        : (["plain"] as const);
+        : (["plain"] as const),
+    ] as const;
 }
 
 /**

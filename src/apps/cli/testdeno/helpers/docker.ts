@@ -628,7 +628,7 @@ export async function startP2pRelay(): Promise<void> {
         //TODO: port mapping should be configurable.
         "4000:7777",
         "--tmpfs",
-        "/app/strfry-db:rw,size=256m",
+        "/app/strfry-db:rw,size=256m,mode=1777",
         "--entrypoint",
         "sh",
         P2P_RELAY_IMAGE,

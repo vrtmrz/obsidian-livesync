@@ -31,6 +31,8 @@ Authentication and other non-retryable HTTP failures stop immediately. Network a
 
 The existing `flyio/generate_setupuri.ts` path remains a CouchDB-only compatibility wrapper for the Fly.io deployment script.
 
+The generator creates a fresh random ID key by default and includes it in the encrypted Setup URI. It prints a tagged `sls-id-v1:` recovery code. Set `id_recovery_code` to that code when generating another URI for the same Vault; a new run without it creates a different key. This restores only the ID key: reuse the original connection details too. For P2P, provide the original `p2p_room_id` and `p2p_passphrase` because omitted values are generated afresh. Set `id_mode=legacy` to generate a URI with the previous ID behaviour. `id_mode=legacy` and `id_recovery_code` cannot be combined. Keep the recovery code private and retain it if every device might be lost.
+
 ### CouchDB
 
 ```sh

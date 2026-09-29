@@ -239,6 +239,20 @@ Setting key: passphrase
 
 Encrypting passphrase. If you change the passphrase, you need to rebuild databases (You will be informed).
 
+#### Independent ID derivation
+
+Setting keys: `idDerivationVersion`, `idDerivationKey`
+
+This setting saves a separate key for encrypted Chunk IDs and obfuscated Metadata document IDs. New Vault setup selects **Generate a random ID key** by default when E2EE is enabled. Existing Vaults select **Keep current configuration** by default. The radio choices show the available configurations together. A small description under **Keep current configuration** identifies the saved configuration: an existing ID key, or legacy IDs linked to the E2EE passphrase. That choice retains either one; on a new Vault, choosing it explicitly uses legacy IDs. If the configuration is legacy, changing the E2EE passphrase also changes IDs.
+
+To set a key yourself, choose **Set an ID key**. Three further radio choices then appear: **Derive from current E2EE passphrase**, **Enter an ID source**, and **Import an ID recovery code**. The last two choices show a text input. The source input also recognises a tagged recovery code. An empty input keeps an existing key; a first key requires input. An ordinary source is converted to a key when you apply the settings and cannot be shown again. A recovery code imports the saved key directly.
+
+Use **Show current recovery code** to display and copy the saved key on this device. The code starts with `sls-id-v1:` and can be pasted into the manual input on another device without deriving a different key. A Setup URI carries the same saved key under its separate passphrase. If you need to restore the configuration after losing every device, save the recovery code or choose a source you can reproduce before relying on the random default. Keep the code private.
+
+Using the E2EE passphrase as the source keeps IDs stable after later passphrase changes, but it does not separate the original passphrase from guesses based on known IDs. Use a long, unpredictable, separate source when that separation matters. Hashing a weak source does not make it strong.
+
+Changing the E2EE passphrase later does not change the saved ID key, although the existing re-encryption and Rebuild procedure still applies to the encrypted data. While E2EE is off, the saved ID key is retained but is not used; existing legacy ID generation applies until E2EE is enabled again. Devices with different ID keys can synchronise when Path Obfuscation is off, although identical content may produce duplicate Chunks. Enabling, replacing, or disabling the ID key can change document IDs when Path Obfuscation is active. Update participating devices, Rebuild from the authoritative Vault, and Fetch on other devices before resuming ordinary synchronisation. A QR code includes the saved key under the existing QR sharing rules, so keep the QR code private.
+
 #### Path Obfuscation
 
 Setting key: usePathObfuscation
@@ -1032,6 +1046,8 @@ LiveSync could not handle multiple vaults which have same name without different
 Setting key: hashAlg
 
 `xxhash64` is the supported current value. Older algorithms remain selectable only as an edge-case compatibility path for existing databases. Changing the algorithm can reduce chunk reuse between devices and requires the normal tweak review.
+
+When independent ID derivation is enabled, encrypted Chunk IDs use its versioned HMAC construction instead of `hashAlg`. The selected `hashAlg` continues to apply to legacy IDs.
 
 ### 6. Edge case addressing (Behaviour)
 
