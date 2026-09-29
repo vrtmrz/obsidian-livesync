@@ -273,7 +273,9 @@ Build the current plug-in once, then run these focused scenarios sequentially wi
 
 The setup-tool contract suite also checks ID recovery and explicit legacy IDs in both URI modes. `dialog-mounts` covers the availability dialogue and setup choices on desktop and emulated mobile. These automated scenarios remove the need to repeat every decision path manually during BRAT acceptance.
 
-BRAT acceptance still validates the exact published artefacts: install or update through BRAT, cold-start Obsidian, and exchange one note in each direction. On a physical mobile device, include one Setup URI or QR hand-off and check the displayed instructions, principal controls, and responsiveness. Camera capture, operating-system dispatch, native mobile performance, and the published installation path are outside this local E2E coverage; emulated mobile establishes layout and interaction only.
+BRAT acceptance validates the exact published artefacts: install or update through BRAT, cold-start Obsidian, and exchange one note in each direction. Build behaviour can be checked before publication using the exact reviewed build; record its identity and avoid repeating the same decision paths during BRAT acceptance.
+
+A short physical-device check is optional when a specific concern remains about localised time text, input, clipboard interaction, or responsiveness. The camera and operating-system dispatch paths are unchanged by this integration and do not require routine revalidation. Emulated mobile establishes layout and interaction, but does not establish native device performance or verify the published installation path.
 
 ### Environment variables
 
