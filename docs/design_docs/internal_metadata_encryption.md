@@ -132,6 +132,13 @@ Keep focused tests for settings defaults and imports, the Doctor condition
 matrix, acceptance and dismissal, connection replacement, and absence of an
 automatic Rebuild, Fetch, or restart for this rule.
 
+Exercise the Doctor choices in real Obsidian as well: decline the consultation,
+skip the recommendation with a reminder, dismiss the current Doctor version,
+and reopen it through **Run Doctor** to accept. Restart the same Vault and
+profile between choices to verify persistence and whether the consultation
+reappears. Preserve the local database and existing remote documents throughout
+acceptance, then verify that subsequent writes encrypt internal Metadata.
+
 Keep unit tests for known and unknown feature notifications, generic identifier
 presentation, retirement without a circular wait, and the unchanged snapshot
 behaviour after KV failure or obsolete snapshot fields. The previous batch

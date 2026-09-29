@@ -45,6 +45,7 @@ const testSteps: Step[] = [
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
     { name: "hidden file snippet synchronisation", args: ["run", "test:e2e:obsidian:hidden-file-snippet-sync"] },
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },
+    { name: "internal Metadata Doctor", args: ["run", "test:e2e:obsidian:internal-metadata-doctor"] },
     { name: "setting Markdown export", args: ["run", "test:e2e:obsidian:setting-markdown-export"] },
 ];
 
