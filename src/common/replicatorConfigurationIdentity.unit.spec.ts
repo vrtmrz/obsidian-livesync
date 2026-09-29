@@ -67,6 +67,22 @@ describe("active Replicator configuration identity", () => {
         );
     });
 
+    it("recreates the CouchDB connection when internal Metadata encryption becomes effective", () => {
+        const active = configuredSettings({ usePathObfuscation: true, encryptInternalMetadata: false });
+        const enabled = { ...active, encryptInternalMetadata: true };
+
+        expect(getCouchDBReplicatorConfigurationIdentity(enabled)).not.toBe(
+            getCouchDBReplicatorConfigurationIdentity(active)
+        );
+        const inactive = { ...active, usePathObfuscation: false };
+        expect(getCouchDBReplicatorConfigurationIdentity({ ...inactive, encryptInternalMetadata: true })).toBe(
+            getCouchDBReplicatorConfigurationIdentity(inactive)
+        );
+        expect(getObjectStorageReplicatorConfigurationIdentity(enabled)).toBe(
+            getObjectStorageReplicatorConfigurationIdentity(active)
+        );
+    });
+
     it("projects only the active CouchDB authentication mode", () => {
         const basic = configuredSettings({ useJWT: false, jwtKey: "inactive-a" });
         expect(getCouchDBReplicatorConfigurationIdentity({ ...basic, jwtKey: "inactive-b" })).toBe(

@@ -336,6 +336,31 @@ export class SetupManager extends AbstractModule {
             this._log("E2EE configuration cancelled.", LOG_LEVEL_NOTICE);
             return false;
         }
+        const onlyInternalMetadataPreferenceChanged =
+            currentSetting.encryptInternalMetadata !== e2eeConf.encryptInternalMetadata &&
+            currentSetting.encrypt === e2eeConf.encrypt &&
+            currentSetting.passphrase === e2eeConf.passphrase &&
+            currentSetting.E2EEAlgorithm === e2eeConf.E2EEAlgorithm &&
+            currentSetting.usePathObfuscation === e2eeConf.usePathObfuscation;
+        if (userMode === UserMode.Update && onlyInternalMetadataPreferenceChanged) {
+            if (e2eeConf.encryptInternalMetadata && currentSetting.remoteType === REMOTE_COUCHDB) {
+                const proceed = "Enable without rebuilding — update every other device first";
+                const choice = await this.core.confirm.askSelectStringDialogue(
+                    "A manual remote Rebuild is strongly recommended to protect existing file properties. " +
+                        "Before continuing without rebuilding, update every other synchronising device to a version " +
+                        "which supports this option, including devices currently running LiveSync. " +
+                        "Existing properties remain unchanged until they are rewritten or rebuilt.",
+                    [proceed, "Cancel"],
+                    { title: "Encrypt internal file Properties", defaultAction: "Cancel" }
+                );
+                if (choice !== proceed) return false;
+            }
+            await this.services.setting.applyPartial(
+                { encryptInternalMetadata: e2eeConf.encryptInternalMetadata },
+                true
+            );
+            return true;
+        }
         const newSetting = {
             ...currentSetting,
             ...e2eeConf,

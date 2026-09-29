@@ -210,6 +210,7 @@ async function configureLiveSyncCli(
         encrypt: true,
         passphrase: e2eePassphrase,
         usePathObfuscation: true,
+        encryptInternalMetadata: true,
         doctorProcessedVersion: "0.25.27",
         isConfigured: true,
     });
@@ -323,6 +324,7 @@ async function main(): Promise<void> {
                     encrypt: true,
                     passphrase: e2eePassphrase,
                     usePathObfuscation: true,
+                    encryptInternalMetadata: true,
                     E2EEAlgorithm: "v2",
                 }
             ),

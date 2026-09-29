@@ -1,4 +1,5 @@
 import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { usesEncryptedInternalMetadata } from "@vrtmrz/livesync-commonlib/replication";
 
 type EndpointProjection = readonly [kind: "url" | "invalid-url", value: string];
 
@@ -77,6 +78,7 @@ export function getCouchDBReplicatorConfigurationIdentity(settings: RemoteDBSett
         settings.useRequestAPI,
         settings.disableRequestURI,
         projectRemoteSecurity(settings),
+        usesEncryptedInternalMetadata(settings),
         settings.enableCompression,
     ]);
 }
