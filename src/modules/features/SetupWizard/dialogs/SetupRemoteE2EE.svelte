@@ -24,6 +24,8 @@
     let default_encryption: EncryptionSettings = {
         encrypt: true,
         passphrase: "",
+        idDerivationVersion: DEFAULT_SETTINGS.idDerivationVersion,
+        idDerivationKey: DEFAULT_SETTINGS.idDerivationKey,
         E2EEAlgorithm: DEFAULT_SETTINGS.E2EEAlgorithm,
         usePathObfuscation: true,
         encryptInternalMetadata: true,

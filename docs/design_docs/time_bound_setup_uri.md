@@ -382,19 +382,27 @@ There is no identified blocker in the Time-bound URI protocol. The Commonlib
 candidate based on 0.1.31 passed its type, unit, boundary, release-process,
 and packed-package gates before the 0.1.32 release. A clean `npm ci` against
 the published 0.1.32 artefact and the frozen Deno tool lock resolve the same
-registry integrity.
-LiveSync passes its source checks, 1,023 unit tests, the Deno setup-tool suite,
-the CLI setup and file-operation contract, and the WebPeer browser tests.
+registry integrity. LiveSync passes its source checks, production build, and
+1,034 unit tests on a local stack with [PR #1222](https://github.com/vrtmrz/obsidian-livesync/pull/1222).
+The two CLI installer tests need a runner which permits child processes; both
+pass under normal process permissions. The Deno setup-tool suite, CLI setup
+and file-operation contract, and WebPeer browser tests passed before stacking.
+
 Focused real-Obsidian generation checks pass on desktop and emulated mobile,
 including the displayed Time-bound end, Compatible output, and mobile touch
-targets. Unit and protocol tests cover window boundaries and preserve the
-existing distinction between an empty passphrase and cancellation. The
-WebPeer browser test confirms that its monitor remains available after the URI
-window ends for a device that has already imported the URI. The full two-device
-CouchDB workflow remains blocked before URI generation: Commonlib 0.1.32's
-new-Vault default can declare remote feature generation 13, while this branch's
-received-version handler still rejects every generation above 12. The host
-integration for that separate feature must precede downstream validation;
+targets. A two-device CouchDB workflow now passes on the local stack: the
+provisioning tool creates a generation 12 database, the first device generates
+a Time-bound Setup URI after declaring its required generation 13 feature, and
+the second device imports it. An ordinary note completes a round trip, and a
+hidden snippet synchronises. The separate real-Obsidian tests for live remote
+feature changes, internal Metadata migration, and a percent-prefixed E2EE
+passphrase also pass with published Commonlib 0.1.32. Unit and protocol tests
+cover window boundaries and preserve the existing distinction between an empty
+passphrase and cancellation. The WebPeer browser test confirms that its monitor
+remains available after the URI window ends for a device which has already
+imported the URI.
+
+The downstream change depends on PR #1222's host compatibility integration;
 relaxing only the version check would bypass its compatibility contract. These
 results do not establish a mobile performance bound. The first implementation
 changes only primary-language resources; translation changes require separate
