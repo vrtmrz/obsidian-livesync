@@ -33,6 +33,9 @@ type FeatureState = {
     version: number | null;
     features: string[];
     hasActiveReplicator: boolean;
+    syncStatus: string | null;
+    continuousTaskActive: boolean;
+    liveSync: boolean;
 };
 
 async function readFeatureState(cliBinary: string, env: NodeJS.ProcessEnv): Promise<FeatureState> {
@@ -43,10 +46,14 @@ async function readFeatureState(cliBinary: string, env: NodeJS.ProcessEnv): Prom
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
             `const id=${JSON.stringify(VERSIONING_DOCID)};`,
             "const info=await core.localDatabase.getRaw(id).catch(()=>null);",
+            "const replicator=core.services.replicator.getActiveReplicator();",
             "return JSON.stringify({",
             "version:typeof info?.version==='number'?info.version:null,",
             "features:Array.isArray(info?.used_features)?info.used_features:[],",
-            "hasActiveReplicator:!!core.services.replicator.getActiveReplicator(),",
+            "hasActiveReplicator:!!replicator,",
+            "syncStatus:replicator?.syncStatus??null,",
+            "continuousTaskActive:!!replicator?.continuousTask,",
+            "liveSync:core.settings.liveSync,",
             "});",
             "})()",
         ].join(""),
@@ -135,7 +142,12 @@ async function main(): Promise<void> {
         );
         if (start.status !== "completed")
             throw new Error(`Continuous replication did not start: ${JSON.stringify(start)}`);
-        await waitForState(cli.binary, session.cliEnv, (state) => state.hasActiveReplicator, "an active Replicator");
+        await waitForState(
+            cli.binary,
+            session.cliEnv,
+            (state) => state.hasActiveReplicator && state.continuousTaskActive && state.syncStatus === "PAUSED",
+            "a caught-up continuous Replicator"
+        );
 
         await putCouchDbDocument(couchDb, dbName, {
             ...initialVersion,
