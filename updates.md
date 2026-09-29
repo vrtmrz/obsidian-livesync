@@ -28,6 +28,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
     - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
 
+### Setup
+
+#### Improved
+
+- We can now distinguish the three Setup URI and QR code choices by their short labels and icons: initialise or overwrite the remote, join this device, or apply settings only.
+
 ## 1.0.32
 
 27th September, 2026

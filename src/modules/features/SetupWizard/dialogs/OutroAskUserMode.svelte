@@ -48,9 +48,7 @@
 <Instruction>
     <Question>{translateMessage("Please select your situation.")}</Question>
     <Option
-        title={translateMessage(
-            "I am setting up a new server for the first time / I want to reset my existing server."
-        )}
+        title={translateMessage("⚠️ Initialise or overwrite the remote")}
         bind:value={userType}
         selectedValue={TYPE_NEW}
     >
@@ -61,7 +59,7 @@
         </InfoNote>
     </Option>
     <Option
-        title={translateMessage("My remote server is already set up. I want to join this device.")}
+        title={translateMessage("📥 Join this device")}
         bind:value={userType}
         selectedValue={TYPE_EXISTING}
     >
@@ -72,9 +70,7 @@
         </InfoNote>
     </Option>
     <Option
-        title={translateMessage(
-            "The remote is already set up, and the configuration is compatible (or got compatible by this operation)."
-        )}
+        title={translateMessage("⚙️ Apply settings only (advanced)")}
         bind:value={userType}
         selectedValue={TYPE_COMPATIBLE_EXISTING}
     >
