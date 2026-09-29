@@ -566,7 +566,7 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
             );
             const resetNotice = compatibility.locator(".sls-info-note-notice").filter({
                 hasText:
-                    "TURN relay only requires at least one valid TURN server URL. Connection path has been restored to Automatic.",
+                        "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.",
             });
             await resetNotice.waitFor({ state: "visible", timeout: uiTimeoutMs });
             await resetNotice
@@ -1303,6 +1303,7 @@ async function main(): Promise<void> {
                 },
                 {
                     notifyThresholdOfRemoteStorageSize: -1,
+                    versionUpFlash: "Review an earlier compatibility change before synchronisation resumes.",
                     syncOnStart: false,
                     syncOnSave: false,
                     syncOnEditorSave: false,

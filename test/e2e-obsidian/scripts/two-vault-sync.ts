@@ -15,13 +15,11 @@ import { discoverObsidianCli, requireObsidianBinary } from "../runner/environmen
 import { waitForExactCaseOnlyRename } from "../runner/pathAssertions.ts";
 import {
     assertEqual,
-    assertE2eCompatibilityMarker,
-    assertE2eCompatibilityReviewPending,
+    assertE2eCompatibilityUnpaused,
     configureCouchDb,
     createE2eCouchDbPluginData,
     prepareRemote,
     pushLocalChanges,
-    resumeCompatibilityReview,
     waitForLiveSyncCoreReady,
     waitForLocalDatabaseEntry,
     type LocalDatabaseEntry,
@@ -60,7 +58,6 @@ type RunnerContext = {
     cliBinary: string;
     couchDb: CouchDbConfig;
     dbName: string;
-    reviewedVaults: Set<string>;
     activeSessions: Set<ObsidianLiveSyncSession>;
 };
 
@@ -450,7 +447,6 @@ async function startConfiguredSession(
         password: context.couchDb.password,
         dbName: context.dbName,
     };
-    const reviewAlreadyCompleted = context.reviewedVaults.has(vault.path);
     const session = await startObsidianLiveSyncSession({
         binary: context.binary,
         cliBinary: context.cliBinary,
@@ -461,12 +457,7 @@ async function startConfiguredSession(
     context.activeSessions.add(session);
     try {
         await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
-        if (!reviewAlreadyCompleted) {
-            await assertE2eCompatibilityReviewPending(context.cliBinary, session.cliEnv);
-            await resumeCompatibilityReview(session.remoteDebuggingPort);
-        }
-        await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
-        if (!reviewAlreadyCompleted) context.reviewedVaults.add(vault.path);
+        await assertE2eCompatibilityUnpaused(context.cliBinary, session.cliEnv, session.remoteDebuggingPort);
         await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, overrides);
         await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
         await prepareRemote(context.cliBinary, session.cliEnv);
@@ -1385,7 +1376,6 @@ async function main(): Promise<void> {
         cliBinary: cli.binary,
         couchDb,
         dbName,
-        reviewedVaults: new Set(),
         activeSessions: new Set(),
     };
     const encryptedContext: RunnerContext = {
@@ -1393,7 +1383,6 @@ async function main(): Promise<void> {
         cliBinary: cli.binary,
         couchDb,
         dbName: encryptedDbName,
-        reviewedVaults: new Set(),
         activeSessions: new Set(),
     };
 

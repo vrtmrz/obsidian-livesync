@@ -55,7 +55,7 @@ At start-up, LiveSync can restore a missing device-local revision record when th
 
 ## Synchronisation is paused for compatibility review
 
-A compatibility review is separate from the Change Log. It can appear after an internal database or settings-format change, or when a configured Vault is copied, restored, or opened in a new Obsidian profile without its device-local acknowledgement.
+A compatibility review is separate from the Change Log. It can appear after an internal database or settings-format change, when the saved version marker is invalid, or when an earlier review remains pending. Adding a device or opening a copied Vault with no device-local acknowledgement does not itself trigger a review. A pause already saved by an earlier release still needs the explicit resume action, because the saved message does not identify its original cause.
 
 The **Synchronisation paused for compatibility review** dialogue opens after the Obsidian layout is ready. If it has been closed, use the persistent Notice's **Review why** link, or run `Review why synchronisation is paused` from the command palette. Opening **Change Log** does not clear the pause.
 

@@ -406,6 +406,12 @@ export async function finishInitialisation(
     let readySince: number | undefined;
     while (Date.now() < deadline) {
         const resumeVisible = await withObsidianPage(port, async (page) => {
+            const alignedSettingsNotice = page.locator(".modal-container").filter({
+                hasText: "Your settings differed slightly from the server's. The plug-in has supplemented the incompatible parts with the server settings!",
+            });
+            if (await alignedSettingsNotice.isVisible()) {
+                await alignedSettingsNotice.getByRole("button", { name: "OK", exact: true }).click({ timeout: uiTimeoutMs });
+            }
             return await modalByTitle(page, "Confirmation").filter({ hasText: message }).isVisible();
         }).catch(() => false);
         if (resumeVisible) {

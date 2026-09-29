@@ -3,10 +3,14 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { encodeSettingsToQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
+    assertE2eCompatibilityMarker,
+    assertE2eCompatibilityUnpaused,
     pushLocalChanges,
     type ConfiguredSettings,
     waitForLiveSyncCoreReady,
@@ -29,8 +33,10 @@ import {
     enterSetupURI,
     finishInitialisation,
     generateSetupURIFromDevice,
-    resumeCompatibilityReviewIfShown,
     continueWithoutRemoteSettings,
+    captureGuideDialogue,
+    modalByTitle,
+    selectRadioOption,
     type SetupArtifact,
     type SetupCaptureNames,
 } from "../runner/setupUri.ts";
@@ -46,9 +52,12 @@ process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
 
 const execFileAsync = promisify(execFile);
 const useCustomRequestHandler = process.argv.includes("--custom-http-handler");
-const captures: SetupCaptureNames = useCustomRequestHandler
-    ? { scenario: "object-storage-custom-http-handler-setup-uri", guide: "object-storage-custom-http-handler-setup" }
-    : { scenario: "object-storage-setup-uri", guide: "object-storage-setup" };
+const useQRCode = process.argv.includes("--qr");
+const captures: SetupCaptureNames = useQRCode
+    ? { scenario: "object-storage-qr", guide: "object-storage-qr-setup" }
+    : useCustomRequestHandler
+      ? { scenario: "object-storage-custom-http-handler-setup-uri", guide: "object-storage-custom-http-handler-setup" }
+      : { scenario: "object-storage-setup-uri", guide: "object-storage-setup" };
 const noteFromFirst = "E2E/object-storage/from-first.md";
 const noteFromSecond = "E2E/object-storage/from-second.md";
 const firstContent =
@@ -249,6 +258,37 @@ async function captureNote(port: number, path: string, text: string, filename: s
     return await captureObsidianElement(port, filename, (page) => page.locator(".workspace-leaf.mod-active").first());
 }
 
+async function importQRCode(port: number, qrData: string): Promise<string> {
+    await withObsidianPage(port, async (page) => {
+        await page.evaluate((data) => {
+            const obsidian = globalThis as typeof globalThis & {
+                app: {
+                    plugins: {
+                        plugins: Record<
+                            string,
+                            { core: { modules: { decodeQR?: (qr: string) => Promise<unknown> }[] } }
+                        >;
+                    };
+                };
+            };
+            const setup = obsidian.app.plugins.plugins["obsidian-livesync"].core.modules.find(
+                (module) => typeof module.decodeQR === "function"
+            );
+            if (!setup?.decodeQR) throw new Error("The QR settings decoder is unavailable.");
+            // The decoder remains pending while the real setup dialogues run.
+            void setup.decodeQR(data);
+        }, qrData);
+    });
+    const title = "Mostly Complete: Decision Required";
+    const screenshot = await captureGuideDialogue(port, `guide-${captures.guide}-join-choice.png`, title);
+    await withObsidianPage(port, async (page) => {
+        const modal = modalByTitle(page, title);
+        await selectRadioOption(modal, "📥 Join this device");
+        await modal.getByRole("button", { name: "Proceed to the next step.", exact: true }).click();
+    });
+    return screenshot;
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -274,7 +314,7 @@ async function main(): Promise<void> {
         screenshots.push(await continueWithoutRemoteSettings(portA, captures));
         screenshots.push(await acknowledgeDisabledOptionalFeatures(portA, captures));
         const firstState = await finishInitialisation(portA, context.cliBinary, sessionA.cliEnv);
-        await resumeCompatibilityReviewIfShown(portA);
+        await assertE2eCompatibilityUnpaused(context.cliBinary, sessionA.cliEnv, portA);
         assertEqual(
             firstState.endpoint,
             objectStorage.endpoint,
@@ -304,6 +344,18 @@ async function main(): Promise<void> {
             throw new Error("The first device returned the bootstrap Setup URI instead of generating a new one.");
         }
         screenshots.push(...generated.screenshots);
+        const qrSettings = useQRCode
+            ? await evalObsidianJson<ObsidianLiveSyncSettings>(
+                  context.cliBinary,
+                  "JSON.stringify(app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings())",
+                  sessionA.cliEnv
+              )
+            : undefined;
+        if (qrSettings) {
+            // Represent QR settings from a device with a different database
+            // suffix; isolated Obsidian profiles can share the default suffix.
+            qrSettings.additionalSuffixOfDatabaseName = "qr-source";
+        }
         const startupState = await configureMigratedStartupScheduling(context.cliBinary, sessionA.cliEnv);
         assertEqual(startupState.liveSync, true, "The first device did not persist its Continuous setting.");
         assertEqual(startupState.syncOnStart, true, "The first device did not persist syncOnStart.");
@@ -325,11 +377,41 @@ async function main(): Promise<void> {
         await stopSession(context, sessionA);
 
         const sessionB = await startSession(context, vaultB, portB);
-        screenshots.push(await enterSetupURI(portB, "existing", generated.artifact, captures));
+        const initialMarker = await assertE2eCompatibilityMarker(context.cliBinary, sessionB.cliEnv);
+        if (qrSettings) {
+            assertEqual(
+                initialMarker.additionalSuffix === `-${qrSettings.additionalSuffixOfDatabaseName}`,
+                false,
+                "The QR fixture must start with distinct source and receiver database suffixes."
+            );
+        }
+        screenshots.push(
+            qrSettings
+                ? await importQRCode(portB, encodeSettingsToQRCodeData(qrSettings))
+                : await enterSetupURI(portB, "existing", generated.artifact, captures)
+        );
         screenshots.push(await captureAndStartInitialisation(portB, "existing", captures));
+        if (qrSettings) {
+            // Inspect the imported namespace before Fetch resets the local
+            // database and restores this device's own suffix.
+            await withObsidianPage(portB, async (page) => {
+                await modalByTitle(page, "Data retrieval scheduled").waitFor({ state: "visible", timeout: 30000 });
+            });
+            const importedMarker = await assertE2eCompatibilityUnpaused(context.cliBinary, sessionB.cliEnv, portB);
+            assertEqual(
+                importedMarker.expectedStorageKey === initialMarker.expectedStorageKey,
+                false,
+                "The QR fixture did not exercise a changed device-local namespace after settings import."
+            );
+            assertEqual(
+                importedMarker.additionalSuffix,
+                `-${qrSettings.additionalSuffixOfDatabaseName}`,
+                "The second device did not import the QR source's database suffix."
+            );
+        }
         screenshots.push(...(await confirmFastFetch(portB, captures)));
         const secondState = await finishInitialisation(portB, context.cliBinary, sessionB.cliEnv);
-        await resumeCompatibilityReviewIfShown(portB);
+        const fetchedMarker = await assertE2eCompatibilityUnpaused(context.cliBinary, sessionB.cliEnv, portB);
         assertEqual(
             secondState.endpoint,
             objectStorage.endpoint,
@@ -359,10 +441,24 @@ async function main(): Promise<void> {
         await writeNote(context.cliBinary, sessionB.cliEnv, noteFromSecond, secondContent);
         await pushLocalChanges(context.cliBinary, sessionB.cliEnv);
         await stopSession(context, sessionB);
+        const returningSessionB = await startSession(context, vaultB, portB);
+        await waitForLiveSyncCoreReady(context.cliBinary, returningSessionB.cliEnv);
+        const restartedMarker = await assertE2eCompatibilityUnpaused(
+            context.cliBinary,
+            returningSessionB.cliEnv,
+            portB
+        );
+        assertEqual(
+            restartedMarker.expectedStorageKey,
+            fetchedMarker.expectedStorageKey,
+            "Restart changed the device-local namespace selected by Fetch."
+        );
+        await waitForPathContent(vaultB, noteFromFirst, firstContent);
+        await stopSession(context, returningSessionB);
 
         const returningSessionA = await startSession(context, vaultA, portA);
         await waitForLiveSyncCoreReady(context.cliBinary, returningSessionA.cliEnv);
-        await resumeCompatibilityReviewIfShown(portA);
+        await assertE2eCompatibilityUnpaused(context.cliBinary, returningSessionA.cliEnv, portA);
         // Deliberately omit manual replication here. Object Storage reports
         // Continuous as not applicable, so startup scheduling must honour the
         // retained syncOnStart setting by running an unattended OneShot.
@@ -377,10 +473,37 @@ async function main(): Promise<void> {
         );
 
         console.log(
-            `Object Storage Setup URI and two-device roundtrip succeeded with the ${
+            `Object Storage ${useQRCode ? "QR" : "Setup URI"} and two-device roundtrip succeeded with the ${
                 useCustomRequestHandler ? "Custom HTTP Handler" : "default HTTP handler"
             }. Screenshots: ${screenshots.join(", ")}`
         );
+    } catch (error) {
+        for (const session of context.activeSessions) {
+            await captureObsidianPage(session.remoteDebuggingPort, `${captures.scenario}-failure.png`, async (page) => {
+                console.error(
+                    "Visible dialogue titles:",
+                    await page.locator(".modal-container:visible .modal-title").allTextContents()
+                );
+                console.error(
+                    "Initialisation state:",
+                    await evalObsidianJson(
+                        context.cliBinary,
+                        `(()=>{
+                    const core=app.plugins.plugins['obsidian-livesync'].core;
+                    const settings=core.services.setting.currentSettings();
+                    return JSON.stringify({configured:settings.isConfigured,
+                        databaseReady:core.services.database.isDatabaseReady(),appReady:core.services.appLifecycle.isReady(),
+                        suspended:core.services.appLifecycle.isSuspended(),versionUpFlash:settings.versionUpFlash,
+                        activeConfigurationId:settings.activeConfigurationId,
+                        remoteConfigurationCount:Object.keys(settings.remoteConfigurations||{}).length});})()`,
+                        session.cliEnv
+                    )
+                );
+            }).catch((diagnosticError: unknown) =>
+                console.error("Could not capture initialisation failure:", diagnosticError)
+            );
+        }
+        throw error;
     } finally {
         await stopSessions(context).catch((error: unknown) => {
             console.warn(error instanceof Error ? error.message : error);

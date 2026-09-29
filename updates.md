@@ -34,6 +34,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - We can now distinguish the three Setup URI and QR code choices by their short labels and icons: initialise or overwrite the remote, join this device, or apply settings only.
 
+#### Fixed
+
+- We can now add a device or open a copied Vault without a compatibility pause solely because its device-local version record is absent.
+    - Existing version or settings incompatibilities still require review. A pause already saved by an earlier release still needs one explicit resume action.
+
 ## 1.0.32
 
 27th September, 2026

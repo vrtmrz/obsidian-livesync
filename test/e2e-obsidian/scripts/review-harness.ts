@@ -6,6 +6,7 @@ import {
     assertNoHorizontalOverflow,
 } from "@vrtmrz/obsidian-test-session";
 import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { DoctorRegulation } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { REVIEW_HARNESS_STATE_KEY } from "../../../src/features/ReviewHarness/reviewHarnessController.ts";
 import { REVIEW_HARNESS_FIXTURE_ROOT } from "../../../src/features/ReviewHarness/reviewHarnessVaultFixture.ts";
 import { evalObsidianJson } from "../runner/cli.ts";
@@ -391,9 +392,10 @@ async function main(): Promise<void> {
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
             pluginData: {
-                doctorProcessedVersion: "1.0.0",
+                doctorProcessedVersion: DoctorRegulation.version,
                 settingVersion: CURRENT_SETTING_VERSION,
                 isConfigured: true,
+                versionUpFlash: "Review an earlier compatibility change before synchronisation resumes.",
                 additionalSuffixOfDatabaseName: "",
                 enableDebugTools: true,
                 notifyThresholdOfRemoteStorageSize: 0,
