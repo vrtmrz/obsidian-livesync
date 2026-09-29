@@ -2592,6 +2592,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "我要将设备加入现有同步配置",
         "zh-tw": "我要將裝置加入既有同步設定",
     },
+    "I am ready, unlock the database": {
+        def: "I am ready, unlock the database",
+        es: "Estoy listo, desbloquear la base de datos",
+        ko: "준비되었습니다. 데이터베이스 잠금 해제",
+        zh: "我已准备好，立即解锁数据库",
+        "zh-tw": "我已準備好，解鎖資料庫",
+    },
     "I am setting this up for the first time": {
         def: "I am setting this up for the first time",
         es: "Estoy configurando esto por primera vez",
@@ -2624,6 +2631,13 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "He creado una copia de seguridad de mi Vault.",
         ko: "보관함을 백업했습니다.",
         "zh-tw": "我已經備份了我的 Vault。",
+    },
+    "I have made a backup, mark this device as resolved": {
+        def: "I have made a backup, mark this device as resolved",
+        es: "He hecho una copia de seguridad, marcar este dispositivo como resuelto",
+        ko: "백업했습니다. 이 기기를 해결됨으로 표시",
+        zh: "我已完成备份，将此设备标记为“已确认”",
+        "zh-tw": "我已完成備份，將此裝置標記為已處理",
     },
     "I know my server details, let me enter them": {
         def: "I know my server details, let me enter them",
@@ -9951,6 +9965,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "基于事件自动同步的最小间隔。",
         "zh-tw": "事件觸發自動同步的最小間隔。",
     },
+    "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.":
+        {
+            def: "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.",
+            es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que el vault se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu vault, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
+            ko: "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
+            zh: "为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
+            "zh-tw":
+                "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
+        },
     "The remote is already set up, and the configuration is compatible (or got compatible by this operation).": {
         def: "The remote is already set up, and the configuration is compatible (or got compatible by this operation).",
         es: "El remoto ya está configurado y la configuración es compatible (o pasa a serlo con esta operación).",
@@ -10131,6 +10154,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "새로운 충돌 발생을 최소화하기 위해",
         "zh-tw": "為了盡量減少新增衝突",
     },
+    "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.":
+        {
+            def: "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.",
+            es: "Para evitar que el vault se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
+            ko: "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
+            zh: "为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
+            "zh-tw":
+                "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
+        },
     "Transfer Tweak": {
         def: "Transfer Tweak",
         es: "Ajustes de transferencia",
@@ -11102,36 +11134,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동기화",
         zh: "同步",
         "zh-tw": "同步中",
-    },
-    "Ui.Settings.Maintenance.WarningLockedReadyAction": {
-        def: "I am ready, unlock the database",
-        es: "Estoy listo, desbloquear la base de datos",
-        ko: "준비되었습니다. 데이터베이스 잠금 해제",
-        zh: "我已准备好，立即解锁数据库",
-        "zh-tw": "我已準備好，解鎖資料庫",
-    },
-    "Ui.Settings.Maintenance.WarningLockedReadyText": {
-        def: "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.",
-        es: "Para evitar que el vault se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
-        ko: "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
-        zh: "为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
-        "zh-tw":
-            "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
-    },
-    "Ui.Settings.Maintenance.WarningLockedResolveAction": {
-        def: "I have made a backup, mark this device as resolved",
-        es: "He hecho una copia de seguridad, marcar este dispositivo como resuelto",
-        ko: "백업했습니다. 이 기기를 해결됨으로 표시",
-        zh: "我已完成备份，将此设备标记为“已确认”",
-        "zh-tw": "我已完成備份，將此裝置標記為已處理",
-    },
-    "Ui.Settings.Maintenance.WarningLockedResolveText": {
-        def: "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.",
-        es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que el vault se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu vault, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
-        ko: "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
-        zh: "为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
-        "zh-tw":
-            "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
     },
     "Ui.Settings.Maintenance.WriteRedFlagAndRestart": {
         def: "Flag and restart",
