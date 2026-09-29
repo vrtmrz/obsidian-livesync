@@ -34,6 +34,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
     - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
 
+### Synchronisation and storage
+
+#### Fixed
+
+- Received changes held during start-up or a fetch are applied when LiveSync becomes ready, without waiting for another change or a settings save. **Suspend database reflecting** continues to hold changes (#1200).
+
 ## 1.0.32
 
 27th September, 2026
