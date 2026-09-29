@@ -1,8 +1,8 @@
 ---
 date: 2026-09-28
-commonlib-version: "0.1.31"
+commonlib-version: "0.1.32"
 feasibility-probe-version: "0.1.27"
-self-hosted-livesync-version: "1.0.30"
+self-hosted-livesync-version: "1.0.32"
 status: implementing
 ---
 
@@ -23,10 +23,10 @@ the entered passphrase. Neither the mode nor a timestamp is stored in the URI.
 
 The design is technically feasible with the existing encryption primitives.
 An executable protocol probe passes 22 cases against Commonlib 0.1.27 and
-octagonal-wheels 0.1.54. The implementation is based on Commonlib 0.1.31.
-The 0.1.32-next.0 candidate has passed local package and downstream checks;
-publication, exact dependency pins, the independent Deno lockfile update, and
-mobile performance validation remain outstanding.
+octagonal-wheels 0.1.54. The implementation is published as Commonlib 0.1.32
+on the npm `next` tag. LiveSync pins that exact release in its npm dependency
+and independent Deno tool imports. A mobile performance bound remains
+outstanding.
 
 This document records the proposed key derivation and integration contract. The
 companion probe demonstrates them without changing an application entry point.
@@ -378,19 +378,24 @@ selection-boundary handling with an injected test clock and mobile behaviour on 
 supported runtime; do not change the host's system clock. No remote database
 service is needed for the protocol tests themselves.
 
-There is no identified architectural blocker. The 0.1.31-based Commonlib
-candidate passes its type, unit, boundary, release-process, and packed-package
-gates. LiveSync passes source checks, the unit suite, the Obsidian plug-in
-build, and the WebPeer and CLI builds against that local tarball. The complete
-unit suite passed with subprocess permissions needed by its CLI installer
-fixtures. Focused real-Obsidian generation checks passed on desktop and
-emulated mobile, including the displayed Time-bound end, Compatible output,
-and mobile touch targets. Unit and protocol tests cover window boundaries and
-preserve the existing distinction between an empty passphrase and cancellation.
-The WebPeer browser test confirms that its monitor remains available after the
-URI window ends for a device that has already imported the URI.
-The Deno generator passed against the same local packed
-candidate through a temporary import map. These results do not establish a
-mobile performance bound or replace validation of the published package and
-its lockfiles. The first implementation changes only primary-language
-resources; translation changes require separate scope.
+There is no identified blocker in the Time-bound URI protocol. The Commonlib
+candidate based on 0.1.31 passed its type, unit, boundary, release-process,
+and packed-package gates before the 0.1.32 release. A clean `npm ci` against
+the published 0.1.32 artefact and the frozen Deno tool lock resolve the same
+registry integrity.
+LiveSync passes its source checks, 1,023 unit tests, the Deno setup-tool suite,
+the CLI setup and file-operation contract, and the WebPeer browser tests.
+Focused real-Obsidian generation checks pass on desktop and emulated mobile,
+including the displayed Time-bound end, Compatible output, and mobile touch
+targets. Unit and protocol tests cover window boundaries and preserve the
+existing distinction between an empty passphrase and cancellation. The
+WebPeer browser test confirms that its monitor remains available after the URI
+window ends for a device that has already imported the URI. The full two-device
+CouchDB workflow remains blocked before URI generation: Commonlib 0.1.32's
+new-Vault default can declare remote feature generation 13, while this branch's
+received-version handler still rejects every generation above 12. The host
+integration for that separate feature must precede downstream validation;
+relaxing only the version check would bypass its compatibility contract. These
+results do not establish a mobile performance bound. The first implementation
+changes only primary-language resources; translation changes require separate
+scope.
