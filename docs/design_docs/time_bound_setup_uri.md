@@ -1,6 +1,6 @@
 ---
 date: 2026-09-28
-commonlib-version: "0.1.32"
+commonlib-version: "0.1.33"
 feasibility-probe-version: "0.1.27"
 self-hosted-livesync-version: "1.0.32"
 status: implementing
@@ -23,9 +23,9 @@ the entered passphrase. Neither the mode nor a timestamp is stored in the URI.
 
 The design is technically feasible with the existing encryption primitives.
 An executable protocol probe passes 22 cases against Commonlib 0.1.27 and
-octagonal-wheels 0.1.54. The implementation is published as Commonlib 0.1.32
-on the npm `next` tag. LiveSync pins that exact release in its npm dependency
-and independent Deno tool imports. A mobile performance bound remains
+octagonal-wheels 0.1.54. The implementation was first published as Commonlib 0.1.32
+on the npm `next` tag. LiveSync now pins Commonlib 0.1.33 from that tag in its npm
+dependency and independent Deno tool imports. A mobile performance bound remains
 outstanding.
 
 This document records the proposed key derivation and integration contract. The
@@ -401,6 +401,12 @@ cover window boundaries and preserve the existing distinction between an empty
 passphrase and cancellation. The WebPeer browser test confirms that its monitor
 remains available after the URI window ends for a device which has already
 imported the URI.
+
+The subsequent update to published Commonlib 0.1.33 passes a clean `npm ci`,
+matching npm and frozen Deno lock integrity, source checks, the production build,
+1,042 unit tests, and eight Deno setup-tool tests. A consumer check of the public
+hashing entry covers key changes, E2EE suspension, and cache retirement. The real
+Obsidian two-Vault workflow also passes ordinary and encrypted note transfers.
 
 The downstream change depends on PR #1222's host compatibility integration;
 relaxing only the version check would bypass its compatibility contract. These

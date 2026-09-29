@@ -1,7 +1,7 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@vrtmrz/livesync-commonlib@0.1.32": "0.1.32"
+    "npm:@vrtmrz/livesync-commonlib@0.1.33": "0.1.33"
   },
   "npm": {
     "@aws-sdk/checksums@3.1000.18": {
@@ -284,8 +284,8 @@
         "@trystero-p2p/core"
       ]
     },
-    "@vrtmrz/livesync-commonlib@0.1.32": {
-      "integrity": "sha512-gzjhd7bg+DKHhd/24WGxBM7557wsw3HJkc0YjKll1n8/8vuhqPnlLuZmM33fj+4bv9nGFUnDlnoVowpQrTns6w==",
+    "@vrtmrz/livesync-commonlib@0.1.33": {
+      "integrity": "sha512-jziEUYCrGty3btR8pj/nkQrfLIGsQBbMug9opN8vCwAZmAznS0Zuh/l1TJpoKl8nqijZT1AJ4w5jkgU9pEyz4Q==",
       "dependencies": [
         "@aws-sdk/client-s3",
         "@smithy/fetch-http-handler",
