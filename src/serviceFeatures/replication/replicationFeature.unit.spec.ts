@@ -3,7 +3,9 @@ import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { VERSIONING_DOCID, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
+import { EVENT_APPLICATION_READY } from "@/common/events";
 import { useReplicationFeature } from "./index";
+import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 
 type BooleanHandler = (showMessage: boolean) => Promise<boolean>;
 type ParseHandler = (documents: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<boolean>;
@@ -95,6 +97,7 @@ function setup(options: SetupOptions = {}) {
     return {
         beforeReplicateHandlers,
         centralRemoteHandlers,
+        context: services.context,
         createRemoteResource,
         dispose,
         get parseHandler() {
@@ -166,6 +169,22 @@ describe("replication serviceFeature composition", () => {
 
         await expect(centralRemoteHandlers[0](false)).resolves.toBe(true);
         expect(createRemoteResource).toHaveBeenCalledOnce();
+    });
+
+    it("continues held results when Commonlib establishes application readiness", () => {
+        const continueHeldDocuments = vi
+            .spyOn(ReplicateResultProcessor.prototype, "continueHeldDocuments")
+            .mockImplementation(() => undefined);
+        try {
+            const { context } = setup();
+            expect(continueHeldDocuments).not.toHaveBeenCalled();
+
+            context.events.emitEvent(EVENT_APPLICATION_READY);
+
+            expect(continueHeldDocuments).toHaveBeenCalledOnce();
+        } finally {
+            continueHeldDocuments.mockRestore();
+        }
     });
 
     it("requests owner retirement without awaiting the transition from result application", async () => {
