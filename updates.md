@@ -42,6 +42,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Fixed
 
 - Received changes held during start-up or a fetch are applied when LiveSync becomes ready, without waiting for another change or a settings save. **Suspend database reflecting** continues to hold changes (#1200).
+- Customisation Sync now compares full millisecond timestamps, so the freshness labels and **Select All Shiny** no longer mistake an older copy for a newer one because of timestamp truncation. (#1194)
 
 ## 1.0.32
 
