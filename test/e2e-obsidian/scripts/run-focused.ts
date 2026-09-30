@@ -32,6 +32,7 @@ const focusedScenarios = new Set([
     "security-seed-reconnect",
     "hidden-file-snippet-sync",
     "customisation-sync",
+    "received-change-readiness",
     "setting-markdown-export",
     "upgrade-from-stable",
 ]);
