@@ -59,7 +59,7 @@
         </InfoNote>
     </Option>
     <Option
-        title={translateMessage("📥 Join this device")}
+        title={translateMessage("🔗 Join this device")}
         bind:value={userType}
         selectedValue={TYPE_EXISTING}
     >

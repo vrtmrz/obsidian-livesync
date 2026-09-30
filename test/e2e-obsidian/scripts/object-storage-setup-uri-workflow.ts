@@ -341,7 +341,7 @@ async function importQRCode(port: number, qrData: string): Promise<string> {
     const screenshot = await captureGuideDialogue(port, `guide-${captures.guide}-join-choice.png`, title);
     await withObsidianPage(port, async (page) => {
         const modal = modalByTitle(page, title);
-        await selectRadioOption(modal, "📥 Join this device");
+        await selectRadioOption(modal, "🔗 Join this device");
         await modal.getByRole("button", { name: "Proceed to the next step.", exact: true }).click();
     });
     return screenshot;
