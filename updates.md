@@ -43,6 +43,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Received changes held during start-up or a fetch are applied when LiveSync becomes ready, without waiting for another change or a settings save. **Suspend database reflecting** continues to hold changes (#1200).
 
+### Interface and translation
+
+#### Improved
+
+- We now have refreshed Spanish translations for settings and messages. (#1212)
+
 ## 1.0.32
 
 27th September, 2026
