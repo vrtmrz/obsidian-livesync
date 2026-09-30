@@ -191,7 +191,7 @@
         "@vrtmrz/ui-interactions": "0.1.2",
         "diff-match-patch": "^1.0.5",
         "idb": "^8.0.3",
-        "markdown-it": "^14.2.0",
+        "markdown-it": "^14.3.1",
         "minimatch": "^10.2.5",
         "obsidian": "^1.13.1",
         "octagonal-wheels": "^0.1.54",
