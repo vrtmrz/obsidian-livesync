@@ -108,8 +108,15 @@ export class ReplicateResultProcessor {
     }
     public resume() {
         this._suspended = false;
+        this.continueHeldDocuments();
+    }
+    /**
+     * Continue the queued documents which were held, for example while the application was not ready.
+     * An explicit suspension, by `suspend()` or by the settings, remains in effect.
+     */
+    public continueHeldDocuments() {
         this.updateProcessingActivity();
-        fireAndForget(() => this.runProcessQueue());
+        this.triggerProcessQueue();
     }
 
     // Whether the processing is suspended

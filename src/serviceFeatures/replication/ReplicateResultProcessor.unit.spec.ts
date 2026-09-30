@@ -207,6 +207,35 @@ describe("ReplicateResultProcessor", () => {
         expect(isReady).toHaveBeenCalledOnce();
     });
 
+    it("applies documents held before readiness once the application becomes ready", async () => {
+        const { isReady, processor, processSynchroniseResult } = setup({ applicationReady: false });
+        processor.enqueueAll([note("held")]);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(processor["_queuedChanges"]).toHaveLength(1);
+
+        isReady.mockReturnValue(true);
+        processor.continueHeldDocuments();
+
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(processor["_queuedChanges"]).toHaveLength(0);
+    });
+
+    it("keeps an explicit suspension when the application becomes ready", async () => {
+        const { isReady, processor, processSynchroniseResult } = setup({ applicationReady: false });
+        processor.suspend();
+        processor.enqueueAll([note("held")]);
+
+        isReady.mockReturnValue(true);
+        processor.continueHeldDocuments();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(processor["_queuedChanges"]).toHaveLength(1);
+
+        processor.resume();
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+    });
+
     it("applies results in remediation mode, which never reports readiness", () => {
         const { processor } = setup({
             applicationReady: false,
