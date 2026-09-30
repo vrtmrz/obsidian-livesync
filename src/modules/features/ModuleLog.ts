@@ -10,7 +10,7 @@ import {
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
 import { fireAndForget, isDirty, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
-    collectingChunks,
+    chunkFetchCounts,
     pluginScanningCount,
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
@@ -36,7 +36,11 @@ import {
     formatRemoteActivityStatusLabel,
     getTrackedRequestCount,
 } from "./RemoteActivityStatus.ts";
-import { createMinimumVisibleActivityCount, createPaddedCounterLabel } from "./StatusBarDisplay.ts";
+import {
+    createChunkFetchCounterLabel,
+    createMinimumVisibleActivityCount,
+    createPaddedCounterLabel,
+} from "./StatusBarDisplay.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import { isValidPath } from "@/common/utils.ts";
@@ -140,7 +144,7 @@ export class ModuleLog extends AbstractObsidianModule {
         const labelStorageCount = registerDisplay(
             createPaddedCounterLabel(this.services.replication.storageApplyingCount, `💾`)
         );
-        const labelChunkCount = registerDisplay(createPaddedCounterLabel(collectingChunks, `🧩`));
+        const labelChunkCount = registerDisplay(createChunkFetchCounterLabel(chunkFetchCounts));
         const labelPluginScanCount = registerDisplay(createPaddedCounterLabel(pluginScanningCount, `🔌`));
         const labelConflictProcessCount = registerDisplay(
             createPaddedCounterLabel(this.services.conflict.conflictProcessQueueCount, `🔩`)
