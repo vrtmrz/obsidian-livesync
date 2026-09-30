@@ -3,6 +3,7 @@ import {
     CAPABILITY_NOT_APPLICABLE,
     CENTRAL_REMOTE_REPLICATION_READINESS,
     NO_INTERACTION,
+    PROVIDER_OWNED_CENTRAL_REMOTE_REPLICATION_READINESS,
     REPLICATION_PROGRESS_PRESENTATIONS,
     REMOTE_RESOURCE_KINDS,
     defineReplicatorProviderDefinitions,
@@ -134,7 +135,7 @@ export function createCentralReplicatorProviderDefinitions(
         [REMOTE_MINIO]: {
             kind: REMOTE_MINIO,
             diagnosticName: "Object Storage",
-            readiness: CENTRAL_REMOTE_REPLICATION_READINESS,
+            readiness: PROVIDER_OWNED_CENTRAL_REMOTE_REPLICATION_READINESS,
             isConfigured: (settings) =>
                 settings.remoteType === REMOTE_MINIO && !!settings.endpoint?.trim() && !!settings.bucket?.trim(),
             configurationIdentity: getObjectStorageReplicatorConfigurationIdentity,

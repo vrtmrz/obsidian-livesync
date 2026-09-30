@@ -11,6 +11,7 @@
  *   4. Both, storage newer -> DB updated                (SYNC: STORAGE -> DB)
  *   5. Both, DB newer      -> storage updated           (SYNC: DB -> STORAGE)
  *   6. Compatibility mode  -> omitted vault-path works  (same DB + vault path)
+ *   7. Unknown local origin -> conflict preserved, deduplicated, and resolved
  *
  * No external services are required.
  *
@@ -18,9 +19,9 @@
  *   deno test -A test-mirror.ts
  */
 
-import { assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { TempDir } from "./helpers/temp.ts";
-import { runCliOrFail } from "./helpers/cli.ts";
+import { runCliOrFail, runCliWithInputOrFail } from "./helpers/cli.ts";
 import { initSettingsFile, markSettingsConfigured } from "./helpers/settings.ts";
 
 Deno.test("mirror: storage <-> DB synchronisation", async (t) => {
@@ -130,6 +131,10 @@ Deno.test("mirror: storage <-> DB synchronisation", async (t) => {
         await Deno.writeTextFile(seedFile, "old content\n");
         await dbRun("push", seedFile, "test/sync-storage-newer.md");
 
+        // Reflect the shared base into the actual Vault before editing it.
+        await runMirror();
+        assertEquals(await Deno.readTextFile(workDir.join("vault", "test", "sync-storage-newer.md")), "old content\n");
+
         // Write new content to storage with a timestamp 1 hour in the future
         const storageFile = workDir.join("vault", "test", "sync-storage-newer.md");
         await Deno.writeTextFile(storageFile, "new content\n");
@@ -138,6 +143,8 @@ Deno.test("mirror: storage <-> DB synchronisation", async (t) => {
         await runMirror();
 
         const resultFile = workDir.join("case4-pull.txt");
+        const info = JSON.parse(await dbRun("info", "test/sync-storage-newer.md"));
+        assertEquals(info.conflicts, "N/A", "An ordinary local edit must not create a conflict");
         await dbRun("pull", "test/sync-storage-newer.md", resultFile);
         const storageContent = await Deno.readTextFile(storageFile);
         const pulledContent = await Deno.readTextFile(resultFile);
@@ -183,6 +190,47 @@ Deno.test("mirror: storage <-> DB synchronisation", async (t) => {
         const pulled = await Deno.readTextFile(resultFile);
         assert(pulled === "compat-content\n", `Compatibility mode failed to sync file into DB (got: '${pulled}')`);
         console.log("[PASS] case 6: compatibility mode works");
+    });
+
+    // -------------------------------------------------------------------
+    // Case 7: unknown local origin must preserve both contents regardless of mtime.
+    // This deliberately uses put: push would record a file provenance entry.
+    // -------------------------------------------------------------------
+    await t.step("case 7: unknown local content is preserved, deduplicated, and resolved", async () => {
+        const path = "test/unknown-origin.md";
+        const storageFile = workDir.join("vault", "test", "unknown-origin.md");
+        await runCliWithInputOrFail("original DB content\n", dbDir, "--settings", dbSettings, "put", path);
+        const writeUnknownFile = async () => {
+            await Deno.writeTextFile(storageFile, "unrelated local content\n");
+            await Deno.utime(storageFile, new Date(), new Date(Date.now() + 3600_000));
+        };
+        await writeUnknownFile();
+        await runMirror();
+
+        const info = JSON.parse(await dbRun("info", path));
+        assert(/^1-[\da-f]+$/.test(info.revision), "Expected an independent winning root");
+        assert(/^1-[\da-f]+$/.test(info.conflicts), "Expected exactly one independent conflicting root");
+        assert(info.revision !== info.conflicts, "Expected two distinct revisions");
+        const contents = new Map<string, string>();
+        for (const revision of [info.revision, info.conflicts]) {
+            contents.set(await dbRun("cat-rev", path, revision), revision);
+        }
+        assertEquals([...contents.keys()].sort(), ["original DB content\n", "unrelated local content\n"]);
+
+        // Re-submit identical local bytes even if incoming reflection replaced
+        // the file under writeDocumentsIfConflicted; no third branch is needed.
+        await writeUnknownFile();
+        await runMirror();
+        const repeated = JSON.parse(await dbRun("info", path));
+        assertEquals(repeated.revision, info.revision);
+        assertEquals(repeated.conflicts, info.conflicts);
+
+        const localRevision = contents.get("unrelated local content\n")!;
+        await runCliOrFail(dbDir, "--vault", vaultDir, "--settings", dbSettings, "resolve", path, localRevision);
+        const resolved = JSON.parse(await dbRun("info", path));
+        assertEquals(resolved.conflicts, "N/A");
+        assertEquals(resolved.revision, localRevision);
+        assertEquals(await Deno.readTextFile(storageFile), "unrelated local content\n");
     });
 });
 

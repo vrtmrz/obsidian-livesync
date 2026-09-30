@@ -12,10 +12,106 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### Fixed
+### Privacy and compatibility
 
-- CLI: daemon and mirror now scan the Vault during database initialisation, following the Obsidian startup sequence. The daemon completes this scan before replication; mirror runs the scan once and still exits with an error if any file cannot be processed.
-- CLI: file enumeration now includes current files even after individual path lookups or earlier scans. This incorporates an adapted version of the fix proposed in PR #1188. Thank you to @YakupEmreYerli for the fix and regression tests, and to @nsanitas for the detailed report and analysis in #1143!
+#### New Feature
+
+- An optional saved ID key can generate encrypted Chunk IDs and obfuscated Metadata document IDs independently of the current E2EE passphrase.
+    - New Vaults use a random key by default; existing Vaults keep their current ID configuration by default. You can also derive a key from the current E2EE passphrase, enter a separate source, or import a recovery code. The source is not retained; the saved key can be revealed locally as a recovery code.
+    - The saved key stays in place when the E2EE passphrase changes or E2EE is turned off. Share it with another device through a protected Setup URI. Changing document IDs on an existing remote requires the usual Rebuild and Fetch procedure.
+- We can now keep the file properties used by Hidden File Sync and Customisation Sync private in CouchDB.
+    - **Encrypt internal file Properties** extends E2EE V2 and Property Encryption to their paths, times, sizes, and Chunk references.
+    - Existing configurations keep this preference disabled. New Vaults enable it for use when the required encryption settings are active.
+    - Update every synchronising device before enabling it. It protects future writes; a manual remote Rebuild is strongly recommended to protect existing properties.
+- We can now see which unsupported feature prevents a client from synchronising with CouchDB.
+    - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
+
+- We can now compare ID generation performance on a desktop or mobile device through **Open review harness**, available with the developers' debug tools enabled.
+    - The copied report includes legacy and independent ID timings and, where available, approximate JavaScript heap samples. The measurement uses fixed test data and keeps our Vault and settings unchanged.
+
+#### Fixed
+
+- We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
+    - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
+- A receiving device now retries an unavailable CouchDB Chunk when file Metadata arrives before that Chunk is visible, helping rapid edits reach the Vault after an initial on-demand lookup misses it. (#1224)
+    - Retries start after two seconds and continue with increasing delays while finite replication is active. When it ends, LiveSync checks locally and makes a final lookup if needed, without waiting out the remaining retry delay.
+- We can now distinguish initial on-demand Chunk requests (`🛄`) from retries (`🔁`) in the status bar. These replace `🧩`; each pending Chunk appears in one category, including while a retry is waiting.
+
+### Synchronisation and storage
+
+#### Fixed
+
+- Received changes held during start-up or a fetch are applied when LiveSync becomes ready, without waiting for another change or a settings save. **Suspend database reflecting** continues to hold changes (#1200).
+
+## 1.0.32
+
+27th September, 2026
+
+The 1.0.31 pre-release was not promoted after validation found that a receiving device could reject encrypted CouchDB changes when Path Obfuscation was enabled. This release includes its changes and corrects that issue.
+
+### Synchronisation and storage
+
+#### Fixed
+
+- The receiving device now accepts encrypted file information when both end-to-end encryption and Path Obfuscation are enabled. The 1.0.31 pre-release could reject this information, leaving files from another device absent from the Vault.
+- Files with colons in their names now retain their full paths in synchronisation data instead of appearing as incorrectly named copies at the Vault root. (#1206)
+    - Obsidian may refuse to create a missing file with such a name. LiveSync also treats these names as invalid on Windows and Android, so the file may not appear in those devices' Vaults. Existing misplaced copies are left for you to review; this change does not remove them automatically.
+- Received changes within the configured modification-time limit are applied to the Vault again while remediation mode is active. Changes newer than the limit remain blocked; changes arriving while a fetch makes the local database unavailable are kept for a later attempt.
+- A scheduled fetch no longer offers Simple Fetch while remediation mode is active. This prevents the fetch from bypassing the modification-time limit; the detailed flow explains the restriction and offers to clear it first (#1202). Thank you to @kimjansheden for both fixes and the regression tests in PR #1208!
+- On start-up, an unchanged file with a missing local revision record can be recognised before newer content arrives, avoiding an unnecessary conflict. Files with actual local edits still require conflict review. (#1207)
+
+## 1.0.31
+
+26th September, 2026
+
+### Synchronisation and storage
+
+#### Fixed
+
+- Files with colons in their names now retain their full paths in synchronisation data instead of appearing as incorrectly named copies at the Vault root. (#1206)
+    - Obsidian may refuse to create a missing file with such a name. LiveSync also treats these names as invalid on Windows and Android, so the file may not appear in those devices' Vaults. Existing misplaced copies are left for you to review; this change does not remove them automatically.
+- Received changes within the configured modification-time limit are applied to the Vault again while remediation mode is active. Changes newer than the limit remain blocked; changes arriving while a fetch makes the local database unavailable are kept for a later attempt.
+- A scheduled fetch no longer offers Simple Fetch while remediation mode is active. This prevents the fetch from bypassing the modification-time limit; the detailed flow explains the restriction and offers to clear it first (#1202). Thank you to @kimjansheden for both fixes and the regression tests in PR #1208!
+- On start-up, an unchanged file with a missing local revision record can be recognised before newer content arrives, avoiding an unnecessary conflict. Files with actual local edits still require conflict review. (#1207)
+
+## 1.0.30
+
+18th September, 2026
+
+### Synchronisation
+
+#### Fixed
+
+- After a restart, unchanged local files no longer overwrite newer synchronised content. (#994)
+    - When LiveSync cannot establish a local file's origin, it keeps the file as a conflict for you to review. This also applies to ordinary file synchronisation in the command-line tool.
+- Fast Fetch completes initial setup with fewer remote requests.
+- Object Storage synchronisation makes fewer remote requests while still checking its parameters before writing.
+
+## 1.0.29
+
+16th September, 2026
+
+Unusually for this project, I have added a feature that relies on a particular infrastructure provider. I made this choice for the convenience it offers.
+
+### Peer-to-peer synchronisation
+
+#### New Feature
+
+- P2P synchronisation now supports **Managed (Cloudflare)** TURN to help devices connect when a direct connection is unavailable. Enter your TURN Key ID and API token, and LiveSync obtains temporary TURN credentials automatically. (#1182)
+
+    - Managed TURN settings are saved with your encrypted P2P profile and included when you share it through a Setup URI or QR code.
+    - Your API token is omitted from generated reports.
+
+### Command-line tool
+
+#### Fixed
+
+- The CLI daemon now synchronises files already present at start-up and picks up edits and deletions made while it was stopped.
+- CLI Vault scans no longer miss files after an earlier scan or file lookup. This incorporates an adapted version of the fix proposed in PR #1188. Thank you to @YakupEmreYerli for the fix and regression tests, and to @nsanitas for the detailed report and analysis in #1143!
+
+### Miscellaneous
+
+In general, I would prefer to avoid features that depend on a particular service. Still, I think there is room for them when they are entirely optional, clearly explained, and maintainable. Even then, I would want open alternatives to remain available. I will write more about this principle separately.
 
 ## 1.0.28
 
@@ -43,73 +139,3 @@ For now, I am addressing the issues I can resolve first. I hope this helps.
 #### Fixed
 
 - First-time Object Storage setup now completes when **Use Custom HTTP Handler** is enabled for an empty remote, including a new Cloudflare R2 bucket. LiveSync can now create the remote state required to begin synchronisation. (#1166)
-
-## 1.0.26
-
-~~1.0.25~~ was cancelled because pre-release validation found that LiveSync could appear to finish synchronising even though Android had not written a received file to the Vault; the warning appeared only after restart.
-
-6th September, 2026
-
-### Synchronisation and storage
-
-#### Fixed
-
-- Files inside a folder are no longer silently removed from synchronisation when an external tool changes only the letter case of that folder while Obsidian is running. This prevents the stale deletion from reaching other devices or later removing the local file. Moving files into ignored or otherwise excluded locations retains the existing behaviour, and the folder-name case itself may still differ between devices. (#1168)
-- A problem processing one file during ordinary start-up no longer prevents every other file from synchronising. LiveSync warns about the affected files and can retry them later; Fetch and Rebuild still stop if they cannot finish safely. (#1164)
-- When LiveSync cannot finish preparing this device for synchronisation, it now says that synchronisation is unavailable and directs you to generate a report, instead of remaining at 'Not ready'. (#1164)
-
-#### Improved
-
-- When LiveSync cannot write a received file to the Vault, it now warns immediately instead of appearing to have synchronised it successfully. The generated report identifies the affected path, and a later scan can try it again.
-
-### Conflict handling and recovery
-
-#### Improved
-
-- Conflict resolution dialogues now close when the same file is resolved elsewhere or when the plug-in unloads. Requests for different files are shown one at a time, while a newer request for the same file replaces the older one.
-
-### Setup and compatibility
-
-#### Improved
-
-- Unconfigured Vaults now stay focused on setup instead of running Config Doctor or incomplete-document checks before they can be used. Returning a configured Vault to an unconfigured state also stops those checks until the requested restart. (#1161)
-- When the active file contains a file or folder name longer than 255 UTF-8 bytes, LiveSync now explains that the path may not work on some Android and Linux file systems. It does not rename or reject the file. (#1164)
-
-## 1.0.24
-
-3rd September, 2026
-
-### Interface and translation
-
-#### Fixed
-
-- The Setup Wizard now correctly explains that the existing-device path adds this device to an existing synchronisation (PR #1118). Thank you to @nikhilmaddirala for the contribution!
-- Spanish translations now resolve the **Display language** placeholder, cover previously untranslated Setup Wizard and CouchDB text, translate user-facing Config Doctor values and confirmation controls, and use Spanish sentence case (PR #1129). Thank you to @zeedif for the contribution!
-
-#### Improved
-
-- The Setup Wizard now shows the passphrase and **Obfuscate Properties** controls only after E2EE is enabled, provides a password-visibility button, allows longer translated labels to wrap, and keeps the invitation link compact on desktop while preserving its mobile touch target (PR #1130). Thank you to @zeedif for the contribution!
-
-### Synchronisation and storage
-
-#### Fixed
-
-- **Overwrite Server Data with This Device's Files** now keeps this device's synchronisation settings instead of reapplying settings from the remote database which is about to be replaced. Enabling E2EE before a rebuild therefore remains enabled and uploads encrypted data. (#1146)
-
-### Command-line tool
-
-#### Fixed
-
-- The systemd installer now finds the repository root correctly, installs every generated bundle chunk and required production dependency, checks the installed command before activation, and reports success only when the service remains active.
-
-## 1.0.23
-
-2nd September, 2026
-
-I am sorry to make this release while several pull requests are still awaiting merge, but I believe that the safeguards provided by this work are significant, so I have decided to release it. I will merge the remaining pull requests in turn. Thank you for bearing with me while I have been less active recently.
-
-### Synchronisation and storage
-
-#### Fixed
-
-- **Sync now** once again keeps routine progress quiet, while still opening recovery dialogues when a decision is required. Repeated OneShot Sync requests received while an earlier attempt is running are now ignored instead of starting overlapping work.

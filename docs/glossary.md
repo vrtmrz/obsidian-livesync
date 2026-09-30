@@ -92,6 +92,12 @@ recovery guidance, or diagnostics intended for users.
   reports, and advanced edge-case settings.
 - **Hidden File Sync:** The feature which synchronises files in hidden
   directories, such as `.obsidian`.
+- **ID key:** A saved secret used to generate encrypted Chunk IDs and
+  obfuscated Metadata document IDs when independent ID derivation is enabled.
+  It is separate from the current E2EE passphrase.
+- **ID recovery code:** A versioned text form of the saved ID key which can be
+  shown on the current device and imported without deriving a different key.
+  Treat it as a secret.
 - **JWT Authentication:** An experimental CouchDB authentication option which
   uses a JSON Web Token instead of standard credentials. It requires a private
   key or secret, algorithm, expiry duration, subject, and key ID.

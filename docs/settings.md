@@ -239,11 +239,33 @@ Setting key: passphrase
 
 Encrypting passphrase. If you change the passphrase, you need to rebuild databases (You will be informed).
 
+#### Independent ID derivation
+
+Setting keys: `idDerivationVersion`, `idDerivationKey`
+
+This setting saves a separate key for encrypted Chunk IDs and obfuscated Metadata document IDs. New Vault setup selects **Generate a random ID key** by default when E2EE is enabled. Existing Vaults select **Keep current configuration** by default. The radio choices show the available configurations together. A small description under **Keep current configuration** identifies the saved configuration: an existing ID key, or legacy IDs linked to the E2EE passphrase. That choice retains either one; on a new Vault, choosing it explicitly uses legacy IDs. If the configuration is legacy, changing the E2EE passphrase also changes IDs.
+
+To set a key yourself, choose **Set an ID key**. Three further radio choices then appear: **Derive from current E2EE passphrase**, **Enter an ID source**, and **Import an ID recovery code**. The last two choices show a text input. The source input also recognises a tagged recovery code. An empty input keeps an existing key; a first key requires input. An ordinary source is converted to a key when you apply the settings and cannot be shown again. A recovery code imports the saved key directly.
+
+Use **Show current recovery code** to display and copy the saved key on this device. The code starts with `sls-id-v1:` and can be pasted into the manual input on another device without deriving a different key. A Setup URI carries the same saved key under its separate passphrase. If you need to restore the configuration after losing every device, save the recovery code or choose a source you can reproduce before relying on the random default. Keep the code private.
+
+Using the E2EE passphrase as the source keeps IDs stable after later passphrase changes, but it does not separate the original passphrase from guesses based on known IDs. Use a long, unpredictable, separate source when that separation matters. Hashing a weak source does not make it strong.
+
+Changing the E2EE passphrase later does not change the saved ID key, although the existing re-encryption and Rebuild procedure still applies to the encrypted data. While E2EE is off, the saved ID key is retained but is not used; existing legacy ID generation applies until E2EE is enabled again. Devices with different ID keys can synchronise when Path Obfuscation is off, although identical content may produce duplicate Chunks. Enabling, replacing, or disabling the ID key can change document IDs when Path Obfuscation is active. Update participating devices, Rebuild from the authoritative Vault, and Fetch on other devices before resuming ordinary synchronisation. A QR code includes the saved key under the existing QR sharing rules, so keep the QR code private.
+
 #### Path Obfuscation
 
 Setting key: usePathObfuscation
 
 In default, the path of the file is not obfuscated to improve the performance. If you enable this, the path of the file will be obfuscated. This is useful when you want to hide the path of the file.
+
+#### Encrypt internal file Properties
+
+Setting key: encryptInternalMetadata
+
+For CouchDB, this encrypts paths, times, sizes, and Chunk references in the Metadata used by Hidden File Sync and Customisation Sync. It requires E2EE V2 and **Property Encryption**. New Vaults enable the preference by default, but it has no effect until those prerequisites are enabled. Existing Vaults and older Setup URIs and QR codes keep it disabled unless you enable it.
+
+Enabling the preference protects future Metadata writes. Existing Metadata and earlier revisions can remain readable in the remote database. If you want to protect existing Metadata too, prepare the authoritative data, update every device to a compatible version, and manually Rebuild the remote database. LiveSync does not gather data or start a Rebuild when you change this preference. The action to enable it without rebuilding explicitly reminds you to update every other synchronising device first, including devices currently running LiveSync. Plaintext and encrypted Metadata can coexist during the transition. Document IDs, revision information, document counts, and ciphertext lengths remain visible.
 
 #### Encryption Algorithm
 
@@ -485,6 +507,25 @@ Setting key: P2P_AutoBroadcast
 
 When enabled, this device notifies connected peers after a local change. The notification contains no Vault data. A receiving peer fetches the change only when it follows this device.
 
+#### TURN configuration
+
+Setting key: P2P_managedType
+
+Select **Manual** for the existing TURN server fields, or **Managed (Cloudflare)** for a
+TURN Key ID and TURN Key API Token. The API token is persisted with the profile
+and included in Setup URI and QR code sharing. Issued temporary credentials are
+kept in memory only. Reports redact the provider settings. See
+[TURN credentials](p2p.md#turn-credentials) for sharing, expiry, and reconnect
+behaviour.
+
+#### TURN Key ID and TURN Key API Token
+
+Setting keys: P2P_managedId, P2P_managedToken
+
+These fields appear when **Managed (Cloudflare)** is selected. Enter the TURN key's ID and
+its dedicated API token. The token field is masked. No account ID, custom
+endpoint, or renewal interval is required.
+
 #### TURN Server URLs (comma-separated)
 
 Setting key: P2P_turnServers
@@ -515,7 +556,7 @@ The sender controls the size of its outgoing messages. Select the same conservat
 
 Setting key: P2P_connectionPath
 
-**Automatic** lets WebRTC select a viable direct or TURN-relayed path and is the default. **TURN relay only** forces `iceTransportPolicy: 'relay'` and is available only when the profile contains at least one valid `turn:` or `turns:` URL. Removing the last valid TURN URL while relay-only mode is selected restores **Automatic** and displays a Notice.
+**Automatic** lets WebRTC select a viable direct or TURN-relayed path and is the default. **TURN relay only** forces `iceTransportPolicy: 'relay'` and is available when the profile contains a valid manual TURN URL or a configured TURN credential source. Removing the manual TURN configuration while relay-only mode is selected restores **Automatic** and displays a Notice. A selected credential source which cannot supply credentials prevents the connection from opening; it does not change the connection path.
 
 This choice belongs to the P2P profile and is retained in P2P connection strings and encrypted Setup URIs. Separate profiles may use the same Group ID and credentials with different compatibility choices; only the selected P2P profile is active.
 
@@ -1005,6 +1046,8 @@ LiveSync could not handle multiple vaults which have same name without different
 Setting key: hashAlg
 
 `xxhash64` is the supported current value. Older algorithms remain selectable only as an edge-case compatibility path for existing databases. Changing the algorithm can reduce chunk reuse between devices and requires the normal tweak review.
+
+When independent ID derivation is enabled, encrypted Chunk IDs use its versioned HMAC construction instead of `hashAlg`. The selected `hashAlg` continues to apply to legacy IDs.
 
 ### 6. Edge case addressing (Behaviour)
 

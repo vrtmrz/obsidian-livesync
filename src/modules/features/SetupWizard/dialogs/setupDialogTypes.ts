@@ -110,6 +110,10 @@ export type SetupRemoteResultType = typeof TYPE_COUCHDB | typeof TYPE_BUCKET | t
 export type UseSetupURIResultType = typeof TYPE_CANCELLED | ObsidianLiveSyncSettings;
 
 export type SetupRemoteE2EEResultType = typeof TYPE_CANCELLED | EncryptionSettings;
+export type SetupRemoteE2EEInitialData = {
+    settings: EncryptionSettings;
+    newVault: boolean;
+};
 
 export type SetupRemoteBucketResultType = typeof TYPE_CANCELLED | BucketSyncSetting;
 

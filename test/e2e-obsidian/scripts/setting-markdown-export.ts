@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { deriveIdKey } from "@vrtmrz/livesync-commonlib/settings";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { assertEqual } from "../runner/liveSyncWorkflow.ts";
@@ -34,7 +35,11 @@ async function waitForFileContaining(
     throw new Error(`Timed out waiting for setting Markdown: ${fullPath}\nLast error: ${String(lastError)}`);
 }
 
-async function configureSettingMarkdown(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+async function configureSettingMarkdown(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    idDerivationKey: string
+): Promise<void> {
     await evalObsidianJson<unknown>(
         cliBinary,
         [
@@ -46,6 +51,8 @@ async function configureSettingMarkdown(cliBinary: string, env: NodeJS.ProcessEn
             "couchDB_USER:'e2e-user',",
             "couchDB_PASSWORD:'e2e-password',",
             "passphrase:'e2e-passphrase',",
+            "idDerivationVersion:1,",
+            `idDerivationKey:${JSON.stringify(idDerivationKey)},`,
             "showVerboseLog:true,",
             "},true);",
             "await core.services.setting.saveSettingData();",
@@ -64,6 +71,7 @@ async function main(): Promise<void> {
     }
 
     const vault = await createTemporaryVault();
+    const idDerivationKey = await deriveIdKey("setting-markdown-export-independent-id-key-fixture");
     let session: ObsidianLiveSyncSession | undefined;
     try {
         console.log(`Using Obsidian executable: ${binary}`);
@@ -77,12 +85,26 @@ async function main(): Promise<void> {
         });
         // The export is available while an unconfigured Vault remains outside
         // application readiness; the session helper has already loaded the plug-in.
-        await configureSettingMarkdown(cli.binary, session.cliEnv);
+        await configureSettingMarkdown(cli.binary, session.cliEnv, idDerivationKey);
         const content = await waitForFileContaining(vault.path, settingPath, [
             (value) => value.includes("````yaml:livesync-setting"),
             (value) => value.includes(`settingSyncFile: ${settingPath}`),
             (value) => value.includes("showVerboseLog: true"),
         ]);
+
+        const persisted = JSON.parse(
+            await readFile(join(vault.path, ".obsidian", "plugins", "obsidian-livesync", "data.json"), "utf-8")
+        ) as {
+            idDerivationVersion?: unknown;
+            idDerivationKey?: unknown;
+            encryptedIdDerivationKey?: unknown;
+        };
+        assertEqual(persisted.idDerivationVersion, 1, "The independent ID key fixture was not persisted.");
+        assertEqual(persisted.idDerivationKey, "", "The independent ID key was stored in plain text locally.");
+        const encryptedIdDerivationKey = persisted.encryptedIdDerivationKey;
+        if (typeof encryptedIdDerivationKey !== "string" || encryptedIdDerivationKey.length === 0) {
+            throw new Error("The independent ID key fixture was not saved in encrypted local settings.");
+        }
 
         assertEqual(
             content.includes("couchDB_PASSWORD: e2e-password"),
@@ -90,6 +112,12 @@ async function main(): Promise<void> {
             "Credential leaked into setting Markdown."
         );
         assertEqual(content.includes("passphrase: e2e-passphrase"), false, "Passphrase leaked into setting Markdown.");
+        assertEqual(content.includes(idDerivationKey), false, "Plaintext ID key leaked into setting Markdown.");
+        assertEqual(
+            content.includes(encryptedIdDerivationKey),
+            false,
+            "Encrypted ID key leaked into setting Markdown."
+        );
 
         console.log(`Generated setting Markdown without credentials: ${settingPath}`);
     } finally {

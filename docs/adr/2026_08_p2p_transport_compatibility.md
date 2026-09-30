@@ -46,7 +46,7 @@ LiveSync will expose a separate `Connection path` choice:
 - `Automatic` retains normal ICE selection and is the default.
 - `TURN relay only` supplies `iceTransportPolicy: 'relay'` and prevents direct or server-reflexive candidates from being selected.
 
-`TURN relay only` is enabled only when at least one syntactically valid `turn:` or `turns:` URL is configured. If the last valid TURN URL is removed while relay-only mode is selected, the dialogue restores `Automatic` and displays a concise explanation.
+`TURN relay only` is enabled when a managed TURN provider is selected or at least one syntactically valid manual `turn:` or `turns:` URL is configured. If neither is available while relay-only mode is selected, the dialogue restores `Automatic` and displays a concise explanation. Selecting a managed provider does not itself force relay use; `Automatic` retains normal ICE selection.
 
 The route policy is an ordinary P2P profile property. It is retained in P2P connection strings and encrypted Setup URIs so that an imported compatibility profile has reproducible transport behaviour.
 
@@ -60,7 +60,15 @@ The first settings revision retains the existing storage and dialogue contract o
 
 A future interface may present the existing comma-separated value as ordered `turn:` and `turns:` URL rows without changing its serialised representation. A structured list of multiple credential profiles is deferred until a provider or self-hosted use case requires different credentials in the same P2P profile.
 
-Static long-term credentials are the supported first stage. Managed providers may return short-lived credentials, but LiveSync must not store a provider API token or a Coturn shared authentication secret. A future managed-credential design needs a separately trusted HTTPS endpoint, expiry handling, refresh behaviour, failure reporting, and a clear Setup URI policy. It is not represented as another static password field.
+Static long-term credentials remain supported. For managed credentials, a host preparation hook requests ICE settings and places them on a connection-only copy of `P2PSyncSetting`. Service-specific requests and validation belong under `src/integrations/`; Commonlib consumes that copy and owns room reuse, expiry checks, and replacement. It has no provider catalogue or source factory.
+
+A user-supplied provider API token is persisted as a sensitive P2P profile setting and included in encrypted Setup URI sharing, so that participating devices can use the same configuration without repeated token entry. Existing profile-URI encryption covers the saved token; its flat runtime projection is omitted from persistence. Reports and logs redact the complete provider configuration and issued credentials, including inactive profiles and settings projections. Coturn's server-side shared authentication secret remains outside client settings.
+
+Issued short-lived TURN credentials and their expiry remain in memory. The existing room reuse decision checks both the effective connection settings and credential validity. When reconciliation finds expired credentials, it uses the normal room retirement and replacement path with newly acquired credentials. Replacement may cancel an in-progress transfer; the next replication attempt uses stored checkpoints and revision comparison to retain received progress. Whether that next attempt starts automatically follows the existing synchronisation policy.
+
+Time passing alone does not trigger acquisition or disconnection. This design adds no renewal timer, per-peer acquisition hook, configuration update on raw peers, or credential-driven ICE restart. Internal peer reconnection within an unchanged room does not guarantee fresh issuance. Acquisition failure is reported without changing the selected provider or route policy. See [TURN connection settings](../design_docs/renewable_turn_credentials.md) for the preparation hook, persistence and sharing formats, room replacement, and verified replication continuation behaviour.
+
+Relay-only validation accepts a valid managed TURN configuration as well as the existing manual URL list. Failure to acquire usable TURN entries keeps relay-only mode selected and reports the connection failure; it does not restore `Automatic` silently.
 
 ### TURN allocation check and route diagnostics
 
