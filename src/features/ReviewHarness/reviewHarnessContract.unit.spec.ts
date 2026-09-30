@@ -75,6 +75,7 @@ describe("Review Harness contract", () => {
             "settings-lifecycle",
             "compatibility-review",
             "vault-round-trip",
+            "id-generation-performance",
         ]);
     });
 

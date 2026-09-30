@@ -1,3 +1,4 @@
+import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 import { type P2PSyncSetting, SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
@@ -70,9 +71,8 @@ export class WebPeerRuntime {
                 isScheduled: () => this.restartScheduled,
             },
         });
-        this.p2p = useP2PReplicatorFeature({
-            services: this.services,
-            serviceModules: {},
+        this.p2p = useP2PReplicatorFeature({ services: this.services, serviceModules: {} }, undefined, undefined, {
+            prepareP2PSettings: useP2PSettingsPreparation(this.services.API.webCompatFetch.bind(this.services.API)),
         });
         this.p2pLogCollector = new P2PLogCollector(this.events);
         this.paneHost = {

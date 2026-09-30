@@ -18,7 +18,7 @@ flowchart LR
 The signalling relay and TURN server have different roles:
 
 - The **signalling relay** is required for peer discovery and connection negotiation. LiveSync uses Nostr-compatible WebSocket relays for this role. The relay does not store or transfer Vault contents.
-- A **TURN server** is an optional fallback. WebRTC uses it to relay the encrypted peer connection only when the devices cannot establish a direct path through their networks.
+- A **TURN server** is an optional fallback. WebRTC uses it to relay the encrypted peer connection when the devices cannot establish a direct path through their networks, or whenever **TURN relay only** is selected.
 
 ## The project's public signalling relay
 
@@ -40,16 +40,49 @@ Both settings contain server addresses, but they are not interchangeable.
 | Setting | Required | Carries Vault contents | Purpose |
 | --- | --- | --- | --- |
 | **Signalling relay URLs** | Yes | No | Finds peers and exchanges the information needed to establish WebRTC connections. |
-| **TURN server URLs** | Only when direct WebRTC connectivity fails | Encrypted WebRTC traffic | Relays traffic between peers when NAT or firewall rules prevent a direct path. |
+| **TURN server URLs** | When direct WebRTC connectivity fails or **TURN relay only** is selected | Encrypted WebRTC traffic | Relays traffic between peers when NAT or firewall rules prevent a direct path. |
 
-A TURN provider cannot read LiveSync's encrypted Vault contents, but it can observe connection metadata and traffic volume. Use a provider you trust. The project does not operate an official TURN service.
+WebRTC encrypts data between the devices, including when it passes through TURN. The TURN provider cannot read the transferred data, but it can observe network addresses and traffic volume. This transport encryption also applies when LiveSync's optional database encryption is disabled. The project does not operate an official TURN service.
+
+## TURN credentials
+
+In **TURN configuration**, select **Manual** to enter your own TURN server URLs,
+username, and credential, or select **Managed (Cloudflare)** to enter a **TURN Key ID** and
+**TURN Key API Token**. Cloudflare is optional; the project does not require a
+particular TURN provider or operate a credential broker. See Cloudflare's
+[credential instructions](https://developers.cloudflare.com/realtime/turn/generate-credentials/)
+for creating a TURN key and its API token.
+
+The API token is saved with the P2P profile and included when sharing settings
+through an existing Setup URI or QR code. Setup URIs retain their existing
+passphrase encryption. QR codes retain their existing unencrypted format and
+'FOR YOUR EYES ONLY' display. Missing provider settings use the ordinary manual
+configuration defaults. Receiving clients need support for the selected provider
+to acquire its temporary TURN credentials.
+Markdown settings omit the connection profile group when it contains a managed
+TURN provider, including inactive profiles, and importing those omitted settings
+preserves this device's existing profiles. Diagnostic reports redact provider settings. The existing profile-URI
+encryption also covers the saved token.
+
+Each device requests temporary TURN credentials when opening a new room.
+An existing room reuses its credentials while they remain valid. Cloudflare credentials have a requested lifetime
+of 24 hours and remain in memory only. Expiry is checked when LiveSync next
+reconciles the room connection. If necessary, it replaces the room and obtains
+new credentials. There is no periodic renewal: if a long-lived room cannot
+reconnect after credentials expire, disconnect and open the connection again.
+
+Room replacement may interrupt replication. The next synchronisation keeps
+received Metadata and Chunks, resumes from its saved checkpoint, and compares
+revisions to fetch missing data. An unfinished network message can be sent
+again. Automatic synchronisation follows the existing peer rules; after an
+interrupted manual operation, use **Replicate now** again.
 
 ## Connection compatibility profiles
 
 `P2P Configuration` includes a separate `Connection compatibility` section. Its defaults preserve the existing transport behaviour:
 
 - **P2P message size** defaults to **Standard**. **Reduced**, **Conservative**, and **Maximum compatibility** progressively limit outgoing P2P messages when a network path appears to drop larger WebRTC messages. This is not a Vault Chunk size or an IP MTU. Smaller values add framing and processing overhead.
-- **Connection path** defaults to **Automatic**, which lets WebRTC select a viable direct or TURN-relayed path. **TURN relay only** forces the encrypted connection through TURN and is available only when the profile contains at least one valid `turn:` or `turns:` URL.
+- **Connection path** defaults to **Automatic**, which lets WebRTC select a viable direct or TURN-relayed path. **TURN relay only** forces the encrypted connection through TURN and is available when the profile contains a valid manual TURN URL or a configured TURN provider.
 
 The sending device controls its outgoing message size. Select the same conservative preset on every device which may send across the constrained path. Existing devices do not receive the choice retrospectively merely because another device changed it.
 

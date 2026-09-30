@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
     buttonClasses: [] as string[],
+    clickHandlers: [] as Array<() => Promise<void> | void>,
     panels: [] as Array<{ destroy: ReturnType<typeof vi.fn> }>,
     settingClasses: [] as string[],
 }));
@@ -51,7 +52,8 @@ vi.mock("./LiveSyncSetting.ts", () => ({
                 setDestructive() {
                     return this;
                 },
-                onClick() {
+                onClick(callback: () => Promise<void> | void) {
+                    runtime.clickHandlers.push(callback);
                     return this;
                 },
                 setButtonText() {
@@ -97,6 +99,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/ConnectionString", () => ({
     },
 }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemote.svelte", () => ({ default: {} }));
+vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteE2EE.svelte", () => ({ default: {} }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteCouchDB.svelte", () => ({ default: {} }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteBucket.svelte", () => ({ default: {} }));
 vi.mock("@/modules/features/SetupWizard/dialogs/SetupRemoteP2P.svelte", () => ({ default: {} }));
@@ -114,6 +117,7 @@ function createPanelElement(): HTMLElement {
 
 afterEach(() => {
     runtime.buttonClasses.length = 0;
+    runtime.clickHandlers.length = 0;
     runtime.panels.length = 0;
     runtime.settingClasses.length = 0;
     vi.clearAllMocks();
@@ -147,5 +151,94 @@ describe("paneRemoteConfig", () => {
         lifetimeComponent.unload();
 
         expect(runtime.panels[0].destroy).toHaveBeenCalledOnce();
+    });
+
+    it("applies an internal Metadata preference change without scheduling setup initialisation", async () => {
+        const originalSettings = {
+            encrypt: true,
+            passphrase: "passphrase",
+            E2EEAlgorithm: "v2",
+            usePathObfuscation: true,
+            encryptInternalMetadata: false,
+            remoteConfigurations: {},
+        };
+        const setupManager = {
+            onlyE2EEConfiguration: vi.fn(async () => {
+                host.core.settings.encryptInternalMetadata = true;
+                return true;
+            }),
+        };
+        const host = {
+            editingSettings: { ...originalSettings },
+            initialSettings: { ...originalSettings },
+            core: {
+                settings: { ...originalSettings },
+                getModule: vi.fn(() => setupManager),
+            },
+            lifetimeComponent: { register: vi.fn() },
+            requestUpdate: vi.fn(),
+        };
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "E2EE Configuration") {
+                    callback(createPanelElement());
+                }
+            },
+        }));
+
+        paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
+        await runtime.clickHandlers[0]();
+
+        expect(setupManager.onlyE2EEConfiguration).toHaveBeenCalledOnce();
+        expect(host.editingSettings.encryptInternalMetadata).toBe(true);
+        expect(host.initialSettings.encryptInternalMetadata).toBe(true);
+        expect(host.requestUpdate).toHaveBeenCalledOnce();
+    });
+
+    it("copies applied ID derivation settings into both dialogue buffers", async () => {
+        const nextIdKey = "ab".repeat(32);
+        const originalSettings = {
+            encrypt: true,
+            passphrase: "passphrase",
+            E2EEAlgorithm: "v2",
+            usePathObfuscation: true,
+            encryptInternalMetadata: false,
+            idDerivationVersion: 0,
+            idDerivationKey: "",
+            remoteConfigurations: {},
+        };
+        const setupManager = {
+            onlyE2EEConfiguration: vi.fn(() => {
+                host.core.settings.idDerivationVersion = 1;
+                host.core.settings.idDerivationKey = nextIdKey;
+                return Promise.resolve(false);
+            }),
+        };
+        const host = {
+            editingSettings: { ...originalSettings },
+            initialSettings: { ...originalSettings },
+            core: {
+                settings: { ...originalSettings },
+                getModule: vi.fn(() => setupManager),
+            },
+            lifetimeComponent: { register: vi.fn() },
+            requestUpdate: vi.fn(),
+        };
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "E2EE Configuration") {
+                    callback(createPanelElement());
+                }
+            },
+        }));
+
+        paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
+        await runtime.clickHandlers[0]();
+
+        expect(host.editingSettings.idDerivationVersion).toBe(1);
+        expect(host.editingSettings.idDerivationKey).toBe(nextIdKey);
+        expect(host.initialSettings.idDerivationVersion).toBe(1);
+        expect(host.initialSettings.idDerivationKey).toBe(nextIdKey);
+        expect(host.requestUpdate).toHaveBeenCalledOnce();
     });
 });

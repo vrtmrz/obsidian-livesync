@@ -47,6 +47,12 @@ describe("central Replicator provider definitions", () => {
             .toEqual(["connection", "preferred-tweak", "security-seed", "synchronisation-information"].sort());
     });
 
+    it("lets Journal prepare its own fresh Security Seed while CouchDB uses central preparation", () => {
+        const definitions = createCentralReplicatorProviderDefinitions({} as never);
+        expect(definitions.get(REMOTE_COUCHDB)?.readiness.centralRemotePreparation).toBe("required");
+        expect(definitions.get(REMOTE_MINIO)?.readiness.centralRemotePreparation).toBe("provider-owned");
+    });
+
     it("composes CouchDB and Object Storage policies outside LiveSyncBaseCore", async () => {
         const host = {} as Parameters<typeof createCentralReplicatorProviderDefinitions>[0];
         const definitions = createCentralReplicatorProviderDefinitions(host);

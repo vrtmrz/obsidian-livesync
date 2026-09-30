@@ -7,6 +7,7 @@ import {
     isValidFilenameInWidows,
     isValidFilenameInAndroid,
     stripAllPrefixes,
+    expandFilePathPrefix,
 } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
@@ -41,22 +42,18 @@ export async function path2id(
     obfuscatePassphrase: string | false,
     caseInsensitive: boolean
 ): Promise<DocumentID> {
-    const temp = filename.split(":");
-    const path = temp.pop();
+    const [prefix, path] = expandFilePathPrefix(filename);
     const normalizedPath = normalizePath(path as FilePath);
-    temp.push(normalizedPath);
-    const fixedPath = temp.join(":") as FilePathWithPrefix;
+    const fixedPath = `${prefix}${normalizedPath}` as FilePathWithPrefix;
 
     const out = await path2id_base(fixedPath, obfuscatePassphrase, caseInsensitive);
     return out;
 }
 export function id2path(id: DocumentID, entry?: EntryHasPath): FilePathWithPrefix {
     const filename = id2path_base(id, entry);
-    const temp = filename.split(":");
-    const path = temp.pop();
+    const [prefix, path] = expandFilePathPrefix(filename);
     const normalizedPath = normalizePath(path as FilePath);
-    temp.push(normalizedPath);
-    const fixedPath = temp.join(":") as FilePathWithPrefix;
+    const fixedPath = `${prefix}${normalizedPath}` as FilePathWithPrefix;
     return fixedPath;
 }
 

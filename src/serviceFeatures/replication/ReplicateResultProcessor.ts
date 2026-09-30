@@ -1,6 +1,7 @@
+import { assessRemoteFeatureDocument, describeRemoteFeatureRejection } from "@vrtmrz/livesync-commonlib/replication";
 import {
     SYNCINFO_ID,
-    VER,
+    VERSIONING_DOCID,
     type AnyEntry,
     type EntryDoc,
     type EntryLeaf,
@@ -35,7 +36,7 @@ type ReplicateResultProcessorSettings = Pick<
 >;
 type ReplicateResultProcessorServices = Pick<
     LiveSyncBaseCore["services"],
-    "appLifecycle" | "path" | "replication" | "vault"
+    "appLifecycle" | "database" | "path" | "replication" | "vault"
 >;
 
 /**
@@ -115,10 +116,27 @@ export class ReplicateResultProcessor {
     // If true, the processing queue processor bails the loop.
     private _suspended: boolean = false;
 
+    /**
+     * Whether the application accepts replicated documents being applied.
+     *
+     * Remediation mode refuses the reconciliation scan which readiness depends upon, so the
+     * application stays unready for as long as the modification-time limit is configured.
+     * Applying the received documents is what that mode exists for, and `parseDocumentChange` keeps
+     * each one within the limit, so readiness is not required while the mode is active.
+     */
+    private get acceptsResultApplication() {
+        if (this.services.appLifecycle.isReady()) return true;
+        if (this.context.currentSettings().maxMTimeForReflectEvents <= 0) return false;
+        // A fetch resets the local database, and a remote which reflects while fetching leaves this
+        // processor unsuspended throughout. A document applied then cannot gather its chunks and is
+        // dropped, so the database itself must still be usable.
+        return this.services.database.isDatabaseReady();
+    }
+
     public get isSuspended() {
         return (
             this._suspended ||
-            !this.services.appLifecycle.isReady() ||
+            !this.acceptsResultApplication ||
             this.context.currentSettings().suspendParseReplicationResult ||
             this.services.appLifecycle.isSuspended()
         );
@@ -257,13 +275,14 @@ export class ReplicateResultProcessor {
             this.log(`Processed chunk: ${shortenId(change._id)}`, LOG_LEVEL_DEBUG);
             return true;
         }
-        if (change.type == "versioninfo") {
+        if (change._id === VERSIONING_DOCID || change.type === "versioninfo") {
             this.log(`Version info document received: ${change._id}`, LOG_LEVEL_VERBOSE);
-            if (change.version > VER) {
+            const assessment = assessRemoteFeatureDocument(change);
+            if (assessment.status !== "supported" && assessment.status !== "older-generation") {
                 // Fence and retire the active publication through its owner.
                 this.context.requestActiveReplicatorRetirement();
                 this.log(
-                    `Remote database updated to incompatible version. update your Self-hosted LiveSync plugin.`,
+                    `${describeRemoteFeatureRejection(assessment)} Update Self-hosted LiveSync before synchronising.`,
                     LOG_LEVEL_NOTICE
                 );
             }
