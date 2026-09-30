@@ -1,10 +1,13 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { VERSIONING_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
     assertCouchDbReachable,
     createCouchDbDatabase,
     deleteCouchDbDatabase,
+    fetchCouchDbDocument,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
     waitForCouchDbDocs,
@@ -159,6 +162,10 @@ async function startConfiguredSession(
         dbName: context.dbName,
     };
     const customisationSettings = {
+        encrypt: true,
+        passphrase: "internal-metadata-e2e-secret",
+        usePathObfuscation: true,
+        encryptInternalMetadata: true,
         deviceAndVaultName: deviceName,
         usePluginSync: true,
         usePluginSyncV2: true,
@@ -486,6 +493,18 @@ async function main(): Promise<void> {
                 (target) => ids.has(target.id) && target.children.every((childId) => ids.has(childId))
             );
         });
+        for (const target of [entry, configEntry, ...pluginEntries]) {
+            const remoteEntry = await fetchCouchDbDocument(context.couchDb, context.dbName, target.id);
+            if (!remoteEntry.path?.startsWith("/\\:") || remoteEntry.children?.length !== 0 ||
+                remoteEntry.ctime !== 0 || remoteEntry.mtime !== 0 || remoteEntry.size !== 0) {
+                throw new Error(`Customisation Sync Metadata was not encrypted for ${target.id}.`);
+            }
+        }
+        const versionInfo = await fetchCouchDbDocument(context.couchDb, context.dbName, VERSIONING_DOCID);
+        if (versionInfo.version !== REMOTE_FEATURE_GENERATION ||
+            !(versionInfo.used_features as unknown[] | undefined)?.includes(ENCRYPTED_INTERNAL_METADATA_FEATURE)) {
+            throw new Error("The remote feature list does not declare encrypted internal Metadata.");
+        }
         await session.app.stop();
 
         session = await startConfiguredSession(context, vaultB, targetDeviceName);

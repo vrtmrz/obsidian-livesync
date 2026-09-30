@@ -17,6 +17,7 @@ const focusedScenarios = new Set([
     "p2p-pane",
     "vault-reflection",
     "couchdb-upload",
+    "chunk-fetch-retry",
     "couchdb-manual-setup-workflow",
     "cli-to-obsidian-sync",
     "minio-upload",
@@ -32,6 +33,7 @@ const focusedScenarios = new Set([
     "security-seed-reconnect",
     "hidden-file-snippet-sync",
     "customisation-sync",
+    "received-change-readiness",
     "setting-markdown-export",
     "upgrade-from-stable",
 ]);

@@ -57,6 +57,8 @@ Keep configured-state inference separate from new-Vault initialisation. If an ex
 - On resume, clear `versionUpFlash` and persist that fail-closed change before recording the current `VER` as acknowledged. If saving fails, restore the gate. Reapply settings only after the marker has advanced so that the previously configured synchronisation behaviour can resume without reconstruction.
 - Preserve the original legacy review message as a structured reason when no more specific database or settings-schema reason is available. Escape it before including it in Markdown UI.
 - Continue to reject a remote version document which is newer than the running implementation. That receiver-side check is independent of the local upgrade review.
+- From remote generation 13, assess the `used_features` list in that document as a separate compatibility dimension. A client must recognise every listed feature before it interprets the database or runs maintenance which depends on Metadata. Declare a feature before writing its representation, and retain the declaration while older data may depend on it. An unknown identifier is reported as text without requiring a descriptive label in that client.
+- Do not advance the device-local `VER` acknowledgement merely because a remote feature is introduced. The remote generation and its feature list govern remote admission; `VER` remains the local compatibility review gate. Connecting to a generation-12 database does not promote it solely because the client understands generation 13.
 
 ### Onboarding activation and initialisation
 
@@ -90,7 +92,7 @@ Keep configured-state inference separate from new-Vault initialisation. If an ex
 - Accepted new-device and existing-device setup cannot enable ordinary processing before the selected Rebuild or Fetch has been reserved.
 - An older installation cannot dismiss evidence that a newer implementation or settings schema has already been used on the device.
 - The Obsidian-specific dialogue depends only on a host-neutral compatibility result and the injected confirmation capability. Commonlib remains responsible for settings migration, device-local storage, and the replication gate.
-- A future incompatible database change must increment `VER`, provide an actionable review message, verify the remote version negotiation, and test both the pending and acknowledged states. A major SemVer increase without those changes has no database-compatibility effect.
+- A future local database change which requires compatibility review must increment `VER`, provide an actionable review message, and test both the pending and acknowledged states. A new remote representation must declare its feature before use and verify remote admission independently. A major SemVer increase alone has no database-compatibility effect.
 
 ## Verification
 

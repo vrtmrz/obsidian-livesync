@@ -4,9 +4,9 @@
 export {
   decodeSettingsFromSetupURI,
   encodeSettingsToSetupURI,
-} from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/API/processSetting";
-export { generateP2PRoomId } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/compat/common/utils";
-export { upsertRemoteConfigurationInPlace } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/remote-configurations";
+} from "npm:@vrtmrz/livesync-commonlib@0.1.32/compat/API/processSetting";
+export { generateP2PRoomId } from "npm:@vrtmrz/livesync-commonlib@0.1.32/compat/common/utils";
+export { upsertRemoteConfigurationInPlace } from "npm:@vrtmrz/livesync-commonlib@0.1.32/remote-configurations";
 export {
   createNewVaultSettings,
   DEFAULT_SETTINGS,
@@ -14,5 +14,5 @@ export {
   PREFERRED_BASE,
   PREFERRED_JOURNAL_SYNC,
   PREFERRED_SETTING_SELF_HOSTED,
-} from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/settings";
-export type { ObsidianLiveSyncSettings } from "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4/settings";
+} from "npm:@vrtmrz/livesync-commonlib@0.1.32/settings";
+export type { ObsidianLiveSyncSettings } from "npm:@vrtmrz/livesync-commonlib@0.1.32/settings";
