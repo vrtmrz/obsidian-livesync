@@ -33,6 +33,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
     - LiveSync encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
+- A receiving device now retries an unavailable CouchDB Chunk when file Metadata arrives before that Chunk is visible, helping rapid edits reach the Vault after an initial on-demand lookup misses it. (#1224)
+    - Retries start after two seconds and continue with increasing delays while finite replication is active. When it ends, LiveSync checks locally and makes a final lookup if needed, without waiting out the remaining retry delay.
+- We can now distinguish initial on-demand Chunk requests (`🛄`) from retries (`🔁`) in the status bar. These replace `🧩`; each pending Chunk appears in one category, including while a retry is waiting.
 
 ## 1.0.32
 
