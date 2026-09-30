@@ -37,6 +37,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - Retries start after two seconds and continue with increasing delays while finite replication is active. When it ends, LiveSync checks locally and makes a final lookup if needed, without waiting out the remaining retry delay.
 - We can now distinguish initial on-demand Chunk requests (`🛄`) from retries (`🔁`) in the status bar. These replace `🧩`; each pending Chunk appears in one category, including while a retry is waiting.
 
+### Synchronisation and storage
+
+#### Fixed
+
+- Received changes held during start-up or a fetch are applied when LiveSync becomes ready, without waiting for another change or a settings save. **Suspend database reflecting** continues to hold changes (#1200).
+
 ## 1.0.32
 
 27th September, 2026

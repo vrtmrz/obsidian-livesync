@@ -86,6 +86,7 @@
         "test:e2e:obsidian:security-seed-reconnect": "tsx test/e2e-obsidian/scripts/security-seed-reconnect.ts",
         "test:e2e:obsidian:hidden-file-snippet-sync": "tsx test/e2e-obsidian/scripts/hidden-file-snippet-sync.ts",
         "test:e2e:obsidian:customisation-sync": "tsx test/e2e-obsidian/scripts/customisation-sync.ts",
+        "test:e2e:obsidian:received-change-readiness": "tsx test/e2e-obsidian/scripts/received-change-readiness.ts",
         "test:e2e:obsidian:remote-feature-change": "tsx test/e2e-obsidian/scripts/remote-feature-change.ts",
         "test:e2e:obsidian:internal-metadata-migration": "tsx test/e2e-obsidian/scripts/internal-metadata-migration.ts",
         "test:e2e:obsidian:setting-markdown-export": "tsx test/e2e-obsidian/scripts/setting-markdown-export.ts",
