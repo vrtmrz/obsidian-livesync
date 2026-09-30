@@ -4,6 +4,7 @@ const TASKS = [
     "test:setup-put-cat",
     "test:mirror",
     "test:daemon",
+    "test:daemon-startup",
     "test:push-pull",
     "test:decoupled-vault",
     "test:sync-two-local",

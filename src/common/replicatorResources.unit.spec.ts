@@ -285,6 +285,46 @@ describe("replicator probe factories", () => {
         expect(objectReplicator.closeReplication).toHaveBeenCalledOnce();
     });
 
+    it("reads the Security Seed once per resource, including concurrent reads, and refreshes for a new resource", async () => {
+        const settings = createSettings();
+        const factory = createCouchDBSecuritySeedResourceFactory({} as never);
+        const firstResource = await factory(settings);
+        const firstReplicator = mocks.couchDB[0];
+        const firstSeed = new Uint8Array([1]);
+        firstReplicator.getReplicationPBKDF2Salt.mockResolvedValue(firstSeed);
+
+        const [first, concurrent] = await Promise.all([firstResource.read(), firstResource.read()]);
+        expect(first).toBe(firstSeed);
+        expect(concurrent).toBe(firstSeed);
+        await expect(firstResource.read()).resolves.toBe(firstSeed);
+        expect(firstReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledOnce();
+        expect(firstReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledWith({ ...settings }, true);
+        await firstResource.dispose();
+
+        const nextResource = await factory(settings);
+        const nextReplicator = mocks.couchDB[1];
+        const nextSeed = new Uint8Array([2]);
+        nextReplicator.getReplicationPBKDF2Salt.mockResolvedValue(nextSeed);
+        await expect(nextResource.read()).resolves.toBe(nextSeed);
+        expect(nextReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledOnce();
+        expect(nextReplicator.getReplicationPBKDF2Salt).toHaveBeenCalledWith({ ...settings }, true);
+        await nextResource.dispose();
+    });
+
+    it("retries a failed Security Seed read within the same resource", async () => {
+        const resource = await createCouchDBSecuritySeedResourceFactory({} as never)(createSettings());
+        const replicator = mocks.couchDB[0];
+        const failure = new Error("connection interrupted");
+        const seed = new Uint8Array([1]);
+        replicator.getReplicationPBKDF2Salt.mockRejectedValueOnce(failure).mockResolvedValueOnce(seed);
+
+        await expect(resource.read()).rejects.toBe(failure);
+        await expect(resource.read()).resolves.toBe(seed);
+        await expect(resource.read()).resolves.toBe(seed);
+        expect(replicator.getReplicationPBKDF2Salt).toHaveBeenCalledTimes(2);
+        await resource.dispose();
+    });
+
     it("checks synchronisation information through an owned connection and disposes the private Replicator", async () => {
         const settings = createSettings();
         const snapshot = { ...settings };

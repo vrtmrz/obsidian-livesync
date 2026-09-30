@@ -92,10 +92,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     async getFiles(): Promise<NodeFile[]> {
-        if (this.fileCache.size === 0) {
-            await this.scanDirectory();
-        }
-        return Array.from(this.fileCache.values());
+        const files = new Map<string, NodeFile>();
+        await this.scanDirectoryInto("", files);
+        return Array.from(files.values());
     }
 
     async renameFile(file: NodeFile, newPath: string): Promise<NodeFile> {
@@ -147,6 +146,10 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
      * Helper method to recursively scan directory and populate file cache
      */
     async scanDirectory(relativePath: string = ""): Promise<void> {
+        await this.scanDirectoryInto(relativePath, this.fileCache);
+    }
+
+    private async scanDirectoryInto(relativePath: string, files: Map<string, NodeFile>): Promise<void> {
         const fullPath = this.resolvePath(relativePath);
         try {
             const directoryStat = await this.storage.stat(relativePath);
@@ -160,10 +163,10 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                     path: entryPath as FilePath,
                     stat,
                 };
-                this.fileCache.set(entryPath, file);
+                files.set(entryPath, file);
             }
             for (const entryPath of entries.folders) {
-                await this.scanDirectory(entryPath);
+                await this.scanDirectoryInto(entryPath, files);
             }
         } catch (error) {
             // Directory doesn't exist or is not readable

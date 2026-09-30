@@ -47,6 +47,12 @@ Do not switch to P2P or reset the database as the first response. Check:
 
 If the remote is healthy but one device's local database is not, use [Reset Synchronisation on This Device](recovery.md#reset-synchronisation-on-this-device) only after backing up unsynchronised local files.
 
+## An unchanged file appears as a conflict after restart
+
+If the log says `Preserved unsynchronised local changes as a conflict`, keep both versions available until you have checked their contents. The message means that LiveSync could not prove that the Vault file was unchanged; it does not establish that you edited the file. Use **Inspect conflicts and file/database differences** in Hatch to review the current branches before selecting a version.
+
+At start-up, LiveSync can restore a missing device-local revision record when the file still exactly matches the current local database revision. If a newer revision has already arrived, that match may no longer exist. LiveSync then preserves the old file for review because it cannot distinguish an unchanged copy from an intentional edit back to older content. A new release cannot resolve a conflict which was already created merely by recognising a historical content match. If the problem recurs, include the first relevant log entries, plug-in versions on both devices, and a redacted full report with the issue steps.
+
 ## Synchronisation is paused for compatibility review
 
 A compatibility review is separate from the Change Log. It can appear after an internal database or settings-format change, or when a configured Vault is copied, restored, or opened in a new Obsidian profile without its device-local acknowledgement.
@@ -90,6 +96,8 @@ Current releases automatically align compatible settings which control how new c
 
 A missing legacy file-name case setting means case-insensitive handling. It matches an explicit disabled setting and does not require a rebuild for that difference. An explicitly enabled setting can use different document IDs and still requires a compatibility decision against either value. Other configuration differences shown in the dialogue must still be resolved.
 
+If the mismatch names **Encrypt internal file Properties**, update every device before accepting that preference. It affects subsequent Metadata writes for Hidden File Sync and Customisation Sync; it does not automatically protect existing Metadata. A manual remote Rebuild is strongly recommended if you need to protect existing paths, times, sizes, and Chunk references.
+
 The `Sync now` command keeps routine replication progress quiet so that it is convenient to assign to a keyboard shortcut; assign one in Obsidian if that suits your workflow. A quiet command may still open this dialogue when a mismatch or another decision requires your attention.
 
 The available actions depend on when the mismatch is found:
@@ -102,6 +110,10 @@ The available actions depend on when the mismatch is found:
 ![Configuration mismatch dialogue](tweak_mismatch_dialogue.png)
 
 Historic defect notices and renamed controls are retained in the [0.25 release history](releases/0.25.md) and [legacy release history](releases/legacy.md), rather than in the current troubleshooting path.
+
+## The remote database uses an unknown feature
+
+When a notice identifies an unknown feature, update this device and every other client of the same CouchDB database, including the CLI. The notice includes the feature identifier even if this version has no descriptive name for it. New synchronisation is refused, and receiving an unsupported requirement stops active replication, because an older client may not interpret the Metadata and its Chunk references correctly. Already queued file changes are not rolled back. The cleaned-remote recovery path also checks compatibility before counting Chunk references. Do not remove the feature name from the remote version document to bypass the check. After updating, reconnect and review any pending file changes before running Garbage Collection.
 
 ## Setup and settings questions
 

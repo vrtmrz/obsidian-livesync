@@ -4,6 +4,7 @@ import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/servic
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { fireAndForget } from "octagonal-wheels/promises";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { EVENT_APPLICATION_READY } from "@/common/events";
 import { createAutomaticReplicationTriggers } from "./automaticTriggers";
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 import { createOnlineReplicationPreflight, createSecuritySeedPreflight } from "./preflight";
@@ -51,6 +52,7 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
                 : await task(),
         services: {
             appLifecycle: services.appLifecycle,
+            database: services.database,
             path: services.path,
             replication: services.replication,
             vault: services.vault,
@@ -101,6 +103,9 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
         fireAndForget(() => resultProcessor.restoreFromSnapshotOnce());
         return Promise.resolve(true);
     });
+    // Commonlib emits this each time it establishes readiness. Documents held until then, such as those restored
+    // from the snapshot or received during a fetch, continue from here.
+    services.context.events.onEvent(EVENT_APPLICATION_READY, () => resultProcessor.continueHeldDocuments());
     services.appLifecycle.onSettingLoaded.addHandler(initialiseAutomaticReplicationTriggers);
     services.replication.parseSynchroniseResult.addHandler((documents) => {
         resultProcessor.enqueueAll(documents);

@@ -1,3 +1,8 @@
+import {
+    hasManagedTurnSettings,
+    omitManagedTurnProfilesFromMarkdown,
+    preserveManagedTurnProfilesOnMarkdownImport,
+} from "@/common/turnSettingsPrivacy";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
@@ -129,11 +134,14 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
 
         let settingToApply = { ...DEFAULT_SETTINGS } as ObsidianLiveSyncSettings;
         settingToApply = { ...settingToApply, ...newSetting };
+        preserveManagedTurnProfilesOnMarkdownImport(newSetting, this.settings, settingToApply);
         if (!settingToApply?.writeCredentialsForSettingSync) {
             //New setting does not contains credentials.
             settingToApply.couchDB_USER = this.settings.couchDB_USER;
             settingToApply.couchDB_PASSWORD = this.settings.couchDB_PASSWORD;
             settingToApply.passphrase = this.settings.passphrase;
+            settingToApply.idDerivationVersion = this.settings.idDerivationVersion;
+            settingToApply.idDerivationKey = this.settings.idDerivationKey;
         }
         const oldSetting = this.generateSettingForMarkdown(
             this.settings,
@@ -197,22 +205,31 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
         const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
         delete saveData.encryptedCouchDBConnection;
         delete saveData.encryptedPassphrase;
+        delete saveData.encryptedIdDerivationKey;
         delete saveData.additionalSuffixOfDatabaseName;
         if (!saveData.writeCredentialsForSettingSync && !keepCredential) {
             delete saveData.couchDB_USER;
             delete saveData.couchDB_PASSWORD;
             delete saveData.passphrase;
+            delete saveData.idDerivationKey;
             delete saveData.jwtKey;
             delete saveData.jwtKid;
             delete saveData.jwtSub;
             delete saveData.couchDB_CustomHeaders;
             delete saveData.bucketCustomHeaders;
         }
+        omitManagedTurnProfilesFromMarkdown(saveData);
         return saveData;
     }
 
     async saveSettingToMarkdown(filename: string) {
         const saveData = this.generateSettingForMarkdown();
+        if (hasManagedTurnSettings(this.settings)) {
+            this._log(
+                "Share TURN provider credentials through an encrypted Setup URI. Connection profiles are omitted from Markdown settings.",
+                LOG_LEVEL_INFO
+            );
+        }
         const file = await this.core.storageAccess.isExists(filename);
 
         if (!file) {

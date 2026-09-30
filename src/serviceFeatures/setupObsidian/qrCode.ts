@@ -9,7 +9,8 @@ import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type { SetupFeatureHost } from "./types";
 
 export async function encodeSetupSettingsAsQR(host: SetupFeatureHost) {
-    const settingString = encodeSettingsToQRCodeData(host.services.setting.currentSettings());
+    const settings = host.services.setting.currentSettings();
+    const settingString = encodeSettingsToQRCodeData(settings);
     const result = encodeQR(settingString, OutputFormat.SVG);
     if (result === "") {
         return "";

@@ -29,18 +29,7 @@ npm run build
 
 #### Community Review dependency installation
 
-Community Review installs dependencies independently before applying type-aware source rules. A successful installation with the npm version bundled with the repository's current Node.js CI does not prove that the lockfile is accepted by the scanner's npm version.
-
-After changing `package.json`, a workspace manifest, or `package-lock.json`, verify both installation paths:
-
-```bash
-npm ci --ignore-scripts
-npx --yes npm@10.9.2 ci --ignore-scripts
-```
-
-The npm 10.9.2 command is the current project-side compatibility check for the Community Review installation path. Update this check when the scanner runtime changes.
-
-If Community Review reports widespread TypeScript `error` types across unrelated external packages, confirm that dependency installation completed successfully before changing source imports, declarations, or lint rules. An installation failure can make every unresolved external type appear as downstream unsafe-type findings.
+After changing a dependency manifest or lockfile, follow the [npm 10 clean-installation check](test/README.md#npm-10-clean-installation-check) before the normal source and unit checks. The test guide records the command used by CI and the distinction between installation failures and source diagnostics.
 
 ### Commands
 
@@ -77,6 +66,8 @@ To facilitate development and testing, the build process can automatically copy 
 
 ### Testing Infrastructure
 
+See the [test procedures](test/README.md) for clean-installation checks, local validation commands, and links to each runtime suite.
+
 - **Vitest**:
     - **Unit Tests** (`vitest.config.unit.ts`): Unit tests run in Node.js (excluding harnesses and integration tests). Unit tests should be `*.unit.spec.ts` and placed alongside the implementation file (e.g., `ChunkFetcher.unit.spec.ts`). Executed via `npm run test:unit`.
     - **Integration Tests** (`vitest.config.integration.ts`): Tests run in Node.js against a real CouchDB instance. Integration tests should be `*.integration.spec.ts` or `*.integration.test.ts` and placed alongside the implementation file (e.g., `StreamingFetch.integration.spec.ts`). Executed via `npm run test:integration`.
@@ -87,9 +78,9 @@ Regression tests remain in the suite owned by the implementation under test. Plu
 
 - **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current Replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Self-hosted setup tools** (`utils/couchdb/`, `utils/setup/`, and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current CouchDB, Object Storage, and random-room P2P Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
-- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and MinIO fixtures managed by the wrapper.
+- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and RustFS fixtures managed by the wrapper.
 
-- **Docker Services**: Service-backed tests use CouchDB and MinIO (S3). Canonical P2P validation owns its relay through the CLI Compose runner:
+- **Docker Services**: Service-backed tests use CouchDB and RustFS (S3). Canonical P2P validation owns its relay through the CLI Compose runner:
 
     ```bash
     npm run test:docker-all:start  # Start all test services
@@ -189,15 +180,17 @@ steps required to add a built-in provider.
 
 Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, connection-probe admission, directory, peer-admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact implemented ownership and shutdown boundaries are recorded in Commonlib's [P2P transport lifecycle](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/p2p-transport-lifecycle.md) design document.
 
+The [TURN connection settings design](docs/design_docs/renewable_turn_credentials.md) describes how the host prepares temporary ICE credentials in a connection-only settings copy. It covers room reuse and expiry, replication continuation, profile persistence and sharing, and report redaction.
+
 ### Conflict Merge Policy
 
 Markdown conflict auto-merge should behave like a conservative three-way merge. The guiding rule is to merge changes when they touch non-overlapping regions, and to keep a manual conflict when the edits overlap semantically.
 
 When in doubt, prefer the safer outcome: preserve data, keep the conflict visible, and ask the user rather than silently discarding content or choosing one side.
 
-The detailed contract is documented in [Conflict resolution and revision provenance](docs/specs_conflict_resolution.md). Determine the merge base by intersecting the exact `available` revision IDs from both leaf histories and selecting the nearest shared revision. Do not infer ancestry from revision generation numbers. When a remote resolution reaches a Vault which still contains the exact content of a deleted losing branch, treat that content as known synchronised history so the resolution can be reflected without recreating the conflict.
+The detailed contract is documented in [Conflict resolution and revision provenance](docs/specs_conflict_resolution.md). Determine the merge base by intersecting the exact `available` revision IDs from both leaf histories and selecting the nearest shared revision. Do not infer ancestry from revision generation numbers. An unchanged file is recognised by comparing its bytes with its exact device-local file-reflection provenance, including when that revision belongs to a deleted losing branch.
 
-File operations made while a conflict is active must use the device-local file-reflection provenance injected into `ServiceFileHandlerBase`. Treat its exact revision as authoritative; use byte equality only to reconstruct a missing record when exactly one available revision matches. If branch identity remains unknown, preserve data and leave the conflict visible. Do not hide key-value database readiness behind an implicit wait: maintained hosts open it through the sequential settings lifecycle before file events or replication begin.
+Ordinary file saves and incoming reflection use that provenance even before a conflict exists. An unchanged stale file must not become a child of the current winner; a genuine edit extends the recorded revision. Without a readable recorded base, compare only current live leaves to avoid duplicate content. Otherwise, preserve the file as a fresh independent root under the same document ID, leaving ancestry unknown. Historical byte equality cannot distinguish an unchanged file from an intentional revert. Explicit reconciliation, deletion, and rename retain their separate contracts. Do not hide key-value database readiness behind an implicit wait: maintained hosts open it through the sequential settings lifecycle before file events or replication begin.
 
 - If one side deletes a line and the other side leaves that same line unchanged, treat it as a safe deletion. The deleted line must not be reintroduced into the merged result.
 - If one side inserts new content in a different region while the other side deletes an unchanged old region, preserve the insertion and the deletion.
@@ -206,6 +199,8 @@ File operations made while a conflict is active must use the device-local file-r
 - Avoid resolving conflicts by simply choosing the newest revision unless the user has explicitly selected that behaviour.
 
 This policy is intentionally aligned with the conflict checkboxes and compatibility settings: automatic merge should remove avoidable prompts, but it must not silently choose between overlapping user intentions.
+
+The [multiple-device conflict test procedure](test/README.md#multiple-device-conflict-regression-tests) documents the five CouchDB-backed cases, execution steps, expected results, and coverage boundaries.
 
 ### File Structure Conventions
 
@@ -239,6 +234,18 @@ Commonlib owns the typed English fallback for messages requested by its services
 - Path utilities are supplied by the focused Commonlib compatibility path `@vrtmrz/livesync-commonlib/compat/string_and_binary/path`
 
 ### Logging & Debugging
+
+#### ID generation measurements on a device
+
+Enable **Enable Developers' Debug Tools.**, restart Obsidian, and run **Open review harness** from the command palette. Choose **Run** beside **ID generation performance**, keep Obsidian in the foreground, and use **Copy Markdown report** to retain the results. The **Automatic** action does not run this measurement; **Full review** includes it.
+
+The measurement uses fixed in-memory inputs and keys, with no Vault, database, settings, or remote writes. It compares legacy `xxhash64` and independent Chunk IDs for 256-byte, 4-KiB, and 32-KiB inputs, and compares obfuscated document IDs. Each result reports the median and range of three 1,000-ID samples and the median time per ID. Key derivation at save time is measured separately. Warm-up and pauses between batches are excluded from the timings. These measurements do not represent a full Rebuild.
+
+Where `performance.memory` is available, the report includes approximate JavaScript heap samples before, during, and after measurement. These may include other Obsidian activity and garbage collection; they are neither total process RAM nor an exact peak. Unsupported devices explicitly report that heap measurements are unavailable.
+
+The developer-only adapter in `src/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime.ts` imports `HashManager` from Commonlib's public `/hashing` entry. Compilation, packed-package checks, and runtime tests cover this boundary. The algorithms remain owned by Commonlib.
+
+#### Logs
 
 - Use `this._log(msg, LOG_LEVEL_INFO)` in modules (automatically prefixes with module name)
 - Log levels: `LOG_LEVEL_DEBUG`, `LOG_LEVEL_VERBOSE`, `LOG_LEVEL_INFO`, `LOG_LEVEL_NOTICE`, `LOG_LEVEL_URGENT`

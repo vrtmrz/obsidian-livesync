@@ -45,7 +45,13 @@ export class ModuleLiveSyncMain extends AbstractModule {
         }
         // Ordinary start-up may continue when individual files could not be
         // processed. Explicit Fetch and Rebuild flows retain the strict default.
-        const initialisationResult = await this.services.databaseEvents.initialiseDatabase(false, false, false, true);
+        const { ignoreSuspending = false, continueOnFileFailure = true } = this.core.startupDatabaseOptions;
+        const initialisationResult = await this.services.databaseEvents.initialiseDatabase(
+            false,
+            false,
+            ignoreSuspending,
+            continueOnFileFailure
+        );
         if (initialisationResult === VaultScanResults.FAILED) {
             this._log($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);
             //TODO:stop all sync.

@@ -1,6 +1,7 @@
+import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
 import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
-import { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
+import { LiveSyncBaseCore, type StartupDatabaseOptions } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import {
     LOG_LEVEL_VERBOSE,
@@ -24,6 +25,7 @@ import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
 import { useP2PReplicatorFeature, type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
+import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
 import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
@@ -41,6 +43,27 @@ import {
 } from "./settingsPersistence";
 
 const SETTINGS_FILE = ".livesync/settings.json";
+
+interface CLIVaultSyncMode {
+    readonly watchFiles: boolean;
+    readonly reflectReplicationResults: boolean;
+    readonly startupDatabaseOptions: StartupDatabaseOptions;
+}
+
+// Commands which synchronise a physical Vault with the local database.
+const VAULT_SYNC_MODES: Readonly<Partial<Record<CLICommand, CLIVaultSyncMode>>> = {
+    daemon: {
+        watchFiles: true,
+        reflectReplicationResults: true,
+        startupDatabaseOptions: { ignoreSuspending: false, continueOnFileFailure: true },
+    },
+    mirror: {
+        watchFiles: false,
+        reflectReplicationResults: false,
+        startupDatabaseOptions: { ignoreSuspending: true, continueOnFileFailure: false },
+    },
+};
+
 ensureGlobalNodeLocalStorage();
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 
@@ -296,6 +319,7 @@ export async function main(
     commandRunner: CliCommandRunner = runCommand
 ) {
     const options = parseArgs(standardIo);
+    const vaultSyncMode = VAULT_SYNC_MODES[options.command];
     if (options.interval && options.command !== "daemon") {
         writeStderrLine(
             standardIo,
@@ -357,9 +381,6 @@ export async function main(
 
     // Resolve vault path: mirror positional argument takes priority,
     // then --vault flag, otherwise fall back to databasePath.
-    // For daemon mode, enable chokidar file watching so the _changes feed picks up events.
-    // mirror runs a single full scan and doesn't need continuous watching.
-    const watchEnabled = options.command === "daemon";
     const vaultPath =
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
@@ -385,7 +406,7 @@ export async function main(
     infoLog(`Settings: ${settingsPath}`);
     infoLog("");
     let ignoreRules: IgnoreRules | undefined;
-    if (options.command === "daemon" || options.command === "mirror") {
+    if (vaultSyncMode) {
         ignoreRules = new IgnoreRules(vaultPath, (message, detail) => {
             if (detail === undefined) {
                 writeStderrLine(standardIo, message);
@@ -426,9 +447,8 @@ export async function main(
         }
         writeStderrLine(standardIo, prefix, message);
     }, true);
-    // Prevent replication result from being processed automatically in non-daemon commands.
-    // In daemon mode the default handler must run so changes are applied to the filesystem.
-    if (options.command !== "daemon") {
+    // Only modes which reflect replication results use the default filesystem handler.
+    if (!vaultSyncMode?.reflectReplicationResults) {
         serviceHubInstance.replication.processSynchroniseResult.addHandler(async () => {
             writeStderrLine(
                 standardIo,
@@ -489,14 +509,25 @@ export async function main(
     const core = new LiveSyncBaseCore(
         serviceHubInstance,
         (core: LiveSyncBaseCore<NodeServiceContext, never>, serviceHub: InjectableServiceHub<NodeServiceContext>) => {
-            return initialiseServiceModulesCLI(vaultPath, core, serviceHub, ignoreRules, watchEnabled);
+            return initialiseServiceModulesCLI(
+                vaultPath,
+                core,
+                serviceHub,
+                ignoreRules,
+                vaultSyncMode?.watchFiles ?? false
+            );
         },
         (core) => [],
         () => [], // No add-ons
         (core, coreFeatureViews) => {
             replicationScheduling = coreFeatureViews.replicationScheduling;
+            if (vaultSyncMode) {
+                useOfflineScanner(core);
+            }
             // Register P2P replicator feature.
-            p2pReplicator = useP2PReplicatorFeature(core);
+            p2pReplicator = useP2PReplicatorFeature(core, undefined, undefined, {
+                prepareP2PSettings: useP2PSettingsPreparation(core.services.API.webCompatFetch.bind(core.services.API)),
+            });
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
@@ -512,7 +543,7 @@ export async function main(
                 return await Promise.resolve(true);
             }, -1 /* highest priority */);
 
-            // Apply user-defined ignore rules for daemon mode (lower priority, runs after dotfile check).
+            // Apply user-defined ignore rules after the dotfile check.
             if (ignoreRules) {
                 const rules = ignoreRules;
                 core.services.vault.isTargetFile.addHandler(async (target) => {
@@ -524,7 +555,8 @@ export async function main(
                     return true;
                 }, 0);
             }
-        }
+        },
+        vaultSyncMode?.startupDatabaseOptions
     );
     if (!replicationScheduling) {
         throw new Error("Replication scheduling was not provided during core feature composition.");
@@ -577,7 +609,7 @@ export async function main(
             : originalSettingsText;
 
         // Capture sync settings before suspendAllSync() clobbers them.
-        // Used by daemon mode to restore the correct sync behaviour after the mirror scan.
+        // Used by daemon mode to restore sync behaviour after initial replication.
         const settingsBeforeSuspend = cloneSettings(core.services.setting.currentSettings());
         const durableSettingsBeforeSuspend = cloneSettings(settingsBeforeSuspend);
         applyStoredSetting(durableSettingsBeforeSuspend, settingsAfterLoadText, "useIndexedDBAdapter");
@@ -592,7 +624,15 @@ export async function main(
         };
         await core.services.setting.suspendAllSync();
         const settingsAfterSuspend = cloneSettings(core.services.setting.currentSettings());
-        await core.services.control.onReady();
+        let readyResult = false;
+        try {
+            readyResult = await core.services.control.onReady();
+        } finally {
+            if (!readyResult) await core.services.control.onUnload();
+        }
+        if (!readyResult) {
+            throw new Error("Failed to initialise LiveSync.");
+        }
         const settingsBeforeCommand = cloneSettings(core.services.setting.currentSettings());
         const transientSettingKeys = changedSettingKeys(settingsBeforeSuspend, settingsAfterSuspend);
         for (const key of CLI_RUNTIME_ONLY_SETTING_KEYS) {

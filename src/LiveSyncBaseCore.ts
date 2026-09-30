@@ -38,6 +38,11 @@ export interface LiveSyncCoreFeatureViews {
     readonly replicationScheduling: ReplicationSchedulingControl;
 }
 
+export interface StartupDatabaseOptions {
+    readonly ignoreSuspending?: boolean;
+    readonly continueOnFileFailure?: boolean;
+}
+
 type CompatibilityReplicatorView = ReplicatorInstance & Partial<LiveSyncAbstractReplicator>;
 
 export class LiveSyncBaseCore<
@@ -78,7 +83,8 @@ export class LiveSyncBaseCore<
         ) => ServiceModules,
         extraModuleInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => AbstractModule[],
         addOnsInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => TCommands[],
-        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>, coreFeatureViews: LiveSyncCoreFeatureViews) => void
+        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>, coreFeatureViews: LiveSyncCoreFeatureViews) => void,
+        readonly startupDatabaseOptions: StartupDatabaseOptions = {}
     ) {
         this._services = serviceHub;
         this.registerReplicatorProviders();

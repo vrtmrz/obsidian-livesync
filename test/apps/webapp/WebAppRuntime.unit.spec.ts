@@ -27,7 +27,7 @@ const runtimeMocks = vi.hoisted(() => {
     };
 
     const serviceHub = {
-        API: { addLog },
+        API: { addLog, webCompatFetch: vi.fn() },
         appLifecycle: { isReady, markIsReady },
         control: { onLoad, onReady, onUnload },
         databaseEvents: { onDatabaseInitialised },

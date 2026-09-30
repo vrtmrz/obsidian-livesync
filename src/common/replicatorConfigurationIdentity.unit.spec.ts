@@ -31,6 +31,17 @@ describe("active Replicator configuration identity", () => {
         });
     }
 
+    it("replaces a connection when the independent ID key changes", () => {
+        const first = configuredSettings({ idDerivationVersion: 1, idDerivationKey: "a".repeat(64) });
+        const second = { ...first, idDerivationKey: "b".repeat(64) };
+        expect(getCouchDBReplicatorConfigurationIdentity(second)).not.toBe(
+            getCouchDBReplicatorConfigurationIdentity(first)
+        );
+        expect(getObjectStorageReplicatorConfigurationIdentity(second)).not.toBe(
+            getObjectStorageReplicatorConfigurationIdentity(first)
+        );
+    });
+
     it.each([
         ["couchDB_URI", "https://other.example.test/base"],
         ["couchDB_DBNAME", "other-vault"],
@@ -64,6 +75,22 @@ describe("active Replicator configuration identity", () => {
         );
         expect(getObjectStorageReplicatorConfigurationIdentity(otherProfile)).toBe(
             getObjectStorageReplicatorConfigurationIdentity(settings)
+        );
+    });
+
+    it("recreates the CouchDB connection when internal Metadata encryption becomes effective", () => {
+        const active = configuredSettings({ usePathObfuscation: true, encryptInternalMetadata: false });
+        const enabled = { ...active, encryptInternalMetadata: true };
+
+        expect(getCouchDBReplicatorConfigurationIdentity(enabled)).not.toBe(
+            getCouchDBReplicatorConfigurationIdentity(active)
+        );
+        const inactive = { ...active, usePathObfuscation: false };
+        expect(getCouchDBReplicatorConfigurationIdentity({ ...inactive, encryptInternalMetadata: true })).toBe(
+            getCouchDBReplicatorConfigurationIdentity(inactive)
+        );
+        expect(getObjectStorageReplicatorConfigurationIdentity(enabled)).toBe(
+            getObjectStorageReplicatorConfigurationIdentity(active)
         );
     });
 

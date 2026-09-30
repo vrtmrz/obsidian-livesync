@@ -15,6 +15,8 @@
  * Separate successes would not prove that those observations belonged to the
  * same upload.
  */
+import { randomBytes } from "node:crypto";
+import { deriveIdKey } from "@vrtmrz/livesync-commonlib/settings";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
@@ -33,6 +35,7 @@ import {
     listObjectStorageObjects,
     loadObjectStorageConfig,
     makeUniqueBucketPrefix,
+    readObjectStorageJson,
 } from "../runner/objectStorage.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
@@ -41,6 +44,8 @@ import { REMOTE_ACTIVITY_EXPECTED_STATE, waitForRemoteActivityState } from "../r
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 
 const notePath = "E2E/minio-upload.md";
+const useIndependentIds = process.env.E2E_OBSIDIAN_INDEPENDENT_IDS === "true";
+const useCustomRequestHandler = process.env.E2E_OBSIDIAN_CUSTOM_HTTP_HANDLER === "true";
 const noteContent = [
     "# Object Storage upload from real Obsidian",
     "",
@@ -127,10 +132,23 @@ async function main(): Promise<void> {
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
 
-        const configured = await configureObjectStorage(cli.binary, session.cliEnv, {
-            ...objectStorage,
-            bucketPrefix,
-        });
+        const configured = await configureObjectStorage(
+            cli.binary,
+            session.cliEnv,
+            { ...objectStorage, bucketPrefix },
+            {
+                ...(useIndependentIds
+                    ? {
+                          encrypt: true,
+                          usePathObfuscation: true,
+                          passphrase: randomBytes(32).toString("base64url"),
+                          idDerivationVersion: 1,
+                          idDerivationKey: await deriveIdKey(randomBytes(32).toString("base64url")),
+                      }
+                    : {}),
+                ...(useCustomRequestHandler ? { useCustomRequestHandler: true } : {}),
+            }
+        );
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
         assertEqual(configured.isConfigured, true, "Self-hosted LiveSync was not marked as configured.");
         assertEqual(configured.remoteType, "MINIO", "Remote type was not Object Storage.");
@@ -145,6 +163,16 @@ async function main(): Promise<void> {
             REMOTE_ACTIVITY_EXPECTED_STATE.idle
         );
         const localEntry = await createNoteAndWaitForLocalDb(cli.binary, session.cliEnv);
+        if (useIndependentIds) {
+            if (
+                !/^f:[0-9a-f]{64}$/u.test(localEntry.id) ||
+                localEntry.children.some((child) => !/^h:\+[0-9a-f]{64}$/u.test(child))
+            ) {
+                throw new Error(
+                    `The real Obsidian Journal upload did not use independent document and Chunk IDs (document length ${localEntry.id.length}, Chunk lengths ${localEntry.children.map((child) => child.length).join(",")}).`
+                );
+            }
+        }
         await pushLocalChanges(cli.binary, session.cliEnv);
         const activityAfterUpload = await waitForRemoteActivityState(
             session.remoteDebuggingPort,
@@ -160,6 +188,15 @@ async function main(): Promise<void> {
         );
 
         const keys = await waitForObjectStorageObjects(bucketPrefix);
+        if (useIndependentIds) {
+            const milestone = await readObjectStorageJson<{ encrypted_id_derivation_proof?: string }>(
+                objectStorage,
+                `${bucketPrefix}_00000000-milestone.json`
+            );
+            if (!milestone.encrypted_id_derivation_proof) {
+                throw new Error("The Journal milestone did not retain an encrypted ID agreement proof.");
+            }
+        }
 
         console.log(
             `Uploaded ${localEntry.path} through Journal Sync to ${objectStorage.bucket}/${bucketPrefix} (${keys.length} object(s)); tracked requests: ${activityAfterUpload.requestCount - activityBeforeUpload.requestCount}`
