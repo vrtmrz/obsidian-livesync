@@ -8,7 +8,7 @@ None of this would have been possible without your issue reports, pull requests,
 
 This will call for your help once again. I would be very grateful for your co-operation as we build a sounder foundation for the project and its future development.
 
-Earlier releases remain available in the [1.0 release history](docs/releases/1.0.md), the [1.0 preview history](docs/releases/1.0-previews.md), the [0.25 release history](docs/releases/0.25.md), and the [legacy release history](docs/releases/legacy.md).
+Earlier releases remain available in the 1.0 release history, the 1.0 preview history, the 0.25 release history, and the legacy release history.
 
 ## Unreleased
 
@@ -81,10 +81,10 @@ This has turned into quite a substantial release, and I think it brings meaningf
 
 Thank you for your contributions!
 
-- [@kimjansheden](https://github.com/kimjansheden) ([#1219](https://github.com/vrtmrz/obsidian-livesync/pull/1219))
-- [@Immick](https://github.com/Immick) ([#1195](https://github.com/vrtmrz/obsidian-livesync/pull/1195), [#1196](https://github.com/vrtmrz/obsidian-livesync/pull/1196))
-- [@bolikcraft](https://github.com/bolikcraft) ([#1187](https://github.com/vrtmrz/obsidian-livesync/pull/1187))
-- [@speedy-axolotl](https://github.com/speedy-axolotl) ([#1212](https://github.com/vrtmrz/obsidian-livesync/pull/1212))
+- @kimjansheden (#1219)
+- @Immick (#1195, #1196)
+- @bolikcraft (#1187)
+- @speedy-axolotl (#1212)
 
 ### Issue replies
 
