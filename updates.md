@@ -70,6 +70,15 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We can now add a device or open a copied Vault without a compatibility pause solely because its device-local version record is absent.
     - Existing version or settings incompatibilities still require review. A pause already saved by an earlier release still needs one explicit resume action.
 
+### Acknowledgements
+
+Thank you for your contributions!
+
+- [@kimjansheden](https://github.com/kimjansheden) ([#1219](https://github.com/vrtmrz/obsidian-livesync/pull/1219))
+- [@Immick](https://github.com/Immick) ([#1195](https://github.com/vrtmrz/obsidian-livesync/pull/1195), [#1196](https://github.com/vrtmrz/obsidian-livesync/pull/1196))
+- [@bolikcraft](https://github.com/bolikcraft) ([#1187](https://github.com/vrtmrz/obsidian-livesync/pull/1187))
+- [@speedy-axolotl](https://github.com/speedy-axolotl) ([#1212](https://github.com/vrtmrz/obsidian-livesync/pull/1212))
+
 ## 1.0.32
 
 27th September, 2026
