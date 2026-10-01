@@ -73,7 +73,7 @@
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",
         "test:e2e:obsidian:object-storage-compatible-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --compatible",
-    "test:e2e:obsidian:object-storage-qr-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --qr",
+        "test:e2e:obsidian:object-storage-qr-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --qr",
         "test:e2e:obsidian:object-storage-custom-http-handler-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --custom-http-handler",
         "test:e2e:obsidian:p2p-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/p2p-setup-uri-workflow.ts",
         "pretest:e2e:obsidian:p2p-connection-check": "npm run build && npm run build --workspace webpeer",
