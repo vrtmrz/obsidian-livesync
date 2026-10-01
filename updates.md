@@ -45,6 +45,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - Customisation Sync now compares full millisecond timestamps, so the freshness labels and **Select All Shiny** no longer mistake an older copy for a newer one because of timestamp truncation. (#1194)
 - **Hide not applicable items** now hides identical Customisation Sync items and refreshes the list when toggled. Items with applicable differences stay visible. (#1193)
 
+### Interface and translation
+
+#### Improved
+
+- More settings and messages are now available in Russian. (#1187)
+    - Dialogues show generated QR codes, key pairs, and database sizes again.
+
 ## 1.0.32
 
 27th September, 2026
