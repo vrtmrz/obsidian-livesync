@@ -37,6 +37,7 @@ This has turned into quite a substantial release, and I think it brings meaningf
 
 #### Fixed
 
+- Updated `brace-expansion` and `markdown-it` to include upstream security fixes.
 - We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
     - This plug-in encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
 - A receiving device now retries an unavailable CouchDB Chunk when file Metadata arrives before that Chunk is visible, helping rapid edits reach the Vault after an initial on-demand lookup misses it. (#1224)

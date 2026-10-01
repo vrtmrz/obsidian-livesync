@@ -140,7 +140,7 @@
         "@types/pouchdb-replication": "^6.4.7",
         "@types/transform-pouch": "^1.0.6",
         "@typescript-eslint/parser": "8.69.0",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "^4.1.11",
         "@vrtmrz/obsidian-test-session": "0.2.6",
         "dotenv-cli": "^11.0.0",
         "esbuild": "0.28.1",
@@ -177,7 +177,7 @@
         "typescript": "6.0.3",
         "typescript-eslint": "8.69.0",
         "vite": "^8.0.16",
-        "vitest": "^4.1.8",
+        "vitest": "^4.1.11",
         "yaml": "^2.8.2"
     },
     "dependencies": {
@@ -195,7 +195,7 @@
         "@vrtmrz/ui-interactions": "0.1.2",
         "diff-match-patch": "^1.0.5",
         "idb": "^8.0.3",
-        "markdown-it": "^14.2.0",
+        "markdown-it": "^14.3.2",
         "minimatch": "^10.2.5",
         "obsidian": "^1.13.1",
         "octagonal-wheels": "^0.1.54",
