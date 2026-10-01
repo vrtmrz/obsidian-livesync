@@ -27,6 +27,7 @@ import {
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { waitForVisibleObsidianDialogue, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
+import type { Locator } from "playwright";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "20000";
@@ -58,6 +59,11 @@ const pluginDir = ".obsidian/plugins/livesync-e2e-sample";
 const pluginManifestPath = `${pluginDir}/manifest.json`;
 const pluginMainPath = `${pluginDir}/main.js`;
 const pluginStylesPath = `${pluginDir}/styles.css`;
+const identicalSnippetPath = ".obsidian/snippets/livesync-customisation-e2e-identical.css";
+const identicalSnippetContent = ".livesync-customisation-identical { color: #3d6f54; }\n";
+const differentSnippetPath = ".obsidian/snippets/livesync-customisation-e2e-different.css";
+const sourceDifferentSnippetContent = ".livesync-customisation-different { color: #73548f; }\n";
+const targetDifferentSnippetContent = ".livesync-customisation-different { color: #3d6f54; }\n";
 const pluginManifestContent =
     JSON.stringify(
         {
@@ -85,15 +91,20 @@ const targetPluginStylesContent = ".livesync-e2e-sample { color: #3d6f54; }\n";
 // These dates straddle a signed 32-bit wrap boundary for millisecond timestamps.
 const sourcePluginMtime = new Date("2026-09-01T12:00:00.000Z");
 const targetPluginMtime = new Date("2026-09-15T12:00:00.000Z");
+const matchingMtime = new Date("2026-09-15T12:00:00.000Z");
 const sourceDeviceName = "customisation-sync-a";
 const targetDeviceName = "customisation-sync-b";
+const visibilityFixtures = [
+    { path: identicalSnippetPath, source: identicalSnippetContent, target: identicalSnippetContent },
+    { path: differentSnippetPath, source: sourceDifferentSnippetContent, target: targetDifferentSnippetContent },
+] as const;
 const pluginFixtures = [
     { path: pluginManifestPath, source: pluginManifestContent, target: pluginManifestContent },
     { path: pluginMainPath, source: pluginMainContent, target: pluginMainContent },
     { path: pluginStylesPath, source: pluginStylesContent, target: targetPluginStylesContent },
 ] as const;
 
-type CustomisationSyncCase = "all" | "mtime";
+type CustomisationSyncCase = "all" | "visibility" | "mtime";
 
 type CustomisationSyncTestGlobal = typeof globalThis & {
     app?: { commands?: { executeCommandById(commandId: string): boolean } };
@@ -136,11 +147,57 @@ function selectedCase(): CustomisationSyncCase {
     if (args.length === 0) return "all";
     const arg = args[0];
     if (args.length !== 1 || !arg?.startsWith("--case=")) {
-        throw new Error("Usage: test:e2e:obsidian:customisation-sync [--case=all|mtime]");
+        throw new Error("Usage: test:e2e:obsidian:customisation-sync [--case=all|visibility|mtime]");
     }
     const selected = arg.slice("--case=".length);
-    if (selected === "all" || selected === "mtime") return selected;
+    if (selected === "all" || selected === "visibility" || selected === "mtime") return selected;
     throw new Error(`Unknown Customisation Sync E2E case: ${selected}`);
+}
+
+async function assertSourceCandidate(row: Locator, term: string, name: string): Promise<void> {
+    const candidate = row.locator(`select option[value="${term}"]`);
+    try {
+        await candidate.waitFor({ state: "attached", timeout: 10000 });
+    } catch {
+        throw new Error(`Customisation Sync ${name} source candidate was not available: ${term}`);
+    }
+}
+
+async function inspectCustomisationVisibility(session: ObsidianLiveSyncSession): Promise<void> {
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const opened = await page.evaluate(() =>
+            (globalThis as CustomisationSyncTestGlobal).app?.commands?.executeCommandById(
+                "obsidian-livesync:livesync-plugin-dialog-ex"
+            )
+        );
+        if (opened !== true) throw new Error("Could not open the Customisation Sync dialogue command.");
+        const dialogue = await waitForVisibleObsidianDialogue(page, "Customization Sync (Beta3)");
+        const identicalName = identicalSnippetPath.split("/").pop() ?? identicalSnippetPath;
+        const differentName = differentSnippetPath.split("/").pop() ?? differentSnippetPath;
+        const identicalRow = dialogue.locator(".labelrow").filter({ hasText: identicalName }).first();
+        const differentRow = dialogue.locator(".labelrow").filter({ hasText: differentName }).first();
+        const hideCheckbox = dialogue
+            .locator("label")
+            .filter({ hasText: "Hide not applicable items" })
+            .locator('input[type="checkbox"]');
+
+        await identicalRow.waitFor({ state: "visible", timeout: 10000 });
+        await differentRow.waitFor({ state: "visible", timeout: 10000 });
+        await assertSourceCandidate(identicalRow, sourceDeviceName, "identical item");
+        await assertSourceCandidate(differentRow, sourceDeviceName, "different item");
+        if (await hideCheckbox.isChecked()) throw new Error("Hide not applicable items started checked.");
+
+        await hideCheckbox.check();
+        await identicalRow.waitFor({ state: "hidden", timeout: 10000 });
+        await differentRow.waitFor({ state: "visible", timeout: 10000 });
+        await assertSourceCandidate(differentRow, sourceDeviceName, "different item while hiding identical items");
+
+        await hideCheckbox.uncheck();
+        await identicalRow.waitFor({ state: "visible", timeout: 10000 });
+        await assertSourceCandidate(identicalRow, sourceDeviceName, "identical item after unhiding");
+        await page.keyboard.press("Escape");
+        await dialogue.waitFor({ state: "hidden", timeout: 10000 });
+    });
 }
 
 async function inspectPluginFreshnessAndNewestSelection(session: ObsidianLiveSyncSession): Promise<void> {
@@ -515,6 +572,7 @@ async function applyRemoteCustomisationGroup(
 
 async function main(): Promise<void> {
     const testCase = selectedCase();
+    const testVisibility = testCase === "all" || testCase === "visibility";
     const testMtime = testCase === "all" || testCase === "mtime";
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -546,9 +604,21 @@ async function main(): Promise<void> {
         await writeVaultFile(vaultA.path, pluginManifestPath, pluginManifestContent);
         await writeVaultFile(vaultA.path, pluginMainPath, pluginMainContent);
         await writeVaultFile(vaultA.path, pluginStylesPath, pluginStylesContent);
+        if (testVisibility) {
+            for (const fixture of visibilityFixtures) {
+                await writeVaultFile(vaultA.path, fixture.path, fixture.source);
+                await setVaultFileMtime(vaultA.path, fixture.path, matchingMtime);
+            }
+        }
         if (testMtime) {
             for (const fixture of pluginFixtures) {
                 await setVaultFileMtime(vaultA.path, fixture.path, sourcePluginMtime);
+            }
+        }
+        if (testVisibility) {
+            for (const fixture of visibilityFixtures) {
+                await writeVaultFile(vaultB.path, fixture.path, fixture.target);
+                await setVaultFileMtime(vaultB.path, fixture.path, matchingMtime);
             }
         }
         if (testMtime) {
@@ -565,6 +635,11 @@ async function main(): Promise<void> {
         await storeCustomisationFile(context.cliBinary, session.cliEnv, configPath);
         for (const fixture of pluginFixtures) {
             await storeCustomisationFile(context.cliBinary, session.cliEnv, fixture.path);
+        }
+        if (testVisibility) {
+            for (const fixture of visibilityFixtures) {
+                await storeCustomisationFile(context.cliBinary, session.cliEnv, fixture.path);
+            }
         }
         const entry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName);
         const configEntry = await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "CONFIG", configName);
@@ -605,6 +680,11 @@ async function main(): Promise<void> {
         await session.app.stop();
 
         session = await startConfiguredSession(context, vaultB, targetDeviceName);
+        if (testVisibility) {
+            for (const fixture of visibilityFixtures) {
+                await storeCustomisationFile(context.cliBinary, session.cliEnv, fixture.path);
+            }
+        }
         if (testMtime) {
             for (const fixture of pluginFixtures) {
                 await storeCustomisationFile(context.cliBinary, session.cliEnv, fixture.path);
@@ -612,6 +692,14 @@ async function main(): Promise<void> {
         }
         await pushLocalChanges(context.cliBinary, session.cliEnv);
         await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName, sourceDeviceName);
+        if (testVisibility) {
+            for (const fixture of visibilityFixtures) {
+                const name = fixture.path.split("/").pop() ?? fixture.path;
+                for (const term of [sourceDeviceName, targetDeviceName]) {
+                    await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", name, term);
+                }
+            }
+        }
         if (testMtime) {
             await waitForCustomisationEntries(
                 context.cliBinary,
@@ -631,6 +719,7 @@ async function main(): Promise<void> {
             );
         }
         try {
+            if (testVisibility) await inspectCustomisationVisibility(session);
             if (testMtime) await inspectPluginFreshnessAndNewestSelection(session);
         } catch (error) {
             await session.app.stop().catch(() => undefined);
