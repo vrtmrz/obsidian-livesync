@@ -51,12 +51,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - More settings and messages are now available in Russian. (#1187)
     - Dialogues show generated QR codes, key pairs, and database sizes again.
-
-### Interface and translation
-
-#### Improved
-
-- We now have refreshed Spanish translations for settings and messages. (#1212)
+- We can now use updated Spanish translations for settings and messages. (#1212)
 
 ### Setup
 
