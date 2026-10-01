@@ -2,7 +2,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.":
         {
             def: ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.",
-            es: ", selecciona la opción que mejor describa el estado actual de tu Vault. La aplicación comprobará entonces tus archivos de la forma más adecuada según tu elección.",
+            es: ", selecciona la opción que mejor describa el estado actual de tu bóveda. La aplicación comprobará entonces tus archivos de la forma más adecuada según tu elección.",
             ko: ", 이 보관함의 현재 상태를 가장 잘 설명하는 옵션을 선택해 주세요. 선택하신 내용에 따라 가장 적절한 방식으로 파일을 확인합니다.",
             ru: ", выберите вариант, который лучше всего описывает текущее состояние хранилища. Программа проверит файлы способом, подходящим для этого варианта.",
             "zh-tw": "，請選擇最符合你目前 Vault 狀態的選項，應用程式會依你的選擇以最合適的方式檢查你的檔案。",
@@ -29,7 +29,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "(Beta) Use ignore files": {
         def: "(Beta) Use ignore files",
-        es: "(Beta) Usar archivos de ignorar",
+        es: "(Beta) Usar archivos ignore",
         fr: "(Bêta) Utiliser les fichiers d'exclusion",
         he: "(בטא) שימוש בקבצי התעלמות",
         ja: "(ベータ機能) 除外ファイル(ignore)の使用",
@@ -51,7 +51,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "(e.g., after editing many files whilst offline)": {
         def: "(e.g., after editing many files whilst offline)",
-        es: "(p. ej., tras editar muchos archivos sin conexión)",
+        es: "(p. ej., tras editar muchos archivos estando sin conexión)",
         ko: "(예: 오프라인 상태에서 많은 파일을 편집한 뒤)",
         ru: "(например, после правки многих файлов без сети)",
         "zh-tw": "（例如：離線編輯了大量檔案之後）",
@@ -73,7 +73,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.":
         {
             def: "(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.",
-            es: "(Ej: Leer chunks online) Lee chunks directamente en línea. Aumente tamaño de chunks personalizados",
+            es: "(Ej: Leer chunks online) Lee chunks directamente en línea. Aumenta tamaño de chunks personalizados.",
             fr: "(ex. Lire les fragments en ligne) Si cette option est activée, LiveSync lit les fragments directement en ligne au lieu de les répliquer localement. L'augmentation de la taille personnalisée des fragments est recommandée.",
             he: "(לדוגמה: קריאת נתחים אונליין) אם אפשרות זו מופעלת, LiveSync קורא נתחים ישירות מהשרת מבלי לשכפל אותם מקומית. מומלץ להגדיל את גודל הנתח המותאם אישית.",
             ja: "(例: チャンクをオンラインで読む) このオプションを有効にすると、LiveSyncはチャンクをローカルに複製せず、直接オンラインで読み込みます。カスタムチャンクサイズを増やすことをお勧めします。",
@@ -86,7 +86,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.":
         {
             def: "(MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.",
-            es: "(MB) Saltar cambios en archivos locales/remotos mayores a este tamaño. Si se reduce, se usará versión nueva",
+            es: "(MB) Si se activa, se saltarán cambios en archivos locales y remotos mayores a este tamaño. Si tamaño del archivo se reduce se usará la versión nueva.",
             fr: "(Mo) Si cette valeur est définie, les modifications des fichiers locaux et distants plus grands que cette taille seront ignorées. Si le fichier redevient plus petit, une version plus récente sera utilisée.",
             he: "(MB) אם ערך זה מוגדר, שינויים בקבצים מקומיים ומרוחקים הגדולים מגודל זה יידלגו. אם הקובץ יקטן שוב, ייעשה שימוש בגרסה החדשה יותר.",
             ja: "(MB) この値を設定すると、これより大きいサイズのローカルファイルやリモートファイルの変更はスキップされます。ファイルが再び小さくなった場合は、新しいものが使用されます。",
@@ -137,7 +137,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.": {
         def: "(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.",
-        es: "(RegExp) Déjelo vacío para sincronizar todos los archivos. Defina un filtro como expresión regular para limitar los archivos que se sincronizan.",
+        es: "(RegExp) Déjalo vacío para sincronizar todos los archivos. Definaeun filtro como expresión regular para limitar los archivos sincronizados.",
         ja: "（正規表現）空欄で全ファイルを同期します。正規表現を指定すると、同期対象のファイルを絞り込めます。",
         ko: "(정규식) 비워 두면 모든 파일을 동기화합니다. 정규식을 지정하면 동기화할 파일을 제한할 수 있습니다.",
         ru: "(RegExp) Оставьте пустым, чтобы синхронизировать все файлы. Укажите регулярное выражение, чтобы ограничить синхронизируемые файлы.",
@@ -146,7 +146,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.": {
         def: "(RegExp) If this is set, any changes to local and remote files that match this will be skipped.",
-        es: "(RegExp) Si se establece, se omitirá cualquier cambio en archivos locales y remotos que coincida con este patrón.",
+        es: "(RegExp) Si se establece, se omitirá cualquier cambio en los archivos locales y remotos que coincidan con este patrón.",
         ja: "（正規表現）設定すると、これに一致するローカル／リモートファイルの変更はすべてスキップされます。",
         ko: "(정규식) 설정하면 이 패턴과 일치하는 로컬 및 원격 파일 변경은 모두 건너뜁니다.",
         ru: "(RegExp) Если задано, любые изменения локальных и удалённых файлов, соответствующих этому шаблону, будут пропускаться.",
@@ -161,7 +161,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.":
         {
             def: "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.",
-            es: "(Seleccione esto si está configurando este dispositivo como el primer dispositivo de sincronización). Esta opción es adecuada si es nuevo en LiveSync y desea configurarlo desde cero。",
+            es: "(Selecciona esto si estás configurando este dispositivo como el primer dispositivo de sincronización). Esta opción es adecuada si eres nuevo en LiveSync y quieres configurarlo desde cero。",
             ja: "（この端末を最初の同期端末として設定する場合に選択してください。）LiveSync を初めて利用し、最初から設定したい場合に適しています。",
             ko: "(이 기기를 첫 번째 동기화 기기로 설정한다면 선택하세요.) LiveSync를 처음 사용하며 처음부터 설정하려는 경우에 적합합니다.",
             ru: "(Выберите этот вариант, если настраиваете это устройство как первое устройство синхронизации.) Он подходит, если вы впервые используете LiveSync и хотите настроить всё с нуля.",
@@ -293,7 +293,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.":
         {
             def: "A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.",
-            es: "Un URI de configuración es una única cadena de texto que contiene la dirección del servidor y los datos de autenticación. Si el script de instalación de su servidor generó un URI, usarlo proporciona una configuración sencilla y segura。",
+            es: "Un URI de configuración es una única cadena de texto que contiene la dirección del servidor y los datos de autenticación. Si el script de instalación de tu servidor generó un URI, usarla proporciona una configuración sencilla y segura。",
             ja: "Setup URI は、サーバーアドレスと認証情報を含む 1 本の文字列です。サーバーのインストールスクリプトで生成された URI がある場合は、それを使うと簡単かつ安全に設定できます。",
             ko: "Setup URI는 서버 주소와 인증 정보를 담은 하나의 문자열입니다. 서버 설치 스크립트가 URI를 생성했다면, 이를 사용해 간단하고 안전하게 구성할 수 있습니다.",
             ru: "Setup URI — это одна строка текста, содержащая адрес сервера и данные аутентификации. Если URI был создан скриптом установки сервера, его использование обеспечивает простую и безопасную настройку.",
@@ -393,14 +393,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
         def: "AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.",
-        es: "El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
+        es: "El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy inesperada. Por favor informa de este problema.",
         ko: "애드온 모듈(ConfigSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.",
         ru: "Модуль ConfigSync не загружен. Так быть не должно. Сообщите об этой ошибке.",
         "zh-tw": "附加模組（ConfigSync）尚未載入。這是非常異常的情況，請回報此問題。",
     },
     "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.": {
         def: "AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.",
-        es: "El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es muy inesperada. Informa de este problema.",
+        es: "El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es muy inesperada. Por favor informa de este problema.",
         ko: "애드온 모듈(HiddenFileSync)이 로드되지 않았습니다. 매우 예기치 못한 상황입니다. 이 문제를 신고해 주세요.",
         ru: "Модуль HiddenFileSync не загружен. Так быть не должно. Сообщите об этой ошибке.",
         "zh-tw": "附加模組（HiddenFileSync）尚未載入。這是非常異常的情況，請回報此問題。",
@@ -422,7 +422,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.":
         {
             def: "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.",
-            es: "Tras reiniciar, los datos de este dispositivo se subirán al servidor como «copia maestra». Ten en cuenta que cualquier dato no deseado que haya ahora en el servidor se sobrescribirá por completo.",
+            es: "Tras reiniciar, los datos de este dispositivo se subirán al servidor como «copia maestra». Ten en cuenta que cualquier dato en el servidor se sobrescribirá por completo.",
             ko: "재시작하면 이 기기의 데이터가 '원본'으로서 서버에 업로드됩니다. 현재 서버에 있는 의도치 않은 데이터는 모두 완전히 덮어써진다는 점에 유의해 주세요.",
             ru: "После перезапуска данные с этого устройства уйдут на сервер как «главная копия». Всё, что сейчас лежит на сервере, будет полностью перезаписано.",
             "zh-tw":
@@ -431,7 +431,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.":
         {
             def: "After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.",
-            es: "Tras reiniciar, la base de datos de este dispositivo se reconstruirá con los datos del servidor. Si hay archivos sin sincronizar en este vault, pueden producirse conflictos con los datos del servidor.",
+            es: "Tras reiniciar, la base de datos de este dispositivo se reconstruirá con los datos del servidor. Si hay archivos sin sincronizar en esta bóveda pueden producirse conflictos con los datos del servidor.",
             ko: "재시작하면 서버의 데이터를 사용해 이 기기의 데이터베이스가 재구축됩니다. 이 보관함에 동기화되지 않은 파일이 있다면 서버 데이터와 충돌이 발생할 수 있습니다.",
             ru: "После перезапуска база на этом устройстве пересоберётся из данных сервера. Если в хранилище есть несинхронизированные файлы, возможны конфликты с данными сервера.",
             "zh-tw":
@@ -439,7 +439,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         },
     "After that, synchronise to a brand new vault on each other device with the new remote one by one.": {
         def: "After that, synchronise to a brand new vault on each other device with the new remote one by one.",
-        es: "Después, sincroniza con un vault totalmente nuevo en cada uno de los demás dispositivos, uno por uno, usando el nuevo remoto.",
+        es: "Después, sincroniza con una bóveda totalmente nueva en cada uno de los demás dispositivos, uno por uno, usando el nuevo remoto.",
         ko: "그런 다음 다른 기기에서도 하나씩 새 원격을 사용해 완전히 새로운 보관함에 동기화하세요.",
         ru: "Затем по очереди синхронизируйте каждое другое устройство с новой удалённой базой в новое пустое хранилище.",
         "zh-tw": "之後，請在其他每個裝置上，逐一使用全新的 Vault 與這個新的遠端進行同步。",
@@ -485,7 +485,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.":
         {
             def: "Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.",
-            es: "Además, si usas sincronización punto a punto, esta configuración se aplicará cuando en el futuro cambies a otros métodos y te conectes a un servidor remoto.",
+            es: "Además, si usas sincronización punto a punto, esta configuración también se aplicará en el futuro si cambias a otros métodos de sincronización y te conectas a un servidor remoto.",
             ko: "또한 Peer-to-Peer 동기화를 사용 중이라면, 이 구성은 나중에 다른 방식으로 전환하여 원격 서버에 연결할 때 사용된다는 점에 유의해 주세요.",
             ru: "Также обратите внимание: если вы используете синхронизацию Peer-to-Peer, эта конфигурация будет использована, когда вы позже переключитесь на другие методы и подключитесь к удалённому серверу.",
             "zh-tw":
@@ -493,7 +493,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         },
     "Always prompt merge conflicts": {
         def: "Always prompt merge conflicts",
-        es: "Siempre preguntar en conflictos",
+        es: "Siempre preguntar cuando haya conflictos",
         fr: "Toujours demander pour les conflits de fusion",
         he: "תמיד להציג בקשת אישור לקונפליקטי מיזוג",
         ja: "常に競合は手動で解決する",
@@ -545,7 +545,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Apply Latest Change if Conflicting": {
         def: "Apply Latest Change if Conflicting",
-        es: "Aplicar último cambio en conflictos",
+        es: "Aplicar último cambio si hay conflictos",
         fr: "Appliquer la dernière modification en cas de conflit",
         he: "החל שינוי אחרון בעת קונפליקט",
         ja: "競合がある場合は最新の変更を適用する",
@@ -640,7 +640,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Batch database update": {
         def: "Batch database update",
-        es: "Actualización por lotes de BD",
+        es: "Actualización de base de datos por lotes",
         fr: "Mise à jour groupée de la base de données",
         he: "עדכון אצווה למסד נתונים",
         ja: "データベースのバッチ更新",
@@ -685,7 +685,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.":
         {
             def: "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.",
-            es: "Antes de v0.17.16 usábamos adaptador antiguo. Nuevo adaptador requiere reconstruir BD local. Desactive cuando pueda",
+            es: "Antes de v0.17.16 se usaba el adaptador antiguo. El nuevo adaptador requiere reconstruir la base de datos local. Por favor desactiva esta opción cuando puedas. Si está activa cuando se sincroniza la base de datos se intentará desactivar de nuevo.",
             fr: "Avant la version v0.17.16, nous utilisions un ancien adaptateur pour la base de données locale. Le nouvel adaptateur est désormais recommandé. Cependant, il nécessite une reconstruction de la base locale. Veuillez désactiver cette option lorsque vous aurez suffisamment de temps. Si elle reste activée, il vous sera également demandé de la désactiver lors de la récupération depuis la base distante.",
             he: "לפני גרסה 0.17.16, השתמשנו במתאם ישן למסד הנתונים המקומי. כעת המתאם החדש מועדף. עם זאת, הדבר מצריך בנייה מחדש של מסד הנתונים המקומי. אנא כבה אפשרות זו כשיש לך זמן פנוי. אם תשאיר אותה מופעלת, גם בעת משיכה ממסד הנתונים המרוחק, תתבקש לכבות אותה.",
             ja: "v0.17.6までは古いアダプターをローカル用のデータベースに使用していましたが、現在は新しいアダプターを推奨しています。しかし、新しいアダプターに変更するにはローカルデータベースの再構築が必要です。有効のままにしておくと、リモートデータベースからフェッチする場合に、この設定を無効にするかの質問が表示されます。",
@@ -868,7 +868,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Compaction in progress on remote database...": {
         def: "Compaction in progress on remote database...",
-        es: "Compactación en curso en la base de datos remota...",
+        es: "Compactación en curso de la base de datos remota...",
         ja: "リモートデータベースでコンパクションを実行中です...",
         ko: "원격 데이터베이스에서 압축 정리를 진행 중입니다...",
         ru: "Выполняется компакция удалённой базы данных...",
@@ -1038,7 +1038,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Configure the same server information as your other devices again, manually, very advanced users only.": {
         def: "Configure the same server information as your other devices again, manually, very advanced users only.",
-        es: "Configure manualmente la misma información del servidor que en sus otros dispositivos. Solo para usuarios muy avanzados。",
+        es: "Configura manualmente la misma información del servidor que en sus otros dispositivos. Solo para usuarios muy avanzados。",
         ja: "他の端末と同じサーバー情報を手動で再入力します。上級者向けの方法です。",
         ko: "다른 기기와 동일한 서버 정보를 다시 직접 입력합니다. 숙련된 사용자 전용입니다.",
         ru: "Снова вручную укажите те же параметры сервера, что и на других устройствах. Только для очень опытных пользователей.",
@@ -1532,7 +1532,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "dialog.yourLanguageAvailable": {
         def: "Self-hosted LiveSync had translations for your language, so the %{Display language} setting was enabled.\n\nNote: Not all messages are translated. We are waiting for your contributions!\nNote 2: If you create an Issue, **please revert to Default** and then take screenshots, messages and logs. This can be done in the setting dialogue.\nMay you find it easy to use!",
-        es: "Self-hosted LiveSync tenía traducciones para tu idioma, así que se ha activado el ajuste Idioma de visualización.\n\nNota: no todos los mensajes están traducidos. ¡Esperamos tus contribuciones!\nNota 2: si abres una incidencia, **vuelve antes a Predeterminado** y luego haz las capturas de pantalla y recoge los mensajes y registros. Puedes hacerlo desde el diálogo de ajustes.\n¡Que lo disfrutes!",
+        es: "Self-hosted LiveSync tiene traducciones para tu idioma, así que se ha activado el ajuste Idioma de visualización.\n\nNota: no todos los mensajes están traducidos. ¡Esperamos tus contribuciones!\nNota 2: si abres una incidencia, **vuelve antes a Predeterminado** y luego haz las capturas de pantalla y recoge los mensajes y registros. Puedes hacerlo desde el diálogo de ajustes.\n¡Que lo disfrutes!",
         fr: "Self-hosted LiveSync dispose d'une traduction pour votre langue, le paramètre %{Display language} a donc été activé.\n\nNote : Tous les messages ne sont pas traduits. Nous attendons vos contributions !\nNote 2 : Si vous créez un ticket, **veuillez revenir à Par défaut** puis prendre des captures d'écran, messages et journaux. Cela peut être fait dans la boîte de dialogue des paramètres.\nBonne utilisation !",
         he: "ל-Self-hosted LiveSync יש תרגום לשפתך, ולכן הגדרת %{Display language} הופעלה.\n\nהערה: לא כל ההודעות מתורגמות. אנחנו ממתינים לתרומותיך!\nהערה 2: אם אתה פותח Issue, **אנא חזור ל-%{lang-def}** ואז צלם צילומי מסך, הודעות ויומנים. ניתן לעשות זאת בדיאלוג ההגדרות.\nנקווה שתמצא/י את הפלאגין נוח לשימוש!",
         ja: "Self-hosted LiveSync に設定されている言語の翻訳がありましたので、インターフェースの表示言語が適用されました。\n\n注意： 全てのメッセージは翻訳されていません。あなたの貢献をお待ちしています！\nGithubにIssueを作成する際には、 インターフェースの表示言語 を一旦 Default に戻してから、スクショやメッセージ、ログを収集してください。これは設定から変更できます。\n\n便利に使用できれば幸いです。",
@@ -1555,7 +1555,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "dialog.yourLanguageAvailable.Title": {
         def: " Translation is available!",
-        es: " ¡Hay traducción disponible!",
+        es: " ¡Hay una traducción disponible!",
         fr: " Une traduction est disponible !",
         he: " תרגום זמין!",
         ja: "翻訳が利用可能です！",
@@ -1744,7 +1744,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Doctor.Dialogue.Main": {
         def: "Hi! Config Doctor has been activated because of ${activateReason}!\nAnd, unfortunately some configurations were detected as potential problems.\nPlease be assured. Let's solve them one by one.\n\nTo let you know ahead of time, we will ask you about the following items.\n\n${issues}\n\nShall we get started?",
-        es: "¡Hola! El Doctor de configuración se ha activado por ${activateReason}.\nPor desgracia, se han detectado algunos ajustes como posibles problemas.\nTranquilo: los resolveremos uno a uno.\n\nPara que lo sepas de antemano, te preguntaremos por los siguientes puntos.\n\n${issues}\n\n¿Empezamos?",
+        es: "¡Hola! El Doctor de configuración se ha activado por ${activateReason}.\nPor desgracia, se han detectado algunos ajustes como posibles problemas.\nTranquilo: los resolveremos uno a uno.\n\nPara que lo sepas de antemano, te preguntaremos por lo siguiente.\n\n${issues}\n\n¿Empezamos?",
         fr: "Bonjour ! Config Doctor a été activé en raison de ${activateReason} !\nEt, malheureusement, certaines configurations ont été détectées comme des problèmes potentiels.\nPas d'inquiétude. Résolvons-les un par un.\n\nPour information, nous allons vous interroger sur les éléments suivants.\n\n${issues}\n\nVoulez-vous commencer ?",
         he: "שלום! רופא התצורה הופעל בגלל ${activateReason}!\nולמרבה הצער, זוהו תצורות שעשויות להיות בעייתיות.\nהיה רגוע/ה. בואו נפתור אותן אחת אחת.\n\nלידיעתך מראש, נשאל אותך על הפריטים הבאים.\n\n${issues}\n\nהאם להתחיל?",
         ja: "こんにちは！${activateReason}のため、設定診断ツールが起動しました！\n残念ながら、いくつかの設定が潜在的な問題として検出されました。\nご安心ください。一つずつ解決していきましょう。\n\n事前にお知らせしますと、以下の項目についてお尋ねします。\n\n${issues}\n\n始めていいですか？",
@@ -1856,7 +1856,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Doctor.Message.RebuildLocalRequired": {
         def: "Attention! A local database rebuild is required to apply this!",
-        es: "¡Atención! Hay que reconstruir la base de datos local para aplicar esto.",
+        es: "¡Atención! Hay que reconstruir la base de datos local",
         fr: "Attention ! Une reconstruction de la base locale est requise pour appliquer ceci !",
         he: "שים לב! נדרשת בנייה מחדש של מסד הנתונים המקומי כדי להחיל זאת!",
         ja: "注意！これを適用するにはローカルデータベースの再構築が必要です！",
@@ -1867,7 +1867,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Doctor.Message.RebuildRequired": {
         def: "Attention! A rebuild is required to apply this!",
-        es: "¡Atención! Hay que reconstruir para aplicar esto.",
+        es: "¡Atención! Hay que reconstruir la base de datos",
         fr: "Attention ! Une reconstruction est requise pour appliquer ceci !",
         he: "שים לב! נדרשת בנייה מחדש כדי להחיל זאת!",
         ja: "注意！これを適用するには再構築が必要です！",
@@ -2063,7 +2063,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.":
         {
             def: "Enabling end-to-end encryption ensures that your data is encrypted on your device before being sent to the remote server. This means that even if someone gains access to the server, they won't be able to read your data without the passphrase. Make sure to remember your passphrase, as it will be required to decrypt your data on other devices.",
-            es: "Activar el cifrado de extremo a extremo garantiza que tus datos se cifren en tu dispositivo antes de enviarse al servidor remoto. Así, aunque alguien acceda al servidor, no podrá leer tus datos sin la frase de contraseña. Recuérdala bien, porque será necesaria para descifrar tus datos en los demás dispositivos.",
+            es: "Activar el cifrado de extremo a extremo garantiza que tus datos se cifren en tu dispositivo antes de enviarse al servidor remoto. Así, aunque alguien acceda al servidor, no podrá leer tus datos sin la frase de contraseña. Recuérdala bien porque será necesaria para descifrar tus datos en los demás dispositivos.",
             ko: "종단 간 암호화를 활성화하면 데이터가 원격 서버로 전송되기 전에 기기에서 암호화됩니다. 따라서 누군가 서버에 접근하더라도 패스프레이즈 없이는 데이터를 읽을 수 없습니다. 다른 기기에서 데이터를 복호화할 때 필요하므로 패스프레이즈를 반드시 기억해 두세요.",
             ru: "Сквозное шифрование шифрует данные на устройстве до отправки на удалённый сервер. Даже если кто-то получит доступ к серверу, без парольной фразы он не прочитает данные. Запомните парольную фразу: она нужна, чтобы расшифровать данные на других устройствах.",
             "zh-tw":
@@ -2072,7 +2072,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.":
         {
             def: "Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.",
-            es: "Cifrar contenido en la base de datos remota. Se recomienda habilitar si usa la sincronización del plugin.",
+            es: "Cifrar contenido en la base de datos remota. Se recomienda habilitar si usa la sincronización del complemento.",
             fr: "Chiffrer le contenu sur la base de données distante. Si vous utilisez la fonction de synchronisation du plugin, l'activation est recommandée.",
             he: "הצפן תוכן במסד הנתונים המרוחק. אם אתה משתמש בתכונת הסנכרון של התוסף, מומלץ להפעיל זאת.",
             ja: "リモートデータベースの暗号化（オンにすることを推奨）",
@@ -2349,7 +2349,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Failed to parse Setup-URI.": {
         def: "Failed to parse Setup-URI.",
-        es: "No se pudo interpretar el Setup-URI.",
+        es: "No se pudo interpretar el Setup URI.",
         ko: "Setup-URI를 해석하지 못했습니다.",
         ru: "Не удалось разобрать Setup-URI.",
         "zh-tw": "無法解析 Setup URI。",
@@ -2401,7 +2401,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Fetch database with previous behaviour": {
         def: "Fetch database with previous behaviour",
-        es: "Obtener BD con comportamiento anterior",
+        es: "Obtener base de datos con comportamiento anterior",
         fr: "Récupérer la base de données avec le comportement précédent",
         he: "משוך מסד נתונים עם התנהגות קודמת",
         ja: "以前の動作でデータベースを取得",
@@ -2476,7 +2476,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "First, please select the option that best describes your current situation.": {
         def: "First, please select the option that best describes your current situation.",
-        es: "Primero, seleccione la opción que describa mejor su situación actual。",
+        es: "Primero, seleccione la opción que mejor describa tu situación actual。",
         ja: "まず、現在の状況に最も近い項目を選択してください。",
         ko: "먼저 현재 상황에 가장 잘 맞는 항목을 선택해 주세요.",
         ru: "Сначала выберите вариант, который лучше всего описывает вашу текущую ситуацию.",
@@ -2516,7 +2516,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.":
         {
             def: "For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.",
-            es: "Para los algoritmos HS256/HS512, indica la clave secreta compartida. Para ES256/ES512, indica la clave privada en formato PEM pkcs8.",
+            es: "Indica la clave secreta compartida para los algoritmos HS256/HS512. Para ES256/ES512, indica la clave privada en formato PEM pkcs8.",
             ko: "HS256/HS512 알고리즘에는 공유 시크릿 키를, ES256/ES512 알고리즘에는 pkcs8 PEM 형식의 개인 키를 입력하세요.",
             ru: "Для алгоритмов HS256/HS512 укажите общий секретный ключ. Для алгоритмов ES256/ES512 укажите закрытый ключ в формате pkcs8 PEM.",
             "zh-tw": "HS256/HS512 演算法請提供共用密鑰；ES256/ES512 演算法請提供 pkcs8 PEM 格式的私密金鑰。",
@@ -2714,7 +2714,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "How would you like to configure the connection to your server?": {
         def: "How would you like to configure the connection to your server?",
-        es: "¿Cómo desea configurar la conexión con su servidor?",
+        es: "¿Cómo quieres configurar la conexión con tu servidor?",
         ja: "サーバー接続をどのように設定しますか？",
         ko: "서버 연결을 어떻게 구성하시겠습니까?",
         ru: "Как вы хотите настроить подключение к серверу?",
@@ -2755,28 +2755,28 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "I am unable to create a backup of my Vault.": {
         def: "I am unable to create a backup of my Vault.",
-        es: "No puedo crear una copia de seguridad de mi Vault.",
+        es: "No puedo crear una copia de seguridad de mi bóveda.",
         ko: "보관함을 백업할 수 없습니다.",
         ru: "Я не могу сделать резервную копию хранилища.",
         "zh-tw": "我無法備份我的 Vault。",
     },
     "I am unable to create a backup of my Vaults.": {
         def: "I am unable to create a backup of my Vaults.",
-        es: "No puedo crear una copia de seguridad de mis Vaults.",
+        es: "No puedo crear una copia de seguridad de mis bóvedas.",
         ko: "보관함들을 백업할 수 없습니다.",
         ru: "Я не могу сделать резервные копии хранилищ.",
         "zh-tw": "我無法備份我的 Vault。",
     },
     "I have created a backup of my Vault.": {
         def: "I have created a backup of my Vault.",
-        es: "He creado una copia de seguridad de mi Vault.",
+        es: "He creado una copia de seguridad de mi bóveda.",
         ko: "보관함을 백업했습니다.",
         ru: "Я сделал резервную копию хранилища.",
         "zh-tw": "我已經備份了我的 Vault。",
     },
     "I know my server details, let me enter them": {
         def: "I know my server details, let me enter them",
-        es: "Conozco los datos de mi servidor; permítame introducirlos",
+        es: "Conozco los datos de mi servidor; déjame introducirlos",
         ja: "サーバー情報を把握しているので、自分で入力します",
         ko: "서버 정보를 알고 있으니 직접 입력하겠습니다",
         ru: "Я знаю параметры сервера, позвольте ввести их вручную",
@@ -2822,14 +2822,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.':
         {
             def: 'If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.',
-            es: "Si «Iniciar la conexión P2P automáticamente» está activado, la conexión P2P se iniciará al arrancar el complemento.",
+            es: "Si «Iniciar la conexión P2P automáticamente» está activada, la conexión P2P se iniciará al arrancar el complemento.",
             ko: '"P2P 연결 자동 시작"이 활성화되어 있으면 플러그인이 시작될 때 P2P 연결이 자동으로 시작됩니다.',
             ru: "Если включён параметр «Автозапуск соединения P2P», соединение P2P запускается при старте плагина.",
             "zh-tw": "若啟用「自動啟動 P2P 連線」，外掛啟動時會自動建立 P2P 連線。",
         },
     "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).": {
         def: "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).",
-        es: "Si se desactiva, chunks se dividen en hilo UI (comportamiento anterior)",
+        es: "Si se desactiva, los chunks se dividen en el hilo de UI (comportamiento anterior)",
         fr: "Si désactivé, les fragments seront découpés sur le thread UI (comportement précédent).",
         he: "אם מכובה, נתחים יפוצלו בשרשור ממשק המשתמש (התנהגות קודמת).",
         ja: "無効（トグル）にすると、チャンクはUIスレッドで分割されます（以前の動作）。",
@@ -2841,7 +2841,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.":
         {
             def: "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.",
-            es: "Habilita sincronización eficiente por archivo. Requiere migración y actualizar todos dispositivos a v0.23.18. Pierde compatibilidad con versiones antiguas",
+            es: "Habilita sincronización eficiente por archivo. Requiere migración y actualizar todos los dispositivos a v0.23.18. Pierde compatibilidad con versiones antiguas.",
             fr: "Si activée, la synchronisation de personnalisation efficace par fichier sera utilisée. Une petite migration est nécessaire lors de l'activation. Tous les appareils doivent être à jour en v0.23.18. Une fois cette option activée, la compatibilité avec les anciennes versions est perdue.",
             he: "אם מופעל, ייעשה שימוש בסנכרון התאמה אישית יעיל לפי קובץ. נדרשת הגירה קטנה בעת ההפעלה. כל המכשירים צריכים להיות מעודכנים לגרסה 0.23.18. לאחר ההפעלה, התאימות לגרסאות ישנות תיפגע.",
             ja: "有効にすると、ファイルごとの効率的なカスタマイズ同期が使用されます。有効化時に小規模な移行が必要です。また、すべてのデバイスをv0.23.18にアップデートする必要があります。一度有効にすると、古いバージョンとの互換性がなくなります。",
@@ -2865,7 +2865,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.":
         {
             def: "If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.",
-            es: "Chunks nuevos se mantienen temporalmente en el documento hasta estabilizarse",
+            es: "Chunks nuevos se mantienen temporalmente en el documento hasta estabilizarse.",
             fr: "Si activée, les fragments nouvellement créés sont temporairement conservés dans le document et promus en fragments indépendants une fois stabilisés.",
             he: "אם מופעל, נתחים שנוצרו לאחרונה נשמרים זמנית בתוך המסמך, ומוסמכים לנתחים עצמאיים לאחר יציבות.",
             ja: "有効にすると、新しく作成されたチャンクはドキュメント内に一時的に保持され、安定したら独立したチャンクになります。",
@@ -2888,7 +2888,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         },
     "If enabled, the file under 1kb will be processed in the UI thread.": {
         def: "If enabled, the file under 1kb will be processed in the UI thread.",
-        es: "Archivos <1kb se procesan en hilo UI",
+        es: "Archivos <1kb se procesan en el hilo de UI",
         fr: "Si activée, les fichiers de moins de 1 Ko seront traités sur le thread UI.",
         he: "אם מופעל, קבצים קטנים מ-1KB יעובדו בשרשור ממשק המשתמש.",
         ja: "有効にすると、1kb未満のファイルはUIスレッドで処理されます。",
@@ -2933,7 +2933,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.":
         {
             def: "If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.",
-            es: "Divide chunks en segmentos semánticos. No todos los sistemas lo soportan",
+            es: "Divide chunks en segmentos semánticos. No todos los sistemas lo soportan.",
             fr: "Si activée, les fragments seront découpés en segments sémantiquement signifiants. Toutes les plateformes ne prennent pas en charge cette fonctionnalité.",
             he: "אם מופעל, נתחים יפוצלו לחלקים עם משמעות סמנטית. לא כל הפלטפורמות תומכות בתכונה זו.",
             ja: "有効にすると、チャンクは意味的に有意なセグメントに分割されます。すべてのプラットフォームがこの機能をサポートしているわけではありません。",
@@ -2945,7 +2945,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.":
         {
             def: "If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.",
-            es: "Saltar cambios en archivos locales que coincidan con ignore files. Cambios remotos usan ignore files locales",
+            es: "Saltar cambios en archivos locales que coincidan con ignore files. Cambios remotos usan ignore files locales.",
             fr: "Si défini, les modifications des fichiers locaux correspondant aux fichiers d'exclusion seront ignorées. Les changements distants sont déterminés à l'aide des fichiers d'exclusion locaux.",
             he: "אם מוגדר, שינויים בקבצים מקומיים התואמים לקבצי ההתעלמות יידלגו. שינויים מרוחקים נקבעים לפי קבצי ההתעלמות המקומיים.",
             ja: "これを設定すると、除外ファイルに一致するローカルファイルの変更はスキップされます。リモートの変更はローカルの無視ファイルを使用して判定されます。",
@@ -2957,7 +2957,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.":
         {
             def: "If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.",
-            es: "Mantiene conexión 60s. Si no hay cambios, reinicia socket. Útil con proxies limitantes",
+            es: "Mantiene una conexión abierta por 60s en CouchDB. Si no hay cambios, se reinicia socket en vez de dejarlo abierto de forma indefinida. Útil con proxies limitantes pero puede aumentar el uso de recursos.",
             fr: "Si cette option est activée, PouchDB maintiendra la connexion ouverte pendant 60 secondes, et si aucun changement n'arrive durant cette période, fermera et rouvrira la socket au lieu de la garder ouverte indéfiniment. Utile lorsqu'un proxy limite la durée des requêtes, mais peut augmenter l'utilisation des ressources.",
             he: "אם אפשרות זו מופעלת, PouchDB ישמור את החיבור פתוח ל-60 שניות, ואם אין שינוי בפרק זמן זה, יסגור ויפתח מחדש את השקע, במקום להחזיק אותו פתוח ללא הגבלה. שימושי כשפרוקסי מגביל משך בקשות, אך עשוי להגביר שימוש במשאבים.",
             ja: "このオプションを有効にすると、PouchDBは接続を60秒間保持し、その間に通信がない場合、一度接続を閉じて再接続します。接続を無期限に保持する代わりにこの動作を行います。プロキシ(Cloudflareなど)がリクエストの持続時間を制限している場合に有用ですが、リソース使用量が増加する可能性があります。",
@@ -2988,7 +2988,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.":
         {
             def: "If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.",
-            es: "Si tienes cambios sin sincronizar en el Vault de este dispositivo, es probable que divergan de las versiones del servidor tras el restablecimiento. Esto puede provocar un gran número de conflictos de archivos.",
+            es: "Si tienes cambios sin sincronizar en la bóveda de este dispositivo, es probable que diverjan de las versiones del servidor tras el restablecimiento. Esto puede provocar un gran número de conflictos de archivos.",
             ko: "이 기기의 보관함에 동기화되지 않은 변경 사항이 있다면, 초기화 후 서버의 버전과 어긋나기 쉽습니다. 그 결과 많은 파일에서 충돌이 발생할 수 있습니다.",
             ru: "Если в хранилище на этом устройстве есть несинхронизированные изменения, после сброса они разойдутся с версиями на сервере. Тогда появится много конфликтов файлов.",
             "zh-tw":
@@ -2997,7 +2997,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.":
         {
             def: "If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.",
-            es: "Si alcanzas el límite de tamaño de carga al usar IBM Cloudant, reduce el tamaño de lote y el límite de lote.",
+            es: "Si alcanzas el límite de tamaño de carga al usar IBM Cloudant, por favor reduce el tamaño de lote y el límite de lote.",
             ko: "IBM Cloudant를 사용하다가 페이로드 크기 제한에 도달했다면, 배치 크기와 배치 개수 제한을 더 낮은 값으로 줄여 주세요.",
             ru: "Если при работе с IBM Cloudant вы упёрлись в предел размера запроса, уменьшите размер пакета и лимит пакета.",
             "zh-tw": "如果你在使用 IBM Cloudant 時遇到負載大小上限，請調低批次大小與批次上限。",
@@ -3081,7 +3081,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.":
         {
             def: "In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.",
-            es: "En la mayoría de los casos deberías mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes un Vault cifrado en otro formato.",
+            es: "En la mayoría de los casos deberías mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes una bóveda cifrada en otro formato.",
             ko: "대부분의 경우 기본 알고리즘(${algorithm})을 그대로 사용하는 것이 좋습니다. 이 설정은 기존 보관함이 다른 형식으로 암호화되어 있는 경우에만 필요합니다.",
             ru: "В большинстве случаев оставьте алгоритм по умолчанию (${algorithm}). Этот параметр нужен, только если у вас уже есть хранилище, зашифрованное в другом формате.",
             "zh-tw":
@@ -4250,7 +4250,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "moduleLiveSyncMain.logAdditionalSafetyScan": {
         def: "Additional safety scan...",
-        es: "Escanéo de seguridad adicional...",
+        es: "Escaneo de seguridad adicional...",
         fr: "Analyse de sécurité supplémentaire...",
         he: "סריקת בטיחות נוספת...",
         ja: "追加の安全スキャン中...",
@@ -4304,7 +4304,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "moduleLiveSyncMain.logSafetyScanCompleted": {
         def: "Additional safety scan completed",
-        es: "Escanéo de seguridad adicional completado",
+        es: "Escaneo de seguridad adicional completado",
         fr: "Analyse de sécurité supplémentaire terminée",
         he: "סריקת הבטיחות הנוספת הושלמה",
         ja: "追加の安全スキャンが完了しました",
@@ -4349,7 +4349,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "moduleLiveSyncMain.msgScramEnabled": {
         def: "Self-hosted LiveSync has been configured to ignore some events. Is this correct?\n\n| Type | Status | Note |\n|:---:|:---:|---|\n| Storage Events | ${fileWatchingStatus} | Every modification will be ignored |\n| Database Events | ${parseReplicationStatus} | Every synchronised change will be postponed |\n\nDo you want to resume them and restart Obsidian?\n\n> [!DETAILS]-\n> These flags are set by the plug-in while rebuilding, or fetching. If the process ends abnormally, it may be kept unintended.\n> If you are not sure, you can try to rerun these processes. Make sure to back your vault up.\n",
-        es: "Self-hosted LiveSync se ha configurado para ignorar algunos eventos. ¿Es esto correcto?\n\n| Tipo | Estado | Nota |\n|:---:|:---:|---|\n| Eventos de almacenamiento | ${fileWatchingStatus} | Se ignorará cada modificación |\n| Eventos de base de datos | ${parseReplicationStatus} | Cada cambio sincronizado se pospondrá |\n\n¿Quieres reanudarlos y reiniciar Obsidian?\n\n> [!DETAILS]-\n> Estas banderas son establecidas por el complemento mientras se reconstruye o se obtiene. Si el proceso termina de forma anormal, puede mantenerse sin querer.\n> Si no estás seguro, puedes intentar volver a ejecutar estos procesos. Asegúrate de hacer una copia de seguridad de tu bóveda.\n",
+        es: "Self-hosted LiveSync se ha configurado para ignorar algunos eventos. ¿Es esto correcto?\n\n| Tipo | Estado | Nota |\n|:---:|:---:|---|\n| Eventos de almacenamiento | ${fileWatchingStatus} | Se ignorará cada modificación |\n| Eventos de base de datos | ${parseReplicationStatus} | Cada cambio sincronizado se pospondrá |\n\n¿Quieres reanudarlos y reiniciar Obsidian?\n\n> [!DETAILS]-\n> Estas banderas son establecidas por el complemento mientras se reconstruye o se obtiene. Si el proceso termina de forma anormal, puede mantenerse sin querer.\n> Si no estás seguro puedes intentar volver a ejecutar estos procesos. Asegúrate de hacer una copia de seguridad de tu bóveda.\n",
         fr: "Self-hosted LiveSync a été configuré pour ignorer certains événements. Est-ce correct ?\n\n| Type | Statut | Note |\n|:---:|:---:|---|\n| Événements de stockage | ${fileWatchingStatus} | Toute modification sera ignorée |\n| Événements de base | ${parseReplicationStatus} | Tout changement synchronisé sera reporté |\n\nVoulez-vous les reprendre et redémarrer Obsidian ?\n\n> [!DETAILS]-\n> Ces indicateurs sont définis par le plug-in lors d'une reconstruction ou d'une récupération. Si le processus se termine anormalement, ils peuvent rester activés involontairement.\n> Si vous n'êtes pas certain, vous pouvez relancer ces processus. Veillez à sauvegarder votre coffre.\n",
         he: "Self-hosted LiveSync הוגדר להתעלם מאירועים מסוימים. האם זה נכון?\n\n| סוג | סטטוס | הערה |\n|:---:|:---:|---|\n| אירועי אחסון | ${fileWatchingStatus} | כל שינוי יתעלם |\n| אירועי מסד נתונים | ${parseReplicationStatus} | כל שינוי מסונכרן יידחה |\n\nהאם לחדש אותם ולהפעיל מחדש את Obsidian?\n\n> [!DETAILS]-\n> דגלים אלה מוגדרים על ידי הפלאגין במהלך בנייה מחדש או משיכה. אם התהליך הסתיים בצורה לא תקינה, ייתכן שהם נשארו כלא מכוון.\n> אם אינך בטוח, ניתן לנסות להריץ מחדש את התהליכים. ודא שיש לך גיבוי של הכספת.\n",
         ja: "Self-hosted LiveSyncは一部のイベントを無視するように設定されています。これは正しいですか？\n\n| タイプ | ステータス | メモ |\n|:---:|:---:|---|\n| ストレージイベント | ${fileWatchingStatus} | すべての変更が無視されます |\n| データベースイベント | ${parseReplicationStatus} | すべての同期された変更が延期されます |\n\nこれらを再開してObsidianを再起動しますか？\n\n> [!DETAILS]-\n> これらのフラグは、プラグインが再構築またはフェッチ中に設定されます。プロセスが異常終了した場合、意図せず保持されることがあります。\n> 不明な場合は、これらのプロセスを再実行してみてください。必ず保管庫をバックアップしてください。\n",
@@ -4532,7 +4532,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "moduleMigration.insecureChunkExist.message": {
         def: "Some chunks are not securely stored and are not encrypted in databases.\n**Please rebuild the database to fix this issue**.\n\nIf your Remote Database is not configured with SSL, or using less-secure credentials, **you are at risk of exposing sensitive data**.\n\nNote: Please upgrade your Self-hosted LiveSync v0.25.6 or higher on all your devices, and back your vault up surely.\nNote2: Rebuild Everything and Fetch consumes a bit of time and traffic, please do it in off-peak hours and ensure a stable network connection.\n",
-        es: "Algunos chunks no se almacenan de forma segura y no están cifrados en las bases de datos.\n**Reconstruye la base de datos para solucionarlo**.\n\nSi tu base de datos remota no está configurada con SSL o usa credenciales poco seguras, **corres el riesgo de exponer datos sensibles**.\n\nNota: actualiza Self-hosted LiveSync a la v0.25.6 o superior en todos tus dispositivos y haz una copia de seguridad fiable de tu vault.\nNota 2: reconstruir todo y obtener los datos consume algo de tiempo y de tráfico; hazlo en horas de poco uso y con una conexión de red estable.\n",
+        es: "Algunos chunks no se almacenan de forma segura y no están cifrados en las bases de datos.\n**Reconstruye la base de datos para solucionarlo**.\n\nSi tu base de datos remota no está configurada con SSL o usa credenciales poco seguras, **corres el riesgo de exponer datos sensibles**.\n\nNota: actualiza Self-hosted LiveSync a la v0.25.6 o superior en todos tus dispositivos y haz una copia de seguridad fiable de tu bóveda.\nNota 2: reconstruir todo y obtener los datos consume algo de tiempo y de tráfico; hazlo en horas de poco uso y con una conexión de red estable.\n",
         fr: "Certains fragments ne sont pas stockés de façon sécurisée et ne sont pas chiffrés dans les bases.\n**Veuillez reconstruire la base pour corriger ce problème.**\n\nSi votre base distante n'est pas configurée avec SSL, ou utilise des identifiants peu sûrs, **vous risquez d'exposer des données sensibles**.\n\nNote : Veuillez mettre à jour Self-hosted LiveSync en v0.25.6 ou supérieur sur tous vos appareils, et sauvegardez votre coffre avec soin.\nNote 2 : Tout reconstruire et Récupérer consomme un peu de temps et de bande passante, veuillez le faire hors des heures de pointe et avec une connexion réseau stable.\n",
         he: "חלק מהנתחים לא מאוחסנים בצורה מאובטחת ואינם מוצפנים במסד הנתונים.\n**אנא בנה מחדש את מסד הנתונים כדי לתקן בעיה זו**.\n\nאם מסד הנתונים המרוחד אינו מוגדר עם SSL, או משתמש בפרטי גישה פחות מאובטחים, **אתה בסיכון של חשיפת מידע רגיש**.\n\nהערה: אנא שדרג את Self-hosted LiveSync לגרסה 0.25.6 ומעלה על כל מכשיריך, וגבה את הכספת שלך.\nהערה 2: בנייה מחדש ומשיכה דורשות זמן ותעבורת רשת. אנא עשה זאת בשעות שיא נמוך וודא חיבור רשת יציב.\n",
         ja: "一部のチャンクが安全に保存されておらず、データベースで暗号化されていません。\n**この問題を修正するにはデータベースを再構築してください**。\n\nリモートデータベースがSSLで設定されていない、または安全性の低い認証情報を使用している場合、**機密データが漏洩するリスクがあります**。\n\n注意: すべてのデバイスでSelf-hosted LiveSync v0.25.6以降にアップグレードし、必ず保管庫をバックアップしてください。\n注意2: すべてを再構築とフェッチは時間とトラフィックを消費します。オフピーク時間に安定したネットワークで実行してください。\n",
@@ -5899,7 +5899,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.msgIfConfigNotPersistent": {
         def: "If the server configuration is not persistent (e.g., running on docker), the values here may change. Once you are able to connect, please update the settings in the server's local.ini.",
-        es: "Si la configuración del servidor no es persistente (por ejemplo, ejecutándose en docker), los valores aquí pueden cambiar. Una vez que puedas conectarte, por favor actualiza las configuraciones en el local.ini del servidor.",
+        es: "Si la configuración del servidor no es persistente (por ejemplo, ejecutándose en Docker), los valores aquí pueden cambiar. Una vez que puedas conectarte, por favor actualiza las configuraciones en el local.ini del servidor.",
         fr: "Si la configuration du serveur n'est pas persistante (par ex. fonctionnant sur Docker), les valeurs peuvent changer. Une fois la connexion établie, mettez à jour les paramètres dans le local.ini du serveur.",
         he: "אם תצורת השרת אינה קבועה (למשל, פועלת ב-docker), הערכים כאן עשויים להשתנות. לאחר שתצליח להתחבר, אנא עדכן את ההגדרות ב-local.ini של השרת.",
         ja: "サーバー設定が永続的でない場合（例: Dockerで実行中）、ここの値は変更される可能性があります。接続できるようになったら、サーバーのlocal.iniの設定を更新してください。",
@@ -6265,7 +6265,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okCorsOriginMatched": {
         def: "✔ CORS origin OK",
-        es: "✔ Origen de CORS correcto",
+        es: "✔ Origen de CORS es correcto",
         fr: "✔ Origine CORS OK",
         he: "✔ CORS origin תקין",
         ja: "✔ CORSオリジンOK",
@@ -6276,7 +6276,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okCorsOrigins": {
         def: "✔ cors.origins is ok.",
-        es: "✔ cors.origins está correcto.",
+        es: "✔ cors.origins es correcto.",
         fr: "✔ cors.origins est correct.",
         he: "✔ cors.origins תקין.",
         ja: "✔ cors.originsは正常です。",
@@ -6287,7 +6287,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okEnableCors": {
         def: "✔ httpd.enable_cors is ok.",
-        es: "✔ httpd.enable_cors está correcto.",
+        es: "✔ httpd.enable_cors es correcto.",
         fr: "✔ httpd.enable_cors est correct.",
         he: "✔ httpd.enable_cors תקין.",
         ja: "✔ httpd.enable_corsは正常です。",
@@ -6309,7 +6309,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okMaxDocumentSize": {
         def: "✔ couchdb.max_document_size is ok.",
-        es: "✔ couchdb.max_document_size está correcto.",
+        es: "✔ couchdb.max_document_size es correcto.",
         fr: "✔ couchdb.max_document_size est correct.",
         he: "✔ couchdb.max_document_size תקין.",
         ja: "✔ couchdb.max_document_sizeは正常です。",
@@ -6320,7 +6320,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okMaxRequestSize": {
         def: "✔ chttpd.max_http_request_size is ok.",
-        es: "✔ chttpd.max_http_request_size está correcto.",
+        es: "✔ chttpd.max_http_request_size es correcto.",
         fr: "✔ chttpd.max_http_request_size est correct.",
         he: "✔ chttpd.max_http_request_size תקין.",
         ja: "✔ chttpd.max_http_request_sizeは正常です。",
@@ -6331,7 +6331,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okRequireValidUser": {
         def: "✔ chttpd.require_valid_user is ok.",
-        es: "✔ chttpd.require_valid_user está correcto.",
+        es: "✔ chttpd.require_valid_user es correcto.",
         fr: "✔ chttpd.require_valid_user est correct.",
         he: "✔ chttpd.require_valid_user תקין.",
         ja: "✔ chttpd.require_valid_userは正常です。",
@@ -6342,7 +6342,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okRequireValidUserAuth": {
         def: "✔ chttpd_auth.require_valid_user is ok.",
-        es: "✔ chttpd_auth.require_valid_user está correcto.",
+        es: "✔ chttpd_auth.require_valid_user es correcto.",
         fr: "✔ chttpd_auth.require_valid_user est correct.",
         he: "✔ chttpd_auth.require_valid_user תקין.",
         ja: "✔ chttpd_auth.require_valid_userは正常です。",
@@ -6353,7 +6353,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.okWwwAuth": {
         def: "✔ httpd.WWW-Authenticate is ok.",
-        es: "✔ httpd.WWW-Authenticate está correcto.",
+        es: "✔ httpd.WWW-Authenticate es correcto.",
         fr: "✔ httpd.WWW-Authenticate est correct.",
         he: "✔ httpd.WWW-Authenticate תקין.",
         ja: "✔ httpd.WWW-Authenticateは正常です。",
@@ -6496,7 +6496,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "obsidianLiveSyncSettingTab.optionRebuildBoth": {
         def: "Rebuild Both from This Device",
-        es: "Reconstructuir ambos desde este dispositivo",
+        es: "Reconstruir ambos desde este dispositivo",
         fr: "Tout reconstruire depuis cet appareil",
         he: "בנה שניהם מחדש ממכשיר זה",
         ja: "このデバイスから両方を再構築",
@@ -7000,7 +7000,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "On this device, please keep this Vault open.": {
         def: "On this device, please keep this Vault open.",
-        es: "En este dispositivo, mantén este Vault abierto.",
+        es: "En este dispositivo, mantén esta bóveda abierta.",
         ko: "이 기기에서는 이 보관함을 계속 열어 두세요.",
         ru: "На этом устройстве не закрывайте хранилище.",
         "zh-tw": "在這台裝置上，請保持此 Vault 開啟。",
@@ -7178,7 +7178,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "P2P.Note.description": {
         def: " This replicator allows us to synchronise our vault with other devices\nusing a peer-to-peer connection. We can use this to synchronise our vault with our other devices without using a cloud service.\nThis replicator is based on Trystero. It also uses a signalling server to establish a connection between devices. The signalling server is used to exchange connection information between devices. It does (or,should) not know or store any of our data.\n\nThe signalling server can be hosted by anyone. This is just a Nostr relay. For the sake of simplicity and checking the behaviour of the replicator, an instance of the signalling server is hosted by vrtmrz. You can use the experimental server provided by vrtmrz, or you can use any other server.\n\nBy the way, even if the signalling server does not store our data, it can see the connection information of some of our devices. Please be aware of this. Also, be cautious when using the server provided by someone else.",
-        es: " Este replicador permite sincronizar el vault con otros dispositivos\nmediante una conexión punto a punto. Así se puede sincronizar con nuestros otros dispositivos sin usar un servicio en la nube.\nEl replicador se basa en Trystero. Usa además un servidor de señalización para establecer la conexión entre dispositivos. Ese servidor sirve para intercambiar la información de conexión y no conoce (ni debería almacenar) ninguno de nuestros datos.\n\nCualquiera puede alojar el servidor de señalización: es simplemente un relé Nostr. Por comodidad y para poder comprobar el comportamiento del replicador, vrtmrz aloja una instancia. Puedes usar ese servidor experimental o cualquier otro.\n\nPor cierto, aunque el servidor de señalización no almacene nuestros datos, sí puede ver la información de conexión de algunos de nuestros dispositivos. Tenlo en cuenta y ten precaución al usar un servidor de terceros.",
+        es: " Este replicador permite sincronizar la bóveda con otros dispositivos\nmediante una conexión punto a punto. Así se puede sincronizar con nuestros otros dispositivos sin usar un servicio en la nube.\nEl replicador se basa en Trystero. Usa además un servidor de señalización para establecer la conexión entre dispositivos. Ese servidor sirve para intercambiar la información de conexión y no conoce (ni debería almacenar) ninguno de nuestros datos.\n\nCualquiera puede alojar el servidor de señalización: es simplemente un relé Nostr. Por comodidad y para poder comprobar el comportamiento del replicador, vrtmrz aloja una instancia. Puedes usar ese servidor experimental o cualquier otro.\n\nPor cierto, aunque el servidor de señalización no almacene nuestros datos, sí puede ver la información de conexión de algunos de nuestros dispositivos. Tenlo en cuenta y ten precaución al usar un servidor de terceros.",
         fr: " Ce réplicateur permet de synchroniser notre coffre avec d'autres\nappareils via une connexion pair-à-pair. Nous pouvons l'utiliser pour synchroniser notre coffre avec nos autres appareils sans recourir à un service cloud.\nCe réplicateur est basé sur Trystero. Il utilise également un serveur de signalisation pour établir une connexion entre les appareils. Le serveur de signalisation sert à échanger les informations de connexion entre appareils. Il ne connaît (ou ne devrait connaître) ni ne stocke aucune de nos données.\n\nLe serveur de signalisation peut être hébergé par n'importe qui. Il s'agit simplement d'un relais Nostr. Par souci de simplicité et pour vérifier le comportement du réplicateur, une instance du serveur de signalisation est hébergée par vrtmrz. Vous pouvez utiliser le serveur expérimental fourni par vrtmrz, ou tout autre serveur.\n\nAu passage, même si le serveur de signalisation ne stocke pas nos données, il peut voir les informations de connexion de certains de nos appareils. Soyez-en conscient. Soyez également prudent avec un serveur fourni par quelqu'un d'autre.",
         he: " רפליקטור זה מאפשר לסנכרן את הכספת עם מכשירים אחרים באמצעות חיבור עמית-לעמית.\nניתן להשתמש בזה לסנכרון הכספת עם מכשירים אחרים ללא שירות ענן.\nרפליקטור זה מבוסס על Trystero. הוא משתמש גם בשרת אותות לביסוס חיבור בין מכשירים. שרת האותות משמש להחלפת מידע חיבור בין מכשירים. הוא אינו (ולא אמור) לדעת או לאחסן את הנתונים שלנו.\n\nשרת האותות יכול להיות מאוחסן על ידי כל אחד. זהו ממסר Nostr בלבד. לצורך פשטות ובדיקת התנהגות הרפליקטור, vrtmrz מאחסן עותק של שרת האותות. ניתן להשתמש בשרת הניסיוני של vrtmrz, או בכל שרת אחר.\n\nאגב, גם אם שרת האותות אינו מאחסן נתונים, הוא יכול לראות מידע חיבור של חלק ממכשיריך. אנא שים לב לכך. כמו כן, היה זהיר בשימוש בשרת של מישהו אחר.",
         ja: "このレプリケーターは、ピアツーピア接続を使用して、Vaultを他のデバイスと同期することができます。クラウドサービスを使用せずに、他のデバイスとVaultを同期することができます。\nこのレプリケーターはTrysteroをベースにしています。デバイス間の接続を確立するためにシグナリングサーバーを使用します。シグナリングサーバーはデバイス間で接続情報を交換するために使用されます。私たちのデータを知ったり保存したりすることはありません（または、そうあるべきではありません）。\n\nシグナリングサーバーは誰でもホストできます。これは単なるNostrリレーです。簡便さとレプリケーターの動作確認のために、vrtmrzがシグナリングサーバーのインスタンスをホストしています。vrtmrzが提供する実験用サーバーを使用することも、他のサーバーを使用することもできます。\n\nなお、シグナリングサーバーが私たちのデータを保存しなくても、一部のデバイスの接続情報を見ることができます。これにご注意ください。また、他の人が提供するサーバーを使用する場合は注意してください。",
@@ -7408,7 +7408,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Paste the Setup URI generated from one of your active devices.": {
         def: "Paste the Setup URI generated from one of your active devices.",
-        es: "Pegue el URI de configuración generado desde uno de sus dispositivos activos。",
+        es: "Pega el URI de configuración generado desde uno de tus dispositivos activos。",
         ja: "稼働中の端末で生成した Setup URI を貼り付けてください。",
         ko: "사용 중인 기기 중 하나에서 생성한 Setup URI를 붙여 넣으세요.",
         ru: "Вставьте Setup URI, созданный на одном из ваших активных устройств.",
@@ -7628,7 +7628,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.":
         {
             def: "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.",
-            es: "Introduce el Setup URI generado durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña del vault.",
+            es: "Introduce el Setup URI generado durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña de la bóveda.",
             ko: "서버 설치 과정이나 다른 기기에서 생성된 Setup URI를 보관함 패스프레이즈와 함께 입력해 주세요.",
             ru: "Введите Setup URI, полученный при установке сервера или на другом устройстве, и парольную фразу Vault.",
             "zh-tw": "請輸入在伺服器安裝期間或其他裝置上產生的 Setup URI，以及 Vault 的密語。",
@@ -7658,7 +7658,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Please select a method to import the settings from another device.": {
         def: "Please select a method to import the settings from another device.",
-        es: "Seleccione un método para importar la configuración desde otro dispositivo。",
+        es: "Selecciona un método para importar la configuración desde otro dispositivo。",
         ja: "別の端末から設定を取り込む方法を選択してください。",
         ko: "다른 기기에서 설정을 가져올 방법을 선택해 주세요.",
         ru: "Выберите способ импорта настроек с другого устройства.",
@@ -7674,7 +7674,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Please select an option to proceed": {
         def: "Please select an option to proceed",
-        es: "Seleccione una opción para continuar",
+        es: "Selecciona una opción para continuar",
         ja: "続行するには項目を選択してください",
         ko: "계속하려면 항목을 선택해 주세요",
         ru: "Чтобы продолжить, выберите вариант",
@@ -7697,7 +7697,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Please select the type of server to which you are connecting.": {
         def: "Please select the type of server to which you are connecting.",
-        es: "Seleccione el tipo de servidor al que se está conectando。",
+        es: "Selecciona el tipo de servidor al que se está conectando。",
         ja: "接続するサーバーの種類を選択してください。",
         ko: "연결할 서버 유형을 선택해 주세요.",
         ru: "Выберите тип сервера, к которому вы подключаетесь.",
@@ -8045,7 +8045,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         },
     "Reducing the frequency with which on-disk changes are reflected into the DB": {
         def: "Reducing the frequency with which on-disk changes are reflected into the DB",
-        es: "Reducir frecuencia de actualizaciones de disco a BD",
+        es: "Reducir frecuencia de actualizaciones de disco a base de datos",
         fr: "Réduire la fréquence à laquelle les modifications sur disque sont reflétées dans la base",
         he: "הפחת את תדירות השתקפות שינויים בדיסק למסד הנתונים",
         ja: "ローカルでの変更がデータベースに反映される頻度を下げる(所定の回数まとめて同期する、逐一反映しない)",
@@ -8336,7 +8336,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Requires restart of Obsidian.": {
         def: "Requires restart of Obsidian.",
-        es: "Requiere reiniciar Obsidian",
+        es: "Requiere reiniciar Obsidian.",
         fr: "Nécessite un redémarrage d'Obsidian.",
         he: "דורש הפעלה מחדש של Obsidian.",
         ja: "Obsidianの再起動が必要です。",
@@ -8812,7 +8812,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Scan the QR code displayed on an active device using this device's camera.": {
         def: "Scan the QR code displayed on an active device using this device's camera.",
-        es: "Escanee con la cámara de este dispositivo el código QR mostrado en un dispositivo activo。",
+        es: "Escanea con la cámara de este dispositivo el código QR mostrado en un dispositivo activo。",
         ja: "稼働中の端末に表示された QR コードを、この端末のカメラで読み取ってください。",
         ko: "이 기기의 카메라로 사용 중인 기기에 표시된 QR 코드를 스캔하세요.",
         ru: "Отсканируйте QR-код, показанный на активном устройстве, с помощью камеры этого устройства.",
@@ -8859,7 +8859,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.": {
         def: "Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.",
-        es: "Segundos. Guardado en BD local se retrasará hasta este valor tras dejar de escribir/guardar",
+        es: "Segundos. Guardado en base de datos local se retrasará hasta este valor tras dejar de escribir o guardar.",
         fr: "Secondes. L'enregistrement dans la base locale sera différé de cette valeur après l'arrêt de la frappe ou de l'enregistrement.",
         he: "שניות. השמירה למסד הנתונים המקומי תתעכב בערך זה לאחר הפסקת הקלדה או שמירה.",
         ja: "秒。入力や保存を停止してからこの値の間、ローカルデータベースへの保存が遅延されます。",
@@ -8916,7 +8916,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Select the database adapter to use.": {
         def: "Select the database adapter to use.",
-        es: "Selecciona el adaptador de base de datos que se usará.",
+        es: "Selecciona el adaptador de base de datos.",
         ja: "使用するデータベースアダプターを選択します。",
         ko: "사용할 데이터베이스 어댑터를 선택합니다.",
         ru: "Выберите используемый адаптер базы данных.",
@@ -9338,7 +9338,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Setup.RemoteE2EE.DefaultAlgorithmDesc": {
         def: "In most cases, you should stick with the default algorithm (${algorithm}). This setting is only required if you have an existing Vault encrypted in a different format.",
-        es: "En la mayoría de los casos, debes mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes un Vault cifrado con un formato diferente.",
+        es: "En la mayoría de los casos, debes mantener el algoritmo predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes una bóveda cifrada con un formato diferente.",
         ja: "ほとんどの場合は、既定のアルゴリズム（${algorithm}）をそのまま使用してください。この設定が必要になるのは、既存の Vault が別の形式で暗号化されている場合のみです。",
         ko: "대부분의 경우 기본 알고리즘(${algorithm})을 그대로 사용하는 것이 좋습니다. 이 설정은 기존 보관함이 다른 형식으로 암호화되어 있는 경우에만 필요합니다.",
         ru: "В большинстве случаев следует оставить алгоритм по умолчанию (${algorithm}). Этот параметр нужен только в том случае, если у вас уже есть Vault, зашифрованный в другом формате.",
@@ -9487,7 +9487,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Setup.ScanQRCode.Step1": {
         def: "On this device, please keep this Vault open.",
-        es: "En este dispositivo, mantén este Vault abierto.",
+        es: "En este dispositivo, mantén esta bóveda abierta.",
         ja: "この端末では、この Vault を開いたままにしてください。",
         ko: "이 기기에서는 이 보관함을 계속 열어 두세요.",
         ru: "На этом устройстве оставьте данный Vault открытым.",
@@ -9581,7 +9581,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Setup.UseSetupURI.ErrorPassphraseRequired": {
         def: "Please enter the vault passphrase.",
-        es: "Introduce la frase de contraseña del Vault.",
+        es: "Introduce la frase de contraseña de la bóveda.",
         ja: "Vault のパスフレーズを入力してください。",
         ko: "보관함 패스프레이즈를 입력해 주세요.",
         ru: "Пожалуйста, введите парольную фразу Vault.",
@@ -9590,7 +9590,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Setup.UseSetupURI.GuidanceLine1": {
         def: "Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.",
-        es: "Introduce la URI de configuración que se generó durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña del Vault.",
+        es: "Introduce la URI de configuración que se generó durante la instalación del servidor o en otro dispositivo, junto con la frase de contraseña de la bóveda.",
         ja: "サーバーのセットアップ時または別の端末で生成された Setup URI と、Vault のパスフレーズを入力してください。",
         ko: "서버 설치 중에 또는 다른 기기에서 생성한 Setup URI와 보관함 패스프레이즈를 입력해 주세요.",
         ru: "Введите Setup URI, созданный во время установки сервера или на другом устройстве, а также парольную фразу Vault.",
@@ -9617,7 +9617,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Setup.UseSetupURI.LabelPassphrase": {
         def: "Vault passphrase",
-        es: "Frase de contraseña del Vault",
+        es: "Frase de contraseña de la bóveda",
         ja: "Vault のパスフレーズ",
         ko: "보관함 패스프레이즈",
         ru: "Парольная фраза Vault",
@@ -9635,7 +9635,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Setup.UseSetupURI.PlaceholderPassphrase": {
         def: "Enter your vault passphrase",
-        es: "Introduce la frase de contraseña del Vault",
+        es: "Introduce la frase de contraseña de la bóveda",
         ja: "Vault のパスフレーズを入力してください",
         ko: "보관함 패스프레이즈를 입력하세요",
         ru: "Введите парольную фразу Vault",
@@ -9900,7 +9900,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Stop reflecting database changes to storage files.": {
         def: "Stop reflecting database changes to storage files.",
-        es: "Dejar de reflejar cambios de BD en archivos",
+        es: "Dejar de reflejar cambios de base de datos en archivos",
         fr: "Arrêter de répercuter les modifications de la base vers les fichiers de stockage.",
         he: "הפסק לשקף שינויי מסד נתונים לקבצי אחסון.",
         ja: "データベースの変更をストレージファイルに反映させない",
@@ -10168,7 +10168,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "The files in this Vault are almost identical to the server's.": {
         def: "The files in this Vault are almost identical to the server's.",
-        es: "Los archivos de este Vault son casi idénticos a los del servidor.",
+        es: "Los archivos de esta bóveda son casi idénticos a los del servidor.",
         ko: "이 보관함의 파일은 서버의 파일과 거의 동일합니다.",
         ru: "Файлы в этом хранилище почти совпадают с файлами на сервере.",
         "zh-tw": "此 Vault 中的檔案幾乎與伺服器上的相同。",
@@ -10324,7 +10324,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "There may be differences between the files in this Vault and the server.": {
         def: "There may be differences between the files in this Vault and the server.",
-        es: "Puede haber diferencias entre los archivos de este Vault y los del servidor.",
+        es: "Puede haber diferencias entre los archivos de esta bóveda y los del servidor.",
         ko: "이 보관함의 파일과 서버의 파일 사이에 차이가 있을 수 있습니다.",
         ru: "Файлы в этом хранилище могут отличаться от файлов на сервере.",
         "zh-tw": "此 Vault 中的檔案可能與伺服器上的有所不同。",
@@ -10387,7 +10387,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.":
         {
             def: "This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.",
-            es: "Esta es una operación extremadamente potente. Te recomendamos encarecidamente copiar la carpeta de tu Vault a un lugar seguro.",
+            es: "Esta es una operación extremadamente potente. Te recomendamos encarecidamente copiar la carpeta de tu bóveda a un lugar seguro.",
             ko: "이는 매우 강력한 작업입니다. 보관함 폴더를 안전한 위치에 복사해 두시기를 강력히 권장합니다.",
             ru: "Это очень мощная операция. Настоятельно рекомендуем скопировать папку хранилища в безопасное место.",
             "zh-tw": "這是威力極強的操作。我們強烈建議你先將 Vault 資料夾複製到安全的位置。",
@@ -10395,7 +10395,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.":
         {
             def: "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.",
-            es: "Este es el método de sincronización más adecuado para el diseño. Todas las funciones están disponibles. Debe tener configurada una instancia de CouchDB。",
+            es: "Este es el método de sincronización más adecuado para el diseño del complemento. Todas las funciones están disponibles. Debe tener configurada una instancia de CouchDB。",
             ja: "この設計に最も適した同期方式です。すべての機能が利用できます。CouchDB インスタンスを事前に構成しておく必要があります。",
             ko: "이 설계에 가장 적합한 동기화 방식입니다. 모든 기능을 사용할 수 있습니다. CouchDB 인스턴스를 미리 구성해 두어야 합니다.",
             ru: "Это наиболее подходящий для данной архитектуры способ синхронизации. Доступны все функции. Необходимо заранее развернуть экземпляр CouchDB.",
@@ -10410,7 +10410,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         },
     "This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.": {
         def: "This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.",
-        es: "Esta frase no se copia a otros dispositivos. Usará `Default` hasta reconfigurar",
+        es: "Esta frase no se copia a otros dispositivos. Usará `Default` hasta que lo configures de nuevo.",
         fr: "Cette phrase secrète ne sera pas copiée vers un autre appareil. Elle sera définie à `Default` jusqu'à ce que vous la configuriez à nouveau.",
         he: "ביטוי סיסמה זה לא יועתק למכשיר אחר. הוא יוגדר ל-`Default` עד שתגדיר אותו שוב.",
         ja: "このパスフレーズは他のデバイスにコピーされません。再度設定するまで`Default`に設定されます。",
@@ -10429,7 +10429,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as":
         {
             def: "This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as",
-            es: "Este procedimiento eliminará primero todos los datos de sincronización existentes en el servidor. A continuación, los datos del servidor se reconstruirán por completo usando el estado actual del Vault de este dispositivo (incluida su base de datos local) como",
+            es: "Este procedimiento eliminará primero todos los datos de sincronización existentes en el servidor. A continuación, los datos del servidor se reconstruirán por completo usando el estado actual de la bóveda de este dispositivo (incluida su base de datos local) como",
             ko: "이 절차는 먼저 서버에서 기존 동기화 데이터를 모두 삭제합니다. 그다음 이 기기에 있는 보관함의 현재 상태(로컬 데이터베이스 포함)를 바탕으로 서버 데이터를 완전히 재구축합니다. 즉, 이 기기의 데이터가",
             ru: "Сначала все данные синхронизации на сервере будут удалены. Затем данные на сервере соберутся заново, а за основу возьмётся текущее состояние хранилища на этом устройстве (вместе с локальной базой) как",
             "zh-tw":
@@ -10444,7 +10444,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "This Vault is empty, or contains only new files that are not on the server.": {
         def: "This Vault is empty, or contains only new files that are not on the server.",
-        es: "Este Vault está vacío o solo contiene archivos nuevos que no están en el servidor.",
+        es: "Esta bóveda está vacía o solo contiene archivos nuevos que no están en el servidor.",
         ko: "이 보관함은 비어 있거나, 서버에 없는 새 파일만 포함하고 있습니다.",
         ru: "Это хранилище пустое или содержит только новые файлы, которых нет на сервере.",
         "zh-tw": "此 Vault 是空的，或只包含伺服器上沒有的新檔案。",
@@ -11565,7 +11565,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.Settings.Maintenance.WarningLockedReadyText": {
         def: "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.",
-        es: "Para evitar que el vault se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
+        es: "Para evitar que la bóveda se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
         ko: "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
         ru: "Чтобы хранилище не испортилось, удалённая база заблокирована для синхронизации. (Это устройство помечено как «разрешённое».) Когда все ваши устройства будут помечены как «разрешённые», разблокируйте базу. Предупреждение будет появляться, пока репликация не подтвердит, что устройство разрешено.",
         zh: "为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
@@ -11582,7 +11582,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.Settings.Maintenance.WarningLockedResolveText": {
         def: "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.",
-        es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que el vault se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu vault, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
+        es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que la bóveda se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu bóveda, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
         ko: "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
         ru: "Удалённая база заблокирована для синхронизации, чтобы хранилище не испортилось: это устройство не помечено как «разрешённое». Сделайте резервную копию хранилища, сбросьте локальную базу и выберите «Отметить это устройство как разрешённое». Предупреждение будет появляться, пока репликация не подтвердит, что устройство разрешено.",
         zh: "为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
@@ -11816,7 +11816,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.Settings.Patches.RemediationRestartMessage": {
         def: "Restarting Obsidian is strongly recommended. Until restart, some changes may not take effect, and the display may be inconsistent. Are you sure you want to restart now?",
-        es: "Se recomienda encarecidamente reiniciar Obsidian. Hasta que lo hagas, puede que algunos cambios no surtan efecto y que la interfaz se muestre de forma inconsistente. ¿Seguro que quieres reiniciar ahora?",
+        es: "Se recomienda encarecidamente reiniciar Obsidian. Hasta que lo hagas puede que algunos cambios no surtan efecto y que la interfaz se muestre de forma inconsistente. ¿Seguro que quieres reiniciar ahora?",
         ko: "Obsidian을 재시작하는 것을 강력히 권장합니다. 재시작하기 전까지는 일부 변경 사항이 적용되지 않거나 화면이 일관되지 않게 표시될 수 있습니다. 지금 재시작하시겠습니까?",
         ru: "Настоятельно советуем перезапустить Obsidian. До перезапуска часть изменений не действует, а окно может показывать неверные данные. Перезапустить сейчас?",
         zh: "强烈建议重新启动 Obsidian。在重启之前，部分更改可能不会生效，界面显示也可能不一致。确定要现在重启吗？",
@@ -12033,7 +12033,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.Settings.Remote.E2EEConfiguration": {
         def: "E2EE Configuration",
-        es: "Configuración del E2EE",
+        es: "Configuración de E2EE",
         ko: "E2EE 구성",
         ru: "Настройка E2EE",
         zh: "端到端加密配置",
@@ -12609,7 +12609,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.SetupWizard.OutroNewP2PUser.GuidancePrimary": {
         def: "The peer-to-peer connection has been configured successfully. Next, the local LiveSync database will be built from the current files in this Vault.",
-        es: "La conexión punto a punto se ha configurado correctamente. A continuación, la base de datos local de LiveSync se construirá a partir de los archivos actuales de este Vault.",
+        es: "La conexión punto a punto se ha configurado correctamente. A continuación, la base de datos local de LiveSync se construirá a partir de los archivos actuales de esta bóveda.",
         ko: "Peer-to-Peer 연결이 정상적으로 구성되었습니다. 다음 단계로, 이 보관함의 현재 파일을 사용해 로컬 LiveSync 데이터베이스를 만듭니다.",
         ru: "Соединение между устройствами настроено. Дальше локальная база LiveSync соберётся из текущих файлов хранилища.",
         "zh-tw": "Peer-to-Peer 連線已成功設定完成。接下來，將依此 Vault 目前的檔案建立本機 LiveSync 資料庫。",
@@ -12700,7 +12700,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.SetupWizard.RebuildEverythingP2P.ConfirmLocalResetNote": {
         def: "The files currently in this Vault are used to rebuild it.",
-        es: "Se usarán los archivos que hay ahora en este Vault para reconstruirla.",
+        es: "Se usarán los archivos que hay ahora en esta bóveda para reconstruirla.",
         ko: "현재 이 보관함에 있는 파일을 사용해 재구축합니다.",
         ru: "Она пересобирается из текущих файлов хранилища.",
         "zh-tw": "此 Vault 目前的檔案將用於重建它。",
@@ -12714,7 +12714,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.SetupWizard.RebuildEverythingP2P.Guidance": {
         def: "This procedure will discard the local LiveSync database on this device and rebuild it from the current files in this Vault. It does not delete or overwrite data on another device.",
-        es: "Este procedimiento descartará la base de datos local de LiveSync de este dispositivo y la reconstruirá a partir de los archivos actuales de este Vault. No elimina ni sobrescribe datos de otro dispositivo.",
+        es: "Este procedimiento descartará la base de datos local de LiveSync de este dispositivo y la reconstruirá a partir de los archivos actuales de esta bóveda. No elimina ni sobrescribe datos de otro dispositivo.",
         ko: "이 절차는 이 기기의 로컬 LiveSync 데이터베이스를 삭제하고, 이 보관함의 현재 파일로 재구축합니다. 다른 기기의 데이터는 삭제하거나 덮어쓰지 않습니다.",
         ru: "Эта операция удалит локальную базу LiveSync на этом устройстве и соберёт её заново из текущих файлов хранилища. Данные на других устройствах не удаляются и не перезаписываются.",
         "zh-tw":
@@ -12722,7 +12722,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.SetupWizard.RebuildEverythingP2P.Note": {
         def: "Keep this device online after initialisation so that another device can fetch the Vault from it.",
-        es: "Mantén este dispositivo conectado después de la inicialización para que otro dispositivo pueda obtener el Vault desde él.",
+        es: "Mantén este dispositivo conectado después de la inicialización para que otro dispositivo pueda obtener la bóveda desde él.",
         ko: "초기화 후에도 다른 기기가 이 기기에서 보관함을 가져올 수 있도록 이 기기를 온라인 상태로 유지해 주세요.",
         ru: "Держите это устройство в сети после инициализации, чтобы другое устройство смогло забрать с него хранилище.",
         "zh-tw": "初始化完成後請讓此裝置保持連線，以便其他裝置能從它擷取 Vault。",
@@ -12929,7 +12929,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Ui.SetupWizard.SetupRemote.CouchDbOptionDesc": {
         def: "This is the most suitable synchronisation method for the current design. All features are available. You must already have a CouchDB instance set up.",
-        es: "Es el método de sincronización más adecuado para el diseño actual y ofrece todas las funciones. Necesitas tener ya una instancia de CouchDB en marcha.",
+        es: "Es el método de sincronización más adecuado para el diseño actual y ofrece todas las funciones. Necesitas tener una instancia de CouchDB en marcha.",
         ko: "현재 설계에 가장 적합한 동기화 방식입니다. 모든 기능을 사용할 수 있습니다. CouchDB 인스턴스를 미리 구성해 두어야 합니다.",
         ru: "Самый подходящий способ синхронизации для нынешней архитектуры плагина. Доступны все возможности. Нужен готовый сервер CouchDB.",
         zh: "这是当前设计下最适合的同步方式，所有功能都可用。你需要先准备好 CouchDB 实例。",
@@ -13037,7 +13037,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "Use a Setup URI (Recommended)": {
         def: "Use a Setup URI (Recommended)",
-        es: "Usar un URI de configuración (recomendado)",
+        es: "Usar URI de configuración (recomendado)",
         ja: "Setup URI を使う（推奨）",
         ko: "Setup URI 사용(권장)",
         ru: "Использовать Setup URI (рекомендуется)",
@@ -13264,7 +13264,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.":
         {
             def: "We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.",
-            es: "Te recomendamos copiar la carpeta de tu Vault a un lugar seguro. Así tendrás una salvaguarda en caso de que surjan muchos conflictos o de que sincronices por error con un destino incorrecto.",
+            es: "Te recomendamos copiar la carpeta de tu bóveda a un lugar seguro. Así tendrás una copia de seguridad en caso de que surjan muchos conflictos o de que sincronices por error con un destino incorrecto.",
             ko: "보관함 폴더를 안전한 위치에 복사해 두시기를 권장합니다. 충돌이 대량으로 발생하거나 실수로 잘못된 대상과 동기화한 경우에 대비할 수 있습니다.",
             ru: "Советуем скопировать папку хранилища в надёжное место. Это защитит вас, если появится много конфликтов или вы случайно синхронизируетесь не туда.",
             "zh-tw":
@@ -13272,7 +13272,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         },
     "We will now guide you through a few questions to simplify the synchronisation setup.": {
         def: "We will now guide you through a few questions to simplify the synchronisation setup.",
-        es: "Ahora le guiaremos con unas pocas preguntas para simplificar la configuración de la sincronización。",
+        es: "Ahora te guiaremos con unas pocas preguntas para simplificar la configuración de la sincronización。",
         ja: "これからいくつかの質問に沿って、同期設定を簡単に進めます。",
         ko: "동기화 설정을 간단히 마칠 수 있도록 몇 가지 질문으로 안내해 드리겠습니다.",
         ru: "Сейчас мы зададим несколько вопросов, чтобы упростить настройку синхронизации.",
@@ -13368,7 +13368,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "You are adding this device to an existing synchronisation setup.": {
         def: "You are adding this device to an existing synchronisation setup.",
-        es: "Está añadiendo este dispositivo a una configuración de sincronización existente。",
+        es: "Estás añadiendo este dispositivo a una configuración de sincronización existente。",
         ja: "この端末を既存の同期構成に追加しようとしています。",
         ko: "이 기기를 기존 동기화 구성에 추가합니다.",
         ru: "Вы добавляете это устройство к существующей настройке синхронизации.",
@@ -13392,7 +13392,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.":
         {
             def: "You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.",
-            es: "Solo deberías realizar esta operación en circunstancias excepcionales: cuando los datos del servidor estén completamente corruptos, cuando ya no necesites los cambios de los demás dispositivos o cuando el tamaño de la base de datos sea inusualmente grande respecto al del Vault.",
+            es: "Solo deberías realizar esta operación en circunstancias excepcionales: cuando los datos del servidor estén completamente corruptos, cuando ya no necesites los cambios de los demás dispositivos o cuando el tamaño de la base de datos sea inusualmente grande respecto a la bóveda.",
             ko: "이 작업은 서버 데이터가 완전히 손상된 경우, 다른 모든 기기의 변경 사항이 더 이상 필요하지 않은 경우, 또는 데이터베이스 크기가 보관함 크기에 비해 비정상적으로 커진 경우처럼 예외적인 상황에서만 수행해야 합니다.",
             ru: "Делайте это только в исключительных случаях: данные на сервере полностью испорчены, изменения на всех других устройствах больше не нужны или база стала непомерно большой по сравнению с хранилищем.",
             "zh-tw":
@@ -13405,7 +13405,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
     },
     "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.":
         {
-            es: "(Seleccione esto si ya utiliza la sincronización en otro ordenador o teléfono). Esta opción es adecuada si desea añadir este dispositivo a una configuración de LiveSync existente。",
+            es: "(Seleccione esto si ya utilizas la sincronización en otro ordenador o teléfono). Esta opción es adecuada si quieres añadir este dispositivo a una configuración de LiveSync existente。",
             ja: "（別の PC やスマートフォンですでに同期を利用している場合に選択してください。）この端末を既存の LiveSync 構成に追加する場合に適しています。",
             ko: "(다른 컴퓨터나 스마트폰에서 이미 동기화를 사용 중이라면 선택하세요.) 이 기기를 기존 LiveSync 구성에 추가하려는 경우에 적합합니다.",
             ru: "(Выберите этот вариант, если вы уже используете синхронизацию на другом компьютере или смартфоне.) Он подходит, если вы хотите добавить это устройство к уже существующей конфигурации LiveSync.",
