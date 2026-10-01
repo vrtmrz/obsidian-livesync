@@ -29,6 +29,9 @@ All guidelines and conventions listed below are disclosed and maintained solely 
 
 6. Single quotation marks (`'`) are preferred over double quotation marks (`"`) in general documentation text, unless the context requires double quotes (for example, inside JSON code blocks).
 
+7. **Product name**: References to this product use 'Self-hosted LiveSync' or, where the context is clear, 'this plug-in'. Use this convention in documentation, user-facing messages, release notes, comments, commit messages, and PR or issue text.
+    - Preserve exact interface labels, existing code identifiers, commands, package names, and quotations. 'LiveSync' is the exact label of the Sync Mode for continuous synchronisation; write 'LiveSync mode' when explaining that mode.
+
 ### Terminology
 
 Project-specific meanings are defined separately in the
