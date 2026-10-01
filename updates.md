@@ -50,6 +50,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Improved
 
 - More settings and messages are now available in Russian. (#1187)
+    - Dialogues show generated QR codes, key pairs, and database sizes again.
 
 ## 1.0.32
 
