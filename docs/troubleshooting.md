@@ -121,6 +121,10 @@ When a notice identifies an unknown feature, update this device and every other 
 
 Generate an encrypted Setup URI from a working device. This preserves the intended remote profiles and selections while allowing the additional device to keep its own device-specific name. Store the URI and its passphrase separately.
 
+Choose **Time-bound** for sharing until the displayed end time, or **Compatible (no time limit)** when the URI must remain reusable or the receiving client only supports the existing format. If a Time-bound URI can no longer be opened, check the device clock and generate a fresh URI on a working device. See the [Setup URI sharing choices](settings.md#copy-the-current-settings-to-a-setup-uri).
+
+Adding a device or opening a copied Vault does not require a compatibility pause solely because its device-local version record is absent. If an earlier release already saved a compatibility pause, review the settings and resume synchronisation explicitly. Actual version or settings incompatibilities still require review.
+
 For deliberate setting changes during normal use, use `Sync Settings via Markdown` under `Sync settings`.
 
 ### Choose a Setup URI passphrase

@@ -101,10 +101,10 @@ recovery guidance, or diagnostics intended for users.
 - **JWT Authentication:** An experimental CouchDB authentication option which
   uses a JSON Web Token instead of standard credentials. It requires a private
   key or secret, algorithm, expiry duration, subject, and key ID.
-- **LiveSync:** This name has two established meanings: the shortened plug-in
-  name for Self-hosted LiveSync, and the Sync Mode for continuous, real-time
-  synchronisation. Prefer 'Continuous replication' in design documentation
-  when the mode, rather than the product, is meant.
+- **LiveSync:** The exact Sync Mode label for continuous, real-time
+  synchronisation. Write 'LiveSync mode' in user-facing explanations and
+  'Continuous replication' in design documentation. Product references use
+  'Self-hosted LiveSync' or 'this plug-in'.
 - **livesync-serverpeer / WebPeer:** Specialised clients which assist WebRTC
   peer-to-peer communication.
 - **Metadata (file metadata):** A database document which stores file
@@ -168,13 +168,20 @@ device-local provenance.
   semantic boundaries, such as paragraphs or sections, rather than arbitrary
   byte boundaries.
 - **Self-hosted LiveSync:** The name of this plug-in. 'Self-hosted' is one
-  hyphenated word.
+  hyphenated word. Use this full name for product references, or 'this plug-in'
+  when the context is clear.
 - **Setting Doctor (Config Doctor):** A diagnostic utility which identifies
   configuration mismatches or suboptimal settings and presents recommended
   values and reasons.
 - **Setup URI:** An encrypted representation of plug-in settings and remote
   configuration which can be transferred to another device and opened with a
   passphrase.
+  - **Time-bound:** A sharing choice which permits opening the URI until the
+    displayed end of the current fixed seven-day UTC window. Imported settings
+    and credentials remain usable afterwards.
+  - **Compatible (no time limit):** A sharing choice which retains the existing
+    encrypted URI format without a time condition. The receiving device must
+    still support the shared settings.
 - **Signalling relay (P2P):** A Nostr-compatible WebSocket relay used for peer
   discovery and WebRTC connection negotiation. It does not store or transfer
   Vault content. The project author operates a public relay as a best-effort
