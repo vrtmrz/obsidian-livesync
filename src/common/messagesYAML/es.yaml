@@ -1,32 +1,32 @@
 ", please select the option that best describes the current state of your Vault. The application will then check your files in the most appropriate way based on your selection.":
-  ", selecciona la opción que mejor describa el estado actual de tu Vault. La
+  ", selecciona la opción que mejor describa el estado actual de tu bóveda. La
   aplicación comprobará entonces tus archivos de la forma más adecuada según tu
   elección."
 (Active): (Activo)
 (BETA) Always overwrite with a newer file: (BETA) Sobrescribir siempre con archivo más nuevo
-(Beta) Use ignore files: (Beta) Usar archivos de ignorar
+(Beta) Use ignore files: (Beta) Usar archivos ignore
 (Days passed, 0 to disable automatic-deletion): (Días transcurridos, 0 para desactivar)
-(e.g., after editing many files whilst offline): (p. ej., tras editar muchos archivos sin conexión)
+(e.g., after editing many files whilst offline): (p. ej., tras editar muchos archivos estando sin conexión)
 (e.g., immediately after restoring on another computer, or having recovered from a backup):
   (p. ej., justo después de restaurar en otro ordenador o de recuperar una copia
   de seguridad)
 (e.g., setting up for the first time on a new smartphone, starting from a clean slate): (p. ej., configurando por primera vez un móvil nuevo, empezando de cero)
 (ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.:
-  "(Ej: Leer chunks online) Lee chunks directamente en línea. Aumente tamaño de
-  chunks personalizados"
+  "(Ej: Leer chunks online) Lee chunks directamente en línea. Aumenta tamaño de
+  chunks personalizados."
 (MB) If this is set, changes to local and remote files that are larger than this will be skipped. If the file becomes smaller again, a newer one will be used.:
-  (MB) Saltar cambios en archivos locales/remotos mayores a este tamaño. Si se
-  reduce, se usará versión nueva
+  (MB) Si se activa, se saltarán cambios en archivos locales y remotos mayores a este tamaño. Si tamaño del archivo se reduce
+  se usará la versión nueva.
 (Mega chars): (Millones de caracteres)
 (Missing): (Falta)
 (Not recommended) If set, credentials will be stored in the file.: (No recomendado) Almacena credenciales en el archivo
 (Obsolete) Use an old adapter for compatibility: (Obsoleto) Usar adaptador antiguo
 (RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.:
-  (RegExp) Déjelo vacío para sincronizar todos los archivos. Defina un filtro
-  como expresión regular para limitar los archivos que se sincronizan.
+  (RegExp) Déjalo vacío para sincronizar todos los archivos. Definaeun filtro
+  como expresión regular para limitar los archivos sincronizados.
 (RegExp) If this is set, any changes to local and remote files that match this will be skipped.:
-  (RegExp) Si se establece, se omitirá cualquier cambio en archivos locales y
-  remotos que coincida con este patrón.
+  (RegExp) Si se establece, se omitirá cualquier cambio en los archivos locales y
+  remotos que coincidan con este patrón.
 "↑: Overwrite Remote": "↑: Sobrescribir remoto"
 "↓: Overwrite Local": "↓: Sobrescribir local"
 "⇅: Use newer": "⇅: Usar el más nuevo"
@@ -59,22 +59,22 @@ Add default patterns: Añadir patrones predeterminados
 Add new connection: Añadir conexión
 AddOn Module (ConfigSync) has not been loaded. This is very unexpected situation. Please report this issue.:
   El módulo complementario (ConfigSync) no se ha cargado. Esta situación es muy
-  inesperada. Informa de este problema.
+  inesperada. Por favor informa de este problema.
 AddOn Module (HiddenFileSync) has not been loaded. This is very unexpected situation. Please report this issue.:
   El módulo complementario (HiddenFileSync) no se ha cargado. Esta situación es
-  muy inesperada. Informa de este problema.
+  muy inesperada. Por favor informa de este problema.
 Advanced: Avanzado
 Advanced Settings: Ajustes avanzados
 After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten.:
   Tras reiniciar, los datos de este dispositivo se subirán al servidor como
-  «copia maestra». Ten en cuenta que cualquier dato no deseado que haya ahora en
+  «copia maestra». Ten en cuenta que cualquier dato en
   el servidor se sobrescribirá por completo.
 After restarting, the database on this device will be rebuilt using data from the server. If there are any unsynchronised files in this vault, conflicts may occur with the server data.:
   Tras reiniciar, la base de datos de este dispositivo se reconstruirá con los
-  datos del servidor. Si hay archivos sin sincronizar en este vault, pueden
+  datos del servidor. Si hay archivos sin sincronizar en esta bóveda pueden
   producirse conflictos con los datos del servidor.
 After that, synchronise to a brand new vault on each other device with the new remote one by one.:
-  Después, sincroniza con un vault totalmente nuevo en cada uno de los demás
+  Después, sincroniza con una bóveda totalmente nueva en cada uno de los demás
   dispositivos, uno por uno, usando el nuevo remoto.
 All checks passed successfully!: ¡Todas las comprobaciones se han superado correctamente!
 All devices have the same progress value (${progress}). Your devices seem to be synchronised. And be able to proceed with Garbage Collection.:
@@ -85,10 +85,10 @@ All the same or non-existent: Todo igual o inexistente
 Allow in session: Permitir en esta sesión
 Allow permanently: Permitir permanentemente
 Also, please note that if you are using Peer-to-Peer synchronization, this configuration will be used when you switch to other methods and connect to a remote server in the future.:
-  Además, si usas sincronización punto a punto, esta configuración se aplicará
-  cuando en el futuro cambies a otros métodos y te conectes a un servidor
+  Además, si usas sincronización punto a punto, esta configuración también se aplicará
+  en el futuro si cambias a otros métodos de sincronización y te conectas a un servidor
   remoto.
-Always prompt merge conflicts: Siempre preguntar en conflictos
+Always prompt merge conflicts: Siempre preguntar cuando haya conflictos
 Analyse: Analizar
 Analyse database usage: Analizar el uso de la base de datos
 Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like.:
@@ -96,7 +96,7 @@ Analyse database usage and generate a TSV report for diagnosis yourself. You can
   diagnosticarlo tú mismo. Puedes pegar el informe generado en la hoja de
   cálculo que prefieras.
 Apply All Selected: Aplicar todo lo seleccionado
-Apply Latest Change if Conflicting: Aplicar último cambio en conflictos
+Apply Latest Change if Conflicting: Aplicar último cambio si hay conflictos
 Apply preset configuration: Aplicar configuración predefinida
 Apply the settings: Aplicar los ajustes
 Ask a passphrase at every launch: Solicitar la frase de contraseña en cada inicio
@@ -107,13 +107,13 @@ Automatically Sync all files when opening Obsidian.: Sincronizar automáticament
 Available Peers: Pares disponibles
 Back: Volver
 Back to non-configured: Volver a no configurado
-Batch database update: Actualización por lotes de BD
+Batch database update: Actualización de base de datos por lotes
 Batch limit: Límite de lotes
 Batch size: Tamaño de lote
 Batch size of on-demand fetching: Tamaño de lote para obtención bajo demanda
 Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.:
-  Antes de v0.17.16 usábamos adaptador antiguo. Nuevo adaptador requiere
-  reconstruir BD local. Desactive cuando pueda
+  Antes de v0.17.16 se usaba el adaptador antiguo. El nuevo adaptador requiere
+  reconstruir la base de datos local. Por favor desactiva esta opción cuando puedas. Si está activa cuando se sincroniza la base de datos se intentará desactivar de nuevo.
 Broadcasting?: ¿Difusión?
 Bucket Name: Nombre del bucket
 by resetting the remote, you will be informed on other devices.: al restablecer el remoto, se te avisará en los demás dispositivos.
@@ -144,7 +144,7 @@ cmdConfigSync:
 Comma separated `.gitignore, .dockerignore`: "Separados por comas: `.gitignore, .dockerignore`"
 Command: Comando
 Communicating: Comunicando
-Compaction in progress on remote database...: Compactación en curso en la base de datos remota...
+Compaction in progress on remote database...: Compactación en curso de la base de datos remota...
 Compaction on remote database completed successfully.: La compactación de la base de datos remota se ha completado correctamente.
 Compaction on remote database failed.: La compactación de la base de datos remota ha fallado.
 Compaction on remote database timed out.: La compactación de la base de datos remota ha superado el tiempo de espera.
@@ -229,7 +229,7 @@ Diagnostic RTCPeerConnection is enabled: El RTCPeerConnection de diagnóstico es
 dialog:
   yourLanguageAvailable:
     _value: >-
-      Self-hosted LiveSync tenía traducciones para tu idioma, así que se ha
+      Self-hosted LiveSync tiene traducciones para tu idioma, así que se ha
       activado el ajuste %{Display Language}.
 
 
@@ -241,7 +241,7 @@ dialog:
       hacerlo desde el diálogo de ajustes.
 
       ¡Que lo disfrutes!
-    Title: " ¡Hay traducción disponible!"
+    Title: " ¡Hay una traducción disponible!"
     btnRevertToDefault: Mantener %{lang-def}
 Diff: Diferencias
 Different: Distinto
@@ -271,13 +271,13 @@ Doctor:
       Por desgracia, se han detectado algunos ajustes como posibles problemas.
       Tranquilo: los resolveremos uno a uno.
 
-      Para que lo sepas de antemano, te preguntaremos por los siguientes puntos.
+      Para que lo sepas de antemano, te preguntaremos por lo siguiente.
 
       ${issues}
 
       ¿Empezamos?
     MainFix: |-
-      
+
       ## ${name}
 
       | Actual | Ideal |
@@ -303,8 +303,8 @@ Doctor:
     Recommended: Recomendado
   Message:
     NoIssues: ¡No se ha detectado ningún problema!
-    RebuildLocalRequired: ¡Atención! Hay que reconstruir la base de datos local para aplicar esto.
-    RebuildRequired: ¡Atención! Hay que reconstruir para aplicar esto.
+    RebuildLocalRequired: ¡Atención! Hay que reconstruir la base de datos local
+    RebuildRequired: ¡Atención! Hay que reconstruir la base de datos
     SomeSkipped: Hemos dejado algunos problemas sin resolver. ¿Quieres que te lo
       pregunte de nuevo en el próximo inicio?
   RULES:
@@ -338,11 +338,11 @@ Enabling end-to-end encryption ensures that your data is encrypted on your devic
   Activar el cifrado de extremo a extremo garantiza que tus datos se cifren en
   tu dispositivo antes de enviarse al servidor remoto. Así, aunque alguien
   acceda al servidor, no podrá leer tus datos sin la frase de contraseña.
-  Recuérdala bien, porque será necesaria para descifrar tus datos en los demás
+  Recuérdala bien porque será necesaria para descifrar tus datos en los demás
   dispositivos.
 Encrypt contents on the remote database. If you use the plugin's synchronization feature, enabling this is recommended.:
   Cifrar contenido en la base de datos remota. Se recomienda habilitar si usa la
-  sincronización del plugin.
+  sincronización del complemento.
 Encrypting sensitive configuration items: Cifrando elementos sensibles
 Encryption Algorithm: Algoritmo de cifrado
 Encryption phassphrase. If changed, you should overwrite the server's database with the new (encrypted) files.:
@@ -377,7 +377,7 @@ Failed to connect to remote for compaction. ${reason}: No se pudo conectar al re
 Failed to connect to the server. Please check your settings.: No se pudo conectar al servidor. Revisa tus ajustes.
 "Failed to connect to the signalling relay: ${reason}": "No se pudo conectar al relé de señalización: ${reason}"
 Failed to create replicator instance.: No se pudo crear la instancia del replicador.
-Failed to parse Setup-URI.: No se pudo interpretar el Setup-URI.
+Failed to parse Setup-URI.: No se pudo interpretar el Setup URI.
 Failed to start one-shot replication before Garbage Collection. Garbage Collection Cancelled.:
   No se pudo iniciar la replicación puntual previa a la recolección de basura.
   Recolección de basura cancelada.
@@ -385,7 +385,7 @@ Failed to start replication after Garbage Collection.: No se pudo iniciar la rep
 "Failed:": "Fallidas:"
 Fetch: Obtener
 Fetch chunks on demand: Obtener chunks bajo demanda
-Fetch database with previous behaviour: Obtener BD con comportamiento anterior
+Fetch database with previous behaviour: Obtener base de datos con comportamiento anterior
 Fetch remote settings: Obtener ajustes remotos
 FETCHING: OBTENIENDO
 Fetching status...: Obteniendo el estado...
@@ -401,7 +401,7 @@ Flag and restart: Marcar y reiniciar
 Flagged Selective: Selectivo marcado
 Folder Prefix: Prefijo de carpeta
 For HS256/HS512 algorithms, provide the shared secret key. For ES256/ES512 algorithms, provide the pkcs8 PEM-formatted private key.:
-  Para los algoritmos HS256/HS512, indica la clave secreta compartida. Para
+  Indica la clave secreta compartida para los algoritmos HS256/HS512. Para
   ES256/ES512, indica la clave privada en formato PEM pkcs8.
 Forces the file to be synced when opened.: Forzar sincronización al abrir archivo
 Fresh Start Wipe: Borrado para reinicio completo
@@ -444,9 +444,9 @@ However, This should not be enabled if you want to increase your secrecy more.:
 I am setting up a new server for the first time / I want to reset my existing server.:
   Estoy configurando un servidor nuevo por primera vez / quiero restablecer mi
   servidor actual.
-I am unable to create a backup of my Vault.: No puedo crear una copia de seguridad de mi Vault.
-I am unable to create a backup of my Vaults.: No puedo crear una copia de seguridad de mis Vaults.
-I have created a backup of my Vault.: He creado una copia de seguridad de mi Vault.
+I am unable to create a backup of my Vault.: No puedo crear una copia de seguridad de mi bóveda.
+I am unable to create a backup of my Vaults.: No puedo crear una copia de seguridad de mis bóvedas.
+I have created a backup of my Vault.: He creado una copia de seguridad de mi bóveda.
 I understand that all changes made on other smartphones or computers possibly could be lost.:
   Entiendo que todos los cambios hechos en otros móviles u ordenadores podrían
   perderse.
@@ -457,18 +457,18 @@ I understand that this action is irreversible once performed.: Entiendo que esta
 I understand the risks and will proceed without a backup.: Entiendo los riesgos y continuaré sin copia de seguridad.
 I Understand, Overwrite Server: Lo entiendo, sobrescribir el servidor
 If "Auto Start P2P Connection" is enabled, the P2P connection will be started automatically when the plug-in launches.:
-  Si «Iniciar la conexión P2P automáticamente» está activado, la conexión P2P se
+  Si «Iniciar la conexión P2P automáticamente» está activada, la conexión P2P se
   iniciará al arrancar el complemento.
-If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: Si se desactiva, chunks se dividen en hilo UI (comportamiento anterior)
+If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).: Si se desactiva, los chunks se dividen en el hilo de UI (comportamiento anterior)
 If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.:
   Habilita sincronización eficiente por archivo. Requiere migración y actualizar
-  todos dispositivos a v0.23.18. Pierde compatibilidad con versiones antiguas
+  todos los dispositivos a v0.23.18. Pierde compatibilidad con versiones antiguas.
 If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.: Divide chunks en máximo 100 ítems. Menos eficiente en deduplicación
-If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: Chunks nuevos se mantienen temporalmente en el documento hasta estabilizarse
+If enabled, newly created chunks are temporarily kept within the document, and graduated to become independent chunks once stabilised.: Chunks nuevos se mantienen temporalmente en el documento hasta estabilizarse.
 If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.:
   Si se activa, se mostrará el icono ⛔ en el estado en lugar del banner de
   advertencia de archivos. No se mostrarán detalles.
-If enabled, the file under 1kb will be processed in the UI thread.: Archivos <1kb se procesan en hilo UI
+If enabled, the file under 1kb will be processed in the UI thread.: Archivos <1kb se procesan en el hilo de UI
 If enabled, the notification of hidden files change will be suppressed.: Si se habilita, se suprimirá la notificación de cambios en archivos ocultos.
 If this enabled, all chunks will be stored with the revision made from its content. (Previous behaviour):
   Si se habilita, todos los chunks se almacenan con la revisión hecha desde su
@@ -476,13 +476,13 @@ If this enabled, all chunks will be stored with the revision made from its conte
 If this enabled, All files are handled as case-Sensitive (Previous behaviour).:
   Si se habilita, todos los archivos se manejan como sensibles a mayúsculas
   (comportamiento anterior)
-If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: Divide chunks en segmentos semánticos. No todos los sistemas lo soportan
+If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.: Divide chunks en segmentos semánticos. No todos los sistemas lo soportan.
 If this is set, changes to local files which are matched by the ignore files will be skipped. Remote changes are determined using local ignore files.:
   Saltar cambios en archivos locales que coincidan con ignore files. Cambios
-  remotos usan ignore files locales
+  remotos usan ignore files locales.
 If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.:
-  Mantiene conexión 60s. Si no hay cambios, reinicia socket. Útil con proxies
-  limitantes
+  Mantiene una conexión abierta por 60s en CouchDB. Si no hay cambios, se reinicia socket en vez de dejarlo abierto de forma indefinida. Útil con proxies
+  limitantes pero puede aumentar el uso de recursos.
 If you cannot avoid CORS issues, you might want to try this option. It uses Obsidian's internal API to communicate with the CouchDB server. Not compliant with web standards, but works. Note that this might break in future Obsidian versions.:
   Si no puedes evitar problemas de CORS, prueba esta opción. Usa la API interna
   de Obsidian para comunicarse con el servidor CouchDB. No cumple los estándares
@@ -494,11 +494,11 @@ If you cannot avoid CORS issues, you might want to try this option. It uses Obsi
   pero funciona. Ten en cuenta que podría dejar de funcionar en versiones
   futuras de Obsidian.
 If you have unsynchronised changes in your Vault on this device, they will likely diverge from the server's versions after the reset. This may result in a large number of file conflicts.:
-  Si tienes cambios sin sincronizar en el Vault de este dispositivo, es probable
-  que divergan de las versiones del servidor tras el restablecimiento. Esto
+  Si tienes cambios sin sincronizar en la bóveda de este dispositivo, es probable
+  que diverjan de las versiones del servidor tras el restablecimiento. Esto
   puede provocar un gran número de conflictos de archivos.
 If you reached the payload size limit when using IBM Cloudant, please decrease batch size and batch limit to a lower value.:
-  Si alcanzas el límite de tamaño de carga al usar IBM Cloudant, reduce el
+  Si alcanzas el límite de tamaño de carga al usar IBM Cloudant, por favor reduce el
   tamaño de lote y el límite de lote.
 If you understand the risks and still wish to proceed, select so.: Si entiendes los riesgos y aun así quieres continuar, indícalo.
 If you want to store the data in a specific folder within the bucket, you can specify a folder prefix here. Otherwise, leave it blank to store data at the root of the bucket.:
@@ -516,7 +516,7 @@ Import connection: Importar conexión
 IMPORTANT: IMPORTANTE
 In most cases, you should stick with the default algorithm (${algorithm}), This setting is only required if you have an existing Vault encrypted in a different format.:
   En la mayoría de los casos deberías mantener el algoritmo predeterminado
-  (${algorithm}). Este ajuste solo es necesario si ya tienes un Vault cifrado en
+  (${algorithm}). Este ajuste solo es necesario si ya tienes una bóveda cifrada en
   otro formato.
 In this scenario, Self-hosted LiveSync will recreate metadata for every file and deliberately generate conflicts. Where the file content is identical, these conflicts will be resolved automatically.:
   En este caso, Self-hosted LiveSync recreará los metadatos de todos los
@@ -712,12 +712,12 @@ moduleInputUIObsidian:
   optionNo: No
   optionYes: Sí
 moduleLiveSyncMain:
-  logAdditionalSafetyScan: Escanéo de seguridad adicional...
+  logAdditionalSafetyScan: Escaneo de seguridad adicional...
   logLoadingPlugin: Cargando complemento...
   logPluginInitCancelled: La inicialización del complemento fue cancelada por un módulo
   logPluginVersion: Self-hosted LiveSync v${manifestVersion} ${packageVersion}
   logReadChangelog: LiveSync se ha actualizado, ¡por favor lee el registro de cambios!
-  logSafetyScanCompleted: Escanéo de seguridad adicional completado
+  logSafetyScanCompleted: Escaneo de seguridad adicional completado
   logSafetyScanFailed: El escaneo de seguridad adicional ha fallado en un módulo
   logUnloadingPlugin: Descargando complemento...
   logVersionUpdate: LiveSync se ha actualizado, en caso de actualizaciones que
@@ -749,7 +749,7 @@ moduleLiveSyncMain:
     o se obtiene. Si el proceso termina de forma anormal, puede mantenerse sin
     querer.
 
-    > Si no estás seguro, puedes intentar volver a ejecutar estos procesos.
+    > Si no estás seguro puedes intentar volver a ejecutar estos procesos.
     Asegúrate de hacer una copia de seguridad de tu bóveda.
   optionKeepLiveSyncDisabled: Mantener LiveSync desactivado
   optionResumeAndRestart: Reanudar y reiniciar Obsidian
@@ -885,7 +885,7 @@ moduleMigration:
 
 
       Nota: actualiza Self-hosted LiveSync a la v0.25.6 o superior en todos tus
-      dispositivos y haz una copia de seguridad fiable de tu vault.
+      dispositivos y haz una copia de seguridad fiable de tu bóveda.
 
       Nota 2: reconstruir todo y obtener los datos consume algo de tiempo y de
       tráfico; hazlo en horas de poco uso y con una conexión de red estable.
@@ -934,7 +934,7 @@ On the source device, from the command palette, run the 'Show settings as a QR c
   En el dispositivo de origen, ejecuta desde la paleta de comandos «Show
   settings as a QR code».
 On the source device, open Obsidian.: En el dispositivo de origen, abre Obsidian.
-On this device, please keep this Vault open.: En este dispositivo, mantén este Vault abierto.
+On this device, please keep this Vault open.: En este dispositivo, mantén esta bóveda abierta.
 On this device, switch to the camera app or use a QR code scanner to scan the displayed QR code.:
   En este dispositivo, cambia a la aplicación de cámara o usa un lector de QR
   para escanear el código mostrado.
@@ -956,7 +956,7 @@ P2P:
   Note:
     Summary: ¿Qué es esta función? (incluye notas importantes; léelas al menos una vez)
     description: >2-
-       Este replicador permite sincronizar el vault con otros dispositivos
+       Este replicador permite sincronizar la bóveda con otros dispositivos
       mediante una conexión punto a punto. Así se puede sincronizar con nuestros
       otros dispositivos sin usar un servicio en la nube.
 
@@ -1015,7 +1015,7 @@ Please enter the details required to connect to your S3/MinIO/R2 compatible obje
 Please enter the Peer-to-Peer Synchronisation information below.: Introduce a continuación los datos de la sincronización punto a punto.
 Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.:
   Introduce el Setup URI generado durante la instalación del servidor o en otro
-  dispositivo, junto con la frase de contraseña del vault.
+  dispositivo, junto con la frase de contraseña de la bóveda.
 Please follow the steps below to import settings from your existing device.:
   Sigue los pasos siguientes para importar los ajustes desde tu dispositivo
   actual.
@@ -1259,7 +1259,7 @@ Setup:
     LabelEncryptionAlgorithm: Algoritmo de cifrado
     DefaultAlgorithmDesc: En la mayoría de los casos, debes mantener el algoritmo
       predeterminado (${algorithm}). Este ajuste solo es necesario si ya tienes
-      un Vault cifrado con un formato diferente.
+      una bóveda cifrada con un formato diferente.
     AlgorithmWarning: Cambiar el algoritmo de cifrado impedirá el acceso a cualquier
       dato cifrado anteriormente con otro algoritmo. Asegúrate de que todos tus
       dispositivos estén configurados para usar el mismo algoritmo y así
@@ -1278,16 +1278,16 @@ Setup:
     Title: Introducir URI de configuración
     GuidanceLine1: Introduce la URI de configuración que se generó durante la
       instalación del servidor o en otro dispositivo, junto con la frase de
-      contraseña del Vault.
+      contraseña de la bóveda.
     GuidanceLine2: Ten en cuenta que puedes generar una nueva URI de configuración
       ejecutando el comando "Copiar ajustes como nueva URI de configuración"
       desde la paleta de comandos.
     LabelSetupURI: URI de configuración
     ValidInfo: La URI de configuración es válida y está lista para usarse.
     InvalidInfo: La URI de configuración no es válida. Revísala e inténtalo de nuevo.
-    LabelPassphrase: Frase de contraseña del Vault
-    PlaceholderPassphrase: Introduce la frase de contraseña del Vault
-    ErrorPassphraseRequired: Introduce la frase de contraseña del Vault.
+    LabelPassphrase: Frase de contraseña de la bóveda
+    PlaceholderPassphrase: Introduce la frase de contraseña de la bóveda
+    ErrorPassphraseRequired: Introduce la frase de contraseña de la bóveda.
     ErrorFailedToParse: No se pudo procesar la URI de configuración. Revisa la URI y
       la frase de contraseña.
     ButtonProceed: Probar ajustes y continuar
@@ -1296,7 +1296,7 @@ Setup:
     Title: Escanear código QR
     Guidance: Sigue los pasos de abajo para importar los ajustes desde tu
       dispositivo actual.
-    Step1: En este dispositivo, mantén este Vault abierto.
+    Step1: En este dispositivo, mantén esta bóveda abierta.
     Step2: En el dispositivo de origen, abre Obsidian.
     Step3: En el dispositivo de origen, ejecuta desde la paleta de comandos la orden
       "Mostrar ajustes como código QR".
@@ -1559,7 +1559,7 @@ obsidianLiveSyncSettingTab:
     cifrado?
   msgFetchConfigFromRemote: ¿Quieres obtener la configuración del servidor remoto?
   msgIfConfigNotPersistent: Si la configuración del servidor no es persistente
-    (por ejemplo, ejecutándose en docker), los valores aquí pueden cambiar. Una
+    (por ejemplo, ejecutándose en Docker), los valores aquí pueden cambiar. Una
     vez que puedas conectarte, por favor actualiza las configuraciones en el
     local.ini del servidor.
   msgInvalidPassphrase: Tu frase de contraseña de cifrado podría ser inválida.
@@ -1669,14 +1669,14 @@ obsidianLiveSyncSettingTab:
   okAdminPrivileges: ✔ Tienes privilegios de administrador.
   okCorsCredentials: ✔ cors.credentials está correcto.
   okCorsCredentialsForOrigin: CORS credenciales OK
-  okCorsOriginMatched: ✔ Origen de CORS correcto
-  okCorsOrigins: ✔ cors.origins está correcto.
-  okEnableCors: ✔ httpd.enable_cors está correcto.
-  okMaxDocumentSize: ✔ couchdb.max_document_size está correcto.
-  okMaxRequestSize: ✔ chttpd.max_http_request_size está correcto.
-  okRequireValidUser: ✔ chttpd.require_valid_user está correcto.
-  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user está correcto.
-  okWwwAuth: ✔ httpd.WWW-Authenticate está correcto.
+  okCorsOriginMatched: ✔ Origen de CORS es correcto
+  okCorsOrigins: ✔ cors.origins es correcto.
+  okEnableCors: ✔ httpd.enable_cors es correcto.
+  okMaxDocumentSize: ✔ couchdb.max_document_size es correcto.
+  okMaxRequestSize: ✔ chttpd.max_http_request_size es correcto.
+  okRequireValidUser: ✔ chttpd.require_valid_user es correcto.
+  okRequireValidUserAuth: ✔ chttpd_auth.require_valid_user es correcto.
+  okWwwAuth: ✔ httpd.WWW-Authenticate es correcto.
   optionApply: Aplicar
   optionCancel: Cancelar
   optionCouchDB: CouchDB
@@ -1689,7 +1689,7 @@ obsidianLiveSyncSettingTab:
   optionOnEvents: En eventos
   optionPeriodicAndEvents: Periódico y en eventos
   optionPeriodicWithBatch: Periódico con lote
-  optionRebuildBoth: Reconstructuir ambos desde este dispositivo
+  optionRebuildBoth: Reconstruir ambos desde este dispositivo
   optionSaveOnlySettings: (Peligro) Guardar solo configuración
   panelChangeLog: Registro de cambios
   panelGeneralSettings: Configuraciones generales
@@ -1778,7 +1778,7 @@ Rebuild local and remote database with local files.: Reconstruye la base de dato
 Rebuilding Operations (Remote Only): Operaciones de reconstrucción (solo remoto)
 Recreate all: Recrear todo
 Recreate missing chunks for all files: Recrear fragmentos faltantes para todos los archivos
-Reducing the frequency with which on-disk changes are reflected into the DB: Reducir frecuencia de actualizaciones de disco a BD
+Reducing the frequency with which on-disk changes are reflected into the DB: Reducir frecuencia de actualizaciones de disco a base de datos
 Region: Región
 Remediation: Remediación
 Remediation Setting Changed: La configuración de remediación cambió
@@ -1789,7 +1789,7 @@ Remote server type: Tipo de servidor remoto
 Remote Type: Tipo de remoto
 Rename: Renombrar
 Requires restart of Obsidian: Requiere reiniciar Obsidian
-Requires restart of Obsidian.: Requiere reiniciar Obsidian
+Requires restart of Obsidian.: Requiere reiniciar Obsidian.
 Resend: Reenviar
 Resend all chunks to the remote.: Reenvía todos los chunks al remoto.
 Reset: Restablecer
@@ -1828,10 +1828,10 @@ Schedule and Restart: Programar y reiniciar
 Scram!: Medidas de emergencia
 Seconds, 0 to disable: Segundos, 0 para desactivar
 Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.:
-  Segundos. Guardado en BD local se retrasará hasta este valor tras dejar de
-  escribir/guardar
+  Segundos. Guardado en base de datos local se retrasará hasta este valor tras dejar de
+  escribir o guardar.
 Secret Key: Clave secreta
-Select the database adapter to use.: Selecciona el adaptador de base de datos que se usará.
+Select the database adapter to use.: Selecciona el adaptador de base de datos.
 Send: Enviar
 Send chunks: Enviar chunks
 Server URI: URI del servidor
@@ -1947,7 +1947,7 @@ Stat: Estado
 Stats: Estadísticas
 Stop ⚡: Detener ⚡
 Stop Broadcasting: Detener difusión
-Stop reflecting database changes to storage files.: Dejar de reflejar cambios de BD en archivos
+Stop reflecting database changes to storage files.: Dejar de reflejar cambios de base de datos en archivos
 Stop watching for file changes.: Dejar de monitorear cambios en archivos
 Storage -> Database: Almacenamiento -> Base de datos
 Strongly Recommended: Muy recomendado
@@ -1981,7 +1981,7 @@ The connection to the server has been configured successfully. As the next step,
   La conexión con el servidor se ha configurado correctamente. Como paso
   siguiente,
 The delay for consecutive on-demand fetches: Retraso entre obtenciones consecutivas
-The files in this Vault are almost identical to the server's.: Los archivos de este Vault son casi idénticos a los del servidor.
+The files in this Vault are almost identical to the server's.: Los archivos de esta bóveda son casi idénticos a los del servidor.
 "The following accepted nodes are missing its node information:\n- ${missingNodes}\n\nThis indicates that they have not been connected for some time or have been left on an older version.\nIt is preferable to update all devices if possible. If you have any devices that are no longer in use, you can clear all accepted nodes by locking the remote once.": >-
   A los siguientes nodos aceptados les falta su información de nodo:
 
@@ -2026,7 +2026,7 @@ the synchronisation data on the server will be built based on the current data o
   actuales de este dispositivo.
 Themes: Temas
 There is a way to resolve this on other devices.: Hay una forma de resolver esto en los demás dispositivos.
-There may be differences between the files in this Vault and the server.: Puede haber diferencias entre los archivos de este Vault y los del servidor.
+There may be differences between the files in this Vault and the server.: Puede haber diferencias entre los archivos de esta bóveda y los del servidor.
 Therefore, we ask that you exercise extreme caution when configuring server information manually. If an incorrect passphrase is entered, the data on the server will become corrupted.:
   Por tanto, extrema la precaución al configurar manualmente los datos del
   servidor. Si introduces una frase de contraseña incorrecta, los datos del
@@ -2042,23 +2042,23 @@ This first setup has several short steps because it confirms encryption, the con
   Una vez completada, los demás dispositivos podrán reutilizar un Setup URI.
 This is an extremely powerful operation. We strongly recommend that you copy your Vault folder to a safe location.:
   Esta es una operación extremadamente potente. Te recomendamos encarecidamente
-  copiar la carpeta de tu Vault a un lugar seguro.
+  copiar la carpeta de tu bóveda a un lugar seguro.
 This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.:
   Esta comprobación opcional usa la API interna de solicitudes de Obsidian y
   envía las credenciales anteriores al servidor CouchDB. Utilízala solo con un
   servidor de confianza; puede requerir acceso de administrador.
-This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: Esta frase no se copia a otros dispositivos. Usará `Default` hasta reconfigurar
+This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.: Esta frase no se copia a otros dispositivos. Usará `Default` hasta que lo configures de nuevo.
 This password is used to encrypt the connection. Use something long enough.: Esta contraseña se usa para cifrar la conexión. Usa algo suficientemente largo.
 This procedure will first delete all existing synchronisation data from the server. Following this, the server data will be completely rebuilt, using the current state of your Vault on this device (including its local database) as:
   Este procedimiento eliminará primero todos los datos de sincronización
   existentes en el servidor. A continuación, los datos del servidor se
-  reconstruirán por completo usando el estado actual del Vault de este
+  reconstruirán por completo usando el estado actual de la bóveda de este
   dispositivo (incluida su base de datos local) como
 This setting must be the same even when connecting to multiple synchronisation destinations.:
   Este ajuste debe ser el mismo incluso si te conectas a varios destinos de
   sincronización.
 This Vault is empty, or contains only new files that are not on the server.:
-  Este Vault está vacío o solo contiene archivos nuevos que no están en el
+  Esta bóveda está vacía o solo contiene archivos nuevos que no están en el
   servidor.
 This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.:
   Esto reconstruirá la base de datos local de este dispositivo con los datos más
@@ -2090,13 +2090,13 @@ TweakMismatchResolve:
     UseRemoteWithRebuild: Aplicar los ajustes a este dispositivo y volver a obtener los datos
   Message:
     AutoAcceptCompatibleUndefined: >-
-      
+
       Parece que los ajustes son distintos en cada dispositivo. Ahora se pueden
       aplicar automáticamente los cambios compatibles a estas configuraciones.
 
       ¿Quieres activar la aceptación automática (`auto-accept`)?
     Main: >-
-      
+
       Los ajustes de la base de datos remota son los siguientes. Los han
       configurado otros dispositivos que se han sincronizado con este al menos
       una vez.
@@ -2131,7 +2131,7 @@ TweakMismatchResolve:
       ${additionalMessage}
     UseRemote:
       WarningRebuildRecommended: >-
-        
+
         >[!NOTICE]
 
         > Algunos cambios son compatibles, pero pueden consumir almacenamiento y
@@ -2140,7 +2140,7 @@ TweakMismatchResolve:
 
         > ***Asegúrate de tener tiempo y una red estable antes de aplicarlo.***
       WarningRebuildRequired: >-
-        
+
         >[!WARNING]
 
         > Algunas configuraciones remotas no son compatibles con la base de
@@ -2148,7 +2148,7 @@ TweakMismatchResolve:
 
         > ***Asegúrate de tener tiempo y una red estable antes de aplicarlo.***
     WarningIncompatibleRebuildRecommended: >-
-      
+
       >[!NOTICE]
 
       > Hemos detectado que algunos valores difieren de forma que hacen
@@ -2161,7 +2161,7 @@ TweakMismatchResolve:
       > Si decides reconstruir, tardará unos minutos o más. **Asegúrate de que
       es seguro hacerlo ahora.**
     WarningIncompatibleRebuildRequired: >-
-      
+
       >[!WARNING]
 
       > Hemos detectado que algunos valores difieren de forma que hacen
@@ -2316,7 +2316,7 @@ Ui:
       SendChunks: Enviar los chunks
       Syncing: Sincronización
       WarningLockedReadyAction: Estoy listo, desbloquear la base de datos
-      WarningLockedReadyText: Para evitar que el vault se corrompa, la base de datos
+      WarningLockedReadyText: Para evitar que la bóveda se corrompa, la base de datos
         remota se ha bloqueado para la sincronización. (Este dispositivo está
         marcado como «resuelto».) Cuando todos tus dispositivos estén marcados
         como «resueltos», desbloquea la base de datos. Este aviso seguirá
@@ -2324,9 +2324,9 @@ Ui:
         resuelto.
       WarningLockedResolveAction: He hecho una copia de seguridad, marcar este dispositivo como resuelto
       WarningLockedResolveText: La base de datos remota está bloqueada para la
-        sincronización a fin de evitar que el vault se corrompa, porque este
+        sincronización a fin de evitar que la bóveda se corrompa, porque este
         dispositivo no está marcado como «resuelto». Haz una copia de seguridad
-        de tu vault, restablece la base de datos local y selecciona «Marcar este
+        de tu bóveda, restablece la base de datos local y selecciona «Marcar este
         dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la
         replicación confirme que el dispositivo está resuelto.
       WriteRedFlagAndRestart: Marcar y reiniciar
@@ -2366,7 +2366,7 @@ Ui:
       RemediationNoLimit: Sin límite configurado
       RemediationRestartLater: Más tarde
       RemediationRestartMessage: Se recomienda encarecidamente reiniciar Obsidian.
-        Hasta que lo hagas, puede que algunos cambios no surtan efecto y que la
+        Hasta que lo hagas puede que algunos cambios no surtan efecto y que la
         interfaz se muestre de forma inconsistente. ¿Seguro que quieres
         reiniciar ahora?
       RemediationRestartNow: Reiniciar ahora
@@ -2399,7 +2399,7 @@ Ui:
       DisplayName: Nombre visible
       DuplicateRemote: Duplicar el remoto
       DuplicateRemoteSuffix: ${name} (copia)
-      E2EEConfiguration: Configuración del E2EE
+      E2EEConfiguration: Configuración de E2EE
       Export: Exportar
       FetchRemoteSettings: Obtener los ajustes remotos
       ImportConnection: Importar conexión
@@ -2493,7 +2493,7 @@ Ui:
         dispositivo obtenga sus datos iniciales.
       GuidancePrimary: La conexión punto a punto se ha configurado correctamente. A
         continuación, la base de datos local de LiveSync se construirá a partir
-        de los archivos actuales de este Vault.
+        de los archivos actuales de esta bóveda.
       Important: TEN EN CUENTA
       Proceed: Reiniciar y preparar este dispositivo
       Question: Pulsa el botón de abajo para reiniciar y pasar a la confirmación de la
@@ -2513,13 +2513,13 @@ Ui:
     RebuildEverythingP2P:
       ConfirmLocalReset: Entiendo que esto restablece únicamente la base de datos de
         sincronización local de este dispositivo.
-      ConfirmLocalResetNote: Se usarán los archivos que hay ahora en este Vault para reconstruirla.
+      ConfirmLocalResetNote: Se usarán los archivos que hay ahora en esta bóveda para reconstruirla.
       ConfirmTitle: ⚠️ Confirma lo siguiente
       Guidance: Este procedimiento descartará la base de datos local de LiveSync de
         este dispositivo y la reconstruirá a partir de los archivos actuales de
-        este Vault. No elimina ni sobrescribe datos de otro dispositivo.
+        esta bóveda. No elimina ni sobrescribe datos de otro dispositivo.
       Note: Mantén este dispositivo conectado después de la inicialización para que
-        otro dispositivo pueda obtener el Vault desde él.
+        otro dispositivo pueda obtener la bóveda desde él.
       Proceed: Lo entiendo, preparar este dispositivo
       Title: "Confirmación final: preparar este dispositivo para P2P"
     SelectExisting:
@@ -2560,7 +2560,7 @@ Ui:
         un servicio de almacenamiento de objetos compatible con S3, como Amazon
         S3, MinIO o Cloudflare R2.
       CouchDbOptionDesc: Es el método de sincronización más adecuado para el diseño
-        actual y ofrece todas las funciones. Necesitas tener ya una instancia de
+        actual y ofrece todas las funciones. Necesitas tener una instancia de
         CouchDB en marcha.
       Guidance: Selecciona el tipo de remoto para esta configuración de sincronización.
       P2POption: Punto a punto (P2P)
@@ -2611,8 +2611,8 @@ We cannot change the device name while this feature is enabled. Please disable t
   habilitada. Deshabilita la función para cambiarlo.
 We have to configure the device name: Hay que configurar el nombre del dispositivo
 We recommend that you copy your Vault folder to a safe location. This will provide a safeguard in case a large number of conflicts arise, or if you accidentally synchronise with an incorrect destination.:
-  Te recomendamos copiar la carpeta de tu Vault a un lugar seguro. Así tendrás
-  una salvaguarda en caso de que surjan muchos conflictos o de que sincronices
+  Te recomendamos copiar la carpeta de tu bóveda a un lugar seguro. Así tendrás
+  una copia de seguridad en caso de que surjan muchos conflictos o de que sincronices
   por error con un destino incorrecto.
 When you save a file in the editor, start a sync automatically: Iniciar sincronización automática al guardar en editor
 Write credentials in the file: Escribir credenciales en archivo
@@ -2621,60 +2621,60 @@ xxhash32 (Fast but less collision resistance): xxhash32 (rápido, pero con menor
 xxhash64 (Fastest): xxhash64 (el más rápido)
 "Welcome to Self-hosted LiveSync": "Bienvenido a Self-hosted LiveSync"
 "We will now guide you through a few questions to simplify the synchronisation setup.":
-  "Ahora le guiaremos con unas pocas preguntas para simplificar la configuración
+  "Ahora te guiaremos con unas pocas preguntas para simplificar la configuración
   de la sincronización。"
-"First, please select the option that best describes your current situation.": "Primero, seleccione la opción que describa mejor su situación actual。"
+"First, please select the option that best describes your current situation.": "Primero, seleccione la opción que mejor describa tu situación actual。"
 "I am setting this up for the first time": "Estoy configurando esto por primera vez"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.":
-  "(Seleccione esto si está configurando este dispositivo como el primer
-  dispositivo de sincronización). Esta opción es adecuada si es nuevo en
-  LiveSync y desea configurarlo desde cero。"
+  "(Selecciona esto si estás configurando este dispositivo como el primer
+  dispositivo de sincronización). Esta opción es adecuada si eres nuevo en
+  LiveSync y quieres configurarlo desde cero。"
 "I am adding a device to an existing synchronisation setup":
   "Estoy agregando un dispositivo a una configuración de sincronización
   existente"
 "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.":
-  "(Seleccione esto si ya utiliza la sincronización en otro ordenador o
-  teléfono). Esta opción es adecuada si desea añadir este dispositivo a una
+  "(Seleccione esto si ya utilizas la sincronización en otro ordenador o
+  teléfono). Esta opción es adecuada si quieres añadir este dispositivo a una
   configuración de LiveSync existente。"
 "Yes, I want to set up a new synchronisation": "Sí, quiero configurar una nueva sincronización"
 "Yes, I want to add this device to my existing synchronisation": "Sí, quiero añadir este dispositivo a mi sincronización existente"
 "No, please take me back": "No, volver atrás"
 "Device Setup Method": "Método de configuración del dispositivo"
 "You are adding this device to an existing synchronisation setup.":
-  "Está añadiendo este dispositivo a una configuración de sincronización
+  "Estás añadiendo este dispositivo a una configuración de sincronización
   existente。"
-"Please select a method to import the settings from another device.": "Seleccione un método para importar la configuración desde otro dispositivo。"
-"Use a Setup URI (Recommended)": "Usar un URI de configuración (recomendado)"
-"Paste the Setup URI generated from one of your active devices.": "Pegue el URI de configuración generado desde uno de sus dispositivos activos。"
+"Please select a method to import the settings from another device.": "Selecciona un método para importar la configuración desde otro dispositivo。"
+"Use a Setup URI (Recommended)": "Usar URI de configuración (recomendado)"
+"Paste the Setup URI generated from one of your active devices.": "Pega el URI de configuración generado desde uno de tus dispositivos activos。"
 "Scan a QR Code (Recommended for mobile)": "Escanear un código QR (recomendado para móviles)"
 "Scan the QR code displayed on an active device using this device's camera.":
-  "Escanee con la cámara de este dispositivo el código QR mostrado en un
+  "Escanea con la cámara de este dispositivo el código QR mostrado en un
   dispositivo activo。"
 "Enter the server information manually": "Introducir manualmente la información del servidor"
 "Configure the same server information as your other devices again, manually, very advanced users only.":
-  "Configure manualmente la misma información del servidor que en sus otros
+  "Configura manualmente la misma información del servidor que en sus otros
   dispositivos. Solo para usuarios muy avanzados。"
 "Proceed with Setup URI": "Continuar con el URI de configuración"
-"I know my server details, let me enter them": "Conozco los datos de mi servidor; permítame introducirlos"
-"Please select an option to proceed": "Seleccione una opción para continuar"
+"I know my server details, let me enter them": "Conozco los datos de mi servidor; déjame introducirlos"
+"Please select an option to proceed": "Selecciona una opción para continuar"
 "Connection Method": "Método de conexión"
 "We will now proceed with the server configuration.": "Ahora continuaremos con la configuración del servidor。"
-"How would you like to configure the connection to your server?": "¿Cómo desea configurar la conexión con su servidor?"
+"How would you like to configure the connection to your server?": "¿Cómo quieres configurar la conexión con tu servidor?"
 "A Setup URI is a single string of text containing your server address and authentication details. Using a URI, if one was generated by your server installation script, provides a simple and secure configuration.":
   "Un URI de configuración es una única cadena de texto que contiene la
   dirección del servidor y los datos de autenticación. Si el script de
-  instalación de su servidor generó un URI, usarlo proporciona una configuración
+  instalación de tu servidor generó un URI, usarla proporciona una configuración
   sencilla y segura。"
 "This is an advanced option for users who do not have a URI or who wish to configure detailed settings.":
   "Esta es una opción avanzada para usuarios que no disponen de un URI o que
   desean configurar parámetros detallados。"
 "Enter Server Information": "Introducir información del servidor"
-"Please select the type of server to which you are connecting.": "Seleccione el tipo de servidor al que se está conectando。"
+"Please select the type of server to which you are connecting.": "Selecciona el tipo de servidor al que se está conectando。"
 "Continue to CouchDB setup": "Continuar con la configuración de CouchDB"
 "Continue to S3/MinIO/R2 setup": "Continuar con la configuración de S3/MinIO/R2"
 "Continue to Peer-to-Peer only setup": "Continuar con la configuración solo Peer-to-Peer"
 "This is the most suitable synchronisation method for the design. All functions are available. You must have set up a CouchDB instance.":
-  "Este es el método de sincronización más adecuado para el diseño. Todas las
+  "Este es el método de sincronización más adecuado para el diseño del complemento. Todas las
   funciones están disponibles. Debe tener configurada una instancia de CouchDB。"
 "S3/MinIO/R2 Object Storage": "Almacenamiento de objetos S3/MinIO/R2"
 "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.":
@@ -2694,4 +2694,4 @@ You should perform this operation only in exceptional circumstances, such as whe
   "Solo deberías realizar esta operación en circunstancias excepcionales: cuando
   los datos del servidor estén completamente corruptos, cuando ya no necesites
   los cambios de los demás dispositivos o cuando el tamaño de la base de datos
-  sea inusualmente grande respecto al del Vault."
+  sea inusualmente grande respecto a la bóveda."
