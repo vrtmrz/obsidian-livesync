@@ -11,12 +11,10 @@ import {
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
-    assertE2eCompatibilityMarker,
-    assertE2eCompatibilityReviewPending,
+    assertE2eCompatibilityUnpaused,
     configureCouchDb,
     createE2eCouchDbPluginData,
     prepareRemote,
-    resumeCompatibilityReview,
     waitForLiveSyncCoreReady,
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
@@ -113,12 +111,7 @@ async function main(): Promise<void> {
             }),
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
-        await assertE2eCompatibilityReviewPending(cli.binary, session.cliEnv);
-        await resumeCompatibilityReview(session.remoteDebuggingPort, {
-            verifyMissingDeviceMarkerExplanation: true,
-            screenshotPrefix: "compatibility-review-copied-vault",
-        });
-        await assertE2eCompatibilityMarker(cli.binary, session.cliEnv);
+        await assertE2eCompatibilityUnpaused(cli.binary, session.cliEnv, session.remoteDebuggingPort);
 
         const configured = await configureCouchDb(cli.binary, session.cliEnv, {
             uri: couchDb.uri,

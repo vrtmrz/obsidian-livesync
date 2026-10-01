@@ -19,9 +19,6 @@ function reasonMarkdown(reason: CompatibilityPauseReason): string {
         if (reason.state === "downgrade") {
             return `- This installation uses internal database version **${reason.currentVersion}**, but this device previously acknowledged newer version **${reason.acknowledgedVersion}**. An older installation must not resume synchronisation.`;
         }
-        if (reason.state === "missing") {
-            return `- No previously acknowledged internal database version was found for this existing Vault. This can happen when a Vault is copied or restored, or when it is opened with a new Obsidian profile. This installation uses version **${reason.currentVersion}**. An empty local database does not mean that it is safe to resume automatically.`;
-        }
         return `- The saved internal database version marker is invalid. This installation uses version **${reason.currentVersion}**.`;
     }
     if (reason.source === "settings-schema") {

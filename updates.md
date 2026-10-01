@@ -53,6 +53,32 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - Dialogues show generated QR codes, key pairs, and database sizes again.
 - We can now use updated Spanish translations for settings and messages. (#1212)
 
+### Setup
+
+#### New Feature
+
+- We can now share a Setup URI with a displayed time limit, or choose **Compatible** for reuse without a time limit.
+    - **Time-bound** uses the current fixed seven-day UTC window, so the displayed end may be less than seven days away. Compatible retains the existing URI format; receiving devices still need to support the shared settings.
+    - The time condition applies when opening the URI. It does not revoke imported credentials or prevent reuse after rolling the device clock back.
+
+#### Improved
+
+- We can now distinguish the three Setup URI and QR code choices by their short labels and icons: initialise or overwrite the remote, join this device, or apply settings only.
+
+#### Fixed
+
+- We can now add a device or open a copied Vault without a compatibility pause solely because its device-local version record is absent.
+    - Existing version or settings incompatibilities still require review. A pause already saved by an earlier release still needs one explicit resume action.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- [@kimjansheden](https://github.com/kimjansheden) ([#1219](https://github.com/vrtmrz/obsidian-livesync/pull/1219))
+- [@Immick](https://github.com/Immick) ([#1195](https://github.com/vrtmrz/obsidian-livesync/pull/1195), [#1196](https://github.com/vrtmrz/obsidian-livesync/pull/1196))
+- [@bolikcraft](https://github.com/bolikcraft) ([#1187](https://github.com/vrtmrz/obsidian-livesync/pull/1187))
+- [@speedy-axolotl](https://github.com/speedy-axolotl) ([#1212](https://github.com/vrtmrz/obsidian-livesync/pull/1212))
+
 ## 1.0.32
 
 27th September, 2026

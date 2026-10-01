@@ -36,6 +36,14 @@ const testSteps: Step[] = [
         args: ["run", "test:e2e:obsidian:object-storage-setup-uri-workflow"],
     },
     {
+        name: "Object Storage Compatible Setup URI workflow",
+        args: ["run", "test:e2e:obsidian:object-storage-compatible-setup-uri-workflow"],
+    },
+    {
+        name: "Object Storage QR workflow",
+        args: ["run", "test:e2e:obsidian:object-storage-qr-workflow"],
+    },
+    {
         name: "Object Storage Custom HTTP Handler Setup URI workflow",
         args: ["run", "test:e2e:obsidian:object-storage-custom-http-handler-setup-uri-workflow"],
     },
@@ -45,6 +53,7 @@ const testSteps: Step[] = [
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
     { name: "hidden file snippet synchronisation", args: ["run", "test:e2e:obsidian:hidden-file-snippet-sync"] },
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },
+    { name: "internal Metadata Doctor", args: ["run", "test:e2e:obsidian:internal-metadata-doctor"] },
     { name: "setting Markdown export", args: ["run", "test:e2e:obsidian:setting-markdown-export"] },
 ];
 

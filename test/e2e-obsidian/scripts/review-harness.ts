@@ -434,6 +434,7 @@ async function main(): Promise<void> {
                 doctorProcessedVersion: DoctorRegulation.version,
                 settingVersion: CURRENT_SETTING_VERSION,
                 isConfigured: true,
+                versionUpFlash: "Review an earlier compatibility change before synchronisation resumes.",
                 additionalSuffixOfDatabaseName: "",
                 enableDebugTools: true,
                 notifyThresholdOfRemoteStorageSize: 0,

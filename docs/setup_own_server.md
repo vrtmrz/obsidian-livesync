@@ -194,10 +194,13 @@ The generator also prints an ID recovery code for its random ID key. Save that c
 
 The generator consumes the exact registry-pinned Commonlib release used by the provisioning utility. It creates a configured CouchDB remote profile, applies the current defaults for a new Vault, and encodes them with Commonlib's Setup URI contract.
 
+By default, the URI is Ephemeral and can be opened only until the exact UTC time printed by the generator. This is the end of a fixed seven-day window, not seven days after creation. Set `uri_mode=persistent` before running the command if the URI needs no time condition or must be readable by an older client that supports the existing encrypted format.
+
 You will then get the following output:
 
 ```bash
 Generated couchdb Setup URI.
+Ephemeral: usable until 2026-10-01T00:00:00.000Z (UTC).
 Your passphrase for the Setup URI is: H7vX...a-random-32-character-value
 This passphrase is never shown again, so store it safely.
 ID recovery code: sls-id-v1:<64 lowercase hexadecimal characters>

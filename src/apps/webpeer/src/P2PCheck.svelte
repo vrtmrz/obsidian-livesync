@@ -1,7 +1,8 @@
 <script lang="ts">
     import type { P2PServerInfo } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicatorP2PServer";
     import qrcode from "qrcode-generator";
-    import { onDestroy, tick } from "svelte";
+    import { onDestroy, onMount, tick } from "svelte";
+    import { isTimeBoundSetupURIUsableNow } from "@vrtmrz/livesync-commonlib/setup-uri";
 
     import {
         generateP2PCheckSetup,
@@ -106,6 +107,7 @@
     let elapsedMilliseconds = $state(0);
     let copied = $state<"uri" | "passphrase">();
     let copyError = $state("");
+    let currentTime = $state(Date.now());
     let freshCheckStarting = $state(false);
     let additionalDeviceAttempt = $state<AdditionalDeviceAttempt>();
 
@@ -132,6 +134,12 @@
     );
     let elapsedSeconds = $derived(Math.floor(elapsedMilliseconds / 1_000));
     let targetLabel = $derived(target === "desktop" ? "desktop" : "mobile");
+    let setupURIUsable = $derived(
+        setup !== undefined && currentTime >= 0 && isTimeBoundSetupURIUsableNow(setup.setupURIUsableUntil)
+    );
+    let remainingMinutes = $derived(
+        setup ? Math.max(0, Math.ceil((setup.setupURIUsableUntil - currentTime) / 60_000)) : 0
+    );
     let additionalElapsedMilliseconds = $derived(
         additionalDeviceAttempt
             ? Math.max(
@@ -178,6 +186,7 @@
             const generated = await generateP2PCheckSetup(target, { relay });
             qrDataURL = createQRCodeDataURL(generated.setupURI);
             setup = generated;
+            currentTime = Date.now();
         } catch (error) {
             preparationError = formatError(error);
         } finally {
@@ -215,6 +224,11 @@
 
     async function copyText(value: string, kind: "uri" | "passphrase"): Promise<void> {
         copyError = "";
+        if (kind === "uri" && (!setup || !isTimeBoundSetupURIUsableNow(setup.setupURIUsableUntil))) {
+            currentTime = Date.now();
+            copyError = "This Setup URI is outside its time window. Start a fresh check.";
+            return;
+        }
         try {
             await navigator.clipboard.writeText(value);
             copied = kind;
@@ -254,6 +268,7 @@
 
     async function startAdditionalDeviceAttempt(): Promise<void> {
         if (
+            !setupURIUsable ||
             !monitorActive ||
             outcome !== "connected" ||
             activeConnections === 0 ||
@@ -267,6 +282,38 @@
         };
         await showSetupQRCode();
     }
+
+    function formatSetupURIEnd(usableUntil: number): string {
+        return new Intl.DateTimeFormat(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            weekday: "short",
+            hour: "numeric",
+            minute: "2-digit",
+            second: "2-digit",
+            timeZoneName: "short",
+        }).format(new Date(usableUntil));
+    }
+
+    function openSetupURI(event: MouseEvent): void {
+        if (!setup || !isTimeBoundSetupURIUsableNow(setup.setupURIUsableUntil)) {
+            event.preventDefault();
+            currentTime = Date.now();
+        }
+    }
+
+    onMount(() => {
+        const refresh = () => (currentTime = Date.now());
+        const timer = setInterval(refresh, 1_000);
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", refresh);
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener("focus", refresh);
+            document.removeEventListener("visibilitychange", refresh);
+        };
+    });
 
     onDestroy(() => {
         if (elapsedTimer !== undefined) {
@@ -372,6 +419,7 @@
 
                 <div class="setup-grid">
                     <div class="qr-panel">
+                        {#if setupURIUsable}
                         <img
                             src={qrDataURL}
                             alt={additionalDeviceAttempt
@@ -383,6 +431,12 @@
                                 ? "This is the original encrypted Setup URI; it was not regenerated."
                                 : "QR contains the encrypted Setup URI only."}
                         </p>
+                        {:else}
+                            <p role="alert">This Setup URI is outside its time window. Start a fresh check to set up another device. A device that already imported it can still be monitored below.</p>
+                            <button type="button" onclick={startFreshCheck} disabled={freshCheckStarting}>
+                                {freshCheckStarting ? "Starting…" : "Start a fresh check"}
+                            </button>
+                        {/if}
                     </div>
 
                     <div class="credential-panel">
@@ -401,6 +455,16 @@
                         </div>
                         <p class="field-help">Type this when LiveSync asks to decrypt the Setup URI.</p>
 
+                        <p class="field-help">
+                            {#if setupURIUsable}
+                                Ephemeral Setup URI: usable until {formatSetupURIEnd(setup.setupURIUsableUntil)}
+                                ({remainingMinutes < 1 ? "less than 1 minute" : `${remainingMinutes} minutes`} remaining).
+                            {:else}
+                                This Setup URI is outside its time window. Generate a new one before sharing it.
+                            {/if}
+                        </p>
+
+                        {#if setupURIUsable}
                         <label for="setup-uri">Setup URI</label>
                         <textarea
                             id="setup-uri"
@@ -414,8 +478,9 @@
                             <button type="button" onclick={() => copyText(setup!.setupURI, "uri")}>
                                 {copied === "uri" ? "Copied URI" : "Copy Setup URI"}
                             </button>
-                            <a class="button-link" href={setup.setupURI}>Open in Obsidian</a>
+                            <a class="button-link" href={setup.setupURI} onclick={openSetupURI}>Open in Obsidian</a>
                         </div>
+                        {/if}
                         {#if copyError}
                             <p class="inline-error" role="alert">{copyError}</p>
                         {/if}
@@ -550,9 +615,11 @@
                             class="primary-action"
                             type="button"
                             onclick={startAdditionalDeviceAttempt}
-                            disabled={activeConnections === 0}
+                            disabled={!setupURIUsable || activeConnections === 0}
                         >
-                            {activeConnections === 0
+                            {!setupURIUsable
+                                ? "Setup URI window ended; start a fresh check"
+                                : activeConnections === 0
                                 ? "Waiting for the first device to reconnect…"
                                 : "Try another device without resetting"}
                         </button>

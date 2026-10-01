@@ -7,6 +7,9 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "⚠️ Initialise or overwrite the remote": "⚠️ Initialise or overwrite the remote",
+    "🔗 Join this device": "🔗 Join this device",
+    "⚙️ Apply settings only (advanced)": "⚙️ Apply settings only (advanced)",
     "Configure TURN when a direct connection cannot be established or when you select TURN relay only.":
         "Configure TURN when a direct connection cannot be established or when you select TURN relay only.",
     "TURN configuration": "TURN configuration",

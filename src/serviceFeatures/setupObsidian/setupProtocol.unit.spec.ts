@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { registerSetupProtocolHandler, useSetupProtocolFeature } from "./setupProtocol";
+import { encodeTimeBoundSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
+import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 vi.mock("@/common/types", () => {
     return {
@@ -51,6 +53,35 @@ describe("setupObsidian/setupProtocol", () => {
         );
         expect(setupManager.decodeQR).not.toHaveBeenCalled();
     });
+
+    it.each(["ephemeral", "persistent"] as const)(
+        "reconstructs the exact encrypted %s URI after protocol query decoding",
+        async (mode) => {
+            let protocolHandler: ((params: Record<string, string>) => Promise<void>) | undefined;
+            const host = {
+                services: {
+                    API: {
+                        registerProtocolHandler: vi.fn(
+                            (_action: string, handler: (params: Record<string, string>) => Promise<void>) => {
+                                protocolHandler = handler;
+                            }
+                        ),
+                    },
+                },
+            } as any;
+            const setupManager = { onUseSetupURI: vi.fn(async () => true), decodeQR: vi.fn() } as any;
+            registerSetupProtocolHandler(host, vi.fn(), setupManager);
+
+            const generated = await encodeTimeBoundSetupURI(DEFAULT_SETTINGS, "protocol-passphrase", { mode });
+            const decodedQuery = new URL(generated.uri.trim()).searchParams.get("settings");
+            expect(decodedQuery?.startsWith("%$")).toBe(true);
+            await protocolHandler!({ settings: decodedQuery! });
+            const reconstructed = setupManager.onUseSetupURI.mock.calls[0][1] as string;
+            expect(reconstructed.replace("mock-config://", "obsidian://setuplivesync?settings=")).toBe(
+                generated.uri.trim()
+            );
+        }
+    );
 
     it("registerSetupProtocolHandler should route settingsQR payload to decodeQR", async () => {
         let protocolHandler: ((params: Record<string, string>) => Promise<void>) | undefined;

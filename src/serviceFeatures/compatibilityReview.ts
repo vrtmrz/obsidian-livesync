@@ -66,9 +66,8 @@ export class CompatibilityReviewController {
 
         // An existing unconfigured Vault cannot replicate, so a database
         // compatibility pause would only compete with onboarding and persist
-        // a misleading sync warning. Do not acknowledge the missing marker:
-        // activation on a later start must evaluate the same state again.
-        // Genuinely new Vaults still initialise their marker below.
+        // a misleading sync warning. Its next configured start evaluates any
+        // known compatibility reasons before initialising an absent marker.
         if (settings.isConfigured !== true && migrationState?.isNewVault !== true) {
             this.pause = undefined;
             this.ui.clearReminder();

@@ -15,7 +15,12 @@ import {
     type CouchDbConfig,
 } from "../runner/couchdb.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
-import { assertEqual, pushLocalChanges, waitForLocalDatabaseEntry } from "../runner/liveSyncWorkflow.ts";
+import {
+    assertEqual,
+    assertE2eCompatibilityUnpaused,
+    pushLocalChanges,
+    waitForLocalDatabaseEntry,
+} from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import {
     acknowledgeDisabledOptionalFeatures,
@@ -27,7 +32,6 @@ import {
     finishInitialisation,
     generateSetupURIFromDevice,
     modalByTitle,
-    resumeCompatibilityReviewIfShown,
     selectRadioOption,
     continueWithoutRemoteSettings,
     type SetupArtifact,
@@ -695,7 +699,7 @@ async function main(): Promise<void> {
             screenshots.push(await continueWithoutRemoteSettings(session.remoteDebuggingPort, captures));
             screenshots.push(await acknowledgeDisabledOptionalFeatures(session.remoteDebuggingPort, captures));
             const state = await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
-            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await assertE2eCompatibilityUnpaused(context.cliBinary, session.cliEnv, session.remoteDebuggingPort);
             assertEqual(state.activeConfigurationId !== "", true, "Manual CouchDB setup did not activate a profile.");
             assertEqual(
                 state.remoteConfigurationCount,
@@ -731,7 +735,7 @@ async function main(): Promise<void> {
                 await acknowledgeDisabledOptionalFeatures(session.remoteDebuggingPort, e2eeRebuildCaptures)
             );
             await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
-            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await assertE2eCompatibilityUnpaused(context.cliBinary, session.cliEnv, session.remoteDebuggingPort);
             await assertPersistedE2EE(vaultA, independentIdSource);
 
             const rebuiltEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, notePath);
@@ -767,7 +771,7 @@ async function main(): Promise<void> {
             screenshots.push(await captureAndStartInitialisation(session.remoteDebuggingPort, "existing", captures));
             screenshots.push(...(await confirmFastFetch(session.remoteDebuggingPort, captures)));
             await finishInitialisation(session.remoteDebuggingPort, context.cliBinary, session.cliEnv);
-            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await assertE2eCompatibilityUnpaused(context.cliBinary, session.cliEnv, session.remoteDebuggingPort);
             await assertPersistedE2EE(vaultB, independentIdSource);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForVaultFile(vaultB, notePath, noteContent);
@@ -793,7 +797,7 @@ async function main(): Promise<void> {
 
         session = await startUnconfiguredSession(context, vaultA);
         try {
-            await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+            await assertE2eCompatibilityUnpaused(context.cliBinary, session.cliEnv, session.remoteDebuggingPort);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await waitForVaultFile(vaultA, returnNotePath, returnNoteContent);
             if (independentIdSource) {

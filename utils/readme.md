@@ -47,6 +47,8 @@ deno run --minimum-dependency-age=0 --config=./flyio/deno.jsonc --frozen --lock=
 
 If `uri_passphrase` is omitted, the tool generates and prints a cryptographically random one. Store the Setup URI and its passphrase separately. The `passphrase` value protects synchronised Vault data and must also be stored safely.
 
+The generator defaults to `uri_mode=ephemeral`. The URI opens only during the current fixed seven-day UTC window, and the tool prints its exact end time. It may have less than seven days remaining when generated. For an indefinitely reusable URI, set `uri_mode=persistent` before running the command. Persistent uses the existing encrypted format, which older clients that already support that format can read. The time condition controls opening the URI; it does not revoke settings or credentials after import.
+
 ### Object Storage
 
 ```sh

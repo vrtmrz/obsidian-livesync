@@ -73,7 +73,8 @@ export async function enterSetupURI(
     port: number,
     mode: "new" | "existing",
     artifact: SetupArtifact,
-    captures: SetupCaptureNames
+    captures: SetupCaptureNames,
+    rejectedArtifacts: readonly SetupArtifact[] = []
 ): Promise<string> {
     await withObsidianPage(port, async (page) => {
         const invitation = page.locator(".notice").filter({ hasText: "Welcome to Self-hosted LiveSync" });
@@ -101,6 +102,40 @@ export async function enterSetupURI(
 
         const setup = modalByTitle(page, "Enter Setup URI");
         await setup.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const settingsSnapshot = () =>
+            page.evaluate(async () => {
+                const obsidian = globalThis as typeof globalThis & {
+                    app: {
+                        plugins: {
+                            plugins: Record<
+                                string,
+                                {
+                                    core: { services: { setting: { currentSettings(): unknown } } };
+                                    loadData(): Promise<unknown>;
+                                }
+                            >;
+                        };
+                    };
+                };
+                const plugin = obsidian.app.plugins.plugins["obsidian-livesync"];
+                return JSON.stringify({
+                    current: plugin.core.services.setting.currentSettings(),
+                    persisted: await plugin.loadData(),
+                });
+            });
+        const before = rejectedArtifacts.length > 0 ? await settingsSnapshot() : undefined;
+        for (const rejected of rejectedArtifacts) {
+            await setup.locator('input[placeholder^="obsidian://setuplivesync"]').fill(rejected.setupURI);
+            await setup.locator('input[name="password"]').fill(rejected.setupPassphrase);
+            await setup.getByRole("button", { name: "Test Settings and Continue" }).click({ timeout: uiTimeoutMs });
+            await setup.getByText($msg("Failed to parse Setup-URI."), { exact: false }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+            if ((await settingsSnapshot()) !== before) {
+                throw new Error("A rejected Setup URI changed the receiving device's settings.");
+            }
+        }
         await setup.locator('input[placeholder^="obsidian://setuplivesync"]').fill(artifact.setupURI);
         await setup.locator('input[name="password"]').fill(artifact.setupPassphrase);
     });
@@ -120,7 +155,8 @@ export async function enterSetupURI(
 export async function generateSetupURIFromDevice(
     port: number,
     setupPassphrase: string,
-    captures: SetupCaptureNames
+    captures: SetupCaptureNames,
+    mode: "ephemeral" | "persistent" = "ephemeral"
 ): Promise<{ artifact: SetupArtifact; screenshots: string[] }> {
     const opened = await withObsidianPage(port, async (page) => {
         return await page.evaluate(
@@ -150,6 +186,18 @@ export async function generateSetupURIFromDevice(
         const prompt = modalByTitle(page, promptTitle);
         await prompt.getByRole("button", { name: "OK", exact: true }).click({ timeout: uiTimeoutMs });
         await prompt.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        const choice = modalByTitle(page, "Setup URI availability");
+        await choice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await choice.getByText("Time-bound Setup URIs can be opened until", { exact: false }).waitFor({
+            state: "visible",
+            timeout: uiTimeoutMs,
+        });
+        await choice
+            .getByRole("button", {
+                name: mode === "ephemeral" ? "Time-bound" : "Compatible (no time limit)",
+                exact: true,
+            })
+            .click({ timeout: uiTimeoutMs });
     });
 
     const resultTitle = "Your Setup URI is ready to be copied";
@@ -400,6 +448,15 @@ export async function finishInitialisation(
     let readySince: number | undefined;
     while (Date.now() < deadline) {
         const resumeVisible = await withObsidianPage(port, async (page) => {
+            const alignedSettingsNotice = page.locator(".modal-container").filter({
+                hasText:
+                    "Your settings differed slightly from the server's. The plug-in has supplemented the incompatible parts with the server settings!",
+            });
+            if (await alignedSettingsNotice.isVisible()) {
+                await alignedSettingsNotice
+                    .getByRole("button", { name: "OK", exact: true })
+                    .click({ timeout: uiTimeoutMs });
+            }
             return await modalByTitle(page, "Confirmation").filter({ hasText: message }).isVisible();
         }).catch(() => false);
         if (resumeVisible) {
