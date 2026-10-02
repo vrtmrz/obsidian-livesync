@@ -38,6 +38,7 @@ const focusedScenarios = new Set([
     "received-change-readiness",
     "internal-metadata-doctor",
     "setting-markdown-export",
+    "setting-markdown-roundtrip",
     "upgrade-from-stable",
 ]);
 

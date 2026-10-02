@@ -714,6 +714,8 @@ Save settings to a markdown file. You will be notified when new settings arrive.
 Setting key: writeCredentialsForSettingSync
 (Not recommended) If set, credentials will be stored in the file.
 
+When this setting is disabled, the file omits Object Storage keys, authentication headers, other credentials, all connection profiles, and their active selections. Importing it retains the receiving device's local credentials and profiles. When enabled, the file includes credentials and complete connection profiles. For manual sharing, use the settings screen's plain-text export or an encrypted Setup URI.
+
 #### Notify all setting files
 
 Setting key: notifyAllSettingSyncFile
