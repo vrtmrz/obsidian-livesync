@@ -7,11 +7,12 @@ import {
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";
 import { fireAndForget } from "octagonal-wheels/promises";
+import { type FilePathWithPrefix, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
-    DEFAULT_SETTINGS,
-    type FilePathWithPrefix,
-    type ObsidianLiveSyncSettings,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
+    createMarkdownSettings,
+    mergeMarkdownSettings,
+    type MarkdownSettings,
+} from "@vrtmrz/livesync-commonlib/settings";
 import { parseYaml, stringifyYaml, type Editor, type MarkdownView } from "@/deps";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
@@ -132,17 +133,8 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
             return;
         }
 
-        let settingToApply = { ...DEFAULT_SETTINGS } as ObsidianLiveSyncSettings;
-        settingToApply = { ...settingToApply, ...newSetting };
+        const settingToApply = mergeMarkdownSettings(newSetting, this.settings);
         preserveManagedTurnProfilesOnMarkdownImport(newSetting, this.settings, settingToApply);
-        if (!settingToApply?.writeCredentialsForSettingSync) {
-            //New setting does not contains credentials.
-            settingToApply.couchDB_USER = this.settings.couchDB_USER;
-            settingToApply.couchDB_PASSWORD = this.settings.couchDB_PASSWORD;
-            settingToApply.passphrase = this.settings.passphrase;
-            settingToApply.idDerivationVersion = this.settings.idDerivationVersion;
-            settingToApply.idDerivationKey = this.settings.idDerivationKey;
-        }
         const oldSetting = this.generateSettingForMarkdown(
             this.settings,
             settingToApply.writeCredentialsForSettingSync
@@ -198,35 +190,21 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
         );
     }
 
-    generateSettingForMarkdown(
-        settings?: ObsidianLiveSyncSettings,
-        keepCredential?: boolean
-    ): Partial<ObsidianLiveSyncSettings> {
+    generateSettingForMarkdown(settings?: ObsidianLiveSyncSettings, keepCredential?: boolean): MarkdownSettings {
         const saveData = { ...(settings ? settings : this.settings) } as Partial<ObsidianLiveSyncSettings>;
-        delete saveData.encryptedCouchDBConnection;
-        delete saveData.encryptedPassphrase;
-        delete saveData.encryptedIdDerivationKey;
-        delete saveData.additionalSuffixOfDatabaseName;
-        if (!saveData.writeCredentialsForSettingSync && !keepCredential) {
-            delete saveData.couchDB_USER;
-            delete saveData.couchDB_PASSWORD;
-            delete saveData.passphrase;
-            delete saveData.idDerivationKey;
-            delete saveData.jwtKey;
-            delete saveData.jwtKid;
-            delete saveData.jwtSub;
-            delete saveData.couchDB_CustomHeaders;
-            delete saveData.bucketCustomHeaders;
+        const credentialsIncluded = saveData.writeCredentialsForSettingSync || keepCredential === true;
+        if (!credentialsIncluded) {
+            omitManagedTurnProfilesFromMarkdown(saveData);
         }
-        omitManagedTurnProfilesFromMarkdown(saveData);
-        return saveData;
+        const includeCredentials = keepCredential === undefined ? undefined : credentialsIncluded;
+        return createMarkdownSettings(saveData, includeCredentials);
     }
 
     async saveSettingToMarkdown(filename: string) {
         const saveData = this.generateSettingForMarkdown();
-        if (hasManagedTurnSettings(this.settings)) {
+        if (!this.settings.writeCredentialsForSettingSync && hasManagedTurnSettings(this.settings)) {
             this._log(
-                "Share TURN provider credentials through an encrypted Setup URI. Connection profiles are omitted from Markdown settings.",
+                "When credential export is disabled, connection profiles are omitted. To share them, export the settings manually from the settings screen.",
                 LOG_LEVEL_INFO
             );
         }
@@ -241,6 +219,8 @@ If the name of this file matches the value of the "settingSyncFile" setting insi
 
 We can perform a command in this file.
 - \`Parse setting file\` : load the setting from the file.
+
+When credential export is disabled, connection profiles are omitted. To share them, export the settings manually from the settings screen.
 
 **Note** Please handle it with all of your care if you have configured to write credentials in.
 

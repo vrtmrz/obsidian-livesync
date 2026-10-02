@@ -12,6 +12,17 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- Security: Fixed an issue where sensitive information could be included in exported configuration data under certain conditions. Updating is recommended. (refs #1218)
+- Improved configuration persistence and JSON conflict handling.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @kimjansheden (#1218)
+
 ## 1.0.33
 
 1st October, 2026

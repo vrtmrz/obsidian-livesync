@@ -55,6 +55,7 @@ const testSteps: Step[] = [
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },
     { name: "internal Metadata Doctor", args: ["run", "test:e2e:obsidian:internal-metadata-doctor"] },
     { name: "setting Markdown export", args: ["run", "test:e2e:obsidian:setting-markdown-export"] },
+    { name: "setting Markdown round-trip", args: ["run", "test:e2e:obsidian:setting-markdown-roundtrip"] },
 ];
 
 const manageCouchDb = process.argv.includes("--manage-couchdb") || process.argv.includes("--manage-services");
