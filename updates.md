@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Customisation Sync
+
+#### Fixed
+
+- Configuration file events are left for the next scan until the plug-in is ready. Applying settings while synchronisation is suspended stops the periodic scan without scanning configuration files. When synchronisation resumes, the normal resume handler scans once and restarts the periodic scan.
+
 ## 1.0.34
 
 2nd October, 2026
