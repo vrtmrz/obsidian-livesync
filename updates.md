@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Fixed
+
+- We can continue synchronising after rebuilding an encrypted CouchDB remote, including when Hidden File Sync and Customisation Sync are enabled. (#1234)
+    - This plug-in reads the rebuilt data without reusing HTTP responses encrypted with the previous Security Seed.
+
 ### Customisation Sync
 
 #### Fixed
