@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.35
+
+5th October, 2026
+
 ### Synchronisation
 
 #### Fixed
@@ -23,7 +27,14 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
-- Configuration file events are left for the next scan until the plug-in is ready. Applying settings while synchronisation is suspended stops the periodic scan without scanning configuration files. When synchronisation resumes, the normal resume handler scans once and restarts the periodic scan.
+- Customisation Sync now waits until this plug-in is ready before handling configuration file events, and applying settings while synchronisation is suspended no longer scans configuration files. (#1220)
+    - Resuming synchronisation scans once and restarts the periodic scan when enabled.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @kimjansheden (#1220)
 
 ## 1.0.34
 
@@ -148,42 +159,3 @@ The 1.0.31 pre-release was not promoted after validation found that a receiving 
 - Received changes within the configured modification-time limit are applied to the Vault again while remediation mode is active. Changes newer than the limit remain blocked; changes arriving while a fetch makes the local database unavailable are kept for a later attempt.
 - A scheduled fetch no longer offers Simple Fetch while remediation mode is active. This prevents the fetch from bypassing the modification-time limit; the detailed flow explains the restriction and offers to clear it first (#1202). Thank you to @kimjansheden for both fixes and the regression tests in PR #1208!
 - On start-up, an unchanged file with a missing local revision record can be recognised before newer content arrives, avoiding an unnecessary conflict. Files with actual local edits still require conflict review. (#1207)
-
-## 1.0.30
-
-18th September, 2026
-
-### Synchronisation
-
-#### Fixed
-
-- After a restart, unchanged local files no longer overwrite newer synchronised content. (#994)
-    - When LiveSync cannot establish a local file's origin, it keeps the file as a conflict for you to review. This also applies to ordinary file synchronisation in the command-line tool.
-- Fast Fetch completes initial setup with fewer remote requests.
-- Object Storage synchronisation makes fewer remote requests while still checking its parameters before writing.
-
-## 1.0.29
-
-16th September, 2026
-
-Unusually for this project, I have added a feature that relies on a particular infrastructure provider. I made this choice for the convenience it offers.
-
-### Peer-to-peer synchronisation
-
-#### New Feature
-
-- P2P synchronisation now supports **Managed (Cloudflare)** TURN to help devices connect when a direct connection is unavailable. Enter your TURN Key ID and API token, and LiveSync obtains temporary TURN credentials automatically. (#1182)
-
-    - Managed TURN settings are saved with your encrypted P2P profile and included when you share it through a Setup URI or QR code.
-    - Your API token is omitted from generated reports.
-
-### Command-line tool
-
-#### Fixed
-
-- The CLI daemon now synchronises files already present at start-up and picks up edits and deletions made while it was stopped.
-- CLI Vault scans no longer miss files after an earlier scan or file lookup. This incorporates an adapted version of the fix proposed in PR #1188. Thank you to @YakupEmreYerli for the fix and regression tests, and to @nsanitas for the detailed report and analysis in #1143!
-
-### Miscellaneous
-
-In general, I would prefer to avoid features that depend on a particular service. Still, I think there is room for them when they are entirely optional, clearly explained, and maintainable. Even then, I would want open alternatives to remain available. I will write more about this principle separately.

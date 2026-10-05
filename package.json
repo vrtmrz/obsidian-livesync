@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "1.0.34",
+    "version": "1.0.35",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -205,6 +205,12 @@
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     },
     "overrides": {
+        "obsidian": {
+            "moment": "2.31.0"
+        },
+        "svelte": {
+            "devalue": "5.9.3"
+        },
         "pouchdb-core": {
             "uuid": "11.1.1"
         },
