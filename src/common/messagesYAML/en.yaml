@@ -1132,6 +1132,10 @@ obsidianLiveSyncSettingTab:
     serverVersion: "Server info: ${info}"
     titleActiveRemoteServer: Active Remote Server
     titleAppearance: Appearance
+    statusStyleName: Status style
+    statusStyleDesc: How synchronisation status is presented. Minimal shows nothing while idle, a small pill while synchronising, and a dismissible warning on error.
+    optionStatusStyleClassic: Classic (always visible)
+    optionStatusStyleMinimal: Minimal (only while synchronising or on error)
     titleConflictResolution: Conflict resolution
     titleCouchDB: CouchDB
     titleDeletionPropagation: Deletion Propagation
@@ -2456,3 +2460,5 @@ You should perform this operation only in exceptional circumstances, such as whe
     when the server data is completely corrupted, when changes on all other
     devices are no longer needed, or when the database size has become unusually
     large in comparison to the Vault size.
+
+Sync failed: Sync failed
