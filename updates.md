@@ -19,6 +19,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We now apply the settings for protecting sensitive configuration together, so a successful Apply keeps the saved settings under the selected passphrase. If Apply fails, the edits remain available to retry. (#1238)
 - We can now enter a missing or unusable custom configuration passphrase at start-up to unlock protected settings. Cancelling the custom-key recovery prompt preserves the encrypted configuration and stops that start-up attempt; headless command-line start-up cannot complete that prompt when recovery input is required. (#1239)
 
+### Maintenance
+
+- Build copying and import alias checks now use repository-owned helpers, removing the vulnerable `braces` dependency from development tooling.
+- Updated compatible development dependencies with available security fixes.
+
 ## 1.0.35
 
 5th October, 2026
