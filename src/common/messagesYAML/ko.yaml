@@ -1609,10 +1609,6 @@ Ui:
       Scram: 긴급 정지
       SendChunks: 청크 보내기
       Syncing: 동기화
-      WarningLockedReadyAction: 준비되었습니다. 데이터베이스 잠금 해제
-      WarningLockedReadyText: 의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.
-      WarningLockedResolveAction: 백업했습니다. 이 기기를 해결됨으로 표시
-      WarningLockedResolveText: 이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.
       WriteRedFlagAndRestart: 표시 후 재시작
     Patches:
       CompatibilityConflict: 호환성 (충돌 동작)
@@ -1840,3 +1836,7 @@ You are adding this device to an existing synchronisation setup.: 이 기기를 
 You can configure in the Obsidian Plugin Settings.: Obsidian 플러그인 설정에서 구성할 수 있습니다.
 You should create a new synchronisation destination and rebuild your data there.: 새로운 동기화 대상을 만들고 그곳에서 데이터를 재구축해야 합니다.
 You should perform this operation only in exceptional circumstances, such as when the server data is completely corrupted, when changes on all other devices are no longer needed, or when the database size has become unusually large in comparison to the Vault size.: 이 작업은 서버 데이터가 완전히 손상된 경우, 다른 모든 기기의 변경 사항이 더 이상 필요하지 않은 경우, 또는 데이터베이스 크기가 보관함 크기에 비해 비정상적으로 커진 경우처럼 예외적인 상황에서만 수행해야 합니다.
+"I am ready, unlock the database": "준비되었습니다. 데이터베이스 잠금 해제"
+"To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.": "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다."
+"I have made a backup, mark this device as resolved": "백업했습니다. 이 기기를 해결됨으로 표시"
+"The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.": "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다."
