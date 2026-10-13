@@ -83,7 +83,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             .setDesc($msg("Setting.TroubleShooting.ScanBrokenFiles.Desc"))
             .addButton((button) =>
                 button
-                    .setButtonText("Scan for Broken files")
+                    .setButtonText($msg("Scan for Broken files"))
                     .setCta()
                     .setDisabled(false)
                     .onClick(() => {
@@ -136,7 +136,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
         new Setting(paneEl).autoWireToggle("writeLogToTheFile");
     });
 
-    void addPanel(paneEl, "Scram Switches").then((paneEl) => {
+    void addPanel(paneEl, $msg("Scram Switches")).then((paneEl) => {
         new Setting(paneEl).autoWireToggle("suspendFileWatching");
         this.addOnSaved("suspendFileWatching", () => this.services.appLifecycle.askRestart());
 
@@ -144,7 +144,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
         this.addOnSaved("suspendParseReplicationResult", () => this.services.appLifecycle.askRestart());
     });
 
-    void addPanel(paneEl, "Recovery and Repair").then((paneEl) => {
+    void addPanel(paneEl, $msg("Recovery and Repair")).then((paneEl) => {
         const resultArea = paneEl.createDiv({ text: "", cls: "sls-repair-results" });
         type RepairMenuAction = {
             title: string;
@@ -1071,13 +1071,15 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     })
             );
         new Setting(paneEl)
-            .setName("Resolve All conflicted files by the newer one")
+            .setName($msg("Resolve All conflicted files by the newer one"))
             .setDesc(
-                "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                $msg(
+                    "Resolve all conflicted files by the newer one. Caution: This will overwrite the older one, and cannot resurrect the overwritten one."
+                )
             )
             .addButton((button) =>
                 button
-                    .setButtonText("Resolve All")
+                    .setButtonText($msg("Resolve All"))
                     .setCta()
                     .onClick(async () => {
                         const confirmed =
@@ -1097,11 +1099,11 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     })
             );
         new Setting(paneEl)
-            .setName("Check and convert non-path-obfuscated files")
+            .setName($msg("Check and convert non-path-obfuscated files"))
             .setDesc("")
             .addButton((button) =>
                 setButtonDestructiveState(button)
-                    .setButtonText("Perform")
+                    .setButtonText($msg("Perform"))
                     .setDisabled(false)
                     .onClick(async () => {
                         for await (const docName of this.core.localDatabase.findAllDocNames()) {
@@ -1174,10 +1176,10 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                     })
             );
     });
-    void addPanel(paneEl, "Reset").then((paneEl) => {
-        new Setting(paneEl).setName("Back to non-configured").addButton((button) =>
+    void addPanel(paneEl, $msg("Reset")).then((paneEl) => {
+        new Setting(paneEl).setName($msg("Back to non-configured")).addButton((button) =>
             button
-                .setButtonText("Back")
+                .setButtonText($msg("Back"))
                 .setDisabled(false)
                 .onClick(async () => {
                     this.editingSettings.isConfigured = false;
@@ -1186,9 +1188,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                 })
         );
 
-        new Setting(paneEl).setName("Delete all customization sync data").addButton((button) =>
+        new Setting(paneEl).setName($msg("Delete all customization sync data")).addButton((button) =>
             setButtonDestructiveState(button)
-                .setButtonText("Delete")
+                .setButtonText($msg("Delete"))
                 .setDisabled(false)
                 .onClick(async () => {
                     Logger(`Deleting customization sync data`, LOG_LEVEL_NOTICE);

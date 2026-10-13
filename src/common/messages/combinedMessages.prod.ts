@@ -777,6 +777,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "取消",
         "zh-tw": "取消",
     },
+    "Cancel all and reboot": {
+        def: "Cancel all and reboot",
+        es: "Cancelar todo y reiniciar",
+    },
     "Cancel Garbage Collection": {
         def: "Cancel Garbage Collection",
         es: "Cancelar la recolección de basura",
@@ -979,6 +983,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             zh: "比较本地数据库与存储中的文件内容；如果不一致，你将被询问要保留哪一份。",
             "zh-tw": "比較本機資料庫與儲存空間中的檔案內容；若不一致，系統會詢問你要保留哪一份。",
         },
+    "Compare time and take newer": {
+        def: "Compare time and take newer",
+        es: "Comparar fechas y usar la más reciente",
+    },
     "Compatibility (Conflict Behaviour)": {
         def: "Compatibility (Conflict Behaviour)",
         es: "Compatibilidad (comportamiento de conflictos)",
@@ -1105,6 +1113,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Снова вручную укажите те же параметры сервера, что и на других устройствах. Только для очень опытных пользователей.",
         zh: "手动重新输入与你其他设备相同的服务器信息。仅适合高级用户。",
         "zh-tw": "手動重新輸入與其他裝置相同的伺服器資訊。僅適合進階使用者。",
+    },
+    "Conflict & Deletion Options": {
+        def: "Conflict & Deletion Options",
+        es: "Opciones de conflictos y eliminación",
     },
     Connect: {
         def: "Connect",
@@ -1308,6 +1320,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "数据压缩",
         "zh-tw": "資料壓縮",
     },
+    "Data retrieval scheduled": {
+        def: "Data retrieval scheduled",
+        es: "Obtención de datos programada",
+    },
     "Data to Copy": {
         def: "Data to Copy",
         es: "Datos a copiar",
@@ -1437,6 +1453,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Удалить локальную базу данных, чтобы сбросить или удалить Self-hosted LiveSync",
         zh: "删除本地数据库以重置或卸载 Self-hosted LiveSync",
         "zh-tw": "刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync",
+    },
+    "Delete local files if deleted on remote": {
+        def: "Delete local files if deleted on remote",
+        es: "Eliminar los archivos locales si se eliminaron en el remoto",
+    },
+    "Delete local files if not on remote": {
+        def: "Delete local files if not on remote",
+        es: "Eliminar los archivos locales que no estén en el remoto",
     },
     "Delete old metadata of deleted files on start-up": {
         def: "Delete old metadata of deleted files on start-up",
@@ -2603,6 +2627,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "最终确认：用本设备的文件覆盖服务器数据",
         "zh-tw": "最終確認：以此裝置的檔案覆寫伺服器資料",
     },
+    "Finalise the process and resume normal operation": {
+        def: "Finalise the process and resume normal operation",
+        es: "Finalizar el proceso y reanudar el funcionamiento normal",
+    },
     "First, please select the option that best describes your current situation.": {
         def: "First, please select the option that best describes your current situation.",
         es: "Primero, seleccione la opción que mejor describa tu situación actual。",
@@ -2846,6 +2874,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "高亮差异",
         "zh-tw": "醒目顯示差異",
     },
+    "How should files that were deleted on other devices be handled?\n\n- **${NEWER_CLEANUP}**: Delete local files if they were deleted on remote.\n  This is useful if you want to keep your vault clean and consistent across devices, but please make sure you have a backup if there is already any important data in your vault.\n- **${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.":
+        {
+            def: "How should files that were deleted on other devices be handled?\n\n- **${NEWER_CLEANUP}**: Delete local files if they were deleted on remote.\n  This is useful if you want to keep your vault clean and consistent across devices, but please make sure you have a backup if there is already any important data in your vault.\n- **${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.",
+            es: "¿Cómo se deben gestionar los archivos que se eliminaron en otros dispositivos?\n\n- **${NEWER_CLEANUP}**: elimina los archivos locales si se eliminaron en el remoto.\n  Es útil si quieres mantener tu vault limpio y coherente entre dispositivos; asegúrate de tener una copia de seguridad si ya tienes datos importantes en tu vault.\n- **${NEWER_SYNC_ALL}**: vuelve a crear los archivos remotos aunque se hayan eliminado en el remoto.\n  Esta opción mantiene todos tus archivos locales, pero puede causar duplicados si hay archivos que existen en local pero no en el remoto. Puedes limpiar esos duplicados manualmente después de sincronizar.",
+        },
     "How to display network errors when the sync server is unreachable.": {
         def: "How to display network errors when the sync server is unreachable.",
         es: "Cómo mostrar los errores de red cuando el servidor de sincronización no está disponible.",
@@ -2854,6 +2887,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Определяет, как отображать сетевые ошибки, если сервер синхронизации недоступен.",
         zh: "当同步服务器不可达时，如何显示网络错误。",
         "zh-tw": "當同步伺服器無法連線時，如何顯示網路錯誤。",
+    },
+    "How to handle extra existing local files?": {
+        def: "How to handle extra existing local files?",
+        es: "¿Cómo gestionar los archivos locales adicionales?",
     },
     "How would you like to configure the connection to your server?": {
         def: "How would you like to configure the connection to your server?",
@@ -2880,6 +2917,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Я добавляю устройство к существующей настройке синхронизации",
         zh: "我要将设备加入现有同步配置",
         "zh-tw": "我要將裝置加入既有同步設定",
+    },
+    "I am ready, unlock the database": {
+        def: "I am ready, unlock the database",
+        es: "Estoy listo, desbloquear la base de datos",
+        ko: "준비되었습니다. 데이터베이스 잠금 해제",
+        ru: "Я готов, разблокировать базу",
+        zh: "我已准备好，立即解锁数据库",
+        "zh-tw": "我已準備好，解鎖資料庫",
     },
     "I am setting this up for the first time": {
         def: "I am setting this up for the first time",
@@ -2921,6 +2966,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Я сделал резервную копию хранилища.",
         zh: "我已备份我的库。",
         "zh-tw": "我已經備份了我的 Vault。",
+    },
+    "I have made a backup, mark this device as resolved": {
+        def: "I have made a backup, mark this device as resolved",
+        es: "He hecho una copia de seguridad, marcar este dispositivo como resuelto",
+        ko: "백업했습니다. 이 기기를 해결됨으로 표시",
+        ru: "Я сделал резервную копию, отметить это устройство как разрешённое",
+        zh: "我已完成备份，将此设备标记为“已确认”",
+        "zh-tw": "我已完成備份，將此裝置標記為已處理",
     },
     "I know my server details, let me enter them": {
         def: "I know my server details, let me enter them",
@@ -3494,6 +3547,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Сохранять пустые папки",
         zh: "保留空文件夹",
         "zh-tw": "保留空資料夾",
+    },
+    "Keep local files even if deleted on remote": {
+        def: "Keep local files even if deleted on remote",
+        es: "Mantener los archivos locales aunque se hayan eliminado en el remoto",
+    },
+    "Keep local files even if not on remote": {
+        def: "Keep local files even if not on remote",
+        es: "Mantener los archivos locales aunque no estén en el remoto",
     },
     lang_def: {
         def: "Default",
@@ -7288,6 +7349,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "覆盖",
         "zh-tw": "覆寫",
     },
+    "Overwrite all with remote files": {
+        def: "Overwrite all with remote files",
+        es: "Sobrescribir todo con los archivos remotos",
+    },
     "Overwrite patterns": {
         def: "Overwrite patterns",
         es: "Patrones de sobrescritura",
@@ -7410,7 +7475,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: " This replicator allows us to synchronise our vault with other devices\nusing a peer-to-peer connection. We can use this to synchronise our vault with our other devices without using a cloud service.\nThis replicator is based on Trystero. It also uses a signalling server to establish a connection between devices. The signalling server is used to exchange connection information between devices. It does (or,should) not know or store any of our data.\n\nThe signalling server can be hosted by anyone. This is just a Nostr relay. For the sake of simplicity and checking the behaviour of the replicator, an instance of the signalling server is hosted by vrtmrz. You can use the experimental server provided by vrtmrz, or you can use any other server.\n\nBy the way, even if the signalling server does not store our data, it can see the connection information of some of our devices. Please be aware of this. Also, be cautious when using the server provided by someone else.",
         es: " Este replicador permite sincronizar la bóveda con otros dispositivos\nmediante una conexión punto a punto. Así se puede sincronizar con nuestros otros dispositivos sin usar un servicio en la nube.\nEl replicador se basa en Trystero. Usa además un servidor de señalización para establecer la conexión entre dispositivos. Ese servidor sirve para intercambiar la información de conexión y no conoce (ni debería almacenar) ninguno de nuestros datos.\n\nCualquiera puede alojar el servidor de señalización: es simplemente un relé Nostr. Por comodidad y para poder comprobar el comportamiento del replicador, vrtmrz aloja una instancia. Puedes usar ese servidor experimental o cualquier otro.\n\nPor cierto, aunque el servidor de señalización no almacene nuestros datos, sí puede ver la información de conexión de algunos de nuestros dispositivos. Tenlo en cuenta y ten precaución al usar un servidor de terceros.",
         fr: " Ce réplicateur permet de synchroniser notre coffre avec d'autres\nappareils via une connexion pair-à-pair. Nous pouvons l'utiliser pour synchroniser notre coffre avec nos autres appareils sans recourir à un service cloud.\nCe réplicateur est basé sur Trystero. Il utilise également un serveur de signalisation pour établir une connexion entre les appareils. Le serveur de signalisation sert à échanger les informations de connexion entre appareils. Il ne connaît (ou ne devrait connaître) ni ne stocke aucune de nos données.\n\nLe serveur de signalisation peut être hébergé par n'importe qui. Il s'agit simplement d'un relais Nostr. Par souci de simplicité et pour vérifier le comportement du réplicateur, une instance du serveur de signalisation est hébergée par vrtmrz. Vous pouvez utiliser le serveur expérimental fourni par vrtmrz, ou tout autre serveur.\n\nAu passage, même si le serveur de signalisation ne stocke pas nos données, il peut voir les informations de connexion de certains de nos appareils. Soyez-en conscient. Soyez également prudent avec un serveur fourni par quelqu'un d'autre.",
-        he: " רפליקטור זה מאפשר לסנכרן את הכספת עם מכשירים אחרים באמצעות חיבור\nעמית-לעמית. ניתן להשתמש בזה לסנכרון הכספת עם מכשירים אחרים ללא שירות ענן.\nרפליקטור זה מבוסס על Trystero. הוא משתמש גם בשרת אותות לביסוס חיבור בין מכשירים. שרת האותות משמש להחלפת מידע חיבור בין מכשירים. הוא אינו (ולא אמור) לדעת או לאחסן את הנתונים שלנו.\n\nשרת האותות יכול להיות מאוחסן על ידי כל אחד. זהו ממסר Nostr בלבד. לצורך פשטות ובדיקת התנהגות הרפליקטור, vrtmrz מאחסן עותק של שרת האותות. ניתן להשתמש בשרת הניסיוני של vrtmrz, או בכל שרת אחר.\n\nאגב, גם אם שרת האותות אינו מאחסן נתונים, הוא יכול לראות מידע חיבור של חלק ממכשיריך. אנא שים לב לכך. כמו כן, היה זהיר בשימוש בשרת של מישהו אחר.",
+        he: " רפליקטור זה מאפשר לסנכרן את הכספת עם מכשירים אחרים באמצעות חיבור עמית-לעמית.\nניתן להשתמש בזה לסנכרון הכספת עם מכשירים אחרים ללא שירות ענן.\nרפליקטור זה מבוסס על Trystero. הוא משתמש גם בשרת אותות לביסוס חיבור בין מכשירים. שרת האותות משמש להחלפת מידע חיבור בין מכשירים. הוא אינו (ולא אמור) לדעת או לאחסן את הנתונים שלנו.\n\nשרת האותות יכול להיות מאוחסן על ידי כל אחד. זהו ממסר Nostr בלבד. לצורך פשטות ובדיקת התנהגות הרפליקטור, vrtmrz מאחסן עותק של שרת האותות. ניתן להשתמש בשרת הניסיוני של vrtmrz, או בכל שרת אחר.\n\nאגב, גם אם שרת האותות אינו מאחסן נתונים, הוא יכול לראות מידע חיבור של חלק ממכשיריך. אנא שים לב לכך. כמו כן, היה זהיר בשימוש בשרת של מישהו אחר.",
         ja: "このレプリケーターは、ピアツーピア接続を使用して、Vaultを他のデバイスと同期することができます。クラウドサービスを使用せずに、他のデバイスとVaultを同期することができます。\nこのレプリケーターはTrysteroをベースにしています。デバイス間の接続を確立するためにシグナリングサーバーを使用します。シグナリングサーバーはデバイス間で接続情報を交換するために使用されます。私たちのデータを知ったり保存したりすることはありません（または、そうあるべきではありません）。\n\nシグナリングサーバーは誰でもホストできます。これは単なるNostrリレーです。簡便さとレプリケーターの動作確認のために、vrtmrzがシグナリングサーバーのインスタンスをホストしています。vrtmrzが提供する実験用サーバーを使用することも、他のサーバーを使用することもできます。\n\nなお、シグナリングサーバーが私たちのデータを保存しなくても、一部のデバイスの接続情報を見ることができます。これにご注意ください。また、他の人が提供するサーバーを使用する場合は注意してください。",
         ko: " 이 복제기는 피어 투 피어 연결을 이용해 다른 기기와 보관함을 동기화할 수 있게 해 줍니다.\n클라우드 서비스를 사용하지 않고도 다른 기기와 보관함을 동기화할 수 있습니다.\n이 복제기는 Trystero를 기반으로 합니다. 기기 간 연결을 맺기 위해 시그널링 서버도 사용합니다. 시그널링 서버는 기기 사이의 연결 정보를 교환하는 데 쓰이며, 사용자의 데이터는 알지도 저장하지도 않습니다(또는 그래야 합니다).\n\n시그널링 서버는 누구나 운영할 수 있습니다. 단순한 Nostr 릴레이일 뿐입니다. 편의를 위해, 그리고 복제기의 동작을 확인할 수 있도록 vrtmrz가 시그널링 서버 인스턴스를 하나 운영하고 있습니다. vrtmrz가 제공하는 실험용 서버를 사용해도 되고, 다른 서버를 사용해도 됩니다.\n\n참고로, 시그널링 서버가 데이터를 저장하지 않더라도 일부 기기의 연결 정보는 볼 수 있습니다. 이 점을 유의해 주세요. 또한 다른 사람이 제공하는 서버를 사용할 때는 주의하시기 바랍니다.",
         ru: "Этот репликатор позволяет синхронизировать хранилище с другими устройствами с использованием однорангового соединения.",
@@ -8142,6 +8207,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Очистить все счётчики журнала",
         zh: "清除所有日志计数器",
         "zh-tw": "清除所有日誌計數器",
+    },
+    "Reboot to re-run the process": {
+        def: "Reboot to re-run the process",
+        es: "Reiniciar para volver a ejecutar el proceso",
     },
     "Rebuild local and remote database with local files.": {
         def: "Rebuild local and remote database with local files.",
@@ -10109,6 +10178,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "信令状态",
         "zh-tw": "訊號狀態",
     },
+    "Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**\n\n- **${DELETE_ALL}**: Local-only files and remote-deleted files will be removed.\n  This option will make your local vault exactly the same as the remote database, but please make sure you have a backup if there is any important data in your vault.\n- **${DELETE_NONE}**: All existing local files will be preserved.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.":
+        {
+            def: "Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**\n\n- **${DELETE_ALL}**: Local-only files and remote-deleted files will be removed.\n  This option will make your local vault exactly the same as the remote database, but please make sure you have a backup if there is any important data in your vault.\n- **${DELETE_NONE}**: All existing local files will be preserved.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.",
+            es: "Como has elegido sobrescribir todos los archivos locales con los datos remotos, **¿cómo quieres gestionar los archivos locales que no existen en la base de datos remota?**\n\n- **${DELETE_ALL}**: se eliminarán los archivos que solo existen en local y los que se han borrado en el remoto.\n  Esta opción hará que tu vault local sea exactamente igual que la base de datos remota; asegúrate de tener una copia de seguridad si tienes datos importantes en tu vault.\n- **${DELETE_NONE}**: se conservarán todos los archivos locales existentes.\n  Esta opción mantiene todos tus archivos locales, pero puede causar duplicados si hay archivos que existen en local pero no en el remoto. Puedes limpiar esos duplicados manualmente después de sincronizar.",
+        },
     "Skip and close": {
         def: "Skip and close",
         es: "Omitir y cerrar",
@@ -10136,6 +10210,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "某些裝置的進度值不同（最大：${maxProgress}，最小：${minProgress}）。\n這可能表示某些裝置尚未完成同步，進而可能導致衝突。強烈建議在繼續之前先確認所有裝置都已同步。",
         },
+    "Some files failed to synchronise. What would you like to do?": {
+        def: "Some files failed to synchronise. What would you like to do?",
+        es: "Algunos archivos no se pudieron sincronizar. ¿Qué quieres hacer?",
+    },
     "Start Broadcasting": {
         def: "Start Broadcasting",
         es: "Iniciar difusión",
@@ -10385,6 +10463,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "同步一次",
         "zh-tw": "同步一次",
     },
+    "Synchronisation Issues Detected": {
+        def: "Synchronisation Issues Detected",
+        es: "Se han detectado problemas de sincronización",
+    },
     "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": {
         def: "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.",
         es: "Sincronización mediante archivos de registro. Debe haber configurado un almacenamiento de objetos compatible con S3/MinIO/R2。",
@@ -10592,6 +10674,16 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "基于事件自动同步的最小间隔。",
         "zh-tw": "事件觸發自動同步的最小間隔。",
     },
+    "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.":
+        {
+            def: "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.",
+            es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que la bóveda se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu bóveda, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
+            ko: "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
+            ru: "Удалённая база заблокирована для синхронизации, чтобы хранилище не испортилось: это устройство не помечено как «разрешённое». Сделайте резервную копию хранилища, сбросьте локальную базу и выберите «Отметить это устройство как разрешённое». Предупреждение будет появляться, пока репликация не подтвердит, что устройство разрешено.",
+            zh: "为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
+            "zh-tw":
+                "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
+        },
     "The remote is already set up, and the configuration is compatible (or got compatible by this operation).": {
         def: "The remote is already set up, and the configuration is compatible (or got compatible by this operation).",
         es: "El remoto ya está configurado y la configuración es compatible (o pasa a serlo con esta operación).",
@@ -10814,6 +10906,16 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "以减少新冲突的产生",
         "zh-tw": "為了盡量減少新增衝突",
     },
+    "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.":
+        {
+            def: "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.",
+            es: "Para evitar que la bóveda se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
+            ko: "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
+            ru: "Чтобы хранилище не испортилось, удалённая база заблокирована для синхронизации. (Это устройство помечено как «разрешённое».) Когда все ваши устройства будут помечены как «разрешённые», разблокируйте базу. Предупреждение будет появляться, пока репликация не подтвердит, что устройство разрешено.",
+            zh: "为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
+            "zh-tw":
+                "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
+        },
     "Transfer Tweak": {
         def: "Transfer Tweak",
         es: "Ajustes de transferencia",
@@ -11907,40 +12009,6 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Синхронизация",
         zh: "同步",
         "zh-tw": "同步中",
-    },
-    "Ui.Settings.Maintenance.WarningLockedReadyAction": {
-        def: "I am ready, unlock the database",
-        es: "Estoy listo, desbloquear la base de datos",
-        ko: "준비되었습니다. 데이터베이스 잠금 해제",
-        ru: "Я готов, разблокировать базу",
-        zh: "我已准备好，立即解锁数据库",
-        "zh-tw": "我已準備好，解鎖資料庫",
-    },
-    "Ui.Settings.Maintenance.WarningLockedReadyText": {
-        def: "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.",
-        es: "Para evitar que la bóveda se corrompa, la base de datos remota se ha bloqueado para la sincronización. (Este dispositivo está marcado como «resuelto».) Cuando todos tus dispositivos estén marcados como «resueltos», desbloquea la base de datos. Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
-        ko: "의도치 않은 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. (이 기기는 '해결됨'으로 표시되어 있습니다.) 모든 기기가 '해결됨'으로 표시되면 데이터베이스 잠금을 해제하세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
-        ru: "Чтобы хранилище не испортилось, удалённая база заблокирована для синхронизации. (Это устройство помечено как «разрешённое».) Когда все ваши устройства будут помечены как «разрешённые», разблокируйте базу. Предупреждение будет появляться, пока репликация не подтвердит, что устройство разрешено.",
-        zh: "为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
-        "zh-tw":
-            "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
-    },
-    "Ui.Settings.Maintenance.WarningLockedResolveAction": {
-        def: "I have made a backup, mark this device as resolved",
-        es: "He hecho una copia de seguridad, marcar este dispositivo como resuelto",
-        ko: "백업했습니다. 이 기기를 해결됨으로 표시",
-        ru: "Я сделал резервную копию, отметить это устройство как разрешённое",
-        zh: "我已完成备份，将此设备标记为“已确认”",
-        "zh-tw": "我已完成備份，將此裝置標記為已處理",
-    },
-    "Ui.Settings.Maintenance.WarningLockedResolveText": {
-        def: "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.",
-        es: "La base de datos remota está bloqueada para la sincronización a fin de evitar que la bóveda se corrompa, porque este dispositivo no está marcado como «resuelto». Haz una copia de seguridad de tu bóveda, restablece la base de datos local y selecciona «Marcar este dispositivo como resuelto». Este aviso seguirá apareciendo hasta que la replicación confirme que el dispositivo está resuelto.",
-        ko: "이 기기가 '해결됨'으로 표시되어 있지 않아, 보관함 손상을 막기 위해 원격 데이터베이스가 동기화 잠금 상태입니다. 보관함을 백업하고 로컬 데이터베이스를 재설정한 뒤 '이 기기를 해결됨으로 표시'를 선택해 주세요. 이 경고는 복제를 통해 기기가 해결되었음이 확인될 때까지 계속 표시됩니다.",
-        ru: "Удалённая база заблокирована для синхронизации, чтобы хранилище не испортилось: это устройство не помечено как «разрешённое». Сделайте резервную копию хранилища, сбросьте локальную базу и выберите «Отметить это устройство как разрешённое». Предупреждение будет появляться, пока репликация не подтвердит, что устройство разрешено.",
-        zh: "为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。",
-        "zh-tw":
-            "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。",
     },
     "Ui.Settings.Maintenance.WriteRedFlagAndRestart": {
         def: "Flag and restart",
@@ -13528,6 +13596,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "使用分割限制上限的块分割器",
         "zh-tw": "使用有分割上限的 chunk 分割器",
     },
+    "Use the detailed flow": {
+        def: "Use the detailed flow",
+        es: "Usar el flujo detallado",
+    },
     "Use the trash bin": {
         def: "Use the trash bin",
         es: "Usar papelera",
@@ -13630,6 +13702,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "监视中",
         "zh-tw": "監看中",
     },
+    "We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.":
+        {
+            def: "We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.",
+            es: "Vamos a obtener los datos remotos.\n\nEn primer lugar, ¿cómo quieres gestionar los datos obtenidos de este origen remoto?\n\n- **${NEWER_WINS}**: compara la fecha de modificación de los archivos y usa la más reciente.\n  Si has estado usando Self-hosted LiveSync y has hecho cambios en varios dispositivos, esta opción puede ser adecuada, ya que intenta combinar los cambios según la fecha de modificación.\n- **${REMOTE_WINS}**: los datos remotos son la fuente de la verdad.\n  Si eres nuevo en Self-hosted LiveSync, esta opción puede ser la más fácil de entender para empezar.\n  Sobrescribirá todos tus archivos locales con los datos remotos, así que asegúrate de tener una copia de seguridad si tienes datos importantes en tu vault.\n- **${DETAILED}**: abre el asistente de configuración detallado.\n  Si quieres tener más control sobre el proceso de sincronización, o revisar los cambios antes de aplicarlos, elige esta opción para usar el flujo detallado.",
+        },
     'We can not use "/" to the device name': {
         def: 'We can not use "/" to the device name',
         es: 'No se puede usar "/" en el nombre del dispositivo',

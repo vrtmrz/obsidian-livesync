@@ -226,7 +226,7 @@ Doctor:
 
       我们开始处理吗?
     MainFix: |-
-      
+
       ## ${name}
 
       | Current | Ideal |
@@ -365,11 +365,13 @@ How to display network errors when the sync server is unreachable.: 当同步服
 How would you like to configure the connection to your server?: 你希望如何配置与服务器的连接？
 However, This should not be enabled if you want to increase your secrecy more.: 不过，如果你希望进一步提高保密性，则不应启用此项。
 I am adding a device to an existing synchronisation setup: 我要将设备加入现有同步配置
+I am ready, unlock the database: 我已准备好，立即解锁数据库
 I am setting this up for the first time: 我是第一次进行设置
 I am setting up a new server for the first time / I want to reset my existing server.: 我是第一次设置新服务器／我想重置现有服务器。
 I am unable to create a backup of my Vault.: 我无法备份我的库。
 I am unable to create a backup of my Vaults.: 我无法备份我的库。
 I have created a backup of my Vault.: 我已备份我的库。
+I have made a backup, mark this device as resolved: 我已完成备份，将此设备标记为“已确认”
 I know my server details, let me enter them: 我知道服务器详情，让我手动输入
 I understand that all changes made on other smartphones or computers possibly could be lost.: 我明白在其他手机或电脑上所做的更改可能会丢失。
 I understand that other devices will no longer be able to synchronise, and will need to be reset the synchronisation information.: 我明白其他设备将无法继续同步，需要重置同步信息。
@@ -1524,6 +1526,8 @@ The maximum duration for which chunks can be incubated within the document. Chun
 The maximum number of chunks that can be incubated within the document. Chunks exceeding this number will immediately graduate to independent chunks.: "文档中可以孵化的数据块的最大数量。超过此数量的数据块将立即成为独立数据块 "
 The maximum total size of chunks that can be incubated within the document. Chunks exceeding this size will immediately graduate to independent chunks.: "文档中可以孵化的数据块的最大总大小。超过此大小的数据块将立即成为独立数据块 "
 The minimum interval for automatic synchronisation on event.: 基于事件自动同步的最小间隔。
+The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.:
+  为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。
 The remote is already set up, and the configuration is compatible (or got compatible by this operation).: 远端已设置好，且配置兼容（或经此操作后已兼容）。
 The Setup-URI does not appear to be valid. Please check that you have copied it correctly.: 设置 URI 似乎无效。请检查是否完整复制。
 The Setup-URI is valid and ready to use.: 设置 URI 有效，可以使用。
@@ -1550,6 +1554,8 @@ This Vault is empty, or contains only new files that are not on the server.: 本
 This will rebuild the local database on this device using the most recent data from the server. This action is designed to resolve synchronisation inconsistencies and restore correct functionality.: 这将用服务器上的最新数据重建本设备的本地数据库。此操作旨在解决同步不一致并恢复正常功能。
 This will recreate chunks for all files. If there were missing chunks, this may fix the errors.: 这会为所有文件重新生成 chunks。如果之前存在缺失的 chunks，这可能修复相关错误。
 To minimise the creation of new conflicts: 以减少新冲突的产生
+To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.:
+  为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。
 Transfer Tweak: 传输微调
 TURN Credential: TURN 凭据
 TURN server settings are only necessary if you are behind a strict NAT or firewall that prevents direct P2P connections. In most cases, you can leave these fields blank.: 只有当处于阻止直接 P2P 连接的严格 NAT 或防火墙之后时，才需要 TURN 服务器设置。大多数情况下这些字段可以留空。
@@ -1569,11 +1575,11 @@ TweakMismatchResolve:
     UseRemoteWithRebuild: Apply settings to this device, and fetch again
   Message:
     AutoAcceptCompatibleUndefined: |-
-      
+
       各设备的设置似乎存在差异。你现在可以自动应用兼容的更改到这些配置。
       是否要启用此「自动接受」设置？
     Main: >-
-      
+
       The settings in the remote database are as follows. These values are
       configured by other devices, which are synchronised with this device at
       least once.
@@ -1610,7 +1616,7 @@ TweakMismatchResolve:
     remoteUpdated: 远端存储的配置已更新。
     UseRemote:
       WarningRebuildRecommended: >-
-        
+
         >[!NOTICE]
 
         > Some changes are compatible but may consume extra storage and transfer
@@ -1620,7 +1626,7 @@ TweakMismatchResolve:
         > ***Please ensure that you have time and are connected to a stable
         network to apply!***
       WarningRebuildRequired: >-
-        
+
         >[!WARNING]
 
         > Some remote configurations are not compatible with the local database
@@ -1629,7 +1635,7 @@ TweakMismatchResolve:
         > ***Please ensure that you have time and are connected to a stable
         network to apply!***
     WarningIncompatibleRebuildRecommended: >-
-      
+
       >[!NOTICE]
 
       > We have detected that some of the values are different to make
@@ -1642,7 +1648,7 @@ TweakMismatchResolve:
       > If you want to rebuild, it takes a few minutes or more. **Make sure it
       is safe to perform it now.**
     WarningIncompatibleRebuildRequired: >-
-      
+
       >[!WARNING]
 
       > We have detected that some of the values are different to make
@@ -1770,10 +1776,6 @@ Ui:
       Scram: 紧急处理
       SendChunks: 发送数据块
       Syncing: 同步
-      WarningLockedReadyAction: 我已准备好，立即解锁数据库
-      WarningLockedReadyText: 为防止意外的数据仓库损坏，远程数据库已被锁定，暂停同步。（此设备已被标记为“已确认”）当你的所有设备都标记为“已确认”后，再解锁数据库。在复制过程确认此设备已完成确认之前，此警告会持续显示。
-      WarningLockedResolveAction: 我已完成备份，将此设备标记为“已确认”
-      WarningLockedResolveText: 为防止数据仓库损坏，由于此设备尚未标记为“已确认”，远程数据库已被锁定，暂停同步。请先备份你的仓库、重置本地数据库，然后选择“将此设备标记为已确认”。在复制过程确认此设备已完成确认之前，此警告会持续显示。
       WriteRedFlagAndRestart: 标记并重启
     Patches:
       CompatibilityConflict: 兼容性（冲突行为）
