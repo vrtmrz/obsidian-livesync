@@ -19,10 +19,24 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We now apply the settings for protecting sensitive configuration together, so a successful Apply keeps the saved settings under the selected passphrase. If Apply fails, the edits remain available to retry. (#1238)
 - We can now enter a missing or unusable custom configuration passphrase at start-up to unlock protected settings. Cancelling the custom-key recovery prompt preserves the encrypted configuration and stops that start-up attempt; headless command-line start-up cannot complete that prompt when recovery input is required. (#1239)
 
+### Localisation
+
+#### Fixed
+
+- We can read more settings, maintenance controls, and Fast Setup instructions in Spanish. (#1213, #1214)
+    - Remote database lock warnings now use the existing translations consistently.
+    - Fast Setup follows the selected display language while preserving saved choices across restarts and language changes.
+
 ### Maintenance
 
 - Build copying and import alias checks now use repository-owned helpers, removing the vulnerable `braces` dependency from development tooling.
 - Updated compatible development dependencies with available security fixes.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @zeedif (#1213, #1214)
 
 ## 1.0.35
 

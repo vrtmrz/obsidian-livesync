@@ -267,7 +267,7 @@ async function captureDeclarativeMobileSettings(): Promise<
         const maintenancePage = await settingsNavigator.openPage("Maintenance");
         const markResolvedButton = maintenancePage
             .locator(".op-warn button")
-            .filter({ hasText: "I've made a backup, mark this device 'resolved'" })
+            .filter({ hasText: "I have made a backup, mark this device as resolved" })
             .first();
         await markResolvedButton.evaluate((button) => {
             const warning = button.closest<HTMLElement>(".op-warn");
