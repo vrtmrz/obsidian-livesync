@@ -13,6 +13,7 @@ const focusedScenarios = new Set([
     "document-history-nav",
     "document-history-restore",
     "settings-ui",
+    "configuration-encryption",
     "review-harness",
     "p2p-pane",
     "vault-reflection",

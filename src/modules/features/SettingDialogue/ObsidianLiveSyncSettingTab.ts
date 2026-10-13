@@ -133,7 +133,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     applySetting(keys: AllSettingItemKey[]) {
         for (const k of keys) {
             if (!this.isDirty(k)) continue;
-            if (k in OnDialogSettingsDefault) {
+            if (this.isConfigurationEncryptionSetting(k) || k in OnDialogSettingsDefault) {
                 // //@ts-ignore
                 // this.initialSettings[k] = this.editingSettings[k];
                 continue;
@@ -141,21 +141,21 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             this.copySettingValue(this.core.settings, this.editingSettings, k);
             this.copySettingValue(this.initialSettings, this.core.settings, k);
         }
-        keys.forEach((e) => this.refreshSetting(e));
+        keys.forEach((e) => {
+            if (this.isConfigurationEncryptionSetting(e) && this.isDirty(e)) return;
+            this.refreshSetting(e);
+        });
     }
-    applyAllSettings() {
+    async applyAllSettings() {
         const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter((e) =>
             this.isDirty(e)
         );
+        await this.saveConfigurationEncryptionIfDirty(changedKeys);
         this.applySetting(changedKeys);
         this.reloadAllSettings();
     }
 
     async saveLocalSetting(key: keyof typeof OnDialogSettingsDefault) {
-        if (key == "configPassphrase") {
-            compatGlobal.localStorage.setItem("ls-setting-passphrase", this.editingSettings?.[key] ?? "");
-            return await Promise.resolve();
-        }
         if (key == "deviceAndVaultName") {
             this.services.setting.setDeviceAndVaultName(this.editingSettings?.[key] ?? "");
             this.services.setting.saveDeviceAndVaultName();
@@ -168,10 +168,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      */
     async saveSettings(keys: AllSettingItemKey[]) {
         let hasChanged = false;
-        const appliedKeys = [] as AllSettingItemKey[];
-        for (const k of keys) {
-            if (!this.isDirty(k)) continue;
-            appliedKeys.push(k);
+        const appliedKeys = keys.filter((k) => this.isDirty(k));
+        await this.saveConfigurationEncryptionIfDirty(appliedKeys);
+        for (const k of appliedKeys) {
+            if (this.isConfigurationEncryptionSetting(k)) continue;
             if (k in OnDialogSettingsDefault) {
                 await this.saveLocalSetting(k as keyof OnDialogSettings);
                 this.copySettingValue(this.initialSettings, this.editingSettings, k);
@@ -192,7 +192,32 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             .map((e) => Promise.resolve(e.handler(this.editingSettings[e.key])));
         await Promise.all(handlers);
         // }
-        keys.forEach((e) => this.refreshSetting(e));
+        keys.forEach((e) => {
+            if (this.isConfigurationEncryptionSetting(e) && this.isDirty(e)) return;
+            this.refreshSetting(e);
+        });
+    }
+
+    private isConfigurationEncryptionSetting(key: AllSettingItemKey): boolean {
+        return key === "configPassphraseStore" || key === "configPassphrase";
+    }
+
+    private async saveConfigurationEncryptionIfDirty(keys: AllSettingItemKey[]): Promise<void> {
+        if (!keys.some((key) => this.isConfigurationEncryptionSetting(key) && this.isDirty(key))) {
+            return;
+        }
+
+        const appliedConfigurationEncryption = {
+            configPassphraseStore: this.editingSettings.configPassphraseStore,
+            configPassphrase: this.editingSettings.configPassphrase,
+        };
+        await this.services.setting.changeConfigurationEncryption(
+            appliedConfigurationEncryption.configPassphraseStore,
+            appliedConfigurationEncryption.configPassphrase
+        );
+
+        this.copySettingValue(this.initialSettings, appliedConfigurationEncryption, "configPassphraseStore");
+        this.copySettingValue(this.initialSettings, appliedConfigurationEncryption, "configPassphrase");
     }
 
     /**
@@ -272,10 +297,35 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      * Reread all settings and request invalidate
      */
     reloadAllSettings(skipUpdate: boolean = false) {
+        const previousSettings = this._editingSettings;
+        const previousSnapshot = this.initialSettings;
+        const pendingConfigurationEncryption =
+            previousSettings && previousSnapshot
+                ? {
+                      configPassphraseStore: isObjectDifferent(
+                          previousSettings.configPassphraseStore,
+                          previousSnapshot.configPassphraseStore
+                      )
+                          ? { value: previousSettings.configPassphraseStore }
+                          : undefined,
+                      configPassphrase: isObjectDifferent(
+                          previousSettings.configPassphrase,
+                          previousSnapshot.configPassphrase
+                      )
+                          ? { value: previousSettings.configPassphrase }
+                          : undefined,
+                  }
+                : undefined;
         const localSetting = this.reloadAllLocalSettings();
         this._editingSettings = { ...this.core.settings, ...localSetting };
         this._editingSettings = { ...this.editingSettings, ...this.computeAllLocalSettings() };
         this.initialSettings = { ...this.editingSettings };
+        if (pendingConfigurationEncryption?.configPassphraseStore) {
+            this._editingSettings.configPassphraseStore = pendingConfigurationEncryption.configPassphraseStore.value;
+        }
+        if (pendingConfigurationEncryption?.configPassphrase) {
+            this._editingSettings.configPassphrase = pendingConfigurationEncryption.configPassphrase.value;
+        }
         if (!skipUpdate) this.requestUpdate();
     }
 
@@ -1020,7 +1070,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (!this.editingSettings.encrypt) {
             this.editingSettings.passphrase = "";
         }
-        this.applyAllSettings();
+        await this.applyAllSettings();
         await this.services.setting.suspendAllSync();
         await this.services.setting.suspendExtraSync();
         this.reloadAllSettings();

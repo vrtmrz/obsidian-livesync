@@ -988,10 +988,14 @@ If this option is enabled, PouchDB will hold the connection open for 60 seconds,
 
 Setting key: configPassphraseStore
 
+Choose how the passphrase for sensitive configuration items is provided. **Default** uses the existing default key. **Use a custom passphrase** uses the value of `configPassphrase` and saves that key on this device. **Ask an passphrase at every launch** requests a masked passphrase at start-up and caches a successfully entered key in memory for that launch.
+
+Apply this setting and its passphrase together. Applying them re-encrypts the saved sensitive values with the selected passphrase and changes how LiveSync obtains that passphrase in one operation. If Apply fails, the edited values stay available for another attempt. Re-encryption preserves the plaintext values: it does not change the E2EE passphrase, the ID key, or Vault contents.
+
 #### Passphrase of sensitive configuration items
 
 Setting key: configPassphrase
-This passphrase will not be copied to another device. It will be set to `Default` until you configure it again.
+This passphrase is not copied to another device. With **Use a custom passphrase**, the selected mode is stored in the configuration but the key remains on this device. If protected settings need to be decrypted and another device does not have the key, LiveSync asks for the passphrase during start-up. After the protected settings validate it, the key is saved on that device.
 
 ### 4. Developer
 

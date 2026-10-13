@@ -74,6 +74,7 @@ After changing plug-in source, use the focused wrapper rather than invoking a sc
 
 ```bash
 npm run test:e2e:obsidian:focused -- settings-ui
+npm run test:e2e:obsidian:focused -- configuration-encryption
 npm run test:e2e:obsidian:focused -- two-vault-sync
 npm run test:e2e:obsidian:focused -- stale-file-restart
 npm run test:e2e:obsidian:focused -- folder-batch
@@ -110,6 +111,8 @@ The underlying `test:e2e:obsidian:<scenario>` scripts remain available for an im
 `test:contract:context:cli` builds the Node CLI and runs its existing Deno setup, put, read, list, information, remove, conflict-resolution, and revision workflow. `test:contract:context:obsidian` builds the plug-in and runs the real-Obsidian smoke test, including the Context inspection. These runtime scripts are local validation entry points and are not added to the default CI gate by this change.
 
 `test:e2e:obsidian:onboarding-invitation` starts an unconfigured temporary Vault with no plug-in data and verifies that startup selects Commonlib's new-Vault recommendations, offers the setup wizard without opening it, and does not scan Vault files automatically. It checks the invitation action and introduction in mobile test mode, then reopens the wizard from Quick Setup in either settings interface. This scenario owns the unconfigured-startup boundary only; configured compatibility review remains covered by `settings-ui`, and the setup workflows remain covered by their dedicated scenarios.
+
+`configuration-encryption` needs no remote service. It applies a custom configuration key through the settings interface, restarts the same isolated Vault, and applies a change to only the custom string. It then copies the encrypted settings into a fresh profile without that key and checks masked input, wrong-input retry, cancellation without a settings write or database initialisation, re-enabling for another attempt, access to the settings tab, and restoration after a further restart. Connection, E2EE, profile, and independent ID values must remain unchanged. These checks establish ordinary Apply and restart behaviour, without simulating process termination between the device-key and settings writes.
 
 `test:e2e:obsidian:dialog-mounts` starts a temporary real Obsidian session and exercises remote selection and CouchDB settings through `SetupManager`, plus Setup URI entry through the registered command. It verifies the compatibility pause and remote-size review, the distinction between a central data-storage server and P2P signalling, the explicit tested and untested CouchDB save actions, the internal-API warning, the Setup URI controls, automatic adjustment when differences are limited to compatible chunk settings, and both manual configuration-mismatch routes. The same session opens the live log and generated full report, reaches the `Hatch` recovery controls, writes and removes its own persistent log, and runs the missing-chunk recreation and file-verification actions against the empty disposable Vault. It captures representative desktop and mobile dialogues, checks the mobile layout and vertically stacked actions, closes each route through its normal controls, and verifies that each mounted operation settles without an error. It does not apply a remote configuration, contact a remote service, or claim to repair a deliberately damaged database.
 
