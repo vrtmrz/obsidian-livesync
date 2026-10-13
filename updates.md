@@ -12,6 +12,20 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Localisation
+
+#### Fixed
+
+- We can read more settings, maintenance controls, and Fast Setup instructions in Spanish. (#1213, #1214)
+    - Remote database lock warnings now use the existing translations consistently.
+    - Fast Setup follows the selected display language while preserving saved choices across restarts and language changes.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @zeedif (#1213, #1214)
+
 ## 1.0.35
 
 5th October, 2026

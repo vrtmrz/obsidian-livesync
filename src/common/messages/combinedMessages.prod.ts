@@ -729,6 +729,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "取消",
         "zh-tw": "取消",
     },
+    "Cancel all and reboot": {
+        def: "Cancel all and reboot",
+        es: "Cancelar todo y reiniciar",
+    },
     "Cancel Garbage Collection": {
         def: "Cancel Garbage Collection",
         es: "Cancelar la recolección de basura",
@@ -919,6 +923,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             zh: "比较本地数据库与存储中的文件内容；如果不一致，你将被询问要保留哪一份。",
             "zh-tw": "比較本機資料庫與儲存空間中的檔案內容；若不一致，系統會詢問你要保留哪一份。",
         },
+    "Compare time and take newer": {
+        def: "Compare time and take newer",
+        es: "Comparar fechas y usar la más reciente",
+    },
     "Compatibility (Conflict Behaviour)": {
         def: "Compatibility (Conflict Behaviour)",
         es: "Compatibilidad (comportamiento de conflictos)",
@@ -1044,6 +1052,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Снова вручную укажите те же параметры сервера, что и на других устройствах. Только для очень опытных пользователей.",
         zh: "手动重新输入与你其他设备相同的服务器信息。仅适合高级用户。",
         "zh-tw": "手動重新輸入與其他裝置相同的伺服器資訊。僅適合進階使用者。",
+    },
+    "Conflict & Deletion Options": {
+        def: "Conflict & Deletion Options",
+        es: "Opciones de conflictos y eliminación",
     },
     Connect: {
         def: "Connect",
@@ -1235,6 +1247,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "数据压缩",
         "zh-tw": "資料壓縮",
     },
+    "Data retrieval scheduled": {
+        def: "Data retrieval scheduled",
+        es: "Obtención de datos programada",
+    },
     "Data to Copy": {
         def: "Data to Copy",
         es: "Datos a copiar",
@@ -1360,6 +1376,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Удалить локальную базу данных, чтобы сбросить или удалить Self-hosted LiveSync",
         zh: "删除本地数据库以重置或卸载 Self-hosted LiveSync",
         "zh-tw": "刪除本機資料庫以重設或解除安裝 Self-hosted LiveSync",
+    },
+    "Delete local files if deleted on remote": {
+        def: "Delete local files if deleted on remote",
+        es: "Eliminar los archivos locales si se eliminaron en el remoto",
+    },
+    "Delete local files if not on remote": {
+        def: "Delete local files if not on remote",
+        es: "Eliminar los archivos locales que no estén en el remoto",
     },
     "Delete old metadata of deleted files on start-up": {
         def: "Delete old metadata of deleted files on start-up",
@@ -2474,6 +2498,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Последнее подтверждение: перезаписать данные сервера файлами этого устройства",
         "zh-tw": "最終確認：以此裝置的檔案覆寫伺服器資料",
     },
+    "Finalise the process and resume normal operation": {
+        def: "Finalise the process and resume normal operation",
+        es: "Finalizar el proceso y reanudar el funcionamiento normal",
+    },
     "First, please select the option that best describes your current situation.": {
         def: "First, please select the option that best describes your current situation.",
         es: "Primero, seleccione la opción que mejor describa tu situación actual。",
@@ -2703,6 +2731,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Подсветить различия",
         "zh-tw": "醒目顯示差異",
     },
+    "How should files that were deleted on other devices be handled?\n\n- **${NEWER_CLEANUP}**: Delete local files if they were deleted on remote.\n  This is useful if you want to keep your vault clean and consistent across devices, but please make sure you have a backup if there is already any important data in your vault.\n- **${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.":
+        {
+            def: "How should files that were deleted on other devices be handled?\n\n- **${NEWER_CLEANUP}**: Delete local files if they were deleted on remote.\n  This is useful if you want to keep your vault clean and consistent across devices, but please make sure you have a backup if there is already any important data in your vault.\n- **${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.",
+            es: "¿Cómo se deben gestionar los archivos que se eliminaron en otros dispositivos?\n\n- **${NEWER_CLEANUP}**: elimina los archivos locales si se eliminaron en el remoto.\n  Es útil si quieres mantener tu vault limpio y coherente entre dispositivos; asegúrate de tener una copia de seguridad si ya tienes datos importantes en tu vault.\n- **${NEWER_SYNC_ALL}**: vuelve a crear los archivos remotos aunque se hayan eliminado en el remoto.\n  Esta opción mantiene todos tus archivos locales, pero puede causar duplicados si hay archivos que existen en local pero no en el remoto. Puedes limpiar esos duplicados manualmente después de sincronizar.",
+        },
     "How to display network errors when the sync server is unreachable.": {
         def: "How to display network errors when the sync server is unreachable.",
         es: "Cómo mostrar los errores de red cuando el servidor de sincronización no está disponible.",
@@ -2711,6 +2744,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Определяет, как отображать сетевые ошибки, если сервер синхронизации недоступен.",
         zh: "当同步服务器不可达时，如何显示网络错误。",
         "zh-tw": "當同步伺服器無法連線時，如何顯示網路錯誤。",
+    },
+    "How to handle extra existing local files?": {
+        def: "How to handle extra existing local files?",
+        es: "¿Cómo gestionar los archivos locales adicionales?",
     },
     "How would you like to configure the connection to your server?": {
         def: "How would you like to configure the connection to your server?",
@@ -3331,6 +3368,14 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Сохранять пустые папки",
         zh: "保留空文件夹",
         "zh-tw": "保留空資料夾",
+    },
+    "Keep local files even if deleted on remote": {
+        def: "Keep local files even if deleted on remote",
+        es: "Mantener los archivos locales aunque se hayan eliminado en el remoto",
+    },
+    "Keep local files even if not on remote": {
+        def: "Keep local files even if not on remote",
+        es: "Mantener los archivos locales aunque no estén en el remoto",
     },
     lang_def: {
         def: "Default",
@@ -7076,6 +7121,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "覆盖",
         "zh-tw": "覆寫",
     },
+    "Overwrite all with remote files": {
+        def: "Overwrite all with remote files",
+        es: "Sobrescribir todo con los archivos remotos",
+    },
     "Overwrite patterns": {
         def: "Overwrite patterns",
         es: "Patrones de sobrescritura",
@@ -7904,6 +7953,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Очистить все счётчики журнала",
         zh: "清除所有日志计数器",
         "zh-tw": "清除所有日誌計數器",
+    },
+    "Reboot to re-run the process": {
+        def: "Reboot to re-run the process",
+        es: "Reiniciar para volver a ejecutar el proceso",
     },
     "Rebuild local and remote database with local files.": {
         def: "Rebuild local and remote database with local files.",
@@ -9829,6 +9882,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Состояние сигнального соединения",
         "zh-tw": "訊號狀態",
     },
+    "Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**\n\n- **${DELETE_ALL}**: Local-only files and remote-deleted files will be removed.\n  This option will make your local vault exactly the same as the remote database, but please make sure you have a backup if there is any important data in your vault.\n- **${DELETE_NONE}**: All existing local files will be preserved.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.":
+        {
+            def: "Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**\n\n- **${DELETE_ALL}**: Local-only files and remote-deleted files will be removed.\n  This option will make your local vault exactly the same as the remote database, but please make sure you have a backup if there is any important data in your vault.\n- **${DELETE_NONE}**: All existing local files will be preserved.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.",
+            es: "Como has elegido sobrescribir todos los archivos locales con los datos remotos, **¿cómo quieres gestionar los archivos locales que no existen en la base de datos remota?**\n\n- **${DELETE_ALL}**: se eliminarán los archivos que solo existen en local y los que se han borrado en el remoto.\n  Esta opción hará que tu vault local sea exactamente igual que la base de datos remota; asegúrate de tener una copia de seguridad si tienes datos importantes en tu vault.\n- **${DELETE_NONE}**: se conservarán todos los archivos locales existentes.\n  Esta opción mantiene todos tus archivos locales, pero puede causar duplicados si hay archivos que existen en local pero no en el remoto. Puedes limpiar esos duplicados manualmente después de sincronizar.",
+        },
     "Skip and close": {
         def: "Skip and close",
         es: "Omitir y cerrar",
@@ -9854,6 +9912,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw":
                 "某些裝置的進度值不同（最大：${maxProgress}，最小：${minProgress}）。\n這可能表示某些裝置尚未完成同步，進而可能導致衝突。強烈建議在繼續之前先確認所有裝置都已同步。",
         },
+    "Some files failed to synchronise. What would you like to do?": {
+        def: "Some files failed to synchronise. What would you like to do?",
+        es: "Algunos archivos no se pudieron sincronizar. ¿Qué quieres hacer?",
+    },
     "Start Broadcasting": {
         def: "Start Broadcasting",
         es: "Iniciar difusión",
@@ -10091,6 +10153,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "한 번 동기화",
         ru: "Синхронизировать один раз",
         "zh-tw": "同步一次",
+    },
+    "Synchronisation Issues Detected": {
+        def: "Synchronisation Issues Detected",
+        es: "Se han detectado problemas de sincronización",
     },
     "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.": {
         def: "Synchronisation utilising journal files. You must have set up an S3/MinIO/R2 compatible object storage.",
@@ -13132,6 +13198,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "使用分割限制上限的块分割器",
         "zh-tw": "使用有分割上限的 chunk 分割器",
     },
+    "Use the detailed flow": {
+        def: "Use the detailed flow",
+        es: "Usar el flujo detallado",
+    },
     "Use the trash bin": {
         def: "Use the trash bin",
         es: "Usar papelera",
@@ -13232,6 +13302,11 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "СЛЕЖЕНИЕ",
         "zh-tw": "監看中",
     },
+    "We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.":
+        {
+            def: "We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.",
+            es: "Vamos a obtener los datos remotos.\n\nEn primer lugar, ¿cómo quieres gestionar los datos obtenidos de este origen remoto?\n\n- **${NEWER_WINS}**: compara la fecha de modificación de los archivos y usa la más reciente.\n  Si has estado usando Self-hosted LiveSync y has hecho cambios en varios dispositivos, esta opción puede ser adecuada, ya que intenta combinar los cambios según la fecha de modificación.\n- **${REMOTE_WINS}**: los datos remotos son la fuente de la verdad.\n  Si eres nuevo en Self-hosted LiveSync, esta opción puede ser la más fácil de entender para empezar.\n  Sobrescribirá todos tus archivos locales con los datos remotos, así que asegúrate de tener una copia de seguridad si tienes datos importantes en tu vault.\n- **${DETAILED}**: abre el asistente de configuración detallado.\n  Si quieres tener más control sobre el proceso de sincronización, o revisar los cambios antes de aplicarlos, elige esta opción para usar el flujo detallado.",
+        },
     'We can not use "/" to the device name': {
         def: 'We can not use "/" to the device name',
         es: 'No se puede usar "/" en el nombre del dispositivo',

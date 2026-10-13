@@ -3,6 +3,7 @@ import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { enableOnly, visibleOnly } from "./SettingPane.ts";
+import { $msg } from "@/common/translation";
 export function paneCustomisationSync(
     this: ObsidianLiveSyncSettingTab,
     paneEl: HTMLElement,
@@ -10,7 +11,7 @@ export function paneCustomisationSync(
 ): void {
     // With great respect, thank you TfTHacker!
     // Refer: https://github.com/TfTHacker/obsidian42-brat/blob/main/src/features/BetaPlugins.ts
-    void addPanel(paneEl, "Customization Sync").then((paneEl) => {
+    void addPanel(paneEl, $msg("Customization Sync")).then((paneEl) => {
         const enableOnlyOnPluginSyncIsNotEnabled = enableOnly(() => this.isConfiguredAs("usePluginSync", false));
         const visibleOnlyOnPluginSyncEnabled = visibleOnly(() => this.isConfiguredAs("usePluginSync", true));
 
@@ -18,7 +19,9 @@ export function paneCustomisationSync(
             paneEl,
             "div",
             {
-                text: "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature.",
+                text: $msg(
+                    "Please set device name to identify this device. This name should be unique among your devices. While not configured, we cannot enable this feature."
+                ),
                 cls: "op-warn",
             },
             (c) => {},
@@ -28,7 +31,9 @@ export function paneCustomisationSync(
             paneEl,
             "div",
             {
-                text: "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name.",
+                text: $msg(
+                    "We cannot change the device name while this feature is enabled. Please disable this feature to change the device name."
+                ),
                 cls: "op-warn-info",
             },
             (c) => {},
@@ -60,11 +65,11 @@ export function paneCustomisationSync(
         });
 
         new Setting(paneEl)
-            .setName("Open")
-            .setDesc("Open the dialog")
+            .setName($msg("Open"))
+            .setDesc($msg("Open the dialog"))
             .addButton((button) => {
                 button
-                    .setButtonText("Open")
+                    .setButtonText($msg("Open"))
                     .setDisabled(false)
                     .onClick(() => {
                         // this.plugin.getAddOn<ConfigSync>(ConfigSync.name)?.showPluginSyncModal();

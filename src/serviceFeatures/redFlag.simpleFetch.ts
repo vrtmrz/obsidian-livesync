@@ -11,6 +11,8 @@ import {
     type FullScanOptions,
 } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { adjustSettingToRemoteIfNeeded, cancelScheduledInitialisation, processVaultInitialisation } from "./redFlag";
+import { $msg } from "@/common/translation";
+import type { AllMessageKeys } from "@/common/rosetta";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
 export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";
@@ -85,26 +87,47 @@ function clearRememberedSimpleFetchMode(host: NecessaryServices<"setting", never
     host.services.setting.deleteSmallConfig(SIMPLE_FETCH_MODE_KEY);
 }
 
+async function confirmTranslatedChoice(
+    host: NecessaryServices<"UI", never>,
+    title: string,
+    message: string,
+    buttons: AllMessageKeys[],
+    defaultAction: AllMessageKeys
+): Promise<string | false> {
+    const labels: string[] = buttons.map((key) => $msg(key));
+    const selected = await host.services.UI.confirm.confirmWithMessage(title, message, labels, $msg(defaultAction), 0);
+    if (selected === false) return false;
+    const index = labels.indexOf(selected);
+    return index < 0 ? false : buttons[index];
+}
+
 export async function askSimpleFetchMode(
     host: NecessaryServices<"UI" | "setting", never>
 ): Promise<{ mode: string; options: Partial<FullScanOptions> } | "cancelled" | "aborted"> {
     const remembered = getRememberedSimpleFetchMode(host);
     if (remembered) return remembered;
 
-    const msg = `We are about to retrieve the remote data.
+    const msg = $msg(
+        `We are about to retrieve the remote data.
 
 Firstly, how shall we handle the data retrieved from this remote source?
 
-- **${SIMPLE_FETCH_STAGE1_NEWER_WINS}**: Compares the modified time of files and takes the newer one.
+- **\${NEWER_WINS}**: Compares the modified time of files and takes the newer one.
   If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.
-- **${SIMPLE_FETCH_STAGE1_REMOTE_WINS}**: Remote data is the source of truth.
+- **\${REMOTE_WINS}**: Remote data is the source of truth.
   If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.
   It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.
-- **${SIMPLE_FETCH_STAGE1_DETAILED}**: Opens the detailed setup wizard.
-  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.
-    `;
-    const stage1 = await host.services.UI.confirm.confirmWithMessage(
-        "Data retrieval scheduled",
+- **\${DETAILED}**: Opens the detailed setup wizard.
+  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.`,
+        {
+            NEWER_WINS: $msg(SIMPLE_FETCH_STAGE1_NEWER_WINS),
+            REMOTE_WINS: $msg(SIMPLE_FETCH_STAGE1_REMOTE_WINS),
+            DETAILED: $msg(SIMPLE_FETCH_STAGE1_DETAILED),
+        }
+    );
+    const stage1 = await confirmTranslatedChoice(
+        host,
+        $msg("Data retrieval scheduled"),
         msg,
         [
             SIMPLE_FETCH_STAGE1_NEWER_WINS,
@@ -112,8 +135,7 @@ Firstly, how shall we handle the data retrieved from this remote source?
             SIMPLE_FETCH_STAGE1_DETAILED,
             SIMPLE_FETCH_STAGE1_CANCEL,
         ],
-        SIMPLE_FETCH_STAGE1_NEWER_WINS,
-        0
+        SIMPLE_FETCH_STAGE1_NEWER_WINS
     );
 
     if (!stage1 || stage1 === SIMPLE_FETCH_STAGE1_CANCEL) return "cancelled";
@@ -123,19 +145,25 @@ Firstly, how shall we handle the data retrieved from this remote source?
     }
 
     if (stage1 === SIMPLE_FETCH_STAGE1_REMOTE_WINS) {
-        const msg = `Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**
+        const msg = $msg(
+            `Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**
 
-- **${SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL}**: Local-only files and remote-deleted files will be removed.
+- **\${DELETE_ALL}**: Local-only files and remote-deleted files will be removed.
   This option will make your local vault exactly the same as the remote database, but please make sure you have a backup if there is any important data in your vault.
-- **${SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE}**: All existing local files will be preserved.
-  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.`;
+- **\${DELETE_NONE}**: All existing local files will be preserved.
+  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.`,
+            {
+                DELETE_ALL: $msg(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL),
+                DELETE_NONE: $msg(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE),
+            }
+        );
 
-        const stage2 = await host.services.UI.confirm.confirmWithMessage(
-            "How to handle extra existing local files?",
+        const stage2 = await confirmTranslatedChoice(
+            host,
+            $msg("How to handle extra existing local files?"),
             msg,
             [SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL, SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE, STAGE2_ABORT],
-            SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE,
-            0
+            SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE
         );
         if (!stage2) return "cancelled";
         if (stage2 === STAGE2_ABORT) {
@@ -146,20 +174,25 @@ Firstly, how shall we handle the data retrieved from this remote source?
     }
 
     if (stage1 === SIMPLE_FETCH_STAGE1_NEWER_WINS) {
-        const msg = `How should files that were deleted on other devices be handled?
+        const msg = $msg(
+            `How should files that were deleted on other devices be handled?
 
-- **${SIMPLE_FETCH_STAGE2_NEWER_CLEANUP}**: Delete local files if they were deleted on remote.
+- **\${NEWER_CLEANUP}**: Delete local files if they were deleted on remote.
   This is useful if you want to keep your vault clean and consistent across devices, but please make sure you have a backup if there is already any important data in your vault.
-- **${SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.
-  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.
-  `;
+- **\${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.
+  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.`,
+            {
+                NEWER_CLEANUP: $msg(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP),
+                NEWER_SYNC_ALL: $msg(SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL),
+            }
+        );
 
-        const stage2 = await host.services.UI.confirm.confirmWithMessage(
-            "Conflict & Deletion Options",
+        const stage2 = await confirmTranslatedChoice(
+            host,
+            $msg("Conflict & Deletion Options"),
             msg,
             [SIMPLE_FETCH_STAGE2_NEWER_CLEANUP, SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL, STAGE2_ABORT],
-            SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL,
-            0
+            SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL
         );
         if (!stage2) return "cancelled";
         if (stage2 === STAGE2_ABORT) {
@@ -245,12 +278,14 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
             })
         );
         if (!syncResult) {
+            const rerunProcess = $msg(RERUN_PROCESS);
+            const releaseFlagProcess = $msg(RELEASE_FLAG_PROCESS);
             const canRelease = await host.services.UI.confirm.askSelectStringDialogue(
-                "Some files failed to synchronise. What would you like to do?",
-                [RERUN_PROCESS, RELEASE_FLAG_PROCESS],
-                { defaultAction: RELEASE_FLAG_PROCESS, title: "Synchronisation Issues Detected" }
+                $msg("Some files failed to synchronise. What would you like to do?"),
+                [rerunProcess, releaseFlagProcess],
+                { defaultAction: releaseFlagProcess, title: $msg("Synchronisation Issues Detected") }
             );
-            if (canRelease === RERUN_PROCESS) {
+            if (canRelease === rerunProcess) {
                 log("User chose to reboot and re-run the process.", LOG_LEVEL_NOTICE);
                 // Prevent to delete the flag, so that the process will be re-run after reboot.
                 // await cleanupFlag();
