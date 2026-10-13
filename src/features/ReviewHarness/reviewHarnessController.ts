@@ -21,6 +21,7 @@ export interface ReviewHarnessRuntime {
     getCompatibilityPause(): CompatibilityPause | undefined;
     openCompatibilityReview(): Promise<void>;
     runVaultRoundTrip(): Promise<ReviewHarnessScenarioResult>;
+    runIdBenchmark(): Promise<ReviewHarnessScenarioResult>;
     readContinuation(): string | null;
     writeContinuation(value: string): void;
     deleteContinuation(): void;
@@ -159,6 +160,8 @@ export class ReviewHarnessController {
                 });
             } else if (id === "vault-round-trip") {
                 result = await this.runtime.runVaultRoundTrip();
+            } else if (id === "id-generation-performance") {
+                result = await this.runtime.runIdBenchmark();
             } else {
                 const inspection = this.inspectCompatibilityReview();
                 result =
@@ -206,10 +209,7 @@ export class ReviewHarnessController {
                             detail: "The device-local compatibility review remains pending.",
                             observations: inspection.observations,
                         };
-            this.record(
-                "compatibility-review-updated",
-                this.results["compatibility-review"].status
-            );
+            this.record("compatibility-review-updated", this.results["compatibility-review"].status);
         } catch (error) {
             this.setUnexpectedFailure("compatibility-review", error);
         } finally {
@@ -259,6 +259,7 @@ export class ReviewHarnessController {
                 mode,
                 status: this.results[id].status,
                 detail: this.results[id].detail,
+                observations: this.results[id].observations,
             })),
             transcript: this.transcript,
         });

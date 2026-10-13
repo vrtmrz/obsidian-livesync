@@ -35,15 +35,13 @@ vi.mock("./pathAssertions.ts", () => ({
 
 vi.mock("./liveSyncWorkflow.ts", () => ({
     assertEqual: vi.fn(),
-    assertE2eCompatibilityMarker: vi.fn(async () => undefined),
-    assertE2eCompatibilityReviewPending: vi.fn(async () => undefined),
+    assertE2eCompatibilityUnpaused: vi.fn(async () => undefined),
     configureCouchDb: vi.fn(async () => undefined),
     createE2eCouchDbPluginData: vi.fn(() => ({})),
     prepareRemote: vi.fn(async () => undefined),
     pushLocalChanges: vi.fn(async () => {
         throw new Error("simulated Obsidian CLI timeout");
     }),
-    resumeCompatibilityReview: vi.fn(async () => undefined),
     waitForLiveSyncCoreReady: vi.fn(async () => undefined),
     waitForLocalDatabaseEntry: vi.fn(async () => ({ id: "note-id", children: [] })),
 }));

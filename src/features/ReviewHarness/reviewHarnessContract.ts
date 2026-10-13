@@ -1,9 +1,6 @@
 import type { ObsidianLiveSyncSettings, SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
 import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
-import type {
-    ReviewHarnessScenarioResult,
-    ReviewHarnessScenarioStatus,
-} from "./reviewHarnessTypes";
+import type { ReviewHarnessScenarioResult, ReviewHarnessScenarioStatus } from "./reviewHarnessTypes";
 
 export type { ReviewHarnessScenarioResult, ReviewHarnessScenarioStatus } from "./reviewHarnessTypes";
 
@@ -31,6 +28,14 @@ export const REVIEW_HARNESS_SCENARIOS = [
             "Creates, reads, modifies, renames, and removes a fixed owned fixture tree after explicit confirmation.",
         mode: "automatic",
         access: "dedicated-vault-fixtures",
+    },
+    {
+        id: "id-generation-performance",
+        title: "ID generation performance",
+        description:
+            "Measures legacy and independent IDs with fixed in-memory inputs. Reports time per 1,000 IDs and per ID, key derivation time, and JavaScript heap samples where available. Keep Obsidian in the foreground.",
+        mode: "automatic",
+        access: "read-only",
     },
 ] as const;
 
@@ -114,7 +119,9 @@ const NEW_VAULT_RECOMMENDATION_KEYS = [
     "E2EEAlgorithm",
 ] as const;
 
-type LifecycleSettingKey = (typeof PRESERVED_SYNC_SETTING_KEYS)[number] | (typeof NEW_VAULT_RECOMMENDATION_KEYS)[number];
+type LifecycleSettingKey =
+    | (typeof PRESERVED_SYNC_SETTING_KEYS)[number]
+    | (typeof NEW_VAULT_RECOMMENDATION_KEYS)[number];
 type SettingsForLifecycleInspection = Partial<Pick<ObsidianLiveSyncSettings, LifecycleSettingKey>>;
 
 export function inspectSettingsLifecycle(input: {
@@ -130,9 +137,7 @@ export function inspectSettingsLifecycle(input: {
         };
     }
 
-    const invalidSyncSettings = PRESERVED_SYNC_SETTING_KEYS.filter(
-        (key) => typeof input.settings[key] !== "boolean"
-    );
+    const invalidSyncSettings = PRESERVED_SYNC_SETTING_KEYS.filter((key) => typeof input.settings[key] !== "boolean");
     if (invalidSyncSettings.length > 0) {
         return {
             status: "failed",
@@ -205,6 +210,7 @@ export interface ReviewHarnessReportScenario {
     readonly mode: ReviewHarnessScenarioMode;
     readonly status: ReviewHarnessScenarioStatus;
     readonly detail: string;
+    readonly observations?: readonly string[];
 }
 
 export interface ReviewHarnessReportInput {
@@ -248,13 +254,15 @@ export function formatReviewHarnessReport(input: ReviewHarnessReportInput): stri
     );
     const scenarios = table(
         ["Scenario", "Mode", "Status", "Detail"],
-        input.scenarios.map(({ id, title, mode, status, detail }) => [
-            `${title} (${id})`,
-            mode,
-            status,
-            detail,
-        ])
+        input.scenarios.map(({ id, title, mode, status, detail }) => [`${title} (${id})`, mode, status, detail])
     );
+    const observations = input.scenarios
+        .filter((scenario) => scenario.observations?.length)
+        .map(
+            ({ title, observations }) =>
+                `### ${title}\n\n${observations!.map((value) => `- ${tableCell(value)}`).join("\n")}`
+        )
+        .join("\n\n");
     return `## Self-hosted LiveSync Review Harness report
 
 Generated at \`${tableCell(input.generatedAt)}\`.
@@ -266,6 +274,8 @@ ${environment}
 ### Scenarios
 
 ${scenarios}
+
+${observations}
 
 <details>
 <summary>Event transcript</summary>

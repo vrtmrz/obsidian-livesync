@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     STATUS_COUNTER_INACTIVE_LINGER_MS,
+    createChunkFetchCounterLabel,
     createMinimumVisibleActivityCount,
     createPaddedCounterLabel,
 } from "./StatusBarDisplay.ts";
@@ -135,5 +136,43 @@ describe("createPaddedCounterLabel", () => {
         source.value = 5;
 
         expect(display.value).toBe(" 📄\u20070");
+    });
+});
+
+describe("createChunkFetchCounterLabel", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("keeps initial and retry counts separate across an unchanged-total handoff", () => {
+        const counts = reactiveSource({ initial: 2, retrying: 5 });
+        const display = createChunkFetchCounterLabel(counts);
+        const withoutPadding = () => display.value.replace(/\u2007/g, "");
+        const transitionSnapshots: string[] = [];
+        const observeTransitions = () => transitionSnapshots.push(withoutPadding());
+
+        expect(withoutPadding()).toBe(" 🛄2 🔁5");
+
+        display.onChanged(observeTransitions);
+        counts.value = { initial: 0, retrying: 7 };
+        expect(withoutPadding()).toBe(" 🛄0 🔁7");
+        expect(transitionSnapshots).toEqual([" 🛄0 🔁7"]);
+        display.offChanged(observeTransitions);
+        vi.advanceTimersByTime(STATUS_COUNTER_INACTIVE_LINGER_MS - 1);
+        expect(withoutPadding()).toBe(" 🛄0 🔁7");
+        vi.advanceTimersByTime(1);
+        expect(withoutPadding()).toBe(" 🔁7");
+
+        counts.value = { initial: 0, retrying: 0 };
+        expect(withoutPadding()).toBe(" 🔁0");
+        display.dispose();
+        vi.advanceTimersByTime(STATUS_COUNTER_INACTIVE_LINGER_MS);
+        counts.value = { initial: 1, retrying: 0 };
+
+        expect(withoutPadding()).toBe(" 🔁0");
     });
 });

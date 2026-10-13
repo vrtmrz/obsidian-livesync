@@ -131,3 +131,50 @@ export function createPaddedCounterLabel(
         source.offChanged(update);
     });
 }
+
+/**
+ * Displays the disjoint initial and retry chunk-fetch counts with the same
+ * padding and inactive linger behaviour as the other status counters.
+ */
+export function createChunkFetchCounterLabel(
+    source: ReactiveValue<{ initial: number; retrying: number }>
+): DisposableReactiveValue<string> {
+    const initialCount = reactiveSource(0);
+    const retryingCount = reactiveSource(0);
+    const initialLabel = createPaddedCounterLabel(initialCount, "🛄");
+    const retryingLabel = createPaddedCounterLabel(retryingCount, "🔁");
+    const formatted = reactiveSource(`${initialLabel.value}${retryingLabel.value}`);
+    let updatingCounts = false;
+    let disposed = false;
+
+    const updateLabel = () => {
+        if (updatingCounts || disposed) return;
+        formatted.value = `${initialLabel.value}${retryingLabel.value}`;
+    };
+    initialLabel.onChanged(updateLabel);
+    retryingLabel.onChanged(updateLabel);
+
+    const updateCounts = () => {
+        if (disposed) return;
+        updatingCounts = true;
+        try {
+            initialCount.value = source.value.initial;
+            retryingCount.value = source.value.retrying;
+        } finally {
+            updatingCounts = false;
+            updateLabel();
+        }
+    };
+    source.onChanged(updateCounts);
+    updateCounts();
+
+    return asDisposableReactiveValue(formatted, () => {
+        if (disposed) return;
+        disposed = true;
+        source.offChanged(updateCounts);
+        initialLabel.offChanged(updateLabel);
+        retryingLabel.offChanged(updateLabel);
+        initialLabel.dispose();
+        retryingLabel.dispose();
+    });
+}

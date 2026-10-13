@@ -235,6 +235,18 @@ Commonlib owns the typed English fallback for messages requested by its services
 
 ### Logging & Debugging
 
+#### ID generation measurements on a device
+
+Enable **Enable Developers' Debug Tools.**, restart Obsidian, and run **Open review harness** from the command palette. Choose **Run** beside **ID generation performance**, keep Obsidian in the foreground, and use **Copy Markdown report** to retain the results. The **Automatic** action does not run this measurement; **Full review** includes it.
+
+The measurement uses fixed in-memory inputs and keys, with no Vault, database, settings, or remote writes. It compares legacy `xxhash64` and independent Chunk IDs for 256-byte, 4-KiB, and 32-KiB inputs, and compares obfuscated document IDs. Each result reports the median and range of three 1,000-ID samples and the median time per ID. Key derivation at save time is measured separately. Warm-up and pauses between batches are excluded from the timings. These measurements do not represent a full Rebuild.
+
+Where `performance.memory` is available, the report includes approximate JavaScript heap samples before, during, and after measurement. These may include other Obsidian activity and garbage collection; they are neither total process RAM nor an exact peak. Unsupported devices explicitly report that heap measurements are unavailable.
+
+The developer-only adapter in `src/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime.ts` imports `HashManager` from Commonlib's public `/hashing` entry. Compilation, packed-package checks, and runtime tests cover this boundary. The algorithms remain owned by Commonlib.
+
+#### Logs
+
 - Use `this._log(msg, LOG_LEVEL_INFO)` in modules (automatically prefixes with module name)
 - Log levels: `LOG_LEVEL_DEBUG`, `LOG_LEVEL_VERBOSE`, `LOG_LEVEL_INFO`, `LOG_LEVEL_NOTICE`, `LOG_LEVEL_URGENT`
     - LOG_LEVEL_NOTICE and above are reported to the user via Obsidian notices

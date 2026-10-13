@@ -98,7 +98,8 @@ Synchronisation status is shown in the status bar with the following icons.
      -   🛫 Pending read storage processes
      -   📬 Batched read storage processes
      -   ⚙️ Working or pending storage processes for hidden files
-     -   🧩 Waiting chunks
+     -   🛄 Pending initial on-demand chunk requests
+     -   🔁 Pending chunk retries, including retry delays
      -   🔌 Working customisation items (configuration, snippets, and plug-ins)
 
 To prevent file and database corruption, please avoid closing Obsidian until all progress indicators have disappeared as much as possible (although the plug-in will attempt to resume if interrupted). This is especially important if you have deleted or renamed files.

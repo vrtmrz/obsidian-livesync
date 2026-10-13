@@ -35,6 +35,13 @@ Deno.test("generates a current self-hosted Setup URI through the published Commo
   const decoded = await decodeSettingsFromSetupURI(setupURI, "setup-secret");
   assert(decoded, "Commonlib could not decode the generated Setup URI");
   const effectiveSettings = { ...DEFAULT_SETTINGS, ...decoded };
+  const recoveryCode = stdout.match(/sls-id-v1:[0-9a-f]{64}/u)?.[0];
+  assert(recoveryCode, "the generator did not print an ID recovery code");
+  assert(
+    (effectiveSettings as typeof effectiveSettings & { idDerivationKey?: string }).idDerivationKey ===
+      recoveryCode.slice("sls-id-v1:".length),
+    "the CouchDB Setup URI did not contain the generated ID key",
+  );
   assert(
     effectiveSettings.isConfigured,
     "the CouchDB Setup URI left the imported device unconfigured",

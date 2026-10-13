@@ -103,15 +103,43 @@ describe("compatibility review controller", () => {
         fixture.settings.isConfigured = true;
         await expect(fixture.controller.initialise()).resolves.toBe(true);
 
-        expect(fixture.controller.pendingPause?.reasons).toContainEqual({
-            source: "database-version",
-            state: "missing",
-            currentVersion: 12,
-            resumable: true,
-        });
+        expect(fixture.controller.pendingPause).toBeUndefined();
+        expect(fixture.settings.versionUpFlash).toBe("");
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
+        expect(fixture.saveSettingData).not.toHaveBeenCalled();
+    });
+
+    it("starts a configured Vault with no device marker without a review or settings changes", async () => {
+        const fixture = createFixture({ marker: null });
+        const previousSettings = { ...fixture.settings };
+
+        await fixture.controller.initialise();
+        await fixture.controller.openReview();
+
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
+        expect(fixture.controller.pendingPause).toBeUndefined();
+        expect(fixture.settings).toEqual(previousSettings);
+        expect(fixture.saveSettingData).not.toHaveBeenCalled();
+        expect(fixture.ui.showSummary).not.toHaveBeenCalled();
+        expect(fixture.ui.showReminder).not.toHaveBeenCalled();
+    });
+
+    it("keeps an already persisted review when the device marker is absent", async () => {
+        const fixture = createFixture({ marker: null, versionUpFlash: COMPATIBILITY_PAUSE_SETTING_MESSAGE });
+
+        await fixture.controller.initialise();
+        await fixture.controller.openReview();
+
         expect(fixture.settings.versionUpFlash).toBe(COMPATIBILITY_PAUSE_SETTING_MESSAGE);
+        expect(fixture.controller.pendingPause?.reasons).toEqual([
+            {
+                source: "legacy-review",
+                message: COMPATIBILITY_PAUSE_SETTING_MESSAGE,
+                resumable: true,
+            },
+        ]);
         expect(fixture.local.has(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe(false);
-        expect(fixture.saveSettingData).toHaveBeenCalledOnce();
+        expect(fixture.ui.showReminder).toHaveBeenCalledOnce();
     });
 
     it("preserves preferences and advances the marker only after an upgrade review is resumed", async () => {

@@ -368,7 +368,8 @@ export class PluginDataExDisplayV2 {
         return this._version;
     }
     get mtime(): number {
-        return ~~this.files.reduce((a, b) => a + b.mtime, 0) / this.files.length;
+        // Millisecond timestamps exceed 32 bits, so `~~` would wrap them.
+        return Math.floor(this.files.reduce((a, b) => a + b.mtime, 0) / this.files.length);
     }
 }
 export type PluginDataEx = {
@@ -1197,20 +1198,11 @@ export class ConfigSync extends LiveSyncCommands {
         }
         return true;
     }
-    async _everyRealizeSettingSyncMode(): Promise<boolean> {
+    _everyRealizeSettingSyncMode(): Promise<boolean> {
+        // applySettings calls onResuming after this handler when synchronisation is active.
+        // That handler scans and restarts the sweep; doing so here would scan twice.
         this.periodicPluginSweepProcessor?.disable();
-        if (!this._isMainReady) return true;
-        if (!this._isMainSuspended()) return true;
-        if (!this.isThisModuleEnabled()) return true;
-        if (this.settings.autoSweepPlugins) {
-            await this.scanAllConfigFiles(false);
-        }
-        this.periodicPluginSweepProcessor.enable(
-            this.settings.autoSweepPluginsPeriodic && !this.settings.watchInternalFileChanges
-                ? PERIODIC_PLUGIN_SWEEP * 1000
-                : 0
-        );
-        return true;
+        return Promise.resolve(true);
     }
 
     recentProcessedInternalFiles = [] as string[];
@@ -1487,7 +1479,7 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async watchVaultRawEventsAsync(path: FilePath) {
-        if (!this._isMainReady) return false;
+        if (!this._isMainReady()) return false;
         if (this._isMainSuspended()) return false;
         if (!this.isThisModuleEnabled()) return false;
         // if (!this.isTargetPath(path)) return false;

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@vrtmrz/livesync-commonlib@0.1.0-rc.4": "0.1.0-rc.4"
+    "npm:@vrtmrz/livesync-commonlib@0.1.34": "0.1.34"
   },
   "npm": {
     "@aws-sdk/checksums@3.1000.18": {
@@ -284,8 +284,8 @@
         "@trystero-p2p/core"
       ]
     },
-    "@vrtmrz/livesync-commonlib@0.1.0-rc.4": {
-      "integrity": "sha512-u4FdbjnYg7lAf38z7eUv4eq4vxEdrl4rFMxiDZiJ7T701awKiflkXGIJQnaHdLaMa3zkRBU15qqEo7GtextmlA==",
+    "@vrtmrz/livesync-commonlib@0.1.34": {
+      "integrity": "sha512-EeVpeFg3W43cpN+x0BZvFj9fN+eQFil9vohvmLLV1z/8bCTT0Hsq/bfRV59oL0qFNggPetkwyCZUusdfjajNOw==",
       "dependencies": [
         "@aws-sdk/client-s3",
         "@smithy/fetch-http-handler",
@@ -347,8 +347,8 @@
     "bowser@2.14.1": {
       "integrity": "sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg=="
     },
-    "brace-expansion@5.0.7": {
-      "integrity": "sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==",
+    "brace-expansion@5.0.12": {
+      "integrity": "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==",
       "dependencies": [
         "balanced-match"
       ]
@@ -470,8 +470,8 @@
     "ltgt@2.2.1": {
       "integrity": "sha512-AI2r85+4MquTw9ZYqabu4nMwy9Oftlfa/e/52t9IjtfG+mGBbTNdAoZ3RQKLHR6r0wQnwZnPIEh/Ya6XTWAKNA=="
     },
-    "markdown-it@14.3.0": {
-      "integrity": "sha512-RCEsPjR+sr0x+AuYp601tKTkgFG4YEPLCzHST3cQ/fhlJkqAkz1L2/Qbp1j9qw5SBwQHFBoW8+hoN5xssOF0Tw==",
+    "markdown-it@14.3.2": {
+      "integrity": "sha512-sHHjZ5fJKlgrG4qns2YwVcdNep35h5fERrfkD2YNsb9UFk0UIHarbiTaHKVMlPuWAoiilyK8Fv/jAm11slsY7Q==",
       "dependencies": [
         "argparse",
         "entities",
@@ -509,8 +509,8 @@
         "whatwg-url"
       ]
     },
-    "octagonal-wheels@0.1.51": {
-      "integrity": "sha512-KTlfqKPjobHJg/t3A539srnFf+VHr1aXkHSmsNDDpiI5UFC7FamZ95dWpJfGE2EI/HULR5hveQDgkazmz8SAcg==",
+    "octagonal-wheels@0.1.54": {
+      "integrity": "sha512-Je3ancYhjKX7UY2K19T/qTjG8C9nK8YVrACr5naIf78mN4bbjQkYyWmlj+ooifV/moWVsQrp4fEWz/7mv6It3A==",
       "dependencies": [
         "idb"
       ]

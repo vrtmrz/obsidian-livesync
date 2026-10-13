@@ -190,14 +190,21 @@ deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.co
 >
 > If `uri_passphrase` is omitted, the generator creates a cryptographically random value and prints it once.
 
+The generator also prints an ID recovery code for its random ID key. Save that code if you may need to regenerate a Setup URI for the same Vault. Pass it back as `id_recovery_code`; otherwise a later run creates a different key. Set `id_mode=legacy` only when connecting to a Vault which uses the previous ID behaviour. See the [setup utility reference](../utils/readme.md#setup-uri-generation).
+
 The generator consumes the exact registry-pinned Commonlib release used by the provisioning utility. It creates a configured CouchDB remote profile, applies the current defaults for a new Vault, and encodes them with Commonlib's Setup URI contract.
+
+By default, the URI is Ephemeral and can be opened only until the exact UTC time printed by the generator. This is the end of a fixed seven-day window, not seven days after creation. Set `uri_mode=persistent` before running the command if the URI needs no time condition or must be readable by an older client that supports the existing encrypted format.
 
 You will then get the following output:
 
 ```bash
 Generated couchdb Setup URI.
+Ephemeral: usable until 2026-10-01T00:00:00.000Z (UTC).
 Your passphrase for the Setup URI is: H7vX...a-random-32-character-value
 This passphrase is never shown again, so store it safely.
+ID recovery code: sls-id-v1:<64 lowercase hexadecimal characters>
+Use id_recovery_code with this value and reuse the same remote settings when generating another Setup URI for the same Vault.
 obsidian://setuplivesync?settings=%5B%22tm2DpsOE74nJAryprZO2M93wF%2Fvg.......4b26ed33230729%22%5D
 ```
 

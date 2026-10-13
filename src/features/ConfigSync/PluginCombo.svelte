@@ -12,6 +12,7 @@
     // import { askString } from "../../common/utils";
     import { Menu } from "@/deps.ts";
     import { $msg as translateMessage } from "@/common/translation";
+    import { selectSourceTerms } from "./PluginTerms.ts";
 
     export let list: IPluginDataExDisplay[] = [];
     export let thisTerm = "";
@@ -182,24 +183,20 @@
         }
     }
 
-    async function updateTerms(list: IPluginDataExDisplay[], selectNewest: boolean, isMaintenanceMode: boolean) {
+    async function updateTerms(
+        list: IPluginDataExDisplay[],
+        selectNewest: boolean,
+        isMaintenanceMode: boolean,
+        hideNotApplicable: boolean
+    ) {
         const local = list.find((e) => e.term == thisTerm);
         // selected = "";
-        if (isMaintenanceMode) {
-            terms = [...new Set(list.map((e) => e.term))];
-        } else if (hideNotApplicable) {
-            const termsTmp = [];
-            const wk = [...new Set(list.map((e) => e.term))];
-            for (const termName of wk) {
-                const remote = list.find((e) => e.term == termName);
-                if ((await comparePlugin(local, remote)).canApply) {
-                    termsTmp.push(termName);
-                }
-            }
-            terms = [...termsTmp];
-        } else {
-            terms = [...new Set(list.map((e) => e.term))].filter((e) => e != thisTerm);
-        }
+        terms = await selectSourceTerms(
+            list,
+            thisTerm,
+            { isMaintenanceMode, hideNotApplicable },
+            async (local, remote) => (await comparePlugin(local, remote)).canApply
+        );
         let newest: IPluginDataExDisplay | undefined = local;
         if (selectNewest) {
             for (const term of terms) {
@@ -230,7 +227,7 @@
             }
             // currentSelectNewest = selectNewest;
         }
-        updateTerms(list, doSelectNewest, isMaintenanceMode);
+        updateTerms(list, doSelectNewest, isMaintenanceMode, hideNotApplicable);
         currentSelectNewest = selectNewest;
     }
     $: {

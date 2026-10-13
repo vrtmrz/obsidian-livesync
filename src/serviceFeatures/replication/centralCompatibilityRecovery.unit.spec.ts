@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { VERSIONING_DOCID, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { assessTweakCompatibility } from "@vrtmrz/livesync-commonlib/settings";
 import { defaultLogger, LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import {
@@ -24,6 +24,49 @@ import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/rep
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 
 describe("central compatibility recovery", () => {
+    it("does not count chunks for cleanup when local feature requirements are unknown", async () => {
+        chunkMocks.purgeUnreferencedChunks.mockClear();
+        const confirmWithMessage = vi.fn(async () => "Dismiss");
+        const recovery = createCentralCompatibilityRecovery({
+            confirm: { confirmWithMessage },
+            getLocalDatabase: () => ({
+                localDatabase: {
+                    get: vi.fn(async (id: string) => ({
+                        _id: id,
+                        type: "versioninfo",
+                        version: 13,
+                        used_features: ["future-format-v7"],
+                    })),
+                },
+            }),
+            services: { replicator: {} },
+        } as never);
+
+        await recovery.reconcileCleanedRemote(true, {} as ObsidianLiveSyncSettings, {} as never);
+
+        expect(chunkMocks.purgeUnreferencedChunks).not.toHaveBeenCalled();
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+    });
+
+    it("allows cleanup counting for a legacy local version document", async () => {
+        chunkMocks.purgeUnreferencedChunks.mockClear();
+        const confirmWithMessage = vi.fn(async () => "Dismiss");
+        const recovery = createCentralCompatibilityRecovery({
+            confirm: { confirmWithMessage },
+            getLocalDatabase: () => ({
+                localDatabase: {
+                    get: vi.fn(async (id: string) => ({ _id: id, type: "versioninfo", version: 11 })),
+                },
+            }),
+            services: { replicator: {} },
+        } as never);
+
+        await recovery.reconcileCleanedRemote(true, {} as ObsidianLiveSyncSettings, {} as never);
+
+        expect(chunkMocks.purgeUnreferencedChunks).toHaveBeenCalledWith(expect.anything(), true);
+        expect(confirmWithMessage).toHaveBeenCalledOnce();
+    });
+
     it("passes the failed attempt's exact tweak assessment to mismatch resolution", async () => {
         const setting = { customChunkSize: 0 };
         const preferredTweakValue = { customChunkSize: 60 };
@@ -292,7 +335,9 @@ describe("central compatibility recovery", () => {
         });
         const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
         const openOneShotReplication = vi.fn(async () => true);
-        const remoteDatabase = { close: vi.fn(async () => undefined) };
+        const remoteDatabase = {
+            close: vi.fn(async () => undefined),
+        };
         const close = vi.fn(async () => undefined);
         const activeReplicator = Object.assign(new LiveSyncCouchDBReplicator({} as never), {
             connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase, close })),
@@ -303,7 +348,12 @@ describe("central compatibility recovery", () => {
         const runWithActiveReplicatorContext = vi.fn(async (task: (context: unknown) => unknown) =>
             task(expectedContext)
         );
-        const localDatabase = { localDatabase: {}, clearCaches: vi.fn() };
+        const localDatabase = {
+            localDatabase: {
+                get: vi.fn(async () => ({ _id: VERSIONING_DOCID, type: "versioninfo", version: 12 })),
+            },
+            clearCaches: vi.fn(),
+        };
         const getLocalDatabase = vi.fn(() => localDatabase);
         const recovery = createCentralCompatibilityRecovery({
             confirm: { confirmWithMessage: vi.fn(async () => "Cleanup") },
@@ -335,7 +385,7 @@ describe("central compatibility recovery", () => {
             activityFinished.mock.invocationCallOrder[0]
         );
         expect(chunkMocks.balanceChunkPurgedDBs).toHaveBeenCalledOnce();
-        expect(getLocalDatabase).toHaveBeenCalledTimes(2);
+        expect(getLocalDatabase).toHaveBeenCalled();
         expect(close).toHaveBeenCalledOnce();
         expect(close.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);
     });

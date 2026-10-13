@@ -1,4 +1,4 @@
-import { encodeSettingsToSetupURI } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
+import { encodeTimeBoundSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import {
     P2P_DEFAULT_SETTINGS,
@@ -17,6 +17,7 @@ export type P2PCheckTarget = "desktop" | "mobile";
 export interface GeneratedP2PCheckSetup {
     readonly target: P2PCheckTarget;
     readonly setupURI: string;
+    readonly setupURIUsableUntil: number;
     readonly setupPassphrase: string;
     readonly groupId: string;
     readonly relay: string;
@@ -147,16 +148,26 @@ export async function generateP2PCheckSetup(
     browserSettings.suspendParseReplicationResult = true;
 
     const setupPassphrase = generateSetupPassphrase();
-    const setupURI = await encodeSettingsToSetupURI(
+    const { uri: setupURI, usableUntil } = await encodeTimeBoundSetupURI(
         deviceSettings,
         setupPassphrase,
-        ["pluginSyncExtendedSetting", "doNotUseFixedRevisionForChunks", "P2P_DevicePeerName", "deviceAndVaultName"],
-        true
+        {
+            mode: "ephemeral",
+            removeProperties: [
+                "pluginSyncExtendedSetting",
+                "doNotUseFixedRevisionForChunks",
+                "P2P_DevicePeerName",
+                "deviceAndVaultName",
+            ],
+            skipDefaultValue: true,
+        }
     );
+    if (usableUntil === null) throw new Error("Ephemeral Setup URI has no time window");
 
     return {
         target,
         setupURI: setupURI.trim(),
+        setupURIUsableUntil: usableUntil,
         setupPassphrase,
         groupId: credentials.groupId,
         relay: deviceSettings.P2P_relays,
