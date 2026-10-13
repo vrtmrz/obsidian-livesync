@@ -12,6 +12,7 @@ import { createTemporaryVault } from "../runner/vault.ts";
 const coreExpression = "app.plugins.plugins['obsidian-livesync'].core";
 const firstKey = "synthetic-first-configuration-key";
 const secondKey = "synthetic-second-configuration-key";
+const wrongSavedKey = "synthetic-wrong-saved-configuration-key";
 const diagnosticsDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
 const screenshots: string[] = [];
 const saveFailureMessage =
@@ -100,7 +101,10 @@ async function applyCustomKey(session: ObsidianLiveSyncSession, key: string, cha
     });
 }
 
-async function assertDefaultSettings(session: ObsidianLiveSyncSession): Promise<void> {
+async function assertDefaultSettings(
+    session: ObsidianLiveSyncSession,
+    screenshot = "01-default-after-restart.png"
+): Promise<void> {
     await withObsidianPage(session.remoteDebuggingPort, async (page) => {
         assert.equal(await page.locator('.modal-container input[type="password"]').count(), 0);
         const navigator = await openLiveSyncSettings(page);
@@ -111,7 +115,7 @@ async function assertDefaultSettings(session: ObsidianLiveSyncSession): Promise<
             .getByRole("combobox");
         assert.equal(await store.inputValue(), "");
         assert.equal(await root.locator('input[type="password"]:visible').isDisabled(), true);
-        await capture(navigator.dialogue, "01-default-after-restart.png");
+        await capture(navigator.dialogue, screenshot);
         await navigator.close();
     });
 }
@@ -181,6 +185,58 @@ async function applyAskMode(session: ObsidianLiveSyncSession): Promise<void> {
     });
 }
 
+async function applyDefaultMode(
+    session: ObsidianLiveSyncSession,
+    screenshot = "12-ask-to-default-before-restart.png"
+): Promise<void> {
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const navigator = await openLiveSyncSettings(page);
+        const root = await navigator.openPage("Power users");
+        await root
+            .locator(".setting-item")
+            .filter({ hasText: "Encrypting sensitive configuration items" })
+            .getByRole("combobox")
+            .selectOption("");
+        await root.getByRole("button", { name: "Apply", exact: true }).click();
+        await page.waitForFunction(`(()=>{
+            const core=${coreExpression};
+            const tab=core.modules.find(module=>module.settingTab)?.settingTab;
+            return tab && !tab.isDirty('configPassphraseStore') && core.settings.configPassphraseStore==='';
+        })()`);
+        await capture(navigator.dialogue, screenshot);
+        await navigator.close();
+    });
+}
+
+async function assertSavedConfigurationKey(cli: string, env: NodeJS.ProcessEnv, expectedKey: string): Promise<void> {
+    const key = await evalObsidianJson(cli, `JSON.stringify(localStorage.getItem('ls-setting-passphrase'))`, env);
+    assert.equal(key, expectedKey);
+}
+
+async function assertLoadedLocalStorageConfiguration(
+    cli: string,
+    env: NodeJS.ProcessEnv,
+    expectedKey: string
+): Promise<void> {
+    const state = await evalObsidianJson(
+        cli,
+        `(()=>{
+        const core=${coreExpression};
+        return JSON.stringify({databaseReady:core.services.database.isDatabaseReady(),
+            tabRegistered:core.modules.some(module=>!!module.settingTab),
+            store:core.settings.configPassphraseStore,
+            key:localStorage.getItem('ls-setting-passphrase')});
+    })()`,
+        env
+    );
+    assert.deepEqual(state, {
+        databaseReady: true,
+        tabRegistered: true,
+        store: "LOCALSTORAGE",
+        key: expectedKey,
+    });
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -188,6 +244,7 @@ async function main(): Promise<void> {
     const cliBinary = cli.binary;
     const firstVault = await createTemporaryVault("obsidian-livesync-configuration-source-");
     let secondVault: Awaited<ReturnType<typeof createTemporaryVault>> | undefined;
+    let retryVault: Awaited<ReturnType<typeof createTemporaryVault>> | undefined;
     let session: ObsidianLiveSyncSession | undefined;
     try {
         session = await startObsidianLiveSyncSession({
@@ -270,6 +327,19 @@ async function main(): Promise<void> {
         await assertRejectedEmptyKey(cliBinary, session, sourceDataPath);
         console.log(
             "Configuration encryption: rejected empty-key Apply displayed a notice and retained the device key, saved data, and pending edit."
+        );
+        await applyDefaultMode(session, "18-custom-to-default-before-restart.png");
+        assert.deepEqual(await readSecrets(cliBinary, session), secrets);
+        await assertSavedConfigurationKey(cliBinary, session.cliEnv, secondKey);
+        await session.app.stop();
+        session = undefined;
+        session = await startObsidianLiveSyncSession({ binary, cliBinary, vault: firstVault });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        assert.deepEqual(await readSecrets(cliBinary, session), secrets);
+        await assertSavedConfigurationKey(cliBinary, session.cliEnv, secondKey);
+        await assertDefaultSettings(session, "19-custom-to-default-after-restart.png");
+        console.log(
+            "Configuration encryption: changing the custom key mode to Default preserved protected values without a prompt and retained the device key after restart."
         );
         await session.app.stop();
         session = undefined;
@@ -381,11 +451,119 @@ async function main(): Promise<void> {
         console.log(
             "Configuration encryption: ASK input was masked and the validated key was reused for an ordinary save in this launch."
         );
+
+        await applyDefaultMode(session);
+        assert.deepEqual(await readSecrets(cliBinary, session), secrets);
+        await assertSavedConfigurationKey(cliBinary, session.cliEnv, secondKey);
+        await session.app.stop();
+        session = undefined;
+        session = await startObsidianLiveSyncSession({ binary, cliBinary, vault: secondVault });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        assert.deepEqual(await readSecrets(cliBinary, session), secrets);
+        await assertSavedConfigurationKey(cliBinary, session.cliEnv, secondKey);
+        await assertDefaultSettings(session, "13-ask-to-default-after-restart.png");
+        console.log(
+            "Configuration encryption: changing ASK_AT_LAUNCH to Default through settings restored protected values without a prompt and retained the device key after restart."
+        );
+        await session.app.stop();
+        session = undefined;
+
+        retryVault = await createTemporaryVault("obsidian-livesync-configuration-wrong-saved-key-");
+        const retryDataPath = join(retryVault.path, ".obsidian/plugins/obsidian-livesync/data.json");
+        session = await startObsidianLiveSyncSession({
+            binary,
+            cliBinary,
+            vault: retryVault,
+            pluginData: saved,
+            localStorageEntries: {
+                ...createE2eObsidianDeviceLocalState(retryVault.name),
+                "ls-setting-passphrase": wrongSavedKey,
+            },
+            lifecycle: {
+                afterPluginLoad: async ({ remoteDebuggingPort, cliEnv }) => {
+                    await withObsidianPage(remoteDebuggingPort, async (page) => {
+                        try {
+                            const retry = await waitForVisibleObsidianDialogue(
+                                page,
+                                "Configuration could not be decrypted"
+                            );
+                            const input = retry.locator('input[type="password"]');
+                            assert.equal(await input.getAttribute("type"), "password");
+                            await assertPendingLoad(cliBinary, cliEnv, wrongSavedKey);
+                            const beforeCancellation = await readFile(retryDataPath, "utf8");
+                            await capture(retry.locator(".modal"), "14-saved-wrong-key-retry-prompt.png");
+                            await retry.getByRole("button", { name: "Cancel", exact: true }).click();
+                            await retry.waitFor({ state: "hidden" });
+                            await assertPendingLoad(cliBinary, cliEnv, wrongSavedKey);
+                            assert.equal(await readFile(retryDataPath, "utf8"), beforeCancellation);
+
+                            await evalObsidianJson(
+                                cliBinary,
+                                `(async()=>{
+                                await app.plugins.disablePlugin('obsidian-livesync');
+                                await app.plugins.enablePlugin('obsidian-livesync');
+                                return JSON.stringify(true);
+                            })()`,
+                                cliEnv
+                            );
+                            const retryAfterCancellation = await waitForVisibleObsidianDialogue(
+                                page,
+                                "Configuration could not be decrypted"
+                            );
+                            const retryInput = retryAfterCancellation.locator('input[type="password"]');
+                            assert.equal(await retryInput.getAttribute("type"), "password");
+                            await assertPendingLoad(cliBinary, cliEnv, wrongSavedKey);
+                            await retryInput.fill(secondKey);
+                            await capture(
+                                retryAfterCancellation.locator(".modal"),
+                                "15-saved-wrong-key-correct-retry.png"
+                            );
+                            await assertPendingLoad(cliBinary, cliEnv, wrongSavedKey);
+                            await retryAfterCancellation.getByRole("button", { name: "OK", exact: true }).click();
+                        } catch (error) {
+                            await mkdir(diagnosticsDirectory, { recursive: true });
+                            await page.screenshot({
+                                path: join(diagnosticsDirectory, "configuration-saved-key-retry.failure.png"),
+                                fullPage: true,
+                            });
+                            throw error;
+                        }
+                    });
+                },
+            },
+        });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        assert.deepEqual(await readSecrets(cliBinary, session), secrets);
+        await assertLoadedLocalStorageConfiguration(cliBinary, session.cliEnv, secondKey);
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            assert.equal(await page.locator('.modal-container input[type="password"]').count(), 0);
+            const navigator = await openLiveSyncSettings(page);
+            await navigator.openPage("Power users");
+            await capture(navigator.dialogue, "16-saved-wrong-key-unlocked-settings.png");
+            await navigator.close();
+        });
+        await session.app.stop();
+        session = undefined;
+        session = await startObsidianLiveSyncSession({ binary, cliBinary, vault: retryVault });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        assert.deepEqual(await readSecrets(cliBinary, session), secrets);
+        await assertLoadedLocalStorageConfiguration(cliBinary, session.cliEnv, secondKey);
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            assert.equal(await page.locator('.modal-container input[type="password"]').count(), 0);
+            const navigator = await openLiveSyncSettings(page);
+            await navigator.openPage("Power users");
+            await capture(navigator.dialogue, "17-validated-key-after-restart.png");
+            await navigator.close();
+        });
+        console.log(
+            "Configuration encryption: a saved wrong key remained intact after cancellation; the correct retry restored protected values, persisted the validated key, and survived another restart."
+        );
         console.log(`Configuration encryption screenshots: ${JSON.stringify(screenshots)}`);
     } finally {
         if (session) await session.app.stop();
         await firstVault.dispose();
         if (secondVault) await secondVault.dispose();
+        if (retryVault) await retryVault.dispose();
     }
 }
 
