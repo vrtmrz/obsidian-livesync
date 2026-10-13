@@ -4,7 +4,7 @@ import globals from "globals";
 import { defineConfig, globalIgnores } from "eslint/config";
 import * as sveltePlugin from "eslint-plugin-svelte";
 import svelteParser from "svelte-eslint-parser";
-import importAlias from "@dword-design/eslint-plugin-import-alias";
+import importAlias from "./utils/import-alias.mjs";
 import { baseRules, ImportAliasRules, obsidianRules } from "./eslint.config.common.mjs";
 const warnWhileDev = "off"; // Change to "warn" to enable warnings for rules that are currently disabled.
 const lintProjects = [
@@ -56,7 +56,10 @@ export default defineConfig([
     ]),
     ...sveltePlugin.configs["flat/base"],
     ...obsidianmd.configs.recommended,
-    importAlias.configs.recommended,
+    {
+        plugins: { "livesync-imports": importAlias },
+        rules: { "livesync-imports/prefer-source-alias": "error" },
+    },
     {
         files: ["**/*.ts"],
         languageOptions: {

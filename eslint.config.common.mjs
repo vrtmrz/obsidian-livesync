@@ -106,13 +106,10 @@ export const obsidianRules = {
  * @type {(base:string) => import("eslint").Linter.RulesRecord}
  */
 export const ImportAliasRules = (base) => ({
-    "@dword-design/import-alias/prefer-alias": [
+    "livesync-imports/prefer-source-alias": [
         "error",
         {
-            aliasForSubpaths: true,
-            alias: {
-                "@": `${base}/src`,
-            },
+            sourceRoot: `${base}/src`,
         },
     ],
 });

@@ -117,6 +117,12 @@ When a notice identifies an unknown feature, update this device and every other 
 
 ## Setup and settings questions
 
+### LiveSync asks for a configuration encryption passphrase at start-up
+
+When **Use a custom passphrase** is selected and this device has no usable saved key, enter the passphrase which protects the sensitive configuration. LiveSync validates it against the saved settings, then saves the validated key on this device before continuing start-up. **Ask an passphrase at every launch** requests a masked passphrase at start-up and caches a successfully entered key in memory for that launch.
+
+For the custom-key recovery prompt used by **Use a custom passphrase**, cancelling or closing the prompt stops this start-up attempt and preserves the encrypted configuration. Start Obsidian again to retry. A headless command-line process cannot complete that interactive recovery prompt, so it declines to load protected settings when recovery input is required.
+
 ### Share a configuration with another device
 
 Generate an encrypted Setup URI from a working device. This preserves the intended remote profiles and selections while allowing the additional device to keep its own device-specific name. Store the URI and its passphrase separately.

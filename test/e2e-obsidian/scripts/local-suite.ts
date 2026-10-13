@@ -18,6 +18,11 @@ const testSteps: Step[] = [
     { name: "conflict dialogue policy", args: ["run", "test:e2e:obsidian:conflict-dialog-policy"] },
     { name: "revision repair", args: ["run", "test:e2e:obsidian:revision-repair"] },
     { name: "settings UI", args: ["run", "test:e2e:obsidian:settings-ui"] },
+    { name: "configuration encryption", args: ["run", "test:e2e:obsidian:configuration-encryption"] },
+    {
+        name: "configuration encryption synchronisation",
+        args: ["run", "test:e2e:obsidian:configuration-encryption-sync"],
+    },
     { name: "Review Harness", args: ["run", "test:e2e:obsidian:review-harness"] },
     { name: "P2P status pane", args: ["run", "test:e2e:obsidian:p2p-pane"] },
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },

@@ -17,9 +17,66 @@ vi.mock("@/common/translation", () => ({
     setLang: vi.fn(),
 }));
 
+vi.mock("@vrtmrz/livesync-commonlib/compat/worker/bgWorker", () => ({
+    initialiseWorkerModule: vi.fn(),
+}));
+
 import { ModuleLiveSyncMain } from "./ModuleLiveSyncMain.ts";
 
 describe("ModuleLiveSyncMain", () => {
+    it.each(["unlock", "cancel"] as const)(
+        "keeps database and settings lifecycle behind a pending configuration load: %s",
+        async (outcome) => {
+            let unlock!: () => void;
+            let cancel!: (error: Error) => void;
+            const loadSettings = vi.fn(
+                () =>
+                    new Promise<void>((resolve, reject) => {
+                        unlock = resolve;
+                        cancel = reject;
+                    })
+            );
+            const appLifecycle = {
+                onWireUpEvents: vi.fn(async () => true),
+                onInitialise: vi.fn(async () => true),
+                onSettingLoaded: vi.fn(async () => true),
+                onLoaded: vi.fn(async () => true),
+            };
+            const openDatabase = vi.fn(async () => undefined);
+            const services = {
+                context: { events: {} },
+                setting: { loadSettings },
+                appLifecycle,
+                database: { openDatabase },
+                databaseEvents: {},
+                replicator: {},
+            };
+            const host = { services, core: { services, addOns: [] }, _log: vi.fn() };
+            const pending = ModuleLiveSyncMain.prototype._onLiveSyncLoad.call(host as never);
+            await vi.waitFor(() => expect(loadSettings).toHaveBeenCalledOnce());
+            expect(appLifecycle.onSettingLoaded).not.toHaveBeenCalled();
+            expect(openDatabase).not.toHaveBeenCalled();
+            expect(appLifecycle.onLoaded).not.toHaveBeenCalled();
+
+            if (outcome === "cancel") {
+                const rejected = expect(pending).rejects.toThrow("synthetic cancelled configuration load");
+                cancel(new Error("synthetic cancelled configuration load"));
+                await rejected;
+                expect(appLifecycle.onSettingLoaded).not.toHaveBeenCalled();
+                expect(openDatabase).not.toHaveBeenCalled();
+                expect(appLifecycle.onLoaded).not.toHaveBeenCalled();
+            } else {
+                unlock();
+                await expect(pending).resolves.toBe(true);
+                expect(appLifecycle.onSettingLoaded).toHaveBeenCalledOnce();
+                expect(openDatabase).toHaveBeenCalledOnce();
+                expect(appLifecycle.onSettingLoaded.mock.invocationCallOrder[0]).toBeLessThan(
+                    openDatabase.mock.invocationCallOrder[0]
+                );
+            }
+        }
+    );
+
     it("reports a database preparation failure at the application boundary", async () => {
         const initialiseDatabase = vi.fn(async () => false);
         const log = vi.fn();

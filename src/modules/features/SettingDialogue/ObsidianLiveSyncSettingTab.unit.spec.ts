@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
 const settingsInitialisationMocks = vi.hoisted(() => ({
     applySettingsWithInitialisationChoice: vi.fn(),
@@ -75,6 +76,8 @@ beforeEach(() => {
     settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockReset();
     loggerMocks.Logger.mockClear();
     vi.mocked($msg).mockClear();
+    vi.mocked(compatGlobal.localStorage.getItem).mockReset().mockReturnValue(null);
+    vi.mocked(compatGlobal.localStorage.setItem).mockReset();
 });
 
 describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
@@ -260,6 +263,9 @@ describe("ObsidianLiveSyncSettingTab Fresh Start Wipe", () => {
 describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
     function createSettingsTab() {
         const saveSettingData = vi.fn(async () => undefined);
+        const suspendAllSync = vi.fn(async () => undefined);
+        const suspendExtraSync = vi.fn(async () => undefined);
+        const performRebuildDB = vi.fn(async () => undefined);
         const confirmWithMessage = vi.fn();
         const plugin = {
             app: {},
@@ -276,7 +282,12 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
                     setting: {
                         saveSettingData,
                         getDeviceAndVaultName: vi.fn(() => ""),
+                        suspendAllSync,
+                        suspendExtraSync,
                     },
+                },
+                rebuilder: {
+                    $performRebuildDB: performRebuildDB,
                 },
             },
         };
@@ -294,7 +305,15 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
         vi.spyOn(tab, "isPassphraseValid").mockResolvedValue(true);
         vi.spyOn(tab, "checkWorkingPassphrase").mockResolvedValue(true);
         const closeSetting = vi.spyOn(tab, "closeSetting").mockImplementation(() => undefined);
-        return { tab, saveSettingData, confirmWithMessage, closeSetting };
+        return {
+            tab,
+            saveSettingData,
+            suspendAllSync,
+            suspendExtraSync,
+            performRebuildDB,
+            confirmWithMessage,
+            closeSetting,
+        };
     }
 
     it("keeps pending settings in the editing buffer when initialisation and the fallback are cancelled", async () => {
@@ -364,6 +383,49 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
         expect(tab.editingSettings.handleFilenameCaseSensitive).toBe(true);
         expect(tab.core.settings.handleFilenameCaseSensitive).toBe(false);
         expect(closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("does not apply unrelated settings or start a rebuild when configuration encryption fails", async () => {
+        const { tab, saveSettingData, suspendAllSync, suspendExtraSync, performRebuildDB, closeSetting } =
+            createSettingsTab();
+        const failure = new Error("configuration encryption could not be saved");
+        const changeConfigurationEncryption = vi.fn(async () => {
+            throw failure;
+        });
+        Object.assign(tab.core.services.setting, { changeConfigurationEncryption });
+        const savedStore = "LOCALSTORAGE";
+        const editedStore = "ASK_AT_LAUNCH";
+        tab.core.settings.encrypt = false;
+        tab.core.settings.configPassphraseStore = savedStore;
+        tab.initialSettings!.configPassphraseStore = savedStore;
+        tab.editingSettings.configPassphraseStore = editedStore;
+        tab.initialSettings!.configPassphrase = "old custom passphrase";
+        tab.editingSettings.configPassphrase = "new custom passphrase";
+        tab.editingSettings.handleFilenameCaseSensitive = true;
+        const applySetting = vi.spyOn(tab, "applySetting");
+        const reloadAllSettings = vi.spyOn(tab, "reloadAllSettings");
+        const saveAllDirtySettings = vi.spyOn(tab, "saveAllDirtySettings");
+
+        await expect(tab.rebuildDB("localOnly")).rejects.toBe(failure);
+
+        expect(changeConfigurationEncryption).toHaveBeenCalledOnce();
+        expect(changeConfigurationEncryption).toHaveBeenCalledWith(editedStore, "new custom passphrase");
+        expect(applySetting).not.toHaveBeenCalled();
+        expect(tab.core.settings.handleFilenameCaseSensitive).toBe(false);
+        expect(tab.initialSettings!.handleFilenameCaseSensitive).toBe(false);
+        expect(tab.editingSettings.handleFilenameCaseSensitive).toBe(true);
+        expect(tab.core.settings.configPassphraseStore).toBe(savedStore);
+        expect(tab.initialSettings!.configPassphraseStore).toBe(savedStore);
+        expect(tab.initialSettings!.configPassphrase).toBe("old custom passphrase");
+        expect(tab.editingSettings.configPassphraseStore).toBe(editedStore);
+        expect(tab.editingSettings.configPassphrase).toBe("new custom passphrase");
+        expect(suspendAllSync).not.toHaveBeenCalled();
+        expect(suspendExtraSync).not.toHaveBeenCalled();
+        expect(reloadAllSettings).not.toHaveBeenCalled();
+        expect(saveAllDirtySettings).not.toHaveBeenCalled();
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(closeSetting).not.toHaveBeenCalled();
+        expect(performRebuildDB).not.toHaveBeenCalled();
     });
 });
 
@@ -462,5 +524,83 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
 
         expect(first).not.toHaveBeenCalled();
         expect(replacement).toHaveBeenCalledOnce();
+    });
+
+    it("saves a custom configuration passphrase edit through the setting service", async () => {
+        const { tab } = createSettingsTab();
+        const changeConfigurationEncryption = vi.fn(async () => {
+            vi.mocked(compatGlobal.localStorage.getItem).mockReturnValue("new custom passphrase");
+        });
+        Object.assign(tab.core.services.setting, { changeConfigurationEncryption });
+        const store = "LOCALSTORAGE";
+        tab.editingSettings.configPassphraseStore = store;
+        tab.initialSettings!.configPassphraseStore = store;
+        tab.editingSettings.configPassphrase = "new custom passphrase";
+        tab.initialSettings!.configPassphrase = "old custom passphrase";
+        vi.mocked(compatGlobal.localStorage.setItem).mockClear();
+
+        await tab.saveSettings(["configPassphrase"]);
+
+        expect(changeConfigurationEncryption).toHaveBeenCalledOnce();
+        expect(changeConfigurationEncryption).toHaveBeenCalledWith(store, "new custom passphrase");
+        expect(compatGlobal.localStorage.setItem).not.toHaveBeenCalled();
+        expect(tab.initialSettings!.configPassphrase).toBe("new custom passphrase");
+    });
+
+    it("keeps a later passphrase edit dirty while an earlier Apply is pending", async () => {
+        const { tab } = createSettingsTab();
+        let resolveApply!: () => void;
+        const changeConfigurationEncryption = vi.fn(
+            () =>
+                new Promise<void>((resolve) => {
+                    resolveApply = resolve;
+                })
+        );
+        Object.assign(tab.core.services.setting, { changeConfigurationEncryption });
+        tab.editingSettings.configPassphraseStore = "LOCALSTORAGE";
+        tab.initialSettings!.configPassphraseStore = "LOCALSTORAGE";
+        tab.initialSettings!.configPassphrase = "previous passphrase";
+        tab.editingSettings.configPassphrase = "passphrase A";
+        vi.mocked(compatGlobal.localStorage.getItem).mockReturnValue("passphrase A");
+
+        const apply = tab.saveSettings(["configPassphrase"]);
+        expect(changeConfigurationEncryption).toHaveBeenCalledWith("LOCALSTORAGE", "passphrase A");
+
+        tab.editingSettings.configPassphrase = "passphrase B";
+        resolveApply();
+        await apply;
+        tab.reloadAllSettings();
+
+        expect(tab.initialSettings!.configPassphrase).toBe("passphrase A");
+        expect(tab.editingSettings.configPassphrase).toBe("passphrase B");
+        expect(tab.isDirty("configPassphrase")).toBe(true);
+    });
+
+    it("keeps both configuration encryption edits pending when applying them fails", async () => {
+        const { tab } = createSettingsTab();
+        const failure = new Error("configuration encryption could not be saved");
+        const changeConfigurationEncryption = vi.fn(async () => {
+            throw failure;
+        });
+        Object.assign(tab.core.services.setting, { changeConfigurationEncryption });
+        const savedStore = "LOCALSTORAGE";
+        const editedStore = "ASK_AT_LAUNCH";
+        tab.core.settings.configPassphraseStore = savedStore;
+        tab.initialSettings!.configPassphraseStore = savedStore;
+        tab.editingSettings.configPassphraseStore = editedStore;
+        tab.initialSettings!.configPassphrase = "old custom passphrase";
+        tab.editingSettings.configPassphrase = "new custom passphrase";
+        vi.mocked(compatGlobal.localStorage.setItem).mockClear();
+
+        await expect(tab.saveSettings(["configPassphraseStore", "configPassphrase"])).rejects.toBe(failure);
+
+        expect(changeConfigurationEncryption).toHaveBeenCalledOnce();
+        expect(changeConfigurationEncryption).toHaveBeenCalledWith(editedStore, "new custom passphrase");
+        expect(compatGlobal.localStorage.setItem).not.toHaveBeenCalled();
+        expect(tab.core.settings.configPassphraseStore).toBe(savedStore);
+        expect(tab.initialSettings!.configPassphraseStore).toBe(savedStore);
+        expect(tab.initialSettings!.configPassphrase).toBe("old custom passphrase");
+        expect(tab.editingSettings.configPassphraseStore).toBe(editedStore);
+        expect(tab.editingSettings.configPassphrase).toBe("new custom passphrase");
     });
 });

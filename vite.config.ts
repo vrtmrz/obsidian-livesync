@@ -2,11 +2,11 @@ import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { sveltePreprocess } from "svelte-preprocess";
 import inlineWorkerPlugin from "esbuild-plugin-inline-worker";
-import copy from "rollup-plugin-copy";
 import path from "path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import { platform } from "node:process";
+import { copyBuildFiles } from "./utils/copy-build-files";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function readJson(filePath: string) {
@@ -117,14 +117,7 @@ export default defineConfig(({ mode }) => {
                 compilerOptions: { css: "injected", preserveComments: false },
             }),
 
-            copy({
-                targets: ["manifest.json", "main.js", "styles.css"]
-                    .map((file) => PATH_TEST_INSTALL.map((dest) => ({ src: file, dest: dest })))
-                    .flat(),
-                // Copy after the build is complete
-                hook: "writeBundle",
-                verbose: true,
-            }),
+            copyBuildFiles(PATH_TEST_INSTALL),
         ],
 
         resolve: {
