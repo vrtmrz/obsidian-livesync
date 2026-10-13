@@ -12,18 +12,19 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { adjustSettingToRemoteIfNeeded, cancelScheduledInitialisation, processVaultInitialisation } from "./redFlag";
 import { $msg } from "@/common/translation";
+import type { AllMessageKeys } from "@/common/rosetta";
 
-export const SIMPLE_FETCH_STAGE1_REMOTE_WINS: string = $msg("Overwrite all with remote files");
-export const SIMPLE_FETCH_STAGE1_NEWER_WINS: string = $msg("Compare time and take newer");
-export const SIMPLE_FETCH_STAGE1_DETAILED: string = $msg("Use the detailed flow");
-export const SIMPLE_FETCH_STAGE1_CANCEL: string = $msg("Cancel");
+export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
+export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";
+export const SIMPLE_FETCH_STAGE1_DETAILED = "Use the detailed flow";
+export const SIMPLE_FETCH_STAGE1_CANCEL = "Cancel";
 
-export const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE: string = $msg("Keep local files even if not on remote");
-export const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL: string = $msg("Delete local files if not on remote");
+export const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE = "Keep local files even if not on remote";
+export const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL = "Delete local files if not on remote";
 
-export const SIMPLE_FETCH_STAGE2_NEWER_CLEANUP: string = $msg("Delete local files if deleted on remote");
-export const SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL: string = $msg("Keep local files even if deleted on remote");
-export const STAGE2_ABORT: string = $msg("Cancel all and reboot");
+export const SIMPLE_FETCH_STAGE2_NEWER_CLEANUP = "Delete local files if deleted on remote";
+export const SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL = "Keep local files even if deleted on remote";
+export const STAGE2_ABORT = "Cancel all and reboot";
 
 const SIMPLE_FETCH_MODE_KEY = "simple-fetch-mode";
 
@@ -86,6 +87,20 @@ function clearRememberedSimpleFetchMode(host: NecessaryServices<"setting", never
     host.services.setting.deleteSmallConfig(SIMPLE_FETCH_MODE_KEY);
 }
 
+async function confirmTranslatedChoice(
+    host: NecessaryServices<"UI", never>,
+    title: string,
+    message: string,
+    buttons: AllMessageKeys[],
+    defaultAction: AllMessageKeys
+): Promise<string | false> {
+    const labels: string[] = buttons.map((key) => $msg(key));
+    const selected = await host.services.UI.confirm.confirmWithMessage(title, message, labels, $msg(defaultAction), 0);
+    if (selected === false) return false;
+    const index = labels.indexOf(selected);
+    return index < 0 ? false : buttons[index];
+}
+
 export async function askSimpleFetchMode(
     host: NecessaryServices<"UI" | "setting", never>
 ): Promise<{ mode: string; options: Partial<FullScanOptions> } | "cancelled" | "aborted"> {
@@ -105,12 +120,13 @@ Firstly, how shall we handle the data retrieved from this remote source?
 - **\${DETAILED}**: Opens the detailed setup wizard.
   If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.`,
         {
-            NEWER_WINS: SIMPLE_FETCH_STAGE1_NEWER_WINS,
-            REMOTE_WINS: SIMPLE_FETCH_STAGE1_REMOTE_WINS,
-            DETAILED: SIMPLE_FETCH_STAGE1_DETAILED,
+            NEWER_WINS: $msg(SIMPLE_FETCH_STAGE1_NEWER_WINS),
+            REMOTE_WINS: $msg(SIMPLE_FETCH_STAGE1_REMOTE_WINS),
+            DETAILED: $msg(SIMPLE_FETCH_STAGE1_DETAILED),
         }
     );
-    const stage1 = await host.services.UI.confirm.confirmWithMessage(
+    const stage1 = await confirmTranslatedChoice(
+        host,
         $msg("Data retrieval scheduled"),
         msg,
         [
@@ -119,8 +135,7 @@ Firstly, how shall we handle the data retrieved from this remote source?
             SIMPLE_FETCH_STAGE1_DETAILED,
             SIMPLE_FETCH_STAGE1_CANCEL,
         ],
-        SIMPLE_FETCH_STAGE1_NEWER_WINS,
-        0
+        SIMPLE_FETCH_STAGE1_NEWER_WINS
     );
 
     if (!stage1 || stage1 === SIMPLE_FETCH_STAGE1_CANCEL) return "cancelled";
@@ -138,17 +153,17 @@ Firstly, how shall we handle the data retrieved from this remote source?
 - **\${DELETE_NONE}**: All existing local files will be preserved.
   This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.`,
             {
-                DELETE_ALL: SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL,
-                DELETE_NONE: SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE,
+                DELETE_ALL: $msg(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL),
+                DELETE_NONE: $msg(SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE),
             }
         );
 
-        const stage2 = await host.services.UI.confirm.confirmWithMessage(
+        const stage2 = await confirmTranslatedChoice(
+            host,
             $msg("How to handle extra existing local files?"),
             msg,
             [SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL, SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE, STAGE2_ABORT],
-            SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE,
-            0
+            SIMPLE_FETCH_STAGE2_REMOTE_DELETE_NONE
         );
         if (!stage2) return "cancelled";
         if (stage2 === STAGE2_ABORT) {
@@ -167,17 +182,17 @@ Firstly, how shall we handle the data retrieved from this remote source?
 - **\${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.
   This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.`,
             {
-                NEWER_CLEANUP: SIMPLE_FETCH_STAGE2_NEWER_CLEANUP,
-                NEWER_SYNC_ALL: SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL,
+                NEWER_CLEANUP: $msg(SIMPLE_FETCH_STAGE2_NEWER_CLEANUP),
+                NEWER_SYNC_ALL: $msg(SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL),
             }
         );
 
-        const stage2 = await host.services.UI.confirm.confirmWithMessage(
+        const stage2 = await confirmTranslatedChoice(
+            host,
             $msg("Conflict & Deletion Options"),
             msg,
             [SIMPLE_FETCH_STAGE2_NEWER_CLEANUP, SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL, STAGE2_ABORT],
-            SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL,
-            0
+            SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL
         );
         if (!stage2) return "cancelled";
         if (stage2 === STAGE2_ABORT) {
@@ -190,8 +205,8 @@ Firstly, how shall we handle the data retrieved from this remote source?
     return "cancelled";
 }
 
-const RERUN_PROCESS: string = $msg("Reboot to re-run the process");
-const RELEASE_FLAG_PROCESS: string = $msg("Finalise the process and resume normal operation");
+const RERUN_PROCESS = "Reboot to re-run the process";
+const RELEASE_FLAG_PROCESS = "Finalise the process and resume normal operation";
 export async function askAndPerformFastSetupOnScheduledFetchAll(
     host: NecessaryServices<
         | "vault"
@@ -263,12 +278,14 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
             })
         );
         if (!syncResult) {
+            const rerunProcess = $msg(RERUN_PROCESS);
+            const releaseFlagProcess = $msg(RELEASE_FLAG_PROCESS);
             const canRelease = await host.services.UI.confirm.askSelectStringDialogue(
                 $msg("Some files failed to synchronise. What would you like to do?"),
-                [RERUN_PROCESS, RELEASE_FLAG_PROCESS],
-                { defaultAction: RELEASE_FLAG_PROCESS, title: $msg("Synchronisation Issues Detected") }
+                [rerunProcess, releaseFlagProcess],
+                { defaultAction: releaseFlagProcess, title: $msg("Synchronisation Issues Detected") }
             );
-            if (canRelease === RERUN_PROCESS) {
+            if (canRelease === rerunProcess) {
                 log("User chose to reboot and re-run the process.", LOG_LEVEL_NOTICE);
                 // Prevent to delete the flag, so that the process will be re-run after reboot.
                 // await cleanupFlag();
