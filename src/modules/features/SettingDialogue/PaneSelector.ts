@@ -32,7 +32,9 @@ export function paneSelector(this: ObsidianLiveSyncSettingTab, paneEl: HTMLEleme
 
         const nonSyncFilesSetting = new Setting(paneEl)
             .setName($msg("Non-Synchronising files"))
-            .setDesc($msg("(RegExp) If this is set, any changes to local and remote files that match this will be skipped."));
+            .setDesc(
+                $msg("(RegExp) If this is set, any changes to local and remote files that match this will be skipped.")
+            );
 
         const nonSyncFilesControl = mount(MultipleRegExpControl, {
             target: nonSyncFilesSetting.controlEl,

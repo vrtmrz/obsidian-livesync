@@ -6,7 +6,7 @@ import { type ObsidianLiveSyncSettings, VER } from "@vrtmrz/livesync-commonlib/c
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import type { CouchDbConfig } from "./couchdb.ts";
 import type { ObjectStorageConfig } from "./objectStorage.ts";
-import { captureObsidianDialogue, withObsidianPage } from "./ui.ts";
+import { withObsidianPage } from "./ui.ts";
 
 export type ConfiguredSettings = {
     isConfigured: boolean;
@@ -50,11 +50,6 @@ export type CompatibilityMarkerState = {
 export type CompatibilityMarkerWaitOptions = {
     timeoutMs?: number;
     intervalMs?: number;
-};
-
-export type ResumeCompatibilityReviewOptions = {
-    verifyMissingDeviceMarkerExplanation?: boolean;
-    screenshotPrefix?: string;
 };
 
 export type ObsidianServiceContextContractResult = {
@@ -154,83 +149,31 @@ export async function assertE2eCompatibilityMarker(
     return state;
 }
 
-export async function assertE2eCompatibilityReviewPending(
+export async function assertE2eCompatibilityUnpaused(
     cliBinary: string,
-    env: NodeJS.ProcessEnv
+    env: NodeJS.ProcessEnv,
+    port: number
 ): Promise<CompatibilityMarkerState> {
-    const state = await readE2eCompatibilityMarker(cliBinary, env);
-    if (state.serviceValue !== "" || state.rawStorageValue !== null || state.versionUpFlash === "") {
-        throw new Error(`The copied-Vault compatibility review was not pending: ${JSON.stringify(state)}`);
-    }
-    return state;
-}
-
-export async function resumeCompatibilityReview(
-    port: number,
-    options: ResumeCompatibilityReviewOptions = {}
-): Promise<void> {
-    const timeoutMs = Number(process.env.E2E_OBSIDIAN_UI_TIMEOUT_MS ?? 10000);
-    const title = "Synchronisation paused for compatibility review";
-    const summaryLocator = (page: Parameters<Parameters<typeof withObsidianPage>[1]>[0]) =>
-        page.locator(".modal-container").filter({
-            has: page.locator(".modal-title").filter({ hasText: title }),
-        });
-
-    if (options.screenshotPrefix) {
-        const summaryScreenshot = await captureObsidianDialogue(
-            port,
-            `${options.screenshotPrefix}-summary.png`,
-            async (page) => {
-                await summaryLocator(page).waitFor({ state: "visible", timeout: timeoutMs });
-            }
-        );
-        console.log(`Compatibility review summary screenshot: ${summaryScreenshot}`);
-    }
-
-    if (options.verifyMissingDeviceMarkerExplanation === true) {
-        await withObsidianPage(port, async (page) => {
-            const summary = summaryLocator(page);
-            await summary.waitFor({ state: "visible", timeout: timeoutMs });
-            await summary.getByRole("button", { name: "Review compatibility details" }).click();
-        });
-        const detailsScreenshot = options.screenshotPrefix
-            ? await captureObsidianDialogue(port, `${options.screenshotPrefix}-details.png`, async (page) => {
-                  const details = page.locator(".modal-container").filter({
-                      has: page.locator(".modal-title").filter({ hasText: "Compatibility review details" }),
-                  });
-                  await details.waitFor({ state: "visible", timeout: timeoutMs });
-                  await details.getByText("copied or restored", { exact: false }).waitFor({
-                      state: "visible",
-                      timeout: timeoutMs,
-                  });
-                  await details.getByText("new Obsidian profile", { exact: false }).waitFor({
-                      state: "visible",
-                      timeout: timeoutMs,
-                  });
-                  await details
-                      .getByText("does not mean that it is safe to resume automatically", { exact: false })
-                      .waitFor({
-                          state: "visible",
-                          timeout: timeoutMs,
-                      });
-              })
-            : undefined;
-        if (detailsScreenshot) console.log(`Compatibility review details screenshot: ${detailsScreenshot}`);
-        await withObsidianPage(port, async (page) => {
-            const details = page.locator(".modal-container").filter({
-                has: page.locator(".modal-title").filter({ hasText: "Compatibility review details" }),
-            });
-            await details.getByRole("button", { name: "Back to compatibility review" }).click();
-            await summaryLocator(page).waitFor({ state: "visible", timeout: timeoutMs });
-        });
-    }
-
+    const state = await assertE2eCompatibilityMarker(cliBinary, env);
+    assertEqual(state.versionUpFlash, "", "Compatibility review unexpectedly paused synchronisation.");
     await withObsidianPage(port, async (page) => {
-        const summary = summaryLocator(page);
-        await summary.waitFor({ state: "visible", timeout: timeoutMs });
-        await summary.getByRole("button", { name: "Resume synchronisation" }).click();
-        await summary.waitFor({ state: "hidden", timeout: timeoutMs });
+        for (const candidate of page.context().pages()) {
+            assertEqual(
+                await candidate
+                    .locator(".modal-container:visible")
+                    .filter({ hasText: "Synchronisation paused for compatibility review" })
+                    .count(),
+                0,
+                "An unexpected compatibility review dialogue appeared."
+            );
+            assertEqual(
+                await candidate.locator(".notice.livesync-compatibility-review-notice:visible").count(),
+                0,
+                "An unexpected compatibility review reminder appeared."
+            );
+        }
     });
+    return state;
 }
 
 export function createE2eCouchDbPluginData(

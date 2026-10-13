@@ -68,8 +68,32 @@ describe("database compatibility evaluation", () => {
         });
     });
 
-    it("requires review when an existing Vault has no valid acknowledged version", () => {
-        for (const acknowledgedVersion of [null, "invalid"]) {
+    it.each([null, ""])(
+        "initialises a missing marker (%s) without pausing an existing Vault",
+        (acknowledgedVersion) => {
+            const result = evaluateCompatibilityPause({
+                acknowledgedVersion,
+                currentVersion: 12,
+                migrationState: migrationState(),
+                legacyReviewMessage: "",
+            });
+
+            expect(result).toEqual({ initialiseAcknowledgedVersion: true });
+        }
+    );
+
+    it("initialises a missing marker when no settings migration state is available", () => {
+        expect(
+            evaluateCompatibilityPause({
+                acknowledgedVersion: null,
+                currentVersion: 12,
+                legacyReviewMessage: "",
+            })
+        ).toEqual({ initialiseAcknowledgedVersion: true });
+    });
+
+    it("requires review when an existing Vault has an invalid acknowledged version", () => {
+        for (const acknowledgedVersion of ["invalid", "NaN", "12.5"]) {
             const result = evaluateCompatibilityPause({
                 acknowledgedVersion,
                 currentVersion: 12,
@@ -77,39 +101,44 @@ describe("database compatibility evaluation", () => {
                 legacyReviewMessage: "",
             });
             expect(result.pause?.resumable).toBe(true);
-            expect(result.pause?.reasons[0]).toMatchObject({ source: "database-version" });
+            expect(result.pause?.reasons[0]).toMatchObject({ source: "database-version", state: "invalid" });
+            expect(result.initialiseAcknowledgedVersion).toBe(false);
         }
     });
 
-    it("does not permit a future settings schema to be acknowledged by an older implementation", () => {
-        const result = evaluateCompatibilityPause({
-            acknowledgedVersion: "12",
-            currentVersion: 12,
-            migrationState: migrationState({
-                sourceVersion: 3,
-                targetVersion: 2,
-                isFromFutureSchema: true,
-                requiresSyncReview: true,
-            }),
-            legacyReviewMessage: "",
-        });
-
-        expect(result.pause).toEqual({
-            resumable: false,
-            reasons: [
-                {
-                    source: "settings-schema",
+    it.each(["12", null])(
+        "does not permit a future settings schema with marker %s to be acknowledged",
+        (acknowledgedVersion) => {
+            const result = evaluateCompatibilityPause({
+                acknowledgedVersion,
+                currentVersion: 12,
+                migrationState: migrationState({
                     sourceVersion: 3,
-                    currentVersion: 2,
+                    targetVersion: 2,
                     isFromFutureSchema: true,
-                    resumable: false,
-                    reviewReasons: [],
-                },
-            ],
-        });
-    });
+                    requiresSyncReview: true,
+                }),
+                legacyReviewMessage: "",
+            });
 
-    it("retains a settings migration review in the host compatibility reason", () => {
+            expect(result.pause).toEqual({
+                resumable: false,
+                reasons: [
+                    {
+                        source: "settings-schema",
+                        sourceVersion: 3,
+                        currentVersion: 2,
+                        isFromFutureSchema: true,
+                        resumable: false,
+                        reviewReasons: [],
+                    },
+                ],
+            });
+            expect(result.initialiseAcknowledgedVersion).toBe(false);
+        }
+    );
+
+    it.each(["12", null])("retains a settings migration review with marker %s", (acknowledgedVersion) => {
         const reviewReasons = [
             {
                 code: "legacy-update-review-pending",
@@ -118,7 +147,7 @@ describe("database compatibility evaluation", () => {
             },
         ];
         const result = evaluateCompatibilityPause({
-            acknowledgedVersion: "12",
+            acknowledgedVersion,
             currentVersion: 12,
             migrationState: migrationState({
                 sourceVersion: 9,
@@ -137,27 +166,32 @@ describe("database compatibility evaluation", () => {
             resumable: true,
             reviewReasons,
         });
+        expect(result.initialiseAcknowledgedVersion).toBe(false);
     });
 
-    it("compatibility: retains an earlier unstructured review when no structured reason can be reconstructed", () => {
-        const result = evaluateCompatibilityPause({
-            acknowledgedVersion: "12",
-            currentVersion: 12,
-            migrationState: migrationState(),
-            legacyReviewMessage: "Review an earlier compatibility change.",
-        });
+    it.each(["12", null])(
+        "compatibility: retains an earlier unstructured review with marker %s",
+        (acknowledgedVersion) => {
+            const result = evaluateCompatibilityPause({
+                acknowledgedVersion,
+                currentVersion: 12,
+                migrationState: migrationState(),
+                legacyReviewMessage: "Review an earlier compatibility change.",
+            });
 
-        expect(result.pause).toEqual({
-            resumable: true,
-            reasons: [
-                {
-                    source: "legacy-review",
-                    message: "Review an earlier compatibility change.",
-                    resumable: true,
-                },
-            ],
-        });
-    });
+            expect(result.pause).toEqual({
+                resumable: true,
+                reasons: [
+                    {
+                        source: "legacy-review",
+                        message: "Review an earlier compatibility change.",
+                        resumable: true,
+                    },
+                ],
+            });
+            expect(result.initialiseAcknowledgedVersion).toBe(false);
+        }
+    );
 
     it("compatibility: scopes the earlier review marker to the Vault", () => {
         expect(legacyDatabaseCompatibilityVersionKey("Example Vault")).toBe("obsidian-live-sync-verExample Vault");

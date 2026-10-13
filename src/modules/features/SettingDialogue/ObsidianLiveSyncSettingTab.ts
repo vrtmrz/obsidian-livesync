@@ -569,6 +569,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
+    // Internal Metadata encryption affects future Metadata writes and is not a rebuild requirement.
     isNeedRebuildLocal() {
         return this.isSomeDirty([
             "useIndexedDBAdapter",

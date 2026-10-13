@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "1.0.30",
+    "version": "1.0.35",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -66,11 +66,15 @@
         "test:e2e:obsidian:p2p-pane": "tsx test/e2e-obsidian/scripts/p2p-pane.ts",
         "test:e2e:obsidian:vault-reflection": "tsx test/e2e-obsidian/scripts/vault-reflection.ts",
         "test:e2e:obsidian:couchdb-upload": "tsx test/e2e-obsidian/scripts/couchdb-upload.ts",
+        "test:e2e:obsidian:couchdb-http-cache": "tsx test/e2e-obsidian/scripts/couchdb-http-cache.ts",
+        "test:e2e:obsidian:chunk-fetch-retry": "tsx test/e2e-obsidian/scripts/chunk-fetch-retry.ts",
         "test:e2e:obsidian:tweak-compatibility": "tsx test/e2e-obsidian/scripts/tweak-compatibility.ts",
         "test:e2e:obsidian:couchdb-manual-setup-workflow": "tsx test/e2e-obsidian/scripts/couchdb-manual-setup-workflow.ts",
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",
+        "test:e2e:obsidian:object-storage-compatible-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --compatible",
+        "test:e2e:obsidian:object-storage-qr-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --qr",
         "test:e2e:obsidian:object-storage-custom-http-handler-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --custom-http-handler",
         "test:e2e:obsidian:p2p-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/p2p-setup-uri-workflow.ts",
         "pretest:e2e:obsidian:p2p-connection-check": "npm run build && npm run build --workspace webpeer",
@@ -85,7 +89,12 @@
         "test:e2e:obsidian:security-seed-reconnect": "tsx test/e2e-obsidian/scripts/security-seed-reconnect.ts",
         "test:e2e:obsidian:hidden-file-snippet-sync": "tsx test/e2e-obsidian/scripts/hidden-file-snippet-sync.ts",
         "test:e2e:obsidian:customisation-sync": "tsx test/e2e-obsidian/scripts/customisation-sync.ts",
+        "test:e2e:obsidian:received-change-readiness": "tsx test/e2e-obsidian/scripts/received-change-readiness.ts",
+        "test:e2e:obsidian:remote-feature-change": "tsx test/e2e-obsidian/scripts/remote-feature-change.ts",
+        "test:e2e:obsidian:internal-metadata-migration": "tsx test/e2e-obsidian/scripts/internal-metadata-migration.ts",
+        "test:e2e:obsidian:internal-metadata-doctor": "tsx test/e2e-obsidian/scripts/internal-metadata-migration.ts --doctor",
         "test:e2e:obsidian:setting-markdown-export": "tsx test/e2e-obsidian/scripts/setting-markdown-export.ts",
+        "test:e2e:obsidian:setting-markdown-roundtrip": "tsx test/e2e-obsidian/scripts/setting-markdown-roundtrip.ts",
         "test:e2e:obsidian:upgrade-from-stable": "tsx test/e2e-obsidian/scripts/upgrade-from-stable.ts",
         "test:e2e:obsidian:local-suite": "tsx test/e2e-obsidian/scripts/local-suite.ts",
         "test:e2e:obsidian:local-suite:services": "tsx test/e2e-obsidian/scripts/local-suite.ts --manage-services",
@@ -133,7 +142,7 @@
         "@types/pouchdb-replication": "^6.4.7",
         "@types/transform-pouch": "^1.0.6",
         "@typescript-eslint/parser": "8.69.0",
-        "@vitest/coverage-v8": "^4.1.8",
+        "@vitest/coverage-v8": "^4.1.11",
         "@vrtmrz/obsidian-test-session": "0.2.6",
         "dotenv-cli": "^11.0.0",
         "esbuild": "0.28.1",
@@ -170,7 +179,7 @@
         "typescript": "6.0.3",
         "typescript-eslint": "8.69.0",
         "vite": "^8.0.16",
-        "vitest": "^4.1.8",
+        "vitest": "^4.1.11",
         "yaml": "^2.8.2"
     },
     "dependencies": {
@@ -183,12 +192,12 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "0.1.28",
+        "@vrtmrz/livesync-commonlib": "0.1.36",
         "@vrtmrz/obsidian-plugin-kit": "0.1.4",
         "@vrtmrz/ui-interactions": "0.1.2",
         "diff-match-patch": "^1.0.5",
         "idb": "^8.0.3",
-        "markdown-it": "^14.2.0",
+        "markdown-it": "^14.3.2",
         "minimatch": "^10.2.5",
         "obsidian": "^1.13.1",
         "octagonal-wheels": "^0.1.54",
@@ -196,6 +205,12 @@
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     },
     "overrides": {
+        "obsidian": {
+            "moment": "2.31.0"
+        },
+        "svelte": {
+            "devalue": "5.9.3"
+        },
         "pouchdb-core": {
             "uuid": "11.1.1"
         },

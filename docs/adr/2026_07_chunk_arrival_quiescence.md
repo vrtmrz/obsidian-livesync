@@ -12,6 +12,8 @@ Before this decision, a missing-chunk waiter used a fixed 5-second or 30-second 
 
 Finite replication provides a stronger boundary than elapsed wall-clock time. In the absence of an error, a finite replication does not complete until it has reached the latest sequence in its scope. Once it completes, that replication cannot deliver another chunk. An on-demand fetch is a separate finite delivery path and needs its own per-identifier boundary.
 
+A successful CouchDB lookup which omits a requested chunk is a point-in-time observation. Metadata and Chunk documents can become visible separately, so the first such result immediately after Metadata arrives does not prove that a second lookup will return the same result. The on-demand fetch lifecycle therefore needs to distinguish an initial omission from its terminal result.
+
 ## Decision
 
 Wait only for a delivery lifecycle which is observable when the local miss is handled. Do not guess how long an unobserved producer might take.
@@ -29,7 +31,7 @@ The waiting layer follows these rules:
 2. Dispatch `missingChunks` synchronously when direct fetch is permitted. `ChunkFetcher` must claim accepted identifiers before dispatch returns, closing the scheduling gap without a timer.
 3. If a matching claim or finite replication is active, wait for that observable producer.
 4. A valid chunk arrival resolves the waiter immediately.
-5. An explicit remote-missing result resolves it as missing immediately.
+5. A terminal explicit remote-missing result resolves it as missing immediately.
 6. Once every observed producer completes, read the requested identifier from the local database once more, bypassing the cache.
 7. Return the rechecked chunk, or return unavailable. Do not add a fixed grace period after the producer has stopped.
 8. If no producer is observable after synchronous dispatch, return unavailable immediately. There is no operation for a duration to represent.
@@ -46,17 +48,24 @@ A successful finite replication completion is the authoritative ‘latest’ bou
 - configured interval throttling;
 - entry into the injected bounded-activity runner;
 - `fetchRemoteChunks`;
+- scheduled retries for identifiers omitted from successful responses;
 - response validation;
 - local database persistence; and
 - fetched or missing event delivery.
 
-The claim settles on every terminal path, including explicit absence, no active replicator, rejection, invalid results, destruction, and cancellation. Its completion Promise is the task passed to the bounded `chunk-fetch` activity, keeping Wake Lock, application lifecycle deferral, the remote-work indicator, and missing-chunk delivery aligned.
+When the first successful response omits an identifier, `ChunkFetcher` keeps that identifier claimed and schedules a retry after two seconds, even if no finite replication is active. Identifiers present in a partial response are persisted and settled immediately. While finite replication remains active, subsequent omissions schedule per-identifier delays of four, six, eight, and then ten seconds, capped at ten seconds. Backoff returns the physical request slot to the queue without releasing the logical claim. Eligible retries can share a batch with new identifiers, and the queue wakes without requiring a new missing-chunk event.
+
+When the observed finite count falls to zero, the fetcher interrupts any remaining backoff. It rechecks local persistence and, if the identifier is still absent, makes one final remote probe, subject to the configured request interval and concurrency. An already-running lookup cannot overlap another lookup for that identifier. If it began before the latest finite completion, an omitted identifier still needs a post-completion probe. A new finite operation which ends during that probe similarly makes its negative result stale. A successful omission from a current final probe emits `missingChunkRemote` and settles the current read; it does not leave a retry pending for a future synchronisation.
+
+The retry policy observes only finite replication, not the claim itself or the broader bounded-activity count. It does not treat the continuous live channel as a finite producer. There is no fixed total duration or attempt limit while finite replication continues; the delay cap controls request frequency, not overall lifetime. No retry state is persisted, and transport errors do not enter this missing-result retry policy.
+
+The claim settles on every terminal path, including explicit absence after the retry, no active Replicator, rejection, invalid results, destruction, and cancellation. Its completion Promise is the task passed to the bounded `chunk-fetch` activity, keeping Wake Lock, application lifecycle deferral, the remote-work indicator, and missing-chunk delivery aligned.
 
 ### Five-minute leak fuse
 
 An accepted on-demand claim has a separate five-minute inactivity fuse. This is a last-resort leak safety valve, not a chunk-arrival budget or a remote-request timeout.
 
-Its purpose is to prevent a faulty integration, a never-settling Promise, or a stalled transport from retaining logical ownership indefinitely. When it fires, the coordinator releases the per-identifier claim and its waiter. If the bounded activity callback has been entered, resolving the claim also allows the associated Wake Lock, application-lifecycle deferral, and remote-work indicator to be released. `ChunkFetcher` refreshes the fuse only at observable progress points, such as entering the activity boundary, beginning and completing throttling or transfer, and completing persistence.
+Its purpose is to prevent a faulty integration, a never-settling Promise, or a stalled transport from retaining logical ownership indefinitely. When it fires, the coordinator releases the per-identifier claim and its waiter. If the bounded activity callback has been entered, resolving the claim also allows the associated Wake Lock, application-lifecycle deferral, and remote-work indicator to be released. `ChunkFetcher` refreshes the fuse at observable progress points, including entry into the activity boundary, request scheduling, transfer, and persistence. Repeated successful missing responses are progress for this fuse, so it is not a five-minute total limit on retries during active finite replication.
 
 Five minutes is deliberately a conservative operational limit, not a value derived from a network protocol, a benchmark, or evidence that a missing chunk will arrive within that period. Firing the fuse neither proves remote absence nor makes the underlying request safe to abort. The current `fetchRemoteChunks` contract has no `AbortSignal`, so a physical request may still complete after its logical claim has been released. A future cancellable transport contract should add transport-specific deadlines and explicit cancellation without changing the lifecycle-based wait rule.
 
@@ -64,7 +73,7 @@ Five minutes is deliberately a conservative operational limit, not a value deriv
 
 The unbounded live channel is not a quiescence gate because it has no natural end. Its initial pull-only catch-up is finite, however, and must enter `runFiniteReplicationActivity`. This includes the one-shot parameter fallback chain: every retry remains within the catch-up boundary until it succeeds or stops. If continuous replication later restarts with adjusted parameters, the new initial catch-up enters a new finite boundary.
 
-Once the live channel has begun, a chunk delivered through it still resolves an existing waiter immediately, but the channel itself does not keep a new waiter open. CouchDB on-demand fetching supplies its own per-identifier claim. If a future defect demonstrates a delivery race inside a live batch, that batch lifecycle should be exposed explicitly rather than approximated with another elapsed delay.
+Once the live channel has begun, a chunk delivered through it still resolves an existing waiter immediately, but the channel itself does not keep a new waiter open. CouchDB on-demand fetching supplies its own per-identifier claim and at least one delayed follow-up lookup. Further retries require active finite replication; the live channel does not extend them. If another future defect requires waiting for a live batch itself, that batch lifecycle should be exposed explicitly rather than approximated with another elapsed delay.
 
 ## Ownership
 
@@ -80,7 +89,7 @@ Once the live channel has begun, a chunk delivered through it still resolves an 
 - Treat a positive deprecated `timeout` only as source-compatible opt-in to lifecycle waiting. Its numeric value no longer represents an arrival duration.
 - Preserve `preventRemoteRequest`: no on-demand request is dispatched, although an already-active finite replication may satisfy the waiter.
 - Preserve Promise sharing for concurrent reads of the same chunk identifier.
-- Preserve immediate explicit remote-missing results.
+- Preserve immediate waiter resolution when `ChunkFetcher` emits a terminal explicit remote-missing result.
 - Do not change which remote types support direct on-demand fetching.
 
 ## Historical Evidence and Scope
@@ -90,6 +99,7 @@ This decision addresses the lifecycle-race class rather than treating every ‘L
 - [Issue #166](https://github.com/vrtmrz/obsidian-livesync/issues/166) contained logs where chunk collection failed shortly before related chunk writes appeared. It is evidence for the timing class, although that issue's hidden-file start-up path was repaired separately and is not claimed as a direct regression test here.
 - The 2021 timing fixes in [commit `39e2eab0`](https://github.com/vrtmrz/obsidian-livesync/commit/39e2eab0238d9c37e3653cdec884cbeed543fc23) and the extended leaf timeout in [commit `9facb577`](https://github.com/vrtmrz/obsidian-livesync/commit/9facb577601d8aceff7df547cd2a6f9357fdaa29) show that elapsed timeout values have historically been used to absorb the same ordering uncertainty. They do not provide a protocol basis for retaining 5-second or 30-second delays.
 - Replication pacing introduced by [commit `8d66c372`](https://github.com/vrtmrz/obsidian-livesync/commit/8d66c372e15c43a2de84a223c6385077b7724eec) and commonlib [commit `051b50c`](https://github.com/vrtmrz/livesync-commonlib/commit/051b50ca38ec4c05a11e8216ac259b4488b825f0) is a direct precedent for preventing replication progress from outrunning chunk collection. The present design expresses that dependency as an explicit lifecycle and completion recheck.
+- [Issue #1224](https://github.com/vrtmrz/obsidian-livesync/issues/1224) reports repeatable burst edits where the receiving device observes Metadata, finds its Chunk absent in the first direct lookup, and then receives the Chunk after the file read has already failed. Retrying addresses that transient ordering case. It does not claim to reconstruct a Chunk which was never uploaded.
 - [Issue #505](https://github.com/vrtmrz/obsidian-livesync/issues/505) was traced to chunks which were genuinely absent after the former bulk-send option broke the chunks-before-metadata guarantee. Waiting cannot recreate missing data, so this decision does not claim to fix it.
 - [Issue #771](https://github.com/vrtmrz/obsidian-livesync/issues/771) and [Issue #986](https://github.com/vrtmrz/obsidian-livesync/issues/986) contain ambiguous or version-dependent `Load failed` reports. They remain unclaimed until the original writer and database state can be reproduced.
 
@@ -113,6 +123,8 @@ The broad count includes operations which cannot provide the requested chunk. Us
 
 An unobserved producer has no defined start, progress, or completion semantics. A timer would therefore be a guess rather than a safety property. Relevant delivery paths must claim their work synchronously or expose a finite replication boundary; otherwise the read returns unavailable.
 
+The on-demand backoff is not such a fallback timer. `ChunkFetcher` retains the identifier claim throughout each delay and owns the lookup it schedules. Once finite activity ends, the fetcher cuts the delay short and uses a current final probe rather than waiting for an unobserved future producer.
+
 ### Remove every timer
 
 The arrival wait has no elapsed timer, but an implementation fault can leave a delivery claim unresolved forever. The five-minute inactivity fuse bounds that leaked logical state without being used as a successful delivery condition.
@@ -125,6 +137,15 @@ Unit tests use deterministic clocks and deferred Promises to cover:
 - successful finite completion causing a cache-bypassing local database recheck;
 - immediate unavailability when no producer is observable;
 - per-identifier claims covering queueing, throttling, remote fetch, validation, persistence, and event delivery;
+- an autonomous two-second retry after a first successful omission, retaining the claim and bounded remote activity;
+- per-identifier backoff capped at ten seconds, with physical concurrency released during each delay;
+- mixed retry stages sharing batches without resetting their individual delays or starving eligible retries;
+- finite completion interrupting backoff, local persistence avoiding the final request, and pre-completion lookups requiring a current final probe;
+- partial results settling available identifiers and retrying only absent identifiers;
+- partial-batch completion and expired-request responses preserving replacement claims;
+- concurrent request starts respecting the configured interval after retry and throttle waits;
+- a final successful omission producing the terminal remote-missing result;
+- disjoint initial and retry counts, aggregate ownership across fetchers, and timer cleanup;
 - explicit missing, no-replicator, rejection, invalid response, cancellation, runner rejection, and teardown paths;
 - overlapping claims and finite replications;
 - a runner which never enters the task and a request which never settles;
@@ -132,13 +153,16 @@ Unit tests use deterministic clocks and deferred Promises to cover:
 - continuous replication's finite initial catch-up, including its parameter fallback path; and
 - the setting and replicator decision matrix.
 
-Integration-style unit tests exercise `LayeredChunkManager`, `ChunkFetcher`, a memory-backed PouchDB database, and a deferred fake replicator together. A real Obsidian test is not required because the change remains behind the existing database, service, and event boundaries and does not alter platform UI or an adapter contract.
+Integration-style unit tests exercise `LayeredChunkManager`, `ChunkFetcher`, a memory-backed PouchDB database, and a deferred fake replicator together. The downstream `chunk-fetch-retry` scenario exercises real CouchDB lookup results, local persistence, Vault reflection, and the actual status bar in Obsidian. Deterministic clock tests remain responsible for the exact backoff schedule and overlapping completion races; the real-runtime scenario does not substitute HTTP responses or synthesise finite-activity counts.
 
 ## Consequences
 
 - A healthy finite replication or on-demand request no longer loses a race against an unrelated wall-clock estimate.
+- A Chunk omitted from the first successful CouchDB lookup receives a follow-up lookup while the same delivery claim remains active, and further retries while finite replication continues.
 - Successful finite replication completion provides a precise latest boundary for missing-chunk reads.
 - The local recheck closes event-delivery and cache timing gaps without extending the wait after completion.
-- Reads no longer pause for 5 or 30 seconds when no observable operation can deliver the chunk.
+- Reads no longer pause for the former 5-second or 30-second arrival budgets. Backoff schedules observable requests rather than setting an elapsed arrival deadline.
+- With no finite replication active, a genuinely absent remote Chunk takes one additional lookup after two seconds. Active finite replication can extend that lifetime; its completion expedites the final probe.
+- The status bar separates initial pending identifiers (`🛄`) from retrying identifiers (`🔁`). Their sum remains the internal pending count used for restart deferral.
 - Relevant producers must expose a lifecycle and must continue to prove cleanup on every exceptional path.
 - The five-minute fuse bounds leaked logical activity, but it neither establishes remote absence nor cancels a physical request.

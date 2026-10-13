@@ -7,7 +7,7 @@ import {
     type TweakValues,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { extractObject } from "octagonal-wheels/object";
-import { assessTweakCompatibility } from "@vrtmrz/livesync-commonlib/settings";
+import { assessTweakCompatibility, configuredIdKey } from "@vrtmrz/livesync-commonlib/settings";
 import { ModuleResolvingMismatchedTweaks } from "./ModuleResolveMismatchedTweaks";
 import { setLang } from "@/common/translation";
 import {
@@ -74,6 +74,68 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 describe("ModuleResolvingMismatchedTweaks", () => {
+    it.each([0, 1] as const)(
+        "keeps ID configuration %s when automatically aligning Chunk settings",
+        async (idDerivationVersion) => {
+            const idDerivationKey = idDerivationVersion === 1 ? "ab".repeat(32) : "";
+            const { module, core, askSelectStringDialogue } = createModule({
+                encrypt: true,
+                usePathObfuscation: false,
+                idDerivationVersion,
+                idDerivationKey,
+                autoAcceptCompatibleTweak: true,
+                hashAlg: "xxhash64",
+                tweakModified: 1,
+            });
+            const preferred: TweakValues = {
+                ...extractObject(TweakValuesTemplate, core.settings),
+                idDerivationVersion: idDerivationVersion === 1 ? 0 : 1,
+                hashAlg: "xxhash32",
+                tweakModified: 2,
+            };
+            core._services.tweakValue = {
+                checkAndAskResolvingMismatched: module._checkAndAskResolvingMismatchedTweaks.bind(module),
+            };
+            core._services.setting.saveSettingData.mockImplementation(async () => {
+                configuredIdKey(core.settings);
+            });
+
+            await expect(module._askResolvingMismatchedTweaks(preferred, async () => true)).resolves.toBe("CHECKAGAIN");
+
+            expect(core.settings).toMatchObject({ idDerivationVersion, idDerivationKey, hashAlg: "xxhash32" });
+            expect(askSelectStringDialogue).not.toHaveBeenCalled();
+        }
+    );
+
+    it.each(["active", "trial"] as const)(
+        "withholds ordinary tweak adoption for different document ID modes (%s)",
+        async (route) => {
+            const { module, core, askSelectStringDialogue } = createModule({
+                encrypt: true,
+                usePathObfuscation: true,
+                idDerivationVersion: 0,
+                idDerivationKey: "",
+            });
+            const preferred: TweakValues = {
+                ...extractObject(TweakValuesTemplate, core.settings),
+                idDerivationVersion: 1,
+            };
+
+            if (route === "active") {
+                await expect(module._checkAndAskResolvingMismatchedTweaks(preferred)).resolves.toEqual([false, false]);
+            } else {
+                await expect(module._askUseRemoteConfiguration(core.settings, preferred)).resolves.toEqual({
+                    result: false,
+                    requireFetch: false,
+                });
+            }
+
+            expect(askSelectStringDialogue).not.toHaveBeenCalled();
+            expect(core._services.setting.saveSettingData).not.toHaveBeenCalled();
+            expect(core.settings).toMatchObject({ idDerivationVersion: 0, idDerivationKey: "" });
+        }
+    );
+
     it("compatibility: offers ordinary application for a missing legacy filename-case setting", async () => {
         const { module, askSelectStringDialogue } = createModule({
             autoAcceptCompatibleTweak: false,

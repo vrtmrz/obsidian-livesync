@@ -1,4 +1,5 @@
 import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { usesEncryptedInternalMetadata } from "@vrtmrz/livesync-commonlib/replication";
 
 type EndpointProjection = readonly [kind: "url" | "invalid-url", value: string];
 
@@ -42,7 +43,10 @@ function projectHeaders(value: string): readonly (readonly [name: string, value:
 }
 
 function projectRemoteSecurity(settings: RemoteDBSettings) {
-    return settings.encrypt
+    return [
+        settings.idDerivationVersion,
+        settings.idDerivationKey,
+        settings.encrypt
         ? ([
               "encrypted",
               settings.passphrase,
@@ -50,7 +54,8 @@ function projectRemoteSecurity(settings: RemoteDBSettings) {
               settings.E2EEAlgorithm,
               settings.permitEmptyPassphrase,
           ] as const)
-        : (["plain"] as const);
+        : (["plain"] as const),
+    ] as const;
 }
 
 /**
@@ -77,6 +82,7 @@ export function getCouchDBReplicatorConfigurationIdentity(settings: RemoteDBSett
         settings.useRequestAPI,
         settings.disableRequestURI,
         projectRemoteSecurity(settings),
+        usesEncryptedInternalMetadata(settings),
         settings.enableCompression,
     ]);
 }

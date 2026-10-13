@@ -6,6 +6,7 @@ import {
     assertNoHorizontalOverflow,
 } from "@vrtmrz/obsidian-test-session";
 import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { DoctorRegulation } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { REVIEW_HARNESS_STATE_KEY } from "../../../src/features/ReviewHarness/reviewHarnessController.ts";
 import { REVIEW_HARNESS_FIXTURE_ROOT } from "../../../src/features/ReviewHarness/reviewHarnessVaultFixture.ts";
 import { evalObsidianJson } from "../runner/cli.ts";
@@ -166,7 +167,8 @@ async function captureReadinessFailure(
 async function openHarness(): Promise<void> {
     const opened = await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         return await page.evaluate(
-            (commandId) => (globalThis as ReviewHarnessTestGlobal).app?.commands?.executeCommandById(commandId) === true,
+            (commandId) =>
+                (globalThis as ReviewHarnessTestGlobal).app?.commands?.executeCommandById(commandId) === true,
             "obsidian-livesync:open-review-harness"
         );
     });
@@ -205,11 +207,54 @@ async function runAutomaticScenarios(): Promise<void> {
     });
 }
 
+async function runIdBenchmark(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const snapshotSettings = () =>
+            page.evaluate(() => {
+                const plugin = (globalThis as ReviewHarnessTestGlobal).app?.plugins?.plugins["obsidian-livesync"] as {
+                    core: { services: { setting: { currentSettings(): unknown } } };
+                };
+                return JSON.stringify(plugin.core.services.setting.currentSettings());
+            });
+        const before = await snapshotSettings();
+        const harness = page.locator('[data-testid="review-harness"]');
+        await harness
+            .locator('[data-testid="review-harness-run-id-generation-performance"]')
+            .click({ timeout: uiTimeoutMs });
+        const result = harness.locator('[data-testid="review-harness-result-id-generation-performance"]');
+        await result.getByText("Passed:", { exact: false }).waitFor({ state: "visible", timeout: uiTimeoutMs * 4 });
+        const observations = await result.locator("li").allTextContents();
+        for (const label of [
+            "Chunk IDs, 256 B",
+            "Chunk IDs, 4096 B",
+            "Chunk IDs, 32768 B",
+            "Obfuscated document IDs",
+        ]) {
+            for (const mode of ["legacy", "independent"]) {
+                if (
+                    !observations.some(
+                        (line) =>
+                            line.startsWith(`${label}, ${mode}: 1000 IDs total median=`) && line.includes("; per ID=")
+                    )
+                ) {
+                    throw new Error(`Missing benchmark timing and units: ${label}, ${mode}`);
+                }
+            }
+        }
+        if (
+            !observations.some((line) => line.startsWith("ID key derivation at save time:")) ||
+            !observations.some((line) => line.startsWith("JavaScript heap:"))
+        ) {
+            throw new Error("The benchmark did not report derivation and heap observations.");
+        }
+        if ((await snapshotSettings()) !== before) throw new Error("The benchmark changed the live settings.");
+        await assertNoHorizontalOverflow(page, harness, { label: "ID benchmark results" });
+    });
+}
+
 async function runVaultFixture(): Promise<string> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        await page
-            .locator('[data-testid="review-harness-run-vault-round-trip"]')
-            .click({ timeout: uiTimeoutMs });
+        await page.locator('[data-testid="review-harness-run-vault-round-trip"]').click({ timeout: uiTimeoutMs });
         const confirmation = page.locator(".modal-container").filter({
             has: page.getByText("Review Harness: Vault fixture access", { exact: true }),
         });
@@ -272,27 +317,22 @@ async function restartAndResumeHarness(): Promise<string> {
     });
     await keepCompatibilityPaused();
     await waitForHarness();
-    return await captureObsidianDialogue(
-        obsidianRemoteDebuggingPort(),
-        "review-harness-resumed.png",
-        async (page) => {
-            const harness = page.locator('[data-testid="review-harness"]');
-            await harness
-                .locator('[data-testid="review-harness-resumed"]')
-                .waitFor({ state: "visible", timeout: uiTimeoutMs });
-            const continuationRemoved = await page.evaluate((stateKey) => {
-                const plugin = (globalThis as ReviewHarnessTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
-                if (typeof plugin !== "object" || plugin === null || !("core" in plugin)) {
-                    throw new Error("Self-hosted LiveSync is unavailable after restart.");
-                }
-                const core = (plugin as { core: { services: { setting: { getSmallConfig(key: string): string } } } })
-                    .core;
-                return core.services.setting.getSmallConfig(stateKey) === "";
-            }, REVIEW_HARNESS_STATE_KEY);
-            if (!continuationRemoved) throw new Error("The one-shot continuation was not removed before use.");
-            await assertNoHorizontalOverflow(page, harness, { label: "resumed Review Harness" });
-        }
-    );
+    return await captureObsidianDialogue(obsidianRemoteDebuggingPort(), "review-harness-resumed.png", async (page) => {
+        const harness = page.locator('[data-testid="review-harness"]');
+        await harness
+            .locator('[data-testid="review-harness-resumed"]')
+            .waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const continuationRemoved = await page.evaluate((stateKey) => {
+            const plugin = (globalThis as ReviewHarnessTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+            if (typeof plugin !== "object" || plugin === null || !("core" in plugin)) {
+                throw new Error("Self-hosted LiveSync is unavailable after restart.");
+            }
+            const core = (plugin as { core: { services: { setting: { getSmallConfig(key: string): string } } } }).core;
+            return core.services.setting.getSmallConfig(stateKey) === "";
+        }, REVIEW_HARNESS_STATE_KEY);
+        if (!continuationRemoved) throw new Error("The one-shot continuation was not removed before use.");
+        await assertNoHorizontalOverflow(page, harness, { label: "resumed Review Harness" });
+    });
 }
 
 async function completeResumedCompatibilityStep(): Promise<void> {
@@ -331,9 +371,7 @@ async function copyAndReadReport(): Promise<string> {
             undefined,
             { timeout: uiTimeoutMs }
         );
-        return await page.evaluate(
-            () => (globalThis as ReviewHarnessTestGlobal).reviewHarnessCopiedReport ?? ""
-        );
+        return await page.evaluate(() => (globalThis as ReviewHarnessTestGlobal).reviewHarnessCopiedReport ?? "");
     });
 }
 
@@ -347,35 +385,36 @@ async function verifyMobileHarness(): Promise<string> {
             if (typeof plugin !== "object" || plugin === null || !("core" in plugin)) {
                 throw new Error("Self-hosted LiveSync is unavailable in mobile test mode.");
             }
-            const core = (plugin as {
-                core: { services: { API: { showWindow(type: string): Promise<void> } } };
-            }).core;
+            const core = (
+                plugin as {
+                    core: { services: { API: { showWindow(type: string): Promise<void> } } };
+                }
+            ).core;
             await core.services.API.showWindow(viewType);
         }, "self-hosted-livesync-review-harness");
     });
-    return await captureObsidianDialogue(
-        obsidianRemoteDebuggingPort(),
-        "review-harness-mobile.png",
-        async (page) => {
-            const harness = page.locator('[data-testid="review-harness"]');
-            await harness.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await assertNoHorizontalOverflow(page, harness, { label: "mobile Review Harness" });
-            const heading = harness.getByRole("heading", { name: "Self-hosted LiveSync review harness" });
-            await assertLocatorWithinSafeArea(page, heading, {
-                label: "mobile Review Harness heading",
-                safeAreaInsets: iPhoneSafeArea,
+    await runIdBenchmark();
+    return await captureObsidianDialogue(obsidianRemoteDebuggingPort(), "review-harness-mobile.png", async (page) => {
+        const harness = page.locator('[data-testid="review-harness"]');
+        await harness.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await harness.getByRole("heading", { name: "Self-hosted LiveSync review harness" }).scrollIntoViewIfNeeded();
+        await assertNoHorizontalOverflow(page, harness, { label: "mobile Review Harness" });
+        const heading = harness.getByRole("heading", { name: "Self-hosted LiveSync review harness" });
+        await assertLocatorWithinSafeArea(page, heading, {
+            label: "mobile Review Harness heading",
+            safeAreaInsets: iPhoneSafeArea,
+        });
+        for (const testId of [
+            "review-harness-run-automatic",
+            "review-harness-run-full",
+            "review-harness-copy-report",
+            "review-harness-run-id-generation-performance",
+        ]) {
+            await assertLocatorHasMinimumTouchTarget(page, harness.locator(`[data-testid="${testId}"]`), {
+                label: testId,
             });
-            for (const testId of [
-                "review-harness-run-automatic",
-                "review-harness-run-full",
-                "review-harness-copy-report",
-            ]) {
-                await assertLocatorHasMinimumTouchTarget(page, harness.locator(`[data-testid="${testId}"]`), {
-                    label: testId,
-                });
-            }
         }
-    );
+    });
 }
 
 async function main(): Promise<void> {
@@ -391,9 +430,11 @@ async function main(): Promise<void> {
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
             pluginData: {
-                doctorProcessedVersion: "1.0.0",
+                // Config Doctor is covered by settings-ui; this fixture exercises the Harness.
+                doctorProcessedVersion: DoctorRegulation.version,
                 settingVersion: CURRENT_SETTING_VERSION,
                 isConfigured: true,
+                versionUpFlash: "Review an earlier compatibility change before synchronisation resumes.",
                 additionalSuffixOfDatabaseName: "",
                 enableDebugTools: true,
                 notifyThresholdOfRemoteStorageSize: 0,
@@ -440,15 +481,34 @@ async function main(): Promise<void> {
         const vaultConfirmationScreenshot = await runVaultFixture();
         const resumedScreenshot = await restartAndResumeHarness();
         await completeResumedCompatibilityStep();
+        await runIdBenchmark();
         const report = await copyAndReadReport();
         if (!report.includes("## Self-hosted LiveSync Review Harness report")) {
             throw new Error("The copied Review Harness report was not Markdown evidence.");
         }
-        for (const forbidden of [vault.name, REVIEW_HARNESS_FIXTURE_ROOT]) {
-            if (report.includes(forbidden)) throw new Error(`The Review Harness report exposed local state: ${forbidden}`);
+        for (const expected of [
+            "1000 IDs total median=",
+            "; per ID=",
+            "ID key derivation at save time:",
+            "JavaScript heap:",
+        ]) {
+            if (!report.includes(expected)) throw new Error(`Missing copied benchmark observation: ${expected}`);
+        }
+        for (const forbidden of [
+            vault.name,
+            REVIEW_HARNESS_FIXTURE_ROOT,
+            "ab".repeat(32),
+            "Self-hosted LiveSync ID benchmark passphrase",
+            "Self-hosted LiveSync ID benchmark source",
+        ]) {
+            if (report.includes(forbidden))
+                throw new Error(`The Review Harness report exposed local state: ${forbidden}`);
         }
 
         const mobileScreenshot = await verifyMobileHarness();
+        const outputDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+        await mkdir(outputDirectory, { recursive: true });
+        await writeFile(join(outputDirectory, "review-harness-report.md"), report, "utf8");
         console.log(
             `Review Harness passed one-shot, fixture, report, and mobile checks. Screenshots: ${[
                 initialScreenshot,

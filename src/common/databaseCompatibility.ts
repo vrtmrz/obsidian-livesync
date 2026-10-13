@@ -8,7 +8,7 @@ export const DATABASE_COMPATIBILITY_LEGACY_VERSION_KEY_PREFIX = "obsidian-live-s
 export const COMPATIBILITY_PAUSE_SETTING_MESSAGE =
     "Remote synchronisation is paused until this device's compatibility review has been completed.";
 
-export type DatabaseCompatibilityVersionState = "missing" | "invalid" | "upgrade" | "downgrade";
+export type DatabaseCompatibilityVersionState = "invalid" | "upgrade" | "downgrade";
 
 export interface DatabaseCompatibilityReason {
     source: "database-version";
@@ -57,18 +57,9 @@ export interface CompatibilityEvaluationInput {
 
 function databaseVersionReason(
     acknowledgedVersion: string | null,
-    currentVersion: number,
-    isNewVault: boolean
+    currentVersion: number
 ): DatabaseCompatibilityReason | undefined {
-    if (acknowledgedVersion === null || acknowledgedVersion === "") {
-        if (isNewVault) return undefined;
-        return {
-            source: "database-version",
-            state: "missing",
-            currentVersion,
-            resumable: true,
-        };
-    }
+    if (acknowledgedVersion === null || acknowledgedVersion === "") return undefined;
 
     const parsed = Number(acknowledgedVersion);
     if (!Number.isSafeInteger(parsed)) {
@@ -104,9 +95,8 @@ function databaseVersionReason(
  * The caller owns persistence, user interaction, and the actual replication gate.
  */
 export function evaluateCompatibilityPause(input: CompatibilityEvaluationInput): CompatibilityEvaluation {
-    const isNewVault = input.migrationState?.isNewVault === true;
     const reasons: CompatibilityPauseReason[] = [];
-    const databaseReason = databaseVersionReason(input.acknowledgedVersion, input.currentVersion, isNewVault);
+    const databaseReason = databaseVersionReason(input.acknowledgedVersion, input.currentVersion);
     if (databaseReason) reasons.push(databaseReason);
 
     if (input.migrationState?.requiresSyncReview === true) {
@@ -130,8 +120,7 @@ export function evaluateCompatibilityPause(input: CompatibilityEvaluationInput):
 
     if (reasons.length === 0) {
         return {
-            initialiseAcknowledgedVersion:
-                isNewVault && (input.acknowledgedVersion === null || input.acknowledgedVersion === ""),
+            initialiseAcknowledgedVersion: input.acknowledgedVersion === null || input.acknowledgedVersion === "",
         };
     }
 

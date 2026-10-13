@@ -24,7 +24,9 @@ export function paneMaintenance(
         paneEl,
         "div",
         {
-            text: $msg("The remote database is locked for synchronization to prevent vault corruption because this device isn't marked as 'resolved'. Please backup your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until the device is confirmed as resolved by replication."),
+            text: $msg(
+                "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved."
+            ),
             cls: "op-warn",
         },
         (c) => {
@@ -32,7 +34,7 @@ export function paneMaintenance(
                 c,
                 "button",
                 {
-                    text: $msg("I've made a backup, mark this device 'resolved'"),
+                    text: $msg("I have made a backup, mark this device as resolved"),
                     cls: "mod-warning",
                 },
                 (e) => {
@@ -51,7 +53,9 @@ export function paneMaintenance(
         paneEl,
         "div",
         {
-            text: $msg("To prevent unwanted vault corruption, the remote database has been locked for synchronization. (This device is marked 'resolved') When all your devices are marked 'resolved', unlock the database. This warning kept showing until confirming the device is resolved by the replication"),
+            text: $msg(
+                "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved."
+            ),
             cls: "op-warn",
         },
         (c) =>
@@ -59,7 +63,7 @@ export function paneMaintenance(
                 c,
                 "button",
                 {
-                    text: $msg("I'm ready, unlock the database"),
+                    text: $msg("I am ready, unlock the database"),
                     cls: "mod-warning",
                 },
                 (e) => {
@@ -293,97 +297,101 @@ export function paneMaintenance(
     //     }
     // );
 
-    void addPanel(paneEl, $msg("Rebuilding Operations (Remote Only)"), () => {}, this.onlyOnCouchDBOrMinIO).then((paneEl) => {
-        new Setting(paneEl)
-            .setName($msg("Perform cleanup"))
-            .setDesc(
-                $msg(
-                    "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
+    void addPanel(paneEl, $msg("Rebuilding Operations (Remote Only)"), () => {}, this.onlyOnCouchDBOrMinIO).then(
+        (paneEl) => {
+            new Setting(paneEl)
+                .setName($msg("Perform cleanup"))
+                .setDesc(
+                    $msg(
+                        "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client."
+                    )
                 )
-            )
-            .addButton((button) =>
-                button
-                    .setButtonText($msg("Perform"))
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
-                        Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
-                        if (await replicator.compactRemote(this.editingSettings)) {
-                            Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
-                        } else {
-                            Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
-                        }
-                    })
-            )
-            .addOnUpdate(this.onlyOnCouchDB);
+                .addButton((button) =>
+                    button
+                        .setButtonText($msg("Perform"))
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            const replicator = this.core.replicator as LiveSyncCouchDBReplicator;
+                            Logger(`Cleanup has been began`, LOG_LEVEL_NOTICE, "compaction");
+                            if (await replicator.compactRemote(this.editingSettings)) {
+                                Logger(`Cleanup has been completed!`, LOG_LEVEL_NOTICE, "compaction");
+                            } else {
+                                Logger(`Cleanup has been failed!`, LOG_LEVEL_NOTICE, "compaction");
+                            }
+                        })
+                )
+                .addOnUpdate(this.onlyOnCouchDB);
 
-        new Setting(paneEl)
-            .setName($msg("Overwrite remote"))
-            .setDesc($msg("Overwrite remote with local DB and passphrase."))
-            .addButton((button) =>
-                setButtonDestructiveState(button)
-                    .setButtonText($msg("Send"))
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.rebuildDB("remoteOnly");
-                    })
-            );
+            new Setting(paneEl)
+                .setName($msg("Overwrite remote"))
+                .setDesc($msg("Overwrite remote with local DB and passphrase."))
+                .addButton((button) =>
+                    setButtonDestructiveState(button)
+                        .setButtonText($msg("Send"))
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.rebuildDB("remoteOnly");
+                        })
+                );
 
-        new Setting(paneEl)
-            .setName($msg("Reset all journal counter"))
-            .setDesc($msg("Initialise all journal history, On the next sync, every item will be received and sent."))
-            .addButton((button) =>
-                setButtonDestructiveState(button)
-                    .setButtonText($msg("Reset all"))
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.getMinioJournalSyncClient().resetCheckpointInfo();
-                        Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
-                    })
-            )
-            .addOnUpdate(this.onlyOnMinIO);
+            new Setting(paneEl)
+                .setName($msg("Reset all journal counter"))
+                .setDesc(
+                    $msg("Initialise all journal history, On the next sync, every item will be received and sent.")
+                )
+                .addButton((button) =>
+                    setButtonDestructiveState(button)
+                        .setButtonText($msg("Reset all"))
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.getMinioJournalSyncClient().resetCheckpointInfo();
+                            Logger(`Journal exchange history has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+                .addOnUpdate(this.onlyOnMinIO);
 
-        new Setting(paneEl)
-            .setName($msg("Purge all journal counter"))
-            .setDesc($msg("Purge all download/upload cache."))
-            .addButton((button) =>
-                setButtonDestructiveState(button)
-                    .setButtonText($msg("Reset all"))
-                    .setDisabled(false)
-                    .onClick(() => {
-                        this.getMinioJournalSyncClient().resetAllCaches();
-                        Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
-                    })
-            )
-            .addOnUpdate(this.onlyOnMinIO);
+            new Setting(paneEl)
+                .setName($msg("Purge all journal counter"))
+                .setDesc($msg("Purge all download/upload cache."))
+                .addButton((button) =>
+                    setButtonDestructiveState(button)
+                        .setButtonText($msg("Reset all"))
+                        .setDisabled(false)
+                        .onClick(() => {
+                            this.getMinioJournalSyncClient().resetAllCaches();
+                            Logger(`Journal download/upload cache has been cleared.`, LOG_LEVEL_NOTICE);
+                        })
+                )
+                .addOnUpdate(this.onlyOnMinIO);
 
-        new Setting(paneEl)
-            .setName($msg("Fresh Start Wipe"))
-            .setDesc($msg("Delete all data on the remote server."))
-            .addButton((button) =>
-                setButtonDestructiveState(button)
-                    .setButtonText($msg("Delete"))
-                    .setDisabled(false)
-                    .onClick(async () => {
-                        await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
-                            ...info,
-                            receivedFiles: new Set(),
-                            knownIDs: new Set(),
-                            lastLocalSeq: 0,
-                            sentIDs: new Set(),
-                            sentFiles: new Set(),
-                        }));
-                        const reset = await this.resetRemoteBucket();
-                        Logger(
-                            reset
-                                ? `Deleted all data on remote server`
-                                : `Fresh Start Wipe did not complete. Keep all synchronising devices stopped and run it again.`,
-                            LOG_LEVEL_NOTICE
-                        );
-                    })
-            )
-            .addOnUpdate(this.onlyOnMinIO);
-    });
+            new Setting(paneEl)
+                .setName($msg("Fresh Start Wipe"))
+                .setDesc($msg("Delete all data on the remote server."))
+                .addButton((button) =>
+                    setButtonDestructiveState(button)
+                        .setButtonText($msg("Delete"))
+                        .setDisabled(false)
+                        .onClick(async () => {
+                            await this.getMinioJournalSyncClient().updateCheckPointInfo((info) => ({
+                                ...info,
+                                receivedFiles: new Set(),
+                                knownIDs: new Set(),
+                                lastLocalSeq: 0,
+                                sentIDs: new Set(),
+                                sentFiles: new Set(),
+                            }));
+                            const reset = await this.resetRemoteBucket();
+                            Logger(
+                                reset
+                                    ? `Deleted all data on remote server`
+                                    : `Fresh Start Wipe did not complete. Keep all synchronising devices stopped and run it again.`,
+                                LOG_LEVEL_NOTICE
+                            );
+                        })
+                )
+                .addOnUpdate(this.onlyOnMinIO);
+        }
+    );
 
     void addPanel(paneEl, $msg("Reset")).then((paneEl) => {
         new Setting(paneEl)

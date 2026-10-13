@@ -57,4 +57,9 @@
     textarea {
         resize: none;
     }
+
+    button {
+        min-width: 44px;
+        min-height: 44px;
+    }
 </style>

@@ -53,7 +53,9 @@ For CouchDB, `readChunksOnline` changes what normal replication includes, not th
 |             `true` |                           No | Primary chunk delivery after metadata arrives.                           |
 |            `false` |                          Yes | Recovery fallback for a chunk which is unexpectedly unavailable locally. |
 
-`concurrencyOfReadChunksOnline` and `minimumIntervalOfReadChunksOnline` affect only the scheduling of CouchDB on-demand requests. They do not change whether a request may be dispatched or which lifecycle a reader observes. Accepted identifiers remain claimed while they wait for a concurrency slot and while the configured interval is applied. A minimum interval of five minutes or more is an exceptional value: the inactivity fuse may release the logical claim before that deliberate pause completes. This safety precedence does not abort the delayed physical request.
+`concurrencyOfReadChunksOnline` and `minimumIntervalOfReadChunksOnline` affect only the scheduling of CouchDB on-demand requests. They do not change whether a request may be dispatched or which lifecycle a reader observes. Accepted identifiers remain claimed while they wait for a concurrency slot and while the configured interval is applied. Backoff releases the physical concurrency slot but retains logical ownership. Eligible retries and new identifiers can share a batch of up to 100 identifiers. An owned timer wakes the queue at the earliest eligible retry without requiring a new event. New arrivals do not reset existing retry times, and eligible older work precedes newer queued work.
+
+After every wait or asynchronous local recheck, the fetcher checks the configured interval against the latest shared request time and reserves its start synchronously. A minimum interval of five minutes or more is an exceptional value: the inactivity fuse may release the logical claim before that deliberate pause completes. An expired claim is not dispatched after the pause; an already-running physical request is not aborted by the fuse.
 
 ## Wait State Machine
 
@@ -62,11 +64,12 @@ For CouchDB, `readChunksOnline` changes what normal replication includes, not th
 3. Register one shared waiter per missing identifier.
 4. If policy permits direct fetch, emit `missingChunks`. `ChunkFetcher` synchronously creates the per-identifier claim before the event dispatch returns.
 5. Observe both the matching claim and `finiteReplicationActivityCount`.
-6. Resolve immediately if a valid chunk or explicit remote-missing event arrives.
-7. If an observed producer remains active, do not charge elapsed time against an arrival budget.
-8. When all observed producers end, bypass the cache and read the identifiers from the local database once.
-9. Return the rechecked chunk, or return unavailable. Do not add another fixed grace after the authoritative boundary.
-10. If no producer is observable after synchronous dispatch, return unavailable immediately.
+6. Resolve immediately if a valid chunk or terminal explicit remote-missing event arrives.
+7. If a successful direct-fetch response omits an identifier, apply the per-identifier retry policy below. Settle identifiers present in a partial result and retry only those which remain absent.
+8. If an observed producer remains active, do not charge elapsed time against a general arrival budget.
+9. When all observed producers end, bypass the cache and read the identifiers from the local database once.
+10. Return the rechecked chunk, or return unavailable. Do not add another fixed grace after the authoritative boundary.
+11. If no producer is observable after synchronous dispatch, return unavailable immediately.
 
 If new relevant activity starts while the final database recheck is pending, that result becomes stale. The waiter remains active until the newer producer completes and a current recheck finishes.
 
@@ -84,17 +87,29 @@ The continuous live channel is intentionally excluded because it has no completi
 
 ## Meaning of an On-demand Claim
 
-An accepted identifier remains claimed from synchronous queue acceptance through throttling, physical fetch, validation, local persistence, and terminal event delivery. The claim is identifier-scoped because a global remote-work count cannot say whether unrelated work can provide this chunk.
+An accepted identifier remains claimed from synchronous queue acceptance through throttling, physical fetch, validation, local persistence, retry delays, and terminal event delivery. The claim is identifier-scoped because a global remote-work count cannot say whether unrelated work can provide this chunk.
 
-The claim finishes when the fetcher has recorded an outcome for the identifier. A transport error, missing active replicator, or invalid result releases the claim without emitting an explicit remote-missing result unless the remote actually supplied that information.
+The claim finishes when the fetcher has recorded an outcome for the identifier. A successful first omission schedules a two-second retry even if finite replication is already inactive. While finite replication remains active, each subsequent omission increases that identifier's delay by two seconds, up to ten seconds: `2, 4, 6, 8, 10, 10, ...`. Joining a different batch does not reset its retry stage. Each retry first bypasses the local cache and disables further remote dispatch and delivery waiting for its local recheck.
+
+When the observed finite count falls to zero, remaining backoff is interrupted. The fetcher rechecks local persistence and makes a final remote probe only for still-absent identifiers, respecting concurrency and minimum request spacing. A pre-completion in-flight lookup cannot count as that final probe: if it omits the identifier, a subsequent post-completion lookup is needed, without overlapping requests for the same identifier. If another finite operation ends during the final probe, its negative result is stale too. The current final successful omission emits the terminal explicit remote-missing result and settles the current read. No retry remains for a future synchronisation.
+
+A transport error, missing active Replicator, or invalid result releases the claim according to its existing terminal path rather than entering this missing-result retry. The retry gate is finite replication alone: neither the fetcher's own claim nor broader bounded remote work keeps it alive. There is no attempt limit or absolute elapsed limit while finite replication continues. All retry state is in memory; destruction and inactivity expiry remove queued work and its timer.
+
+Each request retains the identity of the claims it accepted. If another read claims the same identifier after an earlier claim settles or expires, the earlier request cannot release the replacement claim, refresh its fuse, or report unavailability for it. This also applies when a partial batch has already settled one identifier but is still retrying another.
+
+The status indicators count two disjoint sets of pending on-demand Chunk identifiers. `🛄` shows identifiers with no successful missing response yet; `🔁` shows identifiers omitted at least once, including backoff, retry requests, and the final probe. Thus `🛄3 🔁2` means five pending identifiers. The atomic `chunkFetchCounts` snapshot provides this classification, while `collectingChunks` retains their total for the existing restart-deferral check. Moving between categories does not change that total.
+
+Each fetcher contributes its unique accepted identifiers from queueing through terminal delivery. Repeated requests and retry attempts do not increase the count. Settled, expired, and destroyed claims leave the count; one fetcher's teardown preserves another fetcher's contribution. These are not counts of replication connections or all missing Chunks. Zero means that no on-demand claims remain, not that every Chunk was retrieved successfully.
 
 ## Meaning of the Five-minute Value
 
-The five-minute value is an inactivity leak fuse for an accepted on-demand claim. It is the only elapsed duration in this state machine, and it is not a normal terminal condition.
+The five-minute value is an inactivity leak fuse for an accepted on-demand claim. It is not a normal terminal condition and is distinct from the backoff which schedules identified follow-up lookups.
 
 The fuse bounds retention if a faulty activity runner never enters its task, a Promise never settles, or a transport stops making observable progress. It prevents the per-identifier claim and waiter from remaining live forever. Once the bounded activity callback has entered, releasing the claim also allows Wake Lock, application-lifecycle deferral, and the remote-work indicator associated with that callback to finish. Observable progress rearms the fuse.
 
 Five minutes is a conservative operational ceiling rather than a measured chunk-arrival expectation. It must not be used to infer that the remote lacks a chunk, and it does not abort the physical request. `fetchRemoteChunks` does not yet accept an `AbortSignal`, so the request may complete after the logical state has been released. Transport cancellation and transport-specific deadlines are separate future work.
+
+Backoff does not resolve the waiter by elapsed time or prove that another producer will deliver the Chunk. Successful missing responses refresh the inactivity fuse, so retries can continue beyond five minutes while finite replication remains active. This is an intentional distinction between inactivity protection and a total lifetime limit.
 
 The old 5-second and 30-second constants remain exported for source compatibility only. A positive deprecated `ChunkReadOptions.timeout` opts into lifecycle waiting, but its numeric value is ignored. Zero or a negative value still requests an immediate result. New code uses `waitForDelivery` explicitly.
 
@@ -110,6 +125,17 @@ Changes to this behaviour must keep automated coverage for:
 - overlapping finite operations and overlapping per-identifier claims;
 - activity restarting while a local recheck is pending;
 - direct fetch queueing, throttling, persistence, and terminal notification;
+- an autonomous two-second retry after a first successful omission, with bounded remote activity retained throughout;
+- per-identifier `2, 4, 6, 8, 10, 10, ...` backoff while finite replication is active;
+- backoff releasing physical concurrency, mixed-stage batching, and eligible retries not being starved by new work;
+- expiry of the earliest queued claim preserving the scheduled retry for later identifiers;
+- finite completion interrupting backoff and pre-completion in-flight requests requiring a current final probe;
+- local persistence avoiding an unnecessary retry, including completion during request-interval throttling;
+- partial fetch results settling available identifiers and retrying only absent identifiers;
+- partial-batch completion and expired-request responses preserving replacement claims;
+- disjoint initial and retry counts retaining queued identifiers without duplicates and releasing only settled ownership;
+- concurrent request starts respecting the configured interval after retry and throttle waits;
+- terminal unavailability after a current final successful omission;
 - explicit remote absence versus transport or replicator failure;
 - runner rejection, cancellation, teardown, and an operation which never enters its task;
 - leak-fuse refresh at observable progress points; and

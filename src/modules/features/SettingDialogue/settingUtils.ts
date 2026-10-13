@@ -68,6 +68,7 @@ export function getE2EEConfigSummary(setting: ObsidianLiveSyncSettings, showAdva
 export function getSummaryFromPartialSettings(setting: Partial<ObsidianLiveSyncSettings>, showAdvanced = false) {
     const outputSummary: Record<string, string> = {};
     for (const key of Object.keys(setting) as (keyof ObsidianLiveSyncSettings)[]) {
+        if (key === "idDerivationKey" || key === "encryptedIdDerivationKey") continue;
         const config = getConfig(key as AllSettingItemKey);
         if (!config) continue;
         if (config.isAdvanced && !showAdvanced) continue;

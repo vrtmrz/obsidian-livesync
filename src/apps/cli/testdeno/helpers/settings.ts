@@ -13,7 +13,11 @@ export async function initSettingsFile(settingsFile: string): Promise<void> {
  * Generate a full setup URI from a settings file via the Commonlib package API.
  * Mirrors the bash flow in test-setup-put-cat-linux.sh.
  */
-export async function generateSetupUriFromSettings(settingsFile: string, setupPassphrase: string): Promise<string> {
+export async function generateSetupUriFromSettings(
+    settingsFile: string,
+    setupPassphrase: string,
+    preserveRemoteSettings = false
+): Promise<string> {
     const script = [
         "import { fs } from '@vrtmrz/livesync-commonlib/node';",
         "import { encodeSettingsToSetupURI } from '@vrtmrz/livesync-commonlib/compat/API/processSetting';",
@@ -21,13 +25,17 @@ export async function generateSetupUriFromSettings(settingsFile: string, setupPa
         "  const settingsPath = process.env.SETTINGS_FILE;",
         "  const passphrase = process.env.SETUP_PASSPHRASE;",
         "  const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));",
-        "  settings.couchDB_DBNAME = 'setup-put-cat-db';",
-        "  settings.couchDB_URI = 'http://127.0.0.1:5999';",
-        "  settings.couchDB_USER = 'dummy';",
-        "  settings.couchDB_PASSWORD = 'dummy';",
-        "  settings.liveSync = false;",
-        "  settings.syncOnStart = false;",
-        "  settings.syncOnSave = false;",
+        ...(preserveRemoteSettings
+            ? []
+            : [
+                  "  settings.couchDB_DBNAME = 'setup-put-cat-db';",
+                  "  settings.couchDB_URI = 'http://127.0.0.1:5999';",
+                  "  settings.couchDB_USER = 'dummy';",
+                  "  settings.couchDB_PASSWORD = 'dummy';",
+                  "  settings.liveSync = false;",
+                  "  settings.syncOnStart = false;",
+                  "  settings.syncOnSave = false;",
+              ]),
         "  const uri = await encodeSettingsToSetupURI(settings, passphrase);",
         "  process.stdout.write(uri.trim());",
         "})();",

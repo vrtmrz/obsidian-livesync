@@ -32,6 +32,7 @@ Always adhere to the following stylistic and spelling rules:
 4. **Specific Terminology and Spelling**:
    - Use **'dialogue'** in documentation, user-facing messages, and general text. Use **'dialog'** only inside source code (e.g. class names, methods).
    - Use the hyphenated form **'plug-in'** in user-facing text. Use **'plugin'** only in codebase files, configuration settings, or technical contexts.
+   - Use **'Self-hosted LiveSync'** or, where the context is clear, **'this plug-in'** when referring to this product. Preserve exact interface labels, code identifiers, commands, package names, and quotations. In explanatory prose, write **'LiveSync mode'** for the Sync Mode.
 
 5. **User Communication Language**:
    - Always reply to the user in the language in which they asked the question.
