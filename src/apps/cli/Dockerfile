@@ -50,7 +50,8 @@
 #  Stage 1 — builder
 #  Full Node.js environment to compile native modules and bundle the CLI.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:22-slim AS builder
+ARG CLI_BUNDLE_STAGE=builder
+FROM --platform=$BUILDPLATFORM node:22-slim AS builder
 
 # Build tools required by native Node.js addons (mainly leveldown)
 RUN apt-get update \
@@ -67,8 +68,14 @@ RUN npm install
 COPY . .
 RUN cd src/apps/cli && npm run build
 
+# CI may provide a prebuilt bundle in the build context.
+FROM scratch AS prebuilt
+COPY _cli-bundle/ /build/src/apps/cli/dist/
+
+FROM ${CLI_BUNDLE_STAGE} AS cli-bundle
+
 # ─────────────────────────────────────────────────────────────────────────────
-#  Stage 2 — runtime-deps
+#  Stage 4 — runtime-deps
 #  Install only the external (unbundled) packages that the CLI requires at
 #  runtime.  Native addons are compiled here against the same base image that
 #  the final runtime stage uses.
@@ -89,7 +96,7 @@ RUN npm pkg delete devDependencies \
     && npm install --omit=dev
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Stage 3 — runtime
+#  Stage 5 — runtime
 #  Minimal image: pre-compiled native modules + CLI bundle only.
 #  No build tools are included, keeping the image small.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -100,8 +107,8 @@ WORKDIR /app
 # Copy pre-compiled external node_modules from runtime-deps stage
 COPY --from=runtime-deps /deps/node_modules ./node_modules
 
-# Copy the built CLI bundle from builder stage
-COPY --from=builder /build/src/apps/cli/dist ./dist
+# Copy the built CLI bundle from the selected stage
+COPY --from=cli-bundle /build/src/apps/cli/dist ./dist
 
 # Install the entrypoint wrapper with a deterministic mode, regardless of
 # source checkout permissions.

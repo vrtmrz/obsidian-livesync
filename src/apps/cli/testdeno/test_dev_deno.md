@@ -327,7 +327,7 @@ The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` runs automati
 
 The separate `.github/workflows/cli-p2p-tests.yml` workflow runs the canonical Compose P2P suite automatically for changes to the CLI, its shared runtime inputs, or `test/bench-network/`. A change confined to the Compose fixtures does not start the non-P2P matrix. Host-direct `test:p2p` tasks remain available for explicit diagnostics.
 
-The `.github/workflows/cli-docker-validation.yml` workflow tests the production Docker image on relevant pull requests and is also called before container publication. Validation runs without registry credentials. The publishing workflow, `.github/workflows/cli-docker.yml`, reuses the Docker build cache and retains the existing main-branch, release-tag, and manual publication conditions.
+The `.github/workflows/cli-docker-validation.yml` workflow builds one production JavaScript bundle with Node.js 22, then tests Docker images in parallel on native amd64 and arm64 runners. Each image uses the shared bundle and prepares its own runtime dependencies. Validation runs without registry credentials, and both architecture results are collected before publication. The publishing workflow, `.github/workflows/cli-docker.yml`, imports the validated OCI image from each architecture, collects the image digests, and publishes the combined manifest. It retains the existing publication conditions for main, release tags, and manual dispatch. A dry run builds both images and checks the digest pair while skipping registry uploads and manifest publication.
 
 ---
 

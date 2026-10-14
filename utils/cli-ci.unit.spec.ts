@@ -1,4 +1,4 @@
-import { readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -7,12 +7,20 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const root = new URL("../", import.meta.url);
-type Step = { id?: string; run?: string; uses?: string; with?: Record<string, unknown> };
+type Step = { id?: string; run?: string; uses?: string; if?: string; with?: Record<string, unknown> };
 type Workflow = {
     on: Record<string, { paths?: string[]; [key: string]: unknown }>;
     jobs: Record<
         string,
-        { steps?: Step[]; needs?: string | string[]; uses?: string; if?: string; permissions?: Record<string, string> }
+        {
+            steps?: Step[];
+            needs?: string | string[];
+            uses?: string;
+            if?: string;
+            permissions?: Record<string, string>;
+            "runs-on"?: string;
+            strategy?: { matrix?: { include?: Array<{ arch: string; runner: string }> } };
+        }
     >;
 };
 function workflow(name: string): Workflow {
@@ -130,20 +138,175 @@ describe("CLI CI selection", () => {
         );
         expect(publication.jobs.validate.uses).toBe("./.github/workflows/cli-docker-validation.yml");
         expect(publication.jobs.validate.permissions).toEqual({ contents: "read" });
-        expect(publication.jobs["build-and-push"].needs).toBe("validate");
-        expect(publication.jobs["build-and-push"].if).toBe(
+        const publishJob = publication.jobs["publish-images"];
+        expect(publishJob.needs).toEqual(["metadata", "validate"]);
+        expect(publishJob.if).toBe(
             "${{ needs.validate.outputs.e2e_passed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force) }}"
         );
-        const publishBuild = publication.jobs["build-and-push"].steps?.find((step) =>
-            step.uses?.startsWith("docker/build-push-action@")
+        expect(publishJob.strategy?.matrix?.include).toEqual(validationJob.strategy?.matrix?.include);
+        expect(publishJob["runs-on"]).toBe("${{ matrix.runner }}");
+        const publishBuild = publishJob.steps?.find((step) => step.uses?.startsWith("docker/build-push-action@"));
+        expect(publishBuild?.with?.file).toBe("src/apps/cli/Dockerfile.publish");
+        expect(publishBuild?.with?.["build-contexts"]).toBe(
+            "validated-image=oci-layout://${{ runner.temp }}/cli-image@${{ steps.image-context.outputs.digest }}"
         );
-        expect(publishBuild?.with?.["cache-from"]).toBe(build?.with?.["cache-from"]);
-        const validationScope = String(build?.with?.["cache-to"]).match(/scope=([^,\s]+)/)?.[1];
-        const publicationScope = String(publishBuild?.with?.["cache-to"]).match(/scope=([^,\s]+)/)?.[1];
-        expect(validationScope).toBeDefined();
-        expect(publicationScope).toBeDefined();
-        expect(publicationScope).not.toBe(validationScope);
-        expect(publishBuild?.with?.["cache-from"]).toContain(`scope=${validationScope}`);
-        expect(publishBuild?.with?.["cache-from"]).toContain(`scope=${publicationScope}`);
+        const imageUpload = validationJob.steps?.find(
+            (step) => step.with?.name === "cli-docker-image-${{ matrix.arch }}"
+        );
+        const imageDownload = publishJob.steps?.find(
+            (step) => step.with?.name === "cli-docker-image-${{ matrix.arch }}"
+        );
+        expect(imageUpload?.with?.path).toBe("${{ runner.temp }}/cli-image.tar");
+        expect(build?.with?.outputs).toBe("type=oci,dest=${{ runner.temp }}/cli-image.tar");
+        expect(imageDownload?.with?.name).toBe(imageUpload?.with?.name);
+        const publishingInstructions = readFileSync(new URL("src/apps/cli/Dockerfile.publish", root), "utf8")
+            .split("\n")
+            .filter((line) => line && !line.startsWith("#"));
+        expect(publishingInstructions).toEqual(["FROM validated-image"]);
+        expect(publishBuild?.with?.outputs).toBe(
+            "type=image,name=${{ needs.metadata.outputs.image }},push-by-digest=true,name-canonical=true,push=${{ needs.metadata.outputs.push }}"
+        );
+        expect(publishJob.steps?.some((step) => step.uses?.startsWith("docker/setup-qemu-action@"))).toBe(false);
+        expect(publishJob.steps?.find((step) => step.uses?.startsWith("docker/login-action@"))?.if).toBe(
+            "needs.metadata.outputs.push == 'true'"
+        );
+        const manifestJob = publication.jobs.manifest;
+        expect(manifestJob.needs).toEqual(["metadata", "publish-images"]);
+        expect(manifestJob.steps?.find((step) => step.run?.includes("imagetools create"))?.run).toContain(
+            'if [[ "$PUSH" == "true" ]]; then'
+        );
+    });
+    it("builds and tests Docker images on both native architectures", () => {
+        const job = workflow("cli-docker-validation.yml").jobs.validate;
+        expect(job.strategy?.matrix?.include).toEqual([
+            { arch: "amd64", runner: "ubuntu-24.04" },
+            { arch: "arm64", runner: "ubuntu-24.04-arm" },
+        ]);
+        expect(job["runs-on"]).toBe("${{ matrix.runner }}");
+        expect(job.steps?.some((step) => step.uses?.startsWith("docker/setup-qemu-action@"))).toBe(false);
+    });
+    it("builds the Docker JavaScript bundle once and passes it to the native image builds", () => {
+        const jobs = workflow("cli-docker-validation.yml").jobs;
+        expect(jobs.bundle?.steps?.filter((step) => step.run === "npm run build") ?? []).toHaveLength(1);
+        expect(jobs.validate.needs).toBe("bundle");
+        const upload = jobs.bundle?.steps?.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
+        const download = jobs.validate.steps?.find((step) => step.uses?.startsWith("actions/download-artifact@"));
+        expect(download?.with?.name).toBe(upload?.with?.name);
+        expect(download?.with?.path).toBe("_cli-bundle/");
+        const build = jobs.validate.steps?.find((step) => step.uses?.startsWith("docker/build-push-action@"));
+        expect(build?.with?.["build-args"]).toBe("CLI_BUNDLE_STAGE=prebuilt");
+    });
+    it.each([false, true])("assembles both image digests with publication=%s", (push) => {
+        const step = workflow("cli-docker.yml").jobs.manifest.steps?.find((step) =>
+            step.run?.includes("imagetools create")
+        );
+        expect(step?.run).toBeDefined();
+        const directory = mkdtempSync(join(tmpdir(), "livesync-cli-manifest-"));
+        try {
+            const digests = join(directory, "cli-digests");
+            const bin = join(directory, "bin");
+            mkdirSync(digests);
+            mkdirSync(bin);
+            for (const [arch, char] of [
+                ["amd64", "a"],
+                ["arm64", "b"],
+            ]) {
+                writeFileSync(
+                    join(digests, `${arch}.json`),
+                    JSON.stringify({ arch, digest: `sha256:${char.repeat(64)}` })
+                );
+            }
+            const capture = join(directory, "docker-args");
+            writeFileSync(join(bin, "docker"), '#!/bin/sh\nprintf \'%s\\n\' "$@" > "$CLI_TEST_CAPTURE"\n', {
+                mode: 0o755,
+            });
+            const image = "ghcr.io/test-owner/livesync-cli";
+            const tags = [`${image}:1.0.36-cli`, `${image}:latest`];
+            const result = spawnSync("bash", ["-c", step!.run!], {
+                cwd: root,
+                env: {
+                    ...process.env,
+                    RUNNER_TEMP: directory,
+                    IMAGE: image,
+                    IMAGE_TAGS: tags.join(","),
+                    PUSH: String(push),
+                    PATH: `${bin}:${process.env.PATH}`,
+                    CLI_TEST_CAPTURE: capture,
+                },
+                encoding: "utf8",
+            });
+            expect(result.status, result.stderr).toBe(0);
+            if (push) {
+                expect(readFileSync(capture, "utf8").trim().split("\n")).toEqual([
+                    "buildx",
+                    "imagetools",
+                    "create",
+                    "--tag",
+                    tags[0],
+                    "--tag",
+                    tags[1],
+                    `${image}@sha256:${"a".repeat(64)}`,
+                    `${image}@sha256:${"b".repeat(64)}`,
+                ]);
+            } else {
+                expect(existsSync(capture)).toBe(false);
+                expect(result.stdout).toContain("publication skipped");
+            }
+        } finally {
+            rmSync(directory, { recursive: true, force: true });
+        }
+    });
+    it.each([
+        [
+            "1.0.36",
+            "refs/tags/1.0.36-cli",
+            "push",
+            "false",
+            true,
+            ["1.0.36-cli", "1.0-cli", "latest", "1.0.36-sha-deadbee-cli"],
+        ],
+        [
+            "1.0.36-rc.1",
+            "refs/tags/1.0.36-rc.1-cli",
+            "push",
+            "false",
+            true,
+            ["1.0.36-rc.1-cli", "1.0.36-rc.1-sha-deadbee-cli"],
+        ],
+        ["1.0.36", "refs/heads/main", "push", "false", true, ["edge"]],
+        ["1.0.36", "refs/heads/test", "workflow_dispatch", "true", false, ["1.0.36-dev-sha-deadbee-cli"]],
+    ] as const)("preserves tag selection for %s on %s", (version, ref, event, dryRun, push, tags) => {
+        const metadata = workflow("cli-docker.yml").jobs.metadata.steps?.find((step) => step.id === "meta");
+        expect(metadata?.run).toBeDefined();
+        const directory = mkdtempSync(join(tmpdir(), "livesync-cli-image-metadata-"));
+        try {
+            const bin = join(directory, "bin");
+            const output = join(directory, "output");
+            mkdirSync(bin);
+            writeFileSync(join(directory, "manifest.json"), JSON.stringify({ version }));
+            writeFileSync(join(bin, "git"), "#!/bin/sh\nprintf 'deadbee\\n'\n", { mode: 0o755 });
+            const script = metadata!.run!.replace("${{ github.repository_owner }}", "test-owner");
+            const result = spawnSync("bash", ["-e", "-c", script], {
+                cwd: directory,
+                env: {
+                    ...process.env,
+                    GITHUB_OUTPUT: output,
+                    REF: ref,
+                    EVENT_NAME: event,
+                    DRY_RUN: dryRun,
+                    PATH: `${bin}:${process.env.PATH}`,
+                },
+                encoding: "utf8",
+            });
+            expect(result.status, result.stderr).toBe(0);
+            const image = "ghcr.io/test-owner/livesync-cli";
+            expect(readFileSync(output, "utf8").trim().split("\n")).toEqual([
+                `image=${image}`,
+                `tags=${tags.map((tag) => `${image}:${tag}`).join(",")}`,
+                `push=${push}`,
+            ]);
+        } finally {
+            rmSync(directory, { recursive: true, force: true });
+        }
     });
 });
