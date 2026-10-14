@@ -34,6 +34,7 @@ src/apps/cli/testdeno/
   test-p2p-host.ts
   test-p2p-peers-local-relay.ts
   test-p2p-sync.ts
+  test-p2p-automatic-host.ts
   test-p2p-three-nodes-conflict.ts
   test-p2p-upload-download-repro.ts
   test-e2e-two-vaults-matrix.ts
@@ -72,6 +73,7 @@ Main tasks:
 - `deno task test:p2p-host`
 - `deno task test:p2p-peers`
 - `deno task test:p2p-sync`
+- `deno task test:p2p-automatic-host`
 - `deno task test:p2p-three-nodes`
 - `deno task test:p2p-upload-download`
 - `deno task test:e2e-couchdb`
@@ -170,6 +172,11 @@ These flows do not require Bash on the host. The S3 matrix tasks, environment va
 ### `test-p2p-sync.ts`
 
 - Verifies that `p2p-sync` completes after peer discovery.
+
+### `test-p2p-automatic-host.ts`
+
+- Verifies that `p2p-host` restores its configured P2P automation policy and stays connected while multiple clients synchronise through it.
+- Covers automatic baseline transfer, watched updates, client disconnection, and host restart persistence without manual P2P sync commands.
 
 ### `test-p2p-three-nodes-conflict.ts`
 

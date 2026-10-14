@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { collectPeers, createPeerConnectionStatsPayload, parseTimeoutSeconds, syncWithPeer } from "./p2p";
+import { collectPeers, createPeerConnectionStatsPayload, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
+import { AutoAccepting } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { CLIP2PHostSettings } from "./types";
 
 function createCore() {
     const settings = { P2P_Enabled: true, P2P_AppID: "app-id", P2P_IsHeadless: false };
@@ -37,6 +39,87 @@ function createP2PService() {
 }
 
 describe("p2p command helpers", () => {
+    const passiveHostSettings: CLIP2PHostSettings = {
+        P2P_Enabled: true,
+        P2P_AutoAccepting: AutoAccepting.NONE,
+        P2P_AutoStart: false,
+        P2P_AutoBroadcast: false,
+        P2P_AutoSyncPeers: "",
+        P2P_AutoWatchPeers: "",
+    };
+
+    function createHostCore() {
+        const settings = {
+            ...passiveHostSettings,
+            P2P_Enabled: false,
+            P2P_IsHeadless: false,
+            P2P_AppID: "app-id",
+            liveSync: false,
+            suspendFileWatching: true,
+        };
+        const applyPartial = vi.fn(async (partial: CLIP2PHostSettings) => {
+            Object.assign(settings, partial);
+        });
+        const saveSettingData = vi.fn();
+        const applySettings = vi.fn();
+        return {
+            core: {
+                services: {
+                    setting: { currentSettings: () => settings, applyPartial, saveSettingData },
+                    control: { applySettings },
+                },
+            },
+            settings,
+            applyPartial,
+            saveSettingData,
+            applySettings,
+        };
+    }
+
+    it.each([
+        passiveHostSettings,
+        { ...passiveHostSettings, P2P_AutoBroadcast: true, P2P_AutoWatchPeers: "Desktop" },
+        { ...passiveHostSettings, P2P_AutoAccepting: AutoAccepting.ALL, P2P_AutoSyncPeers: "Desktop,android" },
+    ])("connects with the configured host policy without saving or restarting the lifecycle (%j)", async (original) => {
+        const host = createHostCore();
+        const { service, connect, disconnect } = createP2PService();
+        connect.mockImplementation(async () => {
+            expect(host.settings).toMatchObject({ ...original, P2P_IsHeadless: true });
+        });
+
+        await expect(openP2PHost(host.core as never, service as never, original)).resolves.toBe(service);
+
+        expect(host.applyPartial).toHaveBeenCalledExactlyOnceWith(original);
+        expect(connect).toHaveBeenCalledOnce();
+        expect(disconnect).not.toHaveBeenCalled();
+        expect(host.settings).toMatchObject({ liveSync: false, suspendFileWatching: true });
+        expect(host.saveSettingData).not.toHaveBeenCalled();
+        expect(host.applySettings).not.toHaveBeenCalled();
+    });
+
+    it("keeps P2P disabled when the saved host policy disables it", async () => {
+        const host = createHostCore();
+        const { service, connect } = createP2PService();
+
+        await expect(
+            openP2PHost(host.core as never, service as never, { ...passiveHostSettings, P2P_Enabled: false })
+        ).rejects.toThrow("P2P is disabled");
+
+        expect(connect).not.toHaveBeenCalled();
+    });
+
+    it("does not connect when restoring the host policy fails", async () => {
+        const host = createHostCore();
+        const { service, connect } = createP2PService();
+        host.applyPartial.mockRejectedValue(new Error("settings failed"));
+
+        await expect(openP2PHost(host.core as never, service as never, passiveHostSettings)).rejects.toThrow(
+            "settings failed"
+        );
+
+        expect(connect).not.toHaveBeenCalled();
+    });
+
     it("accepts non-negative timeout", () => {
         expect(parseTimeoutSeconds("0", "p2p-peers")).toBe(0);
         expect(parseTimeoutSeconds("2.5", "p2p-sync")).toBe(2.5);

@@ -5,6 +5,7 @@ import { createNodeStandardIo } from "@vrtmrz/livesync-commonlib/node";
 import { writeStderrLine } from "@/apps/cli/cliOutput";
 import { main, type CliCommandRunner } from "@/apps/cli/main";
 import { parseTimeoutSeconds } from "@/apps/cli/commands/p2p";
+import { runP2PAutomaticHostFixture } from "./p2p-automatic-host.test";
 import { runP2PReplicatorReplacementProbe } from "./p2p-replicator-replacement.test";
 
 if (
@@ -16,8 +17,13 @@ if (
 
 const standardIo = createNodeStandardIo();
 const runLifecycleProbe: CliCommandRunner = async (options, context) => {
+    if (options.command === "p2p-host") {
+        return await runP2PAutomaticHostFixture(options, context);
+    }
     if (options.command !== "p2p-sync" || options.commandArgs.length < 2) {
-        throw new Error("The P2P lifecycle test entry requires: p2p-sync <peer> <timeout> [note-path] [note-content]");
+        throw new Error(
+            "The P2P lifecycle test entry requires: p2p-host or p2p-sync <peer> <timeout> [note-path] [note-content]"
+        );
     }
     const peerToken = options.commandArgs[0].trim();
     if (!peerToken) {

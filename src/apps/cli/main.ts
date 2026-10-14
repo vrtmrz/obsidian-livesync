@@ -608,8 +608,8 @@ export async function main(
             ? preserveStoredSetting(latestPreparedSettingsText, originalSettingsText, "useIndexedDBAdapter")
             : originalSettingsText;
 
-        // Capture sync settings before suspendAllSync() clobbers them.
-        // Used by daemon mode to restore sync behaviour after initial replication.
+        // Capture configured policy before temporary CLI startup suspension.
+        // Long-running commands restore only the settings they own.
         const settingsBeforeSuspend = cloneSettings(core.services.setting.currentSettings());
         const durableSettingsBeforeSuspend = cloneSettings(settingsBeforeSuspend);
         applyStoredSetting(durableSettingsBeforeSuspend, settingsAfterLoadText, "useIndexedDBAdapter");
@@ -621,6 +621,14 @@ export async function main(
             syncOnEditorSave: settingsBeforeSuspend.syncOnEditorSave,
             syncOnFileOpen: settingsBeforeSuspend.syncOnFileOpen,
             syncAfterMerge: settingsBeforeSuspend.syncAfterMerge,
+        };
+        const originalP2PSettings = {
+            P2P_Enabled: settingsBeforeSuspend.P2P_Enabled,
+            P2P_AutoAccepting: settingsBeforeSuspend.P2P_AutoAccepting,
+            P2P_AutoStart: settingsBeforeSuspend.P2P_AutoStart,
+            P2P_AutoBroadcast: settingsBeforeSuspend.P2P_AutoBroadcast,
+            P2P_AutoSyncPeers: settingsBeforeSuspend.P2P_AutoSyncPeers,
+            P2P_AutoWatchPeers: settingsBeforeSuspend.P2P_AutoWatchPeers,
         };
         await core.services.setting.suspendAllSync();
         const settingsAfterSuspend = cloneSettings(core.services.setting.currentSettings());
@@ -679,6 +687,7 @@ export async function main(
                 p2pReplicator,
                 settingsPath,
                 originalSyncSettings,
+                originalP2PSettings,
             });
         } finally {
             commandIsRunning = false;
