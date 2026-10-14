@@ -193,6 +193,8 @@ The generated systemd unit uses the wrapper's absolute path and does not depend 
 
 ### Docker
 
+CLI-only Docker patches use their full release tag, such as `ghcr.io/vrtmrz/livesync-cli:1.0.36-patch1-cli`. Patch and RC images receive version and SHA-qualified tags. The `latest` and major-minor tags are updated by ordinary stable releases. CLI image versions come from the release Git tag, so a CLI-only patch does not require changing the Obsidian plug-in version.
+
 A Docker image is provided for headless / server deployments. Build from the repository root:
 
 ```bash

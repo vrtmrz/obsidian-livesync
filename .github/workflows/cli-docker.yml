@@ -1,5 +1,5 @@
 # Build and push the CLI Docker image to GitHub Container Registry (GHCR).
-# Image tag format: <manifest-version>-cli
+# Release image tag format: <release-version>-cli
 # Example: 1.0.36-cli
 #
 # Stable releases are also tagged with their major-minor version and 'latest'.
@@ -72,6 +72,15 @@ jobs:
                   DRY_RUN: ${{ inputs.dry_run }}
               run: |
                   VERSION=$(jq -r '.version' manifest.json)
+                  if [[ "${REF}" == refs/tags/*-cli ]]; then
+                      # CLI releases use their Git tag independently of the plug-in version.
+                      VERSION="${REF#refs/tags/}"
+                      VERSION="${VERSION%-cli}"
+                      if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+                          printf 'Invalid CLI release tag: %s\n' "$REF" >&2
+                          exit 1
+                      fi
+                  fi
                   MAJOR_MINOR=$(echo "${VERSION}" | cut -d. -f1,2)
                   SHORT_SHA=$(git rev-parse --short HEAD)
                   IMAGE="ghcr.io/${{ github.repository_owner }}/livesync-cli"
