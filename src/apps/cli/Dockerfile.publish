@@ -1,0 +1,3 @@
+# syntax=docker/dockerfile:1
+# Export the image which passed Docker E2E without rebuilding its dependencies.
+FROM validated-image

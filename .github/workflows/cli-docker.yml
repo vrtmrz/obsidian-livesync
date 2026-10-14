@@ -1,6 +1,6 @@
-# Build and push the CLI Docker image to GitHub Container Registry (GHCR).#
-# Image tag format: <manifest-version>-<unix-epoch>-cli
-# Example: 0.25.56-1743500000-cli
+# Build and push the CLI Docker image to GitHub Container Registry (GHCR).
+# Release image tag format: <release-version>-cli
+# Example: 1.0.36-cli
 #
 # Stable releases are also tagged with their major-minor version and 'latest'.
 # Pre-releases receive immutable version and SHA-qualified tags only.
@@ -13,16 +13,25 @@ on:
             - main
         tags:
             - "*.*.*-cli"
-        paths-ignore:
-            - "docs/**"
-            - "*.md"
-            - "images/**"
-            - "assets/**"
-            - "instruction_images/**"
-            - "src/apps/webapp/**"
-            - "src/apps/webpeer/**"
-            - ".github/workflows/release.yml"
-            - ".github/workflows/unit-ci.yml"
+        paths:
+            - ".github/workflows/cli-docker.yml"
+            - ".github/workflows/cli-docker-validation.yml"
+            - "src/apps/cli/**"
+            - "!src/apps/cli/**/*.md"
+            - "src/LiveSyncBaseCore.ts"
+            - "src/common/**"
+            - "src/serviceFeatures/**"
+            - "src/serviceModules/**"
+            - "src/integrations/**"
+            - "src/modules/AbstractModule.ts"
+            - "src/modules/main/**"
+            - "src/modules/coreFeatures/**"
+            - "manifest.json"
+            - "tsconfig.json"
+            - "package.json"
+            - "package-lock.json"
+            - ".dockerignore"
+            - "utils/cli-docker-*.mjs"
     workflow_dispatch:
         inputs:
             dry_run:
@@ -36,29 +45,49 @@ on:
                 type: boolean
                 default: false
 
+concurrency:
+    group: cli-docker-publish-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
-    build-and-push:
-        runs-on: ubuntu-latest
-        timeout-minutes: 90
+    metadata:
+        name: Select image publication metadata
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
         permissions:
             contents: read
-            packages: write
-
+        outputs:
+            image: ${{ steps.meta.outputs.image }}
+            tags: ${{ steps.meta.outputs.tags }}
+            push: ${{ steps.meta.outputs.push }}
         steps:
             - name: Checkout
               uses: actions/checkout@v5
 
             - name: Derive image tag
               id: meta
+              env:
+                  REF: ${{ github.ref }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  DRY_RUN: ${{ inputs.dry_run }}
               run: |
                   VERSION=$(jq -r '.version' manifest.json)
+                  if [[ "${REF}" == refs/tags/*-cli ]]; then
+                      # CLI releases use their Git tag independently of the plug-in version.
+                      VERSION="${REF#refs/tags/}"
+                      VERSION="${VERSION%-cli}"
+                      if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+                          printf 'Invalid CLI release tag: %s\n' "$REF" >&2
+                          exit 1
+                      fi
+                  fi
                   MAJOR_MINOR=$(echo "${VERSION}" | cut -d. -f1,2)
                   SHORT_SHA=$(git rev-parse --short HEAD)
                   IMAGE="ghcr.io/${{ github.repository_owner }}/livesync-cli"
 
                   # Build tag list based on the event and git ref
                   TAGS=""
-                  if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+                  if [[ "${REF}" == refs/tags/* ]]; then
                       if [[ "${VERSION}" == *-* ]]; then
                           # Pre-release builds must not advance stable moving tags.
                           TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
@@ -66,7 +95,7 @@ jobs:
                           # Stable release builds
                           TAGS="${IMAGE}:${VERSION}-cli,${IMAGE}:${MAJOR_MINOR}-cli,${IMAGE}:latest,${IMAGE}:${VERSION}-sha-${SHORT_SHA}-cli"
                       fi
-                  elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+                  elif [[ "${REF}" == refs/heads/main ]]; then
                       # Bleeding-edge / nightly builds
                       TAGS="${IMAGE}:edge"
                   else
@@ -76,64 +105,144 @@ jobs:
 
                   # Determine if the image should be pushed
                   PUSH="true"
-                  if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-                      if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+                  if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+                      if [[ "${DRY_RUN}" == "true" ]]; then
                           PUSH="false"
                       fi
                   fi
 
-                  echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-                  echo "push=${PUSH}" >> $GITHUB_OUTPUT
+                  echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+                  echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+                  echo "push=${PUSH}" >> "$GITHUB_OUTPUT"
+
+    validate:
+        uses: ./.github/workflows/cli-docker-validation.yml
+        with:
+            force: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+        permissions:
+            contents: read
+
+    publish-images:
+        name: Prepare image publication (${{ matrix.arch }})
+        needs: [metadata, validate]
+        if: ${{ needs.validate.outputs.e2e_passed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force) }}
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            packages: write
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - arch: amd64
+                      runner: ubuntu-24.04
+                    - arch: arm64
+                      runner: ubuntu-24.04-arm
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+
+            - name: Download validated image
+              uses: actions/download-artifact@v8
+              with:
+                  name: cli-docker-image-${{ matrix.arch }}
+                  path: ${{ runner.temp }}/cli-image-archive/
+
+            - name: Extract OCI image
+              id: image-context
+              shell: bash
+              run: |
+                  mkdir -p "$RUNNER_TEMP/cli-image"
+                  tar -xf "$RUNNER_TEMP/cli-image-archive/cli-image.tar" -C "$RUNNER_TEMP/cli-image"
+                  DIGEST=$(jq -er '.manifests | if length == 1 then .[0].digest else error("Expected one OCI image") end' "$RUNNER_TEMP/cli-image/index.json")
+                  echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
             - name: Log in to GitHub Container Registry
+              if: needs.metadata.outputs.push == 'true'
               uses: docker/login-action@v4
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v4
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v4
+
+            - name: Prepare architecture image
+              id: image
+              uses: docker/build-push-action@v7
               with:
-                  platforms: arm64
+                  context: .
+                  file: src/apps/cli/Dockerfile.publish
+                  build-contexts: validated-image=oci-layout://${{ runner.temp }}/cli-image@${{ steps.image-context.outputs.digest }}
+                  platforms: linux/${{ matrix.arch }}
+                  outputs: type=image,name=${{ needs.metadata.outputs.image }},push-by-digest=true,name-canonical=true,push=${{ needs.metadata.outputs.push }}
+
+            - name: Record image digest
+              env:
+                  ARCH: ${{ matrix.arch }}
+                  DIGEST: ${{ steps.image.outputs.digest }}
+              run: node utils/cli-docker-artifacts.mjs record-digest "$ARCH" "$DIGEST" "$RUNNER_TEMP/cli-digests"
+
+            - name: Upload image digest
+              uses: actions/upload-artifact@v6
+              with:
+                  name: cli-docker-digest-${{ matrix.arch }}
+                  path: ${{ runner.temp }}/cli-digests/
+                  if-no-files-found: error
+                  overwrite: true
+                  retention-days: 1
+
+    manifest:
+        name: Finalise multi-platform image
+        needs: [metadata, publish-images]
+        runs-on: ubuntu-24.04
+        timeout-minutes: 10
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+
+            - name: Download image digests
+              uses: actions/download-artifact@v8
+              with:
+                  pattern: cli-docker-digest-*
+                  merge-multiple: true
+                  path: ${{ runner.temp }}/cli-digests/
+
+            - name: Log in to GitHub Container Registry
+              if: needs.metadata.outputs.push == 'true'
+              uses: docker/login-action@v4
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: "24.x"
-                  cache: "npm"
-
-            - name: Install dependencies
-              run: npm ci
-
-            - name: Run CLI E2E (docker)
-              id: e2e
-              continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
-              working-directory: src/apps/cli
+            - name: Assemble image publication
               env:
-                  CI: true
-              run: npm run test:e2e:docker:all
-
-            - name: Stop test containers (safety net)
-              if: always()
-              working-directory: src/apps/cli
+                  IMAGE: ${{ needs.metadata.outputs.image }}
+                  IMAGE_TAGS: ${{ needs.metadata.outputs.tags }}
+                  PUSH: ${{ needs.metadata.outputs.push }}
+              shell: bash
               run: |
-                  # Keep this as a safety net for future suites/steps that may leave containers running.
-                  bash ./util/couchdb-stop.sh >/dev/null 2>&1 || true
-                  bash ./util/minio-stop.sh >/dev/null 2>&1 || true
-                  bash ./util/p2p-stop.sh >/dev/null 2>&1 || true
-
-            - name: Build and push
-              if: ${{ steps.e2e.outcome == 'success' || (github.event_name == 'workflow_dispatch' && inputs.force) }}
-              uses: docker/build-push-action@v7
-              with:
-                  context: .
-                  file: src/apps/cli/Dockerfile
-                  push: ${{ steps.meta.outputs.push }}
-                  tags: ${{ steps.meta.outputs.tags }}
-                  platforms: linux/amd64,linux/arm64
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+                  set -euo pipefail
+                  node utils/cli-docker-artifacts.mjs references "$IMAGE" "$RUNNER_TEMP/cli-digests" > "$RUNNER_TEMP/image-references.txt"
+                  mapfile -t REFERENCES < "$RUNNER_TEMP/image-references.txt"
+                  IFS=',' read -ra TAGS <<< "$IMAGE_TAGS"
+                  TAG_ARGS=()
+                  for tag in "${TAGS[@]}"; do
+                      TAG_ARGS+=(--tag "$tag")
+                  done
+                  if [[ "$PUSH" == "true" ]]; then
+                      docker buildx imagetools create "${TAG_ARGS[@]}" "${REFERENCES[@]}"
+                  else
+                      printf 'Dry run: both architecture images built; publication skipped.\n'
+                      printf 'Image: %s\n' "${REFERENCES[@]}"
+                      printf 'Tag: %s\n' "${TAGS[@]}"
+                  fi

@@ -8,14 +8,34 @@ on:
     paths:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
-      - 'test/bench-network/**'
+      - '!src/apps/cli/**/*.md'
+      - 'src/LiveSyncBaseCore.ts'
+      - 'src/common/**'
+      - 'src/serviceFeatures/**'
+      - 'src/serviceModules/**'
+      - 'src/integrations/**'
+      - 'src/modules/AbstractModule.ts'
+      - 'src/modules/main/**'
+      - 'src/modules/coreFeatures/**'
+      - 'manifest.json'
+      - 'tsconfig.json'
       - 'package.json'
       - 'package-lock.json'
   pull_request:
     paths:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
-      - 'test/bench-network/**'
+      - '!src/apps/cli/**/*.md'
+      - 'src/LiveSyncBaseCore.ts'
+      - 'src/common/**'
+      - 'src/serviceFeatures/**'
+      - 'src/serviceModules/**'
+      - 'src/integrations/**'
+      - 'src/modules/AbstractModule.ts'
+      - 'src/modules/main/**'
+      - 'src/modules/coreFeatures/**'
+      - 'manifest.json'
+      - 'tsconfig.json'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
@@ -40,23 +60,34 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --max-old-space-size=3072
     outputs:
       task_matrix: ${{ steps.select.outputs.task_matrix }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
       - name: Select task matrix
         id: select
         shell: bash
+        env:
+          SELECTED_TASK: ${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test:ci' }}
         run: |
           set -euo pipefail
-          SELECTED_TASK="${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test:ci' }}"
           echo "[INFO] Selected task set: $SELECTED_TASK"
 
           case "$SELECTED_TASK" in
             test:ci)
-              TASK_MATRIX='["test:setup-put-cat","test:mirror","test:daemon","test:daemon-startup","test:push-pull","test:decoupled-vault","test:sync-two-local","test:sync-locked-remote","test:remote-commands","test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
+              TASK_MATRIX=$(jq -c . src/apps/cli/testdeno/ci-tasks.json)
               ;;
             test:local)
               TASK_MATRIX='["test:setup-put-cat","test:mirror","test:daemon"]'
@@ -71,6 +102,27 @@ jobs:
           esac
 
           echo "task_matrix=$TASK_MATRIX" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        working-directory: src/apps/cli
+        run: npm run build
+
+      - name: Upload CLI bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: cli-bundle
+          path: src/apps/cli/dist/
+          if-no-files-found: error
+          retention-days: 1
 
   test:
     needs: prepare
@@ -109,9 +161,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build CLI
-        working-directory: src/apps/cli
-        run: npm run build
+      - name: Download CLI bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-bundle
+          path: src/apps/cli/dist/
 
       - name: Create .test.env
         working-directory: src/apps/cli
@@ -145,38 +199,3 @@ jobs:
         run: |
           docker stop couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
           docker rm couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
-
-  compose-p2p-e2e:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Show Docker versions
-        run: |
-          docker --version
-          docker compose version
-
-      - name: Run Compose CLI P2P E2E
-        env:
-          CLI_E2E_TASK: test:p2p:ci
-          RELAY: ws://nostr-relay:7777/
-          PEERS_TIMEOUT: '20'
-          SYNC_TIMEOUT: '60'
-          LIVESYNC_USE_COTURN: '0'
-          TURN_SERVERS: none
-          LIVESYNC_P2P_PEERS_RETRY: '1'
-          LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: '60000'
-          BENCH_LIVESYNC_TEST_TEE: '0'
-        run: docker compose -f test/bench-network/compose.yml run --build --rm bench-runner run-livesync-cli-e2e
-
-      - name: Show Compose diagnostics
-        if: failure()
-        run: |
-          docker compose -f test/bench-network/compose.yml ps
-          docker compose -f test/bench-network/compose.yml logs --no-color couchdb nostr-relay || true
-
-      - name: Stop Compose services
-        if: always()
-        run: docker compose -f test/bench-network/compose.yml down -v --remove-orphans
