@@ -1,0 +1,192 @@
+name: CLI Docker validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cli-docker.yml'
+      - '.github/workflows/cli-docker-validation.yml'
+      - 'src/apps/cli/**'
+      - '!src/apps/cli/**/*.md'
+      - 'src/LiveSyncBaseCore.ts'
+      - 'src/common/**'
+      - 'src/serviceFeatures/**'
+      - 'src/serviceModules/**'
+      - 'src/integrations/**'
+      - 'src/modules/AbstractModule.ts'
+      - 'src/modules/main/**'
+      - 'src/modules/coreFeatures/**'
+      - 'manifest.json'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.dockerignore'
+      - 'utils/cli-docker-*.mjs'
+  workflow_call:
+    inputs:
+      force:
+        type: boolean
+        default: false
+    outputs:
+      e2e_passed:
+        description: Whether the Docker CLI E2E suite passed
+        value: ${{ jobs.summary.outputs.e2e_passed }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-docker-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bundle:
+    name: Build shared Docker CLI bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --max-old-space-size=3072
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        working-directory: src/apps/cli
+        run: npm run build
+
+      - name: Upload Docker CLI bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: cli-docker-bundle
+          path: src/apps/cli/dist/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+  validate:
+    name: Docker E2E (${{ matrix.arch }})
+    needs: bundle
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download Docker CLI bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-docker-bundle
+          path: _cli-bundle/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: src/apps/cli/Dockerfile
+          build-args: CLI_BUNDLE_STAGE=prebuilt
+          load: true
+          outputs: type=oci,dest=${{ runner.temp }}/cli-image.tar
+          tags: livesync-cli
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=gha,scope=cli-runtime-${{ matrix.arch }}
+          cache-to: type=gha,scope=cli-runtime-${{ matrix.arch }},mode=max
+
+      - name: Verify image architecture
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: test "$(docker image inspect livesync-cli --format '{{.Architecture}}')" = "$ARCH"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CLI E2E (docker)
+        id: e2e
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        working-directory: src/apps/cli
+        env:
+          CI: true
+        run: npm --ignore-scripts run test:e2e:docker:all
+
+      - name: Upload validated image
+        if: ${{ success() || (github.event_name == 'workflow_dispatch' && inputs.force && steps.e2e.outcome == 'failure') }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: cli-docker-image-${{ matrix.arch }}
+          path: ${{ runner.temp }}/cli-image.tar
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 1
+
+      - name: Record E2E result
+        if: always()
+        env:
+          ARCH: ${{ matrix.arch }}
+          OUTCOME: ${{ steps.e2e.outcome }}
+        run: node utils/cli-docker-artifacts.mjs record-result "$ARCH" "$OUTCOME" "$RUNNER_TEMP/cli-results"
+
+      - name: Upload E2E result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cli-docker-result-${{ matrix.arch }}
+          path: ${{ runner.temp }}/cli-results/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+      - name: Stop test containers
+        if: always()
+        working-directory: src/apps/cli
+        run: |
+          bash ./util/couchdb-stop.sh >/dev/null 2>&1 || true
+          bash ./util/minio-stop.sh >/dev/null 2>&1 || true
+          bash ./util/p2p-stop.sh >/dev/null 2>&1 || true
+
+  summary:
+    name: Collect both Docker E2E results
+    needs: validate
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      e2e_passed: ${{ steps.summary.outputs.e2e_passed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download E2E results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-docker-result-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/cli-results/
+
+      - name: Require both architecture results
+        id: summary
+        run: node utils/cli-docker-artifacts.mjs summary "$RUNNER_TEMP/cli-results" >> "$GITHUB_OUTPUT"

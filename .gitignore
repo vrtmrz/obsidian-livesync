@@ -29,6 +29,7 @@ cov_profile/**
 
 coverage
 src/apps/cli/dist/*
+_cli-bundle/
 src/apps/webapp/playwright-report/
 src/apps/webapp/test-results/
 _testdata/**
