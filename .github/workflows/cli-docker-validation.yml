@@ -1,0 +1,87 @@
+name: CLI Docker validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cli-docker.yml'
+      - '.github/workflows/cli-docker-validation.yml'
+      - 'src/apps/cli/**'
+      - '!src/apps/cli/**/*.md'
+      - 'src/LiveSyncBaseCore.ts'
+      - 'src/common/**'
+      - 'src/serviceFeatures/**'
+      - 'src/serviceModules/**'
+      - 'src/integrations/**'
+      - 'src/modules/AbstractModule.ts'
+      - 'src/modules/main/**'
+      - 'src/modules/coreFeatures/**'
+      - 'manifest.json'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.dockerignore'
+  workflow_call:
+    inputs:
+      force:
+        type: boolean
+        default: false
+    outputs:
+      e2e_passed:
+        description: Whether the Docker CLI E2E suite passed
+        value: ${{ jobs.validate.outputs.e2e_passed }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-docker-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      e2e_passed: ${{ steps.e2e.outcome == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: src/apps/cli/Dockerfile
+          load: true
+          tags: livesync-cli
+          platforms: linux/amd64
+          cache-from: type=gha,scope=cli-image
+          cache-to: type=gha,scope=cli-image,mode=max
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run CLI E2E (docker)
+        id: e2e
+        continue-on-error: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        working-directory: src/apps/cli
+        env:
+          CI: true
+        run: npm --ignore-scripts run test:e2e:docker:all
+
+      - name: Stop test containers
+        if: always()
+        working-directory: src/apps/cli
+        run: |
+          bash ./util/couchdb-stop.sh >/dev/null 2>&1 || true
+          bash ./util/minio-stop.sh >/dev/null 2>&1 || true
+          bash ./util/p2p-stop.sh >/dev/null 2>&1 || true

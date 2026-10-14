@@ -1,20 +1,4 @@
-const TASKS = [
-    "test:settings-writeback",
-    "test:remote-administration-exit-codes",
-    "test:setup-put-cat",
-    "test:mirror",
-    "test:daemon",
-    "test:daemon-startup",
-    "test:push-pull",
-    "test:decoupled-vault",
-    "test:sync-two-local",
-    "test:sync-locked-remote",
-    "test:remote-commands",
-    "test:e2e-matrix:couchdb-enc0",
-    "test:e2e-matrix:couchdb-enc1",
-    "test:e2e-matrix:minio-enc0",
-    "test:e2e-matrix:minio-enc1",
-] as const;
+import TASKS from "./ci-tasks.json" with { type: "json" };
 
 for (const [index, task] of TASKS.entries()) {
     console.log(`\n[CLI E2E ${index + 1}/${TASKS.length}] ${task}`);

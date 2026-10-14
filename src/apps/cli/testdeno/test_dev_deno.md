@@ -323,7 +323,11 @@ deno task test:sync-two-local
 
 ## Continuous Integration
 
-The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` runs automatically on pushes and pull requests affecting the CLI, executing the non-P2P test suite (`test:ci`). P2P tests (`test:p2p`) are excluded from automatic execution and must be run via manual dispatch (`workflow_dispatch`). You can optionally check the "Enable verbose and debug logging" checkbox during a manual dispatch to produce detailed trace logs for troubleshooting.
+The GitHub Actions workflow `.github/workflows/cli-deno-tests.yml` runs automatically on pushes and pull requests affecting the CLI or its shared runtime inputs. It builds the CLI once, then distributes the bundle to the non-P2P test jobs. The local `test:ci` runner and the automatic matrix both read `ci-tasks.json`. During a manual dispatch, select a test subset and optionally enable 'Enable verbose and debug logging' for detailed troubleshooting traces.
+
+The separate `.github/workflows/cli-p2p-tests.yml` workflow runs the canonical Compose P2P suite automatically for changes to the CLI, its shared runtime inputs, or `test/bench-network/`. A change confined to the Compose fixtures does not start the non-P2P matrix. Host-direct `test:p2p` tasks remain available for explicit diagnostics.
+
+The `.github/workflows/cli-docker-validation.yml` workflow tests the production Docker image on relevant pull requests and is also called before container publication. Validation runs without registry credentials. The publishing workflow, `.github/workflows/cli-docker.yml`, reuses the Docker build cache and retains the existing main-branch, release-tag, and manual publication conditions.
 
 ---
 
