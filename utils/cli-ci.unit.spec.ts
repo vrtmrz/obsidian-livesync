@@ -138,6 +138,12 @@ describe("CLI CI selection", () => {
             step.uses?.startsWith("docker/build-push-action@")
         );
         expect(publishBuild?.with?.["cache-from"]).toBe(build?.with?.["cache-from"]);
-        expect(publishBuild?.with?.["cache-to"]).toBe(build?.with?.["cache-to"]);
+        const validationScope = String(build?.with?.["cache-to"]).match(/scope=([^,\s]+)/)?.[1];
+        const publicationScope = String(publishBuild?.with?.["cache-to"]).match(/scope=([^,\s]+)/)?.[1];
+        expect(validationScope).toBeDefined();
+        expect(publicationScope).toBeDefined();
+        expect(publicationScope).not.toBe(validationScope);
+        expect(publishBuild?.with?.["cache-from"]).toContain(`scope=${validationScope}`);
+        expect(publishBuild?.with?.["cache-from"]).toContain(`scope=${publicationScope}`);
     });
 });

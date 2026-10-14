@@ -58,8 +58,11 @@ jobs:
           load: true
           tags: livesync-cli
           platforms: linux/amd64
-          cache-from: type=gha,scope=cli-image
-          cache-to: type=gha,scope=cli-image,mode=max
+          cache-from: |
+            type=gha,scope=cli-image-amd64
+            type=gha,scope=cli-image
+          # Keep amd64 validation from replacing the cache for both platforms.
+          cache-to: type=gha,scope=cli-image-amd64,mode=max
 
       - name: Setup Node.js
         uses: actions/setup-node@v5

@@ -129,5 +129,7 @@ jobs:
                   push: ${{ steps.meta.outputs.push }}
                   tags: ${{ steps.meta.outputs.tags }}
                   platforms: linux/amd64,linux/arm64
-                  cache-from: type=gha,scope=cli-image
+                  cache-from: |
+                      type=gha,scope=cli-image-amd64
+                      type=gha,scope=cli-image
                   cache-to: type=gha,scope=cli-image,mode=max
