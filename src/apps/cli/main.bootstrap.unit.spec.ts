@@ -4,12 +4,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
-import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    AutoAccepting,
+    REMOTE_COUCHDB,
+    REMOTE_P2P,
+    type FilePathWithPrefix,
+    type ObsidianLiveSyncSettings,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { ServiceFileAccessCLI } from "./serviceModules/ServiceFileAccessImpl";
 import { runCommand } from "./commands/runCommand";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import { main, type CliCommandRunner } from "./main";
+import { cloneSettings } from "./settingsPersistence";
+import type { CLICommand } from "./commands/types";
 
 vi.mock("chokidar", { spy: true });
 
@@ -61,11 +69,106 @@ describe("CLI database preparation", () => {
         await rm(directory, { recursive: true, force: true });
     });
 
-    async function start(command: "daemon" | "mirror" | "ls", runner: CliCommandRunner, exitCode = 1) {
+    async function start(command: CLICommand, runner: CliCommandRunner, exitCode = 1) {
         process.argv = ["node", "livesync-cli", directory, "--vault", vaultPath, "--settings", settingsPath, command];
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
+
+    it.each([REMOTE_P2P, REMOTE_COUCHDB])(
+        "restores configured P2P automation before the host connects (%s)",
+        async (remoteType) => {
+            const p2pSettings = {
+                P2P_Enabled: true,
+                P2P_AutoAccepting: AutoAccepting.ALL,
+                P2P_AutoStart: true,
+                P2P_AutoBroadcast: true,
+                P2P_AutoSyncPeers: "Desktop,android",
+                P2P_AutoWatchPeers: "Desktop,android",
+            };
+            await writeFile(
+                settingsPath,
+                JSON.stringify({
+                    ...createDefaultCliSettings(),
+                    isConfigured: true,
+                    remoteType,
+                    liveSync: true,
+                    periodicReplication: true,
+                    syncOnSave: true,
+                    ...p2pSettings,
+                })
+            );
+            const savedSettings = await readFile(settingsPath, "utf-8");
+            let settingsBeforeHost: ObsidianLiveSyncSettings | undefined;
+            let settingsAtConnect: ObsidianLiveSyncSettings | undefined;
+            const connect = vi.fn();
+            const runner = vi.fn<CliCommandRunner>(async (options, context) => {
+                settingsBeforeHost = cloneSettings(context.core.services.setting.currentSettings());
+                connect.mockImplementation(async () => {
+                    settingsAtConnect = cloneSettings(context.core.services.setting.currentSettings());
+                    throw new Error("Host connection probe complete");
+                });
+                return runCommand(options, {
+                    ...context,
+                    p2pReplicator: {
+                        ...context.p2pReplicator!,
+                        transportLifecycle: { isConnected: false, connect, disconnect: vi.fn() },
+                    },
+                });
+            });
+
+            await start("p2p-host", runner);
+
+            expect(settingsBeforeHost).toMatchObject({
+                P2P_AutoBroadcast: false,
+                P2P_AutoSyncPeers: "",
+                P2P_AutoWatchPeers: "",
+            });
+            expect(connect).toHaveBeenCalledOnce();
+            expect(settingsAtConnect).toMatchObject(p2pSettings);
+            expect(settingsAtConnect).toMatchObject({ liveSync: false, periodicReplication: false, syncOnSave: false });
+            expect(await readFile(settingsPath, "utf-8")).toBe(savedSettings);
+        }
+    );
+
+    it.each(["ls", "put", "remote-set", "p2p-peers", "p2p-sync"] as const)(
+        "keeps automatic P2P work suspended for %s",
+        async (command) => {
+            await writeFile(
+                settingsPath,
+                JSON.stringify({
+                    ...createDefaultCliSettings(),
+                    isConfigured: true,
+                    remoteType: REMOTE_P2P,
+                    P2P_Enabled: true,
+                    P2P_AutoAccepting: AutoAccepting.ALL,
+                    P2P_AutoStart: true,
+                    P2P_AutoBroadcast: true,
+                    P2P_AutoSyncPeers: "Desktop",
+                    P2P_AutoWatchPeers: "Desktop",
+                })
+            );
+            const savedSettings = await readFile(settingsPath, "utf-8");
+            let settingsAtCommand: ObsidianLiveSyncSettings | undefined;
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                settingsAtCommand = cloneSettings(core.services.setting.currentSettings());
+                return false;
+            });
+
+            await start(command, runner);
+
+            expect(runner).toHaveBeenCalledOnce();
+            expect(settingsAtCommand).toMatchObject({
+                P2P_Enabled: true,
+                P2P_AutoAccepting: AutoAccepting.NONE,
+                P2P_AutoStart: false,
+                P2P_AutoBroadcast: false,
+                P2P_AutoSyncPeers: "",
+                P2P_AutoWatchPeers: "",
+            });
+            expect(await readFile(settingsPath, "utf-8")).toBe(savedSettings);
+        }
+    );
 
     it.each([
         { command: "daemon" as const, suspendFileWatching: false },
@@ -146,20 +249,25 @@ describe("CLI database preparation", () => {
         expect(storedPaths).toEqual([]);
     });
 
-    it("unloads without starting the command when database preparation fails", async () => {
-        vi.spyOn(ControlService.prototype, "onReady").mockResolvedValue(false);
-        const unload = vi.spyOn(ControlService.prototype, "onUnload");
-        const runner = vi.fn<CliCommandRunner>(async () => false);
-        const settingsBefore = await readFile(settingsPath, "utf-8");
+    it.each(["daemon", "p2p-host"] as const)(
+        "unloads without starting %s when database preparation fails",
+        async (command) => {
+            vi.spyOn(ControlService.prototype, "onReady").mockResolvedValue(false);
+            const unload = vi.spyOn(ControlService.prototype, "onUnload");
+            const runner = vi.fn<CliCommandRunner>(async () => false);
+            const settingsBefore = await readFile(settingsPath, "utf-8");
 
-        await start("daemon", runner);
+            await start(command, runner);
 
-        expect(runner).not.toHaveBeenCalled();
-        expect(unload).toHaveBeenCalledOnce();
-        expect(unload.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(process.exit).mock.invocationCallOrder[0]);
-        expect(process.exit).toHaveBeenCalledWith(1);
-        expect(await readFile(settingsPath, "utf-8")).toBe(settingsBefore);
-    });
+            expect(runner).not.toHaveBeenCalled();
+            expect(unload).toHaveBeenCalledOnce();
+            expect(unload.mock.invocationCallOrder[0]).toBeLessThan(
+                vi.mocked(process.exit).mock.invocationCallOrder[0]
+            );
+            expect(process.exit).toHaveBeenCalledWith(1);
+            expect(await readFile(settingsPath, "utf-8")).toBe(settingsBefore);
+        }
+    );
 
     it("stops the daemon when the startup scanner refuses a suspended Vault scan", async () => {
         await writeFile(

@@ -452,6 +452,44 @@ Use this command to select a target for `p2p-sync`.
 - Stop the host with `Ctrl+C`.
 - In CLI mode, behaviour is non-interactive and acceptance follows settings.
 
+After the local database is ready, the host restores its configured P2P settings
+before connecting. It opens the connection explicitly, including when
+`P2P_AutoStart` is `false`.
+
+- `P2P_AutoSyncPeers` selects peers for an initial bidirectional synchronisation.
+- `P2P_AutoWatchPeers` selects peers whose later announced changes the host fetches.
+  Those peers must enable `P2P_AutoBroadcast`.
+- `P2P_AutoBroadcast` enables announcements of changes in the host's local database.
+  Clients must follow the host to fetch those changes automatically.
+- Headless operation requires accepted peers. Configure `P2P_AutoAcceptingPeers`
+  or retain an existing acceptance decision; selecting a peer for automatic
+  synchronisation does not itself accept that peer.
+
+For example, a P2P-only host for peers named `Desktop` and `android` can use:
+
+```json
+{
+  "remoteType": "ONLY_P2P",
+  "P2P_Enabled": true,
+  "P2P_IsHeadless": true,
+  "P2P_AutoStart": false,
+  "P2P_AutoBroadcast": true,
+  "P2P_AutoAcceptingPeers": "Desktop,android",
+  "P2P_AutoSyncPeers": "Desktop,android",
+  "P2P_AutoWatchPeers": "Desktop,android"
+}
+```
+
+Add these fields to settings which already contain the shared P2P room,
+passphrase, signalling relay, and this host's unique peer name. Configure the
+clients to accept, synchronise with, and follow the host, and to announce their
+own changes. With a persistent local database, the host can retain received
+changes for a client which connects later.
+
+`p2p-host` exchanges database content. It does not scan or watch external Vault
+file edits. Single-operation CLI commands keep automatic synchronisation
+suspended during their execution.
+
 ##### info
 
 `info` output fields:

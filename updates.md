@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### CLI
+
+#### Fixed
+
+- `p2p-host` restores configured P2P automatic synchronisation, following, and change announcements after initialisation. (#1247)
+    - Headless peer acceptance follows the configured policy. Single-operation commands retain their automatic synchronisation suspension.
+
 ## 1.0.36
 
 13th October, 2026

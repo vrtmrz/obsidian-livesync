@@ -5,6 +5,7 @@ import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFu
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { P2PPeerConnectionMetrics, P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import { fsPromises } from "@vrtmrz/livesync-commonlib/node";
+import type { CLIP2PHostSettings } from "./types";
 
 type CLIP2PPeer = {
     peerId: string;
@@ -191,8 +192,11 @@ export async function syncWithPeer(
 /** Connect the headless P2P host and transfer transport ownership to the caller. */
 export async function openP2PHost(
     core: LiveSyncBaseCore<ServiceContext, never>,
-    p2pService: CLIP2PService | undefined
+    p2pService: CLIP2PService | undefined,
+    originalP2PSettings: CLIP2PHostSettings
 ): Promise<CLIP2PService> {
+    // Restore only P2P policy after database readiness, before peer discovery.
+    await core.services.setting.applyPartial(originalP2PSettings);
     const service = requireP2PService(core, p2pService);
     await service.transportLifecycle.connect();
     return service;

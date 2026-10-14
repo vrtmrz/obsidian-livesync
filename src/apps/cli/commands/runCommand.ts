@@ -214,7 +214,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
     if (options.command === "p2p-host") {
         writeStderrLine(standardIo, "[Command] p2p-host");
-        await openP2PHost(core, context.p2pReplicator);
+        await openP2PHost(core, context.p2pReplicator, context.originalP2PSettings);
         writeStderrLine(standardIo, "[Ready] P2P host is running. Press Ctrl+C to stop.");
         await new Promise(() => {});
         return true;

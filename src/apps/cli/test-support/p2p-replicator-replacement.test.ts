@@ -88,7 +88,7 @@ export async function runP2PReplicatorReplacementProbe(
         throw new Error("The CLI did not activate the initial P2P Replicator adapter");
     }
     const compatibilityFacade = p2pReplicator.replicator;
-    const p2pService = await openP2PHost(core, p2pReplicator);
+    const p2pService = await openP2PHost(core, p2pReplicator, context.originalP2PSettings);
 
     const firstPeer = await communicateWithPeer(p2pService, targetPeer, timeoutMs);
     const initialised = await core.services.databaseEvents.initialiseDatabase(false, true, false);
