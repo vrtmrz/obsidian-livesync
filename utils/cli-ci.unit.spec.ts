@@ -273,9 +273,51 @@ describe("CLI CI selection", () => {
             true,
             ["1.0.36-rc.1-cli", "1.0.36-rc.1-sha-deadbee-cli"],
         ],
+        [
+            "1.0.36",
+            "refs/tags/1.0.36-patch1-cli",
+            "push",
+            "false",
+            true,
+            ["1.0.36-patch1-cli", "1.0.36-patch1-sha-deadbee-cli"],
+        ],
+        [
+            "1.0.36",
+            "refs/tags/1.0.36-rc.1-cli",
+            "push",
+            "false",
+            true,
+            ["1.0.36-rc.1-cli", "1.0.36-rc.1-sha-deadbee-cli"],
+        ],
+        [
+            "1.0.36",
+            "refs/tags/1.0.37-cli",
+            "push",
+            "false",
+            true,
+            ["1.0.37-cli", "1.0-cli", "latest", "1.0.37-sha-deadbee-cli"],
+        ],
+        [
+            "1.0.36",
+            "refs/tags/1.0.36-patch2-cli",
+            "workflow_dispatch",
+            "true",
+            false,
+            ["1.0.36-patch2-cli", "1.0.36-patch2-sha-deadbee-cli"],
+        ],
+        [
+            "1.0.36",
+            "refs/tags/1.0.36",
+            "workflow_dispatch",
+            "true",
+            false,
+            ["1.0.36-cli", "1.0-cli", "latest", "1.0.36-sha-deadbee-cli"],
+        ],
+        ["1.0.36", "refs/tags/not-a-version-cli", "workflow_dispatch", "true", false, null],
+        ["1.0.36", "refs/tags/1.0.36+build-cli", "push", "false", false, null],
         ["1.0.36", "refs/heads/main", "push", "false", true, ["edge"]],
         ["1.0.36", "refs/heads/test", "workflow_dispatch", "true", false, ["1.0.36-dev-sha-deadbee-cli"]],
-    ] as const)("preserves tag selection for %s on %s", (version, ref, event, dryRun, push, tags) => {
+    ] as const)("derives publication metadata for manifest %s on %s", (version, ref, event, dryRun, push, tags) => {
         const metadata = workflow("cli-docker.yml").jobs.metadata.steps?.find((step) => step.id === "meta");
         expect(metadata?.run).toBeDefined();
         const directory = mkdtempSync(join(tmpdir(), "livesync-cli-image-metadata-"));
@@ -298,6 +340,12 @@ describe("CLI CI selection", () => {
                 },
                 encoding: "utf8",
             });
+            if (tags === null) {
+                expect(result.status).not.toBe(0);
+                expect(result.stderr).toContain("Invalid CLI release tag");
+                expect(existsSync(output)).toBe(false);
+                return;
+            }
             expect(result.status, result.stderr).toBe(0);
             const image = "ghcr.io/test-owner/livesync-cli";
             expect(readFileSync(output, "utf8").trim().split("\n")).toEqual([
