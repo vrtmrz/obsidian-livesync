@@ -16,7 +16,7 @@ import type { CLICommandContext, CLIOptions } from "./types";
 import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
+import { fsPromises as fs, getNodeFileCreationTime, path } from "@vrtmrz/livesync-commonlib/node";
 import { writeStderrLine, writeStdoutLine } from "@/apps/cli/cliOutput";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
@@ -232,7 +232,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
 
         await core.serviceModules.storageAccess.writeFileAuto(destinationDatabasePath, toArrayBuffer(sourceData), {
             mtime: Math.floor(sourceStat.mtimeMs),
-            ctime: Math.floor(sourceStat.ctimeMs),
+            ctime: getNodeFileCreationTime(sourceStat),
         });
         const destinationPathWithPrefix = destinationDatabasePath as FilePathWithPrefix;
         const stored = await core.serviceModules.fileHandler.storeFileToDB(destinationPathWithPrefix, true);

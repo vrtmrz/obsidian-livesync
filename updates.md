@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- We can edit files through the CLI without resetting their creation time where the filesystem supplies it. (#1243)
+    - Filesystems without birth-time support retain the existing change-time fallback. File replacement and restoration of a synchronised creation time remain subject to filesystem limitations.
 - `p2p-host` restores configured P2P automatic synchronisation, following, and change announcements after initialisation. (#1247)
     - Headless peer acceptance follows the configured policy. Single-operation commands retain their automatic synchronisation suspension.
 - We can select CLI-only Docker patches by their full release tag, such as `1.0.36-patch1-cli`, while keeping the Obsidian plug-in version.

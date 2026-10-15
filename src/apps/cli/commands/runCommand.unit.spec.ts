@@ -23,6 +23,8 @@ import {
     replicationFailed,
 } from "@vrtmrz/livesync-commonlib/replication";
 
+vi.mock("node:fs/promises", { spy: true });
+
 function createStandardIoMock() {
     return {
         readStdin: vi.fn(async () => ""),
@@ -362,6 +364,38 @@ describe("runCommand abnormal cases", () => {
         expect(result).toBe(false);
         expect(core.serviceModules.databaseFileAccess.fetch).toHaveBeenCalledWith("file.md", "9-invalid", true);
     });
+
+    it.each([
+        { birthtimeMs: 1000.9, expectedCtime: 1000 },
+        { birthtimeMs: 0, expectedCtime: 2000 },
+    ])(
+        "push selects the source creation time with a change-time fallback (%j)",
+        async ({ birthtimeMs, expectedCtime }) => {
+            const core = createCoreMock();
+            const directory = await fs.mkdtemp(path.join(os.tmpdir(), "livesync-push-time-"));
+            const source = path.join(directory, "source.md");
+            await fs.writeFile(source, "content");
+            const sourceStat = await fs.stat(source);
+            const stat = vi
+                .spyOn(fs, "stat")
+                .mockResolvedValue({ ...sourceStat, birthtimeMs, ctimeMs: 2000.8, mtimeMs: 3000.7 });
+            try {
+                const context = { core, vaultPath: "/tmp/vault", databasePath: "/tmp/vault" } as any;
+                expect(await runCommand(makeOptions("push", [source, "note.md"]), context)).toBe(true);
+                expect(core.serviceModules.storageAccess.writeFileAuto).toHaveBeenCalledWith(
+                    "note.md",
+                    expect.any(ArrayBuffer),
+                    {
+                        ctime: expectedCtime,
+                        mtime: 3000,
+                    }
+                );
+            } finally {
+                stat.mockRestore();
+                await fs.rm(directory, { recursive: true, force: true });
+            }
+        }
+    );
 
     it("push rejects when source file does not exist", async () => {
         const core = createCoreMock();

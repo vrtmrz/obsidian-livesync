@@ -105,6 +105,59 @@ describe("CLIStorageEventManagerAdapter", () => {
         expect(created.stat?.mtime).toBe(1778511180999);
     });
 
+    it("keeps creation time across add and change events when inode change time advances", async () => {
+        const adapter = new CLIStorageEventManagerAdapter("/vault", undefined, true);
+        const handlers = makeHandlers();
+        await adapter.watch.beginWatch(handlers);
+        const add = mockWatcher.on.mock.calls.find(([event]) => event === "add")![1];
+        const change = mockWatcher.on.mock.calls.find(([event]) => event === "change")![1];
+
+        add("/vault/note.md", { birthtimeMs: 1000.9, ctimeMs: 2000.8, mtimeMs: 2000.7, size: 7 });
+        change("/vault/note.md", { birthtimeMs: 1000.9, ctimeMs: 3000.8, mtimeMs: 3000.7, size: 8 });
+
+        expect(handlers.onCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                stat: { ctime: 1000, mtime: 2000, size: 7, type: "file" },
+            })
+        );
+        expect(handlers.onChange).toHaveBeenCalledWith(
+            expect.objectContaining({
+                stat: { ctime: 1000, mtime: 3000, size: 8, type: "file" },
+            })
+        );
+    });
+
+    it("falls back to change time when the filesystem supplies zero birth time", async () => {
+        const adapter = new CLIStorageEventManagerAdapter("/vault", undefined, true);
+        const handlers = makeHandlers();
+        await adapter.watch.beginWatch(handlers);
+        const change = mockWatcher.on.mock.calls.find(([event]) => event === "change")![1];
+        change("/vault/note.md", { birthtimeMs: 0, ctimeMs: 2000.8, mtimeMs: 3000.7, size: 8 });
+        expect(handlers.onChange).toHaveBeenCalledWith(
+            expect.objectContaining({
+                stat: { ctime: 2000, mtime: 3000, size: 8, type: "file" },
+            })
+        );
+    });
+
+    it("uses the current time for a deletion without stats", async () => {
+        const now = vi.spyOn(Date, "now").mockReturnValue(4000);
+        try {
+            const adapter = new CLIStorageEventManagerAdapter("/vault", undefined, true);
+            const handlers = makeHandlers();
+            await adapter.watch.beginWatch(handlers);
+            const unlink = mockWatcher.on.mock.calls.find(([event]) => event === "unlink")![1];
+            unlink("/vault/note.md");
+            expect(handlers.onDelete).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    stat: { ctime: 4000, mtime: 4000, size: 0, type: "file" },
+                })
+            );
+        } finally {
+            now.mockRestore();
+        }
+    });
+
     it("close() calls watcher.close()", async () => {
         const adapter = new CLIStorageEventManagerAdapter("/base", undefined, true);
         const handlers = makeHandlers();
