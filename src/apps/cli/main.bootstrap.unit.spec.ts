@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
@@ -203,6 +203,45 @@ describe("CLI database preparation", () => {
             expect(await readFile(join(vaultPath, "notes/local.md"), "utf-8")).toBe("local content");
         }
     );
+
+    it("retains filesystem creation time in database Metadata after an in-place edit", async (context) => {
+        const note = join(vaultPath, "notes/local.md");
+        const initial = await stat(note);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        await appendFile(note, "\nedit");
+        const edited = await stat(note);
+        if (
+            initial.birthtimeMs <= 0 ||
+            edited.birthtimeMs !== initial.birthtimeMs ||
+            Math.floor(edited.ctimeMs) <= Math.floor(initial.birthtimeMs)
+        ) {
+            context.skip();
+        }
+
+        const observed: { before?: number; after?: number; content?: string; stored?: boolean } = {};
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            const filePath = "notes/local.md" as FilePathWithPrefix;
+            const before = await core.serviceModules.databaseFileAccess.fetch(filePath);
+            if (before) observed.before = before.stat.ctime;
+            await appendFile(note, "\nsecond edit");
+            observed.stored = await core.serviceModules.fileHandler.storeFileToDB(filePath, true);
+            const after = await core.serviceModules.databaseFileAccess.fetch(filePath);
+            if (after) {
+                observed.after = after.stat.ctime;
+                observed.content = await after.body.text();
+            }
+            return false;
+        });
+
+        await start("daemon", runner);
+        expect(runner).toHaveBeenCalledOnce();
+        expect(observed).toEqual({
+            before: Math.floor(initial.birthtimeMs),
+            after: Math.floor(initial.birthtimeMs),
+            content: "local content\nedit\nsecond edit",
+            stored: true,
+        });
+    });
 
     it("runs the mirror scan once and exits without starting file watching", async () => {
         const enumerate = vi.spyOn(ServiceFileAccessCLI.prototype, "getFiles");

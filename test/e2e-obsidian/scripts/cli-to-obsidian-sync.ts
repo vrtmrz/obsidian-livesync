@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, appendFile, mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
@@ -21,6 +21,7 @@ import {
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
+import { evalObsidianJson } from "../runner/cli.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "30000";
@@ -37,6 +38,7 @@ const noteContent = [
     "",
 ].join("\n");
 const e2eePassphrase = "real-obsidian-cli-compatibility-e2e";
+const editedNoteContent = `${noteContent}\nCLI in-place edit.\n`;
 
 type LiveSyncCliCommand = {
     executable: string;
@@ -51,6 +53,7 @@ type CliResult = {
 type CliFileInfo = {
     id: string;
     children: string[];
+    expectedCtime?: number;
 };
 
 function parseCommandLine(value: string): string[] {
@@ -231,6 +234,24 @@ async function writeCliNote(
     if (!fileInfo.id || !Array.isArray(fileInfo.children) || fileInfo.children.length === 0) {
         throw new Error(`LiveSync CLI did not create complete metadata for ${notePath}: ${info.stdout}`);
     }
+    const storagePath = join(databasePath, notePath);
+    const originalStat = await stat(storagePath);
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 20));
+    await appendFile(storagePath, "\nCLI in-place edit.\n");
+    // The mirror scanner compares modification times at a two-second resolution.
+    await utimes(storagePath, new Date(), new Date(originalStat.mtimeMs + 5000));
+    const editedStat = await stat(storagePath);
+    if (
+        originalStat.birthtimeMs > 0 &&
+        originalStat.birthtimeMs === editedStat.birthtimeMs &&
+        Math.floor(editedStat.ctimeMs) > Math.floor(originalStat.birthtimeMs)
+    ) {
+        fileInfo.expectedCtime = Math.floor(originalStat.birthtimeMs);
+    }
+    await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "mirror"]);
+    const editedInfo = await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "info", notePath]);
+    const editedFileInfo = JSON.parse(editedInfo.stdout) as CliFileInfo;
+    fileInfo.children = editedFileInfo.children;
     await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "sync"]);
     return fileInfo;
 }
@@ -246,7 +267,7 @@ async function waitForVaultContent(
     while (Date.now() < deadline) {
         try {
             lastContent = await readFile(fullPath, "utf-8");
-            if (lastContent === noteContent) {
+            if (lastContent === editedNoteContent) {
                 return lastContent;
             }
         } catch (error) {
@@ -335,8 +356,31 @@ async function main(): Promise<void> {
         await pushLocalChanges(obsidianCli.binary, session.cliEnv);
 
         const received = await waitForVaultContent(vault.path, notePath);
-        assertEqual(received, noteContent, "The real Obsidian plug-in did not materialise the CLI-created note.");
-        console.log("CLI-created encrypted note was retrieved by the real Obsidian plug-in with identical content.");
+        assertEqual(received, editedNoteContent, "The real Obsidian plug-in did not materialise the CLI-edited note.");
+        if (cliFileInfo.expectedCtime !== undefined) {
+            const receivedCtime = await evalObsidianJson<number>(
+                obsidianCli.binary,
+                [
+                    "(async()=>{",
+                    "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                    `const entry=await core.localDatabase.getDBEntry(${JSON.stringify(notePath)},undefined,false,true);`,
+                    "return JSON.stringify(entry.ctime);",
+                    "})()",
+                ].join(""),
+                session.cliEnv
+            );
+            assertEqual(
+                receivedCtime,
+                cliFileInfo.expectedCtime,
+                "The CLI edit changed creation time in synchronised Metadata."
+            );
+            console.log("The CLI edit retained the filesystem creation time in the real Obsidian client's Metadata.");
+        } else {
+            console.log("Creation-time verification skipped: native stats did not expose distinct creation and change times.");
+        }
+        console.log(
+            "CLI-edited encrypted note was retrieved by the real Obsidian plug-in with identical content."
+        );
     } finally {
         if (session) {
             await session.app.stop();

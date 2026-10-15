@@ -13,7 +13,7 @@ import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/ma
 import type { NodeFile, NodeFolder } from "@/apps/cli/adapters/NodeTypes";
 import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
-import { fsPromises as fs, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
+import { fsPromises as fs, getNodeFileCreationTime, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 
 /**
@@ -123,7 +123,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
             stat: {
                 // Floor to integer milliseconds; Linux fs.Stats.*Ms carry sub-millisecond
                 // precision, and timestamps are stored as integer ms everywhere else.
-                ctime: Math.floor(stats?.ctimeMs ?? Date.now()),
+                ctime: stats ? getNodeFileCreationTime(stats) : Date.now(),
                 mtime: Math.floor(stats?.mtimeMs ?? Date.now()),
                 size: stats?.size ?? 0,
                 type: "file",
