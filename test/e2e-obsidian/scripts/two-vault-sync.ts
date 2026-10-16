@@ -10,6 +10,7 @@ import {
     createCouchDbDatabase,
     deleteCouchDbDatabase,
     fetchAllCouchDbDocs,
+    fetchCouchDbDocument,
     fetchCouchDbLocalDocs,
     loadCouchDbConfig,
     makeUniqueDatabaseName,
@@ -33,6 +34,7 @@ import {
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 import { captureObsidianPage } from "../runner/ui.ts";
+import { FILE_REFLECTION_PROVENANCE_STORE } from "../../../src/serviceModules/FileReflectionProvenance.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "20000";
@@ -132,6 +134,12 @@ async function pathExists(vaultPath: string, path: string): Promise<boolean> {
     }
 }
 
+function metadataDeletionModePath(path: string, deleteMetadataOfDeletedFiles?: boolean): string {
+    if (deleteMetadataOfDeletedFiles === undefined) return path;
+    const prefix = "E2E/two-vault/";
+    return `${prefix}delete-metadata-of-deleted-files-${deleteMetadataOfDeletedFiles}/${path.slice(prefix.length)}`;
+}
+
 async function installParentCaseEventObserver(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
@@ -228,6 +236,44 @@ async function waitForPathDeleted(
         await new Promise((resolve) => setTimeout(resolve, 250));
     }
     throw new Error(`Timed out waiting for deleted file: ${join(vaultPath, path)}`);
+}
+
+async function waitForLocalDeletedMetadataMarker(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    id: string,
+    path: string,
+    deleteMetadataOfDeletedFiles: boolean
+): Promise<void> {
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000);
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const id=${JSON.stringify(id)};`,
+            `const path=${JSON.stringify(path)};`,
+            `const expectHardDeletion=${JSON.stringify(deleteMetadataOfDeletedFiles)};`,
+            `const timeoutMs=${JSON.stringify(timeoutMs)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const deadline=Date.now()+timeoutMs;",
+            "let state={id,path,rowFound:false,hardDeleted:false,logicallyDeleted:false,documentPresent:false,documentPath:null};",
+            "while(Date.now()<deadline){",
+            "  const rows=(await core.localDatabase.allDocsRaw({keys:[id],include_docs:true})).rows??[];",
+            "  const row=rows.find((candidate)=>candidate.id===id||candidate.key===id);",
+            "  const doc=row?.doc??null;",
+            "  const hardDeleted=Boolean(row?.value?.deleted||doc?._deleted);",
+            "  const logicallyDeleted=Boolean(doc?.deleted);",
+            "  const documentPresent=Boolean(doc&&!doc._deleted);",
+            "  state={id,path,rowFound:Boolean(row),hardDeleted,logicallyDeleted,documentPresent,documentPath:doc?.path??null};",
+            "  const matches=expectHardDeletion?Boolean(row&&hardDeleted&&!documentPresent):Boolean(row&&!hardDeleted&&logicallyDeleted&&documentPresent&&doc.path===path);",
+            "  if(matches) return JSON.stringify(state);",
+            "  await new Promise((resolve)=>setTimeout(resolve,250));",
+            "}",
+            "throw new Error(`Timed out waiting for the expected local Metadata deletion marker: ${JSON.stringify(state)}`);",
+            "})()",
+        ].join(""),
+        env
+    );
 }
 
 async function waitForExactObsidianPath(
@@ -458,6 +504,7 @@ async function startConfiguredSession(
         binary: context.binary,
         cliBinary: context.cliBinary,
         vault,
+        artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         pluginData: createE2eCouchDbPluginData(couchDbSettings, persistedOverrides),
     });
@@ -692,81 +739,269 @@ async function deleteRevisionAndReflect(
     );
 }
 
-async function runCreateUpdateDelete(
+async function runMetadataDeletionRestoration(
     context: RunnerContext,
     vaultA: TemporaryVault,
     vaultB: TemporaryVault
 ): Promise<void> {
-    const createdContent = "# Created on A\n\nThis note should appear on B.\n";
-    let session = await startConfiguredSession(context, vaultA);
-    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, createPath, createdContent);
-    await uploadNote(context, session, createPath);
+    const path = "E2E/two-vault/delete-metadata-of-deleted-files-true/restored-during-deletion.md";
+    const content = "# Restored note\n\nThese bytes must survive the final deletion check.\n";
+    const overrides = { deleteMetadataOfDeletedFiles: true };
+    let session = await startConfiguredSession(context, vaultA, overrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, path, content);
+    const entry = await uploadNote(context, session, path);
+    const originalMetadata = await fetchCouchDbDocument(context.couchDb, context.dbName, entry.id);
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultB);
+    session = await startConfiguredSession(context, vaultB, overrides);
     await syncAndApply(context, session);
-    const createdOnB = await waitForPathContent(vaultB.path, createPath, (content) => content === createdContent);
+    await waitForPathContent(vaultB.path, path, (value) => value === content);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultA, overrides);
+    await deleteNoteViaObsidian(context.cliBinary, session.cliEnv, path);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await waitForLocalDeletedMetadataMarker(context.cliBinary, session.cliEnv, entry.id, path, true);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, overrides);
+    await evalObsidianJson<unknown>(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            `const content=${JSON.stringify(content)};`,
+            `const originalMetadata=${JSON.stringify(originalMetadata)};`,
+            `const storeName=${JSON.stringify(FILE_REFLECTION_PROVENANCE_STORE)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const access=core.serviceModules.databaseFileAccess;",
+            "const db=core.localDatabase.localDatabase;",
+            "const store=core.services.keyValueDB.openSimpleStore(storeName);",
+            "const base=await store.get(path);",
+            "if(base?.revision!==originalMetadata._rev) throw new Error('The receiving Vault has no matching displayed base revision');",
+            "const fetchEntryMeta=access.fetchEntryMeta;",
+            "const allDocs=db.allDocs;",
+            "let latestReads=0;",
+            "let restoredRevision='';",
+            "let gateError='';",
+            "let gatePhase='index';",
+            "let indexReads=0;",
+            "let deletionEvents=0;",
+            "const ref=app.vault.on('delete',(file)=>{if(file.path===path) deletionEvents++;});",
+            "try{",
+            // Keep the production reflection path; control only the arrival of a
+            // real remote restoration after the final deleted-winner index read.
+            "access.fetchEntryMeta=async function(file,rev,...args){",
+            "  const target=typeof file==='string'?file:file?.path;",
+            "  if(target===path&&rev===undefined&&++latestReads===2){",
+            "    db.allDocs=async function(...options){",
+            "      indexReads++;",
+            "      try{",
+            "      const snapshot=await allDocs.apply(this,options);",
+            "      if(options[0]?.keys?.length!==1||options[0].keys[0]!==originalMetadata._id) return snapshot;",
+            "      db.allDocs=allDocs;",
+            "      const row=snapshot.rows[0];",
+            "      if(!row?.value?.deleted) throw new Error('The final lookup did not observe a PouchDB tombstone');",
+            "      const replicator=core.services.replicator.getActiveReplicator();",
+            "      gatePhase='connection';",
+            "      const connection=await replicator.connectRemoteCouchDBWithSetting(core.services.setting.currentSettings(),false,false,true);",
+            "      if(typeof connection==='string') throw new Error('Could not open the restoration fixture connection');",
+            "      let restorationSource;",
+            "      try{",
+            "        const remoteRow=(await connection.db.allDocs({keys:[originalMetadata._id]})).rows[0];",
+            "        if(remoteRow?.value?.rev!==row.value.rev||!remoteRow.value.deleted) throw new Error(`Remote deletion differs from the snapshot: ${JSON.stringify({local:row.value,remote:remoteRow?.value})}`);",
+            "        gatePhase='restoration source';",
+            "        restorationSource=new db.constructor(`e2e-deletion-restoration-${Date.now()}`,{adapter:db.adapter});",
+            "        await restorationSource.replicate.from(connection.db,{doc_ids:[originalMetadata._id]});",
+            "        const restored=await restorationSource.put({...originalMetadata,_rev:row.value.rev,deleted:false,mtime:Number(originalMetadata.mtime)+10000});",
+            "        gatePhase='restoration replication';",
+            "        await restorationSource.replicate.to(connection.db,{doc_ids:[originalMetadata._id]});",
+            "        await db.replicate.from(connection.db,{doc_ids:[originalMetadata._id]});",
+            "        const winner=await db.get(originalMetadata._id);",
+            "        if(winner._rev!==restored.rev||winner._deleted||winner.deleted) throw new Error('The restoration did not become the local winning revision');",
+            "        restoredRevision=restored.rev;",
+            "      }finally{try{if(restorationSource) await restorationSource.destroy();}finally{await connection.close();}}",
+            "      return snapshot;",
+            "      }catch(error){gateError=JSON.stringify({phase:gatePhase,name:error?.name,message:error?.message,status:error?.status,reason:error?.reason});throw error;}",
+            "    };",
+            "  }",
+            "  return await fetchEntryMeta.call(this,file,rev,...args);",
+            "};",
+            "await core.services.fileProcessing.commitPendingFileEvents();",
+            "if(!(await core.services.replication.replicate(true))) throw new Error('Finite replication did not complete');",
+            "const deadline=Date.now()+15000;",
+            "while(Date.now()<deadline){",
+            "  if(gateError) throw new Error(`The restoration timing gate failed: ${gateError}`);",
+            "  if(restoredRevision){",
+            "    if(deletionEvents>0) throw new Error('The restored note was deleted during the final deletion check');",
+            "    const file=app.vault.getAbstractFileByPath(path);",
+            "    if(!file) throw new Error('The restored note is missing from the receiving Vault');",
+            "    const record=await store.get(path);",
+            "    if(record?.revision===restoredRevision){",
+            "      if(await app.vault.read(file)!==content) throw new Error('The restored Vault bytes changed');",
+            "      const winner=await db.get(originalMetadata._id,{conflicts:true});",
+            "      if(winner._rev!==restoredRevision||winner._deleted||winner.deleted||(winner._conflicts??[]).length>0) throw new Error('The restored winning revision was not retained');",
+            "      return JSON.stringify({restoredRevision,deletionEvents});",
+            "    }",
+            "  }",
+            "  await new Promise((resolve)=>setTimeout(resolve,100));",
+            "}",
+            "throw new Error(`The restoration race did not settle: ${JSON.stringify({latestReads,indexReads,restoredRevision,deletionEvents})}`);",
+            "}finally{access.fetchEntryMeta=fetchEntryMeta;db.allDocs=allDocs;app.vault.offref(ref);}",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    assertEqual(
+        await readVaultFile(vaultB.path, path),
+        content,
+        "Restored file bytes did not survive deletion reflection."
+    );
+    await stopTrackedSession(context, session);
+    console.log("A restoration replicated during the final deletion check preserved the receiving Vault file.");
+}
+
+async function runCreateUpdateDelete(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault,
+    deleteMetadataOfDeletedFiles?: boolean
+): Promise<void> {
+    const deletionOverrides = deleteMetadataOfDeletedFiles === undefined ? {} : { deleteMetadataOfDeletedFiles };
+    const currentCreatePath = metadataDeletionModePath(createPath, deleteMetadataOfDeletedFiles);
+    const currentUpdatePath = metadataDeletionModePath(updatePath, deleteMetadataOfDeletedFiles);
+    const currentDeletePath = metadataDeletionModePath(deletePath, deleteMetadataOfDeletedFiles);
+    const createdContent = "# Created on A\n\nThis note should appear on B.\n";
+    let session = await startConfiguredSession(context, vaultA, deletionOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, currentCreatePath, createdContent);
+    await uploadNote(context, session, currentCreatePath);
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, deletionOverrides);
+    await syncAndApply(context, session);
+    const createdOnB = await waitForPathContent(
+        vaultB.path,
+        currentCreatePath,
+        (content) => content === createdContent
+    );
     await stopTrackedSession(context, session);
     assertEqual(createdOnB, createdContent, "Created note did not round-trip to the second vault.");
 
     const initialUpdateContent = "# Update target\n\nInitial content.\n";
     const updatedContent = "# Update target\n\nUpdated content from A.\n";
-    session = await startConfiguredSession(context, vaultA);
-    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, updatePath, initialUpdateContent);
-    await uploadNote(context, session, updatePath);
-    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, updatePath, updatedContent);
-    await uploadNote(context, session, updatePath);
+    session = await startConfiguredSession(context, vaultA, deletionOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, currentUpdatePath, initialUpdateContent);
+    await uploadNote(context, session, currentUpdatePath);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, currentUpdatePath, updatedContent);
+    await uploadNote(context, session, currentUpdatePath);
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultB);
+    session = await startConfiguredSession(context, vaultB, deletionOverrides);
     await syncAndApply(context, session);
-    const updatedOnB = await waitForPathContent(vaultB.path, updatePath, (content) => content === updatedContent);
+    const updatedOnB = await waitForPathContent(
+        vaultB.path,
+        currentUpdatePath,
+        (content) => content === updatedContent
+    );
     await stopTrackedSession(context, session);
     assertEqual(updatedOnB, updatedContent, "Updated note content did not round-trip to the second vault.");
 
     const deleteContent = "# Delete target\n\nThis note should be removed from B.\n";
-    session = await startConfiguredSession(context, vaultA);
-    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, deletePath, deleteContent);
-    await uploadNote(context, session, deletePath);
+    session = await startConfiguredSession(context, vaultA, deletionOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, currentDeletePath, deleteContent);
+    await uploadNote(context, session, currentDeletePath);
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultB);
+    session = await startConfiguredSession(context, vaultB, deletionOverrides);
     await syncAndApply(context, session);
-    await waitForPathContent(vaultB.path, deletePath, (content) => content === deleteContent);
+    await waitForPathContent(vaultB.path, currentDeletePath, (content) => content === deleteContent);
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultA);
-    await deleteNoteViaObsidian(context.cliBinary, session.cliEnv, deletePath);
+    session = await startConfiguredSession(context, vaultA, deletionOverrides);
+    const deleteEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, currentDeletePath);
+    await deleteNoteViaObsidian(context.cliBinary, session.cliEnv, currentDeletePath);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
+    if (deleteMetadataOfDeletedFiles !== undefined) {
+        await waitForLocalDeletedMetadataMarker(
+            context.cliBinary,
+            session.cliEnv,
+            deleteEntry.id,
+            currentDeletePath,
+            deleteMetadataOfDeletedFiles
+        );
+    }
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultB);
+    session = await startConfiguredSession(context, vaultB, deletionOverrides);
     await syncAndApply(context, session);
-    await waitForPathDeleted(vaultB.path, deletePath);
+    await waitForPathDeleted(vaultB.path, currentDeletePath);
     await stopTrackedSession(context, session);
 
-    console.log("Two-vault note creation, update, and deletion round-tripped.");
+    const deletionModeLabel =
+        deleteMetadataOfDeletedFiles === undefined
+            ? ""
+            : ` with deleteMetadataOfDeletedFiles=${deleteMetadataOfDeletedFiles}`;
+    console.log(`Two-vault note creation, update, and deletion round-tripped${deletionModeLabel}.`);
 }
 
-async function runRename(context: RunnerContext, vaultA: TemporaryVault, vaultB: TemporaryVault): Promise<void> {
+async function runRename(
+    context: RunnerContext,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault,
+    deleteMetadataOfDeletedFiles?: boolean
+): Promise<void> {
+    const deletionOverrides = deleteMetadataOfDeletedFiles === undefined ? {} : { deleteMetadataOfDeletedFiles };
+    const currentRenameFromPath = metadataDeletionModePath(renameFromPath, deleteMetadataOfDeletedFiles);
+    const currentRenameToPath = metadataDeletionModePath(renameToPath, deleteMetadataOfDeletedFiles);
     const renamedContent = "# Rename target\n\nThis note should move from A to B.\n";
 
-    let session = await startConfiguredSession(context, vaultA);
-    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, renameFromPath, renamedContent);
-    await uploadNote(context, session, renameFromPath);
-    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, renameFromPath, renameToPath);
-    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, renameToPath);
-    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    let session = await startConfiguredSession(context, vaultA, deletionOverrides);
+    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, currentRenameFromPath, renamedContent);
+    await uploadNote(context, session, currentRenameFromPath);
     await stopTrackedSession(context, session);
 
-    session = await startConfiguredSession(context, vaultB);
+    session = await startConfiguredSession(context, vaultB, deletionOverrides);
     await syncAndApply(context, session);
-    const renamedOnB = await waitForPathContent(vaultB.path, renameToPath, (content) => content === renamedContent);
-    await waitForPathDeleted(vaultB.path, renameFromPath);
+    const originalOnB = await waitForPathContent(
+        vaultB.path,
+        currentRenameFromPath,
+        (content) => content === renamedContent
+    );
+    await stopTrackedSession(context, session);
+    assertEqual(originalOnB, renamedContent, "Original note content did not reach the second vault before rename.");
+
+    session = await startConfiguredSession(context, vaultA, deletionOverrides);
+    const renamedEntry = await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, currentRenameFromPath);
+    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, currentRenameFromPath, currentRenameToPath);
+    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, currentRenameToPath);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    if (deleteMetadataOfDeletedFiles !== undefined) {
+        await waitForLocalDeletedMetadataMarker(
+            context.cliBinary,
+            session.cliEnv,
+            renamedEntry.id,
+            currentRenameFromPath,
+            deleteMetadataOfDeletedFiles
+        );
+    }
+    await stopTrackedSession(context, session);
+
+    session = await startConfiguredSession(context, vaultB, deletionOverrides);
+    await syncAndApply(context, session);
+    const renamedOnB = await waitForPathContent(
+        vaultB.path,
+        currentRenameToPath,
+        (content) => content === renamedContent
+    );
+    await waitForPathDeleted(vaultB.path, currentRenameFromPath);
     await stopTrackedSession(context, session);
 
     assertEqual(renamedOnB, renamedContent, "Renamed note content did not round-trip to the second vault.");
-    console.log("Two-vault note rename round-tripped.");
+    const deletionModeLabel =
+        deleteMetadataOfDeletedFiles === undefined
+            ? ""
+            : ` with deleteMetadataOfDeletedFiles=${deleteMetadataOfDeletedFiles}`;
+    console.log(`Two-vault note rename round-tripped${deletionModeLabel}.`);
 }
 
 async function runCaseOnlyRename(
@@ -1593,32 +1828,56 @@ async function main(): Promise<void> {
         console.log(`Temporary CouchDB database: ${dbName}`);
         console.log(`Temporary encrypted CouchDB database: ${encryptedDbName}`);
 
+        const onlyMetadataDeletion = process.env.E2E_OBSIDIAN_ONLY_METADATA_DELETION === "true";
         const onlyParentCaseDeletion = process.env.E2E_OBSIDIAN_ONLY_PARENT_CASE_DELETION === "true";
         const onlyIndependentIds = process.env.E2E_OBSIDIAN_ONLY_INDEPENDENT_IDS === "true";
         const onlyDifferentChunkIdKeys = process.env.E2E_OBSIDIAN_ONLY_DIFFERENT_CHUNK_ID_KEYS === "true";
-        if (onlyParentCaseDeletion) {
+        if (onlyMetadataDeletion) {
+            await runMetadataDeletionRestoration(context, vaultA, vaultB);
+            for (const deleteMetadataOfDeletedFiles of [false, true]) {
+                await runCreateUpdateDelete(context, vaultA, vaultB, deleteMetadataOfDeletedFiles);
+                await runRename(context, vaultA, vaultB, deleteMetadataOfDeletedFiles);
+            }
+        }
+        if (!onlyMetadataDeletion && onlyParentCaseDeletion) {
             await runParentCaseDeletionProtection(context, vaultA, vaultB);
         }
         const onlyConflictOperations = process.env.E2E_OBSIDIAN_ONLY_CONFLICT_OPERATIONS === "true";
-        if (!onlyParentCaseDeletion && !onlyConflictOperations && !onlyIndependentIds && !onlyDifferentChunkIdKeys) {
-            await runCreateUpdateDelete(context, vaultA, vaultB);
-            await runRename(context, vaultA, vaultB);
+        if (
+            !onlyMetadataDeletion &&
+            !onlyParentCaseDeletion &&
+            !onlyConflictOperations &&
+            !onlyIndependentIds &&
+            !onlyDifferentChunkIdKeys
+        ) {
+            await runMetadataDeletionRestoration(context, vaultA, vaultB);
+            for (const deleteMetadataOfDeletedFiles of [false, true]) {
+                await runCreateUpdateDelete(context, vaultA, vaultB, deleteMetadataOfDeletedFiles);
+                await runRename(context, vaultA, vaultB, deleteMetadataOfDeletedFiles);
+            }
             await runCaseOnlyRename(context, vaultA, vaultB);
             if (process.env.E2E_OBSIDIAN_INCLUDE_MARKDOWN_CONFLICT === "true") {
                 await runMarkdownAutoMerge(context, vaultA, vaultB);
             }
         }
         if (
+            !onlyMetadataDeletion &&
             !onlyParentCaseDeletion &&
             (onlyConflictOperations || process.env.E2E_OBSIDIAN_INCLUDE_CONFLICT_OPERATIONS === "true")
         ) {
             await runConflictTimeStorageOperations(context, vaultA, vaultB);
         }
-        if (!onlyParentCaseDeletion && !onlyConflictOperations && !onlyIndependentIds && !onlyDifferentChunkIdKeys) {
+        if (
+            !onlyMetadataDeletion &&
+            !onlyParentCaseDeletion &&
+            !onlyConflictOperations &&
+            !onlyIndependentIds &&
+            !onlyDifferentChunkIdKeys
+        ) {
             await runTargetMismatch(context, vaultA, vaultB);
             await runEncryptedRoundTrip(encryptedContext, encryptedVaultA, encryptedVaultB);
         }
-        if (!onlyParentCaseDeletion && !onlyConflictOperations) {
+        if (!onlyMetadataDeletion && !onlyParentCaseDeletion && !onlyConflictOperations) {
             if (onlyDifferentChunkIdKeys) {
                 await runDifferentChunkIdKeysRoundTrip(independentContext, independentVaultA, independentVaultB);
             } else {

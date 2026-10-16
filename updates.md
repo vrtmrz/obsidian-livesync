@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Fixed
+
+- We can synchronise file deletions and renames when **Do not keep metadata of deleted files.** is enabled.
+    - A file restored during the final deletion check remains in the receiving Vault.
+
 ### CLI
 
 #### Fixed
