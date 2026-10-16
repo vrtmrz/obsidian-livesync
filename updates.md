@@ -12,6 +12,14 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.37
+
+16th October, 2026
+
+### Security
+
+- Fixed an issue where synchronised changes could reach files outside the intended synchronisation scope under certain conditions. Updating is recommended.
+
 ### CLI
 
 #### Fixed
@@ -22,6 +30,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - Headless peer acceptance follows the configured policy. Single-operation commands retain their automatic synchronisation suspension.
 - We can select CLI-only Docker patches by their full release tag, such as `1.0.36-patch1-cli`, while keeping the Obsidian plug-in version.
     - Patch and RC images receive version and SHA-qualified tags. The `latest` and major-minor tags remain reserved for ordinary stable releases.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @kimjansheden, for reporting the issue and contributing the fix and regression tests.
 
 ## 1.0.36
 
@@ -173,20 +187,3 @@ Thank you for your contributions!
 ### Issue replies
 
 I am a little behind on replying to issues, but I am reading them and will respond as I work through them. I have had little uninterrupted time recently, and that should improve soon.
-
-## 1.0.32
-
-27th September, 2026
-
-The 1.0.31 pre-release was not promoted after validation found that a receiving device could reject encrypted CouchDB changes when Path Obfuscation was enabled. This release includes its changes and corrects that issue.
-
-### Synchronisation and storage
-
-#### Fixed
-
-- The receiving device now accepts encrypted file information when both end-to-end encryption and Path Obfuscation are enabled. The 1.0.31 pre-release could reject this information, leaving files from another device absent from the Vault.
-- Files with colons in their names now retain their full paths in synchronisation data instead of appearing as incorrectly named copies at the Vault root. (#1206)
-    - Obsidian may refuse to create a missing file with such a name. LiveSync also treats these names as invalid on Windows and Android, so the file may not appear in those devices' Vaults. Existing misplaced copies are left for you to review; this change does not remove them automatically.
-- Received changes within the configured modification-time limit are applied to the Vault again while remediation mode is active. Changes newer than the limit remain blocked; changes arriving while a fetch makes the local database unavailable are kept for a later attempt.
-- A scheduled fetch no longer offers Simple Fetch while remediation mode is active. This prevents the fetch from bypassing the modification-time limit; the detailed flow explains the restriction and offers to clear it first (#1202). Thank you to @kimjansheden for both fixes and the regression tests in PR #1208!
-- On start-up, an unchanged file with a missing local revision record can be recognised before newer content arrives, avoiding an unnecessary conflict. Files with actual local edits still require conflict review. (#1207)
