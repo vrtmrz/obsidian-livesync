@@ -22,6 +22,7 @@ export interface ReviewHarnessRuntime {
     openCompatibilityReview(): Promise<void>;
     runVaultRoundTrip(): Promise<ReviewHarnessScenarioResult>;
     runIdBenchmark(): Promise<ReviewHarnessScenarioResult>;
+    runFileContentHashBenchmark(): Promise<ReviewHarnessScenarioResult>;
     readContinuation(): string | null;
     writeContinuation(value: string): void;
     deleteContinuation(): void;
@@ -162,6 +163,8 @@ export class ReviewHarnessController {
                 result = await this.runtime.runVaultRoundTrip();
             } else if (id === "id-generation-performance") {
                 result = await this.runtime.runIdBenchmark();
+            } else if (id === "file-content-hash-performance") {
+                result = await this.runtime.runFileContentHashBenchmark();
             } else {
                 const inspection = this.inspectCompatibilityReview();
                 result =

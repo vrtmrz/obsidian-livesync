@@ -12,6 +12,15 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- Unchanged files can receive synchronised updates even after the local database has discarded their recorded revision, avoiding unnecessary conflicts. (#1207)
+    - Saved content evidence survives revision-history pruning. Genuine local edits remain protected, and older records are upgraded only after their content is verified.
+
+### Maintenance
+
+- The Review Harness can compare SHA-256 and xxHash64 file-content hashing on the current device, with fixed inputs from 4 KiB to 50 MiB and separate initialisation and warm-up measurements.
+
 ## 1.0.37
 
 16th October, 2026

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
@@ -11,6 +12,7 @@ import { createTemporaryVault } from "../runner/vault.ts";
 
 const paths = ["stale-known.md", "stale-unknown.md"];
 const recoveredPath = "stale-recovered.md";
+const legacyPath = "stale-legacy.md";
 const oldContent = "# Note\nKeep\n\nTail\n\nFooter\n";
 const newContent = oldContent.replace(
     "Footer\n",
@@ -18,7 +20,15 @@ const newContent = oldContent.replace(
 );
 
 type Branch = { rev: string; content: string; history: string[] };
-type FileState = { path: string; content: string; rev: string; branches: Branch[]; provenance: string | null };
+type FileState = {
+    path: string;
+    content: string;
+    rev: string;
+    branches: Branch[];
+    provenance: string | null;
+    contentHash: string | null;
+    contentSize: number | null;
+};
 
 async function readState(cliBinary: string, env: NodeJS.ProcessEnv): Promise<FileState[]> {
     return await evalObsidianJson<FileState[]>(
@@ -27,7 +37,7 @@ async function readState(cliBinary: string, env: NodeJS.ProcessEnv): Promise<Fil
             const core=app.plugins.plugins['obsidian-livesync'].core;
             const store=core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1');
             const states=[];
-            for(const path of ${JSON.stringify([...paths, recoveredPath])}){
+            for(const path of ${JSON.stringify([...paths, recoveredPath, legacyPath])}){
                 const meta=await core.localDatabase.getDBEntryMeta(path,{conflicts:true},true);
                 const branches=[];
                 for(const rev of [meta._rev,...(meta._conflicts??[])]){
@@ -38,7 +48,8 @@ async function readState(cliBinary: string, env: NodeJS.ProcessEnv): Promise<Fil
                 }
                 const file=app.vault.getAbstractFileByPath(path);
                 states.push({path,content:await app.vault.read(file),rev:meta._rev,branches,
-                    provenance:(await store.get(path))?.revision??null});
+                    provenance:(await store.get(path))?.revision??null,
+                    contentHash:(await store.get(path))?.contentHash??null,contentSize:(await store.get(path))?.contentSize??null});
             }
             return JSON.stringify(states);
         })()`,
@@ -83,16 +94,22 @@ async function main(): Promise<void> {
         await evalObsidianJson(
             cliBinary,
             `(async()=>{
-            for(const path of ${JSON.stringify([...paths, recoveredPath])}) await app.vault.create(path,${JSON.stringify(oldContent)});
+            for(const path of ${JSON.stringify([...paths, recoveredPath, legacyPath])}) await app.vault.create(path,${JSON.stringify(oldContent)});
             return JSON.stringify(true);
         })()`,
             session.cliEnv
         );
-        for (const path of [...paths, recoveredPath]) await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, path);
+        for (const path of [...paths, recoveredPath, legacyPath])
+            await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, path);
 
         // Drain real Vault events before creating a persisted pending-event fixture.
         // The DB advances without reflecting it in the Vault, as on an offline device.
-        const fixture = await evalObsidianJson<{ current: string[]; original: string[]; recovered: string }>(
+        const fixture = await evalObsidianJson<{
+            current: string[];
+            original: string[];
+            recovered: string;
+            legacy: string;
+        }>(
             cliBinary,
             `(async()=>{
             const core=app.plugins.plugins['obsidian-livesync'].core;
@@ -106,16 +123,32 @@ async function main(): Promise<void> {
                 const result=await core.localDatabase.putDBEntry({...meta,data,mtime:file.stat.mtime+60000,
                     size:data.size,children:[]},false,meta._rev);
                 if(!result?.ok) throw new Error('Could not advance '+path);
-                current.push(result.rev); original.push(meta._rev);
-                if(index===0) await store.set(path,{revision:meta._rev,observedStorageMtime:file.stat.mtime});
-                else await store.delete(path);
+                let currentRev=result.rev;
+                if(index===0){
+                    const record=await store.get(path);
+                    if(record?.revision!==meta._rev || !record.contentHash) throw new Error('Initial save did not record content evidence');
+                    // Advance beyond the local retention limit without reflecting the incoming bytes.
+                    let raw=await core.localDatabase.getRaw(meta._id,{rev:currentRev});
+                    for(let update=0;update<100;update++){
+                        const next=await core.localDatabase.putRaw({...raw,mtime:raw.mtime+1});
+                        currentRev=next.rev; raw={...raw,_rev:currentRev,mtime:raw.mtime+1};
+                    }
+                    let pruned=false;
+                    try { await core.localDatabase.getRaw(meta._id,{rev:meta._rev}); }
+                    catch(error) { if(error.status!==404) throw error; pruned=true; }
+                    if(!pruned) throw new Error('The recorded revision was not pruned');
+                } else await store.delete(path);
+                current.push(currentRev); original.push(meta._rev);
                 snapshot.push({type:'CHANGED',key:'CHANGED-'+path,args:{file}});
             }
             const recovered=${JSON.stringify(recoveredPath)};
             const recoveredMeta=await core.localDatabase.getDBEntryMeta(recovered,{},true);
             await store.delete(recovered);
+            const legacy=${JSON.stringify(legacyPath)};
+            const legacyMeta=await core.localDatabase.getDBEntryMeta(legacy,{},true);
+            await store.set(legacy,{revision:legacyMeta._rev});
             await core.kvDB.set('storage-event-manager-snapshot',snapshot);
-            return JSON.stringify({current,original,recovered:recoveredMeta._rev});
+            return JSON.stringify({current,original,recovered:recoveredMeta._rev,legacy:legacyMeta._rev});
         })()`,
             session.cliEnv
         );
@@ -124,7 +157,7 @@ async function main(): Promise<void> {
 
         session = await startObsidianLiveSyncSession({ binary, cliBinary, vault });
         await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
-        const [known, unknown, recovered] = await readState(cliBinary, session.cliEnv);
+        const [known, unknown, recovered, legacy] = await readState(cliBinary, session.cliEnv);
         assertEqual(known.rev, fixture.current[0], "An unchanged stale file created a revision during restart.");
         assertEqual(known.branches.length, 1, "An unchanged stale file created a conflict.");
         assertEqual(known.content, newContent, "The newer DB content was not reflected after suppressing the save.");
@@ -142,6 +175,15 @@ async function main(): Promise<void> {
         assertEqual(recovered.branches.length, 1, "Unchanged recovery created a conflict.");
         assertEqual(recovered.content, oldContent, "Unchanged recovery modified the Vault file.");
         assertEqual(recovered.provenance, fixture.recovered, "Start-up did not recover missing file provenance.");
+
+        const oldHash = `sha256:${createHash("sha256").update(oldContent).digest("hex")}`;
+        const newHash = `sha256:${createHash("sha256").update(newContent).digest("hex")}`;
+        assertEqual(known.contentHash, newHash, "Reflection did not record the incoming bytes.");
+        assertEqual(recovered.contentHash, oldHash, "Recovered provenance lacks verified content evidence.");
+        assertEqual(legacy.rev, fixture.legacy, "Legacy upgrade created a database revision.");
+        assertEqual(legacy.content, oldContent, "Legacy upgrade changed storage.");
+        assertEqual(legacy.contentHash, oldHash, "Legacy provenance was not upgraded after exact verification.");
+        assertEqual(legacy.contentSize, Buffer.byteLength(oldContent), "Legacy provenance has the wrong byte length.");
 
         const receivedRevision = await evalObsidianJson<string>(
             cliBinary,
@@ -204,7 +246,7 @@ async function main(): Promise<void> {
         assertEqual(resolved.branches.length, 1, "The explicit newer-file option did not resolve the conflict.");
         assertEqual(resolved.content, newContent, "The newer-file option did not reflect the newer DB version.");
         console.log(
-            "Stale-file restart: missing unchanged provenance recovered; later update reflected; unknown content preserved; explicit newer-file resolution retained."
+            "Stale-file restart: pruned revision recognised from persisted content evidence; legacy provenance upgraded; missing unchanged provenance recovered; later update reflected; unknown content preserved; explicit newer-file resolution retained."
         );
     } finally {
         if (session) await session.app.stop();

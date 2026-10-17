@@ -37,6 +37,14 @@ export const REVIEW_HARNESS_SCENARIOS = [
         mode: "automatic",
         access: "read-only",
     },
+    {
+        id: "file-content-hash-performance",
+        title: "File content hash performance",
+        description:
+            "Compares SHA-256 and xxHash64 on fixed in-memory Blob inputs of 4 KiB, 64 KiB, 1 MiB, and 50 MiB. Input construction is excluded from hash timings; engine initialisation and warm-up are reported separately. Keep Obsidian in the foreground.",
+        mode: "manual",
+        access: "read-only",
+    },
 ] as const;
 
 export const REVIEW_HARNESS_SCENARIO_IDS = REVIEW_HARNESS_SCENARIOS.map(({ id }) => id);

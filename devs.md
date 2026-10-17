@@ -245,6 +245,18 @@ Where `performance.memory` is available, the report includes approximate JavaScr
 
 The developer-only adapter in `src/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime.ts` imports `HashManager` from Commonlib's public `/hashing` entry. Compilation, packed-package checks, and runtime tests cover this boundary. The algorithms remain owned by Commonlib.
 
+#### File content hash performance measurements
+
+Commonlib owns the algorithm choice and provenance contract. Its [file-reflection content hash decision](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/file-reflection-content-hash.md) records the SHA-256 rationale, xxHash64 comparison, measured costs, and conditions for reconsideration. This section describes the host-owned measurement procedure.
+
+Choose **Run** beside **File content hash performance** in the Review Harness. **Automatic** does not run this measurement; **Full review** includes it.
+
+The measurement compares the Self-hosted LiveSync SHA-256 file content hash helper with `xxHash64` for fixed in-memory `Blob` inputs of 4 KiB, 64 KiB, 1 MiB, and 50 MiB. Each input begins with the same deterministic byte sequence. Input construction is excluded from the timed samples; `xxHash64` engine initialisation is timed and reported separately. One 4-KiB warm-up call per algorithm is also measured separately and excluded from samples. SHA-256 uses the same helper as the product's file content hash path; `xxHash64` timing includes `Blob.arrayBuffer()` and `h64Raw`. Calls run one at a time, alternate algorithm order between samples, and yield to the interface between calls. The 50-MiB input uses the same three samples as the other sizes.
+
+The report gives the median and range for each algorithm and input size. Where `performance.memory` is available, it also records approximate JavaScript heap samples before, during, and after measurement. These samples may include other Obsidian activity and garbage collection; they are neither total process RAM nor a guaranteed peak. Unsupported devices explicitly report that heap measurements are unavailable.
+
+The scenario uses only fixed in-memory inputs. It does not read or write the Vault, database, settings, remote storage, or user content. It does not expose a hash-method setting or use a fixed performance threshold. The developer-only adapter in `src/features/ReviewHarness/reviewHarnessFileContentHashBenchmarkRuntime.ts` imports `computeFileContentHash` from Commonlib's public `/hashing` entry and `xxhashNew()` from `octagonal-wheels`. The benchmark compares the product helper with that package implementation; it does not change the hash method used by LiveSync.
+
 #### Logs
 
 - Use `this._log(msg, LOG_LEVEL_INFO)` in modules (automatically prefixes with module name)
