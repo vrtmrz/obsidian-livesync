@@ -133,7 +133,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     applySetting(keys: AllSettingItemKey[]) {
         for (const k of keys) {
             if (!this.isDirty(k)) continue;
-            if (this.isConfigurationEncryptionSetting(k) || k in OnDialogSettingsDefault) {
+            if (
+                this.isReconstructionRequiredSetting(k) ||
+                this.isConfigurationEncryptionSetting(k) ||
+                k in OnDialogSettingsDefault
+            ) {
                 // //@ts-ignore
                 // this.initialSettings[k] = this.editingSettings[k];
                 continue;
@@ -147,8 +151,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         });
     }
     async applyAllSettings() {
-        const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter((e) =>
-            this.isDirty(e)
+        const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter(
+            (e) => this.isDirty(e) && !this.isReconstructionRequiredSetting(e)
         );
         await this.saveConfigurationEncryptionIfDirty(changedKeys);
         this.applySetting(changedKeys);
@@ -168,7 +172,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      */
     async saveSettings(keys: AllSettingItemKey[]) {
         let hasChanged = false;
-        const appliedKeys = keys.filter((k) => this.isDirty(k));
+        const appliedKeys = keys.filter((k) => this.isDirty(k) && !this.isReconstructionRequiredSetting(k));
         await this.saveConfigurationEncryptionIfDirty(appliedKeys);
         for (const k of appliedKeys) {
             if (this.isConfigurationEncryptionSetting(k)) continue;
@@ -193,9 +197,14 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await Promise.all(handlers);
         // }
         keys.forEach((e) => {
+            if (this.isReconstructionRequiredSetting(e) && this.isDirty(e)) return;
             if (this.isConfigurationEncryptionSetting(e) && this.isDirty(e)) return;
             this.refreshSetting(e);
         });
+    }
+
+    private isReconstructionRequiredSetting(key: AllSettingItemKey): boolean {
+        return key === "pathNormalizationVersion";
     }
 
     private isConfigurationEncryptionSetting(key: AllSettingItemKey): boolean {
@@ -225,8 +234,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      * @param keys setting keys for applying
      */
     async saveAllDirtySettings() {
-        const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter((e) =>
-            this.isDirty(e)
+        const changedKeys = (Object.keys(this.editingSettings ?? {}) as AllSettingItemKey[]).filter(
+            (e) => this.isDirty(e) && !this.isReconstructionRequiredSetting(e)
         );
         await this.saveSettings(changedKeys);
         this.reloadAllSettings();
@@ -299,6 +308,13 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     reloadAllSettings(skipUpdate: boolean = false) {
         const previousSettings = this._editingSettings;
         const previousSnapshot = this.initialSettings;
+        const pendingPathNormalizationVersion =
+            previousSettings && previousSnapshot && this.isDirty("pathNormalizationVersion")
+                ? {
+                      value: previousSettings.pathNormalizationVersion,
+                      appliedValue: previousSnapshot.pathNormalizationVersion,
+                  }
+                : undefined;
         const pendingConfigurationEncryption =
             previousSettings && previousSnapshot
                 ? {
@@ -326,6 +342,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (pendingConfigurationEncryption?.configPassphrase) {
             this._editingSettings.configPassphrase = pendingConfigurationEncryption.configPassphrase.value;
         }
+        if (pendingPathNormalizationVersion) {
+            this._editingSettings.pathNormalizationVersion = pendingPathNormalizationVersion.value;
+            this.initialSettings.pathNormalizationVersion = pendingPathNormalizationVersion.appliedValue;
+        }
         if (!skipUpdate) this.requestUpdate();
     }
 
@@ -333,6 +353,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
      * Reread each setting and request invalidate
      */
     refreshSetting(key: AllSettingItemKey) {
+        if (this.isReconstructionRequiredSetting(key) && this.isDirty(key)) {
+            this.requestUpdate();
+            return;
+        }
         const localSetting = this.reloadAllLocalSettings();
         if (key in this.core.settings) {
             if (key in localSetting) {
@@ -627,6 +651,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             "passphrase",
             "useDynamicIterationCount",
             "usePathObfuscation",
+            "pathNormalizationVersion",
             "encrypt",
             // "remoteType",
         ]);
@@ -637,6 +662,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             "passphrase",
             "useDynamicIterationCount",
             "usePathObfuscation",
+            "pathNormalizationVersion",
             "encrypt",
         ]);
     }
@@ -682,16 +708,23 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
 
     override getControlValue(key: string): unknown {
         const spec = this.getDeclarativeSettingSpec(key);
-        return this.editingSettings[spec.key];
+        const value = this.editingSettings[spec.key];
+        return spec.control.type === "numeric-dropdown" ? `${value}` : value;
     }
 
     override async setControlValue(key: string, value: unknown): Promise<void> {
         const spec = this.getDeclarativeSettingSpec(key);
-        if (!isValidSettingSpecValue(spec, value)) {
+        const persistedValue =
+            spec.control.type === "numeric-dropdown" && typeof value === "string" ? Number(value) : value;
+        if (!isValidSettingSpecValue(spec, persistedValue)) {
             throw new TypeError(`Invalid value for declarative setting ${key}`);
         }
-        Reflect.set(this.editingSettings, spec.key, value);
-        await this.saveSettings([spec.key]);
+        Reflect.set(this.editingSettings, spec.key, persistedValue);
+        if (spec.holdValue) {
+            this.requestUpdate();
+        } else {
+            await this.saveSettings([spec.key]);
+        }
     }
 
     private createRebuildRequiredAction(): SettingDefinitionAction {
@@ -1059,6 +1092,15 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     };
 
     rebuildDB = async (method: "localOnly" | "remoteOnly" | "rebuildBothByThisDevice" | "localOnlyWithChunks") => {
+        if (method === "remoteOnly" && this.isDirty("pathNormalizationVersion")) {
+            Logger(
+                $msg(
+                    "CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1."
+                ),
+                LOG_LEVEL_NOTICE
+            );
+            return;
+        }
         if (this.editingSettings.encrypt && this.editingSettings.passphrase == "") {
             Logger($msg("obsidianLiveSyncSettingTab.logEncryptionNoPassphrase"), LOG_LEVEL_NOTICE);
             return;
@@ -1109,6 +1151,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                     this.editingSettings.passphrase = "";
                 }
                 await this.saveAllDirtySettings();
+                await this.applyReconstructionRequiredSettings();
             },
         });
         if (result.result === "scheduled") {
@@ -1116,6 +1159,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return;
         }
         if (result.result === "failed") {
+            return;
+        }
+        if (this.isDirty("pathNormalizationVersion")) {
             return;
         }
 
@@ -1134,6 +1180,23 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             }
             await this.saveAllDirtySettings();
         }
+    }
+
+    private async applyReconstructionRequiredSettings(): Promise<void> {
+        const key = "pathNormalizationVersion";
+        if (!this.isDirty(key)) return;
+
+        const previousValue = this.core.settings.pathNormalizationVersion;
+        this.copySettingValue(this.core.settings, this.editingSettings, key);
+        try {
+            await this.services.setting.saveSettingData();
+        } catch (error) {
+            this.core.settings.pathNormalizationVersion = previousValue;
+            throw error;
+        }
+
+        this.copySettingValue(this.initialSettings, this.core.settings, key);
+        this.refreshSetting(key);
     }
 
     // The imperative renderer remains required by the declared Obsidian 1.7.2 minimum version.

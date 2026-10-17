@@ -86,6 +86,7 @@ describe("settings page catalogue", () => {
             "hashCacheMaxCount",
             "chunkSplitterVersion",
             "customChunkSize",
+            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",

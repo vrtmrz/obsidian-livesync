@@ -112,6 +112,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
         });
         const rebuilder = new ServiceRebuilder({
+            path: services.path,
             events: services.context.events,
             API: services.API,
             database: services.database,
@@ -184,7 +185,11 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     core,
                     (_compatibilityReplicator, p2p) => createInteractiveP2PReplication(p2p),
                     createOpenRebuildUI(this.app),
-                    { prepareP2PSettings: useP2PSettingsPreparation(core.services.API.webCompatFetch.bind(core.services.API)) }
+                    {
+                        prepareP2PSettings: useP2PSettingsPreparation(
+                            core.services.API.webCompatFetch.bind(core.services.API)
+                        ),
+                    }
                 );
                 setupManager.registerP2PSetupConnectionProbe(replicator.connectionProbe);
                 useP2PReplicatorCommands(core, replicator);

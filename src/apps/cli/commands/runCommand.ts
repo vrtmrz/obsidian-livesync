@@ -6,6 +6,7 @@ import {
     type ObsidianLiveSyncSettings,
     type EntryDoc,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { isRemediationModeActive } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import {
     activateRemoteConfiguration,
@@ -13,7 +14,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import type { CLICommandContext, CLIOptions } from "./types";
-import { toArrayBuffer, toDatabaseRelativePath } from "./utils";
+import { getForceRequirementError, toArrayBuffer, toDatabaseRelativePath } from "./utils";
 import { collectPeers, openP2PHost, parseTimeoutSeconds, syncWithPeer } from "./p2p";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { fsPromises as fs, getNodeFileCreationTime, path } from "@vrtmrz/livesync-commonlib/node";
@@ -37,8 +38,25 @@ function redactConnectionString(uri: string): string {
 }
 
 export async function runCommand(options: CLIOptions, context: CLICommandContext): Promise<boolean> {
-    const { databasePath, core, replicationScheduling, settingsPath } = context;
+    const { core } = context;
     const { standardIo } = core.services.context;
+    const forceRequirementError = getForceRequirementError(options.command, options.force);
+    if (forceRequirementError) {
+        writeStderrLine(standardIo, `[Error] ${forceRequirementError}`);
+        return false;
+    }
+    if (
+        options.command === "fetch" &&
+        isRemediationModeActive(core.services.setting.currentSettings())
+    ) {
+        writeStderrLine(
+            standardIo,
+            `[Error] The fetch command cannot run while remediation mode is active. Clear the modification-time limit before fetching.`
+        );
+        return false;
+    }
+
+    const { databasePath, replicationScheduling, settingsPath } = context;
     const vaultPath = context.vaultPath || databasePath;
 
     await core.services.control.activated;
@@ -517,6 +535,29 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         writeStderrLine(standardIo, "[Command] mirror");
         // Database preparation has already completed the mirror scan.
         return true;
+    }
+
+    if (options.command === "rebuild") {
+        writeStderrLine(standardIo, "[Command] rebuild");
+        try {
+            await core.serviceModules.rebuilder.$rebuildEverything();
+            return true;
+        } catch (error) {
+            writeStderrLine(standardIo, "[Error] Rebuild failed:", error);
+            return false;
+        }
+    }
+
+    if (options.command === "fetch") {
+        writeStderrLine(standardIo, "[Command] fetch");
+        try {
+            // Fetch replaces the local database from remote; do not persist legacy local files first.
+            await core.serviceModules.rebuilder.$fetchLocal(false, true);
+            return true;
+        } catch (error) {
+            writeStderrLine(standardIo, "[Error] Fetch failed:", error);
+            return false;
+        }
     }
 
     if (options.command === "remote-add") {

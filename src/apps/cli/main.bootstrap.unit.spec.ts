@@ -3,6 +3,7 @@ import { appendFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
+import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import {
     AutoAccepting,
@@ -20,6 +21,7 @@ import { cloneSettings } from "./settingsPersistence";
 import type { CLICommand } from "./commands/types";
 
 vi.mock("chokidar", { spy: true });
+vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", { spy: true });
 
 function createStandardIoMock() {
     return {
@@ -41,6 +43,7 @@ describe("CLI database preparation", () => {
 
     beforeEach(async () => {
         vi.mocked(chokidar.watch).mockClear();
+        vi.mocked(offlineScanner.useOfflineScanner).mockClear();
         directory = await mkdtemp(join(tmpdir(), "livesync-cli-bootstrap-"));
         vaultPath = join(directory, "vault");
         settingsPath = join(directory, "settings.json");
@@ -69,8 +72,18 @@ describe("CLI database preparation", () => {
         await rm(directory, { recursive: true, force: true });
     });
 
-    async function start(command: CLICommand, runner: CliCommandRunner, exitCode = 1) {
-        process.argv = ["node", "livesync-cli", directory, "--vault", vaultPath, "--settings", settingsPath, command];
+    async function start(command: CLICommand, runner: CliCommandRunner, exitCode = 1, force = false) {
+        process.argv = [
+            "node",
+            "livesync-cli",
+            directory,
+            ...(force ? ["--force"] : []),
+            "--vault",
+            vaultPath,
+            "--settings",
+            settingsPath,
+            command,
+        ];
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
@@ -253,6 +266,49 @@ describe("CLI database preparation", () => {
         expect(runner).toHaveBeenCalledOnce();
         expect(enumerate).toHaveBeenCalledOnce();
         expect(watch).not.toHaveBeenCalled();
+    });
+
+    it.each(["rebuild", "fetch"] as const)("does not scan or mirror legacy Vault files before %s", async (command) => {
+        const storedPaths: string[] = [];
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
+                storedPaths.push(doc.path);
+            }
+            return false;
+        });
+
+        await start(command, runner, 1, true);
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(storedPaths).toEqual([]);
+        expect(await readFile(join(vaultPath, "notes/local.md"), "utf-8")).toBe("local content");
+        expect(vi.mocked(chokidar.watch)).not.toHaveBeenCalled();
+    });
+
+    it("registers the Rebuild scanner after readiness and makes its Vault scan available", async () => {
+        const enumerate = vi.spyOn(ServiceFileAccessCLI.prototype, "getFiles");
+        const useScanner = vi.mocked(offlineScanner.useOfflineScanner);
+
+        let scansBeforeCommand = -1;
+        let scannerRegistrationsBeforeCommand = -1;
+        let storedPaths: string[] = [];
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            scansBeforeCommand = enumerate.mock.calls.length;
+            scannerRegistrationsBeforeCommand = useScanner.mock.calls.length;
+            await core.services.vault.scanVault(true, true);
+            for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
+                storedPaths.push(doc.path);
+            }
+            return false;
+        });
+
+        await start("rebuild", runner, 1, true);
+
+        expect(useScanner).toHaveBeenCalledOnce();
+        expect(scannerRegistrationsBeforeCommand).toBe(1);
+        expect(scansBeforeCommand).toBe(0);
+        expect(enumerate).toHaveBeenCalledOnce();
+        expect(storedPaths).toEqual(["notes/local.md"]);
     });
 
     it.each([

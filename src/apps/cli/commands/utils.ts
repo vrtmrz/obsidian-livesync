@@ -1,4 +1,16 @@
 import { path } from "@vrtmrz/livesync-commonlib/node";
+import type { CLICommand } from "./types";
+
+export function getForceRequirementError(command: CLICommand, force = false): string | undefined {
+    if (force) return undefined;
+    if (command === "rebuild") {
+        return "Command 'rebuild' requires --force because it replaces the local and remote databases.";
+    }
+    if (command === "fetch") {
+        return "Command 'fetch' requires --force because it replaces the local database with remote state.";
+    }
+    return undefined;
+}
 
 export function toArrayBuffer(data: Buffer): ArrayBuffer {
     return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
