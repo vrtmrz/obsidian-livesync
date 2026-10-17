@@ -16,7 +16,7 @@ the [Unicode path identity ADR](../adr/2026_10_unicode_path_identity.md).
 Commonlib's [consumer contract](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/unicode-path-identity.md)
 defines the shared package boundary.
 
-This records an unreleased change to Self-hosted LiveSync `1.0.37`, using the
+This records an unreleased change after Self-hosted LiveSync `1.0.37`, using the
 published Commonlib `0.1.42` package as an exact dependency.
 
 ## Scope
@@ -128,26 +128,12 @@ has been successfully reserved; cancellation or failed reservation leaves it
 pending. A `remoteOnly` operation cannot apply a pending identity change, and
 the settings-only fallback is not offered.
 
-Migration uses this ordered procedure:
-
-1. Update every CLI and Obsidian client which will use the database. Stop
-   synchronisation and editing on all devices, and keep a complete backup.
-2. Select the Vault whose complete file set is authoritative. Resolve any
-   collision reported by Rebuild before continuing.
-3. Select version `1` on that source. In Obsidian, choose **Overwrite Server
-   Data with This Device's Files**; the new mode becomes active only when the
-   Rebuild reservation succeeds. In the CLI, use settings with
-   `pathNormalizationVersion: 1` and run `rebuild` with `--force
-   --write-settings`. Both local and remote databases are reconstructed from
-   the specified physical Vault.
-4. Select version `1` on each remaining client. In Obsidian, choose **Reset
-   Synchronisation on This Device**; the new mode becomes active only when the
-   Fetch reservation succeeds. In the CLI, use settings with
-   `pathNormalizationVersion: 1` and run `fetch` with `--force
-   --write-settings`. Each operation replaces that client's local database
-   from the rebuilt remote.
-5. Confirm that every participating client is using version `1`, then resume
-   synchronisation.
+The [user migration procedure](../recovery.md#migrate-to-unicode-nfc-path-identity)
+owns the operational sequence: updated and stopped clients, a complete backed-up
+authoritative Vault, source Rebuild, then Fetch on each remaining client. The
+source operation reconstructs both databases; a receiving client's Fetch
+replaces only its local database. The [CLI guide](../../src/apps/cli/README.md)
+provides the equivalent `rebuild` and `fetch` commands.
 
 The CLI checks `--force` before core start-up so an omitted confirmation cannot
 trigger database access or destructive preparation. Neither `--force` nor a
@@ -171,7 +157,11 @@ The path identity is also used by two existing resume mechanisms:
   keys with NFC in mode `1` for reads, writes, deletes, raw snapshot lookup,
   and untracked revision recording. Mode `0` retains the old keys. Rebuild and
   Fetch use the existing local-state reconstruction and replacement lifecycle;
-  no new persistent field or in-place key migration is introduced.
+  no NFC-specific persistent field or in-place key migration is introduced.
+  Commonlib 0.1.42 separately adds content hashes to the same records. The
+  [file-provenance contract](../specs_conflict_resolution.md#device-local-file-provenance)
+  defines that content evidence; changing a path key neither changes file
+  bytes nor supplies missing revision ancestry.
 - **Fast Fetch checkpoints:** the path version participates in checkpoint
   identity so an interrupted transfer cannot resume using a different
   path-to-ID rule. Existing checkpoint persistence and retry handling remain
@@ -259,5 +249,6 @@ This design does not:
 
 - [Unicode path identity ADR](../adr/2026_10_unicode_path_identity.md)
 - [Setting details](../settings.md#unicode-path-identity)
+- [User migration procedure](../recovery.md#migrate-to-unicode-nfc-path-identity)
 - [Commonlib Unicode path identity contract](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/unicode-path-identity.md)
 - [Metadata and Chunks glossary](../glossary.md#user-facing-and-operational-terms)

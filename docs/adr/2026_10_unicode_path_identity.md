@@ -131,5 +131,7 @@ are detected.
 
 - [Unicode path identity design](../design_docs/unicode_path_identity.md)
 - [Setting details](../settings.md#unicode-path-identity)
+- [User migration procedure](../recovery.md#migrate-to-unicode-nfc-path-identity)
+- [Device-local file provenance](../specs_conflict_resolution.md#device-local-file-provenance)
 - [Commonlib Unicode path identity contract](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/unicode-path-identity.md)
 - [Project glossary](../glossary.md)

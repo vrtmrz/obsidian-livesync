@@ -1012,6 +1012,8 @@ Requires restart of Obsidian
 
 Setting key: deleteMetadataOfDeletedFiles
 
+For an unconflicted file, disabling this setting records a logical deletion in the Metadata document; enabling it removes that document through a PouchDB tombstone instead. Both behaviours propagate file deletions and the source side of a rename. Before removing a Vault file, LiveSync revalidates the current winning revision; if this final check observes a concurrent restoration, it keeps the restored file. This setting changes how the deletion is represented; file content remains stored separately in Chunks. Deletion during an unresolved conflict follows the separate [displayed-branch rules](specs_conflict_resolution.md#operations-while-a-conflict-exists).
+
 #### Delete old metadata of deleted files on start-up
 
 Setting key: automaticallyDeleteMetadataOfDeletedFiles
@@ -1056,7 +1058,7 @@ Setting key: pathNormalizationVersion
 
 Version `0` preserves legacy file identity and is the default for existing and new settings. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. This mode currently supports CouchDB only.
 
-Before enabling version `1`, update every participating client, stop synchronisation, and back up a complete authoritative Vault. Rebuild both databases from that Vault, then select version `1` and Fetch on each remaining device. Changing this setting without reconstruction is refused when it would mix database identities. Do not resume an older client against the migrated remote.
+Version `1` requires a coordinated migration: set it on the source client before Rebuild, then set it on each remaining client before Fetch. Changing the setting alone does not migrate existing Metadata. Follow [Migrate to Unicode NFC path identity](recovery.md#migrate-to-unicode-nfc-path-identity) for the complete procedure. Do not resume a version `0` client against the migrated remote.
 
 The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
 
