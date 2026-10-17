@@ -316,6 +316,117 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
         };
     }
 
+    it("requires local and remote rebuilds when path identity changes", () => {
+        const { tab } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        initialSettings.handleFilenameCaseSensitive = false;
+        tab.editingSettings.handleFilenameCaseSensitive = false;
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+
+        expect(tab.isNeedRebuildLocal()).toBe(true);
+        expect(tab.isNeedRebuildRemote()).toBe(true);
+    });
+
+    it("does not offer settings-only fallback when path identity changes", async () => {
+        const { tab, saveSettingData, confirmWithMessage } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "cancelled",
+        });
+
+        await tab.confirmRebuild();
+
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(Reflect.get(initialSettings, "pathNormalizationVersion")).toBe(0);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+    });
+
+    it.each([
+        ["regular-expression Apply", "syncOnlyRegEx", "notes/.*"],
+        ["preset Apply", "preset", "LIVESYNC"],
+    ] as const)("keeps path identity pending during %s", async (_label, setting, value) => {
+        const { tab } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        Reflect.set(tab.editingSettings, setting, value);
+        if (setting === "preset") {
+            tab.addOnSaved("preset", async () => {
+                tab.editingSettings.liveSync = true;
+                await tab.saveAllDirtySettings();
+            });
+        }
+
+        await tab.saveAllDirtySettings();
+
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+        if (setting === "syncOnlyRegEx") {
+            expect(tab.core.settings.syncOnlyRegEx).toBe(value);
+        } else {
+            expect(tab.core.settings.liveSync).toBe(true);
+        }
+    });
+
+    it("excludes path identity from direct save operations", async () => {
+        const { tab, saveSettingData } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+
+        await tab.saveSettings(["pathNormalizationVersion"]);
+
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+    });
+
+    it("excludes path identity from ordinary Apply operations", async () => {
+        const { tab, saveSettingData } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+
+        await tab.applyAllSettings();
+
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+    });
+
+    it("retains a pending path identity edit and its applied baseline after reload", () => {
+        const { tab } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+
+        tab.reloadAllSettings();
+
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+        expect(tab.isNeedRebuildLocal()).toBe(true);
+        expect(tab.isNeedRebuildRemote()).toBe(true);
+    });
+
     it("keeps pending settings in the editing buffer when initialisation and the fallback are cancelled", async () => {
         const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
         settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
@@ -353,8 +464,11 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
         expect(closeSetting).not.toHaveBeenCalled();
     });
 
-    it("closes settings only after initialisation has been scheduled", async () => {
+    it("applies path identity only from a successful initialisation reservation callback", async () => {
         const { tab, saveSettingData, confirmWithMessage, closeSetting } = createSettingsTab();
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.initialSettings!, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
         settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockImplementationOnce(
             async ({ applySettings }: { applySettings: () => Promise<void> }) => {
                 await applySettings();
@@ -364,9 +478,118 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
 
         await tab.confirmRebuild();
 
-        expect(saveSettingData).toHaveBeenCalledOnce();
+        expect(saveSettingData).toHaveBeenCalledTimes(2);
         expect(confirmWithMessage).not.toHaveBeenCalled();
         expect(closeSetting).toHaveBeenCalledOnce();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(1);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(1);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(false);
+    });
+
+    it("rolls path identity back and keeps it pending when saving after reservation fails", async () => {
+        const { tab, saveSettingData, closeSetting } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        tab.editingSettings.handleFilenameCaseSensitive = false;
+        const failure = new Error("settings could not be saved");
+        saveSettingData.mockRejectedValueOnce(failure);
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockImplementationOnce(
+            async ({ applySettings }: { applySettings: () => Promise<void> }) => {
+                await applySettings();
+                return { result: "scheduled", mode: "rebuild" };
+            }
+        );
+
+        await expect(tab.confirmRebuild()).rejects.toBe(failure);
+
+        expect(saveSettingData).toHaveBeenCalledOnce();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+        expect(closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("retains pending path identity when fetch validation fails", async () => {
+        const { tab } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        vi.spyOn(tab, "checkWorkingPassphrase").mockResolvedValue(false);
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockImplementationOnce(
+            async ({ validateChoice }: { validateChoice: (mode: "fetch" | "rebuild") => Promise<boolean> }) => {
+                expect(await validateChoice("fetch")).toBe(false);
+                return { result: "failed", mode: "fetch" };
+            }
+        );
+
+        await tab.confirmRebuild();
+
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+        expect(tab.closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("retains pending path identity when initialisation reservation fails", async () => {
+        const { tab, saveSettingData } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockResolvedValueOnce({
+            result: "failed",
+            mode: "rebuild",
+        });
+
+        await tab.confirmRebuild();
+
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+        expect(tab.closeSetting).not.toHaveBeenCalled();
+    });
+
+    it("refuses remote-only overwrite with pending path identity before side effects", async () => {
+        const { tab, saveSettingData, suspendAllSync, suspendExtraSync, performRebuildDB, closeSetting } =
+            createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        tab.editingSettings.encrypt = false;
+        const applyAllSettings = vi.spyOn(tab, "applyAllSettings");
+        const reloadAllSettings = vi.spyOn(tab, "reloadAllSettings");
+
+        await tab.rebuildDB("remoteOnly");
+
+        expect(applyAllSettings).not.toHaveBeenCalled();
+        expect(suspendAllSync).not.toHaveBeenCalled();
+        expect(suspendExtraSync).not.toHaveBeenCalled();
+        expect(reloadAllSettings).not.toHaveBeenCalled();
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(performRebuildDB).not.toHaveBeenCalled();
+        expect(closeSetting).not.toHaveBeenCalled();
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.initialSettings!, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
+        expect(vi.mocked($msg)).toHaveBeenCalledWith(
+            "CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1."
+        );
+        expect(loggerMocks.Logger).toHaveBeenCalledWith(
+            expect.stringContaining(
+                "Rebuild both databases from a complete authoritative Vault and Fetch on the other devices."
+            ),
+            LOG_LEVEL_NOTICE
+        );
     });
 
     it("does not offer the settings-only fallback after an initialisation failure", async () => {
@@ -487,6 +710,33 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
         expect(tab.editingSettings.hashCacheMaxCount).toBe(321);
         expect(saveSettings).toHaveBeenCalledOnce();
         expect(saveSettings).toHaveBeenCalledWith(["hashCacheMaxCount"]);
+    });
+
+    it("keeps a path identity dropdown edit pending until the rebuild flow applies it", async () => {
+        const { tab, saveSettingData } = createSettingsTab();
+        const initialSettings = tab.initialSettings!;
+        const saveSettings = vi.spyOn(tab, "saveSettings");
+        vi.spyOn(tab, "requestUpdate").mockImplementation(() => undefined);
+        Reflect.set(tab.core.settings, "pathNormalizationVersion", 0);
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 0);
+        Reflect.set(initialSettings, "pathNormalizationVersion", 0);
+
+        expect(tab.getControlValue("pathNormalizationVersion")).toBe("0");
+
+        await tab.setControlValue("pathNormalizationVersion", "1");
+
+        expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
+        expect(tab.getControlValue("pathNormalizationVersion")).toBe("1");
+        expect(Reflect.get(tab.core.settings, "pathNormalizationVersion")).toBe(0);
+        expect(Reflect.get(initialSettings, "pathNormalizationVersion")).toBe(0);
+        expect(saveSettings).not.toHaveBeenCalled();
+        expect(tab.requestUpdate).toHaveBeenCalledOnce();
+        expect(saveSettingData).not.toHaveBeenCalled();
+        expect(tab.isNeedRebuildLocal()).toBe(true);
+        expect(tab.isNeedRebuildRemote()).toBe(true);
+        await expect(tab.setControlValue("pathNormalizationVersion", "0.5")).rejects.toThrow(
+            /Invalid value for declarative setting/u
+        );
     });
 
     it("rejects unregistered declarative control keys", async () => {

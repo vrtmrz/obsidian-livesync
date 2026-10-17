@@ -7,6 +7,30 @@ import {
 } from "./replicatorConfigurationIdentity";
 
 describe("active Replicator configuration identity", () => {
+    it("replaces a connection when the path identity mode changes", () => {
+        const previous = configuredSettings({ pathNormalizationVersion: 0 });
+        const next = { ...previous, pathNormalizationVersion: 1 as const };
+        expect(getCouchDBReplicatorConfigurationIdentity(next)).not.toBe(
+            getCouchDBReplicatorConfigurationIdentity(previous)
+        );
+        expect(getObjectStorageReplicatorConfigurationIdentity(next)).not.toBe(
+            getObjectStorageReplicatorConfigurationIdentity(previous)
+        );
+    });
+
+    it("treats a missing path identity mode as version 0", () => {
+        const missingVersion = configuredSettings();
+        Reflect.deleteProperty(missingVersion, "pathNormalizationVersion");
+        const explicitVersion0 = { ...missingVersion, pathNormalizationVersion: 0 as const };
+
+        expect(getCouchDBReplicatorConfigurationIdentity(explicitVersion0)).toBe(
+            getCouchDBReplicatorConfigurationIdentity(missingVersion)
+        );
+        expect(getObjectStorageReplicatorConfigurationIdentity(explicitVersion0)).toBe(
+            getObjectStorageReplicatorConfigurationIdentity(missingVersion)
+        );
+    });
+
     function configuredSettings(overrides: Partial<ObsidianLiveSyncSettings> = {}): ObsidianLiveSyncSettings {
         return Object.assign(createNewVaultSettings(), {
             activeConfigurationId: "profile-a",

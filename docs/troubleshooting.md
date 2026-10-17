@@ -51,7 +51,9 @@ If the remote is healthy but one device's local database is not, use [Reset Sync
 
 If the log says `Preserved unsynchronised local changes as a conflict`, keep both versions available until you have checked their contents. The message means that LiveSync could not prove that the Vault file was unchanged; it does not establish that you edited the file. Use **Inspect conflicts and file/database differences** in Hatch to review the current branches before selecting a version.
 
-At start-up, LiveSync can restore a missing device-local revision record when the file still exactly matches the current local database revision. If a newer revision has already arrived, that match may no longer exist. LiveSync then preserves the old file for review because it cannot distinguish an unchanged copy from an intentional edit back to older content. A new release cannot resolve a conflict which was already created merely by recognising a historical content match. If the problem recurs, include the first relevant log entries, plug-in versions on both devices, and a redacted full report with the issue steps.
+At start-up, LiveSync can restore a missing device-local revision record when the file exactly matches the conflict-free current local database revision. For a saved record, it compares the Vault file with that exact revision when the revision body is readable. It also saves a device-local content hash and byte length. Evidence saved before pruning lets LiveSync recognise an unchanged Vault file even after its recorded revision has been pruned.
+
+If the recorded body is unavailable and no matching content evidence exists, LiveSync cannot prove that the file is unchanged and preserves it for review. Genuine edits and files with unknown origins remain protected; content evidence does not recreate missing revision history. A conflict which was already recorded is not automatically removed or resolved. Use **Inspect conflicts and file/database differences** to review its current branches. If the problem recurs, include the first relevant log entries, plug-in versions on both devices, and a redacted full report with the issue steps.
 
 ## Synchronisation is paused for compatibility review
 
@@ -96,7 +98,9 @@ Current releases automatically align compatible settings which control how new c
 
 A missing legacy file-name case setting means case-insensitive handling. It matches an explicit disabled setting and does not require a rebuild for that difference. An explicitly enabled setting can use different document IDs and still requires a compatibility decision against either value. Other configuration differences shown in the dialogue must still be resolved.
 
-If the mismatch names **Encrypt internal file Properties**, update every device before accepting that preference. It affects subsequent Metadata writes for Hidden File Sync and Customisation Sync; it does not automatically protect existing Metadata. A manual remote Rebuild is strongly recommended if you need to protect existing paths, times, sizes, and Chunk references.
+The saved **Encrypt internal file Properties** preference is effective only for CouchDB when E2EE V2 and **Property Encryption** are also enabled. An inactive preference difference alone does not change Metadata behaviour or require a Rebuild. Applying settings retains that preference only when doing so leaves the adopted effective encryption settings unchanged.
+
+When active, this option affects subsequent Metadata writes for Hidden File Sync and Customisation Sync; it does not automatically protect existing Metadata. To protect existing paths, times, sizes, and Chunk references, update every device and manually Rebuild the remote database.
 
 The `Sync now` command keeps routine replication progress quiet so that it is convenient to assign to a keyboard shortcut; assign one in Obsidian if that suits your workflow. A quiet command may still open this dialogue when a mismatch or another decision requires your attention.
 

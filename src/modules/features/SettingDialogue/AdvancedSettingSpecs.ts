@@ -1,4 +1,5 @@
 import { ChunkAlgorithmNames } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { $msg } from "@/common/translation";
 import type { SettingSpecGroup } from "./SettingSpec.ts";
 
 export type AdvancedSettingSpecContext = {
@@ -22,6 +23,18 @@ export function createAdvancedSettingSpecGroups({
                     control: { type: "dropdown", options: () => ChunkAlgorithmNames },
                 },
                 { key: "customChunkSize", control: { type: "number", min: 0, allowZero: true } },
+                {
+                    key: "pathNormalizationVersion",
+                    holdValue: true,
+                    control: {
+                        type: "numeric-dropdown",
+                        options: () => ({
+                            "0": $msg("Legacy path identity"),
+                            "1": $msg("Unicode NFC path identity"),
+                        }),
+                    },
+                    visible: isCouchDB,
+                },
             ],
         },
         {

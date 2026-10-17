@@ -118,6 +118,10 @@ function createCoreMock() {
                 fetch: vi.fn(async () => undefined),
                 storeContent: vi.fn(async () => true),
             },
+            rebuilder: {
+                $rebuildEverything: vi.fn(async () => undefined),
+                $fetchLocal: vi.fn(async () => undefined),
+            },
         },
     } as any;
 }
@@ -266,6 +270,73 @@ describe("runCommand abnormal cases", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    it.each(["rebuild", "fetch"] as const)("requires --force before activating for %s", async (command) => {
+        const core = createCoreMock();
+        const activated = vi.fn(() => Promise.resolve());
+        Object.defineProperty(core.services.control, "activated", { get: activated });
+
+        await expect(runCommand(makeOptions(command, []), { ...context, core })).resolves.toBe(false);
+
+        expect(activated).not.toHaveBeenCalled();
+        expect(core.serviceModules.rebuilder.$rebuildEverything).not.toHaveBeenCalled();
+        expect(core.serviceModules.rebuilder.$fetchLocal).not.toHaveBeenCalled();
+        expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+            expect.stringContaining("requires --force")
+        );
+    });
+
+    it("dispatches a forced rebuild to the existing Rebuilder service", async () => {
+        const core = createCoreMock();
+        const options = makeOptions("rebuild", []);
+        options.force = true;
+
+        await expect(runCommand(options, { ...context, core })).resolves.toBe(true);
+
+        expect(core.serviceModules.rebuilder.$rebuildEverything).toHaveBeenCalledOnce();
+        expect(core.serviceModules.rebuilder.$fetchLocal).not.toHaveBeenCalled();
+    });
+
+    it("dispatches a forced fetch without saving legacy Vault files first", async () => {
+        const core = createCoreMock();
+        const options = makeOptions("fetch", []);
+        options.force = true;
+
+        await expect(runCommand(options, { ...context, core })).resolves.toBe(true);
+
+        expect(core.serviceModules.rebuilder.$fetchLocal).toHaveBeenCalledOnce();
+        expect(core.serviceModules.rebuilder.$fetchLocal).toHaveBeenCalledWith(false, true);
+        expect(core.serviceModules.rebuilder.$rebuildEverything).not.toHaveBeenCalled();
+    });
+
+    it("rejects fetch in remediation mode even when forced", async () => {
+        const core = createCoreMock();
+        core.services.setting.currentSettings().maxMTimeForReflectEvents = 1;
+        const options = makeOptions("fetch", []);
+        options.force = true;
+
+        await expect(runCommand(options, { ...context, core })).resolves.toBe(false);
+
+        expect(core.serviceModules.rebuilder.$fetchLocal).not.toHaveBeenCalled();
+        expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+            expect.stringContaining("remediation mode")
+        );
+    });
+
+    it("surfaces an internal rebuild refusal as a failed command", async () => {
+        const core = createCoreMock();
+        core.serviceModules.rebuilder.$rebuildEverything.mockRejectedValue(
+            new Error("Rebuilding is not available while remediation mode is active.")
+        );
+        const options = makeOptions("rebuild", []);
+        options.force = true;
+
+        await expect(runCommand(options, { ...context, core })).resolves.toBe(false);
+
+        expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+            expect.stringContaining("Rebuilding is not available while remediation mode is active")
+        );
     });
 
     it("retains visible progress for the interactive sync command", async () => {

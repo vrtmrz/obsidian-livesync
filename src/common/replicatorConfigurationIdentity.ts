@@ -1,5 +1,6 @@
 import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { usesEncryptedInternalMetadata } from "@vrtmrz/livesync-commonlib/replication";
+import { getPathNormalizationVersion } from "@vrtmrz/livesync-commonlib/settings";
 
 type EndpointProjection = readonly [kind: "url" | "invalid-url", value: string];
 
@@ -44,17 +45,18 @@ function projectHeaders(value: string): readonly (readonly [name: string, value:
 
 function projectRemoteSecurity(settings: RemoteDBSettings) {
     return [
+        getPathNormalizationVersion(settings),
         settings.idDerivationVersion,
         settings.idDerivationKey,
         settings.encrypt
-        ? ([
-              "encrypted",
-              settings.passphrase,
-              settings.useDynamicIterationCount,
-              settings.E2EEAlgorithm,
-              settings.permitEmptyPassphrase,
-          ] as const)
-        : (["plain"] as const),
+            ? ([
+                  "encrypted",
+                  settings.passphrase,
+                  settings.useDynamicIterationCount,
+                  settings.E2EEAlgorithm,
+                  settings.permitEmptyPassphrase,
+              ] as const)
+            : (["plain"] as const),
     ] as const;
 }
 

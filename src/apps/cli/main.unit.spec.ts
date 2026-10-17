@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseArgs as parseCliArgs } from "./main";
+import { main as runCliMain, parseArgs as parseCliArgs } from "./main";
 
 function createStandardIoMock() {
     return {
@@ -19,6 +19,7 @@ function mockProcessExit() {
 
 describe("CLI parseArgs", () => {
     const originalArgv = process.argv.slice();
+    const originalExitCode = process.exitCode;
     let standardIo: ReturnType<typeof createStandardIoMock>;
 
     beforeEach(() => {
@@ -29,6 +30,7 @@ describe("CLI parseArgs", () => {
 
     afterEach(() => {
         process.argv = originalArgv.slice();
+        process.exitCode = originalExitCode;
         vi.restoreAllMocks();
     });
 
@@ -97,6 +99,28 @@ describe("CLI parseArgs", () => {
         expect(parsed.databasePath).toBe("./databasePath");
         expect(parsed.command).toBe("p2p-host");
         expect(parsed.commandArgs).toEqual([]);
+    });
+
+    it.each(["rebuild", "fetch"] as const)("parses %s and its force flag", (command) => {
+        process.argv = ["node", "livesync-cli", "./databasePath", "--force", command];
+        const parsed = parseArgs();
+
+        expect(parsed.command).toBe(command);
+        expect(parsed.force).toBe(true);
+        expect(parsed.commandArgs).toEqual([]);
+    });
+
+    it.each(["rebuild", "fetch"] as const)("rejects %s without force before database access", async (command) => {
+        process.argv = ["node", "livesync-cli", "./missing-database", command];
+        process.exitCode = undefined;
+        const runner = vi.fn(async () => true);
+
+        await expect(runCliMain(standardIo, runner as any)).resolves.toBeUndefined();
+
+        expect(runner).not.toHaveBeenCalled();
+        expect(process.exitCode).toBe(1);
+        expect(standardIo.writeStderr).toHaveBeenCalledWith(expect.stringContaining("requires --force"));
+        expect(standardIo.writeStderr).not.toHaveBeenCalledWith(expect.stringContaining("Database directory"));
     });
 
     it("parses remote-add command", () => {
