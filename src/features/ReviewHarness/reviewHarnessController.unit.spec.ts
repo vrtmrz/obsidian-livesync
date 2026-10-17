@@ -85,6 +85,11 @@ function createRuntime(): ReviewHarnessRuntime & {
             detail: "ID generation measurements completed.",
             observations: ["Chunk 256 B: 1000 IDs total=43.00 ms; per ID=0.0430 ms"],
         })),
+        runFileContentHashBenchmark: vi.fn(async () => ({
+            status: "passed" as const,
+            detail: "File content hash measurements completed.",
+            observations: ["SHA-256, 4 KiB: median=1.00 ms; range=1.00–1.00 ms"],
+        })),
         readContinuation() {
             return this.continuation;
         },
@@ -121,6 +126,7 @@ describe("ReviewHarnessController", () => {
         expect(controller.snapshot().results["settings-lifecycle"].status).toBe("passed");
         expect(controller.snapshot().results["vault-round-trip"].status).toBe("idle");
         expect(controller.snapshot().results["compatibility-review"].status).toBe("idle");
+        expect(controller.snapshot().results["file-content-hash-performance"].status).toBe("idle");
     });
 
     it("runs the Vault fixture scenario only when it is selected explicitly", async () => {
@@ -182,6 +188,42 @@ describe("ReviewHarnessController", () => {
 
         expect(controller.snapshot().results["id-generation-performance"].status).toBe("failed");
         expect(controller.createReport()).not.toContain("private measurement error");
+        expect(runtime.reportError).toHaveBeenCalledOnce();
+    });
+
+    it("runs file content hash measurements on request without running them automatically", async () => {
+        const runtime = createRuntime();
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runAutomaticScenarios();
+        expect(runtime.runFileContentHashBenchmark).not.toHaveBeenCalled();
+
+        await controller.runScenario("file-content-hash-performance");
+
+        expect(runtime.runFileContentHashBenchmark).toHaveBeenCalledOnce();
+        expect(controller.snapshot().results["file-content-hash-performance"]).toMatchObject({ status: "passed" });
+        expect(runtime.runVaultRoundTrip).not.toHaveBeenCalled();
+    });
+
+    it("includes file content hash measurements in Full review", async () => {
+        const runtime = createRuntime();
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runAllScenarios();
+
+        expect(runtime.runFileContentHashBenchmark).toHaveBeenCalledOnce();
+        expect(controller.snapshot().results["file-content-hash-performance"].status).toBe("passed");
+    });
+
+    it("excludes an unexpected file content hash error from the copied report", async () => {
+        const runtime = createRuntime();
+        runtime.runFileContentHashBenchmark = vi.fn().mockRejectedValue(new Error("private benchmark content"));
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runScenario("file-content-hash-performance");
+
+        expect(controller.snapshot().results["file-content-hash-performance"].status).toBe("failed");
+        expect(controller.createReport()).not.toContain("private benchmark content");
         expect(runtime.reportError).toHaveBeenCalledOnce();
     });
 

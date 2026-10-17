@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NEW_VAULT_SETTINGS, type SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
 import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
 import {
+    REVIEW_HARNESS_SCENARIOS,
     REVIEW_HARNESS_SCENARIO_IDS,
     formatReviewHarnessReport,
     inspectCompatibilityReview,
@@ -76,7 +77,12 @@ describe("Review Harness contract", () => {
             "compatibility-review",
             "vault-round-trip",
             "id-generation-performance",
+            "file-content-hash-performance",
         ]);
+        expect(REVIEW_HARNESS_SCENARIOS.find(({ id }) => id === "file-content-hash-performance")).toMatchObject({
+            mode: "manual",
+            access: "read-only",
+        });
     });
 
     it("checks that an existing Vault exposes the seven synchronisation choices as booleans", () => {

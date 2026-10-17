@@ -93,6 +93,7 @@ export function initialiseServiceModulesFSAPI(
         events: services.context.events,
         API: services.API,
         database: services.database,
+        path: services.path,
         appLifecycle: services.appLifecycle,
         setting: services.setting,
         remote: services.remote,
