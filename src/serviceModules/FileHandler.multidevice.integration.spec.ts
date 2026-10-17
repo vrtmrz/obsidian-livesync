@@ -13,6 +13,7 @@ import {
     type ServiceDatabaseFileAccessDependencies,
 } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceDatabaseFileAccessBase";
 import type { ServiceFileHandlerDependencies } from "@vrtmrz/livesync-commonlib/compat/serviceModules/ServiceFileHandlerBase";
+import type { FileReflectionProvenanceRecord } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileReflectionProvenance";
 import { ServiceFileHandler } from "./FileHandler";
 import {
     createConflictResolutionOperations,
@@ -38,7 +39,7 @@ function makeFile(body: string, mtime = oldTime): UXFileInfo {
 
 async function makeDevice(name: string) {
     const db = new PouchDB<EntryDoc>(name, { adapter: "memory" });
-    const reflection = new Map<FilePathWithPrefix, { revision: string; observedStorageMtime?: number }>();
+    const reflection = new Map<FilePathWithPrefix, FileReflectionProvenanceRecord>();
     let storage = makeFile(old);
     const settings = { ...DEFAULT_SETTINGS, useOnlyLocalChunk: true, writeDocumentsIfConflicted: false };
     const setting = { currentSettings: () => settings };
@@ -94,7 +95,7 @@ async function makeDevice(name: string) {
         conflict,
         fileReflectionProvenance: {
             get: (value: FilePathWithPrefix) => Promise.resolve(reflection.get(value)),
-            set: (value: FilePathWithPrefix, record: { revision: string }) => {
+            set: (value: FilePathWithPrefix, record: FileReflectionProvenanceRecord) => {
                 reflection.set(value, record);
                 return Promise.resolve();
             },
@@ -287,7 +288,38 @@ describe("file provenance across multiple devices and real CouchDB", () => {
         }
     }, 60_000);
 
-    it.each(["missing record", "compacted base"] as const)(
+    it("reflects the selected revision after compaction when saved content evidence proves the file unchanged", async () => {
+        const f = await conflictedDevices(4);
+        const { keep, content } = await resolveAndReplicate(f);
+        const index = f.revisions.findIndex((rev, i) => i > 0 && rev !== keep);
+        const device = f.devices[index];
+        const storage = device.getStorage();
+        expect(await storage.body.text()).not.toBe(content);
+        expect(device.reflection.get(path)).toMatchObject({
+            revision: f.revisions[index],
+            contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+            contentSize: storage.body.size,
+        });
+        await device.db.compact();
+        await expect(device.db.get(path, { rev: f.revisions[index] })).rejects.toMatchObject({ status: 404 });
+
+        const before = (await device.db.info()).update_seq;
+        await expect(device.handler.storeFileToDB(path)).resolves.toBe(true);
+        expect((await device.db.info()).update_seq).toBe(before);
+        expect(await device.getStorage().body.text()).toBe(content);
+        expect(device.reflection.get(path)?.revision).toBe(keep);
+        await expect(device.handler.storeFileToDB(path)).resolves.toBe(true);
+        expect((await device.db.info()).update_seq).toBe(before);
+        await device.db.replicate.to(f.remote);
+        for (const peer of f.devices) {
+            await peer.db.replicate.from(f.remote);
+            expect((await leaves(peer.db)).map((doc) => doc._rev)).toEqual([keep]);
+            expect(await revisionContent(peer, keep)).toBe(content);
+        }
+        expect((await leaves(f.remote)).map((doc) => doc._rev)).toEqual([keep]);
+    }, 60_000);
+
+    it.each(["missing record", "compacted base without content evidence"] as const)(
         "preserves uncertain storage as one independent conflict with four devices: %s",
         async (reason) => {
             const f = await conflictedDevices(4);
@@ -299,6 +331,9 @@ describe("file provenance across multiple devices and real CouchDB", () => {
                 // Matching an old ancestor must not be mistaken for an unchanged current branch.
                 device.setStorage(makeFile(old));
             } else {
+                // Legacy records retain the revision but have no saved content hash or byte length.
+                const { revision, observedStorageMtime } = device.reflection.get(path)!;
+                device.reflection.set(path, { revision, observedStorageMtime });
                 await device.db.compact();
                 await expect(device.db.get(path, { rev: f.revisions[index] })).rejects.toMatchObject({ status: 404 });
             }
