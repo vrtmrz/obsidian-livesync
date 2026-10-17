@@ -215,8 +215,17 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     ): Promise<[TweakValues | boolean, boolean]> {
         if (assessment.alignment === "matched") return [false, false];
         if (this.requiresIdConfigurationReview(assessment)) return [false, false];
-        // Retain saved preferences when only their effective representation differs from the assessment.
+        // Retain saved preferences only when they leave the adopted effective values unchanged.
+        const assessedSettings = settingsAfterAdoption(assessment, "adoptPreferred");
         const acceptedSettings = settingsAfterAdoption(assessment, "adoptPreferred", this.settings);
+        if (
+            this.settings.remoteType === REMOTE_COUCHDB &&
+            usesEncryptedInternalMetadata({ ...this.settings, ...acceptedSettings }) !==
+                usesEncryptedInternalMetadata({ ...this.settings, ...assessedSettings })
+        ) {
+            // Adopting encryption prerequisites can activate a previously inactive preference.
+            acceptedSettings.encryptInternalMetadata = assessedSettings.encryptInternalMetadata;
+        }
         const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(assessment);
         if (autoAcceptSide === "REMOTE") return [acceptedSettings, false];
         if (autoAcceptSide === "CURRENT") return [true, false];

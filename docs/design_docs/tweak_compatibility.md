@@ -69,8 +69,10 @@ Central replication can assess an effective value which differs from a saved
 preference, such as internal Metadata encryption whose prerequisites are inactive.
 Recovery accepts the current saved or effective snapshot without treating that
 representation difference as a settings change. Applying assessed changes retains
-saved preferences for settings whose effective values already agree. The full
-settings signature still detects a preference changed while awaiting a decision.
+saved preferences only when they leave the adopted effective values unchanged.
+If adoption activates encryption prerequisites, the adopted encryption value
+takes precedence. The full settings signature still detects a preference changed
+while awaiting a decision.
 
 The active publication reservation is not held while waiting for the dialogue.
 Remote writes use the failed attempt's publication guard. Fetch and Rebuild use

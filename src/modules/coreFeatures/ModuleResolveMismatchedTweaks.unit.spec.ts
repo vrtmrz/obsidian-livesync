@@ -14,6 +14,7 @@ import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     REMOTE_RESOURCE_KINDS,
     USER_INITIATED_REPLICATION_AUTHORITY,
+    usesEncryptedInternalMetadata,
     type ReplicationAttemptFailure,
 } from "@vrtmrz/livesync-commonlib/replication";
 
@@ -74,6 +75,46 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 describe("ModuleResolvingMismatchedTweaks", () => {
+    it.each([
+        { label: "E2EE", encrypt: false, usePathObfuscation: true },
+        { label: "Property Encryption", encrypt: true, usePathObfuscation: false },
+    ])(
+        "uses the remote Metadata encryption preference when adoption enables $label",
+        async ({ encrypt, usePathObfuscation }) => {
+            const { module, core, askSelectStringDialogue } = createModule({
+                autoAcceptCompatibleTweak: false,
+                encrypt,
+                usePathObfuscation,
+                E2EEAlgorithm: "v2",
+                encryptInternalMetadata: true,
+                idDerivationVersion: 0,
+            });
+            const current = {
+                ...extractObject(TweakValuesTemplate, core.settings),
+                encryptInternalMetadata: usesEncryptedInternalMetadata(core.settings),
+            };
+            const preferred = { ...current, encrypt: true, usePathObfuscation: true, encryptInternalMetadata: false };
+            const assessment = assessTweakCompatibility(current, preferred);
+            core._services.tweakValue = {
+                checkAndAskResolvingMismatched: module._checkAndAskResolvingMismatchedTweaks.bind(module),
+            };
+            core.rebuilder = { $fetchLocal: vi.fn(async () => undefined) };
+            askSelectStringDialogue.mockResolvedValueOnce("Apply settings to this device, and fetch again");
+            const updateRemote = vi.fn(async () => true);
+
+            await expect(module._askResolvingMismatchedTweaks(preferred, updateRemote, assessment)).resolves.toBe(
+                "CHECKAGAIN"
+            );
+
+            expect(core.rebuilder.$fetchLocal).toHaveBeenCalledOnce();
+            expect(core.settings).toMatchObject({ encrypt: true, usePathObfuscation: true });
+            expect(usesEncryptedInternalMetadata(core.settings)).toBe(false);
+            expect(updateRemote).toHaveBeenCalledWith(
+                expect.objectContaining({ encrypt: true, usePathObfuscation: true, encryptInternalMetadata: false })
+            );
+        }
+    );
+
     it.each([
         { label: "automatic alignment with E2EE disabled", autoAcceptCompatibleTweak: true, encrypt: false },
         { label: "manual review with E2EE disabled", autoAcceptCompatibleTweak: false, encrypt: false },
