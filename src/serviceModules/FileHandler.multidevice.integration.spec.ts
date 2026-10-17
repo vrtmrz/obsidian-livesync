@@ -293,6 +293,8 @@ describe("file provenance across multiple devices and real CouchDB", () => {
         const { keep, content } = await resolveAndReplicate(f);
         const index = f.revisions.findIndex((rev, i) => i > 0 && rev !== keep);
         const device = f.devices[index];
+        const storage = device.getStorage();
+        expect(await storage.body.text()).not.toBe(content);
         const record = device.reflection.get(path);
         expect(record?.revision).toBe(f.revisions[index]);
         expect(record?.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
@@ -305,12 +307,15 @@ describe("file provenance across multiple devices and real CouchDB", () => {
         expect((await device.db.info()).update_seq).toBe(before);
         expect(await device.getStorage().body.text()).toBe(content);
         expect(device.reflection.get(path)?.revision).toBe(keep);
+        await expect(device.handler.storeFileToDB(path)).resolves.toBe(true);
+        expect((await device.db.info()).update_seq).toBe(before);
         await device.db.replicate.to(f.remote);
         for (const peer of f.devices) {
             await peer.db.replicate.from(f.remote);
             expect((await leaves(peer.db)).map((doc) => doc._rev)).toEqual([keep]);
             expect(await revisionContent(peer, keep)).toBe(content);
         }
+        expect((await leaves(f.remote)).map((doc) => doc._rev)).toEqual([keep]);
     }, 60_000);
 
     it.each(["missing record", "compacted legacy base", "compacted hashed base with local edits"] as const)(

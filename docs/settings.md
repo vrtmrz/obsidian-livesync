@@ -1050,6 +1050,18 @@ When this setting is disabled, changing only the letter case of a file name with
 
 New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. Earlier releases also followed the case-insensitive branch when this value was absent, so 1.0 saves a missing legacy value as `false` without requiring a compatibility review or database rebuild.
 
+#### Unicode path identity
+
+Setting key: pathNormalizationVersion
+
+Version `0` preserves legacy file identity and is the default for existing and new settings. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. This mode currently supports CouchDB only.
+
+Before enabling version `1`, update every participating client, stop synchronisation, and back up a complete authoritative Vault. Rebuild both databases from that Vault, then select version `1` and Fetch on each remaining device. Changing this setting without reconstruction is refused when it would mix database identities. Do not resume an older client against the migrated remote.
+
+The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
+
+Distinct files or Metadata documents which derive the same identity stop reconstruction before either database is reset. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
+
 ### 4. Compatibility (Internal API Usage)
 
 #### Scan changes on customisation sync
