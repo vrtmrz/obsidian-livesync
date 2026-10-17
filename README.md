@@ -75,6 +75,11 @@ Each workflow establishes ordinary note synchronisation on the first device, gen
 
 If you would rather not set up and maintain a server yourself, Zenith Hosting offers a managed CouchDB server which this plug-in can be configured to connect to: [Zenith Hosting](https://zenith.hosting/host/obsidian-livesync). As with any hosted service, your data will reside on a server operated by a third party, so please consider whether that is acceptable for your vault before using it.
 
+> [!NOTE]
+> The following is a third-party hosting option proposed by Pethost. It is not an official Self-hosted LiveSync service, and it is neither endorsed nor recommended by this project.
+
+Pethost offers a one-click template that runs CouchDB with the settings this plug-in needs, on a server of your own plan: [Pethost](https://pethost.dev/templates/obsidian-livesync/). As with any hosted service, your data will reside on a server operated by a third party, so please consider whether that is acceptable for your vault before using it.
+
 ## Information in the Status Bar
 
 Synchronisation status is shown in the status bar with the following icons.
