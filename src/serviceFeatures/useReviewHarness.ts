@@ -17,6 +17,8 @@ import {
 import type { CompatibilityReviewController } from "./compatibilityReview";
 import { runReviewHarnessIdBenchmark } from "@/features/ReviewHarness/reviewHarnessIdBenchmark";
 import { createIdBenchmarkOperations } from "@/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime";
+import { runReviewHarnessFileContentHashBenchmark } from "@/features/ReviewHarness/reviewHarnessFileContentHashBenchmark";
+import { createFileContentHashBenchmarkOperations } from "@/features/ReviewHarness/reviewHarnessFileContentHashBenchmarkRuntime";
 
 async function runVaultRoundTrip(plugin: ObsidianLiveSyncPlugin): Promise<ReviewHarnessScenarioResult> {
     const vault = plugin.app.vault;
@@ -62,6 +64,11 @@ export function useReviewHarness(
         runVaultRoundTrip: () => runVaultRoundTrip(plugin),
         runIdBenchmark: async () =>
             runReviewHarnessIdBenchmark(await createIdBenchmarkOperations(), activeWindow.performance),
+        runFileContentHashBenchmark: async () =>
+            runReviewHarnessFileContentHashBenchmark(
+                await createFileContentHashBenchmarkOperations(activeWindow.performance),
+                activeWindow.performance
+            ),
         readContinuation: () => services.setting.getSmallConfig(REVIEW_HARNESS_STATE_KEY),
         writeContinuation: (value) => services.setting.setSmallConfig(REVIEW_HARNESS_STATE_KEY, value),
         deleteContinuation: () => services.setting.deleteSmallConfig(REVIEW_HARNESS_STATE_KEY),

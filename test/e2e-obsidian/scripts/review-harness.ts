@@ -204,6 +204,10 @@ async function runAutomaticScenarios(): Promise<void> {
                 .getByText("Passed:", { exact: false })
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
+        await harness
+            .locator('[data-testid="review-harness-result-file-content-hash-performance"]')
+            .getByText("Not run:", { exact: false })
+            .waitFor({ state: "visible", timeout: uiTimeoutMs });
     });
 }
 
@@ -249,6 +253,52 @@ async function runIdBenchmark(): Promise<void> {
         }
         if ((await snapshotSettings()) !== before) throw new Error("The benchmark changed the live settings.");
         await assertNoHorizontalOverflow(page, harness, { label: "ID benchmark results" });
+    });
+}
+
+async function runFileContentHashBenchmark(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const snapshotSettings = () =>
+            page.evaluate(() => {
+                const plugin = (globalThis as ReviewHarnessTestGlobal).app?.plugins?.plugins["obsidian-livesync"] as {
+                    core: { services: { setting: { currentSettings(): unknown } } };
+                };
+                return JSON.stringify(plugin.core.services.setting.currentSettings());
+            });
+        const before = await snapshotSettings();
+        const harness = page.locator('[data-testid="review-harness"]');
+        await harness
+            .locator('[data-testid="review-harness-run-file-content-hash-performance"]')
+            .click({ timeout: uiTimeoutMs });
+        const result = harness.locator('[data-testid="review-harness-result-file-content-hash-performance"]');
+        await result.getByText("Passed:", { exact: false }).waitFor({ state: "visible", timeout: uiTimeoutMs * 10 });
+        const observations = await result.locator("li").allTextContents();
+        for (const label of ["4 KiB", "64 KiB", "1 MiB", "50 MiB"]) {
+            for (const algorithm of ["SHA-256", "xxHash64"]) {
+                if (
+                    !observations.some(
+                        (line) => line.startsWith(`${algorithm}, ${label}: median=`) && line.includes("; range=")
+                    )
+                ) {
+                    throw new Error(`Missing file content hash timing and range: ${algorithm}, ${label}`);
+                }
+            }
+        }
+        for (const label of [
+            "Input construction is excluded from timings.",
+            "xxHash64 engine initialisation:",
+            "Warm-up on 4 KiB",
+            "Calls run serially",
+            "JavaScript heap:",
+        ]) {
+            if (!observations.some((line) => line.includes(label))) {
+                throw new Error(`Missing file content hash measurement detail: ${label}`);
+            }
+        }
+        if ((await snapshotSettings()) !== before) throw new Error("The benchmark changed the live settings.");
+        await assertNoHorizontalOverflow(page, harness, { label: "file content hash benchmark results" });
+        const timings = observations.filter((line) => line.startsWith("SHA-256,") || line.startsWith("xxHash64,"));
+        console.log(`File content hash benchmark observations:\n${timings.join("\n")}`);
     });
 }
 
@@ -409,6 +459,7 @@ async function verifyMobileHarness(): Promise<string> {
             "review-harness-run-full",
             "review-harness-copy-report",
             "review-harness-run-id-generation-performance",
+            "review-harness-run-file-content-hash-performance",
         ]) {
             await assertLocatorHasMinimumTouchTarget(page, harness.locator(`[data-testid="${testId}"]`), {
                 label: testId,
@@ -482,6 +533,7 @@ async function main(): Promise<void> {
         const resumedScreenshot = await restartAndResumeHarness();
         await completeResumedCompatibilityStep();
         await runIdBenchmark();
+        await runFileContentHashBenchmark();
         const report = await copyAndReadReport();
         if (!report.includes("## Self-hosted LiveSync Review Harness report")) {
             throw new Error("The copied Review Harness report was not Markdown evidence.");
@@ -491,6 +543,10 @@ async function main(): Promise<void> {
             "; per ID=",
             "ID key derivation at save time:",
             "JavaScript heap:",
+            "SHA-256, 4 KiB: median=",
+            "xxHash64, 4 KiB: median=",
+            "SHA-256, 50 MiB: median=",
+            "xxHash64, 50 MiB: median=",
         ]) {
             if (!report.includes(expected)) throw new Error(`Missing copied benchmark observation: ${expected}`);
         }
