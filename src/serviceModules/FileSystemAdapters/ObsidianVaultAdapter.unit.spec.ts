@@ -42,6 +42,7 @@ describe("ObsidianVaultAdapter", () => {
         const createBinary = vi.fn().mockResolvedValue({});
         const app = {
             vault: {
+                getAbstractFileByPath: () => ({}),
                 modify,
                 modifyBinary,
                 create,

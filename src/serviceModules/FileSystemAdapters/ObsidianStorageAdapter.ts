@@ -3,13 +3,17 @@ import type { IStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceM
 import { toArrayBuffer } from "@vrtmrz/livesync-commonlib/compat/serviceModules/FileAccessBase";
 import type { Stat, App } from "obsidian";
 import { toIntegerTimestamps } from "./sanitizeWriteOptions";
+import { createPathAliasGuard, type PathAliasGuard } from "./pathAliasGuard";
 
 /**
  * Storage adapter implementation for Obsidian
  */
 
 export class ObsidianStorageAdapter implements IStorageAdapter<Stat> {
-    constructor(private app: App) {}
+    constructor(
+        private app: App,
+        private readonly aliasGuard: PathAliasGuard = createPathAliasGuard(app)
+    ) {}
 
     async exists(path: string): Promise<boolean> {
         return await this.app.vault.adapter.exists(path);
@@ -25,10 +29,12 @@ export class ObsidianStorageAdapter implements IStorageAdapter<Stat> {
     }
 
     async mkdir(path: string): Promise<void> {
+        await this.aliasGuard.assertNoAlias(path);
         await this.app.vault.adapter.mkdir(path);
     }
 
     async remove(path: string): Promise<void> {
+        await this.aliasGuard.assertNoAlias(path);
         await this.app.vault.adapter.remove(path);
     }
 
@@ -41,14 +47,17 @@ export class ObsidianStorageAdapter implements IStorageAdapter<Stat> {
     }
 
     async write(path: string, data: string, options?: UXDataWriteOptions): Promise<void> {
+        await this.aliasGuard.assertNoAlias(path);
         return await this.app.vault.adapter.write(path, data, toIntegerTimestamps(options));
     }
 
     async writeBinary(path: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<void> {
+        await this.aliasGuard.assertNoAlias(path);
         return await this.app.vault.adapter.writeBinary(path, toArrayBuffer(data), toIntegerTimestamps(options));
     }
 
     async append(path: string, data: string, options?: UXDataWriteOptions): Promise<void> {
+        await this.aliasGuard.assertNoAlias(path);
         return await this.app.vault.adapter.append(path, data, toIntegerTimestamps(options));
     }
 

@@ -9,6 +9,7 @@ describe("ObsidianStorageAdapter", () => {
         const append = vi.fn().mockResolvedValue(undefined);
         const app = {
             vault: {
+                getAbstractFileByPath: () => ({}),
                 adapter: {
                     write,
                     writeBinary,
