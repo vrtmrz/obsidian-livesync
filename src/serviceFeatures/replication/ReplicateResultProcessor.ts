@@ -1,4 +1,9 @@
-import { assessRemoteFeatureDocument, describeRemoteFeatureRejection } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    assessRemoteFeatureDocument,
+    describeRemoteFeatureRejection,
+    NFC_PATH_IDENTITY_FEATURE,
+} from "@vrtmrz/livesync-commonlib/replication";
+import { getPathNormalizationVersion } from "@vrtmrz/livesync-commonlib/settings";
 import {
     SYNCINFO_ID,
     VERSIONING_DOCID,
@@ -33,7 +38,7 @@ const REPROCESS_BATCH_SIZE = 100;
 type ReplicateResultProcessorSettings = Pick<
     ObsidianLiveSyncSettings,
     "maxMTimeForReflectEvents" | "suspendParseReplicationResult"
->;
+> & { pathNormalizationVersion?: 0 | 1 };
 type ReplicateResultProcessorServices = Pick<
     LiveSyncBaseCore["services"],
     "appLifecycle" | "database" | "path" | "replication" | "vault"
@@ -285,13 +290,20 @@ export class ReplicateResultProcessor {
         if (change._id === VERSIONING_DOCID || change.type === "versioninfo") {
             this.log(`Version info document received: ${change._id}`, LOG_LEVEL_VERBOSE);
             const assessment = assessRemoteFeatureDocument(change);
-            if (assessment.status !== "supported" && assessment.status !== "older-generation") {
+            const pathIdentityDoesNotMatch =
+                assessment.status === "supported" &&
+                assessment.usedFeatures.includes(NFC_PATH_IDENTITY_FEATURE) !==
+                    (getPathNormalizationVersion(this.context.currentSettings()) === 1);
+            if (
+                (assessment.status !== "supported" && assessment.status !== "older-generation") ||
+                pathIdentityDoesNotMatch
+            ) {
                 // Fence and retire the active publication through its owner.
                 this.context.requestActiveReplicatorRetirement();
-                this.log(
-                    `${describeRemoteFeatureRejection(assessment)} Update Self-hosted LiveSync before synchronising.`,
-                    LOG_LEVEL_NOTICE
-                );
+                const rejection = pathIdentityDoesNotMatch
+                    ? "Local and remote path identity settings do not match. Select the matching mode and Fetch the migrated database before synchronising."
+                    : `${describeRemoteFeatureRejection(assessment)} Update Self-hosted LiveSync before synchronising.`;
+                this.log(rejection, LOG_LEVEL_NOTICE);
             }
             return true;
         }

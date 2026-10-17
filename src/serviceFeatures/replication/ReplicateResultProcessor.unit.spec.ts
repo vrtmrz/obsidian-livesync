@@ -6,6 +6,7 @@ import {
     type EntryDoc,
     type FilePathWithPrefix,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import * as replicationCompatibility from "@vrtmrz/livesync-commonlib/replication";
 import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import {
     isValidFilenameInAndroid,
@@ -46,6 +47,7 @@ type SetupOptions = {
     localVersionInfo?: unknown;
     isTargetFile?: (path: string) => Promise<boolean>;
     databaseId?: string;
+    pathNormalizationVersion?: number;
 };
 
 function setup(options: SetupOptions = {}) {
@@ -96,6 +98,7 @@ function setup(options: SetupOptions = {}) {
         currentSettings: () => ({
             maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
             suspendParseReplicationResult: false,
+            pathNormalizationVersion: options.pathNormalizationVersion ?? 0,
         }),
         getKeyValueDB: () => core.kvDB,
         getLocalDatabase: () => core.localDatabase,
@@ -319,6 +322,66 @@ describe("ReplicateResultProcessor", () => {
         processor.enqueueAll([versionInfo, note("supported-update")]);
 
         await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(onCloseActiveReplication).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["local version 0 and remote version 1", 0, ["nfc-path-identity-v1"], true],
+        ["local version 1 and remote version 0", 1, [], true],
+        ["both use version 1", 1, ["nfc-path-identity-v1"], false],
+        ["both use version 0", 0, [], false],
+    ] as const)(
+        "checks path identity compatibility for %s",
+        (_description, localVersion, remoteFeatures, shouldRetire) => {
+            const originalAssessment = replicationCompatibility.assessRemoteFeatureDocument;
+            const assessmentSpy = vi
+                .spyOn(replicationCompatibility, "assessRemoteFeatureDocument")
+                .mockImplementation((document) => {
+                    const assessment = originalAssessment(document);
+                    if (
+                        assessment.status !== "unknown-features" ||
+                        assessment.identifiers.length !== 1 ||
+                        assessment.identifiers[0] !== "nfc-path-identity-v1"
+                    ) {
+                        return assessment;
+                    }
+                    return { status: "supported", usedFeatures: ["nfc-path-identity-v1"] };
+                });
+
+            try {
+                const { onCloseActiveReplication, processor } = setup({ pathNormalizationVersion: localVersion });
+                processor.enqueueAll([
+                    {
+                        _id: VERSIONING_DOCID,
+                        _rev: "2-path-identity",
+                        type: "versioninfo",
+                        version: REMOTE_FEATURE_GENERATION,
+                        used_features: [...remoteFeatures],
+                    } as PouchDB.Core.ExistingDocument<EntryDoc>,
+                ]);
+
+                if (shouldRetire) {
+                    expect(onCloseActiveReplication).toHaveBeenCalledOnce();
+                } else {
+                    expect(onCloseActiveReplication).not.toHaveBeenCalled();
+                }
+            } finally {
+                assessmentSpy.mockRestore();
+            }
+        }
+    );
+
+    it("keeps the existing older-generation gate for local path identity version 1", () => {
+        const { onCloseActiveReplication, processor } = setup({ pathNormalizationVersion: 1 });
+        processor.enqueueAll([
+            {
+                _id: VERSIONING_DOCID,
+                _rev: "1-legacy-path-identity",
+                type: "versioninfo",
+                version: 11,
+            } as PouchDB.Core.ExistingDocument<EntryDoc>,
+        ]);
+
         expect(onCloseActiveReplication).not.toHaveBeenCalled();
     });
 

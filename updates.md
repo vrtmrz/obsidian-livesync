@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- We can opt into NFC path identity for CouchDB synchronisation between the CLI and Obsidian. This prevents decomposed or mixed Unicode file names from becoming inaccessible through a receiving device's normalised path. (#1259)
+    - Existing Vaults retain their current identity rules. Migration requires updated clients, a Rebuild from a complete authoritative Vault, and a Fetch on the other devices.
+    - Reconstruction stops when the supported host file listing or local Metadata exposes distinct files with the same NFC identity. The CLI retains existing physical file names. P2P and Object Storage do not support the new mode.
+
 ## 1.0.37
 
 16th October, 2026

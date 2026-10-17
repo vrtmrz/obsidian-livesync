@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { statusDisplay, type ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getConfig, type OnDialogSettings } from "./settingConstants.ts";
 import {
+    isValidSettingSpecValue,
     renderLegacySettingSpec,
     toLegacySettingBinding,
     toObsidianSettingDefinition,
@@ -16,7 +17,7 @@ const rangeMessages = {
 };
 
 describe("Advanced setting specifications", () => {
-    it("lists only the nine controls currently exposed by the Advanced page", () => {
+    it("lists only the ten controls currently exposed by the Advanced page", () => {
         const groups = createAdvancedSettingSpecGroups({ isCouchDB: () => true });
 
         expect(groups.map(({ heading }) => heading)).toEqual([
@@ -29,6 +30,7 @@ describe("Advanced setting specifications", () => {
             "hashCacheMaxCount",
             "chunkSplitterVersion",
             "customChunkSize",
+            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",
@@ -38,12 +40,13 @@ describe("Advanced setting specifications", () => {
         ]);
     });
 
-    it("keeps CouchDB visibility on the four remote chunk controls", () => {
+    it("keeps path identity and the four remote chunk controls CouchDB-only", () => {
         let couchDB = false;
         const groups = createAdvancedSettingSpecGroups({ isCouchDB: () => couchDB });
         const conditional = groups.flatMap(({ items }) => items).filter(({ visible }) => visible !== undefined);
 
         expect(conditional.map(({ key }) => key)).toEqual([
+            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",
@@ -53,6 +56,44 @@ describe("Advanced setting specifications", () => {
 
         couchDB = true;
         expect(conditional.every(({ visible }) => visible?.() === true)).toBe(true);
+    });
+
+    it("exposes CouchDB path identity as a two-choice numeric dropdown", () => {
+        let couchDB = false;
+        const spec = createAdvancedSettingSpecGroups({ isCouchDB: () => couchDB })
+            .flatMap(({ items }) => items)
+            .find(({ key }) => key === "pathNormalizationVersion");
+        if (!spec) throw new Error("Path identity mode is not exposed on the Advanced page");
+        if (spec.control.type !== "numeric-dropdown") throw new Error("Expected a numeric dropdown");
+
+        expect(spec.control).toMatchObject({ type: "numeric-dropdown", options: expect.any(Function) });
+        expect(spec.visible?.()).toBe(false);
+        couchDB = true;
+        expect(spec.visible?.()).toBe(true);
+        expect(spec.control.options()).toEqual({
+            "0": "Legacy path identity",
+            "1": "Unicode NFC path identity",
+        });
+        expect(isValidSettingSpecValue(spec, 0)).toBe(true);
+        expect(isValidSettingSpecValue(spec, 1)).toBe(true);
+        expect(isValidSettingSpecValue(spec, 0.5)).toBe(false);
+        expect(isValidSettingSpecValue(spec, 2)).toBe(false);
+
+        const definition = toObsidianSettingDefinition(spec, { name: "Path identity mode" }, rangeMessages);
+        expect(definition.control).toEqual({
+            type: "dropdown",
+            key: "pathNormalizationVersion",
+            options: { "0": "Legacy path identity", "1": "Unicode NFC path identity" },
+        });
+        expect(toLegacySettingBinding(spec)).toEqual({
+            type: "numeric-dropdown",
+            key: "pathNormalizationVersion",
+            options: {
+                holdValue: true,
+                onUpdate: expect.any(Function),
+                options: { "0": "Legacy path identity", "1": "Unicode NFC path identity" },
+            },
+        });
     });
 
     it("excludes transient settings-dialogue keys from the persisted key type", () => {
@@ -225,6 +266,7 @@ describe("SettingSpec conversion", () => {
         const renderer = {
             autoWireToggle: vi.fn(),
             autoWireNumeric: vi.fn(),
+            autoWireNumericDropDown: vi.fn(),
             autoWireDropDown: vi.fn(),
         };
         const visible = vi.fn(() => false);
@@ -241,6 +283,7 @@ describe("SettingSpec conversion", () => {
         expect(options.onUpdate()).toEqual({ visibility: false });
         expect(visible).toHaveBeenCalledOnce();
         expect(renderer.autoWireNumeric).not.toHaveBeenCalled();
+        expect(renderer.autoWireNumericDropDown).not.toHaveBeenCalled();
         expect(renderer.autoWireDropDown).not.toHaveBeenCalled();
     });
 });
