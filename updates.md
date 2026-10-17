@@ -18,6 +18,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - We can synchronise file deletions and renames when **Do not keep metadata of deleted files.** is enabled.
     - A file restored during the final deletion check remains in the receiving Vault.
+- We can resolve configuration mismatches when **Encrypt internal file Properties** is enabled but its encryption prerequisites are inactive. (#1180)
+    - Compatible chunk settings can be aligned automatically, or reviewed through `Sync now`. Applying those settings preserves our inactive encryption preference.
 
 ## 1.0.37
 
