@@ -6,6 +6,8 @@
  * in the chunk size and V2 customisation setting. Applying the ordinary
  * remote settings action must permit a fresh synchronisation without a Fetch. A
  * Separate true/false and true/missing case controls keep Fetch required.
+ * An enabled but inactive internal Metadata encryption preference must survive
+ * ordinary setting adoption and restart, and must not suppress the Sync now dialogue.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -129,6 +131,21 @@ async function replicateOnce(cliBinary: string, env: NodeJS.ProcessEnv): Promise
     );
 }
 
+async function runSyncNow(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await evalObsidianJson<boolean>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const command=app.commands.commands['obsidian-livesync:livesync-replicate'];",
+            "if(typeof command?.callback!=='function') throw new Error('Sync now command is unavailable');",
+            "await command.callback();",
+            "return JSON.stringify(true);",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
 async function selectCompatibilityAction(
     port: number,
     action: string,
@@ -220,17 +237,23 @@ async function prepareConfiguredSession(
 async function readTweakState(
     cliBinary: string,
     env: NodeJS.ProcessEnv
-): Promise<{ customChunkSize: unknown; usePluginSyncV2: unknown; handleFilenameCaseSensitive: unknown }> {
+): Promise<{
+    customChunkSize: unknown;
+    usePluginSyncV2: unknown;
+    handleFilenameCaseSensitive: unknown;
+    encryptInternalMetadata: unknown;
+}> {
     return await evalObsidianJson<{
         customChunkSize: unknown;
         usePluginSyncV2: unknown;
         handleFilenameCaseSensitive: unknown;
+        encryptInternalMetadata: unknown;
     }>(
         cliBinary,
         [
             "(()=>{",
             "const settings=app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings();",
-            "return JSON.stringify({customChunkSize:settings.customChunkSize,usePluginSyncV2:settings.usePluginSyncV2,handleFilenameCaseSensitive:settings.handleFilenameCaseSensitive});",
+            "return JSON.stringify({customChunkSize:settings.customChunkSize,usePluginSyncV2:settings.usePluginSyncV2,handleFilenameCaseSensitive:settings.handleFilenameCaseSensitive,encryptInternalMetadata:settings.encryptInternalMetadata});",
             "})()",
         ].join(""),
         env
@@ -360,12 +383,20 @@ async function main(): Promise<void> {
         await removeLegacyCasePreference(couchDb, dbName);
 
         targetSession = await prepareConfiguredSession(binary, cli.binary, targetVault, settings, {
+            encrypt: false,
+            encryptInternalMetadata: true,
             customChunkSize: 60,
             usePluginSyncV2: true,
             handleFilenameCaseSensitive: false,
             autoAcceptCompatibleTweak: false,
         });
         await prepareRemote(cli.binary, targetSession.cliEnv);
+        const commandPromise = runSyncNow(cli.binary, targetSession.cliEnv);
+        await selectCompatibilityAction(targetSession.remoteDebuggingPort, dismissAction);
+        await commandPromise;
+        const dismissedState = await readTweakState(cli.binary, targetSession.cliEnv);
+        assertEqual(dismissedState.customChunkSize, 60, "Dismissing Sync now changed the chunk size.");
+        assertEqual(dismissedState.encryptInternalMetadata, true, "Dismissing Sync now changed the saved preference.");
         const targetReplicationPromise = replicateOnce(cli.binary, targetSession.cliEnv);
         await selectCompatibilityAction(targetSession.remoteDebuggingPort, applySettingsAction);
         const targetReplication = await targetReplicationPromise;
@@ -383,6 +414,11 @@ async function main(): Promise<void> {
         await waitForLiveSyncCoreReady(cli.binary, targetSession.cliEnv);
         await assertE2eCompatibilityMarker(cli.binary, targetSession.cliEnv);
         const restartedState = await readTweakState(cli.binary, targetSession.cliEnv);
+        assertEqual(
+            restartedState.encryptInternalMetadata,
+            true,
+            "The inactive internal Metadata encryption preference was not retained after adoption and restart."
+        );
         assertEqual(
             restartedState.customChunkSize,
             0,

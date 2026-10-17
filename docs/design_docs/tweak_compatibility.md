@@ -65,6 +65,13 @@ for a decision and before applying it. A changed target or changed settings
 discard that decision. The signature used for this check can contain sensitive
 configuration and must not be logged, persisted, or included in diagnostics.
 
+Central replication can assess an effective value which differs from a saved
+preference, such as internal Metadata encryption whose prerequisites are inactive.
+Recovery accepts the current saved or effective snapshot without treating that
+representation difference as a settings change. Applying assessed changes retains
+saved preferences for settings whose effective values already agree. The full
+settings signature still detects a preference changed while awaiting a decision.
+
 The active publication reservation is not held while waiting for the dialogue.
 Remote writes use the failed attempt's publication guard. Fetch and Rebuild use
 their existing owners and propagate failure without claiming a successful

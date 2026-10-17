@@ -74,6 +74,130 @@ function createModule(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
 }
 
 describe("ModuleResolvingMismatchedTweaks", () => {
+    it.each([
+        { label: "automatic alignment with E2EE disabled", autoAcceptCompatibleTweak: true, encrypt: false },
+        { label: "manual review with E2EE disabled", autoAcceptCompatibleTweak: false, encrypt: false },
+        {
+            label: "automatic alignment with Property Encryption disabled",
+            autoAcceptCompatibleTweak: true,
+            encrypt: true,
+        },
+    ])(
+        "resolves an effective chunk mismatch while retaining an inactive encryption preference: $label",
+        async ({ autoAcceptCompatibleTweak, encrypt }) => {
+            const { module, core, askSelectStringDialogue, reinitialise } = createModule({
+                autoAcceptCompatibleTweak,
+                encrypt,
+                usePathObfuscation: false,
+                encryptInternalMetadata: true,
+                customChunkSize: 60,
+                tweakModified: 100,
+            });
+            // CouchDB assesses the effective encryption value, while the saved preference remains enabled.
+            const current = { ...extractObject(TweakValuesTemplate, core.settings), encryptInternalMetadata: false };
+            const preferred = { ...current, customChunkSize: 0, tweakModified: 200 };
+            const assessment = assessTweakCompatibility(current, preferred);
+            core._services.tweakValue = {
+                checkAndAskResolvingMismatched: module._checkAndAskResolvingMismatchedTweaks.bind(module),
+            };
+            askSelectStringDialogue.mockResolvedValueOnce("Apply settings to this device");
+            const updateRemote = vi.fn(async () => true);
+
+            await expect(module._askResolvingMismatchedTweaks(preferred, updateRemote, assessment)).resolves.toBe(
+                "CHECKAGAIN"
+            );
+
+            expect(core.settings).toMatchObject({ customChunkSize: 0, encryptInternalMetadata: true });
+            expect(core._services.setting.saveSettingData).toHaveBeenCalledOnce();
+            expect(reinitialise).toHaveBeenCalledOnce();
+            expect(updateRemote).toHaveBeenCalledOnce();
+            expect(askSelectStringDialogue).toHaveBeenCalledTimes(autoAcceptCompatibleTweak ? 0 : 1);
+        }
+    );
+
+    it.each(["settings", "publication"] as const)(
+        "discards an effective assessment when %s change while awaiting a decision",
+        async (changed) => {
+            const { module, core, askSelectStringDialogue, reinitialise } = createModule({
+                autoAcceptCompatibleTweak: false,
+                encrypt: false,
+                encryptInternalMetadata: true,
+                customChunkSize: 60,
+            });
+            const current = { ...extractObject(TweakValuesTemplate, core.settings), encryptInternalMetadata: false };
+            const preferred = { ...current, customChunkSize: 0 };
+            const assessment = assessTweakCompatibility(current, preferred);
+            core._services.tweakValue = {
+                checkAndAskResolvingMismatched: module._checkAndAskResolvingMismatchedTweaks.bind(module),
+            };
+            askSelectStringDialogue.mockImplementation(async () => {
+                if (changed === "settings") {
+                    // The effective value stays false, but the user's saved preference has changed.
+                    core.settings.encryptInternalMetadata = false;
+                } else {
+                    core._services.replicator.acquireActiveReplicatorContext.mockResolvedValue({});
+                }
+                return "Apply settings to this device";
+            });
+            const updateRemote = vi.fn(async () => true);
+
+            await expect(module._askResolvingMismatchedTweaks(preferred, updateRemote, assessment)).resolves.toBe(
+                "IGNORE"
+            );
+
+            expect(askSelectStringDialogue).toHaveBeenCalledOnce();
+            expect(core.settings.customChunkSize).toBe(60);
+            expect(core._services.setting.saveSettingData).not.toHaveBeenCalled();
+            expect(reinitialise).not.toHaveBeenCalled();
+            expect(updateRemote).not.toHaveBeenCalled();
+        }
+    );
+
+    it("discards an effective assessment of an earlier chunk setting before opening a dialogue", async () => {
+        const { module, core, askSelectStringDialogue } = createModule({
+            autoAcceptCompatibleTweak: false,
+            encrypt: false,
+            encryptInternalMetadata: true,
+            customChunkSize: 60,
+        });
+        const current = { ...extractObject(TweakValuesTemplate, core.settings), encryptInternalMetadata: false };
+        const preferred = { ...current, customChunkSize: 0 };
+        const assessment = assessTweakCompatibility(current, preferred);
+        core.settings.customChunkSize = 72;
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: module._checkAndAskResolvingMismatchedTweaks.bind(module),
+        };
+        const updateRemote = vi.fn(async () => true);
+
+        await expect(module._askResolvingMismatchedTweaks(preferred, updateRemote, assessment)).resolves.toBe("IGNORE");
+
+        expect(askSelectStringDialogue).not.toHaveBeenCalled();
+        expect(core.settings.customChunkSize).toBe(72);
+        expect(core._services.setting.saveSettingData).not.toHaveBeenCalled();
+        expect(updateRemote).not.toHaveBeenCalled();
+    });
+
+    it("applies an explicit decision when effective internal Metadata encryption differs", async () => {
+        const { module, core, askSelectStringDialogue } = createModule({
+            autoAcceptCompatibleTweak: true,
+            encrypt: true,
+            usePathObfuscation: true,
+            E2EEAlgorithm: "v2",
+            encryptInternalMetadata: true,
+        });
+        const preferred = { ...extractObject(TweakValuesTemplate, core.settings), encryptInternalMetadata: false };
+        core._services.tweakValue = {
+            checkAndAskResolvingMismatched: module._checkAndAskResolvingMismatchedTweaks.bind(module),
+        };
+        askSelectStringDialogue.mockResolvedValueOnce("Apply settings to this device");
+
+        await expect(module._askResolvingMismatchedTweaks(preferred, async () => true)).resolves.toBe("CHECKAGAIN");
+
+        expect(askSelectStringDialogue).toHaveBeenCalledOnce();
+        expect(core.settings.encryptInternalMetadata).toBe(false);
+        expect(core._services.setting.saveSettingData).toHaveBeenCalledOnce();
+    });
+
     it.each([0, 1] as const)(
         "keeps ID configuration %s when automatically aligning Chunk settings",
         async (idDerivationVersion) => {
