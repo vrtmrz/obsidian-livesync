@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Fixed
+
+- We can migrate to NFC path identity when deletion or rename history would otherwise block Rebuild or Fetch. (#1259)
+    - Logical deletions without unresolved conflicts no longer block operations which replace the local database. Conflicting histories and ambiguous current files still require review.
+
 ### Diagnostics
 
 - We can inspect normal-file Metadata and current conflicts in the local database and CouchDB together, with byte comparisons for suspect groups. Partial results retain the available evidence when a source is unavailable. The inspection leaves databases and settings unchanged.
