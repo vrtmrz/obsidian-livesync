@@ -1,6 +1,6 @@
 ---
 date: 2026-10-19
-commonlib-version: "0.1.42"
+commonlib-version: "0.1.43"
 self-hosted-livesync-version: "1.0.38"
 status: unreleased
 ---
@@ -17,8 +17,8 @@ Commonlib's [consumer contract](https://github.com/vrtmrz/livesync-commonlib/blo
 defines the shared package boundary.
 
 NFC identity shipped in Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`.
-The deletion handling in reconstruction below is an unreleased refinement of
-that baseline.
+The deletion handling in reconstruction below uses Commonlib `0.1.43` and
+remains unreleased in Self-hosted LiveSync.
 
 ## Scope
 
@@ -240,6 +240,14 @@ while checking content, Metadata creation time, remote updates, absence of an
 NFC duplicate, and remote deletion through the polling CLI daemon. The `mirror`
 command retains tombstoned local files by default; its update behaviour was
 tested separately from daemon deletion reflection.
+
+The published Commonlib `0.1.43` package also passed plain and encrypted NFC
+migration with obsolete logical deletions, plus the legacy encrypted ASCII
+scenario, on Linux with Obsidian `1.12.7` and CouchDB `3.5.0`. Both migration
+variants checked CLI Rebuild, second-client Standard Fetch, and real Obsidian
+Streaming Fast Fetch. Fast Fetch removed the obsolete Metadata and retained
+the current NFC document, its active state, and its stored path. The existing
+content, creation-time, physical-name, update, and deletion checks also passed.
 
 ## Non-goals
 
