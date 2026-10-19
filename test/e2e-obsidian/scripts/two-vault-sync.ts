@@ -1268,6 +1268,7 @@ async function runIndependentIdRoundTrip(
             rejectedSession = await startObsidianLiveSyncSession({
                 binary: context.binary,
                 cliBinary: context.cliBinary,
+                artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT,
                 vault: rejectedVault,
                 localStorageEntries: createE2eObsidianDeviceLocalState(rejectedVault.name),
                 pluginData: createE2eCouchDbPluginData(

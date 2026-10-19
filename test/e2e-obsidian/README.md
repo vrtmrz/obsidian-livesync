@@ -75,6 +75,7 @@ After changing plug-in source, use the focused wrapper rather than invoking a sc
 ```bash
 npm run test:e2e:obsidian:focused -- settings-ui
 npm run test:e2e:obsidian:focused -- database-diagnostics
+npm run test:e2e:obsidian:focused -- database-diagnostics-couchdb
 npm run test:e2e:obsidian:focused -- configuration-encryption
 npm run test:e2e:obsidian:focused -- configuration-encryption-sync
 npm run test:e2e:obsidian:focused -- two-vault-sync
@@ -86,7 +87,9 @@ npm run test:e2e:obsidian:focused -- couchdb-http-cache
 
 The wrapper accepts only maintained real-Obsidian scenario names; run it with `--help` for the current list. It deliberately does not manage CouchDB, Object Storage, or the P2P signalling relay. Start the required fixture first, or use the complete service-managed suite.
 
-`database-diagnostics` needs no remote service. It checks the Usage command and Hatch integrity action with an isolated Vault, including the choice before inspection, original names and pseudonyms, retained local findings when the remote is unavailable, and unchanged settings, local revisions, and Vault files. It captures desktop results and the choice dialogue in mobile emulation. Copy and download payloads are captured inside the isolated renderer, so the scenario leaves the host clipboard and download directory unchanged. Commonlib's separate CouchDB integration test verifies encrypted reads and missing Security Seed handling against a real server.
+`database-diagnostics` needs no remote service. It checks the Usage command and Hatch integrity action with an isolated Vault, including the choice before inspection, original names and pseudonyms, retained local findings when the remote is unavailable, cancellation during inspection with earlier rows retained, and unchanged settings, local revisions, and Vault files. It captures desktop results and the choice and result dialogues in mobile emulation, checking result layout, format selection, and export controls. Copy and download payloads are captured inside the isolated renderer, so the scenario leaves the host clipboard and download directory unchanged.
+
+`database-diagnostics-couchdb` needs the CouchDB fixture with CORS enabled. It checks unencrypted and encrypted databases, both browser fetch and Obsidian's native Request API, and both name policies through the real integrity dialogue. A remote-only document with a mismatched ID must produce a finding with readable Chunks and equal content. JSON and Markdown must omit file contents and credentials. The scenario observes real requests and requires GET-only access, unchanged local settings, revisions, and Vault contents, and unchanged remote documents and Security Seed. Commonlib's separate CouchDB integration tests additionally cover a missing Security Seed without creating one.
 
 `folder-batch` needs no remote service. It creates 24 notes and imports three notes with colons in their names into nested folders, reflects the database content into the existing files, then renames and deletes the parent through the Obsidian Vault API. It checks exact paths, descendant events, content, Chunks, deletion markers, provenance, and the absence of unexpected files. A note outside the parent must remain writable. The colon fixtures use the adapter to represent externally created files because Obsidian's Vault creation API rejects those names. The scenario also seeds a database-only colon-named note and verifies that Obsidian's refusal to create it preserves its Metadata without writing a differently named Vault file. It does not establish successful restoration of that absent note or behaviour on other operating systems.
 
@@ -310,6 +313,22 @@ The setup-tool contract suite also checks ID recovery and explicit legacy IDs in
 BRAT acceptance validates installation of the exact published artefacts: install or update through BRAT, and cold-start Obsidian to confirm the plug-in loads. When the release's relevant regression scenarios and two-way synchronisation have passed in real Obsidian against those artefacts, or a build with matching hashes, these functional checks need not be repeated manually. Otherwise, exchange one note in each direction and check any remaining release-specific regression during BRAT acceptance. Record the artefact identity and the automated coverage used to select the manual checks.
 
 A short physical-device check is optional when a specific concern remains about localised time text, input, clipboard interaction, or responsiveness. The camera and operating-system dispatch paths are unchanged by this integration and do not require routine revalidation. Emulated mobile establishes layout and interaction, but does not establish native device performance or verify the published installation path.
+
+### Database diagnostic release checks
+
+For a release containing database diagnostics, run these scenarios sequentially against the same artefacts:
+
+```bash
+npm run test:e2e:obsidian:database-diagnostics
+npm run test:e2e:obsidian:database-diagnostics-couchdb
+E2E_OBSIDIAN_ONLY_INDEPENDENT_IDS=true npm run test:e2e:obsidian:two-vault-sync
+```
+
+The first scenario needs no service; the other two need CouchDB. The last checks an encrypted note round trip between two real Obsidian Vaults, with Path Obfuscation and independent IDs, and rejection of incompatible keys. These checks complement Commonlib's classification, conflict, privacy, and cancellation tests.
+
+Set `E2E_OBSIDIAN_ARTIFACT_ROOT` to a directory containing the exact release `main.js`, `manifest.json`, and `styles.css` when testing downloaded artefacts. These three scenarios accept that directory. Invoke their direct commands above, because the focused wrapper rebuilds local artefacts. Record the commit, Obsidian version, artefact hashes, and results. If testing a local build, compare its hashes with the published release before relying on that evidence for BRAT acceptance.
+
+When these checks pass for the release artefacts, BRAT acceptance can be limited to installation or update, enabling the plug-in, and a cold start. Check any other changes included in that release using their own regression scenarios. The diagnostic export checks verify report payloads; they do not exercise the operating system's clipboard or download implementation on iOS or Android.
 
 ### Environment variables
 

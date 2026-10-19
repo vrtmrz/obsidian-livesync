@@ -141,8 +141,10 @@
 
 <style>
     .database-diagnostic { display: flex; flex-direction: column; gap: var(--size-4-2); }
+    p { margin-block: var(--size-4-2); }
     label { display: flex; align-items: center; flex-wrap: wrap; gap: var(--size-4-3); }
     .diagnostic-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); }
     button, select { min-height: 44px; }
     textarea { width: 100%; resize: vertical; font-family: var(--font-monospace); font-size: var(--font-ui-small); }
+    :global(body.is-mobile) textarea { max-height: 25vh; }
 </style>

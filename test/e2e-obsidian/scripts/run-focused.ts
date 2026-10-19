@@ -9,6 +9,7 @@ const focusedScenarios = new Set([
     "onboarding-invitation",
     "dialog-mounts",
     "database-diagnostics",
+    "database-diagnostics-couchdb",
     "conflict-dialog-policy",
     "revision-repair",
     "document-history-nav",

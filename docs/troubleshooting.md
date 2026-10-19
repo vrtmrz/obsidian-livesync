@@ -167,7 +167,7 @@ For a database-wide inspection, use **Hatch** → **Inspect database integrity**
 
 The result dialogue provides Markdown and JSON reports with the same name policy. Pseudonyms preserve exact path equality across sources while keeping different document IDs distinct. They are temporary and are not saved as a global setting. Counts and relationships remain visible. Both modes omit file contents and credentials; review the report before sharing it. Cancelling keeps the evidence collected so far and marks the result as cancelled.
 
-**Analyse database usage** offers the same name choice and reads existing local revisions without changing on-demand Chunk fetching. Complete runs retain the existing TSV columns and first-reference unique/shared Chunk accounting. Sizes count stored string units, not physical database size. Incomplete runs provide JSON so their status and reasons remain attached to the rows. **Save report** requests a download; **Copy report** remains available on devices which do not support downloads.
+For storage accounting, use **Hatch** → **Analyse database usage** → **Analyse**. It offers the same name choice and reads existing local revisions without changing on-demand Chunk fetching. Complete runs retain the existing TSV columns and first-reference unique/shared Chunk accounting. Sizes count stored string units, not physical database size. Incomplete runs provide JSON so their status and reasons remain attached to the rows. **Save report** requests a download; **Copy report** remains available on devices which do not support downloads.
 
 Follow [How to report an issue](to_issue_reporting.md) for the complete reporting checklist, including Obsidian debug information and the privacy review required before sharing evidence.
 

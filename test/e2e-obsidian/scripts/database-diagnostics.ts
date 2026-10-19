@@ -15,11 +15,12 @@ import { createTemporaryVault } from "../runner/vault.ts";
 
 const fixturePath = "Private/diagnostic-秘密.md";
 const fixtureContent = "Diagnostic fixture content which must never appear in a report.\n";
-const shadowId = "diagnostic-shadow-document";
+const shadowId = "zz-diagnostic-shadow-document";
 const timeout = 15000;
 
 type DiagnosticPageGlobal = typeof globalThis & {
     app: { commands: { executeCommandById(id: string): boolean } };
+    databaseDiagnosticReadGate?: { reached: boolean };
     diagnosticClipboard?: string;
     diagnosticDownload?: { name: string; content: string };
 };
@@ -46,6 +47,36 @@ async function readDatabaseState(cli: string, session: ObsidianLiveSyncSession) 
     );
 }
 
+async function installDiagnosticExportInterception(page: Page): Promise<void> {
+    await page.evaluate(`(() => {
+        globalThis.diagnosticClipboard = undefined;
+        globalThis.diagnosticDownload = undefined;
+        Object.defineProperty(navigator.clipboard, "writeText", {
+            configurable: true,
+            value: async (text) => { globalThis.diagnosticClipboard = text; },
+        });
+        if (!globalThis.databaseDiagnosticExportInterceptionInstalled) {
+            document.addEventListener("click", (event) => {
+                const link = event.target;
+                if (!(link instanceof HTMLAnchorElement) || !link.download || !link.href.startsWith("blob:")) return;
+                event.preventDefault();
+                void fetch(link.href).then((response) => response.text()).then((content) => {
+                    globalThis.diagnosticDownload = { name: link.download, content };
+                });
+            }, true);
+            globalThis.databaseDiagnosticExportInterceptionInstalled = true;
+        }
+    })()`);
+}
+
+async function restoreDiagnosticReadGate(cli: string, session: ObsidianLiveSyncSession): Promise<void> {
+    await evalObsidianJson(
+        cli,
+        `(async()=>{const gate=globalThis.databaseDiagnosticReadGate;if(gate){gate.release();const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase.localDatabase;db.get=gate.originalGet;delete globalThis.databaseDiagnosticReadGate;}return JSON.stringify(true);})()`,
+        session.cliEnv
+    );
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = requireObsidianCli();
@@ -56,6 +87,7 @@ async function main(): Promise<void> {
             binary,
             cliBinary: cli,
             vault,
+            artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT?.trim() || undefined,
             pluginData: {
                 displayLanguage: "def",
                 doctorProcessedVersion: DoctorRegulation.version,
@@ -95,6 +127,7 @@ async function main(): Promise<void> {
         );
         const before = await readDatabaseState(cli, session);
         let usageJSON = "";
+        let usageFixtureRow: { path: string; id: string; revision: string } | undefined;
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const choice = await openCommand(page, "usage");
             await choice.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -114,23 +147,15 @@ async function main(): Promise<void> {
             assert.equal(report.status, "complete");
             assert.ok(report.versions.commonlib);
             assert.ok(report.rows.some((row: { path: string }) => row.path.startsWith("file-")));
+            const fixtureRow = report.rows.find((row: { path: string; id: string; revision: string }) =>
+                row.path.startsWith("file-")
+            );
+            assert.ok(fixtureRow);
+            usageFixtureRow = { path: fixtureRow.path, id: fixtureRow.id, revision: fixtureRow.revision };
 
             // Capture exports inside the isolated renderer without changing the
             // host clipboard or leaving downloads in a user's download directory.
-            await page.evaluate(`(() => {
-                Object.defineProperty(navigator.clipboard, "writeText", {
-                    configurable: true,
-                    value: async (text) => { globalThis.diagnosticClipboard = text; },
-                });
-                document.addEventListener("click", (event) => {
-                    const link = event.target;
-                    if (!(link instanceof HTMLAnchorElement) || !link.download || !link.href.startsWith("blob:")) return;
-                    event.preventDefault();
-                    void fetch(link.href).then((response) => response.text()).then((content) => {
-                        globalThis.diagnosticDownload = { name: link.download, content };
-                    });
-                }, true);
-            })()`);
+            await installDiagnosticExportInterception(page);
             await dialogue.getByRole("button", { name: "Copy report", exact: true }).click();
             assert.equal(
                 await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticClipboard),
@@ -197,8 +222,69 @@ async function main(): Promise<void> {
             await page.locator(".database-diagnostic").getByRole("button", { name: "Close", exact: true }).click();
             await page.keyboard.press("Escape");
         });
+        const cancellationOrder = await evalObsidianJson<{ fixtureId: string; orderedIds: string[] }>(
+            cli,
+            `(async()=>{const core=app.plugins.plugins['obsidian-livesync'].core;const db=core.localDatabase.localDatabase;return JSON.stringify({fixtureId:await core.services.path.path2id(${JSON.stringify(fixturePath)}),orderedIds:(await db.allDocs({include_docs:false})).rows.map(row=>row.id)});})()`,
+            session.cliEnv
+        );
+        const fixturePosition = cancellationOrder.orderedIds.indexOf(cancellationOrder.fixtureId);
+        const gatePosition = cancellationOrder.orderedIds.indexOf(shadowId);
+        assert.ok(fixturePosition >= 0, "The cancellation fixture must exist in the local database");
+        assert.ok(gatePosition >= 0, "The cancellation read gate must exist in the local database");
+        assert.ok(fixturePosition < gatePosition, "The cancellation read gate must follow the report fixture");
+        assert.ok(usageFixtureRow, "The complete report must contain the cancellation fixture");
+        const expectedFixtureRow = usageFixtureRow;
+        const cancellationEnv = session.cliEnv;
+
+        try {
+            await evalObsidianJson(
+                cli,
+                `(async()=>{const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase.localDatabase;const gate={reached:false,release:null,releasePromise:null,originalGet:db.get};gate.releasePromise=new Promise(resolve=>{gate.release=resolve;});globalThis.databaseDiagnosticReadGate=gate;db.get=async function(id,options){if(id===${JSON.stringify(shadowId)}&&options?.rev&&!gate.reached){gate.reached=true;await gate.releasePromise;}return await gate.originalGet.call(this,id,options);};return JSON.stringify(true);})()`,
+                session.cliEnv
+            );
+            await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+                const dialogue = await openCommand(page, "usage");
+                await dialogue.getByRole("button", { name: "Begin inspection", exact: true }).click();
+                await page.waitForFunction(
+                    () => (globalThis as DiagnosticPageGlobal).databaseDiagnosticReadGate?.reached === true,
+                    undefined,
+                    { timeout }
+                );
+                assert.equal(await dialogue.getAttribute("data-diagnostic-phase"), "running");
+                await dialogue.getByRole("button", { name: "Cancel inspection", exact: true }).click();
+                await dialogue.getByText("Cancelling inspection…", { exact: true }).waitFor({ timeout });
+                await evalObsidianJson(
+                    cli,
+                    `(async()=>{globalThis.databaseDiagnosticReadGate?.release();return JSON.stringify(true);})()`,
+                    cancellationEnv
+                );
+                await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
+                const cancelledText = await dialogue.locator("textarea").inputValue();
+                const cancelledReport = JSON.parse(cancelledText);
+                assert.equal(cancelledReport.status, "cancelled");
+                assert.ok(
+                    cancelledReport.rows.some(
+                        (row: { path: string; id: string; revision: string }) =>
+                            row.path === expectedFixtureRow.path &&
+                            row.id === expectedFixtureRow.id &&
+                            row.revision === expectedFixtureRow.revision
+                    ),
+                    "Cancellation must retain report rows collected before the gated database read"
+                );
+                for (const privateValue of [fixturePath, shadowId, fixtureContent.trim()])
+                    assert.ok(!cancelledText.includes(privateValue));
+                await dialogue.getByRole("button", { name: "Close", exact: true }).click();
+                await dialogue.waitFor({ state: "hidden", timeout });
+            });
+        } finally {
+            await restoreDiagnosticReadGate(cli, session);
+        }
         const after = await readDatabaseState(cli, session);
-        assert.deepEqual(after, before, "Diagnostics must leave settings, revisions, and Vault files unchanged");
+        assert.deepEqual(
+            after,
+            before,
+            "Diagnostics, including cancellation, must leave settings, revisions, and Vault files unchanged"
+        );
 
         await setObsidianMobileTestMode(session.remoteDebuggingPort, true, timeout);
         await waitForLiveSyncCoreReady(cli, session.cliEnv);
@@ -214,8 +300,68 @@ async function main(): Promise<void> {
             const modal = page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") });
             await assertMobileDialogueLayout(page, modal, "Database diagnostic choice");
             await modal.getByRole("button", { name: "Cancel", exact: true }).click();
+            await modal.waitFor({ state: "hidden", timeout });
         });
-        console.log(JSON.stringify({ status: "passed", desktopScreenshot, mobileScreenshot, readOnly: true }));
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const dialogue = await openCommand(page, "usage");
+            await dialogue.getByRole("button", { name: "Begin inspection", exact: true }).click();
+            await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
+            const modal = page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") });
+            await assertMobileDialogueLayout(page, modal, "Database diagnostic result");
+
+            const format = dialogue.locator("select");
+            await format.selectOption("json");
+            const reportText = await dialogue.locator("textarea").inputValue();
+            const report = JSON.parse(reportText);
+            assert.equal(report.status, "complete");
+            for (const privateValue of [fixturePath, shadowId, fixtureContent.trim()])
+                assert.ok(!reportText.includes(privateValue));
+            await format.selectOption("tsv");
+            const tsv = await dialogue.locator("textarea").inputValue();
+            assert.equal(tsv.split("\n")[0].split("\t").length, 9);
+            assert.ok(!tsv.includes(fixturePath));
+            assert.ok(!tsv.includes(shadowId));
+            assert.ok(!tsv.includes(fixtureContent.trim()));
+            await format.selectOption("json");
+        });
+        const mobileResultScreenshot = await captureObsidianElement(
+            session.remoteDebuggingPort,
+            "database-diagnostics-mobile-result.png",
+            (page) => page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") })
+        );
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const dialogue = page.locator(".database-diagnostic");
+            await installDiagnosticExportInterception(page);
+            const reportText = await dialogue.locator("textarea").inputValue();
+            await dialogue.getByRole("button", { name: "Copy report", exact: true }).click();
+            await dialogue.getByText("Report copied.", { exact: true }).waitFor({ timeout });
+            const modal = page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") });
+            await assertMobileDialogueLayout(page, modal, "Database diagnostic copied result");
+            assert.equal(
+                await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticClipboard),
+                reportText
+            );
+            await dialogue.getByRole("button", { name: "Save report", exact: true }).click();
+            await page.waitForFunction(() => !!(globalThis as DiagnosticPageGlobal).diagnosticDownload, undefined, {
+                timeout,
+            });
+            assert.deepEqual(await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticDownload), {
+                name: "database-usage-complete.json",
+                content: reportText,
+            });
+            await assertMobileDialogueLayout(page, modal, "Database diagnostic saved result");
+            await dialogue.getByRole("button", { name: "Close", exact: true }).click();
+            await dialogue.waitFor({ state: "hidden", timeout });
+        });
+        console.log(
+            JSON.stringify({
+                status: "passed",
+                desktopScreenshot,
+                mobileScreenshot,
+                mobileResultScreenshot,
+                readOnly: true,
+            })
+        );
     } catch (error) {
         if (session) {
             await captureObsidianPage(
