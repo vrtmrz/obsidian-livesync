@@ -2,6 +2,7 @@ name: CLI Docker validation
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - '.github/workflows/cli-docker.yml'
       - '.github/workflows/cli-docker-validation.yml'
@@ -40,6 +41,7 @@ concurrency:
 
 jobs:
   bundle:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build shared Docker CLI bundle
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -72,6 +74,7 @@ jobs:
           retention-days: 1
 
   validate:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Docker E2E (${{ matrix.arch }})
     needs: bundle
     runs-on: ${{ matrix.runner }}
@@ -171,7 +174,7 @@ jobs:
   summary:
     name: Collect both Docker E2E results
     needs: validate
-    if: always()
+    if: ${{ always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
