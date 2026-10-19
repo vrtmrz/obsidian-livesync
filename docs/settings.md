@@ -1062,7 +1062,7 @@ Version `1` requires a coordinated migration: set it on the source client before
 
 The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
 
-Distinct files or Metadata documents which derive the same identity stop reconstruction before either database is reset. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
+Distinct files or retained Metadata documents which derive the same identity stop reconstruction before either database is reset. When replacing the local database, Rebuild and Fetch exclude logical deletions without unresolved conflicts; a deleted winner with unresolved conflicts still participates in the check. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
 
 ### 4. Compatibility (Internal API Usage)
 

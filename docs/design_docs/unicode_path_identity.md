@@ -1,7 +1,7 @@
 ---
-date: 2026-10-17
-commonlib-version: "0.1.42"
-self-hosted-livesync-version: "1.0.37"
+date: 2026-10-19
+commonlib-version: "0.1.43"
+self-hosted-livesync-version: "1.0.38"
 status: unreleased
 ---
 
@@ -16,8 +16,9 @@ the [Unicode path identity ADR](../adr/2026_10_unicode_path_identity.md).
 Commonlib's [consumer contract](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/unicode-path-identity.md)
 defines the shared package boundary.
 
-This records an unreleased change after Self-hosted LiveSync `1.0.37`, using the
-published Commonlib `0.1.42` package as an exact dependency.
+NFC identity shipped in Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`.
+The deletion handling in reconstruction below uses Commonlib `0.1.43` and
+remains unreleased in Self-hosted LiveSync.
 
 ## Scope
 
@@ -116,6 +117,16 @@ choose a winner, merge revision histories, or rename a Vault file. The user
 must resolve the ambiguous names or exclude one file from the synchronisation
 scope, then retry the reconstruction. This check is bounded by the host's
 listing contract and does not imply that every raw physical alias is visible.
+
+For full Rebuild, Standard Fetch, and Fast Fetch, which replace the local
+database, the Metadata enumeration requests conflict information. It excludes
+`deleted: true` documents only when they have no unresolved conflict leaves.
+A deleted winner with any unresolved conflict remains a collision candidate,
+including when the other leaves are also logically deleted. Remote-only
+Rebuild retains logically deleted Metadata and requires stored IDs to match
+the selected identity. Fully tombstoned documents are already absent from
+ordinary enumeration; a still non-deleted local copy remains subject to the
+check until a remote deletion has been replicated.
 
 ## Reconstruction and client operations
 
@@ -229,6 +240,14 @@ while checking content, Metadata creation time, remote updates, absence of an
 NFC duplicate, and remote deletion through the polling CLI daemon. The `mirror`
 command retains tombstoned local files by default; its update behaviour was
 tested separately from daemon deletion reflection.
+
+The published Commonlib `0.1.43` package also passed plain and encrypted NFC
+migration with obsolete logical deletions, plus the legacy encrypted ASCII
+scenario, on Linux with Obsidian `1.12.7` and CouchDB `3.5.0`. Both migration
+variants checked CLI Rebuild, second-client Standard Fetch, and real Obsidian
+Streaming Fast Fetch. Fast Fetch removed the obsolete Metadata and retained
+the current NFC document, its active state, and its stored path. The existing
+content, creation-time, physical-name, update, and deletion checks also passed.
 
 ## Non-goals
 

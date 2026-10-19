@@ -30,6 +30,10 @@ This migration reconstructs the databases from one authoritative Vault. It does 
 4. On each remaining client, select **Unicode NFC path identity** (`pathNormalizationVersion: 1`) before fetching. In Obsidian, choose **Reset Synchronisation on This Device**. In the CLI, set the same value in its settings and run `fetch` with `--force --write-settings`.
 5. Confirm that every client uses version `1` and that the expected files are present before resuming synchronisation. Do not reconnect a version `0` client to the migrated database.
 
+Rebuild and both Fetch paths ignore local logical deletions without unresolved conflicts when replacing the local database. Deletion or rename history alone therefore does not block this migration. Fully tombstoned documents are already absent from the Metadata check. Unresolved conflicts and ambiguous current files still require review, even when a conflict's winning revision is logically deleted. Remote-only Rebuild retains its existing ID checks and is not a substitute for the source Rebuild above.
+
+A remote deletion which has not reached this device does not establish that its local Metadata is deleted. Inspect the local state and preserve unsynchronised content before resolving a reported collision. Manual deletion of every database is not a prerequisite for this procedure. Clients already using NFC identity do not need to repeat the migration for this change.
+
 The Inspector's **Repair this Metadata document ID** action repairs one local entry; it is not a bulk migration tool. Use the Rebuild and Fetch procedure above for path identity changes.
 
 This procedure does not establish native macOS or iOS filesystem behaviour. Obsidian's collision checks use the paths exposed by its Vault APIs; see [Unicode path identity](settings.md#unicode-path-identity) for that visibility limit.

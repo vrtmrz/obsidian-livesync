@@ -58,6 +58,7 @@ type CliFileInfo = {
     id: string;
     children: string[];
     expectedCtime?: number;
+    legacyId?: string;
 };
 
 function parseCommandLine(value: string): string[] {
@@ -130,14 +131,15 @@ function resolveLiveSyncCliCommand(): LiveSyncCliCommand {
     return { executable: process.execPath, prefixArgs: [liveSyncCli] };
 }
 
-async function runLiveSyncCli(command: LiveSyncCliCommand, args: string[]): Promise<CliResult> {
+async function runLiveSyncCli(command: LiveSyncCliCommand, args: string[], input?: string): Promise<CliResult> {
     return await new Promise((resolvePromise, reject) => {
         const timeoutMs = Number(process.env.E2E_LIVESYNC_CLI_TIMEOUT_MS ?? 60000);
         const child = spawn(command.executable, [...command.prefixArgs, ...args], {
             cwd: process.cwd(),
             env: process.env,
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: ["pipe", "pipe", "pipe"],
         });
+        child.stdin.end(input);
         let stdout = "";
         let stderr = "";
         child.stdout.on("data", (chunk: Buffer) => {
@@ -219,6 +221,7 @@ async function configureLiveSyncCli(
         passphrase: e2eePassphrase,
         usePathObfuscation: useEncryption,
         encryptInternalMetadata: useEncryption,
+        deleteMetadataOfDeletedFiles: false,
         pathNormalizationVersion,
         doctorProcessedVersion: "0.25.27",
         isConfigured: true,
@@ -339,6 +342,27 @@ async function migrateCliDatabases(
     dbName: string,
     legacyFileInfo: CliFileInfo
 ): Promise<CliFileInfo> {
+    await runLiveSyncCli(
+        command,
+        [databasePath, "--settings", settingsPath, "put", receivedNotePath],
+        "Obsolete composed-path content.\n"
+    );
+    const aliasInfo = await runLiveSyncCli(command, [
+        databasePath,
+        "--settings",
+        settingsPath,
+        "info",
+        receivedNotePath,
+    ]);
+    const deletedAliasId = (JSON.parse(aliasInfo.stdout) as CliFileInfo).id;
+    if (deletedAliasId === legacyFileInfo.id)
+        throw new Error("The legacy Unicode fixture needs distinct Metadata IDs.");
+    await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "rm", receivedNotePath]);
+    await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "sync"]);
+    await waitForCouchDbDocs(couchDb, dbName, (docs) =>
+        docs.some((doc) => doc._id === deletedAliasId && doc.deleted === true)
+    );
+
     const secondaryDatabasePath = join(cliState, "secondary-database");
     const secondarySettingsPath = join(cliState, "secondary-settings.json");
     await mkdir(secondaryDatabasePath, { recursive: true });
@@ -406,8 +430,8 @@ async function migrateCliDatabases(
             }
         );
     }
-    console.log("CLI Rebuild and Fetch migrated legacy document IDs while preserving both NFD physical files.");
-    return { ...fileInfo, expectedCtime: legacyFileInfo.expectedCtime };
+    console.log("CLI Rebuild and Fetch passed with obsolete logical deletions and preserved both NFD physical files.");
+    return { ...fileInfo, expectedCtime: legacyFileInfo.expectedCtime, legacyId: legacyFileInfo.id };
 }
 
 async function main(): Promise<void> {
@@ -509,6 +533,45 @@ async function main(): Promise<void> {
 
         const received = await waitForVaultContent(vault.path, receivedNotePath);
         assertEqual(received, editedNoteContent, "The real Obsidian plug-in did not materialise the CLI-edited note.");
+        if (cliFileInfo.legacyId) {
+            const fetched = await evalObsidianJson<{
+                obsoleteRetained: boolean;
+                currentDeleted: boolean;
+                currentPath: string;
+                previousPath: string;
+                content: string;
+            }>(
+                obsidianCli.binary,
+                [
+                    "(async()=>{",
+                    "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                    "if(core.settings.useRequestAPI) throw new Error('This case requires Streaming Fast Fetch.');",
+                    "await core.services.setting.applyPartial({suspendParseReplicationResult:true,suspendFileWatching:true});",
+                    `const legacyId=${JSON.stringify(cliFileInfo.legacyId)};`,
+                    `const {_rev,...current}=await core.localDatabase.localDatabase.get(${JSON.stringify(cliFileInfo.id)});`,
+                    `await core.localDatabase.localDatabase.put({...current,_id:legacyId,path:${JSON.stringify(notePath)},deleted:true});`,
+                    "await core.serviceModules.rebuilder.$fetchLocalDBFast(true);",
+                    `const restored=await core.localDatabase.localDatabase.get(${JSON.stringify(cliFileInfo.id)});`,
+                    "const rows=await core.localDatabase.localDatabase.allDocs();",
+                    "return JSON.stringify({",
+                    "obsoleteRetained:rows.rows.some(row=>row.id===legacyId),",
+                    "currentDeleted:restored.deleted===true,",
+                    "currentPath:restored.path,",
+                    "previousPath:current.path,",
+                    `content:await app.vault.adapter.read(${JSON.stringify(receivedNotePath)}),`,
+                    "});",
+                    "})()",
+                ].join(""),
+                session.cliEnv
+            );
+            assertEqual(fetched.obsoleteRetained, false, "Fast Fetch retained obsolete local Metadata.");
+            assertEqual(fetched.currentDeleted, false, "Fast Fetch returned logically deleted current Metadata.");
+            assertEqual(fetched.currentPath, fetched.previousPath, "Fast Fetch changed the current Metadata path.");
+            assertEqual(fetched.content, editedNoteContent, "Fast Fetch changed the synchronised file content.");
+            console.log(
+                "Real Obsidian Fast Fetch replaced obsolete logical deletions and retained current Metadata and file content."
+            );
+        }
         if (cliFileInfo.expectedCtime !== undefined) {
             const receivedCtime = await evalObsidianJson<number>(
                 obsidianCli.binary,
