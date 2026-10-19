@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import type { Page } from "playwright";
+import type { Locator, Page } from "playwright";
+import {
+    assertLocatorHasMinimumTouchTarget,
+    assertLocatorWithinSafeArea,
+    assertNoHorizontalOverflow,
+} from "@vrtmrz/obsidian-test-session";
 import { DoctorRegulation } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { requireObsidianBinary, requireObsidianCli } from "../runner/environment.ts";
 import { evalObsidianJson } from "../runner/cli.ts";
@@ -10,7 +15,7 @@ import {
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { captureObsidianElement, captureObsidianPage, openLiveSyncSettings, withObsidianPage } from "../runner/ui.ts";
-import { assertMobileDialogueLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
+import { assertMobileDialogueLayout, iPhoneSafeArea, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const fixturePath = "Private/diagnostic-秘密.md";
@@ -33,10 +38,46 @@ async function openCommand(page: Page, kind: "usage" | "integrity") {
     );
     assert.equal(opened, true);
     const dialogue = page.locator(".database-diagnostic");
-    await dialogue.locator("select").selectOption("pseudonym");
+    await dialogue.waitFor({ state: "visible", timeout });
+    assert.equal(
+        await dialogue.getByRole("group", { name: "Names in this report", exact: true }).getByRole("radio").count(),
+        2,
+        "Both name choices must be visible as radio buttons before inspection"
+    );
+    const names = dialogue.getByRole("group", { name: "Names in this report", exact: true });
+    for (const name of ["Pseudonyms (recommended)", "Original names"])
+        assert.equal(await names.getByRole("radio", { name, exact: true }).isVisible(), true);
+    assert.equal(await names.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).isChecked(), true);
+    assert.equal(await names.getByRole("radio", { checked: true }).count(), 1);
     assert.equal(await dialogue.getAttribute("data-diagnostic-phase"), "choice");
     assert.equal(await dialogue.locator("textarea").count(), 0);
     return dialogue;
+}
+
+async function assertFormatChoices(dialogue: Locator, formats: string[]): Promise<void> {
+    const group = dialogue.getByRole("group", { name: "Report format", exact: true });
+    assert.equal(await group.getByRole("radio").count(), formats.length);
+    for (const name of formats) assert.equal(await group.getByRole("radio", { name, exact: true }).isVisible(), true);
+    assert.equal(await group.getByRole("radio", { checked: true }).count(), 1);
+}
+
+async function chooseFormat(dialogue: Locator, format: string): Promise<void> {
+    const group = dialogue.getByRole("group", { name: "Report format", exact: true });
+    const radio = group.getByRole("radio", { name: format.toUpperCase(), exact: true });
+    await radio.check();
+    assert.equal(await radio.isChecked(), true);
+    assert.equal(await group.getByRole("radio", { checked: true }).count(), 1);
+}
+
+async function assertMobileRadioTargets(page: Page, dialogue: Locator, name: string): Promise<void> {
+    const radios = dialogue.getByRole("group", { name, exact: true }).getByRole("radio");
+    for (let index = 0; index < (await radios.count()); index++) {
+        const target = radios.nth(index).locator("..");
+        const label = `${name}: ${(await target.innerText()).trim()}`;
+        await assertLocatorHasMinimumTouchTarget(page, target, { label });
+        await assertLocatorWithinSafeArea(page, target, { label, safeAreaInsets: iPhoneSafeArea });
+        await assertNoHorizontalOverflow(page, target, { label });
+    }
 }
 
 async function readDatabaseState(cli: string, session: ObsidianLiveSyncSession) {
@@ -130,18 +171,33 @@ async function main(): Promise<void> {
         let usageFixtureRow: { path: string; id: string; revision: string } | undefined;
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const choice = await openCommand(page, "usage");
+            await choice.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).focus();
+            await page.keyboard.press("ArrowRight");
+            assert.equal(await choice.getByRole("radio", { name: "Original names", exact: true }).isChecked(), true);
+            await page.keyboard.press("ArrowLeft");
+            assert.equal(
+                await choice.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).isChecked(),
+                true
+            );
             await choice.getByRole("button", { name: "Cancel", exact: true }).click();
             await choice.waitFor({ state: "hidden", timeout });
             const dialogue = await openCommand(page, "usage");
-            assert.equal(await dialogue.locator("select").inputValue(), "pseudonym");
+            assert.equal(
+                await dialogue.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).isChecked(),
+                true
+            );
             await dialogue.getByRole("button", { name: "Begin inspection", exact: true }).click();
             await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
+            await assertFormatChoices(dialogue, ["TSV", "JSON"]);
+            assert.equal(await dialogue.getByRole("radio", { name: "TSV", exact: true }).isChecked(), true);
             const tsv = await dialogue.locator("textarea").inputValue();
             assert.equal(tsv.split("\n")[0].split("\t").length, 9);
             assert.ok(!tsv.includes(fixturePath));
             assert.ok(!tsv.includes(shadowId));
             assert.ok(!tsv.includes(fixtureContent.trim()));
-            await dialogue.locator("select").selectOption("json");
+            await dialogue.getByRole("radio", { name: "TSV", exact: true }).focus();
+            await page.keyboard.press("ArrowRight");
+            assert.equal(await dialogue.getByRole("radio", { name: "JSON", exact: true }).isChecked(), true);
             usageJSON = await dialogue.locator("textarea").inputValue();
             const report = JSON.parse(usageJSON);
             assert.equal(report.status, "complete");
@@ -173,7 +229,7 @@ async function main(): Promise<void> {
             await dialogue.waitFor({ state: "hidden", timeout });
 
             const original = await openCommand(page, "usage");
-            await original.locator("select").selectOption("original");
+            await original.getByRole("radio", { name: "Original names", exact: true }).check();
             await original.getByRole("button", { name: "Begin inspection", exact: true }).click();
             await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
             const rawTSV = await original.locator("textarea").inputValue();
@@ -190,10 +246,15 @@ async function main(): Promise<void> {
                 .filter({ has: page.getByText("Inspect database integrity", { exact: true }) });
             await setting.getByRole("button", { name: "Inspect", exact: true }).click();
             const integrity = page.locator(".database-diagnostic");
-            assert.equal(await integrity.locator("select").inputValue(), "pseudonym");
+            assert.equal(
+                await integrity.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).isChecked(),
+                true
+            );
             await integrity.getByRole("button", { name: "Begin inspection", exact: true }).click();
             await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
-            await integrity.locator("select").selectOption("json");
+            await assertFormatChoices(integrity, ["MARKDOWN", "JSON"]);
+            assert.equal(await integrity.getByRole("radio", { name: "MARKDOWN", exact: true }).isChecked(), true);
+            await chooseFormat(integrity, "json");
             const reportText = await integrity.locator("textarea").inputValue();
             const integrityReport = JSON.parse(reportText);
             assert.equal(integrityReport.status, "partial");
@@ -262,6 +323,7 @@ async function main(): Promise<void> {
                 const cancelledText = await dialogue.locator("textarea").inputValue();
                 const cancelledReport = JSON.parse(cancelledText);
                 assert.equal(cancelledReport.status, "cancelled");
+                await assertFormatChoices(dialogue, ["JSON"]);
                 assert.ok(
                     cancelledReport.rows.some(
                         (row: { path: string; id: string; revision: string }) =>
@@ -299,6 +361,7 @@ async function main(): Promise<void> {
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const modal = page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") });
             await assertMobileDialogueLayout(page, modal, "Database diagnostic choice");
+            await assertMobileRadioTargets(page, modal, "Names in this report");
             await modal.getByRole("button", { name: "Cancel", exact: true }).click();
             await modal.waitFor({ state: "hidden", timeout });
         });
@@ -309,20 +372,21 @@ async function main(): Promise<void> {
             const modal = page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") });
             await assertMobileDialogueLayout(page, modal, "Database diagnostic result");
 
-            const format = dialogue.locator("select");
-            await format.selectOption("json");
+            await assertFormatChoices(dialogue, ["TSV", "JSON"]);
+            await assertMobileRadioTargets(page, dialogue, "Report format");
+            await chooseFormat(dialogue, "json");
             const reportText = await dialogue.locator("textarea").inputValue();
             const report = JSON.parse(reportText);
             assert.equal(report.status, "complete");
             for (const privateValue of [fixturePath, shadowId, fixtureContent.trim()])
                 assert.ok(!reportText.includes(privateValue));
-            await format.selectOption("tsv");
+            await chooseFormat(dialogue, "tsv");
             const tsv = await dialogue.locator("textarea").inputValue();
             assert.equal(tsv.split("\n")[0].split("\t").length, 9);
             assert.ok(!tsv.includes(fixturePath));
             assert.ok(!tsv.includes(shadowId));
             assert.ok(!tsv.includes(fixtureContent.trim()));
-            await format.selectOption("json");
+            await chooseFormat(dialogue, "json");
         });
         const mobileResultScreenshot = await captureObsidianElement(
             session.remoteDebuggingPort,

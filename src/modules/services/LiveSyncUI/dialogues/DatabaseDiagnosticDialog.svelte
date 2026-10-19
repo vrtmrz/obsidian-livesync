@@ -90,13 +90,19 @@
                 ? translate("Read available local revisions and report their Chunk references. Settings are left unchanged.")
                 : translate("Read normal-file Metadata, current conflicts, and content for suspect groups from this device and CouchDB. Other remote types and older revision history are outside this inspection. Results do not authorise deletion.")}
         </p>
-        <label>
-            {translate("Names in this report")}
-            <select bind:value={nameMode}>
-                <option value="pseudonym">{translate("Pseudonyms (recommended)")}</option>
-                <option value="original">{translate("Original names")}</option>
-            </select>
-        </label>
+        <fieldset class="diagnostic-options">
+            <legend>{translate("Names in this report")}</legend>
+            <div class="diagnostic-option-list">
+                <label>
+                    <input type="radio" name="database-diagnostic-name-mode" value="pseudonym" bind:group={nameMode} />
+                    <span>{translate("Pseudonyms (recommended)")}</span>
+                </label>
+                <label>
+                    <input type="radio" name="database-diagnostic-name-mode" value="original" bind:group={nameMode} />
+                    <span>{translate("Original names")}</span>
+                </label>
+            </div>
+        </fieldset>
         <div class="diagnostic-controls">
             <button onclick={() => setResult("close")}>{translate("Cancel")}</button>
             <button class="mod-cta" disabled={!options} onclick={() => void begin()}>{translate("Begin inspection")}</button>
@@ -118,14 +124,17 @@
         {#if options?.kind === "usage" && output.status !== "complete"}
             <p>{translate("Partial Usage results are available as JSON so their coverage and reasons stay with the rows.")}</p>
         {/if}
-        <label>
-            {translate("Report format")}
-            <select bind:value={selectedFormat}>
+        <fieldset class="diagnostic-options">
+            <legend>{translate("Report format")}</legend>
+            <div class="diagnostic-option-list">
                 {#each output.artifacts as artifact}
-                    <option value={artifact.format}>{artifact.format.toUpperCase()}</option>
+                    <label>
+                        <input type="radio" name="database-diagnostic-format" value={artifact.format} bind:group={selectedFormat} />
+                        <span>{artifact.format.toUpperCase()}</span>
+                    </label>
                 {/each}
-            </select>
-        </label>
+            </div>
+        </fieldset>
         <textarea readonly rows="16" aria-label={translate("Diagnostic report")} value={selected?.content ?? ""}></textarea>
         <p role="status">{actionStatus}</p>
         <div class="diagnostic-controls">
@@ -142,9 +151,14 @@
 <style>
     .database-diagnostic { display: flex; flex-direction: column; gap: var(--size-4-2); }
     p { margin-block: var(--size-4-2); }
-    label { display: flex; align-items: center; flex-wrap: wrap; gap: var(--size-4-3); }
+    .diagnostic-options { border: 0; margin: 0; padding: 0; min-width: 0; }
+    legend { padding: 0; margin-bottom: var(--size-4-2); }
+    .diagnostic-option-list { display: flex; flex-wrap: wrap; gap: var(--size-4-2) var(--size-4-4); }
+    .diagnostic-option-list label { display: flex; align-items: center; gap: var(--size-4-2); width: auto; min-height: 44px; cursor: pointer; }
+    .database-diagnostic .diagnostic-option-list label > span { width: auto; }
+    input[type="radio"] { margin: 0; flex: 0 0 auto; }
     .diagnostic-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); }
-    button, select { min-height: 44px; }
+    button { min-height: 44px; }
     textarea { width: 100%; resize: vertical; font-family: var(--font-monospace); font-size: var(--font-ui-small); }
     :global(body.is-mobile) textarea { max-height: 25vh; }
 </style>

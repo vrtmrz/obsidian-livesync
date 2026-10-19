@@ -171,10 +171,19 @@ async function runCase(config: CouchDbConfig, encrypted: boolean) {
                         );
                         assert.equal(opened, true);
                         const dialogue = page.locator(".database-diagnostic");
-                        await dialogue.locator("select").selectOption(names);
+                        await dialogue.waitFor({ state: "visible", timeout });
+                        const nameOptions = dialogue.getByRole("group", { name: "Names in this report", exact: true });
+                        assert.equal(await nameOptions.getByRole("radio").count(), 2);
+                        const nameLabel = names === "pseudonym" ? "Pseudonyms (recommended)" : "Original names";
+                        await nameOptions.getByRole("radio", { name: nameLabel, exact: true }).check();
+                        assert.equal(await nameOptions.getByRole("radio", { checked: true }).count(), 1);
                         await dialogue.getByRole("button", { name: "Begin inspection", exact: true }).click();
                         await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
-                        await dialogue.locator("select").selectOption("json");
+                        const formats = dialogue.getByRole("group", { name: "Report format", exact: true });
+                        assert.equal(await formats.getByRole("radio").count(), 2);
+                        for (const name of ["MARKDOWN", "JSON"])
+                            assert.equal(await formats.getByRole("radio", { name, exact: true }).isVisible(), true);
+                        await formats.getByRole("radio", { name: "JSON", exact: true }).check();
                         const text = await dialogue.locator("textarea").inputValue();
                         const report = JSON.parse(text) as IntegrityReport;
                         assert.equal(report.status, "complete");
@@ -189,7 +198,8 @@ async function runCase(config: CouchDbConfig, encrypted: boolean) {
                         assert.equal(suspect.content.status, "available");
                         assert.ok(suspect.content.chunksRead > 0);
                         assert.ok(suspect.comparisons.some((comparison) => comparison.relation === "equal"));
-                        await dialogue.locator("select").selectOption("markdown");
+                        await formats.getByRole("radio", { name: "MARKDOWN", exact: true }).check();
+                        assert.equal(await formats.getByRole("radio", { checked: true }).count(), 1);
                         const markdown = await dialogue.locator("textarea").inputValue();
                         for (const reportText of [text, markdown]) {
                             for (const secret of [fixtureContent.trim(), passphrase, config.password, config.uri]) {

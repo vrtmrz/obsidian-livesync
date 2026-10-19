@@ -22,7 +22,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 ### Diagnostics
 
 - We can inspect normal-file Metadata and current conflicts in the local database and CouchDB together, with byte comparisons for suspect groups. Partial results retain the available evidence when a source is unavailable. The inspection leaves databases and settings unchanged.
-- Database Usage analysis and integrity inspection now offer temporary pseudonyms or original names before each run. Reports omit file contents and credentials in both modes. Complete Usage runs retain the existing TSV columns; partial runs use JSON to retain their status and reasons.
+- Database Usage analysis and integrity inspection now offer temporary pseudonyms or original names before each run. Both name modes and the available report formats stay visible as radio buttons. Reports omit file contents and credentials in both modes. Complete Usage runs retain the existing TSV columns; partial runs use JSON to retain their status and reasons.
 
 ## 1.0.38
 
