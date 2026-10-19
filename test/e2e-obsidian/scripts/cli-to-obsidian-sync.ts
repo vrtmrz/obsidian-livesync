@@ -534,7 +534,13 @@ async function main(): Promise<void> {
         const received = await waitForVaultContent(vault.path, receivedNotePath);
         assertEqual(received, editedNoteContent, "The real Obsidian plug-in did not materialise the CLI-edited note.");
         if (cliFileInfo.legacyId) {
-            const fetched = await evalObsidianJson<{ obsoleteRetained: boolean; content: string }>(
+            const fetched = await evalObsidianJson<{
+                obsoleteRetained: boolean;
+                currentDeleted: boolean;
+                currentPath: string;
+                previousPath: string;
+                content: string;
+            }>(
                 obsidianCli.binary,
                 [
                     "(async()=>{",
@@ -545,9 +551,13 @@ async function main(): Promise<void> {
                     `const {_rev,...current}=await core.localDatabase.localDatabase.get(${JSON.stringify(cliFileInfo.id)});`,
                     `await core.localDatabase.localDatabase.put({...current,_id:legacyId,path:${JSON.stringify(notePath)},deleted:true});`,
                     "await core.serviceModules.rebuilder.$fetchLocalDBFast(true);",
+                    `const restored=await core.localDatabase.localDatabase.get(${JSON.stringify(cliFileInfo.id)});`,
                     "const rows=await core.localDatabase.localDatabase.allDocs();",
                     "return JSON.stringify({",
                     "obsoleteRetained:rows.rows.some(row=>row.id===legacyId),",
+                    "currentDeleted:restored.deleted===true,",
+                    "currentPath:restored.path,",
+                    "previousPath:current.path,",
                     `content:await app.vault.adapter.read(${JSON.stringify(receivedNotePath)}),`,
                     "});",
                     "})()",
@@ -555,8 +565,12 @@ async function main(): Promise<void> {
                 session.cliEnv
             );
             assertEqual(fetched.obsoleteRetained, false, "Fast Fetch retained obsolete local Metadata.");
+            assertEqual(fetched.currentDeleted, false, "Fast Fetch returned logically deleted current Metadata.");
+            assertEqual(fetched.currentPath, fetched.previousPath, "Fast Fetch changed the current Metadata path.");
             assertEqual(fetched.content, editedNoteContent, "Fast Fetch changed the synchronised file content.");
-            console.log("Real Obsidian Fast Fetch replaced obsolete logical deletions and retained the expected file.");
+            console.log(
+                "Real Obsidian Fast Fetch replaced obsolete logical deletions and retained current Metadata and file content."
+            );
         }
         if (cliFileInfo.expectedCtime !== undefined) {
             const receivedCtime = await evalObsidianJson<number>(
