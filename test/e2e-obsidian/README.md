@@ -74,6 +74,7 @@ After changing plug-in source, use the focused wrapper rather than invoking a sc
 
 ```bash
 npm run test:e2e:obsidian:focused -- settings-ui
+npm run test:e2e:obsidian:focused -- database-diagnostics
 npm run test:e2e:obsidian:focused -- configuration-encryption
 npm run test:e2e:obsidian:focused -- configuration-encryption-sync
 npm run test:e2e:obsidian:focused -- two-vault-sync
@@ -84,6 +85,8 @@ npm run test:e2e:obsidian:focused -- couchdb-http-cache
 ```
 
 The wrapper accepts only maintained real-Obsidian scenario names; run it with `--help` for the current list. It deliberately does not manage CouchDB, Object Storage, or the P2P signalling relay. Start the required fixture first, or use the complete service-managed suite.
+
+`database-diagnostics` needs no remote service. It checks the Usage command and Hatch integrity action with an isolated Vault, including the choice before inspection, original names and pseudonyms, retained local findings when the remote is unavailable, and unchanged settings, local revisions, and Vault files. It captures desktop results and the choice dialogue in mobile emulation. Copy and download payloads are captured inside the isolated renderer, so the scenario leaves the host clipboard and download directory unchanged. Commonlib's separate CouchDB integration test verifies encrypted reads and missing Security Seed handling against a real server.
 
 `folder-batch` needs no remote service. It creates 24 notes and imports three notes with colons in their names into nested folders, reflects the database content into the existing files, then renames and deletes the parent through the Obsidian Vault API. It checks exact paths, descendant events, content, Chunks, deletion markers, provenance, and the absence of unexpected files. A note outside the parent must remain writable. The colon fixtures use the adapter to represent externally created files because Obsidian's Vault creation API rejects those names. The scenario also seeds a database-only colon-named note and verifies that Obsidian's refusal to create it preserves its Metadata without writing a differently named Vault file. It does not establish successful restoration of that absent note or behaviour on other operating systems.
 

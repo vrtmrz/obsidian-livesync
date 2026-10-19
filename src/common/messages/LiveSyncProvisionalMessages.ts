@@ -251,6 +251,47 @@ export const liveSyncProvisionalEnglishMessages = {
     "An ID source is required to enable this option.": "An ID source is required to enable this option.",
     "The ID source or recovery code is invalid. Check it and try again.":
         "The ID source or recovery code is invalid. Check it and try again.",
+    "Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.":
+        "Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.",
+    Inspect: "Inspect",
+    "Inspect database integrity": "Inspect database integrity",
+    "Inspection completed. Review the findings and coverage before sharing.":
+        "Inspection completed. Review the findings and coverage before sharing.",
+    "Inspection partially completed. Some information could not be checked; review the reported reasons.":
+        "Inspection partially completed. Some information could not be checked; review the reported reasons.",
+    "Inspection failed. The report records the available evidence and reasons.":
+        "Inspection failed. The report records the available evidence and reasons.",
+    "Inspection cancelled. The report contains only the evidence collected so far.":
+        "Inspection cancelled. The report contains only the evidence collected so far.",
+    "Report copied.": "Report copied.",
+    "Copy failed. Select the report text and copy it manually.":
+        "Copy failed. Select the report text and copy it manually.",
+    "Download requested. You can also copy the report if downloads are unavailable on this device.":
+        "Download requested. You can also copy the report if downloads are unavailable on this device.",
+    "Choose how names appear in this run. Pseudonyms replace paths and identifiers consistently. Original names include private filenames. File contents and credentials are omitted in either mode.":
+        "Choose how names appear in this run. Pseudonyms replace paths and identifiers consistently. Original names include private filenames. File contents and credentials are omitted in either mode.",
+    "Read available local revisions and report their Chunk references. Settings are left unchanged.":
+        "Read available local revisions and report their Chunk references. Settings are left unchanged.",
+    "Read normal-file Metadata, current conflicts, and content for suspect groups from this device and CouchDB. Other remote types and older revision history are outside this inspection. Results do not authorise deletion.":
+        "Read normal-file Metadata, current conflicts, and content for suspect groups from this device and CouchDB. Other remote types and older revision history are outside this inspection. Results do not authorise deletion.",
+    "Names in this report": "Names in this report",
+    "Pseudonyms (recommended)": "Pseudonyms (recommended)",
+    "Original names": "Original names",
+    "Cancelling inspection…": "Cancelling inspection…",
+    "Items inspected": "Items inspected",
+    "Cancel inspection": "Cancel inspection",
+    "This report uses temporary pseudonyms. Counts and relationships remain visible.":
+        "This report uses temporary pseudonyms. Counts and relationships remain visible.",
+    "This report contains original paths and identifiers. Review them before sharing.":
+        "This report contains original paths and identifiers. Review them before sharing.",
+    "Partial Usage results are available as JSON so their coverage and reasons stay with the rows.":
+        "Partial Usage results are available as JSON so their coverage and reasons stay with the rows.",
+    "Report format": "Report format",
+    "Diagnostic report": "Diagnostic report",
+    "Copy report": "Copy report",
+    "Save report": "Save report",
+    "The inspection could not finish. Close this dialogue and try again after database startup.":
+        "The inspection could not finish. Close this dialogue and try again after database startup.",
 } as const;
 
 export type LiveSyncProvisionalMessageKey = keyof typeof liveSyncProvisionalEnglishMessages;

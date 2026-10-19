@@ -16,6 +16,7 @@ import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import {
     EVENT_ANALYSE_DB_USAGE,
+    EVENT_INSPECT_DB_INTEGRITY,
     EVENT_REQUEST_CHECK_REMOTE_SIZE,
     EVENT_REQUEST_RUN_DOCTOR,
     EVENT_REQUEST_RUN_FIX_INCOMPLETE,
@@ -112,6 +113,14 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                 button.setButtonText($msg("Choose file")).onClick(async () => {
                     await chooseAndCopyFileDatabaseInfo(this.core);
                 })
+            );
+        new Setting(paneEl)
+            .setName($msg("Inspect database integrity"))
+            .setDesc(
+                $msg("Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.")
+            )
+            .addButton((button) =>
+                button.setButtonText($msg("Inspect")).onClick(() => eventHub.emitEvent(EVENT_INSPECT_DB_INTEGRITY))
             );
         new Setting(paneEl)
             .setName($msg("Analyse database usage"))

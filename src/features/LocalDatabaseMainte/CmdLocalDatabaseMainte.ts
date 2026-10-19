@@ -8,14 +8,13 @@ import {
     type DocumentID,
     type EntryDoc,
     type EntryLeaf,
-    type FilePathWithPrefix,
     type MetaEntry,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getNoFromRev } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
 import { serialized } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
-import { EVENT_ANALYSE_DB_USAGE, EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
+import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
 import { delay } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -62,18 +61,6 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
     onload(): void | Promise<void> {
         // NO OP.
         this.services.API.addCommand({
-            id: "analyse-database",
-            name: "Analyse Database Usage (advanced)",
-            icon: "database-search",
-            checkCallback: (checking) => {
-                if (!this.settings.useAdvancedMode || !this._isDatabaseReady()) return false;
-                if (!checking) {
-                    void this.analyseDatabase();
-                }
-                return true;
-            },
-        });
-        this.services.API.addCommand({
             id: "gc-v3",
             name: "Garbage Collection V3 (advanced, beta)",
             icon: "trash-2",
@@ -88,7 +75,6 @@ export class LocalDatabaseMaintenance extends LiveSyncCommands {
                 return true;
             },
         });
-        eventHub.onEvent(EVENT_ANALYSE_DB_USAGE, () => this.analyseDatabase());
         eventHub.onEvent(EVENT_REQUEST_PERFORM_GC_V3, () => this.gcv3());
     }
     async allChunks(includeDeleted: boolean = false) {
@@ -548,218 +534,6 @@ Success: ${successCount}, Errored: ${errored}`;
         this._log(message, logLevel);
         const kvDB = this.core.kvDB;
         await kvDB.set(DB_KEY_CHUNK_SET, chunkSet);
-    }
-
-    // Analyse the database and report chunk usage.
-    async analyseDatabase() {
-        if (!(await this.ensureAvailable("Analyse Database Usage"))) return;
-        const db = this.localDatabase.localDatabase;
-        // Map of chunk ID to its info
-        type ChunkInfo = {
-            id: DocumentID;
-            refCount: number;
-            length: number;
-        };
-        const chunkMap = new Map<DocumentID, Set<ChunkInfo>>();
-        // Map of document ID to its info
-        type DocumentInfo = {
-            id: DocumentID;
-            rev: Rev;
-            chunks: Set<ChunkID>;
-            uniqueChunks: Set<ChunkID>;
-            sharedChunks: Set<ChunkID>;
-            path: FilePathWithPrefix;
-        };
-        const docMap = new Map<DocumentID, Set<DocumentInfo>>();
-        const info = await db.info();
-        // Total number of revisions to process (approximate)
-        const maxSeq = Number.parseInt(`${info.update_seq ?? 0}`, 10);
-        let processed = 0;
-        let read = 0;
-        let errored = 0;
-        // Fetch Tasks
-        const ft = [] as ReturnType<typeof fetchRevision>[];
-        // Fetch a specific revision of a document and make note of its chunks, or add chunk info.
-        const fetchRevision = async (id: DocumentID, rev: Rev, seq: string | number) => {
-            try {
-                processed++;
-                const doc = await db.get(id, { rev: rev });
-                if (doc) {
-                    if ("children" in doc) {
-                        const id = doc._id;
-                        const rev = doc._rev;
-                        const children = (doc.children || []) as DocumentID[];
-                        const set = docMap.get(id) || new Set();
-                        set.add({
-                            id,
-                            rev,
-                            chunks: new Set(children),
-                            uniqueChunks: new Set(),
-                            sharedChunks: new Set(),
-                            path: doc.path,
-                        });
-                        docMap.set(id, set);
-                    } else if (doc.type === EntryTypes.CHUNK) {
-                        const id = doc._id;
-                        if (chunkMap.has(id)) {
-                            return;
-                        }
-                        if (doc._deleted) {
-                            // Deleted chunk, skip (possibly resurrected later)
-                            return;
-                        }
-                        const length = doc.data.length;
-                        const set = chunkMap.get(id) || new Set();
-                        set.add({ id, length, refCount: 0 });
-                        chunkMap.set(id, set);
-                    }
-                    read++;
-                } else {
-                    this._log(`Analysing Database: not found: ${id} / ${rev}`);
-                    errored++;
-                }
-            } catch (error) {
-                this._log(`Error fetching document ${id} / ${rev}: $`, LOG_LEVEL_NOTICE);
-                this._log(error, LOG_LEVEL_VERBOSE);
-                errored++;
-            }
-            if (processed % 100 == 0) {
-                this._log(`Analysing database: ${read} (${errored}) / ${maxSeq} `, LOG_LEVEL_NOTICE, "db-analyse");
-            }
-        };
-
-        // Enumerate all documents and their revisions.
-        const IDs = this.localDatabase.findEntryNames("", "", {});
-        for await (const id of IDs) {
-            const revList = await this.localDatabase.getRaw(id as DocumentID, {
-                revs: true,
-                revs_info: true,
-                conflicts: true,
-            });
-            const revInfos = revList._revs_info || [];
-            for (const revInfo of revInfos) {
-                // All available revisions should be processed.
-                // If the revision is not available, it means the revision is already tombstoned.
-                if (revInfo.status == "available") {
-                    // Schedule fetch task
-                    ft.push(fetchRevision(id as DocumentID, revInfo.rev, 0));
-                }
-            }
-        }
-        // Wait for all fetch tasks to complete.
-        await Promise.all(ft);
-        // Reference count marking and unique/shared chunk classification.
-        for (const [, docRevs] of docMap) {
-            for (const docRev of docRevs) {
-                for (const chunkId of docRev.chunks) {
-                    const chunkInfos = chunkMap.get(chunkId);
-                    if (chunkInfos) {
-                        for (const chunkInfo of chunkInfos) {
-                            if (chunkInfo.refCount === 0) {
-                                docRev.uniqueChunks.add(chunkId);
-                            } else {
-                                docRev.sharedChunks.add(chunkId);
-                            }
-                            chunkInfo.refCount++;
-                        }
-                    }
-                }
-            }
-        }
-        // Prepare results
-        const result = [];
-        // Calculate total size of chunks in the given set.
-        const getTotalSize = (ids: Set<DocumentID>) => {
-            return [...ids].reduce((acc, chunkId) => {
-                const chunkInfos = chunkMap.get(chunkId);
-                if (chunkInfos) {
-                    for (const chunkInfo of chunkInfos) {
-                        acc += chunkInfo.length;
-                    }
-                }
-                return acc;
-            }, 0);
-        };
-
-        // Compile results for each document revision
-        for (const doc of docMap.values()) {
-            for (const rev of doc) {
-                const title = `${rev.path} (${rev.rev})`;
-                const id = rev.id;
-                const revStr = `${getNoFromRev(rev.rev)}`;
-                const revHash = rev.rev.split("-")[1].substring(0, 6);
-                const path = rev.path;
-                const uniqueChunkCount = rev.uniqueChunks.size;
-                const sharedChunkCount = rev.sharedChunks.size;
-                const uniqueChunkSize = getTotalSize(rev.uniqueChunks);
-                const sharedChunkSize = getTotalSize(rev.sharedChunks);
-                result.push({
-                    title,
-                    path,
-                    rev: revStr,
-                    revHash,
-                    id,
-                    uniqueChunkCount: uniqueChunkCount,
-                    sharedChunkCount,
-                    uniqueChunkSize: uniqueChunkSize,
-                    sharedChunkSize: sharedChunkSize,
-                });
-            }
-        }
-
-        const titleMap = {
-            title: "Title",
-            id: "Document ID",
-            path: "Path",
-            rev: "Revision No",
-            revHash: "Revision Hash",
-            uniqueChunkCount: "Unique Chunk Count",
-            sharedChunkCount: "Shared Chunk Count",
-            uniqueChunkSize: "Unique Chunk Size",
-            sharedChunkSize: "Shared Chunk Size",
-        } as const;
-        // Enumerate orphan chunks (not referenced by any document)
-        const orphanChunks = [...chunkMap.entries()].filter(([chunkId, infos]) => {
-            const totalRefCount = [...infos].reduce((acc, info) => acc + info.refCount, 0);
-            return totalRefCount === 0;
-        });
-        const orphanChunkSize = orphanChunks.reduce((acc, [chunkId, infos]) => {
-            for (const info of infos) {
-                acc += info.length;
-            }
-            return acc;
-        }, 0);
-        result.push({
-            title: "__orphan",
-            id: "__orphan",
-            path: "__orphan",
-            rev: "1",
-            revHash: "xxxxx",
-            uniqueChunkCount: orphanChunks.length,
-            sharedChunkCount: 0,
-            uniqueChunkSize: orphanChunkSize,
-            sharedChunkSize: 0,
-        } as const);
-
-        const csvSrc = result.map((e) => {
-            return [
-                `${e.title.replace(/"/g, '""')}"`,
-                `${e.id}`,
-                `${e.path}`,
-                `${e.rev}`,
-                `${e.revHash}`,
-                `${e.uniqueChunkCount}`,
-                `${e.sharedChunkCount}`,
-                `${e.uniqueChunkSize}`,
-                `${e.sharedChunkSize}`,
-            ].join("\t");
-        });
-        // Add title row
-        csvSrc.unshift(Object.values(titleMap).join("\t"));
-        const csv = csvSrc.join("\n");
-
-        // Prompt to copy to clipboard
-        await this.services.UI.promptCopyToClipboard("Database Analysis data (TSV):", csv);
     }
 
     async compactDatabase() {
