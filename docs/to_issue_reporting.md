@@ -44,6 +44,10 @@ For a large report, you may share a GitHub Gist after reviewing and redacting it
 
 ## Additional evidence when relevant
 
+### A problem involving database integrity or usage
+
+Use **Hatch** → **Inspect database integrity** for database-wide consistency findings, or **Analyse database usage** for local revision and Chunk accounting. Follow [Collect a report](troubleshooting.md#collect-a-report) for the name choice, formats, and inspection limits. Temporary pseudonyms are the default; review the report before sharing it. Retain the status and reported reasons when sharing a partial or cancelled result.
+
 ### A problem involving one file
 
 Run `Copy database information for the active file`, or use **Hatch** → **Copy database information for a file** to select another file.

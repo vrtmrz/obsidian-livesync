@@ -163,6 +163,12 @@ Enable Obsidian's `Detect all file extensions`, then check LiveSync selectors, i
 
 ## Collect a report
 
+For a database-wide inspection, use **Hatch** → **Inspect database integrity**. Choose **Pseudonyms (recommended)** or **Original names** before beginning. Both choices are visible as radio buttons, with pseudonyms selected initially. The inspection reads normal-file Metadata and current conflict branches locally and in CouchDB, then compares bytes within suspect groups and against the current Vault files. It reports unavailable sources, unreadable content, and detected changes during the run. Older revision history and other remote types are outside this inspection. A completed run means the stated inspection finished; it does not mean every entry is healthy or safe to delete.
+
+The result dialogue provides Markdown and JSON reports with the same name policy. Available formats are displayed as radio buttons. Pseudonyms preserve exact path equality across sources while keeping different document IDs distinct. They are temporary and are not saved as a global setting. Counts and relationships remain visible. Both modes omit file contents and credentials; review the report before sharing it. Cancelling keeps the evidence collected so far and marks the result as cancelled.
+
+For storage accounting, use **Hatch** → **Analyse database usage** → **Analyse**. It offers the same name choice and reads existing local revisions without changing on-demand Chunk fetching. Complete runs retain the existing TSV columns and first-reference unique/shared Chunk accounting. Sizes count stored string units, not physical database size. Incomplete runs provide JSON so their status and reasons remain attached to the rows. **Save report** requests a download; **Copy report** remains available on devices which do not support downloads.
+
 Follow [How to report an issue](to_issue_reporting.md) for the complete reporting checklist, including Obsidian debug information and the privacy review required before sharing evidence.
 
 Run `Generate full report for opening the issue with debug info` to copy the current settings summary and recent verbose log lines. Remove credentials, remote URLs, Vault names, file contents, and other private information before sharing it.

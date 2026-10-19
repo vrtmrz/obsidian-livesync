@@ -42,6 +42,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { LocalDatabaseMaintenance } from "./CmdLocalDatabaseMainte";
 import { ensureLocalDatabaseMaintenancePrerequisites } from "./maintenancePrerequisites";
+import { eventHub, EVENT_REQUEST_PERFORM_GC_V3 } from "@/common/events";
 
 function createPrerequisites(settingsOverride: Partial<typeof DEFAULT_SETTINGS> = {}) {
     const askSelectStringDialogue = vi.fn(
@@ -63,7 +64,7 @@ function createPrerequisites(settingsOverride: Partial<typeof DEFAULT_SETTINGS> 
 }
 
 describe("LocalDatabaseMaintenance prerequisites", () => {
-    it("shows database analysis in Advanced mode and Garbage Collection only in applicable Edge Case mode", () => {
+    it("shows Garbage Collection only in applicable Edge Case mode", () => {
         const commands: Array<{
             id: string;
             checkCallback?: (checking: boolean) => boolean | void;
@@ -90,15 +91,15 @@ describe("LocalDatabaseMaintenance prerequisites", () => {
             _isDatabaseReady: vi.fn(() => true),
         });
 
+        vi.mocked(eventHub.onEvent).mockClear();
         maintenance.onload();
+        expect(eventHub.onEvent).toHaveBeenCalledTimes(1);
+        expect(eventHub.onEvent).toHaveBeenCalledWith(EVENT_REQUEST_PERFORM_GC_V3, expect.any(Function));
 
-        const analyse = commands.find(({ id }) => id === "analyse-database");
         const garbageCollect = commands.find(({ id }) => id === "gc-v3");
-        expect(analyse?.checkCallback?.(true)).toBe(false);
         expect(garbageCollect?.checkCallback?.(true)).toBe(false);
 
         settings.useAdvancedMode = true;
-        expect(analyse?.checkCallback?.(true)).toBe(true);
         expect(garbageCollect?.checkCallback?.(true)).toBe(false);
 
         settings.useEdgeCaseMode = true;

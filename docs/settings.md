@@ -830,6 +830,14 @@ Select a file to copy its local database information. The command **Copy databas
 
 The report includes the Vault-relative path, document and chunk identifiers, local database revisions, conflicts, and local chunk availability. It does not query the remote or include file contents. Paths and identifiers can still be private metadata, so review the report before sharing it.
 
+#### Inspect database integrity
+
+Select **Inspect** to choose original names or temporary pseudonyms and inspect normal-file Metadata and current conflicts locally and in CouchDB. The command **Inspect database integrity** opens the same dialogue. The inspection is read-only; its findings do not authorise deletion or perform repairs. See [Collect a report](troubleshooting.md#collect-a-report) for coverage, report formats, privacy, and cancellation.
+
+#### Analyse database usage
+
+Select **Analyse** to choose a name policy and report local revision and Chunk usage. The command **Analyse Database Usage (advanced)** opens the same dialogue when [advanced features](#enable-advanced-features) are enabled. Complete runs offer TSV and JSON; incomplete runs retain their status and reasons in JSON. Existing on-demand Chunk fetching stays unchanged. See [Collect a report](troubleshooting.md#collect-a-report) for accounting limits and export instructions.
+
 #### Write logs into the file
 
 Setting key: writeLogToTheFile
