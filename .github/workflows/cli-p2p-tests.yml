@@ -24,6 +24,7 @@ on:
       - '.dockerignore'
       - 'test/bench-network/**'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - '.github/workflows/cli-p2p-tests.yml'
       - 'src/apps/cli/**'
@@ -53,6 +54,7 @@ concurrency:
 
 jobs:
   compose-p2p-e2e:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
