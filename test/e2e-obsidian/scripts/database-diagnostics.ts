@@ -331,6 +331,89 @@ async function assertDiagnosticFileLookup(
     await dialogue.waitFor({ state: "hidden", timeout });
 }
 
+async function assertFollowUpStopsAfterClose(page: Page, hatch: Locator, token: string): Promise<void> {
+    await page.evaluate(`(() => {
+        const core = app.plugins.plugins['obsidian-livesync'].core;
+        const db = core.localDatabase.localDatabase;
+        const manager = core.services.UI.dialogManager;
+        const gate = {
+            reached: false, metadataReads: 0, chunkQueries: 0, outcome: null,
+            originalGet: db.get, originalAllDocsRaw: core.localDatabase.allDocsRaw,
+            originalOpen: manager.open,
+        };
+        gate.releasePromise = new Promise(resolve => { gate.release = resolve; });
+        gate.settledPromise = new Promise(resolve => { gate.settle = resolve; });
+        db.get = async function(id, options) {
+            if (id === ${JSON.stringify(shadowId)} && options?.conflicts) {
+                gate.metadataReads++;
+                if (!gate.reached) {
+                    gate.reached = true;
+                    await gate.releasePromise;
+                }
+            }
+            return await gate.originalGet.call(this, id, options);
+        };
+        core.localDatabase.allDocsRaw = async function(...args) {
+            if (gate.reached) gate.chunkQueries++;
+            return await gate.originalAllDocsRaw.apply(this, args);
+        };
+        manager.open = function(component, options, ...args) {
+            if (typeof options?.prepareReport === 'function') {
+                const prepare = options.prepareReport;
+                options.prepareReport = async (...reportArgs) => {
+                    try {
+                        const result = await prepare(...reportArgs);
+                        gate.outcome = 'completed';
+                        return result;
+                    } catch (error) {
+                        gate.outcome = error.name;
+                        throw error;
+                    } finally {
+                        gate.settle();
+                    }
+                };
+            }
+            return gate.originalOpen.call(this, component, options, ...args);
+        };
+        globalThis.diagnosticFollowUpCloseGate = gate;
+    })()`);
+    try {
+        const setting = hatch.locator(".setting-item").filter({
+            has: page.getByText("Find a file from a report pseudonym", { exact: true }),
+        });
+        await setting.getByRole("button", { name: "Find file", exact: true }).click();
+        const dialogue = page.locator(".diagnostic-file-lookup");
+        await dialogue.getByLabel("Report path pseudonym", { exact: true }).fill(token);
+        await dialogue.getByRole("button", { name: "Find file", exact: true }).click();
+        const candidate = dialogue.locator("[data-diagnostic-candidate]").filter({ hasText: shadowId });
+        await candidate.getByRole("button", { name: "Prepare follow-up report", exact: true }).click();
+        await page.waitForFunction("globalThis.diagnosticFollowUpCloseGate.reached", undefined, { timeout });
+        await dialogue.getByRole("button", { name: "Close", exact: true }).click();
+        await dialogue.waitFor({ state: "hidden", timeout });
+        const result = await page.evaluate(`(async () => {
+            const gate = globalThis.diagnosticFollowUpCloseGate;
+            gate.release();
+            await gate.settledPromise;
+            return { outcome: gate.outcome, metadataReads: gate.metadataReads, chunkQueries: gate.chunkQueries };
+        })()`);
+        assert.deepEqual(
+            result,
+            { outcome: "AbortError", metadataReads: 1, chunkQueries: 0 },
+            "Closing a pending follow-up must stop inspection after the active Metadata read settles"
+        );
+    } finally {
+        await page.evaluate(`(() => {
+            const gate = globalThis.diagnosticFollowUpCloseGate;
+            const core = app.plugins.plugins['obsidian-livesync'].core;
+            gate.release();
+            core.localDatabase.localDatabase.get = gate.originalGet;
+            core.localDatabase.allDocsRaw = gate.originalAllDocsRaw;
+            core.services.UI.dialogManager.open = gate.originalOpen;
+            delete globalThis.diagnosticFollowUpCloseGate;
+        })()`);
+    }
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = requireObsidianCli();
@@ -475,6 +558,7 @@ async function main(): Promise<void> {
                 activeSession
             );
             hatch = await (await openLiveSyncSettings(page, timeout)).openPage("Hatch");
+            await assertFollowUpStopsAfterClose(page, hatch, usageFixtureRow.path);
             await captureObsidianElement(activeSession.remoteDebuggingPort, "database-diagnostics-hatch.png", (page) =>
                 page.locator(".modal.mod-settings")
             );
@@ -805,6 +889,7 @@ async function main(): Promise<void> {
                 mobileScreenshot,
                 mobileResultScreenshot,
                 readOnly: true,
+                followUpCloseCancellation: true,
             })
         );
     } catch (error) {
