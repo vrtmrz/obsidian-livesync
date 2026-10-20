@@ -36,11 +36,16 @@ const timeout = 20000;
 
 interface IntegrityReport {
     status: string;
+    scope: { remote: "included" | "excluded" };
     coverage: { local: { status: string }; remote: { status: string; contentReads: number } };
     observations: {
         source: string;
         identity: string;
-        content: { status: string; chunksRead: number };
+        path: string;
+        revision?: string;
+        metadata?: { recordedSize?: number; chunkReferences: number; uniqueChunkReferences: number };
+        vault: { status: string; size?: number; contentSizeDifference?: number; mtimeDifferenceMs?: number };
+        content: { status: string; chunksRead: number; size?: number; recordedSizeDifference?: number };
         comparisons: { relation: string }[];
     }[];
     errors: unknown[];
@@ -165,6 +170,73 @@ async function runCase(config: CouchDbConfig, encrypted: boolean) {
             let calls: { transport: string; method: string }[] = [];
             try {
                 await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+                    await page.setViewportSize({ width: 800, height: 600 });
+                    const opened = await page.evaluate(
+                        "app.commands.executeCommandById('obsidian-livesync:inspect-database-integrity')"
+                    );
+                    assert.equal(opened, true);
+                    const dialogue = page.locator(".database-diagnostic");
+                    await dialogue.waitFor({ state: "visible", timeout });
+                    const remoteChoice = dialogue.getByRole("checkbox", {
+                        name: "Include remote database",
+                        exact: true,
+                    });
+                    assert.equal(await remoteChoice.isChecked(), true, "Remote inspection must be selected by default");
+                    const modal = page.locator(".modal-container").filter({ has: dialogue }).locator(".modal");
+                    const layout = await modal.evaluate((element) => {
+                        const modalBounds = element.getBoundingClientRect();
+                        const choice = element.querySelector<HTMLElement>(".diagnostic-remote-choice");
+                        if (!choice)
+                            return { contained: false, outerScroll: element.scrollHeight - element.clientHeight };
+                        const choiceBounds = choice.getBoundingClientRect();
+                        return {
+                            contained:
+                                choiceBounds.top >= modalBounds.top - 1 &&
+                                choiceBounds.bottom <= modalBounds.bottom + 1,
+                            outerScroll: Math.max(0, element.scrollHeight - element.clientHeight),
+                        };
+                    });
+                    assert.equal(layout.contained, true, "The remote option must remain inside the desktop modal");
+                    assert.ok(
+                        layout.outerScroll <= 1,
+                        `The choice modal must not need outer scrolling; got ${layout.outerScroll}px`
+                    );
+                    await remoteChoice.uncheck();
+                    assert.equal(await remoteChoice.isChecked(), false);
+                    await dialogue.getByRole("button", { name: "Begin inspection", exact: true }).click();
+                    await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
+                    await dialogue.getByRole("radio", { name: "JSON", exact: true }).check();
+                    const report = JSON.parse(await dialogue.locator("textarea").inputValue()) as IntegrityReport;
+                    assert.equal(report.status, "complete");
+                    assert.equal(report.scope.remote, "excluded");
+                    assert.equal(report.coverage.local.status, "complete");
+                    assert.equal(report.coverage.remote.status, "not-checked");
+                    assert.deepEqual(report.errors, []);
+                    assert.equal(
+                        report.observations.some((row) => row.source === "remote"),
+                        false
+                    );
+                    const localObservations = report.observations.filter((row) => row.source === "local");
+                    assert.ok(localObservations.length > 0);
+                    assert.ok(localObservations.every((row) => row.identity === "consistent"));
+                    assert.ok(
+                        localObservations.every(
+                            (row) => row.content.status === "not-checked" && row.vault.status === "not-checked"
+                        ),
+                        "Only the remote has a discrepancy in this fixture; excluding it leaves no suspect content group"
+                    );
+                    await dialogue.getByRole("button", { name: "Close", exact: true }).click();
+                    await dialogue.waitFor({ state: "hidden", timeout });
+                });
+            } finally {
+                calls = await finishRequests(cli, session);
+            }
+            assert.equal(calls.length, 0, "Excluding the remote database must make no HTTP requests");
+
+            await observeRequests(cli, session);
+            try {
+                await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+                    await page.setViewportSize({ width: 800, height: 600 });
                     for (const names of ["pseudonym", "original"]) {
                         const opened = await page.evaluate(
                             "app.commands.executeCommandById('obsidian-livesync:inspect-database-integrity')"
@@ -172,6 +244,15 @@ async function runCase(config: CouchDbConfig, encrypted: boolean) {
                         assert.equal(opened, true);
                         const dialogue = page.locator(".database-diagnostic");
                         await dialogue.waitFor({ state: "visible", timeout });
+                        const remoteChoice = dialogue.getByRole("checkbox", {
+                            name: "Include remote database",
+                            exact: true,
+                        });
+                        assert.equal(
+                            await remoteChoice.isChecked(),
+                            true,
+                            "Each run must include the remote database by default"
+                        );
                         const nameOptions = dialogue.getByRole("group", { name: "Names in this report", exact: true });
                         assert.equal(await nameOptions.getByRole("radio").count(), 2);
                         const nameLabel = names === "pseudonym" ? "Pseudonyms (recommended)" : "Original names";
@@ -187,6 +268,7 @@ async function runCase(config: CouchDbConfig, encrypted: boolean) {
                         const text = await dialogue.locator("textarea").inputValue();
                         const report = JSON.parse(text) as IntegrityReport;
                         assert.equal(report.status, "complete");
+                        assert.equal(report.scope.remote, "included");
                         assert.equal(report.coverage.local.status, "complete");
                         assert.equal(report.coverage.remote.status, "complete");
                         assert.ok(report.coverage.remote.contentReads > 0);
@@ -197,6 +279,22 @@ async function runCase(config: CouchDbConfig, encrypted: boolean) {
                         assert.ok(suspect);
                         assert.equal(suspect.content.status, "available");
                         assert.ok(suspect.content.chunksRead > 0);
+                        const byteLength = Buffer.byteLength(fixtureContent);
+                        assert.equal(
+                            suspect.metadata?.recordedSize,
+                            byteLength,
+                            "Metadata properties must be decoded before reporting"
+                        );
+                        assert.equal(suspect.metadata?.chunkReferences, entry.children.length);
+                        assert.equal(suspect.content.size, byteLength);
+                        assert.equal(suspect.content.recordedSizeDifference, 0);
+                        assert.equal(suspect.vault.size, byteLength);
+                        assert.equal(suspect.vault.contentSizeDifference, 0);
+                        assert.ok(Number.isFinite(suspect.vault.mtimeDifferenceMs));
+                        if (names === "pseudonym") {
+                            assert.match(suspect.path, /^[A-Za-z0-9_-]{8}\$[0-9a-f]{32}$/);
+                            assert.match(suspect.revision ?? "", /^1-psu[0-9a-f]{32}$/);
+                        }
                         assert.ok(suspect.comparisons.some((comparison) => comparison.relation === "equal"));
                         await formats.getByRole("radio", { name: "MARKDOWN", exact: true }).check();
                         assert.equal(await formats.getByRole("radio", { checked: true }).count(), 1);

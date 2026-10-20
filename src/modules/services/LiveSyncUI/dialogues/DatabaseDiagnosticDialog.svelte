@@ -1,21 +1,31 @@
 <script lang="ts">
-    import { onDestroy, onMount } from "svelte";
+    import { onDestroy, onMount, tick } from "svelte";
     import type { GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
     import { $msg as translate } from "@/common/translation";
+    import { ProgressFragment } from "@vrtmrz/obsidian-plugin-kit/progress";
     import type { DatabaseDiagnosticDialogOptions } from "@/serviceFeatures/databaseDiagnosticDialogTypes";
-    import type { DatabaseDiagnosticOutput } from "@/serviceFeatures/databaseDiagnostics";
+    import type {
+        DatabaseDiagnosticOutput,
+        DatabaseDiagnosticProgress,
+    } from "@/serviceFeatures/databaseDiagnostics";
     import type { DiagnosticNameMode } from "@vrtmrz/livesync-commonlib/diagnostics";
 
     const { setResult, getInitialData }: GuestDialogProps<"close", DatabaseDiagnosticDialogOptions> = $props();
     let options = $state<DatabaseDiagnosticDialogOptions>();
     let phase = $state<"choice" | "running" | "result" | "failed">("choice");
     let nameMode = $state<DiagnosticNameMode>("pseudonym");
-    let processed = $state(0);
+    let includeRemote = $state(true);
     let cancelling = $state(false);
     let output = $state<DatabaseDiagnosticOutput>();
     let selectedFormat = $state("");
     let actionStatus = $state("");
+    let thisElement: HTMLDivElement;
+    let progressHost = $state<HTMLDivElement>();
+    let currentProgress: DatabaseDiagnosticProgress | undefined;
+    let progressFragment: ProgressFragment | undefined;
+    let lastProgressRender = 0;
+    let progressTimer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
     const selected = $derived(output?.artifacts.find((artifact) => artifact.format === selectedFormat));
     const title = $derived(
@@ -33,26 +43,102 @@
     );
     onMount(() => {
         options = getInitialData?.();
+        const modalContainer = thisElement.closest(".modal-container");
+        const alreadyScoped = modalContainer?.classList.contains("sls-database-diagnostic-modal") ?? false;
+        modalContainer?.classList.add("sls-database-diagnostic-modal");
+        return () => {
+            if (!alreadyScoped) modalContainer?.classList.remove("sls-database-diagnostic-modal");
+        };
     });
     onDestroy(() => {
         disposed = true;
+        clearTimeout(progressTimer);
         options?.cancel();
     });
 
     async function begin() {
-        if (!options || phase !== "choice") return;
+        const diagnosticOptions = options;
+        if (!diagnosticOptions || phase !== "choice") return;
         phase = "running";
+        await tick();
+        if (disposed) return;
+        currentProgress = undefined;
+        progressFragment = undefined;
+        progressHost?.replaceChildren();
+        updateProgress({
+            phase: diagnosticOptions.kind === "usage" ? "usage" : "metadata",
+            source: diagnosticOptions.kind === "integrity" ? "local" : undefined,
+            processed: 0,
+            elapsedMs: 0,
+        });
         try {
-            const result = await options.run(nameMode, (count) => {
-                if (!disposed) processed = count;
-            });
+            const result = await diagnosticOptions.run(
+                nameMode,
+                (progress) => {
+                    if (!disposed) updateProgress(progress);
+                },
+                includeRemote
+            );
             if (disposed) return;
+            finishProgress(result.status);
             output = result;
             selectedFormat = result.artifacts[0].format;
             phase = "result";
         } catch {
             if (!disposed) phase = "failed";
         }
+    }
+
+    function finishProgress(status: DatabaseDiagnosticOutput["status"]) {
+        if (status === "cancelled") progressFragment?.cancel();
+        else progressFragment?.complete();
+    }
+
+    function updateProgress(progress: DatabaseDiagnosticProgress, force = false) {
+        const host = progressHost;
+        if (!host) return;
+        const stageChanged =
+            currentProgress?.phase !== progress.phase || currentProgress?.source !== progress.source;
+        const stageFinished =
+            progress.totalIsFinal !== false && progress.total !== undefined && progress.processed === progress.total;
+        currentProgress = progress;
+        const now = performance.now();
+        if (!force && !stageChanged && !stageFinished && now - lastProgressRender < 100) {
+            progressTimer ??= setTimeout(() => {
+                progressTimer = undefined;
+                if (!disposed && phase === "running" && currentProgress) updateProgress(currentProgress, true);
+            }, 100 - (now - lastProgressRender));
+            return;
+        }
+        clearTimeout(progressTimer);
+        progressTimer = undefined;
+        lastProgressRender = now;
+        const phaseTitle =
+            progress.phase === "usage" ? translate("Reading revisions") :
+            progress.phase === "accounting" ? translate("Calculating database usage") :
+            progress.phase === "metadata" ? "Metadata" : "Content";
+        const sourceTitle = progress.source ? ` · ${progress.source}` : "";
+        const unit = progress.phase === "usage" ? "revisions" :
+            progress.phase === "accounting" ? "items" : progress.phase === "metadata" ? "documents" : "groups";
+        const total = progress.total ?? 0;
+        const note = `${(progress.elapsedMs / 1000).toFixed(1)} s elapsed${
+            progress.totalIsFinal === false ? ` · ${translate("Discovering revisions")}` : ""
+        }`;
+        if (stageChanged) {
+            progressFragment?.complete();
+            progressFragment = new ProgressFragment({
+                value: progress.processed,
+                total,
+                title: `${phaseTitle}${sourceTitle}`,
+                note,
+                autoComplete: false,
+                document: host.ownerDocument,
+                formatNumeric: (snapshot) => `${snapshot.value} / ${currentProgress?.total === undefined ? "—" : snapshot.total} ${unit}`,
+            });
+            host.replaceChildren(progressFragment.fragment);
+            return;
+        }
+        progressFragment?.update({ value: progress.processed, total, title: `${phaseTitle}${sourceTitle}`, note });
     }
 
     async function copyReport(event: MouseEvent) {
@@ -82,13 +168,13 @@
 </script>
 
 <DialogHeader {title} />
-<div class="database-diagnostic" data-diagnostic-phase={phase}>
+<div class="database-diagnostic" bind:this={thisElement} data-diagnostic-phase={phase}>
     {#if phase === "choice"}
-        <p>{translate("Choose how names appear in this run. Pseudonyms replace paths and identifiers consistently. Original names include private filenames. File contents and credentials are omitted in either mode.")}</p>
+        <p>{translate("Pseudonyms include a public salt, so guessed paths can be checked. Original names include private filenames. Reports omit file contents and credentials.")}</p>
         <p>
             {options?.kind === "usage"
                 ? translate("Read available local revisions and report their Chunk references. Settings are left unchanged.")
-                : translate("Read normal-file Metadata, current conflicts, and content for suspect groups from this device and CouchDB. Other remote types and older revision history are outside this inspection. Results do not authorise deletion.")}
+                : translate("Inspect normal-file Metadata, current conflicts, and suspect content against the Vault. Remote inspection supports CouchDB. Older history is excluded; findings do not authorise deletion.")}
         </p>
         <fieldset class="diagnostic-options">
             <legend>{translate("Names in this report")}</legend>
@@ -103,14 +189,21 @@
                 </label>
             </div>
         </fieldset>
+        {#if options?.kind === "integrity"}
+            <label class="diagnostic-remote-choice">
+                <input type="checkbox" bind:checked={includeRemote} />
+                <span>{translate("Include remote database")}</span>
+            </label>
+        {/if}
         <div class="diagnostic-controls">
             <button onclick={() => setResult("close")}>{translate("Cancel")}</button>
             <button class="mod-cta" disabled={!options} onclick={() => void begin()}>{translate("Begin inspection")}</button>
         </div>
     {:else if phase === "running"}
-        <p role="status">
-            {cancelling ? translate("Cancelling inspection…") : `${translate("Items inspected")}: ${processed}`}
-        </p>
+        <div class="diagnostic-progress" role="status" aria-live="polite" bind:this={progressHost}></div>
+        {#if cancelling}
+            <p role="status">{translate("Cancelling inspection…")}</p>
+        {/if}
         <button disabled={cancelling} onclick={() => { cancelling = true; options?.cancel(); }}>
             {translate("Cancel inspection")}
         </button>
@@ -149,16 +242,48 @@
 </div>
 
 <style>
-    .database-diagnostic { display: flex; flex-direction: column; gap: var(--size-4-2); }
-    p { margin-block: var(--size-4-2); }
+    :global(.sls-database-diagnostic-modal .modal) {
+        display: flex;
+        flex-direction: column;
+    }
+    :global(.sls-database-diagnostic-modal .modal-title) { flex: 0 0 auto; }
+    :global(.sls-database-diagnostic-modal .modal-content) {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    :global(.sls-database-diagnostic-modal .modal-content > .dialog-host) {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    .database-diagnostic {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: var(--size-4-2);
+        min-height: 0;
+    }
+    .database-diagnostic > :not(textarea) { flex: 0 0 auto; }
+    p { margin: 0; }
     .diagnostic-options { border: 0; margin: 0; padding: 0; min-width: 0; }
     legend { padding: 0; margin-bottom: var(--size-4-2); }
     .diagnostic-option-list { display: flex; flex-wrap: wrap; gap: var(--size-4-2) var(--size-4-4); }
     .diagnostic-option-list label { display: flex; align-items: center; gap: var(--size-4-2); width: auto; min-height: 44px; cursor: pointer; }
     .database-diagnostic .diagnostic-option-list label > span { width: auto; }
     input[type="radio"] { margin: 0; flex: 0 0 auto; }
-    .diagnostic-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); }
+    .diagnostic-remote-choice { display: flex; align-items: center; gap: var(--size-4-2); min-height: 44px; cursor: pointer; }
+    .database-diagnostic .diagnostic-remote-choice > span { width: auto; }
+    input[type="checkbox"] { margin: 0; flex: 0 0 auto; }
+    .diagnostic-controls { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: var(--size-4-2); }
     button { min-height: 44px; }
-    textarea { width: 100%; resize: vertical; font-family: var(--font-monospace); font-size: var(--font-ui-small); }
+    textarea {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        width: 100%;
+        resize: vertical;
+        font-family: var(--font-monospace);
+        font-size: var(--font-ui-small);
+    }
     :global(body.is-mobile) textarea { max-height: 25vh; }
 </style>

@@ -23,11 +23,12 @@ export const useDatabaseDiagnosticsFeature = createServiceFeature((host: Databas
         try {
             await services.UI.dialogManager.open<"close", DatabaseDiagnosticDialogOptions>(DatabaseDiagnosticDialog, {
                 kind,
-                run: async (nameMode, onProgress) => {
+                run: async (nameMode, onProgress, includeRemote = true) => {
                     if (!services.database.isDatabaseReady()) throw new Error("local-database-unavailable");
                     return await runDatabaseDiagnostic(host, kind, nameMode, {
                         signal: controller.signal,
                         onProgress,
+                        includeRemote,
                     });
                 },
                 cancel: () => controller.abort(),

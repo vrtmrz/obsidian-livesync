@@ -7,6 +7,43 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Preparing follow-up report…": "Preparing follow-up report…",
+    "Cancelling local search. Checked ${COUNT} entries.": "Cancelling local search. Checked ${COUNT} entries.",
+    "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.":
+        "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.",
+    "The lookup does not read file contents or contact a remote database. Follow-up reports include current conflicts and merge bases.":
+        "The lookup does not read file contents or contact a remote database. Follow-up reports include current conflicts and merge bases.",
+    "Local file diagnostic report": "Local file diagnostic report",
+    "Checked ${COUNT} local entries.": "Checked ${COUNT} local entries.",
+    "Enter a valid report path pseudonym.": "Enter a valid report path pseudonym.",
+    "Search cancelled. Matches found so far are shown.": "Search cancelled. Matches found so far are shown.",
+    "No matches were found in current Vault paths or current local Metadata. Older history and remote-only files are not searched.":
+        "No matches were found in current Vault paths or current local Metadata. Older history and remote-only files are not searched.",
+    "Found ${COUNT} local matches.": "Found ${COUNT} local matches.",
+    "The local search could not finish.": "The local search could not finish.",
+    "The file could not be opened.": "The file could not be opened.",
+    "The follow-up report could not be prepared.": "The follow-up report could not be prepared.",
+    "Report path pseudonym": "Report path pseudonym",
+    Source: "Source",
+    Metadata: "Metadata",
+    Vault: "Vault",
+    "Metadata document ID": "Metadata document ID",
+    "No current Metadata document": "No current Metadata document",
+    "Current Vault file": "Current Vault file",
+    Present: "Present",
+    Missing: "Missing",
+    "Open file": "Open file",
+    "Prepare follow-up report": "Prepare follow-up report",
+    "This report uses pseudonyms. Review its coverage before sharing.":
+        "This report uses pseudonyms. Review its coverage before sharing.",
+    "Back to matches": "Back to matches",
+    "Reading revisions": "Reading revisions",
+    "Calculating database usage": "Calculating database usage",
+    "Discovering revisions": "Discovering revisions",
+    "Find a file from a report pseudonym": "Find a file from a report pseudonym",
+    "Find matching paths in this Vault and local Metadata, then prepare a follow-up report using the same pseudonyms.":
+        "Find matching paths in this Vault and local Metadata, then prepare a follow-up report using the same pseudonyms.",
+    "Find file": "Find file",
     "⚠️ Initialise or overwrite the remote": "⚠️ Initialise or overwrite the remote",
     "🔗 Join this device": "🔗 Join this device",
     "⚙️ Apply settings only (advanced)": "⚙️ Apply settings only (advanced)",
@@ -268,12 +305,13 @@ export const liveSyncProvisionalEnglishMessages = {
         "Copy failed. Select the report text and copy it manually.",
     "Download requested. You can also copy the report if downloads are unavailable on this device.":
         "Download requested. You can also copy the report if downloads are unavailable on this device.",
-    "Choose how names appear in this run. Pseudonyms replace paths and identifiers consistently. Original names include private filenames. File contents and credentials are omitted in either mode.":
-        "Choose how names appear in this run. Pseudonyms replace paths and identifiers consistently. Original names include private filenames. File contents and credentials are omitted in either mode.",
+    "Pseudonyms include a public salt, so guessed paths can be checked. Original names include private filenames. Reports omit file contents and credentials.":
+        "Pseudonyms include a public salt, so guessed paths can be checked. Original names include private filenames. Reports omit file contents and credentials.",
     "Read available local revisions and report their Chunk references. Settings are left unchanged.":
         "Read available local revisions and report their Chunk references. Settings are left unchanged.",
-    "Read normal-file Metadata, current conflicts, and content for suspect groups from this device and CouchDB. Other remote types and older revision history are outside this inspection. Results do not authorise deletion.":
-        "Read normal-file Metadata, current conflicts, and content for suspect groups from this device and CouchDB. Other remote types and older revision history are outside this inspection. Results do not authorise deletion.",
+    "Inspect normal-file Metadata, current conflicts, and suspect content against the Vault. Remote inspection supports CouchDB. Older history is excluded; findings do not authorise deletion.":
+        "Inspect normal-file Metadata, current conflicts, and suspect content against the Vault. Remote inspection supports CouchDB. Older history is excluded; findings do not authorise deletion.",
+    "Include remote database": "Include remote database",
     "Names in this report": "Names in this report",
     "Pseudonyms (recommended)": "Pseudonyms (recommended)",
     "Original names": "Original names",

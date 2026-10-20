@@ -10,7 +10,7 @@ import {
 import { createBlob, escapeMarkdownValue, readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { shouldBeIgnored } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { Menu, diff_match_patch, setIcon } from "@/deps.ts";
+import { Menu, TFile, diff_match_patch, setIcon } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
@@ -62,10 +62,70 @@ import {
     executeMetadataIdentityRepair,
     MetadataIdentityRepairExecutions,
 } from "@/serviceFeatures/metadataIdentityRepair.ts";
+import { showDiagnosticFileLookup } from "@/serviceFeatures/diagnosticFileLookup.ts";
 export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     // const hatchWarn = this.createEl(paneEl, "div", { text: `To stop the boot up sequence for fixing problems on databases, you can put redflag.md on top of your vault (Rebooting obsidian is required).` });
     // hatchWarn.addClass("op-warn-info");
-    void addPanel(paneEl, $msg("Setting.TroubleShooting")).then((paneEl) => {
+    void addPanel(paneEl, "Reporting Tools").then((paneEl) => {
+        new Setting(paneEl).setName($msg("Prepare the 'report' to create an issue")).addButton((button) =>
+            button
+                .setButtonText($msg("Copy Report to clipboard"))
+                .setCta()
+                .setDisabled(false)
+                .onClick(async () => {
+                    await this.app.commands.executeCommandById("obsidian-livesync:dump-debug-info");
+                })
+        );
+        new Setting(paneEl)
+            .setName($msg("Copy database information for a file"))
+            .setDesc(
+                $msg(
+                    "Copy revision, conflict, and local chunk availability information, including document and chunk identifiers but not file contents."
+                )
+            )
+            .addButton((button) =>
+                button.setButtonText($msg("Choose file")).onClick(async () => {
+                    await chooseAndCopyFileDatabaseInfo(this.core);
+                })
+            );
+        new Setting(paneEl)
+            .setName($msg("Find a file from a report pseudonym"))
+            .setDesc(
+                $msg(
+                    "Find matching paths in this Vault and local Metadata, then prepare a follow-up report using the same pseudonyms."
+                )
+            )
+            .addButton((button) =>
+                button.setButtonText($msg("Find file")).onClick(async () => {
+                    await showDiagnosticFileLookup(this.core, async (path) => {
+                        const file = this.app.vault.getAbstractFileByPath(path);
+                        if (file instanceof TFile) await this.app.workspace.getLeaf(false).openFile(file);
+                    });
+                })
+            );
+        new Setting(paneEl)
+            .setName($msg("Inspect database integrity"))
+            .setDesc(
+                $msg("Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.")
+            )
+            .addButton((button) =>
+                button.setButtonText($msg("Inspect")).onClick(() => eventHub.emitEvent(EVENT_INSPECT_DB_INTEGRITY))
+            );
+        new Setting(paneEl)
+            .setName($msg("Analyse database usage"))
+            .setDesc(
+                $msg(
+                    "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like."
+                )
+            )
+            .addButton((button) =>
+                button.setButtonText($msg("Analyse")).onClick(() => {
+                    eventHub.emitEvent(EVENT_ANALYSE_DB_USAGE);
+                })
+            );
+    });
+
+    void addPanel(paneEl, "Checks and Recovery").then((paneEl) => {
         new Setting(paneEl)
             .setName($msg("Setting.TroubleShooting.Doctor"))
             .setDesc($msg("Setting.TroubleShooting.Doctor.Desc"))
@@ -92,48 +152,9 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                         eventHub.emitEvent(EVENT_REQUEST_RUN_FIX_INCOMPLETE);
                     })
             );
+    });
 
-        new Setting(paneEl).setName($msg("Prepare the 'report' to create an issue")).addButton((button) =>
-            button
-                .setButtonText($msg("Copy Report to clipboard"))
-                .setCta()
-                .setDisabled(false)
-                .onClick(async () => {
-                    await this.app.commands.executeCommandById("obsidian-livesync:dump-debug-info");
-                })
-        );
-        new Setting(paneEl)
-            .setName($msg("Copy database information for a file"))
-            .setDesc(
-                $msg(
-                    "Copy revision, conflict, and local chunk availability information, including document and chunk identifiers but not file contents."
-                )
-            )
-            .addButton((button) =>
-                button.setButtonText($msg("Choose file")).onClick(async () => {
-                    await chooseAndCopyFileDatabaseInfo(this.core);
-                })
-            );
-        new Setting(paneEl)
-            .setName($msg("Inspect database integrity"))
-            .setDesc(
-                $msg("Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.")
-            )
-            .addButton((button) =>
-                button.setButtonText($msg("Inspect")).onClick(() => eventHub.emitEvent(EVENT_INSPECT_DB_INTEGRITY))
-            );
-        new Setting(paneEl)
-            .setName($msg("Analyse database usage"))
-            .setDesc(
-                $msg(
-                    "Analyse database usage and generate a TSV report for diagnosis yourself. You can paste the generated report with any spreadsheet you like."
-                )
-            )
-            .addButton((button) =>
-                button.setButtonText($msg("Analyse")).onClick(() => {
-                    eventHub.emitEvent(EVENT_ANALYSE_DB_USAGE);
-                })
-            );
+    void addPanel(paneEl, $msg("Setting.TroubleShooting")).then((paneEl) => {
         new Setting(paneEl)
             .setName($msg("Reset notification threshold and check the remote database usage"))
             .setDesc($msg("Reset the remote storage size threshold and check the remote storage size again."))

@@ -198,8 +198,10 @@ describe("file database information", () => {
 
     it("reports the exact shared ancestor and its missing chunks for each conflict", async () => {
         const { conflict, core, current } = createCore();
+        const selectedCurrent = { ...current, _id: "f:selected" };
+        const selectedConflict = { ...conflict, _id: "f:selected" };
         const parent = {
-            ...current,
+            ...selectedCurrent,
             _rev: "2-parent",
             _conflicts: undefined,
             _revs_info: [
@@ -212,7 +214,7 @@ describe("file database information", () => {
         core.localDatabase.localDatabase.get.mockImplementation(async (_id: string, options?: { rev?: string }) => {
             if (options?.rev === "2-conflict") {
                 return {
-                    ...conflict,
+                    ...selectedConflict,
                     _revs_info: [
                         { rev: "2-conflict", status: "available" },
                         { rev: "2-parent", status: "available" },
@@ -224,7 +226,7 @@ describe("file database information", () => {
                 return parent;
             }
             return {
-                ...current,
+                ...selectedCurrent,
                 _revs_info: [
                     { rev: "3-current", status: "available" },
                     { rev: "2-parent", status: "available" },
@@ -233,7 +235,10 @@ describe("file database information", () => {
             };
         });
 
-        const info = await inspectFileDatabaseInfo(core as never, "note.md");
+        const info = await inspectFileDatabaseInfo(core as never, "note.md", {
+            documentId: "f:selected",
+            databasePath: "note.md" as never,
+        });
 
         expect(info.database.mergeBases).toEqual([
             {
@@ -246,6 +251,64 @@ describe("file database information", () => {
                 unavailableSharedRevisions: ["1-root"],
             },
         ]);
+        expect(core.localDatabase.localDatabase.get.mock.calls.map(([id]) => id)).toEqual([
+            "f:selected",
+            "f:selected",
+            "f:selected",
+        ]);
+    });
+
+    it("inspects the exact selected document when its ID differs from the path-derived ID", async () => {
+        const { core, current } = createCore();
+        const selected = {
+            ...current,
+            _id: "f:selected",
+            _rev: "4-selected",
+            _conflicts: [],
+            path: "stored-name.md",
+            children: [],
+        };
+        core.localDatabase.localDatabase.get.mockImplementation(async (id: string) =>
+            id === "f:selected" ? selected : current
+        );
+
+        const info = await inspectFileDatabaseInfo(core as never, "note.md", {
+            documentId: "f:selected",
+            databasePath: "listed-name.md" as never,
+        });
+
+        expect(info.database.exists).toBe(true);
+        expect(info.database.revisions).toEqual([
+            expect.objectContaining({
+                documentId: "f:selected",
+                revision: "4-selected",
+            }),
+        ]);
+        expect(info.databasePath).toBe("stored-name.md");
+        expect(info.database.documentId).toBe("f:selected");
+        expect(core.services.path.path2id).not.toHaveBeenCalled();
+    });
+
+    it("reports a missing exact document without falling back to the path-derived ID", async () => {
+        const { core, current } = createCore();
+        core.localDatabase.localDatabase.get.mockImplementation(async (id: string) => {
+            if (id === "f:missing") {
+                throw Object.assign(new Error("missing"), { status: 404 });
+            }
+            return current;
+        });
+
+        const info = await inspectFileDatabaseInfo(core as never, "note.md", {
+            documentId: "f:missing",
+            databasePath: "requested-name.md" as never,
+        });
+
+        expect(info.database.exists).toBe(false);
+        expect(info.database.revisions).toEqual([]);
+        expect(info.databasePath).toBe("requested-name.md");
+        expect(info.database.documentId).toBe("f:missing");
+        expect(core.localDatabase.localDatabase.get.mock.calls.map(([id]) => id)).toEqual(["f:missing"]);
+        expect(core.services.path.path2id).not.toHaveBeenCalled();
     });
 
     it("does not decode a revision whose chunks are not all available locally", async () => {
@@ -293,13 +356,7 @@ describe("file database information", () => {
 
         await retryReadFileDatabaseRevision(core as never, "note.md", "2-conflict");
 
-        expect(core.localDatabase.getDBEntry).toHaveBeenCalledWith(
-            "note.md",
-            { rev: "2-conflict" },
-            false,
-            true,
-            true
-        );
+        expect(core.localDatabase.getDBEntry).toHaveBeenCalledWith("note.md", { rev: "2-conflict" }, false, true, true);
     });
 
     it("reports the exact revision as locally available after retry recovers its missing chunk", async () => {
@@ -322,14 +379,10 @@ describe("file database information", () => {
                     : [],
         }));
 
-        await expect(
-            retryReadFileDatabaseRevision(core as never, "note.md", "2-conflict")
-        ).resolves.not.toBe(false);
+        await expect(retryReadFileDatabaseRevision(core as never, "note.md", "2-conflict")).resolves.not.toBe(false);
         const information = await inspectFileDatabaseInfo(core as never, "note.md");
 
-        expect(
-            information.database.revisions.find(({ revision }) => revision === "2-conflict")
-        ).toEqual(
+        expect(information.database.revisions.find(({ revision }) => revision === "2-conflict")).toEqual(
             expect.objectContaining({
                 contentAvailableLocally: true,
                 chunks: [
