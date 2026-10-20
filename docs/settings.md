@@ -820,9 +820,13 @@ Open the dialogue
 
 ## 7. Hatch
 
-### 1. Reporting Issue
+### 1. Reporting Tools
 
-#### Make report to inform the issue
+This panel groups the five actions that collect reports or inspect database state. These actions provide diagnostic information; they do not repair or reset the database.
+
+#### Prepare a report to inform an issue
+
+Select **Copy Report to clipboard** to collect diagnostic information and recent logs for a support report. Review the report before sharing it because it can contain sensitive information.
 
 #### Copy database information for a file
 
@@ -830,20 +834,48 @@ Select a file to copy its local database information. The command **Copy databas
 
 The report includes the Vault-relative path, document and chunk identifiers, local database revisions, conflicts, and local chunk availability. It does not query the remote or include file contents. Paths and identifiers can still be private metadata, so review the report before sharing it.
 
+#### Find a file from a report pseudonym
+
+Paste a path pseudonym from a diagnostic report, then select **Find file**. The lookup checks the current Vault and local normal-file Metadata only; it does not contact the remote database. It returns every matching local candidate, and shows each candidate's real Vault path and document ID only in this local dialogue. Multiple local document IDs for one path remain separate candidates. The follow-up for a Vault-only candidate marks Metadata as not inspected, because no local document was selected. No match can mean that the file was renamed or deleted, or that the matching Metadata exists only remotely.
+
+For a selected candidate, open an existing Vault file or prepare a shareable local report using the original report's pseudonym salt and the exact selected document ID. The report includes current, conflict, and history status, Chunk availability, merge bases, and Vault size facts; it does not include file contents or credentials. Its history status listing does not scan every historical body.
+
+Path pseudonyms use the report's public eight-character salt. Someone with the report can test a guessed path against a pseudonym. The same salt reproduces path and identifier pseudonyms in a targeted follow-up; older ordinal pseudonyms cannot be looked up with this tool.
+
 #### Inspect database integrity
 
-Select **Inspect** to choose original names or temporary pseudonyms and inspect normal-file Metadata and current conflicts locally and in CouchDB. The command **Inspect database integrity** opens the same dialogue. The inspection is read-only; its findings do not authorise deletion or perform repairs. See [Collect a report](troubleshooting.md#collect-a-report) for coverage, report formats, privacy, and cancellation.
+Select **Inspect** to choose original names or temporary pseudonyms and inspect normal-file Metadata and current conflicts. **Include remote database** is selected by default; clear it to inspect only the local database and Vault. This choice applies to the current run only, and the report marks remote coverage as not checked when excluded. The command **Inspect database integrity** opens the same dialogue. The inspection is read-only; its findings do not authorise deletion or perform repairs. See [Collect a report](troubleshooting.md#collect-a-report) for coverage, report formats, privacy, and cancellation, and the [compact Markdown reading guide](troubleshooting.md#read-the-compact-markdown-integrity-report) for interpreting its state and review index.
 
 #### Analyse database usage
 
 Select **Analyse** to choose a name policy and report local revision and Chunk usage. The command **Analyse Database Usage (advanced)** opens the same dialogue when [advanced features](#enable-advanced-features) are enabled. Complete runs offer TSV and JSON; incomplete runs retain their status and reasons in JSON. Existing on-demand Chunk fetching stays unchanged. See [Collect a report](troubleshooting.md#collect-a-report) for accounting limits and export instructions.
+
+### 2. Checks and Recovery
+
+This panel groups checks that may lead to changes to settings or database contents.
+
+#### Setting Doctor
+
+Run Setting Doctor to check for configuration mismatches or suboptimal settings. Applying its recommendations can change settings or request a database rebuild, so review the recommendations before proceeding.
+
+#### Scan for broken files
+
+Scan for files which are not stored correctly in the database. The scan can offer repair actions that change database contents; review each proposed action before confirming it.
+
+### 3. TroubleShooting
+
+This panel keeps the remote storage notification check and file logging controls separate from report collection and recovery checks.
+
+#### Reset notification threshold and check the remote database usage
+
+Reset the remote storage size threshold and check the remote storage size again. This changes the saved notification threshold.
 
 #### Write logs into the file
 
 Setting key: writeLogToTheFile
 Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.
 
-### 2. Scram Switches
+### 4. Scram Switches
 
 Emergency controls to suspend synchronisation processes in order to prevent database corruption. If a critical mismatch or sync error occurs, the plug-in may automatically enter a Scram state and suspend operations.
 
@@ -859,7 +891,7 @@ Setting key: suspendParseReplicationResult
 
 Stop reflecting database changes to storage files.
 
-### 3. Recovery and Repair
+### 5. Recovery and Repair
 
 #### Recreate chunks for current Vault files
 
@@ -879,7 +911,7 @@ After confirmation, resolve every conflict by modification time. This logically 
 
 #### Check and convert non-path-obfuscated files
 
-### 4. Reset
+### 6. Reset
 
 #### Back to non-configured
 

@@ -21,8 +21,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Diagnostics
 
-- We can inspect normal-file Metadata and current conflicts in the local database and CouchDB together, with byte comparisons for suspect groups. Partial results retain the available evidence when a source is unavailable. The inspection leaves databases and settings unchanged.
-- Database Usage analysis and integrity inspection now offer temporary pseudonyms or original names before each run. Both name modes and the available report formats stay visible as radio buttons. Reports omit file contents and credentials in both modes. Complete Usage runs retain the existing TSV columns; partial runs use JSON to retain their status and reasons.
+- We can inspect normal-file Metadata and current conflicts in the local database and CouchDB together, with byte comparisons for suspect groups. A per-run option excludes the remote database when a local database and Vault inspection is enough; reports identify that scope. Partial results retain the available evidence when a source is unavailable. The inspection leaves databases and settings unchanged.
+- Database Usage analysis and integrity inspection now offer temporary pseudonyms or original names before each run. Both name modes and the available report formats stay visible as radio buttons. Pseudonym reports can be followed up with the same public salt; the local Hatch lookup searches the current Vault and local normal-file Metadata and can prepare a report for a selected document. Reports omit file contents and credentials in both modes. Complete Usage runs retain the existing TSV columns; partial runs use JSON to retain their status and reasons.
+- Revision pseudonyms retain their generation number. Integrity reports include existing size, modification-time, Chunk-reference, and case/NFC relationship evidence without additional database or Vault reads.
+- We can review an integrity report more quickly in Markdown: a Review index groups references by identity, conflict, path, availability, and measured-difference findings before the observations. The compact display keeps each observation and its full follow-up references; the JSON report is unchanged.
+- Usage progress shows the growing number of available revisions during reading, then a separate cancellable accounting stage. Integrity inspection reduces remote requests with bulk reads and bounded concurrency, shows progress counts and a gauge for each stage, and records document-read and HTTP-request timing and counts in the log. Markdown reports include a collapsible code block for sharing in issues.
+- Hatch groups the five reporting tools separately from checks, recovery, and reset operations. Diagnostic dialogues resize their report preview to keep the controls visible in smaller windows.
 
 ## 1.0.38
 

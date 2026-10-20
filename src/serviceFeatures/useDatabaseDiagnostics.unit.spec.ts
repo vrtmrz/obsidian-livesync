@@ -119,4 +119,29 @@ describe("database diagnostics serviceFeature", () => {
         data.close();
         await opened;
     });
+
+    it("forwards the per-run remote inspection choice and defaults existing callers to include the remote database", async () => {
+        vi.mocked(runDatabaseDiagnostic).mockClear();
+        const data = fixture();
+        const opened = data.view.open("integrity");
+        const options = data.openDialog.mock.calls[0][1];
+
+        await options.run("pseudonym", () => {}, false);
+        expect(runDatabaseDiagnostic).toHaveBeenLastCalledWith(
+            data.host,
+            "integrity",
+            "pseudonym",
+            expect.objectContaining({ includeRemote: false, signal: expect.any(AbortSignal) })
+        );
+
+        await options.run("pseudonym", () => {});
+        expect(runDatabaseDiagnostic).toHaveBeenLastCalledWith(
+            data.host,
+            "integrity",
+            "pseudonym",
+            expect.objectContaining({ includeRemote: true, signal: expect.any(AbortSignal) })
+        );
+        data.close();
+        await opened;
+    });
 });

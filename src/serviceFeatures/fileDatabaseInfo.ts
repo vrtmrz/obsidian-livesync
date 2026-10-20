@@ -91,6 +91,7 @@ export type FileDatabaseInfo = {
         source: "local database on this device";
         remoteQueried: false;
         exists: boolean;
+        documentId?: string;
         currentRevision: string | null;
         conflictCount: number;
         conflictRevisions: string[];
@@ -98,6 +99,12 @@ export type FileDatabaseInfo = {
         revisions: RevisionDatabaseInfo[];
         mergeBases: FileDatabaseMergeBaseInfo[];
     };
+};
+
+export type InspectFileDatabaseInfoOptions = {
+    documentId?: string;
+    databasePath?: FilePathWithPrefix | FilePath;
+    signal?: AbortSignal;
 };
 
 const REPORT_WARNING =
@@ -125,25 +132,35 @@ type RawDatabaseDocument = {
     data?: string | string[];
     eden?: Record<string, unknown>;
     mtime?: number;
+    path?: FilePathWithPrefix | FilePath;
     size?: number;
     type?: string;
 };
 
+function checkInspectionCancelled(signal?: AbortSignal): void {
+    if (signal?.aborted) throw new DOMException("File inspection cancelled", "AbortError");
+}
+
 async function getLocalDatabaseMeta(
     core: FileDatabaseInfoCore,
     path: FilePathWithPrefix | FilePath,
-    options: PouchDB.Core.GetOptions
+    options: PouchDB.Core.GetOptions,
+    target?: InspectFileDatabaseInfoOptions
 ): Promise<DatabaseMeta | false> {
-    const documentId = await core.services.path.path2id(path);
+    checkInspectionCancelled(target?.signal);
+    const documentId = target?.documentId ?? (await core.services.path.path2id(path));
+    checkInspectionCancelled(target?.signal);
     let raw: RawDatabaseDocument;
     try {
         raw = await core.localDatabase.localDatabase.get(documentId, options);
     } catch (error) {
+        checkInspectionCancelled(target?.signal);
         if (isNotFoundError(error)) {
             return false;
         }
         throw error;
     }
+    checkInspectionCancelled(target?.signal);
 
     if (raw.type === "leaf") {
         return false;
@@ -156,13 +173,15 @@ async function getLocalDatabaseMeta(
     const legacy = rawStorageType === null || rawStorageType === "notes";
     const type = legacy ? "notes" : rawStorageType;
     const legacyBodyPresent =
-        legacy && (typeof raw.data === "string" || (Array.isArray(raw.data) && raw.data.every((item) => typeof item === "string")));
+        legacy &&
+        (typeof raw.data === "string" ||
+            (Array.isArray(raw.data) && raw.data.every((item) => typeof item === "string")));
     return {
         _id: raw._id,
         _rev: raw._rev,
         _conflicts: raw._conflicts,
         _revs_info: raw._revs_info,
-        path,
+        path: target ? (raw.path ?? path) : path,
         data: legacyBodyPresent ? raw.data : "",
         ctime: raw.ctime ?? 0,
         mtime: raw.mtime ?? 0,
@@ -180,8 +199,10 @@ async function getLocalDatabaseMeta(
 async function collectRevisionDatabaseInfo(
     core: FileDatabaseInfoCore,
     meta: DatabaseMeta,
-    current: boolean
+    current: boolean,
+    signal?: AbortSignal
 ): Promise<RevisionDatabaseInfo> {
+    checkInspectionCancelled(signal);
     const legacy = meta._rawStorageType === null || meta._rawStorageType === "notes";
     const children = legacy ? [] : "children" in meta ? meta.children : [];
     const uniqueChildren = [...new Set(children)];
@@ -201,6 +222,7 @@ async function collectRevisionDatabaseInfo(
                       include_docs: false,
                   })
               ).rows;
+    checkInspectionCancelled(signal);
     const localChunkStates = new Map(
         localRows
             .filter((row) => "value" in row)
@@ -236,9 +258,7 @@ async function collectRevisionDatabaseInfo(
         locallyStoredChunkReferences: children.filter((id) => localChunkStates.get(id)?.state === "available").length,
         contentAvailableLocally: legacy
             ? meta._legacyBodyPresent
-            : uniqueChildren.every(
-                  (id) => embeddedChildren.has(id) || localChunkStates.get(id)?.state === "available"
-              ),
+            : uniqueChildren.every((id) => embeddedChildren.has(id) || localChunkStates.get(id)?.state === "available"),
         chunks: uniqueChildren.map((id) => {
             const localState = localChunkStates.get(id);
             return {
@@ -273,15 +293,27 @@ function missingChunkIds(info: RevisionDatabaseInfo): string[] {
         .map(({ id }) => id);
 }
 
-export async function inspectFileDatabaseInfo(core: FileDatabaseInfoCore, path: string): Promise<FileDatabaseInfo> {
+export async function inspectFileDatabaseInfo(
+    core: FileDatabaseInfoCore,
+    path: string,
+    options?: InspectFileDatabaseInfoOptions
+): Promise<FileDatabaseInfo> {
+    checkInspectionCancelled(options?.signal);
     const storageExists = await core.storageAccess.isExistsIncludeHidden(path);
+    checkInspectionCancelled(options?.signal);
     const storageStat = storageExists ? await core.storageAccess.statHidden(path) : null;
-    const databasePath = toDatabasePath(path);
-    const currentMeta = await getLocalDatabaseMeta(core, databasePath, {
-        conflicts: true,
-        revs: true,
-        revs_info: true,
-    });
+    const requestedDatabasePath = options?.databasePath ?? toDatabasePath(path);
+    const currentMeta = await getLocalDatabaseMeta(
+        core,
+        requestedDatabasePath,
+        {
+            conflicts: true,
+            revs: true,
+            revs_info: true,
+        },
+        options
+    );
+    const databasePath = options && currentMeta ? currentMeta.path : requestedDatabasePath;
 
     const revisions: RevisionDatabaseInfo[] = [];
     const conflictRevisions = currentMeta === false ? [] : (currentMeta._conflicts ?? []);
@@ -292,25 +324,31 @@ export async function inspectFileDatabaseInfo(core: FileDatabaseInfoCore, path: 
         metadataByRevision.set(currentMeta._rev, currentMeta);
     }
     const getRevisionMeta = async (revision: string): Promise<DatabaseMeta | false> => {
+        checkInspectionCancelled(options?.signal);
         const cached = metadataByRevision.get(revision);
         if (cached !== undefined) {
             return cached;
         }
-        const meta = await getLocalDatabaseMeta(core, databasePath, {
-            rev: revision,
-            revs: true,
-            revs_info: true,
-        });
+        const meta = await getLocalDatabaseMeta(
+            core,
+            requestedDatabasePath,
+            {
+                rev: revision,
+                revs: true,
+                revs_info: true,
+            },
+            options
+        );
         metadataByRevision.set(revision, meta);
         return meta;
     };
 
     if (currentMeta) {
-        revisions.push(await collectRevisionDatabaseInfo(core, currentMeta, true));
+        revisions.push(await collectRevisionDatabaseInfo(core, currentMeta, true, options?.signal));
         for (const revision of conflictRevisions) {
             const conflictMeta = await getRevisionMeta(revision);
             if (conflictMeta) {
-                revisions.push(await collectRevisionDatabaseInfo(core, conflictMeta, false));
+                revisions.push(await collectRevisionDatabaseInfo(core, conflictMeta, false, options?.signal));
                 const winnerHistory = revisionHistory(currentMeta);
                 const conflictHistory = revisionHistory(conflictMeta);
                 const conflictHistoryByRevision = new Map(
@@ -323,13 +361,12 @@ export async function inspectFileDatabaseInfo(core: FileDatabaseInfoCore, path: 
                 const unavailableSharedRevisions = sharedHistory
                     .filter(
                         ({ revision: historyRevision, status }) =>
-                            status !== "available" ||
-                            conflictHistoryByRevision.get(historyRevision) !== "available"
+                            status !== "available" || conflictHistoryByRevision.get(historyRevision) !== "available"
                     )
                     .map(({ revision: historyRevision }) => historyRevision);
                 const sharedMeta = sharedRevision ? await getRevisionMeta(sharedRevision) : false;
                 const sharedInfo = sharedMeta
-                    ? await collectRevisionDatabaseInfo(core, sharedMeta, false)
+                    ? await collectRevisionDatabaseInfo(core, sharedMeta, false, options?.signal)
                     : undefined;
                 mergeBases.push({
                     winnerRevision: currentMeta._rev ?? "",
@@ -346,6 +383,7 @@ export async function inspectFileDatabaseInfo(core: FileDatabaseInfoCore, path: 
         }
     }
 
+    checkInspectionCancelled(options?.signal);
     const report: FileDatabaseInfo = {
         path,
         databasePath,
@@ -363,6 +401,7 @@ export async function inspectFileDatabaseInfo(core: FileDatabaseInfoCore, path: 
             source: "local database on this device",
             remoteQueried: false,
             exists: currentMeta !== false,
+            ...(options?.documentId !== undefined ? { documentId: options.documentId } : {}),
             currentRevision: currentMeta ? (currentMeta._rev ?? null) : null,
             conflictCount: conflictRevisions.length,
             conflictRevisions,
