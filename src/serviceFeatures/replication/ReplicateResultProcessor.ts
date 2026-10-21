@@ -521,6 +521,8 @@ export class ReplicateResultProcessor {
                 releaser = await this._semaphore.acquire();
                 await this._applyToDatabase(doc);
             } catch (e) {
+                // An exception during application must not be mistaken for a fully reflected Vault.
+                this.context.onVaultReflectionFailure?.();
                 this.log(`Error while processing replication result`, LOG_LEVEL_NOTICE);
                 this.logError(e);
             } finally {
@@ -630,6 +632,7 @@ export class ReplicateResultProcessor {
                 // Note that this is not a common case.
                 return true;
             } else {
+                this.context.onVaultReflectionFailure?.();
                 this.log(
                     `Failed to get existing document for ${path} (${shortenId(dbDoc._id)}, ${shortenRev(dbDoc._rev)}) `,
                     LOG_LEVEL_NOTICE
