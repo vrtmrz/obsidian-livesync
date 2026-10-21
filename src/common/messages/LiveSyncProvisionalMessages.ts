@@ -7,6 +7,14 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Synchronisation protection": "Synchronisation protection",
+    "Synchronising your Vault": "Synchronising your Vault",
+    "Receiving changes from the server…": "Receiving changes from the server…",
+    "Applying received changes to local notes…": "Applying received changes to local notes…",
+    "Synchronisation was interrupted. You can continue locally, but some notes may be out of date.":
+        "Synchronisation was interrupted. You can continue locally, but some notes may be out of date.",
+    "At least ${COUNT} changed files received": "At least ${COUNT} changed files received",
+    "Continue without waiting": "Continue without waiting",
     "Preparing follow-up report…": "Preparing follow-up report…",
     "Cancelling local search. Checked ${COUNT} entries.": "Cancelling local search. Checked ${COUNT} entries.",
     "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.":

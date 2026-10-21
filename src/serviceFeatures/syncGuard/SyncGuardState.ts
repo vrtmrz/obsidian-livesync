@@ -14,9 +14,9 @@ export class SyncGuardState {
     private phase: SyncGuardPhase = "idle";
     private receivedIds = new Set<string>();
     private minimumFiles = 20;
-    private started = false;
     private finiteActive = false;
     private observedCompletion = false;
+    private hadReflectionFailure = false;
     private bypassed = false;
     private quiescentSince: number | undefined;
 
@@ -29,31 +29,46 @@ export class SyncGuardState {
         return { phase: this.phase, receivedFiles: this.receivedIds.size };
     }
 
+    get wasBypassed(): boolean {
+        return this.bypassed;
+    }
+
     /** Begins a fresh, initially non-blocking observation window on app resume. */
     resume(enabled: boolean, minimumFiles: number): void {
         this.minimumFiles = Number.isFinite(minimumFiles) ? Math.max(1, Math.floor(minimumFiles)) : 20;
         this.receivedIds.clear();
-        this.started = false;
         this.finiteActive = false;
         this.observedCompletion = false;
+        this.hadReflectionFailure = false;
         this.bypassed = false;
         this.quiescentSince = undefined;
         this.setPhase(enabled ? "observing" : "idle");
+    }
+
+    /** A changed setting takes effect during observation, without cancelling an active protection. */
+    updateThreshold(minimumFiles: number): void {
+        this.minimumFiles = Number.isFinite(minimumFiles) ? Math.max(1, Math.floor(minimumFiles)) : 20;
+        if (this.phase === "observing" && this.finiteActive && this.receivedIds.size >= this.minimumFiles) {
+            this.setPhase("transferring");
+        }
     }
 
     /** A completed finite pull is expected before the long-running live connection begins. */
     finiteActivityChanged(active: boolean, pendingCount: number, now: number): void {
         if (this.phase === "idle" || this.bypassed || this.finiteActive === active) return;
         if (active) {
-            if (this.started) return; // Only the first finite transfer of this resume generation is relevant.
-            this.started = true;
+            // A retry or a second pull can begin while the Vault is still applying an earlier batch.
+            // Do not let the previous successful completion unlock an active newer transfer.
             this.finiteActive = true;
+            this.observedCompletion = false;
+            this.quiescentSince = undefined;
+            if (this.isBlocking()) this.setPhase("transferring");
             return;
         }
         this.finiteActive = false;
         if (!this.isBlocking()) {
             this.setPhase("idle");
-        } else if (!this.observedCompletion) {
+        } else if (!this.observedCompletion || this.hadReflectionFailure) {
             this.setPhase("interrupted");
         } else {
             this.setPhase("applying");
@@ -67,15 +82,23 @@ export class SyncGuardState {
         if (status === "COMPLETED") this.observedCompletion = true;
     }
 
+    /** A network-complete batch is not a safe unlock when reflecting a received note failed. */
+    reflectionFailed(): void {
+        if (this.phase === "idle" || this.bypassed) return;
+        this.hadReflectionFailure = true;
+        if (this.phase === "applying") this.setPhase("interrupted");
+    }
+
     /** Count distinct incoming note Metadata, not Chunks or repeated revisions of a note. */
     receivedDocuments(ids: readonly string[]): void {
         if (!this.finiteActive || this.bypassed || this.phase === "idle") return;
         const wasBlocking = this.isBlocking();
+        const previousCount = this.receivedIds.size;
         for (const id of ids) {
             if (id) this.receivedIds.add(id);
-            if (this.receivedIds.size >= this.minimumFiles) break;
         }
         if (!wasBlocking && this.receivedIds.size >= this.minimumFiles) this.setPhase("transferring");
+        else if (wasBlocking && this.receivedIds.size !== previousCount) this.onChange(this.presentation);
     }
 
     /** Unlock only after successful transfer and a stable empty local application queue. */
