@@ -66,6 +66,11 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             guard.disable();
             return;
         }
+        // A duplicate resume in the same active catch-up must honour a user's
+        // explicit decision to continue editing rather than silently re-lock.
+        if (guard.wasBypassed && services.replicator.couchDbCatchUpActivityCount.value > 0) {
+            return;
+        }
         // Duplicate resume notifications or a visibility transition must not discard an
         // already active guard and expose a partly reflected Vault to the user.
         if (guard.presentation.phase === "transferring" || guard.presentation.phase === "applying" ||

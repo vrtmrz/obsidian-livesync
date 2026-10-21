@@ -266,4 +266,17 @@ describe("useSyncGuardFeature", () => {
         expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
         await h.onUnload[0]();
     });
+
+    it("preserves manual bypass across duplicate resume while the same CouchDB pull remains active", async () => {
+        const h = setup({ minimumFiles: 2 });
+        await h.onResumed[0]();
+        h.couchDbCatchUpActivityCount.value = 1;
+        await h.parseHandlers[0]([receivedNote("first"), receivedNote("second")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
+        h.bypass();
+        await h.onResumed[0]();
+        await h.parseHandlers[0]([receivedNote("third"), receivedNote("fourth")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
+        await h.onUnload[0]();
+    });
 });
