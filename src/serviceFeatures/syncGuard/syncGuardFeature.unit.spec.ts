@@ -28,6 +28,7 @@ function setup(overrides: { enabled?: boolean; minimumFiles?: number } = {}) {
     const onSettingRealised: Array<() => Promise<boolean>> = [];
     const parseHandlers: Array<(docs: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<boolean>> = [];
     const priority = vi.fn();
+    const couchDbCatchUpActivityCount = reactiveSource(0);
     const finiteReplicationActivityCount = reactiveSource(0);
     const replicationStatics = reactiveSource({ syncStatus: "NOT_CONNECTED" });
     const replicationResultCount = reactiveSource(0);
@@ -61,7 +62,7 @@ function setup(overrides: { enabled?: boolean; minimumFiles?: number } = {}) {
                     },
                 },
             },
-            replicator: { finiteReplicationActivityCount, replicationStatics },
+            replicator: { couchDbCatchUpActivityCount, finiteReplicationActivityCount, replicationStatics },
             fileProcessing: { processing, totalQueued, batched },
             conflict: { conflictProcessQueueCount },
             appLifecycle: {
@@ -92,6 +93,7 @@ function setup(overrides: { enabled?: boolean; minimumFiles?: number } = {}) {
         onSettingRealised,
         parseHandlers,
         priority,
+        couchDbCatchUpActivityCount,
         finiteReplicationActivityCount,
         replicationStatics,
         replicationResultCount,
@@ -113,12 +115,12 @@ describe("useSyncGuardFeature", () => {
         const h = setup();
         expect(h.priority).toHaveBeenCalledWith(-100);
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("first"), receivedNote("second")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         h.databaseQueueCount.value = 1;
         h.replicationStatics.value = { syncStatus: "COMPLETED" };
-        h.finiteReplicationActivityCount.value = 0;
+        h.couchDbCatchUpActivityCount.value = 0;
         expect(h.updates[h.updates.length - 1]?.phase).toBe("applying");
         vi.advanceTimersByTime(5_000);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("applying");
@@ -129,10 +131,24 @@ describe("useSyncGuardFeature", () => {
         expect(h.dispose).toHaveBeenCalledOnce();
     });
 
+    it("ignores large P2P finite transfers when CouchDB catch-up is not running", async () => {
+        const h = setup({ minimumFiles: 2 });
+        await h.onResumed[0]();
+        h.finiteReplicationActivityCount.value = 1; // P2P uses only the shared finite counter.
+        await h.parseHandlers[0]([receivedNote("peer-first"), receivedNote("peer-second")]);
+        h.finiteReplicationActivityCount.value = 0;
+        expect(h.updates.some((p) => p.phase === "transferring" || p.phase === "interrupted")).toBe(false);
+        // A real CouchDB catch-up must still arm normally in the same session.
+        h.couchDbCatchUpActivityCount.value = 1;
+        await h.parseHandlers[0]([receivedNote("db-first"), receivedNote("db-second")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
+        await h.onUnload[0]();
+    });
+
     it("never blocks normal transfers and ignores chunks and duplicate note revisions", async () => {
         const h = setup({ minimumFiles: 3 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("first"), receivedNote("first"), { _id: "h:chunk", _rev: "1-a", type: "leaf" } as never]);
         expect(h.updates.some((p) => p.phase === "transferring")).toBe(false);
         await h.onUnload[0]();
@@ -141,9 +157,9 @@ describe("useSyncGuardFeature", () => {
     it("preserves offline access through manual bypass and never re-locks that catch-up", async () => {
         const h = setup({ minimumFiles: 1 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("first")]);
-        h.finiteReplicationActivityCount.value = 0;
+        h.couchDbCatchUpActivityCount.value = 0;
         expect(h.updates[h.updates.length - 1]?.phase).toBe("interrupted");
         h.bypass();
         expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
@@ -155,14 +171,14 @@ describe("useSyncGuardFeature", () => {
     it("never shows a guard when disabled and releases an active guard when the setting is disabled", async () => {
         const h = setup({ enabled: false, minimumFiles: 1 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("first")]);
         expect(h.updates.some((p) => p.phase === "transferring")).toBe(false);
         await h.onUnload[0]();
 
         const enabled = setup({ minimumFiles: 1 });
         await enabled.onResumed[0]();
-        enabled.finiteReplicationActivityCount.value = 1;
+        enabled.couchDbCatchUpActivityCount.value = 1;
         await enabled.parseHandlers[0]([receivedNote("first")]);
         expect(enabled.updates[enabled.updates.length - 1]?.phase).toBe("transferring");
         enabled.settings.syncGuardEnabled = false;
@@ -173,11 +189,11 @@ describe("useSyncGuardFeature", () => {
 
     it("observes an internal LiveSync reconnect even without an application resume notification", async () => {
         const h = setup({ minimumFiles: 1 });
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("after-reconnect")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         h.replicationStatics.value = { syncStatus: "COMPLETED" };
-        h.finiteReplicationActivityCount.value = 0;
+        h.couchDbCatchUpActivityCount.value = 0;
         expect(h.updates[h.updates.length - 1]?.phase).toBe("applying");
         await h.onUnload[0]();
     });
@@ -185,13 +201,13 @@ describe("useSyncGuardFeature", () => {
     it("preserves an active guard across duplicate resume notifications", async () => {
         const h = setup({ minimumFiles: 2 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("first"), receivedNote("second")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         await h.onResumed[0]();
         expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         h.replicationStatics.value = { syncStatus: "COMPLETED" };
-        h.finiteReplicationActivityCount.value = 0;
+        h.couchDbCatchUpActivityCount.value = 0;
         expect(h.updates[h.updates.length - 1]?.phase).toBe("applying");
         await h.onUnload[0]();
     });
@@ -199,7 +215,7 @@ describe("useSyncGuardFeature", () => {
     it("preserves accumulated files before the threshold when resume fires twice during one pull", async () => {
         const h = setup({ minimumFiles: 3 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("one"), receivedNote("two")]);
         await h.onResumed[0]();
         await h.parseHandlers[0]([receivedNote("three")]);
@@ -213,11 +229,11 @@ describe("useSyncGuardFeature", () => {
     it("keeps the guard after a received note could not be written to the Vault", async () => {
         const h = setup({ minimumFiles: 1 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("failed")]);
         h.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED);
         h.replicationStatics.value = { syncStatus: "COMPLETED" };
-        h.finiteReplicationActivityCount.value = 0;
+        h.couchDbCatchUpActivityCount.value = 0;
         expect(h.updates[h.updates.length - 1]?.phase).toBe("interrupted");
         await h.onUnload[0]();
     });
@@ -225,7 +241,7 @@ describe("useSyncGuardFeature", () => {
     it("responds immediately to settings saved by the UI without setting-realised", async () => {
         const h = setup({ minimumFiles: 20 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("one"), receivedNote("two")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("observing");
         h.settings.syncGuardMinimumFiles = 2;
@@ -240,12 +256,12 @@ describe("useSyncGuardFeature", () => {
     it("does not re-lock after manual bypass when an internal reconnect starts", async () => {
         const h = setup({ minimumFiles: 1 });
         await h.onResumed[0]();
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("first")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         h.bypass();
-        h.finiteReplicationActivityCount.value = 0;
-        h.finiteReplicationActivityCount.value = 1;
+        h.couchDbCatchUpActivityCount.value = 0;
+        h.couchDbCatchUpActivityCount.value = 1;
         await h.parseHandlers[0]([receivedNote("second")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
         await h.onUnload[0]();

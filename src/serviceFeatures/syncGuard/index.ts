@@ -73,14 +73,14 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             return;
         }
         if (guard.presentation.phase === "observing" &&
-            services.replicator.finiteReplicationActivityCount.value > 0) {
+            services.replicator.couchDbCatchUpActivityCount.value > 0) {
             return;
         }
         guard.resume(Boolean(isEnabled()), settings.syncGuardMinimumFiles);
-        guard.finiteActivityChanged(services.replicator.finiteReplicationActivityCount.value > 0, readPendingCount(), Date.now());
+        guard.finiteActivityChanged(services.replicator.couchDbCatchUpActivityCount.value > 0, readPendingCount(), Date.now());
     };
     const onFiniteChanged = () => {
-        const active = services.replicator.finiteReplicationActivityCount.value > 0;
+        const active = services.replicator.couchDbCatchUpActivityCount.value > 0;
         // Continuous replication can restart its finite pull following an internal reconnect,
         // without an Obsidian onResumed notification. A new bounded transfer gets its own window.
         if (active && guard.presentation.phase === "idle" && !guard.wasBypassed && isEnabled()) beginCatchUp();
@@ -101,7 +101,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         onSettingsChanged();
     });
 
-    const finite = services.replicator.finiteReplicationActivityCount;
+    const finite = services.replicator.couchDbCatchUpActivityCount;
     const replication = services.replicator.replicationStatics;
     const pendingSources = [
         services.replication.replicationResultCount,
