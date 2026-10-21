@@ -37,6 +37,7 @@ function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
 }
 
 type SetupOptions = {
+    onVaultReflectionFailure?: () => void;
     applicationReady?: boolean;
     databaseReady?: boolean;
     maxMTimeForReflectEvents?: number;
@@ -95,6 +96,7 @@ function setup(options: SetupOptions = {}) {
         },
     };
     const processor = new ReplicateResultProcessor({
+        onVaultReflectionFailure: options.onVaultReflectionFailure,
         currentSettings: () => ({
             maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
             suspendParseReplicationResult: false,
@@ -117,12 +119,43 @@ function setup(options: SetupOptions = {}) {
         isValidPath,
         onCloseActiveReplication,
         processor,
+        replicationResultCount: core.services.replication.replicationResultCount,
         processSynchroniseResult,
         runBoundedLocalApplicationActivity,
     };
 }
 
 describe("ReplicateResultProcessor", () => {
+    it("publishes pending received documents synchronously even if snapshot persistence stalls", () => {
+        const { processor, replicationResultCount, processSynchroniseResult } = setup({
+            applicationReady: false,
+            setSnapshot: async () => new Promise<never>(() => undefined),
+        });
+        processor.enqueueAll([note("pending")]);
+        expect(replicationResultCount.value).toBe(1);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+    });
+
+    it("clears the received-document counter before awaiting an unresponsive snapshot write", async () => {
+        const { processor, replicationResultCount, processSynchroniseResult } = setup({
+            setSnapshot: async () => new Promise<never>(() => undefined),
+        });
+        processor.enqueueAll([note("pending")]);
+        expect(replicationResultCount.value).toBe(1);
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        await vi.waitFor(() => expect(replicationResultCount.value).toBe(0));
+    });
+
+    it("reports a failed Vault reflection instead of treating an empty queue as success", async () => {
+        const onVaultReflectionFailure = vi.fn();
+        const { processor, processSynchroniseResult } = setup({
+            onVaultReflectionFailure,
+            processSynchroniseResult: async () => false,
+        });
+        processor.enqueueAll([note("unreflected")]);
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledTimes(1));
+        await vi.waitFor(() => expect(onVaultReflectionFailure).toHaveBeenCalledTimes(1));
+    });
     it("does not add a permanent application block when snapshot recovery fails", async () => {
         const { processor } = setup({
             getSnapshot: async () => {
