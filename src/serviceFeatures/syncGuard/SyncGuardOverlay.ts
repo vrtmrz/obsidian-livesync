@@ -57,6 +57,10 @@ export class SyncGuardOverlay {
         const modalFocused = focused instanceof Element && focused.closest(".modal-container") !== null;
         this.previousFocus = !modalFocused && focused instanceof HTMLElement ? focused : undefined;
         doc.addEventListener("keydown", this.blockKeyboard, true);
+        // Mobile input methods, dictation, and paste may mutate an editor without a keydown.
+        doc.addEventListener("beforeinput", this.blockEditorInput, true);
+        doc.addEventListener("paste", this.blockEditorInput, true);
+        doc.addEventListener("drop", this.blockEditorInput, true);
         // Do not steal focus from an Obsidian conflict or setup dialogue which was already open.
         if (!modalFocused) bypass.focus();
     }
@@ -83,12 +87,24 @@ export class SyncGuardOverlay {
         if (event.key === "Tab") this.bypassButton?.focus();
     };
 
+    private readonly blockEditorInput = (event: Event): void => {
+        if (!this.root) return;
+        const target = event.target;
+        if (target instanceof Element && target.closest(".modal-container")) return;
+        if (target instanceof Node && this.root.contains(target)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+
     close(): void {
         if (!this.root) return;
         const doc = this.workspace.ownerDocument;
         const focused = doc.activeElement;
         const ownsFocus = focused instanceof Node && this.root.contains(focused);
         doc.removeEventListener("keydown", this.blockKeyboard, true);
+        doc.removeEventListener("beforeinput", this.blockEditorInput, true);
+        doc.removeEventListener("paste", this.blockEditorInput, true);
+        doc.removeEventListener("drop", this.blockEditorInput, true);
         this.root.remove();
         this.root = undefined;
         this.stage = undefined;

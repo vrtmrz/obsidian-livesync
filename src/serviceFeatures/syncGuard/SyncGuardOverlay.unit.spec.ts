@@ -188,4 +188,28 @@ describe("SyncGuardOverlay", () => {
         expect(doc.activeElement).toBe(button);
         overlay.dispose();
     });
+
+    it("blocks mobile beforeinput and paste into hidden editors but permits input in Obsidian dialogues", () => {
+        const { overlay, doc, editor } = setup();
+        overlay.update({ phase: "transferring", receivedFiles: 30 });
+        const modal = new FakeElement(doc, "div");
+        modal.className = "modal-container";
+        const input = modal.createEl("input");
+        for (const eventType of ["beforeinput", "paste", "drop"]) {
+            const preventDefault = vi.fn();
+            const stopImmediatePropagation = vi.fn();
+            doc.listeners.get(eventType)?.({
+                target: editor, preventDefault, stopImmediatePropagation,
+            } as unknown as KeyboardEvent);
+            expect(preventDefault).toHaveBeenCalledOnce();
+            expect(stopImmediatePropagation).toHaveBeenCalledOnce();
+
+            doc.listeners.get(eventType)?.({
+                target: input, preventDefault, stopImmediatePropagation,
+            } as unknown as KeyboardEvent);
+            expect(preventDefault).toHaveBeenCalledOnce();
+        }
+        overlay.dispose();
+        expect(doc.listeners.size).toBe(0);
+    });
 });
