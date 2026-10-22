@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Setup tools
+
+#### Fixed
+
+- We can generate a Setup URI from fish, PowerShell, or cmd without the connection details colliding with `hostname` or `USERNAME`. (#817)
+    - The generator reads `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE`. The previous names are still read when these are not set.
+
 ## 1.0.39
 
 20th October, 2026

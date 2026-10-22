@@ -8,6 +8,76 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+Deno.test("reads LIVESYNC_ variables before the unprefixed names", async () => {
+  const generated = await generateSetupURI({
+    LIVESYNC_HOST: "https://couch.example.test",
+    LIVESYNC_USER: "alice",
+    LIVESYNC_PASS: "couch-secret",
+    LIVESYNC_DB: "notes",
+    LIVESYNC_PASSPHRASE: "vault-secret",
+    hostname: "https://shell.example.test",
+    username: "shell-user",
+    password: "shell-secret",
+    database: "shell-db",
+    passphrase: "shell-passphrase",
+    uri_passphrase: "setup-secret",
+  });
+  const decoded = await decodeSettingsFromSetupURI(
+    generated.setupURI,
+    generated.setupPassphrase,
+  );
+  assert(decoded, "Commonlib could not decode the CouchDB Setup URI");
+  const effective = { ...DEFAULT_SETTINGS, ...decoded };
+  assert(
+    effective.couchDB_URI === "https://couch.example.test" &&
+      effective.couchDB_USER === "alice" &&
+      effective.couchDB_PASSWORD === "couch-secret" &&
+      effective.couchDB_DBNAME === "notes",
+    "the CouchDB connection did not come from the LIVESYNC_ variables",
+  );
+  assert(
+    effective.passphrase === "vault-secret",
+    "the Vault passphrase did not come from LIVESYNC_PASSPHRASE",
+  );
+});
+
+Deno.test("falls back to the unprefixed names when LIVESYNC_ variables are blank", async () => {
+  const generated = await generateSetupURI({
+    LIVESYNC_HOST: " ",
+    hostname: "https://couch.example.test",
+    username: "alice",
+    password: "couch-secret",
+    database: "notes",
+    passphrase: "vault-secret",
+    uri_passphrase: "setup-secret",
+  });
+  const decoded = await decodeSettingsFromSetupURI(
+    generated.setupURI,
+    generated.setupPassphrase,
+  );
+  assert(decoded, "Commonlib could not decode the CouchDB Setup URI");
+  const effective = { ...DEFAULT_SETTINGS, ...decoded };
+  assert(
+    effective.couchDB_URI === "https://couch.example.test" &&
+      effective.couchDB_USER === "alice" &&
+      effective.couchDB_PASSWORD === "couch-secret" &&
+      effective.couchDB_DBNAME === "notes" &&
+      effective.passphrase === "vault-secret",
+    "the generator did not fall back to the unprefixed names",
+  );
+});
+
+Deno.test("names both variables when a CouchDB value is missing", async () => {
+  let rejected = false;
+  try {
+    await generateSetupURI({ uri_passphrase: "setup-secret" });
+  } catch (error) {
+    rejected = error instanceof Error &&
+      error.message === "LIVESYNC_HOST (or hostname) is required";
+  }
+  assert(rejected, "the generator did not name both host variables");
+});
+
 Deno.test("generates an Object Storage Setup URI with a selected S3 profile", async () => {
   const generated = await generateSetupURI({
     remote_type: "s3",
