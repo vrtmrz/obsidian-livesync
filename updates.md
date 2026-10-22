@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+- Added an optional, device-local editing guard for substantial CouchDB LiveSync catch-up transfers. When enough incoming notes are detected, it covers the workspace until the transfer and local application queues have settled. The overlay can always be bypassed, and ordinary small transfers remain uninterrupted.
+
 ## 1.0.39
 
 20th October, 2026

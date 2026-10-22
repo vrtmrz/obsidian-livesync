@@ -333,6 +333,8 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
             "showOnlyIconsOnEditor",
             "showStatusOnStatusbar",
             "hideFileWarningNotice",
+            "syncGuardEnabled",
+            "syncGuardMinimumFiles",
             "networkWarningStyle",
         ]);
         expect(

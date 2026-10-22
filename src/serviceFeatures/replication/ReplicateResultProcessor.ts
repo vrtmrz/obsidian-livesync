@@ -58,6 +58,7 @@ type ReplicateResultProcessorServices = Pick<
  * database would be invalid.
  */
 interface ReplicateResultProcessorContext {
+    readonly onVaultReflectionFailure?: () => void;
     readonly currentSettings: () => ReplicateResultProcessorSettings;
     readonly getKeyValueDB: () => LiveSyncBaseCore["kvDB"];
     readonly getLocalDatabase: () => LiveSyncBaseCore["localDatabase"];
@@ -87,6 +88,7 @@ export class ReplicateResultProcessor {
         Logger(e, LOG_LEVEL_VERBOSE);
     }
     private reportVaultReflectionFailure(entry: MetaEntry, cause?: unknown) {
+        this.context.onVaultReflectionFailure?.();
         this.log(
             `Live replication could not reflect ${this.getPath(entry)} from the local database to the Vault; this path remains eligible for a later Vault scan.`,
             LOG_LEVEL_VERBOSE
@@ -383,6 +385,7 @@ export class ReplicateResultProcessor {
         }
         // Enqueue the change
         this._queuedChanges.push(doc);
+        this.reportStatus();
         this.updateProcessingActivity();
         this.triggerTakeSnapshot();
         this.triggerProcessQueue();
@@ -491,6 +494,9 @@ export class ReplicateResultProcessor {
         } finally {
             // Remove from processing queue
             this._processingChanges = this._processingChanges.filter((e) => e !== change);
+            // Queue visibility must not wait for persisting a recovery snapshot. Consumers
+            // use this count to decide whether the reflected Vault is ready for interaction.
+            this.reportStatus();
             try {
                 if (this._queuedChanges.length === 0 && this._processingChanges.length === 0) {
                     try {
@@ -515,6 +521,8 @@ export class ReplicateResultProcessor {
                 releaser = await this._semaphore.acquire();
                 await this._applyToDatabase(doc);
             } catch (e) {
+                // An exception during application must not be mistaken for a fully reflected Vault.
+                this.context.onVaultReflectionFailure?.();
                 this.log(`Error while processing replication result`, LOG_LEVEL_NOTICE);
                 this.logError(e);
             } finally {
@@ -548,6 +556,7 @@ export class ReplicateResultProcessor {
                 : await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, false, true);
             if (!doc) {
                 // Failed to gather content
+                this.context.onVaultReflectionFailure?.();
                 this.log(`Failed to gather content of ${docNote}`, LOG_LEVEL_NOTICE);
                 return;
             }
@@ -623,6 +632,7 @@ export class ReplicateResultProcessor {
                 // Note that this is not a common case.
                 return true;
             } else {
+                this.context.onVaultReflectionFailure?.();
                 this.log(
                     `Failed to get existing document for ${path} (${shortenId(dbDoc._id)}, ${shortenRev(dbDoc._rev)}) `,
                     LOG_LEVEL_NOTICE

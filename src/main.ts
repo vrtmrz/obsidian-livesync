@@ -50,6 +50,8 @@ import { createFileReflectionProvenance } from "./serviceModules/FileReflectionP
 import { useInteractiveConflictResolutionFeature } from "./serviceFeatures/interactiveConflictResolution";
 import { ConflictResolveModal } from "./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianReplicationRibbon.ts";
+import { useSyncGuardFeature } from "./serviceFeatures/syncGuard";
+import { SyncGuardOverlay } from "./serviceFeatures/syncGuard/SyncGuardOverlay";
 import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
 import { useDatabaseDiagnosticsFeature } from "./serviceFeatures/useDatabaseDiagnostics";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
@@ -196,6 +198,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useP2PReplicatorCommands(core, replicator);
                 useP2PReplicatorUI(core, core, replicator, createInteractiveP2PReplication(replicator));
                 useObsidianReplicationRibbonFeature(core);
+                useSyncGuardFeature(core, (onBypass) => new SyncGuardOverlay(this.app.workspace.containerEl, onBypass));
                 useDatabaseDiagnosticsFeature(core);
                 useRemoteConfiguration(core);
 
