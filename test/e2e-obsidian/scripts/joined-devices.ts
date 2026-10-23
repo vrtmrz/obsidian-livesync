@@ -1,3 +1,4 @@
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { DEVICE_ID_PREFERRED, MILESTONE_DOCID, NODEINFO_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -12,12 +13,22 @@ import {
     putCouchDbDocument,
     type CouchDbDocument,
 } from "../runner/couchdb.ts";
+import {
+    createObjectStorageClient,
+    deleteObjectStoragePrefix,
+    ensureObjectStorageBucket,
+    loadObjectStorageConfig,
+    makeUniqueBucketPrefix,
+    readObjectStorageJson,
+} from "../runner/objectStorage.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
     assertE2eCompatibilityUnpaused,
     configureCouchDb,
+    configureObjectStorage,
     createE2eCouchDbPluginData,
+    createE2eObjectStoragePluginData,
     prepareRemote,
     waitForLiveSyncCoreReady,
 } from "../runner/liveSyncWorkflow.ts";
@@ -71,6 +82,73 @@ type DeviceFixture = {
     milestone: JoinedDevicesMilestone;
     preferredTweaks: Record<string, unknown>;
 };
+
+type JoinedDevicesRemote = {
+    label: string;
+    pluginData: Record<string, unknown>;
+    prepare(): Promise<void>;
+    configure(cliBinary: string, env: NodeJS.ProcessEnv): Promise<unknown>;
+    read(): Promise<JoinedDevicesMilestone>;
+    write(milestone: JoinedDevicesMilestone): Promise<void>;
+    cleanup(): Promise<void>;
+};
+
+async function createRemoteFixture(): Promise<JoinedDevicesRemote> {
+    const args = process.argv.slice(2);
+    if (args.some((argument) => argument !== "--object-storage")) {
+        throw new Error("Usage: joined-devices.ts [--object-storage]");
+    }
+    if (args.includes("--object-storage")) {
+        const config = await loadObjectStorageConfig();
+        const bucketPrefix = makeUniqueBucketPrefix("joined-devices");
+        const settings = { ...config, bucketPrefix };
+        const key = `${bucketPrefix}_00000000-milestone.json`;
+        return {
+            label: "Object Storage",
+            pluginData: createE2eObjectStoragePluginData(settings),
+            prepare: () => ensureObjectStorageBucket(config),
+            configure: (cliBinary, env) => configureObjectStorage(cliBinary, env, settings),
+            read: () => readObjectStorageJson<JoinedDevicesMilestone>(config, key),
+            write: async (milestone) => {
+                const client = createObjectStorageClient(config);
+                try {
+                    await client.send(
+                        new PutObjectCommand({
+                            Bucket: config.bucket,
+                            Key: key,
+                            Body: JSON.stringify(milestone),
+                            ContentType: "application/json",
+                        })
+                    );
+                } finally {
+                    client.destroy();
+                }
+            },
+            cleanup: () => deleteObjectStoragePrefix(config, bucketPrefix),
+        };
+    }
+    const config = await loadCouchDbConfig();
+    const dbName = makeUniqueDatabaseName(config.dbPrefix, "joined-devices");
+    const settings = { uri: config.uri, username: config.username, password: config.password, dbName };
+    return {
+        label: "CouchDB",
+        pluginData: createE2eCouchDbPluginData(settings),
+        prepare: async () => {
+            await assertCouchDbReachable(config);
+            await createCouchDbDatabase(config, dbName);
+        },
+        configure: (cliBinary, env) => configureCouchDb(cliBinary, env, settings),
+        read: async () => {
+            const milestone = await fetchCouchDbDocument(config, dbName, MILESTONE_DOCID);
+            assert(Boolean(milestone._rev), "The remote milestone did not have a revision.");
+            return milestone as JoinedDevicesMilestone;
+        },
+        write: async (milestone) => {
+            await putCouchDbDocument(config, dbName, milestone);
+        },
+        cleanup: () => deleteCouchDbDatabase(config, dbName),
+    };
+}
 
 function assert(condition: boolean, message: string): void {
     if (!condition) throw new Error(message);
@@ -228,13 +306,9 @@ async function assertInitialDialogue(dialogue: Locator, self: SelfDeviceInfo, pa
         .waitFor({ state: "visible", timeout: uiTimeoutMs });
 }
 
-async function refreshRemotePlatform(
-    page: Page,
-    config: Awaited<ReturnType<typeof loadCouchDbConfig>>,
-    dbName: string
-): Promise<void> {
-    const milestone = (await fetchCouchDbDocument(config, dbName, MILESTONE_DOCID)) as JoinedDevicesMilestone;
-    await putCouchDbDocument(config, dbName, {
+async function refreshRemotePlatform(page: Page, remote: JoinedDevicesRemote): Promise<void> {
+    const milestone = await remote.read();
+    await remote.write({
         ...milestone,
         node_info: {
             ...milestone.node_info,
@@ -258,6 +332,15 @@ async function showForgetConfirmation(dialogue: Locator): Promise<void> {
     });
 }
 
+async function assertCancelledForget(dialogue: Locator, remote: JoinedDevicesRemote): Promise<void> {
+    const before = await remote.read();
+    await showForgetConfirmation(dialogue);
+    const confirmation = deviceCard(dialogue, targetId).locator(".forget-confirmation");
+    await confirmation.getByRole("button", { name: "Cancel", exact: true }).click({ timeout: uiTimeoutMs });
+    await confirmation.waitFor({ state: "detached", timeout: uiTimeoutMs });
+    assertEqual(JSON.stringify(await remote.read()), JSON.stringify(before), "Cancelling Forget changed the remote.");
+}
+
 async function confirmForgetTarget(dialogue: Locator): Promise<void> {
     const targetCard = deviceCard(dialogue, targetId);
     await targetCard.getByRole("button", { name: "Forget device", exact: true }).click({ timeout: uiTimeoutMs });
@@ -268,12 +351,8 @@ async function confirmForgetTarget(dialogue: Locator): Promise<void> {
     await targetCard.waitFor({ state: "detached", timeout: uiTimeoutMs });
 }
 
-async function assertTargetForgotten(
-    config: Awaited<ReturnType<typeof loadCouchDbConfig>>,
-    dbName: string,
-    fixture: DeviceFixture
-): Promise<void> {
-    const milestone = (await fetchCouchDbDocument(config, dbName, MILESTONE_DOCID)) as JoinedDevicesMilestone;
+async function assertTargetForgotten(remote: JoinedDevicesRemote, fixture: DeviceFixture): Promise<void> {
+    const milestone = await remote.read();
     assertEqual(
         JSON.stringify(milestone.accepted_nodes),
         JSON.stringify([retainedId]),
@@ -371,42 +450,32 @@ async function main(): Promise<void> {
     const cli = discoverObsidianCli();
     if (!cli.binary) throw new Error(`Could not find obsidian-cli. Checked paths: ${cli.checked.join(", ")}`);
 
-    const couchDb = await loadCouchDbConfig();
-    const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "joined-devices");
+    const remote = await createRemoteFixture();
     const vault = await createTemporaryVault();
     let session: ObsidianLiveSyncSession | undefined;
 
     try {
-        await assertCouchDbReachable(couchDb);
-        await createCouchDbDatabase(couchDb, dbName);
+        await remote.prepare();
         session = await startObsidianLiveSyncSession({
             binary,
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-            pluginData: createE2eCouchDbPluginData({
-                uri: couchDb.uri,
-                username: couchDb.username,
-                password: couchDb.password,
-                dbName,
-            }),
+            pluginData: remote.pluginData,
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
         await assertE2eCompatibilityUnpaused(cli.binary, session.cliEnv, session.remoteDebuggingPort);
-        await configureCouchDb(cli.binary, session.cliEnv, {
-            uri: couchDb.uri,
-            username: couchDb.username,
-            password: couchDb.password,
-            dbName,
-        });
+        await remote.configure(cli.binary, session.cliEnv);
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
         await prepareRemote(cli.binary, session.cliEnv);
 
         const self = await readSelfDeviceInfo(cli.binary, session.cliEnv);
         const fixture = createFixture(self);
-        const preparedMilestone = await fetchCouchDbDocument(couchDb, dbName, MILESTONE_DOCID);
-        assert(Boolean(preparedMilestone._rev), "Remote preparation did not create a revisioned milestone document.");
-        await putCouchDbDocument(couchDb, dbName, { ...fixture.milestone, _rev: preparedMilestone._rev });
+        const preparedMilestone = await remote.read();
+        await remote.write({
+            ...fixture.milestone,
+            ...(preparedMilestone._rev ? { _rev: preparedMilestone._rev } : {}),
+        });
 
         await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-notice.png", async (page) => {
             const dialogue = await openFromRemoteSettings(page);
@@ -440,8 +509,9 @@ async function main(): Promise<void> {
             session.remoteDebuggingPort,
             "joined-devices-forget-confirmation.png",
             async (page) => {
-                await refreshRemotePlatform(page, couchDb, dbName);
+                await refreshRemotePlatform(page, remote);
                 const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+                await assertCancelledForget(dialogue, remote);
                 await showForgetConfirmation(dialogue);
                 await deviceCard(dialogue, targetId).locator(".forget-confirmation").scrollIntoViewIfNeeded();
                 return dialogue;
@@ -459,7 +529,7 @@ async function main(): Promise<void> {
             const settings = await openLiveSyncSettings(page, uiTimeoutMs);
             await settings.close();
         });
-        await assertTargetForgotten(couchDb, dbName, fixture);
+        await assertTargetForgotten(remote, fixture);
 
         await setObsidianMobileTestMode(session.remoteDebuggingPort, true, uiTimeoutMs);
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
@@ -485,14 +555,16 @@ async function main(): Promise<void> {
             return dialogue;
         });
 
-        console.log(`Joined devices scenario passed against CouchDB database ${dbName}.`);
+        console.log(`Joined devices scenario passed against ${remote.label}.`);
     } finally {
-        if (session) await session.app.stop();
-        await vault.dispose();
-        if (process.env.E2E_OBSIDIAN_KEEP_COUCHDB !== "true") {
-            await deleteCouchDbDatabase(couchDb, dbName).catch((error: unknown) => {
-                console.warn(error instanceof Error ? error.message : error);
-            });
+        try {
+            if (session) await session.app.stop();
+        } finally {
+            try {
+                await vault.dispose();
+            } finally {
+                await remote.cleanup();
+            }
         }
     }
 }

@@ -58,6 +58,7 @@
         "test:e2e:obsidian:onboarding-invitation": "tsx test/e2e-obsidian/scripts/onboarding-invitation.ts",
         "test:e2e:obsidian:dialog-mounts": "tsx test/e2e-obsidian/scripts/dialog-mounts.ts",
         "test:e2e:obsidian:joined-devices": "tsx test/e2e-obsidian/scripts/joined-devices.ts",
+        "test:e2e:obsidian:joined-devices-object-storage": "tsx test/e2e-obsidian/scripts/joined-devices.ts --object-storage",
         "test:e2e:obsidian:database-diagnostics": "tsx test/e2e-obsidian/scripts/database-diagnostics.ts",
         "test:e2e:obsidian:database-diagnostics-couchdb": "tsx test/e2e-obsidian/scripts/database-diagnostics-couchdb.ts",
         "test:e2e:obsidian:conflict-dialog-policy": "tsx test/e2e-obsidian/scripts/conflict-dialog-policy.ts",

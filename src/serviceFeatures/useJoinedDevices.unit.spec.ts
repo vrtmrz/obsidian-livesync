@@ -137,6 +137,62 @@ describe("joined devices service feature", () => {
         data.close();
         await pending;
     });
+    it.each(["dialogue cancellation", "remote switch", "unload"] as const)(
+        "does not send a pending forget operation after %s",
+        async (invalidation) => {
+            const data = fixture();
+            const resource = { read: data.read, forget: data.forget, dispose: data.dispose };
+            let resolve!: (value: typeof resource) => void;
+            data.createResource.mockReturnValueOnce(
+                new Promise((done) => {
+                    resolve = done;
+                })
+            );
+            const { options, pending } = await open(data);
+            const forgetting = options.forget("other");
+            const rejected = expect(forgetting).rejects.toThrow();
+            await vi.waitFor(() => expect(data.createResource).toHaveBeenCalledOnce());
+
+            if (invalidation === "dialogue cancellation") options.cancel();
+            if (invalidation === "remote switch") data.settings.couchDB_DBNAME = "new-vault";
+            if (invalidation === "unload") for (const unload of data.unload) await unload();
+            resolve(resource);
+
+            await rejected;
+            expect(data.forget).not.toHaveBeenCalled();
+            expect(data.dispose).toHaveBeenCalledOnce();
+            data.close();
+            await pending;
+        }
+    );
+    it("discards a completed forget result after the dialogue closes and releases its resource", async () => {
+        const data = fixture();
+        let resolve!: (value: "forgotten") => void;
+        data.forget.mockReturnValueOnce(
+            new Promise((done) => {
+                resolve = done;
+            })
+        );
+        const { options, pending } = await open(data);
+        const forgetting = options.forget("other");
+        const rejected = expect(forgetting).rejects.toThrow();
+        await vi.waitFor(() => expect(data.forget).toHaveBeenCalledWith("other"));
+        data.close();
+        await pending;
+        resolve("forgotten");
+        await rejected;
+        expect(data.dispose).toHaveBeenCalledOnce();
+    });
+    it("propagates a failed forget operation after releasing its resource", async () => {
+        const data = fixture();
+        const failure = new Error("conditional write failed");
+        data.forget.mockRejectedValueOnce(failure);
+        const { options, pending } = await open(data);
+        await expect(options.forget("other")).rejects.toBe(failure);
+        expect(data.dispose).toHaveBeenCalledOnce();
+        data.close();
+        await pending;
+    });
     it("deduplicates advisory Notices and fences their actions after configuration changes", async () => {
         const data = fixture();
         const { options, pending } = await open(data);

@@ -15,6 +15,7 @@ import {
     captureObsidianPage,
     obsidianRemoteDebuggingPort,
     openLiveSyncSettings,
+    waitForVisibleObsidianDialogue,
     withObsidianPage as withObsidianSessionPage,
 } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
@@ -43,6 +44,8 @@ type DialogueMode = "desktop" | "mobile";
 type DialogueRunState = {
     done: boolean;
     deviceNameRead?: boolean;
+    deviceNameReadPending?: boolean;
+    releaseDeviceNameRead?: () => void;
     error?: string;
     expected?: unknown;
     kind: string;
@@ -140,11 +143,20 @@ async function openP2PRemoteSelectionDialogueForInspection(): Promise<void> {
                     kind: "p2p-compatibility-settings",
                     done: false,
                     deviceNameRead: false,
+                    deviceNameReadPending: false,
                 };
                 (globalThis as unknown as Record<string, DialogueRunState>)[stateKey] = state;
+                const deviceNameReadGate = new Promise<void>((resolve) => {
+                    state.releaseDeviceNameRead = resolve;
+                });
                 config.getValue = async (key, defaultValue) => {
                     const value = await originalGetValue.call(config, key, defaultValue);
-                    if (key === deviceNameKey && value === deviceName) state.deviceNameRead = true;
+                    if (key === deviceNameKey) {
+                        state.deviceNameReadPending = true;
+                        await deviceNameReadGate;
+                        state.deviceNameReadPending = false;
+                        if (value === deviceName) state.deviceNameRead = true;
+                    }
                     return value;
                 };
                 manager.onConfirmApplySettingsFromWizard = async (settings: unknown) => {
@@ -156,16 +168,17 @@ async function openP2PRemoteSelectionDialogueForInspection(): Promise<void> {
                     .then(
                         (result) => {
                             state.result = result;
-                            state.done = true;
                         },
                         (error: unknown) => {
                             state.error = error instanceof Error ? error.message : String(error);
-                            state.done = true;
                         }
                     )
                     .finally(() => {
+                        state.releaseDeviceNameRead?.();
+                        state.releaseDeviceNameRead = undefined;
                         manager.onConfirmApplySettingsFromWizard = originalConfirm;
                         config.getValue = originalGetValue;
+                        state.done = true;
                     });
             },
             {
@@ -174,6 +187,15 @@ async function openP2PRemoteSelectionDialogueForInspection(): Promise<void> {
                 deviceName: savedP2PDeviceName,
             }
         );
+    });
+}
+
+async function releasePendingP2PDeviceNameRead(): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.evaluate((stateKey) => {
+            const state = (globalThis as unknown as Record<string, DialogueRunState | undefined>)[stateKey];
+            state?.releaseDeviceNameRead?.();
+        }, dialogRunStateKey);
     });
 }
 
@@ -523,9 +545,11 @@ async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string
 async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
     await openP2PRemoteSelectionDialogueForInspection();
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        const remoteSelection = page.locator(".modal-container").filter({
-            has: page.locator(".modal-title").filter({ hasText: "Choose a synchronisation remote" }),
-        });
+        const remoteSelection = await waitForVisibleObsidianDialogue(
+            page,
+            "Choose a synchronisation remote",
+            uiTimeoutMs
+        );
         await remoteSelection
             .locator("label")
             .filter({ hasText: "Peer-to-Peer (P2P)" })
@@ -541,13 +565,36 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
         obsidianRemoteDebuggingPort(),
         "setup-p2p-compatibility-dialogue.png",
         async (page) => {
-            const modal = page.locator(".modal-container").filter({
-                has: page.locator(".modal-title").filter({ hasText: "P2P Configuration" }),
-            });
+            const modal = await waitForVisibleObsidianDialogue(page, "P2P Configuration", uiTimeoutMs);
+            const modalPage = modal.page();
             await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            const peerName = modal.locator('input[name="p2p-device-peer-id"]');
+            const peerName = modal.getByLabel("Device Peer ID", { exact: true });
             await peerName.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await page.waitForFunction(
+            await withObsidianPage(obsidianRemoteDebuggingPort(), async (statePage) => {
+                await statePage.waitForFunction(
+                    (stateKey) =>
+                        (globalThis as unknown as Record<string, DialogueRunState | undefined>)[stateKey]
+                            ?.deviceNameReadPending === true,
+                    dialogRunStateKey,
+                    { timeout: uiTimeoutMs }
+                );
+            });
+            const testAndContinue = modal.getByRole("button", { name: "Test Settings and Continue", exact: true });
+            const continueAnyway = modal.getByRole("button", { name: "Continue anyway", exact: true });
+            await testAndContinue.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await continueAnyway.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            if (
+                !(await peerName.isDisabled()) ||
+                !(await testAndContinue.isDisabled()) ||
+                !(await continueAnyway.isDisabled())
+            ) {
+                throw new Error(
+                    "The P2P device name and setup actions must remain disabled while the saved device name is loading."
+                );
+            }
+
+            await releasePendingP2PDeviceNameRead();
+            await modalPage.waitForFunction(
                 (expectedName) => {
                     const input = document.querySelector('input[name="p2p-device-peer-id"]');
                     return input instanceof HTMLInputElement && !input.disabled && input.value === expectedName;
@@ -562,7 +609,7 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
             await modal.locator('input[name="p2p-password"]').fill("e2e-passphrase");
 
             const compatibility = modal.locator("details").filter({
-                has: page.locator("summary").filter({ hasText: "Connection compatibility" }),
+                has: modalPage.locator("summary").filter({ hasText: "Connection compatibility" }),
             });
             await compatibility.waitFor({ state: "visible", timeout: uiTimeoutMs });
             if (!(await compatibility.evaluate((element) => (element as HTMLDetailsElement).open))) {
@@ -603,7 +650,7 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
             }
 
             const advanced = modal.locator("details").filter({
-                has: page.locator("summary").filter({ hasText: "Advanced Settings" }),
+                has: modalPage.locator("summary").filter({ hasText: "Advanced Settings" }),
             });
             if (!(await advanced.evaluate((element) => (element as HTMLDetailsElement).open))) {
                 await advanced.locator("summary").click({ timeout: uiTimeoutMs });
@@ -615,13 +662,13 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
             if (relayOnlyElement === null || connectionPathElement === null) {
                 throw new Error("P2P connection-path controls were removed whilst validating TURN settings.");
             }
-            await page.waitForFunction((element) => !(element as HTMLOptionElement).disabled, relayOnlyElement, {
+            await modalPage.waitForFunction((element) => !(element as HTMLOptionElement).disabled, relayOnlyElement, {
                 timeout: uiTimeoutMs,
             });
             await connectionPath.selectOption("relay");
 
             await turnServers.fill("");
-            await page.waitForFunction(
+            await modalPage.waitForFunction(
                 (element) => (element as HTMLSelectElement).value === "automatic",
                 connectionPathElement,
                 { timeout: uiTimeoutMs }
@@ -636,7 +683,7 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
 
             await turnServers.fill("turn:turn.example.com:3478");
-            await page.waitForFunction((element) => !(element as HTMLOptionElement).disabled, relayOnlyElement, {
+            await modalPage.waitForFunction((element) => !(element as HTMLOptionElement).disabled, relayOnlyElement, {
                 timeout: uiTimeoutMs,
             });
             await connectionPath.selectOption("relay");
@@ -644,12 +691,10 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
             await advanced.locator("summary").click({ timeout: uiTimeoutMs });
             await compatibility.scrollIntoViewIfNeeded();
         }
-    );
+    ).finally(releasePendingP2PDeviceNameRead);
 
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        const modal = page.locator(".modal-container").filter({
-            has: page.locator(".modal-title").filter({ hasText: "P2P Configuration" }),
-        });
+        const modal = await waitForVisibleObsidianDialogue(page, "P2P Configuration", uiTimeoutMs);
         await modal.getByRole("button", { name: "Continue anyway", exact: true }).click({ timeout: uiTimeoutMs });
         await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });

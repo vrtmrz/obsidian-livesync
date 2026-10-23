@@ -26,6 +26,7 @@ const testSteps: Step[] = [
     { name: "Review Harness", args: ["run", "test:e2e:obsidian:review-harness"] },
     { name: "P2P status pane", args: ["run", "test:e2e:obsidian:p2p-pane"] },
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },
+    { name: "joined devices with CouchDB", args: ["run", "test:e2e:obsidian:joined-devices"] },
     { name: "CouchDB upload", args: ["run", "test:e2e:obsidian:couchdb-upload"] },
     {
         name: "manual CouchDB setup workflow",
@@ -35,6 +36,7 @@ const testSteps: Step[] = [
         name: "CLI to real Obsidian synchronisation",
         args: ["run", "test:e2e:obsidian:cli-to-obsidian-sync"],
     },
+    { name: "joined devices with Object Storage", args: ["run", "test:e2e:obsidian:joined-devices-object-storage"] },
     { name: "Object Storage upload", args: ["run", "test:e2e:obsidian:minio-upload"] },
     {
         name: "Object Storage Setup URI workflow",
@@ -56,6 +58,7 @@ const testSteps: Step[] = [
     { name: "startup scan", args: ["run", "test:e2e:obsidian:startup-scan"] },
     { name: "provisioned Setup URI workflow", args: ["run", "test:e2e:obsidian:setup-uri-workflow"] },
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
+    { name: "hidden file selectors", args: ["run", "test:e2e:obsidian:hidden-file-selectors"] },
     { name: "hidden file snippet synchronisation", args: ["run", "test:e2e:obsidian:hidden-file-snippet-sync"] },
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },
     { name: "internal Metadata Doctor", args: ["run", "test:e2e:obsidian:internal-metadata-doctor"] },
