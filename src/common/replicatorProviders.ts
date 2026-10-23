@@ -29,6 +29,7 @@ import {
 } from "./replicatorConfigurationIdentity";
 import {
     createCouchDBConnectionProbeFactory,
+    createCouchDBInitialFetchFastForwardResourceFactory,
     createCouchDBPreferredTweakProbeFactory,
     createCouchDBSecuritySeedResourceFactory,
     createCouchDBSynchronisationInformationResourceFactory,
@@ -125,6 +126,9 @@ export function createCentralReplicatorProviderDefinitions(
                 [REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION]: supportedCapability(
                     createCouchDBSynchronisationInformationResourceFactory(host)
                 ),
+                [REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]: supportedCapability(
+                    createCouchDBInitialFetchFastForwardResourceFactory(host)
+                ),
             },
             centralRemoteAdministration: COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
             userInitiatedOneShot: supportedCapability(couchDBUserInitiatedOneShot),
@@ -151,6 +155,7 @@ export function createCentralReplicatorProviderDefinitions(
                     createObjectStorageSecuritySeedResourceFactory(host)
                 ),
                 [REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION]: CAPABILITY_NOT_APPLICABLE,
+                [REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]: CAPABILITY_NOT_APPLICABLE,
             },
             centralRemoteAdministration: OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
             userInitiatedOneShot: supportedCapability(objectStorageUserInitiatedOneShot),

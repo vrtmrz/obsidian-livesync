@@ -5,6 +5,7 @@ import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 
 const mocks = vi.hoisted(() => ({
     logger: vi.fn(),
+    initialFetchFastForwardResource: undefined as unknown,
     couchDB: [] as Array<{
         host: unknown;
         isMobile: ReturnType<typeof vi.fn>;
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
         getRemoteStatus: ReturnType<typeof vi.fn>;
         getRemotePreferredTweakValues: ReturnType<typeof vi.fn>;
         getReplicationPBKDF2Salt: ReturnType<typeof vi.fn>;
+        createInitialFetchFastForwardResource: ReturnType<typeof vi.fn>;
         closeReplication: ReturnType<typeof vi.fn>;
     }>,
     objectStorage: [] as Array<{
@@ -42,6 +44,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicato
         getRemoteStatus = vi.fn();
         getRemotePreferredTweakValues = vi.fn();
         getReplicationPBKDF2Salt = vi.fn();
+        createInitialFetchFastForwardResource = vi.fn(() => mocks.initialFetchFastForwardResource);
         closeReplication = vi.fn();
 
         constructor(host: unknown) {
@@ -69,6 +72,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
 
 import {
     createCouchDBConnectionProbeFactory,
+    createCouchDBInitialFetchFastForwardResourceFactory,
     createCouchDBPreferredTweakProbeFactory,
     createCouchDBSecuritySeedResourceFactory,
     createCouchDBSynchronisationInformationResourceFactory,
@@ -92,6 +96,7 @@ describe("replicator probe factories", () => {
     beforeEach(() => {
         mocks.couchDB.length = 0;
         mocks.objectStorage.length = 0;
+        mocks.initialFetchFastForwardResource = undefined;
         mocks.checkSyncInfo.mockReset().mockResolvedValue(true);
         mocks.logger.mockClear();
     });
@@ -369,5 +374,30 @@ describe("replicator probe factories", () => {
 
         await resource.dispose();
         expect(replicator.closeReplication).toHaveBeenCalledOnce();
+    });
+
+    it("creates an Initial Fetch Fast Forward resource from a settings snapshot and leaves ownership to the resource", async () => {
+        const host = { name: "host" };
+        const settings = createSettings();
+        const snapshot = { ...settings };
+        const prepare = vi.fn(async () => undefined);
+        const dispose = vi.fn(async () => undefined);
+        const resource = { prepare, dispose };
+        const factory = createCouchDBInitialFetchFastForwardResourceFactory(host as never);
+        mocks.initialFetchFastForwardResource = resource;
+
+        const result = await factory(settings);
+        const replicator = mocks.couchDB[0];
+
+        settings.couchDB_URI = "https://changed.example.test";
+        expect(replicator.createInitialFetchFastForwardResource).toHaveBeenCalledWith(snapshot);
+        expect(replicator.createInitialFetchFastForwardResource.mock.calls[0][0]).not.toBe(settings);
+        expect(replicator.host).toBe(host);
+        expect(result).toBe(resource);
+
+        await expect(result.prepare()).resolves.toBeUndefined();
+        await result.dispose();
+        expect(prepare).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
     });
 });

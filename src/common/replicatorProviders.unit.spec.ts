@@ -44,7 +44,15 @@ describe("central Replicator provider definitions", () => {
     it("keeps the retained remote-resource catalogue bounded", () => {
         expect
             .soft(Object.values(REMOTE_RESOURCE_KINDS).sort())
-            .toEqual(["connection", "preferred-tweak", "security-seed", "synchronisation-information"].sort());
+            .toEqual(
+                [
+                    "connection",
+                    "preferred-tweak",
+                    "security-seed",
+                    "synchronisation-information",
+                    "initial-fetch-fast-forward",
+                ].sort()
+            );
     });
 
     it("lets Journal prepare its own fresh Security Seed while CouchDB uses central preparation", () => {
@@ -114,8 +122,14 @@ describe("central Replicator provider definitions", () => {
         expect(couchResources?.[REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION].kind).toBe(
             CAPABILITY_SUPPORT_KINDS.SUPPORTED
         );
+        expect(couchResources?.[REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]?.kind).toBe(
+            CAPABILITY_SUPPORT_KINDS.SUPPORTED
+        );
         expect(objectResources?.[REMOTE_RESOURCE_KINDS.SECURITY_SEED].kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);
         expect(objectResources?.[REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION].kind).toBe(
+            CAPABILITY_SUPPORT_KINDS.NOT_APPLICABLE
+        );
+        expect(objectResources?.[REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]?.kind).toBe(
             CAPABILITY_SUPPORT_KINDS.NOT_APPLICABLE
         );
         expect(couchAdministration?.kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);
