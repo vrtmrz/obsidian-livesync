@@ -1,4 +1,3 @@
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import {
     EVENT_REQUEST_RELOAD_SETTING_TAB,
@@ -27,19 +26,6 @@ export class ObsidianSettingService<T extends ObsidianServiceContext> extends Se
             return Promise.resolve(true);
         });
     }
-    protected setItem(key: string, value: string) {
-        // TODO: Implement nativeLocalStorage.
-        return compatGlobal.localStorage.setItem(key, value);
-    }
-    protected getItem(key: string): string {
-        // TODO: Implement nativeLocalStorage.
-        return compatGlobal.localStorage.getItem(key) ?? "";
-    }
-    protected deleteItem(key: string): void {
-        // TODO: Implement nativeLocalStorage.
-        compatGlobal.localStorage.removeItem(key);
-    }
-
     protected override async saveData(data: ObsidianLiveSyncSettings): Promise<void> {
         return await this.context.liveSyncPlugin.saveData(data);
     }

@@ -1,6 +1,5 @@
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
-import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore, type StartupDatabaseOptions } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import {
@@ -78,7 +77,6 @@ const VAULT_SYNC_MODES: Readonly<Partial<Record<CLICommand, CLIVaultSyncMode>>> 
     },
 };
 
-ensureGlobalNodeLocalStorage();
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 
 /** Injectable command boundary used by CLI integration probes. */
@@ -400,8 +398,6 @@ export async function main(
     const settingsPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : path.join(databasePath, SETTINGS_FILE);
-    configureNodeLocalStorage(path.join(databasePath, ".livesync", "runtime", "local-storage.json"));
-
     // Resolve vault path: mirror positional argument takes priority,
     // then --vault flag, otherwise fall back to databasePath.
     const vaultPath =

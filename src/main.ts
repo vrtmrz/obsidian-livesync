@@ -51,6 +51,7 @@ import { useInteractiveConflictResolutionFeature } from "./serviceFeatures/inter
 import { ConflictResolveModal } from "./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianReplicationRibbon.ts";
 import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
+import { useJoinedDevicesFeature } from "./serviceFeatures/useJoinedDevices";
 import { useDatabaseDiagnosticsFeature } from "./serviceFeatures/useDatabaseDiagnostics";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
@@ -197,6 +198,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useP2PReplicatorUI(core, core, replicator, createInteractiveP2PReplication(replicator));
                 useObsidianReplicationRibbonFeature(core);
                 useDatabaseDiagnosticsFeature(core);
+                useJoinedDevicesFeature(core, serviceHub.context.noticeGroups);
                 useRemoteConfiguration(core);
 
                 useSetupProtocolFeature(core, setupManager);

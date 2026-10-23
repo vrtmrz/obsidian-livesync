@@ -1,6 +1,6 @@
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { AppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
-import type { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService";
+import type { IConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import type { InjectableAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAPIService";
@@ -11,7 +11,7 @@ import { BrowserSvelteDialogManager } from "./BrowserSvelteDialogManager";
 export interface LiveSyncBrowserUIServiceDependencies<T extends ServiceContext> {
     API: InjectableAPIService<T>;
     appLifecycle: AppLifecycleService<T>;
-    config: ConfigService<T>;
+    config: IConfigService;
     control: ControlService<T>;
     replicator: ReplicatorService<T>;
 }

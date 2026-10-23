@@ -44,17 +44,17 @@ export class CompatibilityReviewController {
         return this._initialised;
     }
 
-    private readAcknowledgedVersion(): string | null {
+    private async readAcknowledgedVersion(): Promise<string | null> {
         const setting = this.core.services.setting;
-        const currentMarker = setting.getSmallConfig(DATABASE_COMPATIBILITY_VERSION_KEY);
+        const currentMarker = await this.core.services.config.getValue(DATABASE_COMPATIBILITY_VERSION_KEY, "");
         if (currentMarker) return currentMarker;
 
         const legacyKey = legacyDatabaseCompatibilityVersionKey(this.core.services.vault.getVaultName());
-        const legacyMarker = setting.getDeviceLocalConfig(legacyKey);
+        const legacyMarker = await setting.deviceValues.getValue(legacyKey, "");
         if (!legacyMarker) return null;
 
-        setting.setSmallConfig(DATABASE_COMPATIBILITY_VERSION_KEY, legacyMarker);
-        setting.deleteDeviceLocalConfig(legacyKey);
+        await this.core.services.config.setValue(DATABASE_COMPATIBILITY_VERSION_KEY, legacyMarker);
+        await setting.deviceValues.delete(legacyKey);
         return legacyMarker;
     }
 
@@ -75,7 +75,7 @@ export class CompatibilityReviewController {
             return true;
         }
 
-        const acknowledgedVersion = this.readAcknowledgedVersion();
+        const acknowledgedVersion = await this.readAcknowledgedVersion();
         const evaluation = evaluateCompatibilityPause({
             acknowledgedVersion,
             currentVersion: this.currentVersion,
@@ -85,7 +85,7 @@ export class CompatibilityReviewController {
 
         this.pause = evaluation.pause;
         if (evaluation.initialiseAcknowledgedVersion) {
-            setting.setSmallConfig(DATABASE_COMPATIBILITY_VERSION_KEY, `${this.currentVersion}`);
+            await this.core.services.config.setValue(DATABASE_COMPATIBILITY_VERSION_KEY, `${this.currentVersion}`);
             this._initialised = true;
             return true;
         }
@@ -115,9 +115,9 @@ export class CompatibilityReviewController {
             throw error;
         }
 
-        setting.setSmallConfig(DATABASE_COMPATIBILITY_VERSION_KEY, `${this.currentVersion}`);
+        await this.core.services.config.setValue(DATABASE_COMPATIBILITY_VERSION_KEY, `${this.currentVersion}`);
         const legacyKey = legacyDatabaseCompatibilityVersionKey(this.core.services.vault.getVaultName());
-        setting.deleteDeviceLocalConfig(legacyKey);
+        await setting.deviceValues.delete(legacyKey);
         this.pause = undefined;
         this.ui.clearReminder();
         await this.core.services.control.applySettings();

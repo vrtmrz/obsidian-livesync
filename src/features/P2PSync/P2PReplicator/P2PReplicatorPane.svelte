@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { ValueStoreError } from "@vrtmrz/value-store";
     import { AutoAccepting, DEFAULT_SETTINGS, type P2PSyncSetting } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import {
         AcceptedStatus,
@@ -33,6 +34,14 @@
     let settings = $state<P2PSyncSetting>(initialSettings);
 
     let deviceName = $state<string>("");
+    let deviceNameReady = $state(false);
+    let dialogStatusReady = $state(false);
+    type StorageErrorKey = "deviceNameLoad" | "dialogStatusLoad" | "deviceNameWrite" | "dialogStatusWrite";
+    let storageErrors = $state<Partial<Record<StorageErrorKey, string>>>({});
+    let mounted = false;
+    let deviceNameLoadSequence = 0;
+    let deviceNameWriteQueue: Promise<void> = Promise.resolve();
+    let dialogStatusWriteQueue: Promise<void> = Promise.resolve();
 
     let eP2PEnabled = $state<boolean>(initialSettings.P2P_Enabled);
     let eRelay = $state<string>(initialSettings.P2P_relays);
@@ -68,6 +77,7 @@
     );
 
     async function saveAndApply() {
+        const savedDeviceName = eDeviceName;
         // const newSettings = {
         //     ...currentSettings(),
         //     P2P_Enabled: eP2PEnabled,
@@ -92,8 +102,39 @@
             },
             true
         );
-        services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, eDeviceName);
-        deviceName = eDeviceName;
+        try {
+            await queueDeviceNameWrite(savedDeviceName);
+            if (!mounted) return;
+            deviceName = savedDeviceName;
+            clearStorageError("deviceNameWrite");
+        } catch (error) {
+            setStorageError("deviceNameWrite", error);
+        }
+    }
+
+    function setStorageError(key: StorageErrorKey, error: unknown) {
+        if (mounted) {
+            storageErrors = {
+                ...storageErrors,
+                [key]: error instanceof Error ? error.message : String(error),
+            };
+        }
+    }
+
+    function clearStorageError(key: StorageErrorKey) {
+        if (!mounted) return;
+        const nextErrors = { ...storageErrors };
+        delete nextErrors[key];
+        storageErrors = nextErrors;
+    }
+
+    function queueDeviceNameWrite(name: string): Promise<void> {
+        const write = deviceNameWriteQueue.catch(() => undefined).then(async () => {
+            if (!mounted) return;
+            await services.config.setValue(SETTING_KEY_P2P_DEVICE_NAME, name);
+        });
+        deviceNameWriteQueue = write;
+        return write;
     }
     async function revert() {
         eP2PEnabled = settings.P2P_Enabled;
@@ -110,10 +151,7 @@
     let replicatorInfo = $state<P2PReplicatorStatus | undefined>(undefined);
     const applyLoadSettings = (d: P2PSyncSetting, force: boolean) => {
         if (force) {
-            const initDeviceName =
-                services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) ?? services.vault.getVaultName();
-            deviceName = initDeviceName;
-            eDeviceName = initDeviceName;
+            void loadDeviceName(true).catch(() => undefined);
         }
         const { P2P_relays, P2P_roomID, P2P_passphrase, P2P_AppID, P2P_AutoAccepting } = d;
         if (force || !isP2PEnabledModified) eP2PEnabled = d.P2P_Enabled;
@@ -129,6 +167,7 @@
         settings = d;
     };
     onMount(() => {
+        mounted = true;
         const r = events.onEvent("setting-saved", async (d) => {
             applyLoadSettings(d, false);
             closeServer();
@@ -143,15 +182,52 @@
         const r3 = events.onEvent(EVENT_P2P_REPLICATOR_STATUS, (status) => {
             replicatorInfo = status;
         });
-        applyLoadSettings(currentSettings(), true);
+        applyLoadSettings(currentSettings(), false);
+        void loadInitialPreferences().catch(() => undefined);
         host.p2p.diagnostics.requestStatus();
         return () => {
+            mounted = false;
             r();
             rx();
             r2();
             r3();
         };
     });
+
+    async function loadInitialPreferences() {
+        const deviceNameLoad = loadDeviceName(true).catch(() => undefined);
+        const dialogStatusLoad = readDialogStatus().then(
+            (dialogStatus) => {
+                if (!mounted) return;
+                isNoticeOpened = dialogStatus.notice ?? true;
+                isSettingOpened = dialogStatus.setting ?? true;
+                dialogStatusReady = true;
+                clearStorageError("dialogStatusLoad");
+            },
+            (error: unknown) => {
+                setStorageError("dialogStatusLoad", error);
+            }
+        );
+        await Promise.all([deviceNameLoad, dialogStatusLoad]);
+    }
+
+    async function loadDeviceName(force: boolean) {
+        const request = ++deviceNameLoadSequence;
+        try {
+            const savedDeviceName = await services.config.getValue(SETTING_KEY_P2P_DEVICE_NAME, "");
+            if (!mounted || request !== deviceNameLoadSequence) return;
+            const initialDeviceName = savedDeviceName;
+            if (force || !isDeviceNameModified) {
+                deviceName = initialDeviceName;
+                eDeviceName = initialDeviceName;
+            }
+            deviceNameReady = true;
+            clearStorageError("deviceNameLoad");
+        } catch (error) {
+            if (mounted && request === deviceNameLoadSequence) setStorageError("deviceNameLoad", error);
+            throw error;
+        }
+    }
     let isConnected = $derived.by(() => {
         return serverInfo?.isConnected ?? false;
     });
@@ -234,26 +310,42 @@
     }
 
     const initialDialogStatusKey = `p2p-dialog-status`;
-    const getDialogStatus = () => {
+    const readDialogStatus = async (): Promise<{ notice?: boolean; setting?: boolean }> => {
         try {
-            const initialDialogStatus = JSON.parse(services.config.getSmallConfig(initialDialogStatusKey) ?? "{}") as {
-                notice?: boolean;
-                setting?: boolean;
+            const initialDialogStatus = await services.config.getObject(initialDialogStatusKey);
+            if (typeof initialDialogStatus !== "object" || initialDialogStatus === null || Array.isArray(initialDialogStatus)) {
+                return {};
+            }
+            const status = initialDialogStatus as Record<string, unknown>;
+            return {
+                ...(typeof status.notice === "boolean" ? { notice: status.notice } : {}),
+                ...(typeof status.setting === "boolean" ? { setting: status.setting } : {}),
             };
-            return initialDialogStatus;
-        } catch {
-            return {};
+        } catch (error) {
+            if (error instanceof ValueStoreError && error.code === "invalid-data") {
+                // Invalid optional UI state is recovered with the historical defaults.
+                return {};
+            }
+            throw error;
         }
     };
-    const initialDialogStatus = getDialogStatus();
-    let isNoticeOpened = $state<boolean>(initialDialogStatus.notice ?? true);
-    let isSettingOpened = $state<boolean>(initialDialogStatus.setting ?? true);
+    let isNoticeOpened = $state<boolean>(true);
+    let isSettingOpened = $state<boolean>(true);
     $effect(() => {
+        if (!mounted || !dialogStatusReady) return;
         const dialogStatus = {
             notice: isNoticeOpened,
             setting: isSettingOpened,
         };
-        services.config.setSmallConfig(initialDialogStatusKey, JSON.stringify(dialogStatus));
+        const write = dialogStatusWriteQueue.catch(() => undefined).then(async () => {
+            if (!mounted) return;
+            await services.config.setObject(initialDialogStatusKey, dialogStatus);
+        });
+        dialogStatusWriteQueue = write;
+        void write.then(
+            () => clearStorageError("dialogStatusWrite"),
+            (error: unknown) => setStorageError("dialogStatusWrite", error)
+        );
     });
     let isObsidian = $derived.by(() => {
         return services.API.getPlatform() === "obsidian";
@@ -261,6 +353,9 @@
 </script>
 
 <article>
+    {#each Object.values(storageErrors) as storageError}
+        <p role="alert">{storageError}</p>
+    {/each}
     <h1>{_msg("Peer to Peer Replicator")}</h1>
     <details bind:open={isNoticeOpened}>
         <summary>{_msg("P2P.Note.Summary")}</summary>
@@ -345,6 +440,7 @@
                                     type="text"
                                     placeholder="iphone-16"
                                     bind:value={eDeviceName}
+                                    disabled={!deviceNameReady}
                                     autocomplete="off"
                                 />
                             </label>
@@ -383,7 +479,7 @@
             </tr> -->
                 </tbody>
             </table>
-            <button disabled={!isAnyModified} class="button mod-cta" onclick={saveAndApply}
+            <button disabled={!isAnyModified || !deviceNameReady} class="button mod-cta" onclick={saveAndApply}
                 >{_msg("Save and Apply")}</button
             >
             <button disabled={!isAnyModified} class="button" onclick={revert}>{_msg("Revert changes")}</button>
