@@ -214,6 +214,13 @@ async function assertInitialDialogue(dialogue: Locator, self: SelfDeviceInfo, pa
         )
         .waitFor({ state: "visible", timeout: uiTimeoutMs });
     await dialogue
+        .locator(".sls-info-note")
+        .getByText(
+            "Even compatible plug-in versions can create different Chunks for the same file. When files are rewritten, this can reduce Chunk reuse and increase storage use while preserving file contents. P2P synchronisation may also be unavailable between incompatible versions. Reviewing and aligning the plug-in versions across devices is recommended.",
+            { exact: true }
+        )
+        .waitFor({ state: "visible", timeout: uiTimeoutMs });
+    await dialogue
         .getByText("This remote is locked.", { exact: false })
         .waitFor({ state: "visible", timeout: uiTimeoutMs });
     await dialogue
@@ -409,7 +416,7 @@ async function main(): Promise<void> {
             await dialoguePage
                 .locator(".notice")
                 .getByText(
-                    "A newer plug-in version was detected in other device records: 999.0.0. We recommend checking whether this device needs updating.",
+                    "A newer plug-in version was detected in other device records: 999.0.0. Reviewing and aligning the plug-in versions across devices is recommended.",
                     { exact: true }
                 )
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });

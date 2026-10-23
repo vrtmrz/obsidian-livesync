@@ -2,6 +2,7 @@
     import { onDestroy, onMount } from "svelte";
     import type { GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
     import { $msg as translate } from "@/common/translation";
     import type {
         JoinedDeviceRow,
@@ -120,6 +121,10 @@
     <p>
         {translate("This list shows device information recorded by the remote. It does not show whether a device is online now.")}
     </p>
+
+    <InfoNote
+        message="Even compatible plug-in versions can create different Chunks for the same file. When files are rewritten, this can reduce Chunk reuse and increase storage use while preserving file contents. P2P synchronisation may also be unavailable between incompatible versions. Reviewing and aligning the plug-in versions across devices is recommended."
+    />
 
     {#if view}
         {#if !view.milestonePresent}

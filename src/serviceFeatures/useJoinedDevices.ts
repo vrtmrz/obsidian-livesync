@@ -63,13 +63,13 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
                 message:
                     direction === "newer"
                         ? $msg(
-                              "A newer plug-in version was detected in other device records: ${versions}. We recommend checking whether this device needs updating.",
+                              "A newer plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.",
                               {
                                   versions: versions.join(", "),
                               }
                           )
                         : $msg(
-                              "An older plug-in version was detected in other device records: ${versions}. We recommend checking whether those devices need updating.",
+                              "An older plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.",
                               {
                                   versions: versions.join(", "),
                               }
