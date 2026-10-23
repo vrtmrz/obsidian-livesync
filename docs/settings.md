@@ -750,11 +750,13 @@ If enabled, the notification of hidden files change will be suppressed.
 
 #### Synchronising files
 
-(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.
+Setting key: syncOnlyRegEx
+(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.
 
 #### Non-Synchronising files
 
-(RegExp) If this is set, any changes to local and remote files that match this will be skipped.
+Setting key: syncIgnoreRegEx
+(RegExp) Skip changes to matching normal and hidden files, locally and remotely.
 
 #### Maximum file size
 
