@@ -40,6 +40,7 @@ const focusedScenarios = new Set([
     "security-seed-reconnect",
     "hidden-file-snippet-sync",
     "customisation-sync",
+    "customisation-catalogue-reload",
     "received-change-readiness",
     "internal-metadata-doctor",
     "setting-markdown-export",
