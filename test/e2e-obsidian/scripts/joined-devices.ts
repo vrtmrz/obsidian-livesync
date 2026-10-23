@@ -216,7 +216,7 @@ async function assertInitialDialogue(dialogue: Locator, self: SelfDeviceInfo, pa
     await dialogue
         .locator(".sls-info-note")
         .getByText(
-            "Even compatible plug-in versions can create different Chunks for the same file. When files are rewritten, this can reduce Chunk reuse and increase storage use while preserving file contents. P2P synchronisation may also be unavailable between incompatible versions. Reviewing and aligning the plug-in versions across devices is recommended.",
+            "Synchronisation between different plug-in versions is generally safe unless the connection is explicitly blocked. However, it may be less efficient or use more storage, and P2P synchronisation may be unavailable.",
             { exact: true }
         )
         .waitFor({ state: "visible", timeout: uiTimeoutMs });
