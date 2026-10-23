@@ -7,6 +7,62 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Unknown platform": "Unknown platform",
+    "This removes only this device's record from the remote.":
+        "This removes only this device's record from the remote.",
+    "This remote is unlocked. A device that returns can register again.":
+        "This remote is unlocked. A device that returns can register again.",
+    "This remote is locked. Use the existing recovery process for devices that need to join again.":
+        "This remote is locked. Use the existing recovery process for devices that need to join again.",
+    "This remote is locked. If the device returns, use the existing recovery process to join it again.":
+        "This remote is locked. If the device returns, use the existing recovery process to join it again.",
+    "This remote does not support conditional updates, so the device record could not be removed.":
+        "This remote does not support conditional updates, so the device record could not be removed.",
+    "This remote does not currently have a record of joined devices.":
+        "This remote does not currently have a record of joined devices.",
+    "This list shows device information recorded by the remote. It does not show whether a device is online now.":
+        "This list shows device information recorded by the remote. It does not show whether a device is online now.",
+    "This device is locked out. Use the existing recovery process to join again.":
+        "This device is locked out. Use the existing recovery process to join again.",
+    "This device": "This device",
+    "This remote has been cleaned. Use the existing recovery process to join devices again as needed.":
+        "This remote has been cleaned. Use the existing recovery process to join devices again as needed.",
+    "The device record was forgotten.": "The device record was forgotten.",
+    "The device record was already absent.": "The device record was already absent.",
+    "The device list changed while you were trying to forget this device. Refresh the list before trying again.":
+        "The device list changed while you were trying to forget this device. Refresh the list before trying again.",
+    "The device information could not be loaded. Close this dialogue and open Joined devices again if the remote configuration has changed.":
+        "The device information could not be loaded. Close this dialogue and open Joined devices again if the remote configuration has changed.",
+    "Review device records for the active CouchDB or Object Storage connection.":
+        "Review device records for the active CouchDB or Object Storage connection.",
+    Refresh: "Refresh",
+    "Plug-in version": "Plug-in version",
+    Platform: "Platform",
+    "Other joined devices last reported an older plug-in version: ${versions}.":
+        "Other joined devices last reported an older plug-in version: ${versions}.",
+    "Other joined devices last reported a newer plug-in version: ${versions}.":
+        "Other joined devices last reported a newer plug-in version: ${versions}.",
+    Open: "Open",
+    "Not recorded": "Not recorded",
+    "Not accepted": "Not accepted",
+    "No joined devices are recorded on this remote.": "No joined devices are recorded on this remote.",
+    "Locked out": "Locked out",
+    "Loading joined devices…": "Loading joined devices…",
+    "Last recorded": "Last recorded",
+    "Joined devices could not be updated. Refresh the list and try again. If the remote configuration has changed, close this dialogue and open Joined devices again.":
+        "Joined devices could not be updated. Refresh the list and try again. If the remote configuration has changed, close this dialogue and open Joined devices again.",
+    "Joined devices are available after database startup with an active CouchDB or Object Storage connection.":
+        "Joined devices are available after database startup with an active CouchDB or Object Storage connection.",
+    "Joined devices": "Joined devices",
+    "Forgetting…": "Forgetting…",
+    "Forgetting the record does not delete Vault files or revoke credentials.":
+        "Forgetting the record does not delete Vault files or revoke credentials.",
+    "Forget this device record?": "Forget this device record?",
+    "Forget device": "Forget device",
+    Close: "Close",
+    Cancel: "Cancel",
+    "App version": "App version",
+    Accepted: "Accepted",
     "Preparing follow-up report…": "Preparing follow-up report…",
     "Cancelling local search. Checked ${COUNT} entries.": "Cancelling local search. Checked ${COUNT} entries.",
     "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.":

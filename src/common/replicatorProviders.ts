@@ -28,6 +28,8 @@ import {
     getObjectStorageReplicatorConfigurationIdentity,
 } from "./replicatorConfigurationIdentity";
 import {
+    createCouchDBJoinedDevicesResourceFactory,
+    createObjectStorageJoinedDevicesResourceFactory,
     createCouchDBConnectionProbeFactory,
     createCouchDBPreferredTweakProbeFactory,
     createCouchDBSecuritySeedResourceFactory,
@@ -115,6 +117,9 @@ export function createCentralReplicatorProviderDefinitions(
             configurationIdentity: getCouchDBReplicatorConfigurationIdentity,
             create: () => Promise.resolve(new LiveSyncCouchDBReplicator(host)),
             remoteResources: {
+                [REMOTE_RESOURCE_KINDS.JOINED_DEVICES]: supportedCapability(
+                    createCouchDBJoinedDevicesResourceFactory(host)
+                ),
                 [REMOTE_RESOURCE_KINDS.CONNECTION]: supportedCapability(createCouchDBConnectionProbeFactory(host)),
                 [REMOTE_RESOURCE_KINDS.PREFERRED_TWEAK]: supportedCapability(
                     createCouchDBPreferredTweakProbeFactory(host)
@@ -141,6 +146,9 @@ export function createCentralReplicatorProviderDefinitions(
             configurationIdentity: getObjectStorageReplicatorConfigurationIdentity,
             create: () => Promise.resolve(new LiveSyncJournalReplicator(host)),
             remoteResources: {
+                [REMOTE_RESOURCE_KINDS.JOINED_DEVICES]: supportedCapability(
+                    createObjectStorageJoinedDevicesResourceFactory(host)
+                ),
                 [REMOTE_RESOURCE_KINDS.CONNECTION]: supportedCapability(
                     createObjectStorageConnectionProbeFactory(host)
                 ),

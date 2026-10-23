@@ -44,7 +44,15 @@ describe("central Replicator provider definitions", () => {
     it("keeps the retained remote-resource catalogue bounded", () => {
         expect
             .soft(Object.values(REMOTE_RESOURCE_KINDS).sort())
-            .toEqual(["connection", "preferred-tweak", "security-seed", "synchronisation-information"].sort());
+            .toEqual(
+                [
+                    "connection",
+                    "joined-devices",
+                    "preferred-tweak",
+                    "security-seed",
+                    "synchronisation-information",
+                ].sort()
+            );
     });
 
     it("lets Journal prepare its own fresh Security Seed while CouchDB uses central preparation", () => {
