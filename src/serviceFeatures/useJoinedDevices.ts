@@ -53,6 +53,7 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
         const differences = differentDeviceVersions(snapshot, ownId, version);
         const seen = notified.get(identity) ?? new Set<string>();
         notified.set(identity, seen);
+        let updated = false;
         for (const direction of ["newer", "older"] as const) {
             const versions = differences[direction];
             if (versions.length === 0) continue;
@@ -62,29 +63,29 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
             notices.setItem(noticeGroup, direction, {
                 message:
                     direction === "newer"
-                        ? $msg(
-                              "A newer plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.",
-                              {
-                                  versions: versions.join(", "),
-                              }
-                          )
-                        : $msg(
-                              "An older plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.",
-                              {
-                                  versions: versions.join(", "),
-                              }
-                          ),
-                action: {
-                    label: $msg("Review devices"),
-                    onSelect: () => {
-                        if (!disposed && identity === remoteIdentity(services.setting.currentSettings())) {
-                            void services.UI.commands.invoke(OPEN_JOINED_DEVICES, undefined);
-                        }
-                    },
-                },
+                        ? $msg("Newer Self-hosted LiveSync versions detected: ${versions}.", {
+                              versions: versions.join(", "),
+                          })
+                        : $msg("Older Self-hosted LiveSync versions detected: ${versions}.", {
+                              versions: versions.join(", "),
+                          }),
             });
-            notices.finish(noticeGroup, { durationMs: 15000 });
+            updated = true;
         }
+        if (!updated) return;
+        notices.removeItem(noticeGroup, "review");
+        notices.setItem(noticeGroup, "review", {
+            message: $msg("Reviewing and aligning Self-hosted LiveSync versions across devices is recommended."),
+            action: {
+                label: $msg("Review devices"),
+                onSelect: () => {
+                    if (!disposed && identity === remoteIdentity(services.setting.currentSettings())) {
+                        void services.UI.commands.invoke(OPEN_JOINED_DEVICES, undefined);
+                    }
+                },
+            },
+        });
+        notices.finish(noticeGroup, { durationMs: 15000 });
     };
 
     const createOperations = (controller: AbortController): JoinedDevicesDialogOptions => {

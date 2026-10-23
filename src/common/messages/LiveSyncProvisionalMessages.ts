@@ -42,10 +42,12 @@ export const liveSyncProvisionalEnglishMessages = {
     Refresh: "Refresh",
     "Plug-in version": "Plug-in version",
     Platform: "Platform",
-    "An older plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.":
-        "An older plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.",
-    "A newer plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.":
-        "A newer plug-in version was detected in other device records: ${versions}. Reviewing and aligning the plug-in versions across devices is recommended.",
+    "Older Self-hosted LiveSync versions detected: ${versions}.":
+        "Older Self-hosted LiveSync versions detected: ${versions}.",
+    "Newer Self-hosted LiveSync versions detected: ${versions}.":
+        "Newer Self-hosted LiveSync versions detected: ${versions}.",
+    "Reviewing and aligning Self-hosted LiveSync versions across devices is recommended.":
+        "Reviewing and aligning Self-hosted LiveSync versions across devices is recommended.",
     Open: "Open",
     "Not recorded": "Not recorded",
     "Not accepted": "Not accepted",

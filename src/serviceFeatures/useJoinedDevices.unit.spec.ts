@@ -5,7 +5,10 @@ import { REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { JoinedDevicesSnapshot } from "@vrtmrz/livesync-commonlib/replication";
 import type { JoinedDevicesDialogOptions } from "./joinedDevicesDialogTypes";
 vi.mock("@/modules/services/LiveSyncUI/dialogues/JoinedDevicesDialog.svelte", () => ({ default: {} }));
-vi.mock("@/common/translation", () => ({ $msg: (message: string) => message }));
+vi.mock("@/common/translation", () => ({
+    $msg: (message: string, values: Record<string, string> = {}) =>
+        message.replace(/\$\{([^}]+)\}/g, (placeholder, key: string) => values[key] ?? placeholder),
+}));
 import { useJoinedDevicesFeature } from "./useJoinedDevices";
 import { OPEN_JOINED_DEVICES } from "./joinedDevicesCommand";
 
@@ -37,7 +40,7 @@ function fixture() {
                 close = resolve;
             })
     );
-    const notices = { setItem: vi.fn(), finish: vi.fn(), hide: vi.fn() };
+    const notices = { setItem: vi.fn(), removeItem: vi.fn(), finish: vi.fn(), hide: vi.fn() };
     const palette: Array<{ id: string; checkCallback: (checking: boolean) => boolean }> = [];
     const database = { localDatabase: { get: vi.fn(async () => ({ nodeid: "self" })) } };
     const host = {
@@ -193,13 +196,100 @@ describe("joined devices service feature", () => {
         data.close();
         await pending;
     });
+    it("shares one review action across newer and older device versions", async () => {
+        const data = fixture();
+        data.read.mockResolvedValue({
+            milestonePresent: true,
+            locked: false,
+            cleaned: false,
+            devices: [
+                { id: "newer-a", accepted: true, pluginVersion: "2.0.0" },
+                { id: "newer-b", accepted: true, pluginVersion: "3.0.0" },
+                { id: "older-a", accepted: true, pluginVersion: "0.9.0" },
+                { id: "older-b", accepted: true, pluginVersion: "0.8.0" },
+                { id: "older-duplicate", accepted: true, pluginVersion: "0.8.0" },
+            ],
+        });
+        const { options, pending } = await open(data);
+        await options.refresh();
+        const items = data.notices.setItem.mock.calls.map(([, , item]) => item);
+        expect(items.filter((item) => item.action)).toHaveLength(1);
+        const messages = items.map((item) => item.message).join("\n");
+        expect(messages).toContain("Self-hosted LiveSync");
+        expect(messages).toMatch(/Newer.*2\.0\.0, 3\.0\.0/);
+        expect(messages).toMatch(/Older.*0\.8\.0, 0\.9\.0/);
+        expect(messages.match(/0\.8\.0/g)).toHaveLength(1);
+        expect(messages.match(/Reviewing and aligning/g)).toHaveLength(1);
+        expect(items[items.length - 1]?.action?.label).toBe("Review devices");
+        expect(data.notices.finish).toHaveBeenCalledExactlyOnceWith("joined-device-versions", {
+            durationMs: 15000,
+        });
+        data.close();
+        await pending;
+    });
+    it("keeps the shared action last when another version direction arrives", async () => {
+        const data = fixture();
+        const visible = new Map<string, { message: string; action?: unknown }>();
+        data.notices.setItem.mockImplementation((_group, key, item) => visible.set(key, item));
+        data.notices.removeItem.mockImplementation((_group, key) => visible.delete(key));
+        const { options, pending } = await open(data);
+        await options.refresh();
+        expect([...visible.keys()]).toEqual(["newer", "review"]);
+
+        data.read.mockResolvedValue({
+            milestonePresent: true,
+            locked: false,
+            cleaned: false,
+            devices: [
+                { id: "other", accepted: true, pluginVersion: "2.0.0" },
+                { id: "older", accepted: true, pluginVersion: "0.9.0" },
+            ],
+        });
+        await options.refresh();
+        expect([...visible.keys()]).toEqual(["newer", "older", "review"]);
+        expect([...visible.values()].filter((item) => item.action)).toHaveLength(1);
+
+        visible.clear();
+        data.read.mockResolvedValue({
+            milestonePresent: true,
+            locked: false,
+            cleaned: false,
+            devices: [
+                { id: "other", accepted: true, pluginVersion: "2.0.0" },
+                { id: "older", accepted: true, pluginVersion: "0.8.0" },
+            ],
+        });
+        await options.refresh();
+        expect([...visible.keys()]).toEqual(["older", "review"]);
+        expect([...visible.values()].filter((item) => item.action)).toHaveLength(1);
+        data.close();
+        await pending;
+    });
+    it("does not show a review action when no different version is reported", async () => {
+        const data = fixture();
+        data.read.mockResolvedValue({
+            milestonePresent: true,
+            locked: false,
+            cleaned: false,
+            devices: [{ id: "other", accepted: true, pluginVersion: "1.0.0" }],
+        });
+        const { options, pending } = await open(data);
+        await options.refresh();
+        expect(data.notices.setItem).not.toHaveBeenCalled();
+        expect(data.notices.removeItem).not.toHaveBeenCalled();
+        expect(data.notices.finish).not.toHaveBeenCalled();
+        data.close();
+        await pending;
+    });
     it("deduplicates advisory Notices and fences their actions after configuration changes", async () => {
         const data = fixture();
         const { options, pending } = await open(data);
         await options.refresh();
         await options.refresh();
-        expect(data.notices.setItem).toHaveBeenCalledTimes(1);
-        const action = data.notices.setItem.mock.calls[0][2].action;
+        expect(data.notices.setItem).toHaveBeenCalledTimes(2);
+        const actions = data.notices.setItem.mock.calls.map(([, , item]) => item.action).filter(Boolean);
+        expect(actions).toHaveLength(1);
+        const action = actions[0];
         data.close();
         await pending;
         data.settings.couchDB_DBNAME = "new-vault";

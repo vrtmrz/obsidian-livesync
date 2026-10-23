@@ -482,13 +482,27 @@ async function main(): Promise<void> {
             const dialoguePage = dialogue.page();
             await dialoguePage.setViewportSize({ width: 1280, height: 1100 });
             await assertInitialDialogue(dialogue, self, dialoguePage);
-            await dialoguePage
-                .locator(".notice")
-                .getByText(
-                    "A newer plug-in version was detected in other device records: 999.0.0. Reviewing and aligning the plug-in versions across devices is recommended.",
-                    { exact: true }
-                )
+            const notice = dialoguePage.locator(".notice").filter({
+                hasText: "Newer Self-hosted LiveSync versions detected: 999.0.0.",
+            });
+            await notice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await notice
+                .getByText("Older Self-hosted LiveSync versions detected: 0.1.0.", { exact: true })
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            assertEqual(
+                await notice
+                    .getByText("Reviewing and aligning Self-hosted LiveSync versions across devices is recommended.", {
+                        exact: true,
+                    })
+                    .count(),
+                1,
+                "The version Notice did not contain exactly one recommendation."
+            );
+            assertEqual(
+                await notice.getByRole("button", { name: "Review devices", exact: true }).count(),
+                1,
+                "The version Notice did not contain exactly one shared review action."
+            );
             return dialogue;
         });
         await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-desktop.png", async (page) => {
@@ -498,7 +512,6 @@ async function main(): Promise<void> {
                 .page()
                 .locator(".notice")
                 .getByRole("button", { name: "Review devices", exact: true })
-                .first()
                 .click();
             const reopened = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
             await reopened.getByText(targetId, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
