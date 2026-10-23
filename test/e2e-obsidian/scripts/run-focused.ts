@@ -8,6 +8,7 @@ const focusedScenarios = new Set([
     "smoke",
     "onboarding-invitation",
     "dialog-mounts",
+    "joined-devices",
     "database-diagnostics",
     "database-diagnostics-couchdb",
     "conflict-dialog-policy",

@@ -166,6 +166,14 @@ Legacy Modules remain grouped by directory:
 - `features/` contains optional features; and
 - `extras/` contains development and testing tools.
 
+### UI commands and dialogue ownership
+
+Declare shared UI requests with `declareUICommand<Request, Result>` from `@vrtmrz/livesync-commonlib/ui-commands`. The host's `services.UI.commands` registry owns one handler per declaration. A serviceFeature registers the handler, releases it on unload, and owns the associated dialogue lifetime. Callers receive a typed result or an explicit `unavailable` result; handler failures propagate.
+
+`OPEN_JOINED_DEVICES` is shared by Remote Configuration, version Notices, and the command palette. `useJoinedDevicesFeature` registers it once and gives the dialogue narrow refresh, forget, and cancellation callbacks. Each remote operation uses a settings snapshot and releases its finite resource in `finally`. Results from an old remote configuration or a closed dialogue are discarded. A write already sent to the captured remote can still complete after the dialogue closes.
+
+The registry belongs to one UIService instance. Reuse the same declaration object at each call site, and keep active UI cleanup in the feature and dialogue owner. `UIService` disposes the registry when the host's context emits the plug-in-unloaded event.
+
 ### Key Architectural Components
 
 - **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper

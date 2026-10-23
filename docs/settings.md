@@ -234,6 +234,16 @@ Setting key: remoteType
 
 The active connection type. This is automatically projected to the legacy configuration when you activate a connection profile.
 
+### Joined devices
+
+Open **Joined devices** to read the device records on the active CouchDB or Object Storage connection. The same dialogue is available from the command palette and version Notices. **Refresh** reads the remote again. This device appears first, including when its record is absent from the remote. Opening or refreshing this dialogue does not create a missing CouchDB database.
+
+The list shows each device ID, recorded platform, plug-in version, app version, and last recorded connection time. Older clients may have incomplete information. These records do not establish whether a device is online. On a locked remote, a device outside the accepted list is shown as **Locked out**.
+
+Before synchronisation starts, and when this dialogue refreshes, Self-hosted LiveSync checks for recorded plug-in versions newer or older than its own. These Notices are advisory and do not stop synchronisation. Unknown development version labels are left unclassified. Automatic checks run at most once per minute when synchronisation starts; they do not poll a continuously running connection.
+
+**Forget device** removes another device's participation records after confirmation. It preserves the remote lock state and every other device. It does not delete Vault files or revoke credentials. A device can register again on an unlocked remote; on a locked remote, the existing recovery process applies. The result is checked after saving to CouchDB; if it cannot be confirmed, refresh the list and try again. CouchDB stores these records together in a local document which does not reject simultaneous updates, so changes from other devices can be overwritten. Pausing synchronisation on the other devices avoids that overlap. Object Storage uses conditional updates; if the server cannot support them, the record is retained.
+
 ### 2. Notification
 
 #### Notify when the estimated remote storage size exceeds on start up
