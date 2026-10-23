@@ -99,6 +99,7 @@ function createDependencies(findAllNormalDocs: FindAllNormalDocs = noDocuments, 
         isTargetFile: vi.fn(async () => true),
         storageAccess: {
             readHiddenFileBinary,
+            statHidden: vi.fn(async (path: string) => getFixture(path)?.stub.stat ?? null),
             getFileStub,
         },
         fileHandler: { storeFileToDB },
@@ -155,6 +156,41 @@ describe("checkIncompleteDocuments", () => {
             message: "The incomplete document check could not be completed.",
         });
         expect(noticeGroups.finish).toHaveBeenCalledWith("startup-integrity-check");
+    });
+
+    it("does not read healthy storage contents only to determine their size", async () => {
+        const healthy = documentFixture("healthy.md", { storageContent: "abc" });
+        const fixture = createDependencies(documentsFrom([healthy]), [healthy]);
+
+        await expect(checkIncompleteDocuments(fixture.dependencies)).resolves.toBe(true);
+
+        expect(fixture.readHiddenFileBinary).not.toHaveBeenCalled();
+        expect(fixture.askSelectStringDialogue).not.toHaveBeenCalled();
+        expect(fixture.dependencies.keyValueDB.set).toHaveBeenCalledWith("checkIncompleteDocs", true);
+    });
+
+    it("does not mark a scan complete when storage changes during the size check", async () => {
+        const healthy = documentFixture("changing.md", { storageContent: "abc" });
+        const fixture = createDependencies(documentsFrom([healthy]), [healthy]);
+        vi.mocked(fixture.dependencies.storageAccess.statHidden)
+            .mockResolvedValueOnce(healthy.stub.stat)
+            .mockResolvedValueOnce({ ...healthy.stub.stat, mtime: 3 });
+
+        await expect(checkIncompleteDocuments(fixture.dependencies)).rejects.toThrow("Storage changed");
+
+        expect(fixture.readHiddenFileBinary).not.toHaveBeenCalled();
+        expect(fixture.dependencies.keyValueDB.set).not.toHaveBeenCalled();
+    });
+
+    it("still reads conflicted storage for the existing repair dialogue", async () => {
+        const conflicted = documentFixture("conflicted.md", { storageContent: "abc", conflicts: ["2-other"] });
+        const fixture = createDependencies(documentsFrom([conflicted]), [conflicted]);
+        fixture.askSelectStringDialogue.mockImplementation(selectButton(0));
+
+        await expect(checkIncompleteDocuments(fixture.dependencies)).resolves.toBe(true);
+
+        expect(fixture.readHiddenFileBinary).toHaveBeenCalledWith("conflicted.md");
+        expect(fixture.dependencies.keyValueDB.set).not.toHaveBeenCalled();
     });
 
     it("repairs a recoverable document when FIX is selected", async () => {
