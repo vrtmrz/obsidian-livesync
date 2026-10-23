@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Page } from "playwright";
 import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import { decryptString } from "@vrtmrz/livesync-commonlib/compat/encryption/stringEncryption";
+import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { $msg } from "../../../src/common/translation.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { createE2eCouchDbPluginData, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
@@ -13,18 +15,34 @@ import {
     captureObsidianPage,
     obsidianRemoteDebuggingPort,
     openLiveSyncSettings,
-    withObsidianPage,
+    withObsidianPage as withObsidianSessionPage,
 } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const dialogRunStateKey = "__livesyncE2EDialogMount";
+const savedP2PDeviceName = "e2e-p2p-saved-device";
 const repairRunStateKey = "__livesyncE2ETroubleshootingRepair";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_DIALOG_TIMEOUT_MS ?? 10000);
+
+async function withObsidianPage<T>(port: number, operation: (page: Page) => Promise<T>): Promise<T> {
+    return await withObsidianSessionPage(port, async (page) => {
+        for (const candidate of page.context().pages()) {
+            const hasPlugin = await candidate
+                .evaluate(
+                    () => (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"] !== undefined
+                )
+                .catch(() => false);
+            if (hasPlugin) return await operation(candidate);
+        }
+        throw new Error("The LiveSync Vault renderer is unavailable.");
+    });
+}
 
 type DialogueMode = "desktop" | "mobile";
 
 type DialogueRunState = {
     done: boolean;
+    deviceNameRead?: boolean;
     error?: string;
     expected?: unknown;
     kind: string;
@@ -46,6 +64,14 @@ type LiveSyncTestPlugin = {
             createAllChunks(force: boolean): Promise<unknown>;
         };
         modules: SetupManagerHandle[];
+        services: {
+            setting: {
+                config: {
+                    getValue(key: string, defaultValue?: string): Promise<string>;
+                    setValue(key: string, value: string): Promise<void>;
+                };
+            };
+        };
         settings: Record<string, unknown>;
     };
 };
@@ -91,39 +117,63 @@ async function openRemoteSelectionDialogue(): Promise<void> {
 
 async function openP2PRemoteSelectionDialogueForInspection(): Promise<void> {
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        await page.evaluate((stateKey) => {
-            const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
-            if (plugin === undefined) throw new Error("Self-hosted LiveSync is not loaded");
-            const manager = plugin.core.modules.find((module) => module.constructor.name === "SetupManager");
-            if (
-                typeof manager?.onSelectServer !== "function" ||
-                typeof manager.onConfirmApplySettingsFromWizard !== "function"
-            ) {
-                throw new Error("Could not find the P2P setup workflow");
+        await page.evaluate(
+            async ({ stateKey, deviceNameKey, deviceName }) => {
+                const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+                if (plugin === undefined) throw new Error("Self-hosted LiveSync is not loaded");
+                const initialPeerName = plugin.core.settings.P2P_DevicePeerName;
+                if (typeof initialPeerName === "string" && initialPeerName.trim() !== "") {
+                    throw new Error("The P2P setup fixture unexpectedly has an initial device name.");
+                }
+                const manager = plugin.core.modules.find((module) => module.constructor.name === "SetupManager");
+                if (
+                    typeof manager?.onSelectServer !== "function" ||
+                    typeof manager.onConfirmApplySettingsFromWizard !== "function"
+                ) {
+                    throw new Error("Could not find the P2P setup workflow");
+                }
+                const config = plugin.core.services.setting.config;
+                await config.setValue(deviceNameKey, deviceName);
+                const originalGetValue = config.getValue;
+                const originalConfirm = manager.onConfirmApplySettingsFromWizard;
+                const state: DialogueRunState = {
+                    kind: "p2p-compatibility-settings",
+                    done: false,
+                    deviceNameRead: false,
+                };
+                (globalThis as unknown as Record<string, DialogueRunState>)[stateKey] = state;
+                config.getValue = async (key, defaultValue) => {
+                    const value = await originalGetValue.call(config, key, defaultValue);
+                    if (key === deviceNameKey && value === deviceName) state.deviceNameRead = true;
+                    return value;
+                };
+                manager.onConfirmApplySettingsFromWizard = async (settings: unknown) => {
+                    state.expected = settings;
+                    return true;
+                };
+                void manager
+                    .onSelectServer(plugin.core.settings, "unknown")
+                    .then(
+                        (result) => {
+                            state.result = result;
+                            state.done = true;
+                        },
+                        (error: unknown) => {
+                            state.error = error instanceof Error ? error.message : String(error);
+                            state.done = true;
+                        }
+                    )
+                    .finally(() => {
+                        manager.onConfirmApplySettingsFromWizard = originalConfirm;
+                        config.getValue = originalGetValue;
+                    });
+            },
+            {
+                stateKey: dialogRunStateKey,
+                deviceNameKey: SETTING_KEY_P2P_DEVICE_NAME,
+                deviceName: savedP2PDeviceName,
             }
-            const originalConfirm = manager.onConfirmApplySettingsFromWizard;
-            const state: DialogueRunState = { kind: "p2p-compatibility-settings", done: false };
-            (globalThis as unknown as Record<string, DialogueRunState>)[stateKey] = state;
-            manager.onConfirmApplySettingsFromWizard = async (settings: unknown) => {
-                state.expected = settings;
-                return true;
-            };
-            void manager
-                .onSelectServer(plugin.core.settings, "unknown")
-                .then(
-                    (result) => {
-                        state.result = result;
-                        state.done = true;
-                    },
-                    (error: unknown) => {
-                        state.error = error instanceof Error ? error.message : String(error);
-                        state.done = true;
-                    }
-                )
-                .finally(() => {
-                    manager.onConfirmApplySettingsFromWizard = originalConfirm;
-                });
-        }, dialogRunStateKey);
+        );
     });
 }
 
@@ -388,7 +438,7 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
             if (previousDialogue === null) {
                 throw new Error("The remote selection dialogue did not expose a close control.");
             }
-            await modal.locator(".modal-close-button").click({ timeout: uiTimeoutMs });
+            await modal.locator(".modal-close-button, .modal-header-button").last().click({ timeout: uiTimeoutMs });
             await page.waitForFunction((element) => !element.isConnected, previousDialogue, { timeout: uiTimeoutMs });
             await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
@@ -495,9 +545,21 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
                 has: page.locator(".modal-title").filter({ hasText: "P2P Configuration" }),
             });
             await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const peerName = modal.locator('input[name="p2p-device-peer-id"]');
+            await peerName.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await page.waitForFunction(
+                (expectedName) => {
+                    const input = document.querySelector('input[name="p2p-device-peer-id"]');
+                    return input instanceof HTMLInputElement && !input.disabled && input.value === expectedName;
+                },
+                savedP2PDeviceName,
+                { timeout: uiTimeoutMs }
+            );
+            if ((await peerName.inputValue()) !== savedP2PDeviceName) {
+                throw new Error("The saved P2P device name was not loaded before submitting the setup dialogue.");
+            }
             await modal.locator('input[name="p2p-room-id"]').fill("e2e-p2p-compatibility");
             await modal.locator('input[name="p2p-password"]').fill("e2e-passphrase");
-            await modal.locator('input[name="p2p-device-peer-id"]').fill("e2e-device");
 
             const compatibility = modal.locator("details").filter({
                 has: page.locator("summary").filter({ hasText: "Connection compatibility" }),
@@ -565,8 +627,7 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
                 { timeout: uiTimeoutMs }
             );
             const resetNotice = compatibility.locator(".sls-info-note-notice").filter({
-                hasText:
-                        "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.",
+                hasText: "TURN relay only requires TURN configuration. Connection path has been restored to Automatic.",
             });
             await resetNotice.waitFor({ state: "visible", timeout: uiTimeoutMs });
             await resetNotice
@@ -594,10 +655,16 @@ async function verifyP2PCompatibilitySettingsDialogue(): Promise<string> {
     });
 
     const state = await assertDialogueRunCompleted();
+    if (state.deviceNameRead !== true) {
+        throw new Error("The saved P2P device name was not read through setting.config.");
+    }
     if (state.result !== true || typeof state.expected !== "object" || state.expected === null) {
         throw new Error("The P2P compatibility settings were not passed to the setup workflow.");
     }
     const settings = state.expected as Record<string, unknown>;
+    if (settings.P2P_DevicePeerName !== savedP2PDeviceName) {
+        throw new Error("The saved P2P device name was not passed through the setup workflow.");
+    }
     if (settings.P2P_maxWirePayloadBytes !== 800 || settings.P2P_connectionPath !== "relay") {
         throw new Error(
             `The P2P compatibility choices did not round-trip through the setup dialogue: ${JSON.stringify({
@@ -672,15 +739,14 @@ async function verifyGenerateSetupUriDialogue(mode: DialogueMode): Promise<strin
                     const app = (globalThis as ObsidianTestGlobal).app;
                     return Boolean(
                         app?.plugins?.plugins["obsidian-livesync"]?.core?.settings.isConfigured &&
-                            app.commands?.commands?.[commandId]
+                        app.commands?.commands?.[commandId]
                     );
                 },
                 "obsidian-livesync:livesync-copysetupuri",
                 { timeout: uiTimeoutMs }
             );
             return await page.evaluate(
-                (commandId) =>
-                    (globalThis as ObsidianTestGlobal).app?.commands?.executeCommandById(commandId) === true,
+                (commandId) => (globalThis as ObsidianTestGlobal).app?.commands?.executeCommandById(commandId) === true,
                 "obsidian-livesync:livesync-copysetupuri"
             );
         });
@@ -714,7 +780,8 @@ async function verifyGenerateSetupUriDialogue(mode: DialogueMode): Promise<strin
                 timeout: uiTimeoutMs,
             });
             await choice.getByRole("button", { name: "Time-bound", exact: true }).waitFor({
-                state: "visible", timeout: uiTimeoutMs,
+                state: "visible",
+                timeout: uiTimeoutMs,
             });
             if (mode === "mobile") await assertMobileDialogueLayout(page, choice, "Setup URI availability dialogue");
             await choice.getByRole("button", { name: selected, exact: true }).click({ timeout: uiTimeoutMs });
@@ -866,6 +933,7 @@ async function verifyCompatibleAlignmentSettingDefault(): Promise<void> {
         if (!(await toggle.evaluate((element) => element.classList.contains("is-enabled")))) {
             throw new Error("The automatic compatible-setting policy was displayed as disabled while still undefined.");
         }
+        await settingsNavigator.close();
     });
 }
 
@@ -1094,9 +1162,10 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
     );
 
     await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
-        const liveSyncSettings = page.locator(".sls-setting");
+        const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        const liveSyncSettings = await settingsNavigator.openPage("Hatch");
         const logSetting = liveSyncSettings.locator(".setting-item").filter({
-            has: page.getByText("Write logs into the file", { exact: true }),
+            has: settingsNavigator.page.getByText("Write logs into the file", { exact: true }),
         });
         await logSetting.locator(".checkbox-container").click({ timeout: uiTimeoutMs });
         await page.waitForFunction(
@@ -1130,10 +1199,10 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
 
         // Saving a toggle refreshes the settings pane. Resolve the visible control again so the
         // second action does not target the detached pre-save element.
-        const refreshedLogToggle = page
-            .locator(".sls-setting:visible .setting-item:visible")
+        const refreshedLogToggle = liveSyncSettings
+            .locator(".setting-item:visible")
             .filter({
-                has: page.getByText("Write logs into the file", { exact: true }),
+                has: settingsNavigator.page.getByText("Write logs into the file", { exact: true }),
             })
             .locator(".checkbox-container:visible")
             .last();
@@ -1179,13 +1248,9 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
                 }
             };
         }, repairRunStateKey);
-        await page
-            .locator(".sls-setting:visible")
-            .last()
-            .getByRole("button", { name: "Recreate current chunks", exact: true })
-            .click({
-                timeout: uiTimeoutMs,
-            });
+        await liveSyncSettings.getByRole("button", { name: "Recreate current chunks", exact: true }).click({
+            timeout: uiTimeoutMs,
+        });
         await page.waitForFunction(
             (stateKey) =>
                 (globalThis as unknown as Record<string, DialogueRunState | undefined>)[stateKey]?.done === true,
@@ -1200,13 +1265,9 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
             throw new Error(`Recreate missing chunks failed: ${repairState.error}`);
         }
 
-        await page
-            .locator(".sls-setting:visible")
-            .last()
-            .getByRole("button", { name: "Begin inspection", exact: true })
-            .click({
-                timeout: uiTimeoutMs,
-            });
+        await liveSyncSettings.getByRole("button", { name: "Begin inspection", exact: true }).click({
+            timeout: uiTimeoutMs,
+        });
         await page
             .locator(".notice")
             .filter({ hasText: /^done$/u })
@@ -1214,6 +1275,7 @@ async function verifyHatchSurfacesAndSafeActions(): Promise<string> {
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
+        await settingsNavigator.close();
     });
 
     return screenshotPath;

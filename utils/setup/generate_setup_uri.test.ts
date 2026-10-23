@@ -1,6 +1,7 @@
 import {
   decodeSettingsFromSetupURI,
   DEFAULT_SETTINGS,
+  PREFERRED_JOURNAL_SYNC,
 } from "./livesync-commonlib.ts";
 import { generateSetupURI } from "./generate_setup_uri.ts";
 
@@ -55,8 +56,8 @@ Deno.test("generates an Object Storage Setup URI with a selected S3 profile", as
     "the Setup URI left the imported device unconfigured",
   );
   assert(
-    effective.customChunkSize === 10,
-    "the journal chunk-size preset was not applied",
+    effective.customChunkSize === PREFERRED_JOURNAL_SYNC.customChunkSize,
+    "the Object Storage Setup URI did not use its Commonlib journal chunk-size preference",
   );
   assert(
     effective.liveSync,
@@ -122,7 +123,7 @@ Deno.test("generates a random-room P2P Setup URI without copying a device identi
   );
   assert(
     effective.customChunkSize === 0,
-    "the P2P profile inherited the self-hosted CouchDB chunk-size recommendation",
+    "the P2P Setup URI did not retain its zero chunk-size value",
   );
   assert(
     effective.sendChunksBulkMaxSize === 1,

@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
         getRemoteStatus: ReturnType<typeof vi.fn>;
         getRemotePreferredTweakValues: ReturnType<typeof vi.fn>;
         getReplicationPBKDF2Salt: ReturnType<typeof vi.fn>;
+        getJoinedDevices: ReturnType<typeof vi.fn>;
+        forgetJoinedDevice: ReturnType<typeof vi.fn>;
         closeReplication: ReturnType<typeof vi.fn>;
     }>,
     objectStorage: [] as Array<{
@@ -20,6 +22,8 @@ const mocks = vi.hoisted(() => ({
         getRemoteStatus: ReturnType<typeof vi.fn>;
         getRemotePreferredTweakValues: ReturnType<typeof vi.fn>;
         getReplicationPBKDF2Salt: ReturnType<typeof vi.fn>;
+        getJoinedDevices: ReturnType<typeof vi.fn>;
+        forgetJoinedDevice: ReturnType<typeof vi.fn>;
         closeReplication: ReturnType<typeof vi.fn>;
     }>,
     checkSyncInfo: vi.fn(async () => true),
@@ -42,6 +46,8 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicato
         getRemoteStatus = vi.fn();
         getRemotePreferredTweakValues = vi.fn();
         getReplicationPBKDF2Salt = vi.fn();
+        getJoinedDevices = vi.fn();
+        forgetJoinedDevice = vi.fn();
         closeReplication = vi.fn();
 
         constructor(host: unknown) {
@@ -58,6 +64,8 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
         getRemoteStatus = vi.fn();
         getRemotePreferredTweakValues = vi.fn();
         getReplicationPBKDF2Salt = vi.fn();
+        getJoinedDevices = vi.fn();
+        forgetJoinedDevice = vi.fn();
         closeReplication = vi.fn();
 
         constructor(host: unknown) {
@@ -69,10 +77,12 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
 
 import {
     createCouchDBConnectionProbeFactory,
+    createCouchDBJoinedDevicesResourceFactory,
     createCouchDBPreferredTweakProbeFactory,
     createCouchDBSecuritySeedResourceFactory,
     createCouchDBSynchronisationInformationResourceFactory,
     createObjectStorageConnectionProbeFactory,
+    createObjectStorageJoinedDevicesResourceFactory,
     createObjectStoragePreferredTweakProbeFactory,
     createObjectStorageSecuritySeedResourceFactory,
 } from "./replicatorResources";
@@ -225,6 +235,65 @@ describe("replicator probe factories", () => {
         expect(connectionReplicator.getRemoteStatus).toHaveBeenCalledWith(snapshot);
         expect(preferredReplicator.getRemotePreferredTweakValues).toHaveBeenCalledWith(snapshot);
     });
+
+    it.each([
+        {
+            kind: "CouchDB",
+            remoteType: REMOTE_COUCHDB,
+            createFactory: createCouchDBJoinedDevicesResourceFactory,
+            instances: () => mocks.couchDB,
+        },
+        {
+            kind: "Object Storage",
+            remoteType: REMOTE_MINIO,
+            createFactory: createObjectStorageJoinedDevicesResourceFactory,
+            instances: () => mocks.objectStorage,
+        },
+    ])(
+        "keeps $kind joined-device operations on an owned settings snapshot",
+        async ({ remoteType, createFactory, instances }) => {
+            const host = { name: "host" };
+            const source = createSettings({ remoteType });
+            const snapshot = { ...source };
+            const factory = createFactory(host as never);
+            const resource = await factory(source);
+            const nextResource = await factory(source);
+            const [replicator, nextReplicator] = instances();
+            expect(instances()).toHaveLength(2);
+            expect(replicator.host).toBe(host);
+            expect(replicator.getJoinedDevices).not.toHaveBeenCalled();
+            expect(replicator.forgetJoinedDevice).not.toHaveBeenCalled();
+            const devices = {
+                milestonePresent: true,
+                locked: false,
+                cleaned: false,
+                devices: [{ id: "other", accepted: true }],
+            };
+            replicator.getJoinedDevices.mockResolvedValue(devices);
+            replicator.forgetJoinedDevice.mockResolvedValue("conflict");
+
+            source.couchDB_DBNAME = "changed-vault";
+            source.bucket = "changed-bucket";
+            await expect(resource.read()).resolves.toBe(devices);
+            await expect(resource.forget("other")).resolves.toBe("conflict");
+            expect(replicator.getJoinedDevices).toHaveBeenCalledWith(snapshot);
+            expect(replicator.getJoinedDevices.mock.calls[0][0]).not.toBe(source);
+            expect(replicator.forgetJoinedDevice).toHaveBeenCalledWith(snapshot, "other");
+
+            const failure = new Error("remote unavailable");
+            replicator.getJoinedDevices.mockRejectedValue(failure);
+            await expect(resource.read()).rejects.toBe(failure);
+            replicator.forgetJoinedDevice.mockRejectedValue(failure);
+            await expect(resource.forget("other")).rejects.toBe(failure);
+            const disposal = resource.dispose();
+            expect(resource.dispose()).toBe(disposal);
+            await disposal;
+            expect(replicator.closeReplication).toHaveBeenCalledOnce();
+            expect(nextReplicator.closeReplication).not.toHaveBeenCalled();
+            await nextResource.dispose();
+            expect(nextReplicator.closeReplication).toHaveBeenCalledOnce();
+        }
+    );
 
     it("shares one successful asynchronous disposal promise for every probe kind", async () => {
         const couchProbe = await createCouchDBPreferredTweakProbeFactory({} as never)(createSettings());

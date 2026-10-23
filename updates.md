@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### CLI
+
+- Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.
+
 ## 1.0.39
 
 20th October, 2026

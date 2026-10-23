@@ -372,13 +372,21 @@ async function restartAndResumeHarness(): Promise<string> {
         await harness
             .locator('[data-testid="review-harness-resumed"]')
             .waitFor({ state: "visible", timeout: uiTimeoutMs });
-        const continuationRemoved = await page.evaluate((stateKey) => {
+        const continuationRemoved = await page.evaluate(async (stateKey) => {
             const plugin = (globalThis as ReviewHarnessTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
             if (typeof plugin !== "object" || plugin === null || !("core" in plugin)) {
                 throw new Error("Self-hosted LiveSync is unavailable after restart.");
             }
-            const core = (plugin as { core: { services: { setting: { getSmallConfig(key: string): string } } } }).core;
-            return core.services.setting.getSmallConfig(stateKey) === "";
+            const core = (
+                plugin as {
+                    core: {
+                        services: {
+                            setting: { config: { getValue(key: string, defaultValue: string): Promise<string> } };
+                        };
+                    };
+                }
+            ).core;
+            return (await core.services.setting.config.getValue(stateKey, "")) === "";
         }, REVIEW_HARNESS_STATE_KEY);
         if (!continuationRemoved) throw new Error("The one-shot continuation was not removed before use.");
         await assertNoHorizontalOverflow(page, harness, { label: "resumed Review Harness" });

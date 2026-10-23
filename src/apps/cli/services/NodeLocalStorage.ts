@@ -1,115 +1,86 @@
+import { createDeletableValueStore, sanitiseValueStoreError, ValueStoreError } from "@vrtmrz/value-store";
+import type { ValueDeleter, ValueStore } from "@vrtmrz/value-store";
 import { fs as nodeFs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
-type LocalStorageShape = {
-    getItem(key: string): string | null;
-    setItem(key: string, value: string): void;
-    removeItem(key: string): void;
-    clear(): void;
-};
+type NodeLocalStorage = ValueStore & ValueDeleter;
 
-class PersistentNodeLocalStorage {
-    private storagePath: string | undefined;
-    private localStore: Record<string, string> = {};
+class JsonFileValueBackend {
+    private values: Map<string, string>;
 
-    configure(storagePath: string) {
-        if (this.storagePath === storagePath) {
-            return;
-        }
-        this.storagePath = storagePath;
-        this.loadFromFile();
+    constructor(private readonly storagePath: string) {
+        this.values = this.loadValues();
     }
 
-    private loadFromFile() {
-        if (!this.storagePath) {
-            this.localStore = {};
+    get(key: string): string | null {
+        return this.values.get(key) ?? null;
+    }
+
+    set(key: string, value: string): void {
+        const nextValues = new Map(this.values);
+        nextValues.set(key, value);
+        this.writeValues(nextValues);
+        this.values = nextValues;
+    }
+
+    delete(key: string): void {
+        if (!this.values.has(key)) {
             return;
         }
+        const nextValues = new Map(this.values);
+        nextValues.delete(key);
+        this.writeValues(nextValues);
+        this.values = nextValues;
+    }
+
+    private loadValues(): Map<string, string> {
+        let contents: string;
         try {
-            const loaded = JSON.parse(nodeFs.readFileSync(this.storagePath, "utf-8")) as Record<string, string>;
-            this.localStore = { ...loaded };
+            contents = nodeFs.readFileSync(this.storagePath, "utf-8");
+        } catch (error) {
+            if (isMissingFileError(error)) {
+                return new Map();
+            }
+            throw sanitiseValueStoreError(error);
+        }
+
+        let document: unknown;
+        try {
+            document = JSON.parse(contents);
         } catch {
-            this.localStore = {};
+            throw new ValueStoreError("invalid-data");
         }
+        if (document === null || typeof document !== "object" || Array.isArray(document)) {
+            throw new ValueStoreError("invalid-data");
+        }
+
+        const values = new Map<string, string>();
+        for (const [key, value] of Object.entries(document)) {
+            if (typeof value !== "string") {
+                throw new ValueStoreError("invalid-data");
+            }
+            values.set(key, value);
+        }
+        return values;
     }
 
-    private flushToFile() {
-        if (!this.storagePath) {
-            return;
-        }
+    private writeValues(values: ReadonlyMap<string, string>): void {
         nodeFs.mkdirSync(nodePath.dirname(this.storagePath), { recursive: true });
-        nodeFs.writeFileSync(this.storagePath, JSON.stringify(this.localStore, null, 2), "utf-8");
-    }
-
-    getItem(key: string): string | null {
-        return this.localStore[key] ?? null;
-    }
-
-    setItem(key: string, value: string) {
-        this.localStore[key] = value;
-        this.flushToFile();
-    }
-
-    removeItem(key: string) {
-        if (!(key in this.localStore)) {
-            return;
-        }
-        delete this.localStore[key];
-        this.flushToFile();
-    }
-
-    clear() {
-        this.localStore = {};
-        this.flushToFile();
+        nodeFs.writeFileSync(this.storagePath, JSON.stringify(Object.fromEntries(values), null, 2), "utf-8");
     }
 }
 
-const persistentNodeLocalStorage = new PersistentNodeLocalStorage();
-
-function createNodeLocalStorageShim(): LocalStorageShape {
-    return {
-        getItem(key: string) {
-            return persistentNodeLocalStorage.getItem(key);
-        },
-        setItem(key: string, value: string) {
-            persistentNodeLocalStorage.setItem(key, value);
-        },
-        removeItem(key: string) {
-            persistentNodeLocalStorage.removeItem(key);
-        },
-        clear() {
-            persistentNodeLocalStorage.clear();
-        },
-    };
-}
-
-export function ensureGlobalNodeLocalStorage() {
-    const g = compatGlobal as unknown as Record<string, unknown>;
-    if (
-        !("localStorage" in g) ||
-        typeof (g.localStorage as Record<string, unknown> | undefined)?.getItem !== "function"
-    ) {
-        g.localStorage = createNodeLocalStorageShim();
+function isMissingFileError(error: unknown): boolean {
+    if (typeof error !== "object" || error === null) {
+        return false;
+    }
+    try {
+        const code = Object.getOwnPropertyDescriptor(error, "code");
+        return code !== undefined && Object.prototype.hasOwnProperty.call(code, "value") && code.value === "ENOENT";
+    } catch {
+        return false;
     }
 }
 
-export function configureNodeLocalStorage(storagePath: string) {
-    persistentNodeLocalStorage.configure(storagePath);
-    ensureGlobalNodeLocalStorage();
-}
-
-export function getNodeLocalStorageItem(key: string): string {
-    return persistentNodeLocalStorage.getItem(key) ?? "";
-}
-
-export function setNodeLocalStorageItem(key: string, value: string) {
-    persistentNodeLocalStorage.setItem(key, value);
-}
-
-export function deleteNodeLocalStorageItem(key: string) {
-    persistentNodeLocalStorage.removeItem(key);
-}
-
-export function clearNodeLocalStorage() {
-    persistentNodeLocalStorage.clear();
+export function createNodeLocalStorage(storagePath: string): NodeLocalStorage {
+    return createDeletableValueStore(new JsonFileValueBackend(storagePath));
 }

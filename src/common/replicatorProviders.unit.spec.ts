@@ -44,7 +44,16 @@ describe("central Replicator provider definitions", () => {
     it("keeps the retained remote-resource catalogue bounded", () => {
         expect
             .soft(Object.values(REMOTE_RESOURCE_KINDS).sort())
-            .toEqual(["connection", "preferred-tweak", "security-seed", "synchronisation-information"].sort());
+            .toEqual(
+                [
+                    "connection",
+                    "initial-fetch-fast-forward",
+                    "joined-devices",
+                    "preferred-tweak",
+                    "security-seed",
+                    "synchronisation-information",
+                ].sort()
+            );
     });
 
     it("lets Journal prepare its own fresh Security Seed while CouchDB uses central preparation", () => {
@@ -106,8 +115,15 @@ describe("central Replicator provider definitions", () => {
         const couchAdministration = definitions.get(REMOTE_COUCHDB)?.centralRemoteAdministration;
         const objectAdministration = definitions.get(REMOTE_MINIO)?.centralRemoteAdministration;
 
-        expect(Object.keys(couchResources ?? {}).sort()).toEqual(Object.values(REMOTE_RESOURCE_KINDS).sort());
-        expect(Object.keys(objectResources ?? {}).sort()).toEqual(Object.values(REMOTE_RESOURCE_KINDS).sort());
+        const requiredResources = Object.values(REMOTE_RESOURCE_KINDS).filter(
+            (kind) => kind !== REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD
+        );
+        expect(Object.keys(couchResources ?? {}).sort()).toEqual(requiredResources.sort());
+        expect(Object.keys(objectResources ?? {}).sort()).toEqual(requiredResources.sort());
+        expect(couchResources?.[REMOTE_RESOURCE_KINDS.JOINED_DEVICES]?.kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);
+        expect(objectResources?.[REMOTE_RESOURCE_KINDS.JOINED_DEVICES]?.kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);
+        expect(couchResources?.[REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]).toBeUndefined();
+        expect(objectResources?.[REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]).toBeUndefined();
         expect(couchResources?.[REMOTE_RESOURCE_KINDS.CONNECTION].kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);
         expect(couchResources?.[REMOTE_RESOURCE_KINDS.PREFERRED_TWEAK].kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);
         expect(couchResources?.[REMOTE_RESOURCE_KINDS.SECURITY_SEED].kind).toBe(CAPABILITY_SUPPORT_KINDS.SUPPORTED);

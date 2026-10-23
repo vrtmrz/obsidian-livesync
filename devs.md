@@ -309,6 +309,8 @@ Existing legacy Modules continue to register their handlers in `onBindFunction()
   database and Replicator readiness. See
   [the declarative settings adapter ADR](docs/adr/2026_08_declarative_settings_adapter.md).
 - Use `this.services.setting.saveSettingData()` instead of using plugin methods directly
+- Inject `@vrtmrz/value-store` at host composition. `setting.deviceValues` uses exact device-local keys; `setting.config` and the Service Hub `config` share the existing Vault and database-suffix scope. Await reads, writes, and deletions before advancing the workflow. Browser and Obsidian hosts retain their Web Storage keys, and the CLI retains its existing flat JSON string map.
+- Seed the settings tab with `await settingTab.loadSettings()` before registration. Its editing buffer remains synchronous for Obsidian rendering; storage failures must not replace a previously loaded value with an empty default.
 
 ### Database Operations
 

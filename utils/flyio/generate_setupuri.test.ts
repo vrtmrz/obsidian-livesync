@@ -1,6 +1,7 @@
 import {
   decodeSettingsFromSetupURI,
   DEFAULT_SETTINGS,
+  PREFERRED_SETTING_SELF_HOSTED,
 } from "../setup/livesync-commonlib.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -38,7 +39,9 @@ Deno.test("generates a current self-hosted Setup URI through the published Commo
   const recoveryCode = stdout.match(/sls-id-v1:[0-9a-f]{64}/u)?.[0];
   assert(recoveryCode, "the generator did not print an ID recovery code");
   assert(
-    (effectiveSettings as typeof effectiveSettings & { idDerivationKey?: string }).idDerivationKey ===
+    (effectiveSettings as typeof effectiveSettings & {
+      idDerivationKey?: string;
+    }).idDerivationKey ===
       recoveryCode.slice("sls-id-v1:".length),
     "the CouchDB Setup URI did not contain the generated ID key",
   );
@@ -47,8 +50,9 @@ Deno.test("generates a current self-hosted Setup URI through the published Commo
     "the CouchDB Setup URI left the imported device unconfigured",
   );
   assert(
-    effectiveSettings.customChunkSize === 60,
-    "the Setup URI did not use the current self-hosted chunk-size recommendation",
+    effectiveSettings.customChunkSize ===
+      PREFERRED_SETTING_SELF_HOSTED.customChunkSize,
+    "the Setup URI did not use the self-hosted chunk-size preference from Commonlib",
   );
   assert(
     effectiveSettings.chunkSplitterVersion === "v3-rabin-karp",

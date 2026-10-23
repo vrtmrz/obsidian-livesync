@@ -88,6 +88,27 @@ describe("CLI database preparation", () => {
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
 
+    it("loads legacy device values and persists configuration through the service-owned store", async () => {
+        const localStoragePath = join(directory, ".livesync", "runtime", "local-storage.json");
+        await mkdir(join(directory, ".livesync", "runtime"), { recursive: true });
+        await writeFile(localStoragePath, JSON.stringify({ ["__proto__"]: "legacy value" }));
+        let legacyValue: string | null | undefined;
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            legacyValue = await core.services.setting.deviceValues.getValue("__proto__");
+            expect(core.services.config).toBe(core.services.setting.config);
+            await core.services.config.setValue("bootstrap-probe", "config value");
+            return false;
+        });
+
+        await start("ls", runner);
+
+        expect(legacyValue).toBe("legacy value");
+        const stored = JSON.parse(await readFile(localStoragePath, "utf-8")) as Record<string, string>;
+        expect(Object.prototype.hasOwnProperty.call(stored, "__proto__")).toBe(true);
+        expect(stored["__proto__"]).toBe("legacy value");
+        expect(Object.values(stored)).toContain("config value");
+    });
+
     it.each([REMOTE_P2P, REMOTE_COUCHDB])(
         "restores configured P2P automation before the host connects (%s)",
         async (remoteType) => {

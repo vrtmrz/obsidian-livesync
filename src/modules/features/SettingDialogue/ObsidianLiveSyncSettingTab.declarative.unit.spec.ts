@@ -1,3 +1,4 @@
+import { MemoryValueStore } from "@vrtmrz/value-store";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { SettingDefinitionGroup, SettingDefinitionItem, SettingDefinitionPage } from "obsidian";
@@ -158,6 +159,7 @@ function createSettingsTab(options: SettingsTabOptions = {}): ObsidianLiveSyncSe
         },
         services: {
             setting: {
+                deviceValues: new MemoryValueStore(),
                 getDeviceAndVaultName: vi.fn(() => ""),
                 saveSettingData: vi.fn(async () => undefined),
             },
@@ -457,7 +459,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         expect(runtime.pageCleanup).toHaveBeenCalledOnce();
     });
 
-    it("rebuilds the catalogue when an externally loaded setting changes page visibility", () => {
+    it("rebuilds the catalogue when an externally loaded setting changes page visibility", async () => {
         const tab = createSettingsTab();
         const changeLog = findPage(tab, "Change Log");
         if (!changeLog.page) {
@@ -466,7 +468,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         changeLog.page().display();
         tab.core.settings.usePowerUserMode = !tab.editingSettings.usePowerUserMode;
 
-        tab.requestReload();
+        await tab.requestReload();
 
         expect(tab.update).toHaveBeenCalledOnce();
     });
@@ -480,7 +482,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         expect(tab.update).toHaveBeenCalledOnce();
     });
 
-    it("rebuilds translated catalogue names when the display language changes externally", () => {
+    it("rebuilds translated catalogue names when the display language changes externally", async () => {
         const tab = createSettingsTab();
         const changeLog = findPage(tab, "Change Log");
         if (!changeLog.page) {
@@ -489,12 +491,12 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         changeLog.page().display();
         tab.core.settings.displayLanguage = "ja";
 
-        tab.requestReload();
+        await tab.requestReload();
 
         expect(tab.update).toHaveBeenCalledOnce();
     });
 
-    it("rebuilds the catalogue after accepting an external page-visibility setting over a dirty value", () => {
+    it("rebuilds the catalogue after accepting an external page-visibility setting over a dirty value", async () => {
         const tab = createSettingsTab();
         const changeLog = findPage(tab, "Change Log");
         if (!changeLog.page) {
@@ -505,7 +507,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         tab.editingSettings.usePowerUserMode = true;
         tab.core.settings.usePowerUserMode = true;
 
-        tab.requestReload();
+        await tab.requestReload();
         const configureAnchor = vi.mocked(tab.core.confirm.askInPopup).mock.calls[0]?.[2];
         expect(configureAnchor).toBeTypeOf("function");
         let acceptExternalSetting: (() => void) | undefined;

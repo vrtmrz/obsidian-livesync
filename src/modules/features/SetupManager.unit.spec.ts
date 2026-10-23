@@ -1,3 +1,4 @@
+import { MemoryValueStore } from "@vrtmrz/value-store";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
@@ -37,11 +38,6 @@ import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/
 import { SetupManager, UserMode } from "./SetupManager";
 
 class TestSettingService extends SettingService<ServiceContext> {
-    protected setItem(_key: string, _value: string): void {}
-    protected getItem(_key: string): string {
-        return "";
-    }
-    protected deleteItem(_key: string): void {}
     protected saveData(_setting: ObsidianLiveSyncSettings): Promise<void> {
         return Promise.resolve();
     }
@@ -65,6 +61,7 @@ function createLegacyRemoteSetting(): ObsidianLiveSyncSettings {
 
 function createSetupManager() {
     const setting = new TestSettingService(new ServiceContext(), {
+        deviceValues: new MemoryValueStore(),
         APIService: {
             getSystemVaultName: vi.fn(() => "vault"),
             getAppID: vi.fn(() => "app"),
