@@ -7,6 +7,9 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.":
+        "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.",
+    "Hidden File Sync initialisation was not started.": "Hidden File Sync initialisation was not started.",
     "Preparing follow-up report…": "Preparing follow-up report…",
     "Cancelling local search. Checked ${COUNT} entries.": "Cancelling local search. Checked ${COUNT} entries.",
     "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.":
