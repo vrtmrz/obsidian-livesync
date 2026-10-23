@@ -19,3 +19,4 @@ export {
     createCouchDBJoinedDevicesResourceFactory,
     createObjectStorageJoinedDevicesResourceFactory,
 } from "./joinedDevices";
+export { createCouchDBInitialFetchFastForwardResourceFactory } from "./initialFetchFastForward";

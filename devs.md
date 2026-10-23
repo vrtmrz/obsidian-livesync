@@ -204,6 +204,9 @@ The [multiple-device conflict test procedure](test/README.md#multiple-device-con
 
 ### File Structure Conventions
 
+- **Class modules**: Start a new or renamed TypeScript or JavaScript filename with an upper-case letter when the file contains a class with the same name.
+- **Function modules**: Start the filename with a lower-case letter when the module primarily exports functions, such as `initialFetchFastForward.ts`. Follow the surrounding filename style for the rest of the basename. Corresponding test files use the same basename.
+- **Existing files**: Retain established names for unrelated files and separate conventions for components or other file types.
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
 - **Development code**: Use `.dev.ts` suffix (replaced with `.prod.ts` in production)
 - **Path aliases**: `@/*` maps to `src/*`; Commonlib uses package exports rather than a source alias

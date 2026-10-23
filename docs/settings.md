@@ -938,6 +938,18 @@ Setting key: hashCacheMaxAmount
 
 Setting key: customChunkSize
 
+New setup uses 0 for every remote type. With V3 Rabin–Karp, this gives binary
+Chunks a 100 KiB maximum, a 25 KiB minimum, and an approximate 25 KiB candidate
+gap. The candidate gap is not the mean Chunk length. Text below 4 MiB retains
+adaptive smaller boundaries; large text uses the binary thresholds with
+UTF-8-safe cuts.
+
+Larger values can reduce document counts for mostly immutable binary files,
+but can increase the new content stored after an edit. Existing explicit and
+agreed values are retained. Updating the plug-in does not re-chunk the Vault;
+editing, forced writes, Chunk recreation, or a full Rebuild can create new
+boundaries while existing content remains readable.
+
 #### Chunk Splitter
 
 Setting key: chunkSplitterVersion
@@ -959,7 +971,10 @@ If this enabled, chunks will be split into semantically meaningful segments. Not
 #### Fetch chunks on demand
 
 Setting key: readChunksOnline
-(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.
+If enabled, this plug-in obtains missing Chunks when they are needed instead
+of including all Chunks in ordinary pull replication. New setup retains the
+same Chunk-size recommendation of 0. This setting does not re-chunk content
+already stored by another device.
 
 #### Batch size of on-demand fetching
 
@@ -1012,12 +1027,18 @@ The setting remains disabled by default because the measured storage and transfe
 #### Batch size
 
 Setting key: batch_size
-Number of changes to sync at a time. Defaults to 50. Minimum is 2.
+Number of changes in an ordinary CouchDB replication batch. The schema default
+is 25, and the minimum is 2. Changing this value alone preserves the
+replication checkpoint. Larger counts can reduce round trips, but do not bound
+the final request size or memory use.
 
 #### Batch limit
 
 Setting key: batches_limit
-Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.
+Number of changes batches which PouchDB can read ahead. The schema default is
+25, and the minimum is 2. This does not create parallel body transfers;
+PouchDB processes one current replication batch at a time. It does not control
+the separate P2P or Object Storage transfer units.
 
 #### Use timeouts instead of heartbeats
 

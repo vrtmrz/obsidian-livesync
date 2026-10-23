@@ -10,8 +10,14 @@ function assert(condition: unknown, message: string): asserts condition {
 
 Deno.test("generates a current self-hosted Setup URI through the published Commonlib contract", async () => {
   const scriptPath = new URL("./generate_setupuri.ts", import.meta.url);
+  const candidateConfig = Deno.env.get("LIVESYNC_TEST_COMMONLIB_CONFIG");
   const command = new Deno.Command(Deno.execPath(), {
-    args: ["run", "-A", scriptPath.pathname],
+    args: [
+      "run",
+      "-A",
+      ...(candidateConfig ? ["--config", candidateConfig, "--no-lock"] : []),
+      scriptPath.pathname,
+    ],
     env: {
       hostname: "https://couch.example.test",
       username: "alice",
