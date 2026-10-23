@@ -106,7 +106,7 @@ export function paneRemoteConfig(
         .setName($msg("Joined devices"))
         .setDesc($msg("Review device records for the active CouchDB or Object Storage connection."))
         .addButton((button) =>
-            button.setButtonText($msg("Open")).onClick(async () => {
+            button.setButtonText($msg("Review devices")).onClick(async () => {
                 const result = await this.services.UI.commands.invoke(OPEN_JOINED_DEVICES, undefined);
                 if (result.status === "unavailable" || result.value === "unavailable") {
                     this.services.API.addLog(

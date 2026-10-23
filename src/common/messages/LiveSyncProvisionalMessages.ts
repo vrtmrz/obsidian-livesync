@@ -26,8 +26,8 @@ export const liveSyncProvisionalEnglishMessages = {
         "This remote does not currently have a record of joined devices.",
     "This list shows device information recorded by the remote. It does not show whether a device is online now.":
         "This list shows device information recorded by the remote. It does not show whether a device is online now.",
-    "This device is locked out. Use the existing recovery process to join again.":
-        "This device is locked out. Use the existing recovery process to join again.",
+    "This device has been locked out. Use the existing recovery process to join again.":
+        "This device has been locked out. Use the existing recovery process to join again.",
     "This device": "This device",
     "This remote has been cleaned. Use the existing recovery process to join devices again as needed.":
         "This remote has been cleaned. Use the existing recovery process to join devices again as needed.",
@@ -42,10 +42,10 @@ export const liveSyncProvisionalEnglishMessages = {
     Refresh: "Refresh",
     "Plug-in version": "Plug-in version",
     Platform: "Platform",
-    "Other joined devices last reported an older plug-in version: ${versions}.":
-        "Other joined devices last reported an older plug-in version: ${versions}.",
-    "Other joined devices last reported a newer plug-in version: ${versions}.":
-        "Other joined devices last reported a newer plug-in version: ${versions}.",
+    "An older plug-in version was detected in other device records: ${versions}. We recommend checking whether those devices need updating.":
+        "An older plug-in version was detected in other device records: ${versions}. We recommend checking whether those devices need updating.",
+    "A newer plug-in version was detected in other device records: ${versions}. We recommend checking whether this device needs updating.":
+        "A newer plug-in version was detected in other device records: ${versions}. We recommend checking whether this device needs updating.",
     Open: "Open",
     "Not recorded": "Not recorded",
     "Not accepted": "Not accepted",
@@ -58,6 +58,7 @@ export const liveSyncProvisionalEnglishMessages = {
     "Joined devices are available after database startup with an active CouchDB or Object Storage connection.":
         "Joined devices are available after database startup with an active CouchDB or Object Storage connection.",
     "Joined devices": "Joined devices",
+    "Review devices": "Review devices",
     "Forgetting…": "Forgetting…",
     "Forgetting the record does not delete Vault files or revoke credentials.":
         "Forgetting the record does not delete Vault files or revoke credentials.",

@@ -176,7 +176,7 @@
                         {#if device.self && device.lockedOut}
                             <p class="state-message">
                                 {translate(
-                                    "This device is locked out. Use the existing recovery process to join again."
+                                    "This device has been locked out. Use the existing recovery process to join again."
                                 )}
                             </p>
                         {/if}

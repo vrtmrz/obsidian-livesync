@@ -236,7 +236,7 @@ The active connection type. This is automatically projected to the legacy config
 
 ### Joined devices
 
-Open **Joined devices** to read the device records on the active CouchDB or Object Storage connection. The same dialogue is available from the command palette and version Notices. **Refresh** reads the remote again. This device appears first, including when its record is absent from the remote. Opening or refreshing this dialogue does not create a missing CouchDB database.
+Choose **Review devices** under **Joined devices** to read the device records on the active CouchDB or Object Storage connection. The same **Review devices** action is available from the command palette and version Notices. **Refresh** reads the remote again. This device appears first, including when its record is absent from the remote. Opening or refreshing this dialogue does not create a missing CouchDB database.
 
 The list shows each device ID, recorded platform, plug-in version, app version, and last recorded connection time. Older clients may have incomplete information. These records do not establish whether a device is online. On a locked remote, a device outside the accepted list is shown as **Locked out**.
 

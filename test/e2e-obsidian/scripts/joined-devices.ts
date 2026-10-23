@@ -1,3 +1,5 @@
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { DEVICE_ID_PREFERRED, MILESTONE_DOCID, NODEINFO_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
@@ -27,12 +29,7 @@ import {
 } from "@vrtmrz/obsidian-test-session";
 import { iPhoneSafeArea, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import {
-    captureObsidianDialogue,
-    openLiveSyncSettings,
-    waitForVisibleObsidianDialogue,
-    withObsidianPage,
-} from "../runner/ui.ts";
+import { openLiveSyncSettings, waitForVisibleObsidianDialogue, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 import type { Locator, Page } from "playwright";
 
@@ -161,7 +158,9 @@ function createFixture(self: SelfDeviceInfo): DeviceFixture {
 async function openFromRemoteSettings(page: Page): Promise<Locator> {
     const settings = await openLiveSyncSettings(page, uiTimeoutMs);
     const remoteConfiguration = await settings.openPage("Remote Configuration");
-    await remoteConfiguration.getByRole("button", { name: "Open", exact: true }).click({ timeout: uiTimeoutMs });
+    await remoteConfiguration
+        .getByRole("button", { name: "Review devices", exact: true })
+        .click({ timeout: uiTimeoutMs });
     const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
     await dialogue.getByText(targetId, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
     return dialogue;
@@ -185,7 +184,7 @@ async function assertInitialDialogue(dialogue: Locator, self: SelfDeviceInfo, pa
     await selfCard.getByText("Locked out", { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
     await selfCard.getByText("Not accepted", { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
     await selfCard
-        .getByText("This device is locked out.", { exact: false })
+        .getByText("This device has been locked out.", { exact: false })
         .waitFor({ state: "visible", timeout: uiTimeoutMs });
     await assertDetail(selfCard, "Platform", self.platform);
     await assertDetail(selfCard, "Plug-in version", self.pluginVersion);
@@ -339,6 +338,27 @@ async function dismissNotices(page: Page): Promise<void> {
     assertEqual(await notices.count(), 0, "Notices still obscured the dialogue screenshot.");
 }
 
+async function captureJoinedDevices(
+    port: number,
+    filename: string,
+    assertReady: (page: Page) => Promise<Locator>
+): Promise<void> {
+    const outputDirectory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+    await mkdir(outputDirectory, { recursive: true });
+    await withObsidianPage(port, async (page) => {
+        try {
+            const dialogue = await assertReady(page);
+            await dialogue.page().screenshot({ path: join(outputDirectory, filename), fullPage: true });
+        } catch (error) {
+            const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", 500).catch(() => undefined);
+            const failurePath = join(outputDirectory, filename.replace(/\.png$/u, ".failure.png"));
+            await (dialogue?.page() ?? page).screenshot({ path: failurePath, fullPage: true }).catch(() => undefined);
+            console.error(`Joined devices UI failure screenshot: ${failurePath}`);
+            throw error;
+        }
+    });
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -381,24 +401,35 @@ async function main(): Promise<void> {
         assert(Boolean(preparedMilestone._rev), "Remote preparation did not create a revisioned milestone document.");
         await putCouchDbDocument(couchDb, dbName, { ...fixture.milestone, _rev: preparedMilestone._rev });
 
-        await captureObsidianDialogue(session.remoteDebuggingPort, "joined-devices-notice.png", async (page) => {
-            await page.setViewportSize({ width: 1280, height: 1100 });
+        await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-notice.png", async (page) => {
             const dialogue = await openFromRemoteSettings(page);
-            await assertInitialDialogue(dialogue, self, page);
-            await page
+            const dialoguePage = dialogue.page();
+            await dialoguePage.setViewportSize({ width: 1280, height: 1100 });
+            await assertInitialDialogue(dialogue, self, dialoguePage);
+            await dialoguePage
                 .locator(".notice")
-                .getByText("Other joined devices last reported a newer plug-in version: 999.0.0.", { exact: true })
+                .getByText(
+                    "A newer plug-in version was detected in other device records: 999.0.0. We recommend checking whether this device needs updating.",
+                    { exact: true }
+                )
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            return dialogue;
         });
-        await captureObsidianDialogue(session.remoteDebuggingPort, "joined-devices-desktop.png", async (page) => {
+        await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-desktop.png", async (page) => {
             const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
             await dialogue.getByRole("button", { name: "Close", exact: true }).click({ timeout: uiTimeoutMs });
-            await page.locator(".notice").getByRole("button", { name: "Joined devices", exact: true }).first().click();
+            await dialogue
+                .page()
+                .locator(".notice")
+                .getByRole("button", { name: "Review devices", exact: true })
+                .first()
+                .click();
             const reopened = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
             await reopened.getByText(targetId, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await dismissNotices(page);
+            await dismissNotices(reopened.page());
+            return reopened;
         });
-        await captureObsidianDialogue(
+        await captureJoinedDevices(
             session.remoteDebuggingPort,
             "joined-devices-forget-confirmation.png",
             async (page) => {
@@ -406,12 +437,14 @@ async function main(): Promise<void> {
                 const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
                 await showForgetConfirmation(dialogue);
                 await deviceCard(dialogue, targetId).locator(".forget-confirmation").scrollIntoViewIfNeeded();
+                return dialogue;
             }
         );
-        await captureObsidianDialogue(session.remoteDebuggingPort, "joined-devices-after-forget.png", async (page) => {
+        await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-after-forget.png", async (page) => {
             const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
             await confirmForgetTarget(dialogue);
             await dialogue.locator(".modal-content").evaluate((element) => element.scrollTo(0, 0));
+            return dialogue;
         });
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
@@ -423,7 +456,7 @@ async function main(): Promise<void> {
 
         await setObsidianMobileTestMode(session.remoteDebuggingPort, true, uiTimeoutMs);
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
-        await captureObsidianDialogue(session.remoteDebuggingPort, "joined-devices-mobile.png", async (page) => {
+        await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-mobile.png", async (page) => {
             const opened = await page.evaluate((id) => {
                 const app = (
                     window as typeof window & {
@@ -435,13 +468,14 @@ async function main(): Promise<void> {
             assert(opened, "The Joined devices command did not open the dialogue.");
             const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
             await dialogue.getByText(retainedId, { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await assertScrollableMobileDialogue(page, dialogue);
+            await assertScrollableMobileDialogue(dialogue.page(), dialogue);
             assertEqual(
                 await dialogue.locator(".device-card").count(),
                 2,
                 "The refreshed mobile list did not retain both remaining devices."
             );
-            await dismissNotices(page);
+            await dismissNotices(dialogue.page());
+            return dialogue;
         });
 
         console.log(`Joined devices scenario passed against CouchDB database ${dbName}.`);

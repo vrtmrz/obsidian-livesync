@@ -27,9 +27,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Added
 
-- We can review participating devices through **Joined devices** in Remote Configuration, the command palette, or a version Notice.
+- We can choose **Review devices** in Remote Configuration, the command palette, or a version Notice to review participating devices.
     - Our device appears first, with its lockout state. Other records show the platform, plug-in version, app version, and last recorded connection time when available.
-    - Advisory Notices help us find devices which last reported newer or older plug-in versions.
+    - Advisory Notices highlight newer or older plug-in versions detected in device records and help us check which devices may need updating.
 - We can forget records belonging to lost or retired devices while preserving the remote lock state and other devices.
     - Forgetting a record does not delete Vault files or revoke credentials. A returning device can register again on an unlocked remote.
 

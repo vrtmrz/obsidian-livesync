@@ -62,14 +62,20 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
             notices.setItem(noticeGroup, direction, {
                 message:
                     direction === "newer"
-                        ? $msg("Other joined devices last reported a newer plug-in version: ${versions}.", {
-                              versions: versions.join(", "),
-                          })
-                        : $msg("Other joined devices last reported an older plug-in version: ${versions}.", {
-                              versions: versions.join(", "),
-                          }),
+                        ? $msg(
+                              "A newer plug-in version was detected in other device records: ${versions}. We recommend checking whether this device needs updating.",
+                              {
+                                  versions: versions.join(", "),
+                              }
+                          )
+                        : $msg(
+                              "An older plug-in version was detected in other device records: ${versions}. We recommend checking whether those devices need updating.",
+                              {
+                                  versions: versions.join(", "),
+                              }
+                          ),
                 action: {
-                    label: $msg("Joined devices"),
+                    label: $msg("Review devices"),
                     onSelect: () => {
                         if (!disposed && identity === remoteIdentity(services.setting.currentSettings())) {
                             void services.UI.commands.invoke(OPEN_JOINED_DEVICES, undefined);
@@ -190,7 +196,7 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
     services.appLifecycle.onInitialise.addHandler(() => {
         services.API.addCommand({
             id: "joined-devices",
-            name: $msg("Joined devices"),
+            name: $msg("Review devices"),
             icon: "monitor-smartphone",
             checkCallback: (checking) => {
                 if (!available()) return false;
