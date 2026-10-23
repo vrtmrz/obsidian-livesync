@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Hidden File Sync
+
+#### Fixed
+
+- We can synchronise selected hidden files while the normal-file allow-list is set. (#1272)
+    - Normal-file exclusion patterns still apply to hidden files, and the Selector descriptions now explain their scope.
+
 ## 1.0.39
 
 20th October, 2026

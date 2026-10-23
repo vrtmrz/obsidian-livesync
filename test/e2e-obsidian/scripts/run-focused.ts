@@ -39,6 +39,7 @@ const focusedScenarios = new Set([
     "two-vault-sync",
     "security-seed-reconnect",
     "hidden-file-snippet-sync",
+    "hidden-file-selectors",
     "customisation-sync",
     "received-change-readiness",
     "internal-metadata-doctor",
