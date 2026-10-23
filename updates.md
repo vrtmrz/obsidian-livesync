@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Fixed
+
+- We receive a clear Notice when **Automatic** requires Hidden File Sync to be enabled on this device. Our existing mode remains unchanged, and hidden-file initialisation cannot start while the feature is disabled. (#1270)
+- We can initialise a whole plug-in's **MAIN** and **DATA** selections using the chosen Automatic initial action.
+
 ## 1.0.39
 
 20th October, 2026
