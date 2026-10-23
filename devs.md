@@ -118,6 +118,16 @@ Shared synchronisation code is compiled and typed by the `@vrtmrz/livesync-commo
 
 Changes spanning both repositories must first produce a packed Commonlib artefact which passes its standalone package checks. Install that exact artefact in LiveSync, then run the LiveSync type checks, unit tests, application builds, CLI E2E, and any focused real-Obsidian E2E required by the changed boundary. Replace the temporary artefact reference with the reviewed immutable package version before release.
 
+#### Testing library commits in CI
+
+The [`library-preview.yml`](.github/workflows/library-preview.yml) workflow can be dispatched in this repository or called from another workflow. Both entry points accept the same optional string inputs:
+
+- `commonlib_sha`: a full, lowercase, 40-character source commit SHA from `vrtmrz/livesync-commonlib`, or blank to keep the Commonlib package version already recorded in the lockfile;
+- `kit_sha`: a full, lowercase, 40-character source commit SHA from `vrtmrz/fancy-kit`, or blank to keep the Kit packages already recorded in the lockfile; and
+- `consumer_sha`: a full, lowercase, 40-character Self-hosted LiveSync commit SHA to validate. When blank, the workflow uses the caller's `github.sha` only if the caller repository is `vrtmrz/obsidian-livesync`; callers from other repositories must supply it.
+
+The workflow rejects non-empty values which are not full lowercase SHAs before checking out the selected consumer commit. Reusable workflow callers must grant `actions: read` and `contents: read`. It installs requested package previews from their matching successful CI runs, then runs `npm ci`, the LiveSync type check and unit tests, the plug-in and application builds, and the CLI `setup-put-cat` contract test. A blank library SHA leaves that dependency on its normal lockfile package. The Fancy Kit install action is pinned independently from `kit_sha`.
+
 ## Architecture
 
 The [Project glossary](docs/glossary.md#developer-and-design-terms) defines the
