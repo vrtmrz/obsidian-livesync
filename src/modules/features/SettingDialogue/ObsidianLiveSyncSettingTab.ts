@@ -52,7 +52,6 @@ import {
     type PageFunctions,
     type UpdateFunction,
 } from "./SettingPane.ts";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
 import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replication/journal/objectstore/MinioStorageAdapter";
 import { closeObsidianSettings } from "@/common/obsidianSettings.ts";
@@ -99,6 +98,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         return this.core.services;
     }
     selectedScreen = "";
+
+    private localConfigurationPassphrase = "";
+    private localSettingsReadVersion = 0;
 
     _editingSettings?: AllSettings;
     // Buffered Settings for editing
@@ -162,8 +164,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     async saveLocalSetting(key: keyof typeof OnDialogSettingsDefault) {
         if (key == "deviceAndVaultName") {
             this.services.setting.setDeviceAndVaultName(this.editingSettings?.[key] ?? "");
-            this.services.setting.saveDeviceAndVaultName();
-            return await Promise.resolve();
+            await this.services.setting.saveDeviceAndVaultName();
         }
     }
     /**
@@ -225,6 +226,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             appliedConfigurationEncryption.configPassphrase
         );
 
+        if (appliedConfigurationEncryption.configPassphraseStore === "LOCALSTORAGE") {
+            this.localSettingsReadVersion++;
+            this.localConfigurationPassphrase = appliedConfigurationEncryption.configPassphrase;
+        }
         this.copySettingValue(this.initialSettings, appliedConfigurationEncryption, "configPassphraseStore");
         this.copySettingValue(this.initialSettings, appliedConfigurationEncryption, "configPassphrase");
     }
@@ -285,9 +290,21 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         }
     }
 
+    private async readLocalSettings(): Promise<boolean> {
+        const version = ++this.localSettingsReadVersion;
+        const passphrase = await this.services.setting.deviceValues.getValue("ls-setting-passphrase", "");
+        if (version !== this.localSettingsReadVersion) return false;
+        this.localConfigurationPassphrase = passphrase;
+        return true;
+    }
+
+    async loadSettings(): Promise<void> {
+        if (await this.readLocalSettings()) this.reloadAllSettings(true);
+    }
+
     reloadAllLocalSettings() {
         const ret = { ...OnDialogSettingsDefault };
-        ret.configPassphrase = compatGlobal.localStorage.getItem("ls-setting-passphrase") || "";
+        ret.configPassphrase = this.localConfigurationPassphrase;
         ret.preset = "";
         ret.deviceAndVaultName = this.services.setting.getDeviceAndVaultName();
         return ret;
@@ -402,7 +419,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         this.plugin = plugin;
         Setting.env = this;
         eventHub.onEvent(EVENT_REQUEST_RELOAD_SETTING_TAB, () => {
-            this.requestReload();
+            void this.requestReload().catch((error: unknown) => Logger(error, LOG_LEVEL_NOTICE));
         });
         this.addOnSaved("displayLanguage", () => this.requestCatalogueRefresh());
         this.addOnSaved("showStatusOnEditor", () => eventHub.emitEvent(EVENT_ON_UNRESOLVED_ERROR));
@@ -545,7 +562,8 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         );
     }
 
-    requestReload() {
+    async requestReload(): Promise<void> {
+        if (!(await this.readLocalSettings())) return;
         const nativeTabIsShown =
             this.supportsDeclarativeSettings() && this.containerEl !== undefined && this.containerEl.isShown();
         if (this.isShown || nativeTabIsShown) {

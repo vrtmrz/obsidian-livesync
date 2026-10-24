@@ -5,10 +5,10 @@ export {
   decodeSettingsFromSetupURI,
   encodeTimeBoundSetupURI,
   isTimeBoundSetupURIUsableNow,
-} from "npm:@vrtmrz/livesync-commonlib@0.1.34/setup-uri";
-export type { TimeBoundSetupURIMode } from "npm:@vrtmrz/livesync-commonlib@0.1.34/setup-uri";
-export { generateP2PRoomId } from "npm:@vrtmrz/livesync-commonlib@0.1.34/compat/common/utils";
-export { upsertRemoteConfigurationInPlace } from "npm:@vrtmrz/livesync-commonlib@0.1.34/remote-configurations";
+} from "npm:@vrtmrz/livesync-commonlib@0.2.0/setup-uri";
+export type { TimeBoundSetupURIMode } from "npm:@vrtmrz/livesync-commonlib@0.2.0/setup-uri";
+export { generateP2PRoomId } from "npm:@vrtmrz/livesync-commonlib@0.2.0/compat/common/utils";
+export { upsertRemoteConfigurationInPlace } from "npm:@vrtmrz/livesync-commonlib@0.2.0/remote-configurations";
 export {
   createNewVaultSettings,
   DEFAULT_SETTINGS,
@@ -16,5 +16,5 @@ export {
   PREFERRED_BASE,
   PREFERRED_JOURNAL_SYNC,
   PREFERRED_SETTING_SELF_HOSTED,
-} from "npm:@vrtmrz/livesync-commonlib@0.1.34/settings";
-export type { ObsidianLiveSyncSettings } from "npm:@vrtmrz/livesync-commonlib@0.1.34/settings";
+} from "npm:@vrtmrz/livesync-commonlib@0.2.0/settings";
+export type { ObsidianLiveSyncSettings } from "npm:@vrtmrz/livesync-commonlib@0.2.0/settings";

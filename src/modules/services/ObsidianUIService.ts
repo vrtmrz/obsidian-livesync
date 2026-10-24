@@ -1,4 +1,4 @@
-import type { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService";
+import type { IConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { AppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
 import type { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
@@ -8,7 +8,7 @@ import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy
 import type { IAPIService, IControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 export type ObsidianUIServiceDependencies<T extends ObsidianServiceContext = ObsidianServiceContext> = {
     appLifecycle: AppLifecycleService<T>;
-    config: ConfigService<T>;
+    config: IConfigService;
     replicator: ReplicatorService<T>;
     APIService: IAPIService;
     control: IControlService;

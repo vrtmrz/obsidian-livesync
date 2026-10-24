@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
     buttonClasses: [] as string[],
-    clickHandlers: [] as Array<() => Promise<void> | void>,
+    clickHandlers: [] as Array<{ setting: string; run: () => Promise<void> | void }>,
     panels: [] as Array<{ destroy: ReturnType<typeof vi.fn> }>,
     settingClasses: [] as string[],
 }));
@@ -32,7 +32,10 @@ vi.mock("./LiveSyncSetting.ts", () => ({
             },
         };
 
-        setName() {
+        settingName = "";
+
+        setName(name: string) {
+            this.settingName = name;
             return this;
         }
 
@@ -41,6 +44,7 @@ vi.mock("./LiveSyncSetting.ts", () => ({
         }
 
         addButton(callback: (button: unknown) => void) {
+            const setting = this.settingName;
             const button = {
                 buttonEl: {
                     classList: {
@@ -53,7 +57,7 @@ vi.mock("./LiveSyncSetting.ts", () => ({
                     return this;
                 },
                 onClick(callback: () => Promise<void> | void) {
-                    runtime.clickHandlers.push(callback);
+                    runtime.clickHandlers.push({ setting, run: callback });
                     return this;
                 },
                 setButtonText() {
@@ -107,6 +111,7 @@ vi.mock("./remoteConfigBuffer.ts", () => ({
     syncActivatedRemoteSettings: vi.fn(),
 }));
 
+import { OPEN_JOINED_DEVICES } from "@/serviceFeatures/joinedDevicesCommand";
 import { paneRemoteConfig } from "./PaneRemoteConfig.ts";
 
 function createPanelElement(): HTMLElement {
@@ -124,6 +129,18 @@ afterEach(() => {
 });
 
 describe("paneRemoteConfig", () => {
+    it("opens joined devices through the shared UI command", async () => {
+        const invoke = vi.fn(async () => ({ status: "handled", value: "closed" }));
+        const host = {
+            editingSettings: { remoteConfigurations: {} },
+            services: { UI: { commands: { invoke } } },
+        };
+        const addPanel = vi.fn(() => ({ then: vi.fn() }));
+        paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
+        await runtime.clickHandlers.find((handler) => handler.setting === "Joined devices")!.run();
+        expect(invoke).toHaveBeenCalledWith(OPEN_JOINED_DEVICES, undefined);
+    });
+
     it("destroys the E2EE info panel when the settings page lifetime unloads", async () => {
         const callbacks: Array<() => unknown> = [];
         const lifetimeComponent = {
@@ -187,7 +204,7 @@ describe("paneRemoteConfig", () => {
         }));
 
         paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
-        await runtime.clickHandlers[0]();
+        await runtime.clickHandlers.find((handler) => handler.setting === "Configure E2EE")!.run();
 
         expect(setupManager.onlyE2EEConfiguration).toHaveBeenCalledOnce();
         expect(host.editingSettings.encryptInternalMetadata).toBe(true);
@@ -233,7 +250,7 @@ describe("paneRemoteConfig", () => {
         }));
 
         paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
-        await runtime.clickHandlers[0]();
+        await runtime.clickHandlers.find((handler) => handler.setting === "Configure E2EE")!.run();
 
         expect(host.editingSettings.idDerivationVersion).toBe(1);
         expect(host.editingSettings.idDerivationKey).toBe(nextIdKey);
