@@ -12,20 +12,15 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### CLI
+## 1.0.40
 
-- Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.
+24th October, 2026
 
-### Hidden File Sync
-
-#### Fixed
-
-- We can synchronise selected hidden files while the normal-file allow-list is set. (#1272)
-    - Normal-file exclusion patterns still apply to hidden files, and the Selector descriptions now explain their scope.
+This has turned into a slightly larger set of changes overall, but I have finally been able to implement the features I felt we would need.
 
 ### Synchronisation
 
-#### Added
+#### New Feature
 
 - We can choose **Review devices** in Remote Configuration, the command palette, or a version Notice to review participating devices.
     - Our device appears first, with its lockout state. Other records show the platform, plug-in version, app version, and last recorded connection time when available.
@@ -45,7 +40,19 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Changed
 
 - New setup uses the same Chunk-size recommendation of 0 across remote types, and Setting Doctor no longer recommends increasing every self-hosted V3 configuration to 60.
+    - Setting Doctor no longer flags the saved **Enhance chunk size** value. When rebuilding with V3 Rabin–Karp, we recommend setting it to 0. This is now an efficient choice across all supported remote types.
     - Existing explicit and agreed values are retained. Smaller Chunks favour reuse during editing, but increase document counts and can make first uploads and large rebuilds slower. Mostly immutable binary Vaults can still benefit from a larger explicit value.
+
+### Hidden File Sync
+
+#### Fixed
+
+- We can synchronise selected hidden files while the normal-file allow-list is set. (#1272)
+    - Normal-file exclusion patterns still apply to hidden files, and the Selector descriptions now explain their scope.
+
+### CLI
+
+- Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.
 
 ## 1.0.39
 
@@ -161,27 +168,3 @@ Thank you for your contributions!
 
 - @zeedif (#1213, #1214)
 - @lingting0 (#1242)
-
-## 1.0.35
-
-5th October, 2026
-
-### Synchronisation
-
-#### Fixed
-
-- We can continue synchronising after rebuilding an encrypted CouchDB remote, including when Hidden File Sync and Customisation Sync are enabled. (#1234)
-    - This plug-in reads the rebuilt data without reusing HTTP responses encrypted with the previous Security Seed.
-
-### Customisation Sync
-
-#### Fixed
-
-- Customisation Sync now waits until this plug-in is ready before handling configuration file events, and applying settings while synchronisation is suspended no longer scans configuration files. (#1220)
-    - Resuming synchronisation scans once and restarts the periodic scan when enabled.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @kimjansheden (#1220)
