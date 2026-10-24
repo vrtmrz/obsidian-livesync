@@ -117,6 +117,10 @@ export async function checkIncompleteDocuments(
                     continue;
                 }
                 sizeOnStorage = storageFileContent.byteLength;
+                // The file may have changed since stat, so recheck using the bytes read.
+                if (recordedSize === actualSize && sizeOnStorage === actualSize && !isConflicted) {
+                    continue;
+                }
                 const contentMatched = await isDocContentSame(doc.data, storageFileContent);
                 errorFiles.push({
                     path,
