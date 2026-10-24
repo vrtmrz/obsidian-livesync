@@ -31,7 +31,7 @@ export interface IncompleteDocumentsDependencies {
     readonly localDatabase: Pick<LiveSyncLocalDB, "findAllNormalDocs" | "getDBEntryFromMeta">;
     readonly getPath: StartupPathReader;
     readonly isTargetFile: (path: string) => Promise<boolean>;
-    readonly storageAccess: Pick<StorageAccess, "readHiddenFileBinary" | "getFileStub">;
+    readonly storageAccess: Pick<StorageAccess, "readHiddenFileBinary" | "statHidden" | "getFileStub">;
     readonly fileHandler: Pick<IFileHandler, "storeFileToDB">;
     readonly keyValueDB: Pick<KeyValueDatabase, "get" | "set">;
     readonly noticeGroups: NoticeGroups;
@@ -94,16 +94,11 @@ export async function checkIncompleteDocuments(
             }
             const isConflicted = metaDoc?._conflicts && metaDoc._conflicts.length > 0;
 
-            let storageFileContent;
-            try {
-                storageFileContent = await dependencies.storageAccess.readHiddenFileBinary(path);
-            } catch (e) {
-                Logger(`Failed to read file ${path}: Possibly unprocessed or missing`);
-                Logger(e, LOG_LEVEL_VERBOSE);
+            const storageStat = await dependencies.storageAccess.statHidden(path);
+            if (!storageStat || storageStat.type !== "file") {
                 continue;
             }
-            // const storageFileBlob = createBlob(storageFileContent);
-            const sizeOnStorage = storageFileContent.byteLength;
+            let sizeOnStorage = storageStat.size;
             const recordedSize = doc.size;
             const docBlob = readAsBlob(doc);
             const actualSize = docBlob.size;
@@ -113,6 +108,19 @@ export async function checkIncompleteDocuments(
                 sizeOnStorage !== recordedSize ||
                 isConflicted
             ) {
+                let storageFileContent;
+                try {
+                    storageFileContent = await dependencies.storageAccess.readHiddenFileBinary(path);
+                } catch (e) {
+                    Logger(`Failed to read file ${path}: Possibly unprocessed or missing`);
+                    Logger(e, LOG_LEVEL_VERBOSE);
+                    continue;
+                }
+                sizeOnStorage = storageFileContent.byteLength;
+                // The file may have changed since stat, so recheck using the bytes read.
+                if (recordedSize === actualSize && sizeOnStorage === actualSize && !isConflicted) {
+                    continue;
+                }
                 const contentMatched = await isDocContentSame(doc.data, storageFileContent);
                 errorFiles.push({
                     path,
@@ -125,6 +133,17 @@ export async function checkIncompleteDocuments(
                 Logger(
                     `Size mismatch for ${path}: ${recordedSize} (DB Recorded) , ${actualSize} (DB Stored) , ${sizeOnStorage} (Storage Stored), ${contentMatched ? "Content Matched" : "Content Mismatched"} ${isConflicted ? "Conflicted" : "Not Conflicted"}`
                 );
+            } else {
+                const currentStat = await dependencies.storageAccess.statHidden(path);
+                if (
+                    !currentStat ||
+                    currentStat.type !== "file" ||
+                    currentStat.size !== storageStat.size ||
+                    currentStat.mtime !== storageStat.mtime ||
+                    currentStat.ctime !== storageStat.ctime
+                ) {
+                    throw new Error("Storage changed during the incomplete document check");
+                }
             }
         }
         if (errorFiles.length == 0) {
