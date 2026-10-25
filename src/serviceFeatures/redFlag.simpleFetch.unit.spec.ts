@@ -10,19 +10,26 @@ const KEEP_LOCAL = "Keep local files even if not on remote";
 function createHost(savedChoice?: string) {
     const smallConfig = new Map<string, string>();
     if (savedChoice) smallConfig.set("simple-fetch-mode", savedChoice);
+    const config = {
+        getValue: vi.fn(async (key: string, defaultValue = "") => smallConfig.get(key) ?? defaultValue),
+        setValue: vi.fn(async (key: string, value: string) => {
+            smallConfig.set(key, value);
+        }),
+        delete: vi.fn(async (key: string) => {
+            smallConfig.delete(key);
+        }),
+    };
     const confirmWithMessage =
         vi.fn<(title: string, message: string, buttons: string[], defaultAction: string) => Promise<string | false>>();
     const host = {
         services: {
             UI: { confirm: { confirmWithMessage } },
             setting: {
-                getSmallConfig: (key: string) => smallConfig.get(key) ?? "",
-                setSmallConfig: (key: string, value: string) => smallConfig.set(key, value),
-                deleteSmallConfig: (key: string) => smallConfig.delete(key),
+                config,
             },
         },
     } as unknown as NecessaryServices<"UI" | "setting", never>;
-    return { host, confirmWithMessage, smallConfig };
+    return { host, confirmWithMessage, smallConfig, config };
 }
 
 afterEach(() => setLang("def"));
@@ -48,6 +55,75 @@ describe("Fast Setup translated choices", () => {
             stage1: REMOTE_WINS,
             stage2: KEEP_LOCAL,
         });
+    });
+
+    it("waits for the saved choice before returning it to the fetch workflow", async () => {
+        const { host, confirmWithMessage, smallConfig, config } = createHost();
+        let markSaveStarted!: () => void;
+        const saveStarted = new Promise<void>((resolve) => {
+            markSaveStarted = resolve;
+        });
+        let finishSave!: () => void;
+        const save = new Promise<void>((resolve) => {
+            finishSave = resolve;
+        });
+        config.setValue.mockImplementation(async (key, value) => {
+            markSaveStarted();
+            await save;
+            smallConfig.set(key, value);
+        });
+        confirmWithMessage.mockImplementation(async (_title, _message, buttons) => buttons[1]);
+
+        const asking = askSimpleFetchMode(host);
+        await saveStarted;
+
+        expect(smallConfig.has("simple-fetch-mode")).toBe(false);
+        expect(confirmWithMessage).toHaveBeenCalledTimes(2);
+
+        finishSave();
+        await expect(asking).resolves.toMatchObject({ mode: "remote-only" });
+        expect(JSON.parse(smallConfig.get("simple-fetch-mode")!)).toEqual({
+            stage1: REMOTE_WINS,
+            stage2: KEEP_LOCAL,
+        });
+    });
+
+    it("propagates a stored-choice read failure instead of treating it as missing", async () => {
+        const { host, confirmWithMessage, config } = createHost();
+        config.getValue.mockRejectedValueOnce(new Error("choice read failed"));
+
+        await expect(askSimpleFetchMode(host)).rejects.toThrow("choice read failed");
+
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+    });
+
+    it("waits for an invalid optional choice to be deleted before asking again", async () => {
+        const { host, confirmWithMessage, smallConfig, config } = createHost("not-json");
+        let markDeleteStarted!: () => void;
+        const deleteStarted = new Promise<void>((resolve) => {
+            markDeleteStarted = resolve;
+        });
+        let finishDelete!: () => void;
+        const deletion = new Promise<void>((resolve) => {
+            finishDelete = resolve;
+        });
+        config.delete.mockImplementation(async (key) => {
+            markDeleteStarted();
+            await deletion;
+            smallConfig.delete(key);
+        });
+        confirmWithMessage.mockImplementation(async (_title, _message, buttons) => buttons[3]);
+
+        const asking = askSimpleFetchMode(host);
+        await deleteStarted;
+
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(smallConfig.has("simple-fetch-mode")).toBe(true);
+
+        finishDelete();
+        await expect(asking).resolves.toBe("cancelled");
+        expect(smallConfig.has("simple-fetch-mode")).toBe(false);
+        expect(confirmWithMessage).toHaveBeenCalledOnce();
     });
 
     it("restores choices saved by the previous English implementation while displaying Spanish", async () => {

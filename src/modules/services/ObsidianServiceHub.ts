@@ -1,4 +1,6 @@
 import { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createWebStorageValueStore } from "@vrtmrz/value-store/web-storage";
 import { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import type { ServiceInstances } from "@vrtmrz/livesync-commonlib/compat/services/ServiceHub";
 import type ObsidianLiveSyncPlugin from "@/main";
@@ -11,7 +13,6 @@ import {
     ObsidianTweakValueService,
     ObsidianTestService,
     ObsidianDatabaseEventService,
-    ObsidianConfigService,
     ObsidianKeyValueDBService,
     ObsidianControlService,
 } from "./ObsidianServices";
@@ -46,6 +47,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         const setting = new ObsidianSettingService(context, {
             APIService: API,
             onDisplayLanguageChanged: setLang,
+            deviceValues: createWebStorageValueStore(compatGlobal.localStorage, { prefix: "" }),
         });
         const appLifecycle = new ObsidianAppLifecycleService(context, {
             settingService: setting,
@@ -85,10 +87,7 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             databaseEvents: databaseEvents,
             vault: vault,
         });
-        const config = new ObsidianConfigService(context, {
-            settingService: setting,
-            APIService: API,
-        });
+        const config = setting.config;
         const replicator = new ObsidianReplicatorService(context, {
             settingService: setting,
             appLifecycleService: appLifecycle,

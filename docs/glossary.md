@@ -98,6 +98,10 @@ recovery guidance, or diagnostics intended for users.
 - **ID recovery code:** A versioned text form of the saved ID key which can be
   shown on the current device and imported without deriving a different key.
   Treat it as a secret.
+- **Joined devices:** The dialogue showing device records held by the active
+  CouchDB or Object Storage remote, with the current device first. Records
+  describe participation, not current online activity. **Forget device** removes
+  an obsolete device record; it does not delete Vault files or revoke credentials.
 - **JWT Authentication:** An experimental CouchDB authentication option which
   uses a JSON Web Token instead of standard credentials. It requires a private
   key or secret, algorithm, expiry duration, subject, and key ID.

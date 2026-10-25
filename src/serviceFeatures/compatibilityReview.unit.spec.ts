@@ -33,13 +33,32 @@ function createFixture(
     } = {}
 ) {
     const local = new Map<string, string>();
+    const deviceValues = new Map<string, string>();
     if (options.marker !== undefined && options.marker !== null) {
         local.set(DATABASE_COMPATIBILITY_VERSION_KEY, options.marker);
     }
     const legacyKey = legacyDatabaseCompatibilityVersionKey("Test Vault");
     if (options.legacyMarker !== undefined && options.legacyMarker !== null) {
-        local.set(legacyKey, options.legacyMarker);
+        deviceValues.set(legacyKey, options.legacyMarker);
     }
+    const config = {
+        getValue: vi.fn(async (key: string, defaultValue = "") => local.get(key) ?? defaultValue),
+        setValue: vi.fn(async (key: string, value: string) => {
+            local.set(key, value);
+        }),
+        delete: vi.fn(async (key: string) => {
+            local.delete(key);
+        }),
+    };
+    const deviceValueStore = {
+        getValue: vi.fn(async (key: string, defaultValue = "") => deviceValues.get(key) ?? defaultValue),
+        setValue: vi.fn(async (key: string, value: string) => {
+            deviceValues.set(key, value);
+        }),
+        delete: vi.fn(async (key: string) => {
+            deviceValues.delete(key);
+        }),
+    };
     const settings = {
         versionUpFlash: options.versionUpFlash ?? "",
         isConfigured: options.isConfigured ?? true,
@@ -49,15 +68,13 @@ function createFixture(
     const setting = {
         currentSettings: () => settings,
         getSettingsMigrationState: () => migrationState(options.migration),
-        getSmallConfig: (key: string) => local.get(key) ?? "",
-        setSmallConfig: (key: string, value: string) => local.set(key, value),
-        getDeviceLocalConfig: (key: string) => local.get(key) ?? null,
-        deleteDeviceLocalConfig: (key: string) => local.delete(key),
+        deviceValues: deviceValueStore,
         saveSettingData,
     };
     const core = {
         services: {
             setting,
+            config,
             vault: { getVaultName: () => "Test Vault" },
             control: { applySettings },
         },
@@ -69,7 +86,18 @@ function createFixture(
         clearReminder: vi.fn(),
     };
     const controller = new CompatibilityReviewController(core, ui, 12);
-    return { controller, ui, local, legacyKey, settings, saveSettingData, applySettings };
+    return {
+        controller,
+        ui,
+        local,
+        deviceValues,
+        config,
+        deviceValueStore,
+        legacyKey,
+        settings,
+        saveSettingData,
+        applySettings,
+    };
 }
 
 describe("compatibility review controller", () => {
@@ -196,8 +224,94 @@ describe("compatibility review controller", () => {
         await fixture.controller.initialise();
 
         expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("11");
-        expect(fixture.local.has(fixture.legacyKey)).toBe(false);
+        expect(fixture.deviceValues.has(fixture.legacyKey)).toBe(false);
         expect(fixture.controller.pendingPause).toBeDefined();
+    });
+
+    it("saves the scoped marker before deleting the legacy device value", async () => {
+        const fixture = createFixture({ legacyMarker: "11" });
+        let finishSave!: () => void;
+        const saving = new Promise<void>((resolve) => {
+            finishSave = resolve;
+        });
+        fixture.config.setValue.mockImplementation(async (key, value) => {
+            await saving;
+            fixture.local.set(key, value);
+        });
+
+        const initialising = fixture.controller.initialise();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(fixture.deviceValues.get(fixture.legacyKey)).toBe("11");
+        expect(fixture.deviceValueStore.delete).not.toHaveBeenCalled();
+        expect(fixture.controller.initialised).toBe(false);
+
+        finishSave();
+        await initialising;
+
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("11");
+        expect(fixture.deviceValues.has(fixture.legacyKey)).toBe(false);
+        expect(fixture.controller.initialised).toBe(true);
+    });
+
+    it("does not treat a failed marker read as an absent value", async () => {
+        const fixture = createFixture({ legacyMarker: "11" });
+        fixture.config.getValue.mockRejectedValueOnce(new Error("marker read failed"));
+
+        await expect(fixture.controller.initialise()).rejects.toThrow("marker read failed");
+
+        expect(fixture.deviceValueStore.getValue).not.toHaveBeenCalled();
+        expect(fixture.deviceValues.get(fixture.legacyKey)).toBe("11");
+        expect(fixture.controller.initialised).toBe(false);
+    });
+
+    it("keeps the compatibility pause blocked until its async marker write succeeds", async () => {
+        const fixture = createFixture({ marker: "11" });
+        vi.mocked(fixture.ui.showSummary).mockResolvedValue("resume");
+        await fixture.controller.initialise();
+        let finishSave!: () => void;
+        const saving = new Promise<void>((resolve) => {
+            finishSave = resolve;
+        });
+        fixture.config.setValue.mockImplementation(async (key, value) => {
+            await saving;
+            fixture.local.set(key, value);
+        });
+
+        const reviewing = fixture.controller.openReview();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(fixture.controller.pendingPause).toBeDefined();
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("11");
+        expect(fixture.applySettings).not.toHaveBeenCalled();
+
+        finishSave();
+        await reviewing;
+
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
+        expect(fixture.controller.pendingPause).toBeUndefined();
+        expect(fixture.applySettings).toHaveBeenCalledOnce();
+    });
+
+    it("keeps a storage-failed acknowledgement blocked and retryable", async () => {
+        const fixture = createFixture({ marker: "11" });
+        vi.mocked(fixture.ui.showSummary).mockResolvedValue("resume");
+        await fixture.controller.initialise();
+        fixture.config.setValue.mockRejectedValueOnce(new Error("marker write failed"));
+
+        await expect(fixture.controller.openReview()).rejects.toThrow("marker write failed");
+
+        expect(fixture.controller.pendingPause).toBeDefined();
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("11");
+        expect(fixture.applySettings).not.toHaveBeenCalled();
+
+        await fixture.controller.openReview();
+
+        expect(fixture.controller.pendingPause).toBeUndefined();
+        expect(fixture.local.get(DATABASE_COMPATIBILITY_VERSION_KEY)).toBe("12");
+        expect(fixture.applySettings).toHaveBeenCalledOnce();
     });
 
     it("restores the runtime gate if persisting an acknowledgement fails", async () => {

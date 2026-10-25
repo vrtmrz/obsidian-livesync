@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const settingTabState = vi.hoisted(() => ({
     callOrder: [] as string[],
-    reloadAllSettings: vi.fn<(skipUpdate?: boolean) => void>(),
+    loadSettings: vi.fn<() => Promise<void>>(),
 }));
 
 const eventHubState = vi.hoisted(() => ({
@@ -11,9 +11,9 @@ const eventHubState = vi.hoisted(() => ({
 
 vi.mock("./SettingDialogue/ObsidianLiveSyncSettingTab.ts", () => ({
     ObsidianLiveSyncSettingTab: class ObsidianLiveSyncSettingTab {
-        reloadAllSettings(skipUpdate?: boolean) {
-            settingTabState.callOrder.push(`reload:${String(skipUpdate)}`);
-            settingTabState.reloadAllSettings(skipUpdate);
+        async loadSettings() {
+            await settingTabState.loadSettings();
+            settingTabState.callOrder.push("settings-loaded");
         }
     },
 }));
@@ -65,7 +65,7 @@ function createModuleHarness() {
 describe("ModuleObsidianSettingDialogue startup lifecycle", () => {
     beforeEach(() => {
         settingTabState.callOrder.length = 0;
-        settingTabState.reloadAllSettings.mockClear();
+        settingTabState.loadSettings.mockReset().mockResolvedValue(undefined);
         eventHubState.onEvent.mockClear();
     });
 
@@ -79,13 +79,29 @@ describe("ModuleObsidianSettingDialogue startup lifecycle", () => {
     });
 
     it("seeds the setting editor without requesting a render before registration", async () => {
-        const { initialisationHandler, settingsLoadedHandler } = createModuleHarness();
+        const { initialisationHandler, settingsLoadedHandler, plugin } = createModuleHarness();
+        let finishRead!: () => void;
+        settingTabState.loadSettings.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finishRead = resolve;
+            })
+        );
         const handler = settingsLoadedHandler() ?? initialisationHandler();
 
         expect(handler).toBeTypeOf("function");
-        await handler!();
+        const loading = handler!();
+        expect(plugin.addSettingTab).not.toHaveBeenCalled();
+        finishRead();
+        await loading;
 
-        expect(settingTabState.reloadAllSettings).toHaveBeenCalledWith(true);
-        expect(settingTabState.callOrder).toEqual(["reload:true", "add-setting-tab"]);
+        expect(settingTabState.loadSettings).toHaveBeenCalledOnce();
+        expect(settingTabState.callOrder).toEqual(["settings-loaded", "add-setting-tab"]);
+    });
+    it("does not register an editor when reading device values fails", async () => {
+        const { settingsLoadedHandler, plugin } = createModuleHarness();
+        const failure = new Error("device storage unavailable");
+        settingTabState.loadSettings.mockRejectedValueOnce(failure);
+        await expect(settingsLoadedHandler()!()).rejects.toBe(failure);
+        expect(plugin.addSettingTab).not.toHaveBeenCalled();
     });
 });

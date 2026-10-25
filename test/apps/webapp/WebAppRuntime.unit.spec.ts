@@ -1,3 +1,4 @@
+import { MemoryValueStore } from "@vrtmrz/value-store";
 import { LOG_LEVEL_INFO, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LiveSyncBrowserServiceHubOptions } from "@/apps/browser/createLiveSyncBrowserServiceHub";
@@ -168,7 +169,7 @@ describe("WebAppRuntime lifecycle", () => {
 
     it("owns core start, directory scan, status reporting, and shutdown", async () => {
         const reportStatus = vi.fn();
-        const runtime = new WebAppRuntime(createRootHandle(), { reportStatus });
+        const runtime = new WebAppRuntime(createRootHandle(), { reportStatus, deviceValues: new MemoryValueStore() });
 
         await runtime.start();
 
@@ -193,7 +194,7 @@ describe("WebAppRuntime lifecycle", () => {
     });
 
     it("finalises application readiness after importing local files for optional P2P", async () => {
-        const runtime = new WebAppRuntime(createRootHandle());
+        const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
         await runtime.start();
         vi.clearAllMocks();
         runtimeMocks.currentSettings.mockReturnValue(unconfiguredSettings);
@@ -239,7 +240,7 @@ describe("WebAppRuntime lifecycle", () => {
     });
 
     it("does not publish readiness after a partial local-file import", async () => {
-        const runtime = new WebAppRuntime(createRootHandle());
+        const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
         await runtime.start();
         vi.clearAllMocks();
         runtimeMocks.collectFilesOnStorage.mockResolvedValue({
@@ -269,7 +270,7 @@ describe("WebAppRuntime lifecycle", () => {
     });
 
     it("does not publish readiness when database initialisation rejects manual preparation", async () => {
-        const runtime = new WebAppRuntime(createRootHandle());
+        const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
         await runtime.start();
         vi.clearAllMocks();
         runtimeMocks.onDatabaseInitialised.mockResolvedValue(false);
@@ -282,7 +283,7 @@ describe("WebAppRuntime lifecycle", () => {
     });
 
     it("does not publish readiness when pending file events cannot be committed", async () => {
-        const runtime = new WebAppRuntime(createRootHandle());
+        const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
         await runtime.start();
         vi.clearAllMocks();
         runtimeMocks.commitPendingFileEvents.mockResolvedValue(false);
@@ -295,7 +296,7 @@ describe("WebAppRuntime lifecycle", () => {
     });
 
     it("does not repeat readiness finalisation after a successful manual scan", async () => {
-        const runtime = new WebAppRuntime(createRootHandle());
+        const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
         await runtime.start();
         vi.clearAllMocks();
 
@@ -311,7 +312,7 @@ describe("WebAppRuntime lifecycle", () => {
     it("rejects a failed core start after cleaning up the partial runtime", async () => {
         runtimeMocks.onLoad.mockResolvedValue(false);
         const reportStatus = vi.fn();
-        const runtime = new WebAppRuntime(createRootHandle(), { reportStatus });
+        const runtime = new WebAppRuntime(createRootHandle(), { reportStatus, deviceValues: new MemoryValueStore() });
 
         await expect(runtime.start()).rejects.toThrow("Failed to initialise LiveSync");
 
@@ -325,7 +326,7 @@ describe("WebAppRuntime lifecycle", () => {
 
     it("shuts down once before scheduling a host reload", async () => {
         const scheduleReload = vi.fn();
-        const runtime = new WebAppRuntime(createRootHandle(), { scheduleReload });
+        const runtime = new WebAppRuntime(createRootHandle(), { scheduleReload, deviceValues: new MemoryValueStore() });
         await runtime.start();
 
         runtimeMocks.options?.restart?.schedule();

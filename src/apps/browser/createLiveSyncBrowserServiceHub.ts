@@ -1,11 +1,10 @@
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { KeyValueDatabaseFactory } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
-import { ConfigService } from "@vrtmrz/livesync-commonlib/compat/services/base/ConfigService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
 import { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
-import type { ISettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import type { ValueDeleter, ValueStore } from "@vrtmrz/value-store";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { InjectableAppLifecycleService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAppLifecycleService";
 import { InjectableConflictService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableConflictService";
@@ -24,10 +23,7 @@ import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/
 import { setLang, translateLiveSyncMessage } from "@/common/translation";
 import { BrowserConfirm } from "./BrowserConfirm";
 import { createBrowserKeyValueDatabaseFactory } from "./BrowserKeyValueDatabase";
-import {
-    LiveSyncBrowserAPIService,
-    type LiveSyncBrowserAPIServiceOptions,
-} from "./LiveSyncBrowserAPIService";
+import { LiveSyncBrowserAPIService, type LiveSyncBrowserAPIServiceOptions } from "./LiveSyncBrowserAPIService";
 import { LiveSyncBrowserUIService } from "./LiveSyncBrowserUIService";
 
 export interface LiveSyncBrowserSettingsPersistence {
@@ -43,6 +39,7 @@ export interface LiveSyncBrowserRestartPolicy {
 }
 
 export interface LiveSyncBrowserServiceHubOptions<T extends ServiceContext> {
+    deviceValues: ValueStore & ValueDeleter;
     context?: T;
     getSystemVaultName?: () => string;
     settings?: LiveSyncBrowserSettingsPersistence;
@@ -51,34 +48,11 @@ export interface LiveSyncBrowserServiceHubOptions<T extends ServiceContext> {
     API?: Omit<LiveSyncBrowserAPIServiceOptions, "confirm" | "getSystemVaultName">;
 }
 
-class LiveSyncBrowserAppLifecycleService<
-    T extends ServiceContext,
-> extends InjectableAppLifecycleService<T> {}
+class LiveSyncBrowserAppLifecycleService<T extends ServiceContext> extends InjectableAppLifecycleService<T> {}
 
 class LiveSyncBrowserDatabaseService<T extends ServiceContext> extends DatabaseService<T> {}
 
 class LiveSyncBrowserKeyValueDBService<T extends ServiceContext> extends KeyValueDBService<T> {}
-
-class LiveSyncBrowserConfigService<T extends ServiceContext> extends ConfigService<T> {
-    constructor(
-        context: T,
-        private readonly setting: ISettingService
-    ) {
-        super(context);
-    }
-
-    getSmallConfig(key: string): string | null {
-        return this.setting.getSmallConfig(key);
-    }
-
-    setSmallConfig(key: string, value: string): void {
-        this.setting.setSmallConfig(key, value);
-    }
-
-    deleteSmallConfig(key: string): void {
-        this.setting.deleteSmallConfig(key);
-    }
-}
 
 /** LiveSync-owned service composition shared by WebApp and WebPeer. */
 export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends InjectableServiceHub<T> {
@@ -98,17 +72,14 @@ export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends Injecta
         const setting = new InjectableSettingService(context, {
             APIService: API,
             onDisplayLanguageChanged: setLang,
+            deviceValues: options.deviceValues,
         });
         const settingsPersistence = options.settings;
         setting.loadData.setHandler(
-            settingsPersistence
-                ? () => settingsPersistence.load()
-                : () => Promise.resolve(undefined)
+            settingsPersistence ? () => settingsPersistence.load() : () => Promise.resolve(undefined)
         );
         setting.saveData.setHandler(
-            settingsPersistence
-                ? (settings) => settingsPersistence.save(settings)
-                : () => Promise.resolve()
+            settingsPersistence ? (settings) => settingsPersistence.save(settings) : () => Promise.resolve()
         );
 
         const appLifecycle = new LiveSyncBrowserAppLifecycleService(context, {
@@ -142,7 +113,7 @@ export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends Injecta
             setting,
             API,
         });
-        const config = new LiveSyncBrowserConfigService(context, setting);
+        const config = setting.config;
         const replicator = new InjectableReplicatorService(context, {
             settingService: setting,
             appLifecycleService: appLifecycle,
@@ -163,8 +134,7 @@ export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends Injecta
             databaseService: database,
         });
         const keyValueDB = new LiveSyncBrowserKeyValueDBService(context, {
-            openKeyValueDatabase:
-                options.openKeyValueDatabase ?? createBrowserKeyValueDatabaseFactory(),
+            openKeyValueDatabase: options.openKeyValueDatabase ?? createBrowserKeyValueDatabaseFactory(),
             appLifecycle,
             databaseEvents,
             vault,
@@ -209,7 +179,7 @@ export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends Injecta
 }
 
 export function createLiveSyncBrowserServiceHub<T extends ServiceContext>(
-    options: LiveSyncBrowserServiceHubOptions<T> = {}
+    options: LiveSyncBrowserServiceHubOptions<T>
 ): LiveSyncBrowserServiceHub<T> {
     return new LiveSyncBrowserServiceHub(options);
 }

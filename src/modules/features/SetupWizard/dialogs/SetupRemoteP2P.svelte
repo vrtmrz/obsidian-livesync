@@ -52,26 +52,48 @@
     const context = getDialogContext();
     let error = $state("");
     let connectionPathResetNotice = $state(false);
+    let peerNameReady = $state(false);
+    let mounted = false;
     const hasValidTurnServer = $derived(hasP2PTurnConfiguration(syncSetting));
     type Props = GuestDialogProps<SetupRemoteP2PResultType, SetupRemoteP2PInitialData>;
 
     const { setResult, getInitialData }: Props = $props();
     let connectionProbe: SetupRemoteP2PInitialData["connectionProbe"] | undefined;
     onMount(() => {
+        mounted = true;
         const initialData = getInitialData?.();
         connectionProbe = initialData?.connectionProbe;
         const initialSettings = initialData?.settings;
         if (initialSettings) {
             syncSetting = pickP2PSyncSettings(initialSettings);
         }
-        const initialPeerName = (initialSettings?.P2P_DevicePeerName ?? "").trim();
+        const savedPeerName = initialSettings?.P2P_DevicePeerName;
+        const initialPeerName = typeof savedPeerName === "string" ? savedPeerName.trim() : "";
         if (initialPeerName !== "") {
-            return;
+            peerNameReady = true;
+            return () => {
+                mounted = false;
+            };
         }
-        const cachedPeerName = context.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME);
-        if (cachedPeerName) {
-            syncSetting.P2P_DevicePeerName = cachedPeerName as string;
-        }
+        void context.services.config.getValue(SETTING_KEY_P2P_DEVICE_NAME).then(
+            (cachedPeerName) => {
+                if (mounted) {
+                    if (typeof cachedPeerName === "string" && cachedPeerName) {
+                        syncSetting.P2P_DevicePeerName = cachedPeerName;
+                    }
+                    peerNameReady = true;
+                }
+            },
+            (loadError: unknown) => {
+                if (mounted) {
+                    error = loadError instanceof Error ? loadError.message : String(loadError);
+                    peerNameReady = true;
+                }
+            }
+        );
+        return () => {
+            mounted = false;
+        };
     });
     function generateSetting() {
         const connSetting: P2PSyncSetting = {
@@ -193,6 +215,7 @@
     }
 
     async function checkAndCommit() {
+        if (!peerNameReady) return;
         error = "";
         try {
             error = (await checkConnection()) || "";
@@ -207,6 +230,7 @@
         }
     }
     function commit() {
+        if (!peerNameReady) return;
         error = validateManagedTurnSettings(syncSetting) ?? "";
         if (error) return;
         const setting = pickP2PSyncSettings(generateSetting());
@@ -217,6 +241,7 @@
     }
     const canProceed = $derived.by(() => {
         return (
+            peerNameReady &&
             syncSetting.P2P_relays.trim() !== "" &&
             syncSetting.P2P_roomID.trim() !== "" &&
             syncSetting.P2P_passphrase.trim() !== "" &&
@@ -291,6 +316,7 @@
         autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
+        disabled={!peerNameReady}
         bind:value={syncSetting.P2P_DevicePeerName}
     />
 </InputRow>
@@ -385,7 +411,11 @@
             disabled={!canProceed}
             commit={() => checkAndCommit()}
         />
-        <Decision title={translateMessage("Continue anyway")} commit={() => commit()} />
+        <Decision
+            title={translateMessage("Continue anyway")}
+            disabled={!peerNameReady}
+            commit={() => commit()}
+        />
         <Decision title={translateMessage("Cancel")} commit={() => cancel()} />
     </UserDecisions>
 {/if}
