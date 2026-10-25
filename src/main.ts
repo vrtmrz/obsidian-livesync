@@ -1,4 +1,5 @@
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
+import { LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
 import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
@@ -233,6 +234,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         void this._startUp();
     }
     override onunload(): void {
-        return void this.core.services.control.onUnload();
+        void this.core.services.control.onUnload().catch((error) => {
+            this.core.services.API.addLog(
+                "Failed to unload Self-hosted LiveSync: " + String(error),
+                LOG_LEVEL_URGENT,
+                "shutdown"
+            );
+        });
     }
 }

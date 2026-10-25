@@ -12,6 +12,21 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### New Feature
+
+- We can enable **Batch database updates in LiveSync mode** to combine repeated local edits before sending them to other devices.
+    - The choice starts disabled, including when older settings contain the previously ignored batch option. Each mode retains its own choice and uses the same minimum and maximum delays.
+    - Batching delays remote visibility and reduces intermediate updates. It does not establish when a template has finished or prevent genuine concurrent edits.
+
+#### Fixed
+
+- Local changes remain available for recovery while their database save is running, including when the application stops after a batch delay ends.
+    - Manual synchronisation and settings application now wait for the accepted local saves to finish and report failures. Pending events retain the existing snapshot format.
+- Start-up reconciliation checks content when modification times are equal, so an edit within the same timestamp interval is not mistaken for an unchanged file.
+    - Existing revision provenance preserves the correct edit branch. Unreadable or continually changing content remains unresolved rather than being reported as successfully reconciled.
+
 ## 1.0.40
 
 24th October, 2026
