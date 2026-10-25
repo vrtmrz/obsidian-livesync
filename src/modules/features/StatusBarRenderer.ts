@@ -1,3 +1,5 @@
+const INACTIVE_CLASS = "livesync-stat-inactive";
+
 export type StatusBarPart = {
     key: string;
     text: string;
@@ -22,7 +24,6 @@ type RenderedItem = {
 
 export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer {
     const items = new Map<string, RenderedItem>();
-    const managedElements = new Set<HTMLSpanElement>();
     let disposed = false;
 
     const setText = (node: Text, text: string) => {
@@ -31,6 +32,13 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
 
     const setHidden = (element: HTMLElement, hidden: boolean) => {
         if (element.hidden !== hidden) element.hidden = hidden;
+    };
+
+    const setInactive = (element: HTMLElement, inactive: boolean) => {
+        if (element.classList.contains(INACTIVE_CLASS) === inactive) return;
+        element.classList.toggle(INACTIVE_CLASS, inactive);
+        if (inactive) element.setAttribute("aria-hidden", "true");
+        else element.removeAttribute("aria-hidden");
     };
 
     const setWidth = (element: HTMLElement, width: string) => {
@@ -58,7 +66,6 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
 
         const item = { element, prefix, value, valueText, suffix, widestValueLength: 0 };
         items.set(key, item);
-        managedElements.add(element);
         return item;
     };
 
@@ -89,20 +96,16 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
     };
 
     const reorderIfNeeded = (visibleItems: readonly RenderedItem[]) => {
+        const desiredOrder = visibleItems.map((item) => item.element);
+        const visibleElements = new Set(desiredOrder);
         const currentOrder = Array.from(parent.childNodes).filter((node): node is HTMLSpanElement =>
-            managedElements.has(node as HTMLSpanElement)
+            visibleElements.has(node as HTMLSpanElement)
         );
-        const visibleElements = new Set(visibleItems.map((item) => item.element));
-        const desiredOrder = [
-            ...visibleItems.map((item) => item.element),
-            ...currentOrder.filter((element) => !visibleElements.has(element)),
-        ];
         if (
             currentOrder.length === desiredOrder.length &&
             currentOrder.every((node, index) => node === desiredOrder[index])
-        ) {
+        )
             return;
-        }
 
         let reference: ChildNode | null = currentOrder[0] ?? null;
         for (const element of desiredOrder) {
@@ -110,7 +113,7 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
             const childNodes = Array.from(parent.childNodes);
             const elementIndex = childNodes.indexOf(element);
             reference =
-                childNodes.slice(elementIndex + 1).find((node) => managedElements.has(node as HTMLSpanElement)) ?? null;
+                childNodes.slice(elementIndex + 1).find((node) => visibleElements.has(node as HTMLSpanElement)) ?? null;
         }
     };
 
@@ -123,17 +126,16 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
             for (const part of parts) {
                 let item = items.get(part.key);
                 if (!item) item = createItem(part.key);
+                if (item.element.classList.contains(INACTIVE_CLASS)) item.widestValueLength = 0;
                 updateItem(item, part);
-                setHidden(item.element, false);
+                setInactive(item.element, false);
                 visibleItems.push(item);
                 visibleKeys.add(part.key);
             }
 
             for (const [key, item] of items) {
                 if (visibleKeys.has(key)) continue;
-                setHidden(item.element, true);
-                setWidth(item.value, "");
-                item.widestValueLength = 0;
+                setInactive(item.element, true);
             }
 
             reorderIfNeeded(visibleItems);
@@ -145,7 +147,6 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
                 if (item.element.parentNode === parent) parent.removeChild(item.element);
             }
             items.clear();
-            managedElements.clear();
         },
     };
 }

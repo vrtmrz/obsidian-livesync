@@ -14,8 +14,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Synchronisation
 
-- We can see CouchDB change-history comparison progressing before new documents arrive, with a ⏩ status icon and a comparison count beside received items. An unchanged count disappears after three seconds.
-- We can hide or style individual status items with CSS snippets using the `livesync-stat-` classes. Tabular, right-aligned numbers retain their width while visible, reducing movement as counts change.
+- We can see CouchDB change-history comparison progressing before new documents arrive, with a ⏩ status icon and a comparison count before the upload count. An unchanged count disappears after three seconds.
+- We can hide or style individual status items with CSS snippets using the `livesync-stat-` classes. Tabular, right-aligned numbers retain their width while visible, reducing movement as counts change. Wider gaps between editor status items make the counts easier to read. The `livesync-stat-inactive` class lets CSS snippets control how inactive items disappear.
 - We can run startup integrity checks with lower memory use for healthy Vault files. Files that change between the size check and content reading no longer trigger an unnecessary repair warning when their actual sizes agree and there are no conflicts. (#1283)
 
 ## 1.0.40

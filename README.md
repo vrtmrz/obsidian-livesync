@@ -105,7 +105,7 @@ Synchronisation status is shown in the status bar with the following icons.
 
 To prevent file and database corruption, please avoid closing Obsidian until all progress indicators have disappeared as much as possible (although the plug-in will attempt to resume if interrupted). This is especially important if you have deleted or renamed files.
 
-When CouchDB change history is being compared, `↓ 0 (⏩ 1200)` can appear before any new documents arrive. The count is the number of candidate changes-feed entries compared during the current replication attempt, including repeated entries on retries. It is separate from downloaded Chunks and Metadata, and is neither a Vault file count nor a count of entries already present locally. It disappears after three seconds without a change and reappears when the count changes. The ⏩ status icon follows comparison activity independently of that timer.
+When CouchDB change history is being compared, `(⏩ 1200) ↑ 0 ↓ 0` can appear before any new documents arrive. The count is the number of candidate changes-feed entries compared during the current replication attempt, including repeated entries on retries. It is separate from downloaded Chunks and Metadata, and is neither a Vault file count nor a count of entries already present locally. It appears before the upload count, disappears after three seconds without a change, and reappears when the count changes. The ⏩ status icon follows comparison activity independently of that timer.
 
 ### Customising status items with CSS snippets
 
@@ -120,7 +120,9 @@ The status bar and editor overlay use individual spans with the common `livesync
 
 The item classes include `livesync-stat-network`, `livesync-stat-sync`, `livesync-stat-sent`, `livesync-stat-push-remaining`, `livesync-stat-arrived`, `livesync-stat-pull-remaining`, `livesync-stat-ff`, and `livesync-stat-p2p`. File-processing items use `livesync-stat-file-processing`, `livesync-stat-file-pending`, and `livesync-stat-file-batched`; queue items use `livesync-stat-queue-` followed by `replication`, `database`, `storage`, `chunk-initial`, `chunk-retrying`, `plugin-scan`, `hidden-files`, or `conflicts`. The skipped-file indicator uses `livesync-stat-file-skip`.
 
-All items also have `livesync-stat-item`. Numeric children use `livesync-stat-value`, tabular digits, and right alignment. Each numeric item retains its widest displayed digit count until it is hidden, reducing movement as counts decrease.
+All items also have `livesync-stat-item`. Numeric children use `livesync-stat-value`, tabular digits, and right alignment. Each numeric item retains its widest displayed digit count during an active period, reducing movement as counts decrease. The editor overlay uses wider gaps between items, while remaining counts stay beside their transfer totals.
+
+Inactive items receive `livesync-stat-inactive` instead of the HTML `hidden` attribute. The default CSS hides them immediately. They retain their last text, numeric width, and position amongst the other items so that CSS snippets can customise how they disappear. The numeric width starts afresh when an item becomes active again.
 
 ## Tips and Troubleshooting
 - If you want a faster and simpler initial replication when setting up subsequent devices, see the [Fast Setup Guide](docs/tips/fast-setup.md).

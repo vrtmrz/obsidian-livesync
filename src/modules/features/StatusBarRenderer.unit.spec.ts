@@ -66,6 +66,33 @@ class TestElement {
     private currentClassName = "";
     private currentHidden = false;
     private currentTitle = "";
+    private attributes = new Map<string, string>();
+    readonly classList = {
+        contains: (token: string): boolean => this.currentClassName.split(" ").includes(token),
+        toggle: (token: string, force: boolean): boolean => {
+            const tokens = this.currentClassName.split(" ").filter(Boolean);
+            const present = tokens.includes(token);
+            if (present !== force) {
+                this.className = force
+                    ? [...tokens, token].join(" ")
+                    : tokens.filter((item) => item !== token).join(" ");
+            }
+            return force;
+        },
+    };
+
+    getAttribute(name: string): string | null {
+        return this.attributes.get(name) ?? null;
+    }
+
+    setAttribute(name: string, value: string) {
+        this.document.mutations++;
+        this.attributes.set(name, value);
+    }
+
+    removeAttribute(name: string) {
+        if (this.attributes.delete(name)) this.document.mutations++;
+    }
 
     constructor(
         private readonly document: TestDocument,
@@ -173,7 +200,9 @@ function findValue(item: TestElement): TestElement {
 }
 
 function visibleItems(root: TestElement): TestElement[] {
-    return root.children.filter((child) => !child.hidden && child.className.split(" ").includes("livesync-stat-item"));
+    return root.children.filter(
+        (child) => !child.classList.contains("livesync-stat-inactive") && child.classList.contains("livesync-stat-item")
+    );
 }
 
 describe("createStatusBarRenderer", () => {
@@ -195,8 +224,10 @@ describe("createStatusBarRenderer", () => {
         expect(findValue(queue).className).toBe("livesync-stat-value");
 
         renderer.render([{ key: "queue", text: " (queued: ", value: 3, suffix: ")" }]);
-        expect(sync.hidden).toBe(true);
-        expect(queue.hidden).toBe(false);
+        expect(sync.classList.contains("livesync-stat-inactive")).toBe(true);
+        expect(sync.hidden).toBe(false);
+        expect(sync.getAttribute("aria-hidden")).toBe("true");
+        expect(queue.classList.contains("livesync-stat-inactive")).toBe(false);
         expect(queue.textContent).toBe(" (queued: 3)");
         renderer.render([{ key: "queue", text: "Queue idle" }]);
         expect(queue.textContent).toBe("Queue idle");
@@ -239,7 +270,7 @@ describe("createStatusBarRenderer", () => {
         renderer.dispose();
     });
 
-    it("resets numeric width while omitted and reuses the same item when it returns", () => {
+    it("retains omitted content and width, then resets width when the same item returns", () => {
         const { root, parent } = createFixture();
         const renderer = createStatusBarRenderer(parent);
 
@@ -249,13 +280,46 @@ describe("createStatusBarRenderer", () => {
         expect(value.style.getPropertyValue("--livesync-stat-width")).toBe("4ch");
 
         renderer.render([]);
-        expect(item.hidden).toBe(true);
-        expect(value.style.getPropertyValue("--livesync-stat-width")).toBe("");
+        expect(item.classList.contains("livesync-stat-inactive")).toBe(true);
+        expect(item.hidden).toBe(false);
+        expect(item.getAttribute("aria-hidden")).toBe("true");
+        expect(item.textContent).toBe(" 1234");
+        expect(value.style.getPropertyValue("--livesync-stat-width")).toBe("4ch");
 
         renderer.render([{ key: "count", text: " ", value: 5 }]);
         expect(findItem(root, "count")).toBe(item);
-        expect(item.hidden).toBe(false);
+        expect(item.classList.contains("livesync-stat-inactive")).toBe(false);
+        expect(item.getAttribute("aria-hidden")).toBeNull();
         expect(value.style.getPropertyValue("--livesync-stat-width")).toBe("1ch");
+        renderer.dispose();
+    });
+
+    it("keeps inactive items in place when other items appear and does not repeat inactive mutations", () => {
+        const { document, root, parent } = createFixture();
+        const renderer = createStatusBarRenderer(parent);
+        const first = { key: "first", text: "first " };
+        const count = { key: "count", text: "count ", value: 1234 };
+        const last = { key: "last", text: "last" };
+        renderer.render([first, count, last]);
+        const initialOrder = [...root.children];
+        const omitted = findItem(root, "count");
+
+        renderer.render([first, last]);
+        expect(root.children.map((item) => initialOrder.indexOf(item))).toEqual([0, 1, 2]);
+        expect(visibleItems(root)).toEqual([initialOrder[0], initialOrder[2]]);
+        const mutations = document.mutations;
+        renderer.render([first, last]);
+        expect(document.mutations).toBe(mutations);
+
+        const added = { key: "added", text: "added " };
+        renderer.render([first, added, last]);
+        expect(root.children.map((item) => item.textContent)).toEqual(["first ", "count 1234", "added ", "last"]);
+        expect(omitted.textContent).toBe("count 1234");
+        expect(findValue(omitted).style.getPropertyValue("--livesync-stat-width")).toBe("4ch");
+
+        renderer.render([first, count, added, last]);
+        expect(findItem(root, "count")).toBe(omitted);
+        expect(visibleItems(root)).toEqual(root.children);
         renderer.dispose();
     });
 

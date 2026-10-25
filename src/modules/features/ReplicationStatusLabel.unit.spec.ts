@@ -126,8 +126,9 @@ describe("projectReplicationStatusLabel", () => {
             1200
         );
         expect(transferred.icon).toBe("⚡");
-        expect(transferred.message).toBe("Sync: ⚡ ↑ 0 ↓ 7 (⏩ 1200)");
-        expect(transferred.parts[transferred.parts.length - 1]).toMatchObject({
+        expect(transferred.message).toBe("Sync: ⚡ (⏩ 1200) ↑ 0 ↓ 7");
+        expect(transferred.parts.map((part) => part.key)).toEqual(["sync", "ff", "sent", "arrived"]);
+        expect(transferred.parts[1]).toMatchObject({
             key: "ff",
             text: " (⏩ ",
             value: 1200,
@@ -144,7 +145,7 @@ describe("projectReplicationStatusLabel", () => {
             1200
         );
         expect(idle.icon).toBe("⚡");
-        expect(idle.message).toBe("Sync: ⚡ ↑ 0 ↓ 7 (⏩ 1200)");
+        expect(idle.message).toBe("Sync: ⚡ (⏩ 1200) ↑ 0 ↓ 7");
     });
 
     it("keeps the error icon ahead of an active CouchDB checking indicator", () => {

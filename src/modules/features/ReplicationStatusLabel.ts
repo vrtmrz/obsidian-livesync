@@ -161,7 +161,7 @@ export function projectReplicationStatusLabel(
         fastForwardCount > 0
             ? fastForwardCount
             : undefined;
-    const fastForwardSuffix = visibleFastForwardCount === undefined ? "" : " (⏩ " + visibleFastForwardCount + ")";
+    const fastForwardLabel = visibleFastForwardCount === undefined ? "" : " (⏩ " + visibleFastForwardCount + ")";
 
     const parts: StatusBarPart[] = [];
     if (networkStatus.trackedRequestCount > 0) {
@@ -177,10 +177,6 @@ export function projectReplicationStatusLabel(
         parts.push({ key: "network", text: networkActivity });
     }
     parts.push({ key: "sync", text: "Sync: " + icon });
-    parts.push({ key: "sent", text: " ↑ ", value: sent });
-    if (pushRemaining.part !== undefined) parts.push(pushRemaining.part);
-    parts.push({ key: "arrived", text: " ↓ ", value: arrived });
-    if (pullRemaining.part !== undefined) parts.push(pullRemaining.part);
     if (visibleFastForwardCount !== undefined) {
         parts.push({
             key: "ff",
@@ -190,6 +186,10 @@ export function projectReplicationStatusLabel(
             title: "Compared CouchDB feed entries",
         });
     }
+    parts.push({ key: "sent", text: " ↑ ", value: sent });
+    if (pushRemaining.part !== undefined) parts.push(pushRemaining.part);
+    parts.push({ key: "arrived", text: " ↓ ", value: arrived });
+    if (pullRemaining.part !== undefined) parts.push(pullRemaining.part);
 
     return {
         icon,
@@ -197,13 +197,13 @@ export function projectReplicationStatusLabel(
             networkActivity +
             "Sync: " +
             icon +
+            fastForwardLabel +
             " ↑ " +
             sent +
             pushRemaining.text +
             " ↓ " +
             arrived +
-            pullRemaining.text +
-            fastForwardSuffix,
+            pullRemaining.text,
         parts,
     };
 }

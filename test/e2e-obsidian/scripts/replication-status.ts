@@ -3,6 +3,7 @@ import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../r
 import { withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 import type { Page } from "playwright";
+import { setObsidianMobileTestModeBeforePluginStart } from "../runner/mobileUi.ts";
 
 const fixturePath = "replication-status-e2e.md";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_UI_TIMEOUT_MS ?? 10000);
@@ -40,10 +41,12 @@ type TestWorkspace = {
     getActiveFile?: () => { path?: string } | null;
 };
 type TestLogModule = {
+    adjustStatusDivPosition?: () => void;
     statusLog?: WritableSource<string>;
     statusDiv?: HTMLElement;
     statusLine?: HTMLElement;
     statusLineRenderer?: { render?: (parts: readonly unknown[]) => void };
+    statusBarRenderer?: { render?: (parts: readonly unknown[]) => void };
     statusBarLabels?: WritableSource<{ parts: readonly unknown[] }>;
     __addLog?: (message: unknown, level?: number, key?: string) => void;
 };
@@ -171,7 +174,7 @@ async function appendLiveSyncLog(page: Page, message: string): Promise<void> {
 }
 
 async function waitForPartText(page: Page, key: string, expected: string): Promise<void> {
-    const selector = `.livesync-status-statusline .livesync-stat-${key} .livesync-stat-value`;
+    const selector = `.livesync-status-statusline .livesync-stat-${key}:not(.livesync-stat-inactive) .livesync-stat-value`;
     await page.waitForFunction(
         ({ selector, expected }) => document.querySelector(selector)?.textContent?.trim() === expected,
         { selector, expected },
@@ -442,11 +445,152 @@ async function assertNumericWidths(
     return await measureNumericWidths(page);
 }
 
+async function assertEditorItemSpacing(page: Page, mobile: boolean): Promise<void> {
+    const spacing = await page.evaluate(() => {
+        const modules = (globalThis as TestWindow).app?.plugins?.plugins?.["obsidian-livesync"]?.core?.modules ?? [];
+        const moduleLog = modules.find((entry): entry is TestLogModule => {
+            if (typeof entry !== "object" || entry === null) return false;
+            return typeof (entry as TestLogModule).statusLineRenderer?.render === "function";
+        });
+        if (!moduleLog?.statusLineRenderer?.render || !moduleLog.statusBarLabels) {
+            throw new Error("The LiveSync editor status renderer is unavailable.");
+        }
+        const original = moduleLog.statusBarLabels.value.parts;
+        const parts = [
+            { key: "queue-replication", text: " 📥", value: 1 },
+            { key: "queue-database", text: " 📄", value: 12 },
+            { key: "queue-storage", text: " 💾", value: 3 },
+        ];
+        const results: { selector: string; gapsEm: number[] }[] = [];
+        try {
+            moduleLog.statusLineRenderer.render(parts);
+            moduleLog.statusBarRenderer?.render?.(parts);
+            for (const selector of [".livesync-status-statusline", ".syncstatusbar"]) {
+                const root = document.querySelector<HTMLElement>(selector);
+                if (!root || root.getBoundingClientRect().width === 0) continue;
+                const firstItem = root.querySelector<HTMLElement>(`.livesync-stat-${parts[0].key}`);
+                if (!firstItem || Number.parseFloat(getComputedStyle(firstItem).marginInlineStart) !== 0) {
+                    throw new Error("Inactive predecessors left a gap before the first active status item.");
+                }
+                const fontSize = Number.parseFloat(getComputedStyle(root).fontSize);
+                const gapsEm: number[] = [];
+                for (let i = 1; i < parts.length; i++) {
+                    const previous = root.querySelector<HTMLElement>(
+                        `.livesync-stat-${parts[i - 1].key} .livesync-stat-value`
+                    );
+                    const next = root.querySelector<HTMLElement>(`.livesync-stat-${parts[i].key}`)?.firstChild;
+                    if (!previous || next?.nodeType !== Node.TEXT_NODE)
+                        throw new Error("A spacing fixture item is missing.");
+                    const range = document.createRange();
+                    range.setStart(next, next.textContent?.search(/\S/u) ?? 0);
+                    range.setEnd(next, next.textContent?.length ?? 0);
+                    const nextBox = range.getBoundingClientRect();
+                    const previousBox = previous.getBoundingClientRect();
+                    if (Math.abs(nextBox.top - previousBox.top) > 2)
+                        throw new Error("The spacing fixture unexpectedly wrapped.");
+                    gapsEm.push((nextBox.left - previousBox.right) / fontSize);
+                }
+                results.push({ selector, gapsEm });
+            }
+        } finally {
+            moduleLog.statusLineRenderer.render(original);
+            moduleLog.statusBarRenderer?.render?.(original);
+        }
+        return results;
+    });
+    const editor = spacing.find((entry) => entry.selector === ".livesync-status-statusline");
+    failUnless(editor?.gapsEm.length === 2, "The editor status gaps could not be measured.");
+    for (const gap of editor.gapsEm) {
+        failUnless(gap >= 1 && gap <= 1.5, `Editor status items need a 1–1.5em gap; found ${gap.toFixed(3)}em.`);
+    }
+    if (!mobile) {
+        const statusBar = spacing.find((entry) => entry.selector === ".syncstatusbar");
+        failUnless(statusBar?.gapsEm.length === 2, "The status-bar gaps could not be measured.");
+        failUnless(
+            statusBar.gapsEm.every((gap) => gap < 1),
+            "The status-bar items unexpectedly acquired the wider editor gaps."
+        );
+    }
+    console.log(
+        `${mobile ? "Mobile" : "Desktop"} editor item gaps: ${editor.gapsEm.map((gap) => gap.toFixed(3)).join(", ")}em.`
+    );
+}
+
+async function assertStatusBarItemSpacing(page: Page): Promise<void> {
+    const collapsedItems = await page.evaluate(() => {
+        const items = document.querySelectorAll<HTMLElement>(".syncstatusbar > .livesync-stat-item");
+        const collapsed: string[] = [];
+        for (const item of items) {
+            if (item.classList.contains("livesync-stat-inactive")) continue;
+            const prefix = item.firstChild;
+            if (prefix?.nodeType !== Node.TEXT_NODE || !prefix.textContent?.startsWith(" ")) continue;
+            const range = document.createRange();
+            range.setStart(prefix, 0);
+            range.setEnd(prefix, 1);
+            if (range.getBoundingClientRect().width <= 0) collapsed.push(item.className);
+        }
+        return collapsed;
+    });
+    failUnless(
+        collapsedItems.length === 0,
+        `Status-bar item separators lost their visible spaces: ${collapsedItems.join(", ")}.`
+    );
+}
+
+async function assertInactiveItemStyling(page: Page): Promise<void> {
+    const roots = [".livesync-status-statusline", ".syncstatusbar"];
+    for (const root of roots) {
+        const state = await page.locator(`${root} .livesync-stat-ff`).evaluate((element) => {
+            const item = element as HTMLElement;
+            return {
+                inactive: item.classList.contains("livesync-stat-inactive"),
+                hidden: item.hidden,
+                ariaHidden: item.getAttribute("aria-hidden"),
+                display: getComputedStyle(item).display,
+                text: item.textContent,
+                width: item
+                    .querySelector<HTMLElement>(".livesync-stat-value")
+                    ?.style.getPropertyValue("--livesync-stat-width"),
+                precedesUploads: item.nextElementSibling?.classList.contains("livesync-stat-sent"),
+            };
+        });
+        failUnless(
+            state.inactive && !state.hidden && state.ariaHidden === "true",
+            `Inactive state was not exposed through the class in ${root}.`
+        );
+        failUnless(state.display === "none", `Inactive items were not hidden by the default CSS in ${root}.`);
+        failUnless(
+            state.text?.includes("1000") && state.width === "4ch" && state.precedesUploads,
+            `An inactive item lost its content, width, or position in ${root}.`
+        );
+    }
+
+    const snippet = await page.addStyleTag({
+        content: ".livesync-stat-item.livesync-stat-inactive { display: inline-block; }",
+    });
+    try {
+        for (const root of roots) {
+            failUnless(
+                await page.locator(`${root} .livesync-stat-ff`).isVisible(),
+                `A CSS override could not reveal the inactive item in ${root}.`
+            );
+        }
+    } finally {
+        await snippet.evaluate((element) => element.parentNode?.removeChild(element));
+    }
+    for (const root of roots) {
+        failUnless(
+            await page.locator(`${root} .livesync-stat-ff`).isHidden(),
+            `The default inactive style was not restored in ${root}.`
+        );
+    }
+}
+
 async function measureStatusBarNetworkWidth(
     page: Page,
     expectedValue: string
 ): Promise<{ cssWidth: string; renderedWidth: number }> {
-    const selector = ".syncstatusbar .livesync-stat-network .livesync-stat-value";
+    const selector = ".syncstatusbar .livesync-stat-network:not(.livesync-stat-inactive) .livesync-stat-value";
     await page.waitForFunction(
         ({ selector, expectedValue }) => {
             const value = document.querySelector<HTMLElement>(selector);
@@ -606,6 +750,13 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
             await injectReplicationStats(page, initialStats, 0, 0);
             await waitForPartText(page, "arrived", "0");
             await waitForPartText(page, "ff", "1000");
+            await assertStatusBarItemSpacing(page);
+            for (const root of [".livesync-status-statusline", ".syncstatusbar"]) {
+                failUnless(
+                    (await page.locator(`${root} .livesync-stat-ff + .livesync-stat-sent`).count()) === 1,
+                    `The comparison count did not appear immediately before uploads in ${root}.`
+                );
+            }
             const syncIcon = await page.locator(".livesync-status-statusline .livesync-stat-sync").textContent();
             failUnless(syncIcon?.includes("⏩"), "The fast-forward checking icon was not independent of arrivals.");
 
@@ -617,11 +768,13 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
             if (remainingLinger > 0) await page.waitForTimeout(remainingLinger);
             await page.waitForFunction(
                 () =>
-                    document.querySelector<HTMLElement>(".livesync-status-statusline .livesync-stat-ff")?.hidden ===
-                    true,
+                    document
+                        .querySelector(".livesync-status-statusline .livesync-stat-ff")
+                        ?.classList.contains("livesync-stat-inactive") === true,
                 undefined,
                 { timeout: uiTimeoutMs }
             );
+            await assertInactiveItemStyling(page);
             const iconAfterExpiry = await page.locator(".livesync-status-statusline .livesync-stat-sync").textContent();
             failUnless(
                 iconAfterExpiry?.includes("⏩"),
@@ -735,32 +888,69 @@ async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
     if (!cli.binary) throw new Error(`Could not find obsidian-cli. Checked paths: ${cli.checked.join(", ")}`);
-    const vault = await createTemporaryVault("obsidian-livesync-replication-status-");
-    let session: ObsidianLiveSyncSession | undefined;
-    try {
-        session = await startObsidianLiveSyncSession({
-            binary,
-            cliBinary: cli.binary,
-            vault,
-            startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-            pluginData: {
-                liveSync: false,
-                syncOnStart: false,
-                syncOnSave: false,
-                isConfigured: false,
-                remoteType: "",
-                showStatusOnEditor: true,
-                showOnlyIconsOnEditor: false,
-                showStatusOnStatusbar: true,
-                lessInformationInLog: false,
-                writeLogToTheFile: false,
-            },
-        });
-        failUnless(session.readiness.pluginId === "obsidian-livesync", "The LiveSync plug-in did not become ready.");
-        await runStatusScenario(session);
-    } finally {
-        if (session) await session.app.stop();
-        await vault.dispose();
+    for (const mobile of [false, true]) {
+        const vault = await createTemporaryVault("obsidian-livesync-replication-status-");
+        let session: ObsidianLiveSyncSession | undefined;
+        try {
+            session = await startObsidianLiveSyncSession({
+                binary,
+                cliBinary: cli.binary,
+                vault,
+                lifecycle: mobile
+                    ? {
+                          beforePluginStart: async ({ remoteDebuggingPort }) => {
+                              await setObsidianMobileTestModeBeforePluginStart(remoteDebuggingPort, true, uiTimeoutMs);
+                          },
+                      }
+                    : undefined,
+                startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+                pluginData: {
+                    liveSync: false,
+                    syncOnStart: false,
+                    syncOnSave: false,
+                    isConfigured: false,
+                    remoteType: "",
+                    showStatusOnEditor: true,
+                    showOnlyIconsOnEditor: false,
+                    showStatusOnStatusbar: true,
+                    lessInformationInLog: false,
+                    writeLogToTheFile: false,
+                },
+            });
+            failUnless(
+                session.readiness.pluginId === "obsidian-livesync",
+                "The LiveSync plug-in did not become ready."
+            );
+            if (!mobile) await runStatusScenario(session);
+            await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+                await installFixtureFile(page);
+                if (mobile) {
+                    await page.evaluate(() => {
+                        const modules =
+                            (globalThis as TestWindow).app?.plugins?.plugins?.["obsidian-livesync"]?.core?.modules ??
+                            [];
+                        const moduleLog = modules.find((entry): entry is TestLogModule => {
+                            if (typeof entry !== "object" || entry === null) return false;
+                            return typeof (entry as TestLogModule).adjustStatusDivPosition === "function";
+                        });
+                        moduleLog?.adjustStatusDivPosition?.();
+                    });
+                }
+                try {
+                    await page.locator(".livesync-status").waitFor({ state: "attached", timeout: uiTimeoutMs });
+                    await injectReplicationStats(page, replicationStats(0, 0, 0), 0, 0);
+                    await page.locator(".livesync-status").waitFor({ state: "visible", timeout: uiTimeoutMs });
+                } catch (error) {
+                    throw new Error(
+                        `${String(error)}; spacing setup: ${JSON.stringify(await getStatusDiagnostics(page))}`
+                    );
+                }
+                await assertEditorItemSpacing(page, mobile);
+            });
+        } finally {
+            if (session) await session.app.stop();
+            await vault.dispose();
+        }
     }
 }
 
