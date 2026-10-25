@@ -58,8 +58,9 @@ type LiveSyncTestPlugin = {
                     usePowerUserMode: boolean;
                     useEdgeCaseMode: boolean;
                     hashCacheMaxCount: number;
+                    customChunkSize: number;
                 };
-                getSmallConfig(key: string): string | null;
+                config: { getValue(key: string, defaultValue: string): Promise<string> };
             };
         };
     };
@@ -484,12 +485,12 @@ async function verifyCompatibilityReview(): Promise<void> {
     });
 
     await withObsidianPage(port, async (page) => {
-        const markerBeforeAcknowledgement = await page.evaluate(() => {
+        const markerBeforeAcknowledgement = await page.evaluate(async () => {
             const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
             if (plugin === undefined) throw new Error("Self-hosted LiveSync is unavailable");
-            return plugin.core.services.setting.getSmallConfig("database-compatibility-version");
+            return await plugin.core.services.setting.config.getValue("database-compatibility-version", "");
         });
-        if (markerBeforeAcknowledgement !== null && markerBeforeAcknowledgement !== "") {
+        if (markerBeforeAcknowledgement !== "") {
             throw new Error(
                 `The database version was marked as acknowledged before review: ${markerBeforeAcknowledgement}`
             );
@@ -579,12 +580,12 @@ async function verifyCompatibilityReview(): Promise<void> {
             .click();
         await summary.waitFor({ state: "hidden", timeout: uiTimeoutMs });
         await page.waitForFunction(
-            (expectedVersion) => {
+            async (expectedVersion) => {
                 const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
                 if (plugin === undefined) return false;
                 const setting = plugin.core.services.setting;
                 return (
-                    setting.getSmallConfig("database-compatibility-version") === expectedVersion &&
+                    (await setting.config.getValue("database-compatibility-version", "")) === expectedVersion &&
                     setting.currentSettings().versionUpFlash === ""
                 );
             },
@@ -611,10 +612,16 @@ async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<string> {
                 state: "visible",
                 timeout: uiTimeoutMs,
             });
-            await doctor.getByText("Enhance chunk size", { exact: true }).waitFor({
-                state: "visible",
-                timeout: uiTimeoutMs,
+            const chunkSize = await page.evaluate(() => {
+                const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+                return plugin?.core.services.setting.currentSettings().customChunkSize;
             });
+            if (chunkSize !== 0) {
+                throw new Error("Compatibility review must retain the fixture's zero chunk-size value.");
+            }
+            if ((await doctor.getByText("Enhance chunk size", { exact: true }).count()) !== 0) {
+                throw new Error("Config Doctor must accept the recommended zero chunk-size value.");
+            }
             if ((await doctor.getByText("Data Compression", { exact: true }).count()) !== 0) {
                 throw new Error("Config Doctor still treats supported Data Compression as a problem.");
             }
@@ -978,6 +985,7 @@ function createSettingsPluginData(settingsOnlyRun: boolean): Record<string, unkn
         liveSync: false,
         versionUpFlash: settingsOnlyRun ? "" : compatibilityReviewMessage,
         notifyThresholdOfRemoteStorageSize: 0,
+        customChunkSize: 0,
         syncOnStart: false,
         syncOnSave: false,
         syncOnEditorSave: false,

@@ -1,6 +1,5 @@
 import type { AppLifecycleServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/AppLifecycleService";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { ConfigServiceBrowserCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/ConfigServiceBrowserCompat";
 import type {
     ComponentHasResult,
     SvelteDialogManager,
@@ -11,6 +10,7 @@ import { InjectableAppLifecycleService } from "@vrtmrz/livesync-commonlib/compat
 import { InjectableConflictService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableConflictService";
 import { InjectableDatabaseEventService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService";
 import { InjectableFileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableFileProcessingService";
+import { InjectableSettingService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService";
 import { PathServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectablePathService";
 import { InjectableRemoteService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableRemoteService";
 import { InjectableReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicationService";
@@ -21,7 +21,7 @@ import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import { HeadlessAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/headless/HeadlessAPIService";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
-import { NodeSettingService } from "./NodeSettingService";
+import { createNodeLocalStorage } from "./NodeLocalStorage";
 import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { path as nodePath } from "@vrtmrz/livesync-commonlib/node";
@@ -96,11 +96,11 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
         const conflict = new InjectableConflictService(context);
         const fileProcessing = new InjectableFileProcessingService(context);
 
-        const setting = new NodeSettingService(
-            context,
-            { APIService: API, onDisplayLanguageChanged: setLang },
-            localStoragePath
-        );
+        const setting = new InjectableSettingService<T>(context, {
+            APIService: API,
+            onDisplayLanguageChanged: setLang,
+            deviceValues: createNodeLocalStorage(localStoragePath),
+        });
 
         const appLifecycle = new NodeAppLifecycleService<T>(context, {
             settingService: setting,
@@ -132,10 +132,7 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             setting,
         });
 
-        const config = new ConfigServiceBrowserCompat<T>(context, {
-            settingService: setting,
-            APIService: API,
-        });
+        const config = setting.config;
 
         const replicator = new InjectableReplicatorService(context, {
             settingService: setting,

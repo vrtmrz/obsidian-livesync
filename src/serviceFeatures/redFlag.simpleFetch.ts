@@ -63,28 +63,27 @@ function buildSimpleFetchResult(stage1: string, stage2?: string) {
     return undefined;
 }
 
-function rememberSimpleFetchMode(host: NecessaryServices<"setting", never>, stage1: string, stage2?: string) {
-    host.services.setting.setSmallConfig(SIMPLE_FETCH_MODE_KEY, JSON.stringify({ stage1, stage2 }));
+async function rememberSimpleFetchMode(host: NecessaryServices<"setting", never>, stage1: string, stage2?: string) {
+    await host.services.setting.config.setValue(SIMPLE_FETCH_MODE_KEY, JSON.stringify({ stage1, stage2 }));
 }
 
-function getRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
-    const saved = host.services.setting.getSmallConfig(SIMPLE_FETCH_MODE_KEY);
+async function getRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
+    const saved = await host.services.setting.config.getValue(SIMPLE_FETCH_MODE_KEY, "");
     if (!saved) return undefined;
+    let remembered: ReturnType<typeof buildSimpleFetchResult> = undefined;
     try {
         const { stage1, stage2 } = JSON.parse(saved) as { stage1?: string; stage2?: string };
-        if (stage1) {
-            const remembered = buildSimpleFetchResult(stage1, stage2);
-            if (remembered) return remembered;
-        }
+        if (stage1) remembered = buildSimpleFetchResult(stage1, stage2);
     } catch {
         // Clear below; the saved choice is optional and can be rebuilt by asking again.
     }
-    host.services.setting.deleteSmallConfig(SIMPLE_FETCH_MODE_KEY);
+    if (remembered) return remembered;
+    await host.services.setting.config.delete(SIMPLE_FETCH_MODE_KEY);
     return undefined;
 }
 
-function clearRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
-    host.services.setting.deleteSmallConfig(SIMPLE_FETCH_MODE_KEY);
+async function clearRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
+    await host.services.setting.config.delete(SIMPLE_FETCH_MODE_KEY);
 }
 
 async function confirmTranslatedChoice(
@@ -104,7 +103,7 @@ async function confirmTranslatedChoice(
 export async function askSimpleFetchMode(
     host: NecessaryServices<"UI" | "setting", never>
 ): Promise<{ mode: string; options: Partial<FullScanOptions> } | "cancelled" | "aborted"> {
-    const remembered = getRememberedSimpleFetchMode(host);
+    const remembered = await getRememberedSimpleFetchMode(host);
     if (remembered) return remembered;
 
     const msg = $msg(
@@ -169,7 +168,7 @@ Firstly, how shall we handle the data retrieved from this remote source?
         if (stage2 === STAGE2_ABORT) {
             return "aborted";
         }
-        rememberSimpleFetchMode(host, stage1, stage2);
+        await rememberSimpleFetchMode(host, stage1, stage2);
         return buildSimpleFetchResult(stage1, stage2)!;
     }
 
@@ -198,7 +197,7 @@ Firstly, how shall we handle the data retrieved from this remote source?
         if (stage2 === STAGE2_ABORT) {
             return "aborted";
         }
-        rememberSimpleFetchMode(host, stage1, stage2);
+        await rememberSimpleFetchMode(host, stage1, stage2);
         return buildSimpleFetchResult(stage1, stage2)!;
     }
 
@@ -234,18 +233,18 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
             "Remediation mode is active, so the detailed fetch flow is used instead of Simple Fetch.",
             LOG_LEVEL_NOTICE
         );
-        clearRememberedSimpleFetchMode(host);
+        await clearRememberedSimpleFetchMode(host);
         return undefined;
     }
     const result = await askSimpleFetchMode(host);
     if (result === "cancelled") {
         log("Fetch cancelled by user.", LOG_LEVEL_NOTICE);
-        clearRememberedSimpleFetchMode(host);
+        await clearRememberedSimpleFetchMode(host);
         return await cancelScheduledInitialisation(host, cleanupFlag);
     }
     if (result === "aborted") {
         log("Fetch exited by user.", LOG_LEVEL_NOTICE);
-        clearRememberedSimpleFetchMode(host);
+        await clearRememberedSimpleFetchMode(host);
         host.services.appLifecycle.performRestart();
         return false;
     }
@@ -256,7 +255,7 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
     const settings = host.services.setting.currentSettings();
     if (!(await adjustSettingToRemoteIfNeeded(host, log, { preventFetchingConfig: false }, settings))) {
         log("Fetch initialisation cancelled by user.", LOG_LEVEL_NOTICE);
-        clearRememberedSimpleFetchMode(host);
+        await clearRememberedSimpleFetchMode(host);
         return await cancelScheduledInitialisation(host, cleanupFlag);
     }
 
@@ -295,7 +294,7 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
         }
         await host.serviceModules.rebuilder.finishRebuild();
         await cleanupFlag();
-        clearRememberedSimpleFetchMode(host);
+        await clearRememberedSimpleFetchMode(host);
         log("Simple fetch and scan operation completed.", LOG_LEVEL_NOTICE);
         return true;
     };

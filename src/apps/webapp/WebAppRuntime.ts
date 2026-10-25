@@ -21,6 +21,8 @@ import { useCheckRemoteSize } from "@vrtmrz/livesync-commonlib/compat/serviceFea
 import { useRemoteConfiguration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
 import type { UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { ValueStore, ValueDeleter } from "@vrtmrz/value-store";
+import { createWebStorageValueStore } from "@vrtmrz/value-store/web-storage";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import {
     createLiveSyncBrowserServiceHub,
@@ -56,6 +58,7 @@ const DEFAULT_SETTINGS: Partial<ObsidianLiveSyncSettings> = {
 export type WebAppRuntimeStatusKind = "info" | "warning" | "error" | "success";
 
 export interface WebAppRuntimeOptions {
+    deviceValues?: ValueStore & ValueDeleter;
     reportStatus?: (kind: WebAppRuntimeStatusKind, message: string) => void;
     scheduleReload?: (delayMilliseconds: number) => void;
 }
@@ -71,7 +74,10 @@ export class WebAppRuntime {
     private paneHost: P2PReplicatorPaneHost | null = null;
     private restartScheduled = false;
 
-    constructor(rootHandle: FileSystemDirectoryHandle, options: WebAppRuntimeOptions = {}) {
+    constructor(
+        rootHandle: FileSystemDirectoryHandle,
+        private readonly options: WebAppRuntimeOptions = {}
+    ) {
         this.rootHandle = rootHandle;
         this.reportStatus = options.reportStatus ?? (() => {});
         this.scheduleReload =
@@ -89,6 +95,8 @@ export class WebAppRuntime {
 
     private createServiceOptions(): LiveSyncBrowserServiceHubOptions<ServiceContext> {
         return {
+            deviceValues:
+                this.options.deviceValues ?? createWebStorageValueStore(compatGlobal.localStorage, { prefix: "" }),
             getSystemVaultName: () => this.rootHandle.name || "livesync-webapp",
             settings: {
                 save: async (data) => {
@@ -219,7 +227,9 @@ export class WebAppRuntime {
                 useCheckRemoteSize(core);
                 useRemoteConfiguration(core);
                 this.p2p = useP2PReplicatorFeature(core, undefined, undefined, {
-                    prepareP2PSettings: useP2PSettingsPreparation(core.services.API.webCompatFetch.bind(core.services.API)),
+                    prepareP2PSettings: useP2PSettingsPreparation(
+                        core.services.API.webCompatFetch.bind(core.services.API)
+                    ),
                 });
                 this.paneHost = {
                     services: core.services,

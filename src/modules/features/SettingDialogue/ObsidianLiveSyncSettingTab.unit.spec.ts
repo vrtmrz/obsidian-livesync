@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, LOG_LEVEL_NOTICE, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
-import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { MemoryValueStore } from "@vrtmrz/value-store";
 
 const settingsInitialisationMocks = vi.hoisted(() => ({
     applySettingsWithInitialisationChoice: vi.fn(),
@@ -76,8 +76,6 @@ beforeEach(() => {
     settingsInitialisationMocks.applySettingsWithInitialisationChoice.mockReset();
     loggerMocks.Logger.mockClear();
     vi.mocked($msg).mockClear();
-    vi.mocked(compatGlobal.localStorage.getItem).mockReset().mockReturnValue(null);
-    vi.mocked(compatGlobal.localStorage.setItem).mockReset();
 });
 
 describe("ObsidianLiveSyncSettingTab passphrase verification", () => {
@@ -280,6 +278,7 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
                 },
                 services: {
                     setting: {
+                        deviceValues: new MemoryValueStore(),
                         saveSettingData,
                         getDeviceAndVaultName: vi.fn(() => ""),
                         suspendAllSync,
@@ -665,6 +664,7 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
                 },
                 services: {
                     setting: {
+                        deviceValues: new MemoryValueStore(),
                         saveSettingData,
                         getDeviceAndVaultName: vi.fn(() => ""),
                     },
@@ -691,6 +691,54 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
         });
         return { tab, saveSettingData };
     }
+
+    it("awaits the stored passphrase before initialising the editing buffer", async () => {
+        const { tab } = createSettingsTab();
+        tab.resetEditingSettings();
+        let resolveRead!: (value: string) => void;
+        vi.spyOn(tab.services.setting.deviceValues, "getValue").mockReturnValueOnce(
+            new Promise<string>((resolve) => {
+                resolveRead = resolve;
+            })
+        );
+        const loading = tab.loadSettings();
+        expect(tab.initialSettings).toBeUndefined();
+        resolveRead("stored passphrase");
+        await loading;
+        expect(tab.editingSettings.configPassphrase).toBe("stored passphrase");
+        expect(tab.initialSettings!.configPassphrase).toBe("stored passphrase");
+    });
+
+    it("preserves the loaded settings when device storage cannot be read", async () => {
+        const { tab } = createSettingsTab();
+        await tab.services.setting.deviceValues.setValue("ls-setting-passphrase", "stored passphrase");
+        await tab.loadSettings();
+        const failure = new Error("device storage unavailable");
+        vi.spyOn(tab.services.setting.deviceValues, "getValue").mockRejectedValueOnce(failure);
+        await expect(tab.requestReload()).rejects.toBe(failure);
+        expect(tab.editingSettings.configPassphrase).toBe("stored passphrase");
+        expect(tab.initialSettings!.configPassphrase).toBe("stored passphrase");
+    });
+
+    it("does not let a delayed read overwrite a successfully saved passphrase", async () => {
+        const { tab } = createSettingsTab();
+        await tab.loadSettings();
+        let resolveRead!: (value: string) => void;
+        vi.spyOn(tab.services.setting.deviceValues, "getValue").mockReturnValueOnce(
+            new Promise<string>((resolve) => {
+                resolveRead = resolve;
+            })
+        );
+        const loading = tab.loadSettings();
+        Object.assign(tab.services.setting, { changeConfigurationEncryption: vi.fn(async () => undefined) });
+        tab.editingSettings.configPassphraseStore = "LOCALSTORAGE";
+        tab.editingSettings.configPassphrase = "new passphrase";
+        await tab.saveSettings(["configPassphraseStore", "configPassphrase"]);
+        resolveRead("old passphrase");
+        await loading;
+        tab.reloadAllSettings();
+        expect(tab.initialSettings!.configPassphrase).toBe("new passphrase");
+    });
 
     it("loads the imperative fallback without a SettingPage runtime export", () => {
         const { tab } = createSettingsTab();
@@ -779,7 +827,7 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
     it("saves a custom configuration passphrase edit through the setting service", async () => {
         const { tab } = createSettingsTab();
         const changeConfigurationEncryption = vi.fn(async () => {
-            vi.mocked(compatGlobal.localStorage.getItem).mockReturnValue("new custom passphrase");
+            await tab.services.setting.deviceValues.setValue("ls-setting-passphrase", "new custom passphrase");
         });
         Object.assign(tab.core.services.setting, { changeConfigurationEncryption });
         const store = "LOCALSTORAGE";
@@ -787,13 +835,13 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
         tab.initialSettings!.configPassphraseStore = store;
         tab.editingSettings.configPassphrase = "new custom passphrase";
         tab.initialSettings!.configPassphrase = "old custom passphrase";
-        vi.mocked(compatGlobal.localStorage.setItem).mockClear();
+        const setValue = vi.spyOn(tab.services.setting.deviceValues, "setValue");
 
         await tab.saveSettings(["configPassphrase"]);
 
         expect(changeConfigurationEncryption).toHaveBeenCalledOnce();
         expect(changeConfigurationEncryption).toHaveBeenCalledWith(store, "new custom passphrase");
-        expect(compatGlobal.localStorage.setItem).not.toHaveBeenCalled();
+        expect(setValue).toHaveBeenCalledOnce();
         expect(tab.initialSettings!.configPassphrase).toBe("new custom passphrase");
     });
 
@@ -811,7 +859,6 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
         tab.initialSettings!.configPassphraseStore = "LOCALSTORAGE";
         tab.initialSettings!.configPassphrase = "previous passphrase";
         tab.editingSettings.configPassphrase = "passphrase A";
-        vi.mocked(compatGlobal.localStorage.getItem).mockReturnValue("passphrase A");
 
         const apply = tab.saveSettings(["configPassphrase"]);
         expect(changeConfigurationEncryption).toHaveBeenCalledWith("LOCALSTORAGE", "passphrase A");
@@ -840,13 +887,13 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
         tab.editingSettings.configPassphraseStore = editedStore;
         tab.initialSettings!.configPassphrase = "old custom passphrase";
         tab.editingSettings.configPassphrase = "new custom passphrase";
-        vi.mocked(compatGlobal.localStorage.setItem).mockClear();
+        const setValue = vi.spyOn(tab.services.setting.deviceValues, "setValue");
 
         await expect(tab.saveSettings(["configPassphraseStore", "configPassphrase"])).rejects.toBe(failure);
 
         expect(changeConfigurationEncryption).toHaveBeenCalledOnce();
         expect(changeConfigurationEncryption).toHaveBeenCalledWith(editedStore, "new custom passphrase");
-        expect(compatGlobal.localStorage.setItem).not.toHaveBeenCalled();
+        expect(setValue).not.toHaveBeenCalled();
         expect(tab.core.settings.configPassphraseStore).toBe(savedStore);
         expect(tab.initialSettings!.configPassphraseStore).toBe(savedStore);
         expect(tab.initialSettings!.configPassphrase).toBe("old custom passphrase");

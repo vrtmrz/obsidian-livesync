@@ -6,7 +6,6 @@ import { InjectableReplicationService } from "@vrtmrz/livesync-commonlib/compat/
 import { InjectableReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicatorService";
 import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTestService";
 import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTweakValueService";
-import { ConfigServiceBrowserCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/browser/ConfigServiceBrowserCompat";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
@@ -58,10 +57,7 @@ export class ObsidianReplicatorService extends InjectableReplicatorService<Obsid
         super(context, withSleepPreference(dependencies));
     }
 
-    async runBoundedLocalApplicationActivity<T>(
-        task: () => T | PromiseLike<T>,
-        options?: ActivityOptions
-    ): Promise<T> {
+    async runBoundedLocalApplicationActivity<T>(task: () => T | PromiseLike<T>, options?: ActivityOptions): Promise<T> {
         this.boundedLocalApplicationActivityCount.value++;
         try {
             return this.dependencies.activityRunner
@@ -84,7 +80,6 @@ export class ObsidianConflictService extends InjectableConflictService<ObsidianS
 export class ObsidianTweakValueService extends InjectableTweakValueService<ObsidianServiceContext> {}
 // InjectableTestService
 export class ObsidianTestService extends InjectableTestService<ObsidianServiceContext> {}
-export class ObsidianConfigService extends ConfigServiceBrowserCompat<ObsidianServiceContext> {}
 
 export class ObsidianKeyValueDBService extends KeyValueDBService<ObsidianServiceContext> {}
 
