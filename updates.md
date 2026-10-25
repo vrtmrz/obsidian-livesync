@@ -24,6 +24,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Local changes remain available for recovery while their database save is running, including when the application stops after a batch delay ends.
     - Manual synchronisation and settings application now wait for the accepted local saves to finish and report failures. Pending events retain the existing snapshot format.
+    - Hidden File Sync and Customisation Sync now report completion after saving, including delayed customisation updates. Failed saves remain pending, while unchanged notifications allow later edits to proceed.
 - Start-up reconciliation checks content when modification times are equal, so an edit within the same timestamp interval is not mistaken for an unchanged file.
     - Existing revision provenance preserves the correct edit branch. Unreadable or continually changing content remains unresolved rather than being reported as successfully reconciled.
 - We can run startup integrity checks with lower memory use for healthy Vault files. Files that change between the size check and content reading no longer trigger an unnecessary repair warning when their actual sizes agree and there are no conflicts. (#1283)

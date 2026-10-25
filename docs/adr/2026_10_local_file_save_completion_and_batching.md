@@ -85,6 +85,37 @@ Ordinary file saving by Obsidian remains independent of database saving. Pending
 and processing indicators must include work in progress and unresolved failures,
 so an empty timer map cannot imply that local processing is complete.
 
+### Optional file ownership and completion
+
+Hidden File Sync and Customisation Sync register the new
+`processOptionalFileEventWithResult` contract together. `firstHandled` tries
+providers in order until one returns `completed` or `veto`; only
+`not-applicable` advances to the next provider. Exceptions propagate unchanged.
+`HandlerOutcome<TValue, TVetoReason>` gives completion data and refusal reasons
+independent types. These saves use `void` completion data and string reasons.
+
+A provider returns `completed` after its database operation succeeds or the
+current state is already represented. Failed writes and deletions throw, and
+the manager retains the event. Hidden File Sync acknowledges its processed
+fingerprint after successful processing. Customisation Sync waits for the real
+save after its existing 100ms quiet period. All notifications coalesced into a
+V1 group receive that save's result; V2 files retain separate save groups.
+
+A finite flush resolves each captured event's `whenFlushRequested` signal. This
+releases its customisation delay and freezes that group; later groups do not
+extend its completion. During start-up replay or suspension, providers use
+physical database readiness rather than waiting for application readiness or
+resume. Hidden File Sync loads its existing per-database caches before replay
+and reuses them during the following initialisation hook.
+
+The existing boolean optional API remains a legacy notification contract for
+other callers and older hosts. Once a host registers typed providers, the
+manager dispatches through that chain exclusively. Without a typed provider,
+a resolved legacy notification completes that dispatch only; its boolean does
+not establish a database save. Snapshot-write failures remain visible under
+both contracts. No persistent journal, new snapshot schema, or automatic retry
+loop is introduced.
+
 ### 2. Keep a recoverable record through processing
 
 The event manager owns each operation from queue admission through completion.
