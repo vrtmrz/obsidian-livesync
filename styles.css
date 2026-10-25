@@ -839,3 +839,18 @@ body.is-mobile .livesync-compatibility-review-notice {
     outline-offset: 1px;
     border-radius: 2px;
 }
+
+.livesync-stat-item {
+    font-variant-numeric: tabular-nums;
+}
+
+.livesync-stat-value {
+    display: inline-block;
+    width: var(--livesync-stat-width, auto);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.livesync-stat-value[hidden] {
+    display: none;
+}

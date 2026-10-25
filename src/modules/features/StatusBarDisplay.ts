@@ -10,6 +10,15 @@ export type DisposableReactiveValue<T> = ReactiveValue<T> & {
     dispose(): void;
 };
 
+export type PaddedCounterLabel = DisposableReactiveValue<string> & {
+    readonly count: ReactiveValue<number | undefined>;
+};
+
+export type ChunkFetchCounterLabel = DisposableReactiveValue<string> & {
+    readonly initialCount: ReactiveValue<number | undefined>;
+    readonly retryingCount: ReactiveValue<number | undefined>;
+};
+
 function asDisposableReactiveValue<T>(value: ReactiveSource<T>, dispose: () => void): DisposableReactiveValue<T> {
     return {
         get value() {
@@ -92,9 +101,10 @@ export function createPaddedCounterLabel(
     source: ReactiveValue<number>,
     mark: string,
     inactiveLingerMs = STATUS_COUNTER_INACTIVE_LINGER_MS
-): DisposableReactiveValue<string> {
+): PaddedCounterLabel {
     const linger = Math.max(0, inactiveLingerMs);
     const formatted = reactiveSource("");
+    const displayedCount = reactiveSource<number | undefined>(undefined);
     let maximumLength = 1;
     let clearTimer: number | undefined;
     let disposed = false;
@@ -114,22 +124,39 @@ export function createPaddedCounterLabel(
         cancelClear();
         const count = source.value;
         formatted.value = format(count);
+        displayedCount.value = count;
         if (count !== 0) return;
         clearTimer = compatGlobal.setTimeout(() => {
             clearTimer = undefined;
             if (disposed) return;
             formatted.value = "";
+            displayedCount.value = undefined;
             maximumLength = 1;
         }, linger);
     };
 
     source.onChanged(update);
-    return asDisposableReactiveValue(formatted, () => {
+    const display = asDisposableReactiveValue(formatted, () => {
         if (disposed) return;
         disposed = true;
         cancelClear();
         source.offChanged(update);
     });
+    return {
+        get value() {
+            return display.value;
+        },
+        onChanged(handler) {
+            display.onChanged(handler);
+        },
+        offChanged(handler) {
+            display.offChanged(handler);
+        },
+        count: displayedCount,
+        dispose() {
+            display.dispose();
+        },
+    };
 }
 
 /**
@@ -138,7 +165,7 @@ export function createPaddedCounterLabel(
  */
 export function createChunkFetchCounterLabel(
     source: ReactiveValue<{ initial: number; retrying: number }>
-): DisposableReactiveValue<string> {
+): ChunkFetchCounterLabel {
     const initialCount = reactiveSource(0);
     const retryingCount = reactiveSource(0);
     const initialLabel = createPaddedCounterLabel(initialCount, "🛄");
@@ -168,7 +195,7 @@ export function createChunkFetchCounterLabel(
     source.onChanged(updateCounts);
     updateCounts();
 
-    return asDisposableReactiveValue(formatted, () => {
+    const display = asDisposableReactiveValue(formatted, () => {
         if (disposed) return;
         disposed = true;
         source.offChanged(updateCounts);
@@ -177,4 +204,20 @@ export function createChunkFetchCounterLabel(
         initialLabel.dispose();
         retryingLabel.dispose();
     });
+    return {
+        get value() {
+            return display.value;
+        },
+        onChanged(handler) {
+            display.onChanged(handler);
+        },
+        offChanged(handler) {
+            display.offChanged(handler);
+        },
+        initialCount: initialLabel.count,
+        retryingCount: retryingLabel.count,
+        dispose() {
+            display.dispose();
+        },
+    };
 }
