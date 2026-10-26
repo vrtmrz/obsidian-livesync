@@ -54,6 +54,8 @@ import { EVENT_SETTING_SAVED, eventHub } from "@/common/events.ts";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
 import type { LiveSyncCore } from "@/main.ts";
 import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
+import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
+import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
@@ -68,6 +70,9 @@ type HiddenFileInitialisationProgress = {
 
 const HIDDEN_FILE_NOTICE_GROUP = "hidden-file-changes";
 const HIDDEN_FILE_NOTICE_DURATION_MS = 20_000;
+
+export const HIDDEN_FILE_SYNC_DISABLED_NOTICE =
+    "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.";
 
 function getComparingMTime(
     doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
@@ -161,9 +166,7 @@ export class HiddenFileSync extends LiveSyncCommands {
     //     return true;
     // }
     private async _everyOnDatabaseInitialized(showNotice: boolean) {
-        this._fileInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed");
-        this._databaseInfoLastProcessed = await autosaveCache(this.kvDB, "hidden-file-lastProcessed-database");
-        this._fileInfoLastKnown = await autosaveCache(this.kvDB, "hidden-file-lastKnown");
+        await this.ensureProcessedCaches();
         if (this.isThisModuleEnabled()) {
             if (this._fileInfoLastProcessed.size == 0 && this._fileInfoLastProcessed.size == 0) {
                 this._log(`No cache found. Performing startup scan.`, LOG_LEVEL_VERBOSE);
@@ -249,6 +252,26 @@ export class HiddenFileSync extends LiveSyncCommands {
         return false;
     }
 
+    async _processOptionalFileEventWithResult(
+        path: FilePath,
+        _options?: OptionalFileEventOptions
+    ): Promise<HandlerOutcome<void, string>> {
+        if (!this.isThisModuleEnabled()) return { kind: "not-applicable" };
+        if (!(await this.isTargetFile(path))) return { kind: "not-applicable" };
+        if (!this._isDatabaseReady()) {
+            return { kind: "veto", value: "The local database is not ready" };
+        }
+
+        await this.ensureProcessedCaches();
+        if (!this.isThisModuleEnabled() || !(await this.isTargetFile(path))) {
+            return { kind: "not-applicable" };
+        }
+        if (!(await this.trackStorageFileModificationStrict(path))) {
+            return { kind: "not-applicable" };
+        }
+        return { kind: "completed" };
+    }
+
     _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
         if (isInternalMetadata(path)) {
             this.queueConflictCheck(path);
@@ -316,6 +339,51 @@ export class HiddenFileSync extends LiveSyncCommands {
     _fileInfoLastProcessed!: MapLike<string, string>;
     _fileInfoLastKnown!: MapLike<string, number>;
     _databaseInfoLastProcessed!: MapLike<string, string>;
+
+    private processedCacheStore: unknown;
+    private processedCacheStoreReady = false;
+    private processedCacheLoadStore: unknown;
+    private processedCacheLoad?: Promise<void>;
+
+    private async ensureProcessedCaches() {
+        const store = this.kvDB;
+        if (!store) throw new Error("The Hidden File Sync cache store is unavailable");
+        if (this.processedCacheStoreReady && this.processedCacheStore === store) return;
+        if (this.processedCacheLoad && this.processedCacheLoadStore === store) {
+            await this.processedCacheLoad;
+            if (!this.processedCacheStoreReady || this.processedCacheStore !== this.kvDB) {
+                throw new Error("The Hidden File Sync cache store changed while loading its processing state");
+            }
+            return;
+        }
+
+        let load!: Promise<void>;
+        load = Promise.all([
+            autosaveCache<string, string>(store, "hidden-file-lastProcessed"),
+            autosaveCache<string, string>(store, "hidden-file-lastProcessed-database"),
+            autosaveCache<string, number>(store, "hidden-file-lastKnown"),
+        ])
+            .then(([fileInfoLastProcessed, databaseInfoLastProcessed, fileInfoLastKnown]) => {
+                if (this.processedCacheLoad !== load || this.kvDB !== store) return;
+                this._fileInfoLastProcessed = fileInfoLastProcessed;
+                this._databaseInfoLastProcessed = databaseInfoLastProcessed;
+                this._fileInfoLastKnown = fileInfoLastKnown;
+                this.processedCacheStore = store;
+                this.processedCacheStoreReady = true;
+            })
+            .finally(() => {
+                if (this.processedCacheLoad === load) {
+                    this.processedCacheLoad = undefined;
+                    this.processedCacheLoadStore = undefined;
+                }
+            });
+        this.processedCacheLoadStore = store;
+        this.processedCacheLoad = load;
+        await load;
+        if (!this.processedCacheStoreReady || this.processedCacheStore !== this.kvDB) {
+            throw new Error("The Hidden File Sync cache store changed while loading its processing state");
+        }
+    }
 
     statToKey(stat: UXStat | null) {
         return `${stat?.mtime ?? 0}-${stat?.size ?? 0}`;
@@ -600,7 +668,6 @@ Offline Changed files: ${processFiles.length}`;
                     this._log(`Hidden file:${path} is changed.`, LOG_LEVEL_VERBOSE);
                     stat = cache.stat;
                 }
-                this.updateLastProcessedFile(path, stat!);
                 const lastIsNotFound = !lastKey || lastKey.endsWith("-0-0");
                 const nowIsNotFound = cache.deleted;
                 const type = lastIsNotFound && nowIsNotFound ? "invalid" : nowIsNotFound ? "delete" : "modified";
@@ -649,6 +716,27 @@ Offline Changed files: ${processFiles.length}`;
         }
         // Could not be processed. but it was own task. so return true to prevent further processing.
         return true;
+    }
+
+    private async trackStorageFileModificationStrict(path: FilePath): Promise<boolean> {
+        return await this.serializedForEvent(path, async () => {
+            if (!this.isThisModuleEnabled() || !(await this.isTargetFile(path))) return false;
+            const stat = await this.core.storageAccess.statHidden(path);
+            if (stat != null && stat.type != "file") return true;
+            const key = await this.fileToStatKey(path, stat);
+            if (this.getLastProcessedFileKey(path) === key) {
+                this._log(`${path} Already processed.`, LOG_LEVEL_DEBUG);
+                return true;
+            }
+
+            const fileInfo = await this.loadFileWithInfo(path);
+            if (fileInfo.deleted) {
+                await this.deleteInternalFileOnDatabaseStrict(path);
+                return true;
+            }
+            await this.storeInternalFileToDatabaseStrict(fileInfo);
+            return true;
+        });
     }
 
     // --> Conflict processing
@@ -1444,6 +1532,11 @@ Offline Changed files: ${files.length}`;
         initialisationProgress?: HiddenFileInitialisationProgress
     ) {
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+        if (!this.isThisModuleEnabled()) {
+            this._log($msg(HIDDEN_FILE_SYNC_DISABLED_NOTICE), logLevel);
+            initialisationProgress?.done($msg("Hidden File Sync initialisation was not started."));
+            return false;
+        }
         const p = initialisationProgress ?? this._progress("[⚙ Initialise]\n", logLevel);
         // p.log("Resolving conflicts before starting...");
         // await this.resolveConflictOnInternalFiles();
@@ -1494,12 +1587,25 @@ Offline Changed files: ${files.length}`;
             await this.scanAllDatabaseChanges(showChildNotices, true, false);
         }
         p.done();
+        return true;
     }
     // <-- Initialization functions
 
     // --> Storage To Database Functions
 
     async __loadBaseSaveData(file: FilePath, includeContent = true): Promise<LoadedEntry | false> {
+        return await this.loadBaseSaveData(file, includeContent, false);
+    }
+
+    private async loadBaseSaveDataStrict(file: FilePath, includeContent = true): Promise<LoadedEntry | false> {
+        return await this.loadBaseSaveData(file, includeContent, true);
+    }
+
+    private async loadBaseSaveData(
+        file: FilePath,
+        includeContent: boolean,
+        strict: boolean
+    ): Promise<LoadedEntry | false> {
         const prefixedFileName = addPrefix(file, ICHeader);
         const id = await this.path2id(prefixedFileName, ICHeader);
         try {
@@ -1525,6 +1631,7 @@ Offline Changed files: ${files.length}`;
                 return old;
             }
         } catch (ex) {
+            if (strict) throw ex;
             this._log(`Getting base save data failed`);
             this._log(ex, LOG_LEVEL_VERBOSE);
             return false;
@@ -1552,6 +1659,18 @@ Offline Changed files: ${files.length}`;
     }
 
     async storeInternalFileToDatabase(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
+        return await this.storeInternalFileToDatabaseCore(file, forceWrite, false);
+    }
+
+    private async storeInternalFileToDatabaseStrict(file: InternalFileInfo | UXFileInfo, forceWrite = false) {
+        return await this.storeInternalFileToDatabaseCore(file, forceWrite, true);
+    }
+
+    private async storeInternalFileToDatabaseCore(
+        file: InternalFileInfo | UXFileInfo,
+        forceWrite: boolean,
+        strict: boolean
+    ) {
         const storeFilePath = stripAllPrefixes(file.path);
         const storageFilePath = file.path;
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
@@ -1565,9 +1684,11 @@ Offline Changed files: ${files.length}`;
                 if (fileInfo.deleted) {
                     throw new Error(`Hidden file:${storeFilePath} is deleted. This should not be occurred.`);
                 }
-                const baseData = await this.__loadBaseSaveData(storeFilePath, true);
+                const baseData = strict
+                    ? await this.loadBaseSaveDataStrict(storeFilePath, true)
+                    : await this.__loadBaseSaveData(storeFilePath, true);
                 if (baseData === false) throw new Error("Failed to load base data");
-                if (baseData._rev && !forceWrite) {
+                if (baseData._rev && !baseData.deleted && !baseData._deleted && !forceWrite) {
                     // Not newly created,  we should check the content is actually modified.
                     const isSame = await isDocContentSame(readAsBlob(baseData), fileInfo.body);
                     if (isSame) {
@@ -1592,11 +1713,15 @@ Offline Changed files: ${files.length}`;
                     this.updateLastProcessed(storeFilePath, saveData, fileInfo.stat);
                 }
                 const success = ret && ret.ok;
+                if (!success && strict) {
+                    throw new Error(`Failed to store hidden file in the database: ${storeFilePath}`);
+                }
                 this._log(`STORAGE --> DB:${storageFilePath}: (hidden) ${success ? "Done" : "Failed"}`);
                 return success;
             } catch (ex) {
                 this._log(`STORAGE --> DB:${storageFilePath}: (hidden) Failed`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
+                if (strict) throw ex;
                 return false;
             }
         });
@@ -1676,6 +1801,14 @@ Offline Changed files: ${files.length}`;
     }
 
     async deleteInternalFileOnDatabase(filenameSrc: FilePath, forceWrite = false) {
+        return await this.deleteInternalFileOnDatabaseCore(filenameSrc, forceWrite, false);
+    }
+
+    private async deleteInternalFileOnDatabaseStrict(filenameSrc: FilePath, forceWrite = false) {
+        return await this.deleteInternalFileOnDatabaseCore(filenameSrc, forceWrite, true);
+    }
+
+    private async deleteInternalFileOnDatabaseCore(filenameSrc: FilePath, _forceWrite: boolean, strict: boolean) {
         const storeFilePath = filenameSrc;
         const storageFilePath = filenameSrc;
         const displayFileName = filenameSrc;
@@ -1686,18 +1819,26 @@ Offline Changed files: ${files.length}`;
         }
         return await serialized("file-" + prefixedFileName, async () => {
             try {
-                const baseData = await this.__loadBaseSaveData(storeFilePath, false);
+                const baseData = strict
+                    ? await this.loadBaseSaveDataStrict(storeFilePath, false)
+                    : await this.__loadBaseSaveData(storeFilePath, false);
                 if (baseData === false) throw new Error("Failed to load base data during deleting");
                 if (baseData._conflicts !== undefined) {
                     for (const conflictRev of baseData._conflicts) {
-                        await this.localDatabase.removeRevision(baseData._id, conflictRev);
+                        const removed = await this.localDatabase.removeRevision(baseData._id, conflictRev);
+                        if (strict && removed === false) {
+                            throw new Error(`Failed to remove conflicted hidden-file revision ${conflictRev}`);
+                        }
                         this._log(
                             `STORAGE -x> DB: ${displayFileName}: (hidden) conflict removed ${baseData._rev} =>  ${conflictRev}`,
                             LOG_LEVEL_VERBOSE
                         );
                     }
                 }
-                if (baseData.deleted) {
+                const alreadyDeleted = strict
+                    ? !baseData._rev || baseData.deleted || baseData._deleted
+                    : baseData.deleted;
+                if (alreadyDeleted) {
                     this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) already deleted`, LOG_LEVEL_VERBOSE);
                     this.updateLastProcessedDeletion(storeFilePath, baseData);
                     return true;
@@ -1718,11 +1859,13 @@ Offline Changed files: ${files.length}`;
                     return true;
                 } else {
                     this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Failed`);
+                    if (strict) throw new Error(`Failed to delete hidden file from the database: ${storeFilePath}`);
                     return false;
                 }
             } catch (ex) {
                 this._log(`STORAGE -x> DB: ${displayFileName}: (hidden) Failed`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
+                if (strict) throw ex;
                 return false;
             }
         });
@@ -1925,6 +2068,7 @@ Offline Changed files: ${files.length}`;
 
     async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         let initialisationProgress: HiddenFileInitialisationProgress | undefined;
+        let initialised = false;
         let result: ConfigureHiddenFileSyncResult;
         try {
             result = await configureHiddenFileSyncMode(mode, {
@@ -1954,7 +2098,7 @@ Offline Changed files: ${files.length}`;
                     );
                 },
                 initialise: async (direction) => {
-                    await this.initialiseInternalFileSync(direction, true, false, initialisationProgress);
+                    initialised = await this.initialiseInternalFileSync(direction, true, false, initialisationProgress);
                     initialisationProgress = undefined;
                 },
             });
@@ -1962,7 +2106,7 @@ Offline Changed files: ${files.length}`;
             initialisationProgress?.done("Failed");
             throw error;
         }
-        if (result == "ignored" || result == "disabled") {
+        if (result == "ignored" || result == "disabled" || !initialised) {
             return;
         }
         // this.plugin.settings.useAdvancedMode = true;
@@ -2084,6 +2228,9 @@ Offline Changed files: ${files.length}`;
         // services.databaseEvents.handleOnDatabaseInitialisation(this._everyOnInitializeDatabase.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
         services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
+        services.fileProcessing.processOptionalFileEventWithResult?.addHandler(
+            this._processOptionalFileEventWithResult.bind(this)
+        );
         services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
         services.replication.processOptionalSynchroniseResult.addHandler(this._anyProcessOptionalSyncFiles.bind(this));
         services.setting.onRealiseSetting.addHandler(this._everyRealizeSettingSyncMode.bind(this));

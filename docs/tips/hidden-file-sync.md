@@ -72,6 +72,12 @@ Hidden File Sync must be enabled independently after ordinary setup on each devi
 
 If you later run Rebuild or Fetch as a recovery operation, expect optional features to be disabled again. Complete ordinary recovery first, then repeat this guide deliberately.
 
+## Automatic in Customisation Sync
+
+**Automatic** delegates an item's files to Hidden File Sync. Enable Hidden File Sync on this device through the steps above before choosing Automatic. If Hidden File Sync is disabled, the choice displays a Notice without changing the item's mode or starting initialisation. Previously saved Automatic assignments remain saved, so this prerequisite also applies after importing settings from another device.
+
+Once Hidden File Sync is enabled, choose the item's initial action in Customisation Sync. Selecting a whole plug-in applies that action to both its **MAIN** and **DATA** selections.
+
 ## Related settings
 
 The [settings reference](../settings.md#7-hidden-files-advanced) describes periodic scanning, scanning before replication, notification suppression, selectors, and overwrite patterns. Change those controls only after the basic Hidden File Sync path is working.

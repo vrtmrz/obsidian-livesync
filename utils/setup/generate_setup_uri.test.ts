@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import {
   decodeSettingsFromSetupURI,
   DEFAULT_SETTINGS,
@@ -8,6 +9,76 @@ import { generateSetupURI } from "./generate_setup_uri.ts";
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
+
+Deno.test("reads LIVESYNC_ variables before the unprefixed names", async () => {
+  const generated = await generateSetupURI({
+    LIVESYNC_HOST: "https://couch.example.test",
+    LIVESYNC_USER: "alice",
+    LIVESYNC_PASS: "couch-secret",
+    LIVESYNC_DB: "notes",
+    LIVESYNC_PASSPHRASE: "vault-secret",
+    hostname: "https://shell.example.test",
+    username: "shell-user",
+    password: "shell-secret",
+    database: "shell-db",
+    passphrase: "shell-passphrase",
+    uri_passphrase: "setup-secret",
+  });
+  const decoded = await decodeSettingsFromSetupURI(
+    generated.setupURI,
+    generated.setupPassphrase,
+  );
+  assert(decoded, "Commonlib could not decode the CouchDB Setup URI");
+  const effective = { ...DEFAULT_SETTINGS, ...decoded };
+  assert(
+    effective.couchDB_URI === "https://couch.example.test" &&
+      effective.couchDB_USER === "alice" &&
+      effective.couchDB_PASSWORD === "couch-secret" &&
+      effective.couchDB_DBNAME === "notes",
+    "the CouchDB connection did not come from the LIVESYNC_ variables",
+  );
+  assert(
+    effective.passphrase === "vault-secret",
+    "the Vault passphrase did not come from LIVESYNC_PASSPHRASE",
+  );
+});
+
+Deno.test("falls back to the unprefixed names when LIVESYNC_ variables are blank", async () => {
+  const generated = await generateSetupURI({
+    LIVESYNC_HOST: " ",
+    hostname: "https://couch.example.test",
+    username: "alice",
+    password: "couch-secret",
+    database: "notes",
+    passphrase: "vault-secret",
+    uri_passphrase: "setup-secret",
+  });
+  const decoded = await decodeSettingsFromSetupURI(
+    generated.setupURI,
+    generated.setupPassphrase,
+  );
+  assert(decoded, "Commonlib could not decode the CouchDB Setup URI");
+  const effective = { ...DEFAULT_SETTINGS, ...decoded };
+  assert(
+    effective.couchDB_URI === "https://couch.example.test" &&
+      effective.couchDB_USER === "alice" &&
+      effective.couchDB_PASSWORD === "couch-secret" &&
+      effective.couchDB_DBNAME === "notes" &&
+      effective.passphrase === "vault-secret",
+    "the generator did not fall back to the unprefixed names",
+  );
+});
+
+Deno.test("names both variables when a CouchDB value is missing", async () => {
+  let rejected = false;
+  try {
+    await generateSetupURI({ uri_passphrase: "setup-secret" });
+  } catch (error) {
+    rejected = error instanceof Error &&
+      error.message === "LIVESYNC_HOST (or hostname) is required";
+  }
+  assert(rejected, "the generator did not name both host variables");
+});
 
 Deno.test("generates an Object Storage Setup URI with a selected S3 profile", async () => {
   const generated = await generateSetupURI({
@@ -257,5 +328,173 @@ for (const mode of ["ephemeral", "persistent"] as const) {
       rejected = true;
     }
     assert(rejected, "legacy mode silently ignored a recovery code");
+  });
+}
+
+const couchDBConnection = {
+  hostname: "https://couch.example.test",
+  username: "alice",
+  password: "couch-secret",
+  database: "notes",
+  passphrase: "vault-secret",
+};
+const prefixedCouchDBConnection = {
+  LIVESYNC_HOST: couchDBConnection.hostname,
+  LIVESYNC_USER: couchDBConnection.username,
+  LIVESYNC_PASS: couchDBConnection.password,
+  LIVESYNC_DB: couchDBConnection.database,
+  LIVESYNC_PASSPHRASE: couchDBConnection.passphrase,
+};
+const commandEnvironments: { name: string; values: Record<string, string> }[] =
+  [
+    { name: "prefixed values only", values: prefixedCouchDBConnection },
+    {
+      name: "prefixed values before conflicting legacy values",
+      values: {
+        ...prefixedCouchDBConnection,
+        hostname: "https://shell.example.test",
+        username: "shell-user",
+        password: "shell-password",
+        database: "shell-database",
+        passphrase: "shell-passphrase",
+      },
+    },
+    {
+      name: "blank prefixed values fall back to legacy values",
+      values: {
+        ...couchDBConnection,
+        LIVESYNC_HOST: " ",
+        LIVESYNC_USER: "\t",
+        LIVESYNC_PASS: " ",
+        LIVESYNC_DB: "\t",
+        LIVESYNC_PASSPHRASE: " ",
+      },
+    },
+    { name: "compatibility: legacy values only", values: couchDBConnection },
+  ];
+
+async function runGeneratorCommand(
+  script: URL,
+  values: Record<string, string>,
+) {
+  const environment = Deno.env.toObject();
+  const inputNames = new Set([
+    ...Object.keys(couchDBConnection),
+    ...Object.keys(prefixedCouchDBConnection),
+    "remote_type",
+    "uri_passphrase",
+    "uri_mode",
+    "id_mode",
+    "id_recovery_code",
+    "endpoint",
+    "access_key",
+    "secret_key",
+    "bucket",
+    "region",
+    "bucket_prefix",
+    "bucket_custom_headers",
+    "use_custom_request_handler",
+    "force_path_style",
+    "p2p_room_id",
+    "p2p_passphrase",
+    "p2p_relays",
+    "p2p_app_id",
+    "p2p_auto_start",
+    "p2p_auto_broadcast",
+  ].map((name) => name.toLowerCase()));
+  for (const name of Object.keys(environment)) {
+    if (inputNames.has(name.toLowerCase())) delete environment[name];
+  }
+  const result = await new Deno.Command(Deno.execPath(), {
+    args: [
+      "run",
+      "--config",
+      fileURLToPath(new URL("../flyio/deno.jsonc", import.meta.url)),
+      "--frozen",
+      "--lock",
+      fileURLToPath(new URL("../flyio/deno.lock", import.meta.url)),
+      "--allow-env",
+      script.href,
+    ],
+    clearEnv: true,
+    env: {
+      ...environment,
+      uri_passphrase: "setup-secret",
+      uri_mode: "persistent",
+      ...values,
+    },
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  assert(
+    result.success,
+    `generator failed: ${new TextDecoder().decode(result.stderr)}`,
+  );
+  const output = new TextDecoder().decode(result.stdout);
+  const uri = output.match(/obsidian:\/\/setuplivesync\?settings=\S+/u)?.[0];
+  assert(uri, "the command did not print a Setup URI");
+  const decoded = await decodeSettingsFromSetupURI(uri, "setup-secret");
+  assert(decoded, "the command output could not be decoded");
+  return { ...DEFAULT_SETTINGS, ...decoded };
+}
+
+for (
+  const [name, path] of [
+    ["Setup generator", "./generate_setup_uri.ts"],
+    ["Fly.io wrapper", "../flyio/generate_setupuri.ts"],
+  ]
+) {
+  for (const scenario of commandEnvironments) {
+    Deno.test(`E2E ${name}: ${scenario.name}`, async () => {
+      const settings = await runGeneratorCommand(
+        new URL(path, import.meta.url),
+        scenario.values,
+      );
+      assert(
+        settings.couchDB_URI === couchDBConnection.hostname &&
+          settings.couchDB_USER === couchDBConnection.username &&
+          settings.couchDB_PASSWORD === couchDBConnection.password &&
+          settings.couchDB_DBNAME === couchDBConnection.database &&
+          settings.passphrase === couchDBConnection.passphrase,
+        "the command did not preserve the selected connection and Vault passphrase",
+      );
+      const profileId = settings.activeConfigurationId;
+      const profile = profileId
+        ? settings.remoteConfigurations?.[profileId]
+        : undefined;
+      assert(
+        profile?.uri.startsWith("sls+https://"),
+        "the generated URI did not select its CouchDB profile",
+      );
+    });
+  }
+}
+
+for (const remoteType of ["s3", "p2p"]) {
+  Deno.test(`E2E Setup generator: prefixed Vault passphrase for ${remoteType}`, async () => {
+    const settings = await runGeneratorCommand(
+      new URL("./generate_setup_uri.ts", import.meta.url),
+      {
+        remote_type: remoteType,
+        endpoint: "https://objects.example.test",
+        access_key: "access-key",
+        secret_key: "secret-key",
+        bucket: "vault-data",
+        LIVESYNC_PASSPHRASE: "vault-secret",
+        passphrase: "shell-passphrase",
+      },
+    );
+    assert(
+      settings.passphrase === "vault-secret",
+      "the command did not prefer LIVESYNC_PASSPHRASE",
+    );
+    const profileId = settings.activeConfigurationId;
+    const profile = profileId
+      ? settings.remoteConfigurations?.[profileId]
+      : undefined;
+    assert(
+      profile?.uri.startsWith(`sls+${remoteType}://`),
+      "the command did not select the requested remote profile",
+    );
   });
 }

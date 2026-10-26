@@ -43,11 +43,13 @@ type TestWorkspace = {
 type TestLogModule = {
     adjustStatusDivPosition?: () => void;
     statusLog?: WritableSource<string>;
+    activeFileStatus?: WritableSource<string>;
+    p2pLogCollector?: { p2pReplicationLine: WritableSource<string> };
     statusDiv?: HTMLElement;
     statusLine?: HTMLElement;
     statusLineRenderer?: { render?: (parts: readonly unknown[]) => void };
     statusBarRenderer?: { render?: (parts: readonly unknown[]) => void };
-    statusBarLabels?: WritableSource<{ parts: readonly unknown[] }>;
+    statusBarLabels?: WritableSource<{ parts: readonly unknown[]; message: string }>;
     __addLog?: (message: unknown, level?: number, key?: string) => void;
 };
 type TestCore = {
@@ -57,6 +59,17 @@ type TestCore = {
         replicator?: {
             replicationStatics?: WritableSource<TestReplicationStatics>;
         };
+        replication?: {
+            replicationResultCount: WritableSource<number>;
+            databaseQueueCount: WritableSource<number>;
+            storageApplyingCount: WritableSource<number>;
+        };
+        fileProcessing?: {
+            processing: WritableSource<number>;
+            totalQueued: WritableSource<number>;
+            batched: WritableSource<number>;
+        };
+        conflict?: { conflictProcessQueueCount: WritableSource<number> };
         API?: {
             requestCount?: WritableSource<number>;
             responseCount?: WritableSource<number>;
@@ -120,7 +133,8 @@ async function installFixtureFile(page: Page): Promise<void> {
         }
         let file = vault.getAbstractFileByPath(path);
         if (!file) file = await vault.create(path, "Replication status renderer fixture.\n");
-        const leaf = workspace.getLeaf(false);
+        // Opening a new tab emits the active-leaf transition used by the overlay placement hook.
+        const leaf = workspace.getLeaf("tab");
         if (!leaf.openFile) return { ready: false, reason: "The active workspace leaf cannot open a file." };
         await leaf.openFile(file);
         workspace.setActiveLeaf(leaf, { focus: true });
@@ -411,6 +425,9 @@ async function measureNumericWidths(page: Page): Promise<Record<(typeof numericK
             if (!value || value.hidden) throw new Error(`The numeric status item ${key} is not visible.`);
             if (getComputedStyle(value).fontVariantNumeric !== "tabular-nums") {
                 throw new Error(`The numeric status item ${key} does not use tabular figures.`);
+            }
+            if (getComputedStyle(value).textAlign !== "right") {
+                throw new Error(`The numeric status item ${key} is not right-aligned.`);
             }
             result[key] = value.getBoundingClientRect().width;
         }
@@ -707,6 +724,122 @@ async function hideMainWindow(page: Page): Promise<MainWindowControl> {
     };
 }
 
+async function assertLegacyStatusPaths(page: Page): Promise<void> {
+    await page.evaluate(async (timeout) => {
+        const core = (globalThis as TestWindow).app?.plugins?.plugins?.["obsidian-livesync"]?.core;
+        const moduleLog = core?.modules?.find((entry): entry is TestLogModule => {
+            if (typeof entry !== "object" || entry === null) return false;
+            return (entry as TestLogModule).statusBarLabels !== undefined;
+        });
+        const services = core?.services;
+        const settings = services?.setting?.currentSettings?.();
+        if (
+            !settings ||
+            !services?.replication ||
+            !services.fileProcessing ||
+            !services.conflict ||
+            !moduleLog?.activeFileStatus ||
+            !moduleLog.p2pLogCollector ||
+            !moduleLog.statusBarLabels
+        )
+            throw new Error("The legacy status sources are unavailable.");
+        const counters = [
+            { key: "file-processing", mark: "⏳", source: services.fileProcessing.processing, value: 2 },
+            { key: "file-pending", mark: "🛫", source: services.fileProcessing.totalQueued, value: 3 },
+            { key: "file-batched", mark: "📬", source: services.fileProcessing.batched, value: 4 },
+            { key: "queue-replication", mark: "📥", source: services.replication.replicationResultCount, value: 5 },
+            { key: "queue-database", mark: "📄", source: services.replication.databaseQueueCount, value: 6 },
+            { key: "queue-storage", mark: "💾", source: services.replication.storageApplyingCount, value: 7 },
+            { key: "queue-conflicts", mark: "🔩", source: services.conflict.conflictProcessQueueCount, value: 8 },
+        ];
+        const warning = moduleLog.activeFileStatus;
+        const p2p = moduleLog.p2pLogCollector.p2pReplicationLine;
+        const labels = moduleLog.statusBarLabels;
+        const previous = {
+            counters: counters.map(({ source }) => source.value),
+            warning: warning.value,
+            p2p: p2p.value,
+            hideFileWarningNotice: settings.hideFileWarningNotice,
+        };
+        const peerLine = "⚡ E2E peer ↑ 11/12 ↓ 13/14";
+        const wait = {
+            async until(condition: () => boolean, message: string) {
+                const deadline = Date.now() + timeout;
+                while (!condition()) {
+                    if (Date.now() >= deadline) throw new Error(message);
+                    await new Promise((resolve) => setTimeout(resolve, 20));
+                }
+            },
+        };
+        try {
+            for (const { source, value } of counters) source.value = value;
+            p2p.value = peerLine;
+            settings.hideFileWarningNotice = false;
+            warning.value = "E2E file warning";
+            await wait.until(
+                () =>
+                    [".livesync-status-statusline", ".syncstatusbar"].every((root) =>
+                        counters.every(({ key, value }) => {
+                            const item = document.querySelector<HTMLElement>(`${root} .livesync-stat-${key}`);
+                            return (
+                                item !== null &&
+                                getComputedStyle(item).display !== "none" &&
+                                item.querySelector(".livesync-stat-value")?.textContent?.trim() === String(value)
+                            );
+                        })
+                    ),
+                "Queue values did not reach both status displays."
+            );
+            await wait.until(
+                () =>
+                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p")?.textContent?.trim() ===
+                        peerLine &&
+                    document
+                        .querySelector(".livesync-status-messagearea")
+                        ?.textContent?.includes("⚠️ E2E file warning") === true,
+                "The P2P line or file warning was lost from the editor display."
+            );
+            const plain = labels.value.message.replace(/\u2007/gu, "");
+            if (
+                !counters.every(({ mark, value }) => plain.includes(` ${mark}${value}`)) ||
+                !plain.endsWith("\n" + peerLine)
+            ) {
+                throw new Error("The plain-text status lost a queue count or its separate P2P line.");
+            }
+            if (document.querySelector(".syncstatusbar .livesync-stat-p2p:not(.livesync-stat-inactive)")) {
+                throw new Error("The status bar unexpectedly included the second-line P2P status.");
+            }
+            settings.hideFileWarningNotice = true;
+            warning.value = "E2E file warning as an icon";
+            await wait.until(
+                () =>
+                    document
+                        .querySelector(".livesync-status-statusline .livesync-stat-file-skip")
+                        ?.textContent?.trim() === "⛔ SKIP" &&
+                    document
+                        .querySelector(".livesync-status-messagearea")
+                        ?.textContent?.includes("E2E file warning") === false,
+                "The file warning did not switch to its existing compact icon."
+            );
+            p2p.value = "";
+            await wait.until(
+                () =>
+                    document.querySelector(".syncstatusbar .livesync-stat-file-skip")?.textContent?.trim() ===
+                        "⛔ SKIP" && labels.value.message.endsWith(" ⛔ SKIP"),
+                "The single-line status lost the compact file warning."
+            );
+        } finally {
+            counters.forEach(({ source }, index) => {
+                source.value = previous.counters[index];
+            });
+            settings.hideFileWarningNotice = previous.hideFileWarningNotice;
+            p2p.value = previous.p2p;
+            warning.value = previous.warning;
+        }
+    }, uiTimeoutMs);
+    console.log("Queue counts, P2P text, file warnings, and plain-text status remain available.");
+}
+
 async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void> {
     await withObsidianPage(session.remoteDebuggingPort, async (page) => {
         let popoutMarker: string | undefined;
@@ -865,6 +998,7 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
             const returnedLog = `E2E main-window log ${Date.now()}`;
             await appendLiveSyncLog(page, returnedLog);
             await waitForLogMessage(page, returnedLog);
+            await assertLegacyStatusPaths(page);
             console.log("Replication status, split-pane ownership, and popout status/log checks passed.");
         } finally {
             if (mainWindow) await mainWindow.restore();

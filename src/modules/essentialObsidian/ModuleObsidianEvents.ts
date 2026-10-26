@@ -230,7 +230,13 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         }
         this.isLastHidden = isHidden;
 
-        await this.services.fileProcessing.commitPendingFileEvents();
+        const pendingFileEventsCommitted = await this.services.fileProcessing.commitPendingFileEvents();
+        if (!pendingFileEventsCommitted) {
+            this._log(
+                "Pending file events remain because their commit did not complete before the window visibility changed.",
+                LOG_LEVEL_NOTICE
+            );
+        }
 
         // Desktop opt-in (LiveSync/Periodic only): keep the background channel running while the
         // window is hidden, instead of suspending on hide. On hide we skip the suspend for both
@@ -287,7 +293,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         if (this.settings.suspendFileWatching) return;
         if (!this.settings.isConfigured) return;
         if (!this.services.appLifecycle.isReady()) return;
-        await this.services.fileProcessing.commitPendingFileEvents();
+        const pendingFileEventsCommitted = await this.services.fileProcessing.commitPendingFileEvents();
+        if (!pendingFileEventsCommitted) {
+            return;
+        }
         if (file == null) {
             return;
         }

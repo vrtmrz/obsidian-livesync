@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { ModuleObsidianEvents } from "./ModuleObsidianEvents";
 import { DEFAULT_SETTINGS, REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
+import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 
 type SetupOptions = {
     settings?: Partial<typeof DEFAULT_SETTINGS>;
@@ -23,6 +24,8 @@ function setup(opts: SetupOptions) {
         onResumed: vi.fn(async () => true),
     };
     const fileProcessing = { commitPendingFileEvents: vi.fn(async () => true) };
+    const replication = { replicateUnattendedByEvent: vi.fn(async () => undefined) };
+    const conflict = { queueCheckForIfOpen: vi.fn(async () => undefined) };
     const boundedRemoteActivityCount = reactiveSource(0);
     const boundedLocalApplicationActivityCount = reactiveSource(0);
 
@@ -39,6 +42,8 @@ function setup(opts: SetupOptions) {
             setting: { saveSettingData: vi.fn(async () => undefined) },
             appLifecycle,
             fileProcessing,
+            replication,
+            conflict,
             replicator: { boundedRemoteActivityCount, boundedLocalApplicationActivityCount },
         },
         settings: {
@@ -61,6 +66,9 @@ function setup(opts: SetupOptions) {
         module,
         appLifecycle,
         fileProcessing,
+        replication,
+        conflict,
+        api: core._services.API,
         boundedRemoteActivityCount,
         boundedLocalApplicationActivityCount,
     };
@@ -303,6 +311,23 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
         expect(appLifecycle.onResumed).toHaveBeenCalledTimes(1);
     });
 
+    it("logs a failed pending-file commit and still suspends on hide", async () => {
+        const { module, appLifecycle, fileProcessing, api } = setup({
+            settings: { keepReplicationActiveInBackground: false, liveSync: true },
+            hidden: true,
+        });
+        fileProcessing.commitPendingFileEvents.mockResolvedValue(false);
+
+        await module.watchWindowVisibilityAsync();
+
+        expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1);
+        expect(api.addLog).toHaveBeenCalledWith(
+            expect.stringContaining("Pending file events remain"),
+            LOG_LEVEL_NOTICE,
+            expect.any(String)
+        );
+    });
+
     it("does not apply on mobile even if the flag is set", async () => {
         const { module, appLifecycle } = setup({
             settings: { keepReplicationActiveInBackground: true, liveSync: true },
@@ -311,5 +336,22 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
         });
         await module.watchWindowVisibilityAsync();
         expect(appLifecycle.onSuspending).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("watchWorkspaceOpenAsync — pending file event commit", () => {
+    it("skips replication and conflict checks when pending file events fail to commit", async () => {
+        const { module, fileProcessing, replication, conflict } = setup({
+            settings: { syncOnFileOpen: true },
+            hidden: false,
+        });
+        fileProcessing.commitPendingFileEvents.mockResolvedValue(false);
+
+        await module.watchWorkspaceOpenAsync({ path: "note.md" } as Parameters<
+            typeof module.watchWorkspaceOpenAsync
+        >[0]);
+
+        expect(replication.replicateUnattendedByEvent).not.toHaveBeenCalled();
+        expect(conflict.queueCheckForIfOpen).not.toHaveBeenCalled();
     });
 });

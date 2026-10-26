@@ -99,6 +99,115 @@ function createHiddenRevisionOperation() {
 }
 
 describe("HiddenFileSync configuration-change notices", () => {
+    it.each(["pushForce", "pullForce", "safe"] as const)(
+        "refuses %s initialisation before processing files while Hidden File Sync is disabled",
+        async (direction) => {
+            const progress = { log: vi.fn(), once: vi.fn(), done: vi.fn() };
+            const path = ".obsidian/example.json" as FilePath;
+            const operations = {
+                rebuildFromStorage: vi.fn(async () => [path]),
+                rebuildFromDatabase: vi.fn(async () => []),
+                rebuildMerging: vi.fn(async () => [path]),
+                adoptCurrentStorageFilesAsProcessed: vi.fn(async () => undefined),
+                adoptCurrentDatabaseFilesAsProcessed: vi.fn(async () => undefined),
+                scanAllStorageChanges: vi.fn(async () => undefined),
+                scanAllDatabaseChanges: vi.fn(async () => undefined),
+            };
+            const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+            const settings = { syncInternalFiles: false };
+            const createProgress = vi.fn(() => progress);
+            const log = vi.fn();
+            Object.assign(hiddenFileSync, {
+                core: { settings },
+                _progress: createProgress,
+                _log: log,
+                ...operations,
+            });
+
+            const result = await hiddenFileSync.initialiseInternalFileSync(direction, true, [path]);
+
+            for (const operation of Object.values(operations)) {
+                expect(operation).not.toHaveBeenCalled();
+            }
+            expect(result).toBe(false);
+            expect(settings.syncInternalFiles).toBe(false);
+            expect(createProgress).not.toHaveBeenCalled();
+            expect(log).toHaveBeenCalledWith(expect.stringContaining("Hidden File Sync is disabled"), LOG_LEVEL_NOTICE);
+            expect(progress.done).not.toHaveBeenCalled();
+        }
+    );
+
+    it("finishes an existing preparation Notice as not started when initialisation is disabled", async () => {
+        const progress = { log: vi.fn(), once: vi.fn(), done: vi.fn() };
+        const createProgress = vi.fn();
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: { settings: { syncInternalFiles: false } },
+            _progress: createProgress,
+            _log: vi.fn(),
+        });
+
+        const result = await hiddenFileSync.initialiseInternalFileSync("safe", true, false, progress);
+
+        expect(result).toBe(false);
+        expect(createProgress).not.toHaveBeenCalled();
+        expect(progress.done).toHaveBeenCalledExactlyOnceWith("Hidden File Sync initialisation was not started.");
+    });
+
+    it("does not apply a stored deletion when initialisation is requested while disabled", async () => {
+        const path = ".obsidian/example.json" as FilePath;
+        const deleted: MetaEntry = {
+            _id: "i:example" as DocumentID,
+            _rev: "2-deleted",
+            path: `i:${path}` as FilePathWithPrefix,
+            type: "plain",
+            ctime: 1,
+            mtime: 10,
+            size: 0,
+            deleted: true,
+            children: [],
+            eden: {},
+        };
+        const progress = { log: vi.fn(), once: vi.fn(), done: vi.fn() };
+        const deleteFile = vi.fn(async () => "OK" as const);
+        const updateDeletion = vi.fn();
+        const getFiles = vi.fn(async () => [deleted]);
+        const processedStorage = new Map([[path, "storage-processed"]]);
+        const processedDatabase = new Map([[path, "database-processed"]]);
+        const resetProcessed = vi.fn(() => processedDatabase.clear());
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: {
+                settings: { syncInternalFiles: false },
+                services: { vault: { isIgnoredByIgnoreFile: vi.fn(async () => false) } },
+            },
+            _progress: vi.fn(() => progress),
+            _log: vi.fn(),
+            _verbose: vi.fn(),
+            _fileInfoLastProcessed: processedStorage,
+            _databaseInfoLastProcessed: processedDatabase,
+            getAllDatabaseFiles: getFiles,
+            getPath: (doc: MetaEntry) => doc.path,
+            resetLastProcessedDatabase: resetProcessed,
+            serializedForEvent: async (_path: unknown, operation: () => Promise<unknown>) => await operation(),
+            __deleteFile: deleteFile,
+            updateLastProcessedDeletion: updateDeletion,
+            adoptCurrentStorageFilesAsProcessed: vi.fn(),
+            adoptCurrentDatabaseFilesAsProcessed: vi.fn(),
+            scanAllStorageChanges: vi.fn(),
+            scanAllDatabaseChanges: vi.fn(),
+        });
+
+        await hiddenFileSync.initialiseInternalFileSync("pullForce", true);
+
+        expect(deleteFile).not.toHaveBeenCalled();
+        expect(updateDeletion).not.toHaveBeenCalled();
+        expect(getFiles).not.toHaveBeenCalled();
+        expect(resetProcessed).not.toHaveBeenCalled();
+        expect(processedStorage).toEqual(new Map([[path, "storage-processed"]]));
+        expect(processedDatabase).toEqual(new Map([[path, "database-processed"]]));
+    });
+
     it("shows manual Hidden File Sync commands only when the feature, Advanced mode, and runtime are ready", () => {
         const commands: Array<{
             id: string;
@@ -134,6 +243,13 @@ describe("HiddenFileSync configuration-change notices", () => {
         for (const commandId of commandIds) {
             const command = commands.find(({ id }) => id === commandId);
             expect(command?.checkCallback?.(true)).toBe(false);
+        }
+
+        settings.useAdvancedMode = true;
+        for (const commandId of commandIds) {
+            const command = commands.find(({ id }) => id === commandId);
+            expect(command?.checkCallback?.(true)).toBe(false);
+            expect(command?.checkCallback?.(false)).toBe(false);
         }
 
         settings.syncInternalFiles = true;
@@ -252,6 +368,7 @@ describe("HiddenFileSync configuration-change notices", () => {
         const scanAllDatabaseChanges = vi.fn(async () => undefined);
         const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
         Object.assign(hiddenFileSync, {
+            core: { settings: { syncInternalFiles: true } },
             _progress: vi.fn(() => progress),
             rebuildMerging,
             adoptCurrentStorageFilesAsProcessed,
@@ -260,12 +377,81 @@ describe("HiddenFileSync configuration-change notices", () => {
             scanAllDatabaseChanges,
         });
 
-        await hiddenFileSync.initialiseInternalFileSync("safe", true);
+        const result = await hiddenFileSync.initialiseInternalFileSync("safe", true);
 
+        expect(result).toBe(true);
         expect(rebuildMerging).toHaveBeenCalledWith(false, false);
         expect(scanAllStorageChanges).toHaveBeenCalledWith(false, true, false);
         expect(scanAllDatabaseChanges).toHaveBeenCalledWith(false, true, false);
         expect(progress.done).toHaveBeenCalledOnce();
+    });
+
+    it.each(["pushForce", "pullForce", "safe"] as const)(
+        "retains the selected files and completes %s initialisation when enabled",
+        async (direction) => {
+            const files = [".obsidian/plugins/example/main.js", ".obsidian/plugins/example/data.json"] as FilePath[];
+            const entries = files.map((path) => ({ path: `i:${path}` as FilePathWithPrefix }));
+            const progress = { log: vi.fn(), once: vi.fn(), done: vi.fn() };
+            const rebuildFromStorage = vi.fn(async () => files);
+            const rebuildFromDatabase = vi.fn(async () => entries);
+            const rebuildMerging = vi.fn(async () => files);
+            const adoptStorage = vi.fn();
+            const adoptDatabase = vi.fn();
+            const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+            Object.assign(hiddenFileSync, {
+                core: { settings: { syncInternalFiles: true } },
+                _progress: vi.fn(() => progress),
+                getPath: (entry: { path: FilePathWithPrefix }) => entry.path,
+                rebuildFromStorage,
+                rebuildFromDatabase,
+                rebuildMerging,
+                adoptCurrentStorageFilesAsProcessed: adoptStorage,
+                adoptCurrentDatabaseFilesAsProcessed: adoptDatabase,
+                scanAllStorageChanges: vi.fn(),
+                scanAllDatabaseChanges: vi.fn(),
+            });
+
+            const result = await hiddenFileSync.initialiseInternalFileSync(direction, true, files);
+
+            expect(result).toBe(true);
+            if (direction === "pushForce") {
+                expect(rebuildFromStorage).toHaveBeenCalledExactlyOnceWith(false, files, false);
+                expect(rebuildFromDatabase).not.toHaveBeenCalled();
+                expect(rebuildMerging).not.toHaveBeenCalled();
+            } else if (direction === "pullForce") {
+                expect(rebuildFromDatabase).toHaveBeenCalledExactlyOnceWith(false, files, false);
+                expect(rebuildFromStorage).not.toHaveBeenCalled();
+                expect(rebuildMerging).not.toHaveBeenCalled();
+            } else {
+                expect(rebuildMerging).toHaveBeenCalledExactlyOnceWith(false, files);
+                expect(rebuildFromStorage).not.toHaveBeenCalled();
+                expect(rebuildFromDatabase).not.toHaveBeenCalled();
+            }
+            expect(adoptStorage).toHaveBeenCalledExactlyOnceWith(files);
+            expect(adoptDatabase).toHaveBeenCalledExactlyOnceWith(files);
+            expect(progress.done).toHaveBeenCalledOnce();
+        }
+    );
+
+    it("does not report completion when the initialisation entry point refuses to start", async () => {
+        vi.mocked(configureHiddenFileSyncMode).mockImplementation(async (_mode, handlers) => {
+            await handlers.enable();
+            await handlers.initialise("safe");
+            return "enabled";
+        });
+        const progress = { log: vi.fn(), once: vi.fn(), done: vi.fn() };
+        const log = vi.fn();
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, {
+            core: { services: { setting: { applyPartial: vi.fn() } } },
+            _progress: vi.fn(() => progress),
+            _log: log,
+            initialiseInternalFileSync: vi.fn(async () => false),
+        });
+
+        await hiddenFileSync.configureHiddenFileSync("MERGE");
+
+        expect(log).not.toHaveBeenCalledWith("Hidden File Sync initialisation completed.", expect.any(Number));
     });
 
     it("retirement guard: does not restore separate gathering and restart Notices", async () => {
@@ -286,7 +472,7 @@ describe("HiddenFileSync configuration-change notices", () => {
         const applyPartial = vi.fn(async () => {
             events.push("apply-settings");
         });
-        const initialiseInternalFileSync = vi.fn(async () => undefined);
+        const initialiseInternalFileSync = vi.fn(async () => true);
         const log = vi.fn();
         const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
         Object.assign(hiddenFileSync, {
