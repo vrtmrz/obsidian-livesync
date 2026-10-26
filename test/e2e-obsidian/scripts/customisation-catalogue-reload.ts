@@ -13,6 +13,7 @@ import {
     waitForLiveSyncCoreReady,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
+import { waitForVisibleObsidianDialogue, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 
 const pluginName = "livesync-catalogue-example";
@@ -71,6 +72,16 @@ async function matchingFiles(vaultPath: string, files: Record<string, string>) {
         }
     }
     return matches.sort();
+}
+
+async function waitForMatchingFiles(vaultPath: string, files: Record<string, string>) {
+    const deadline = Date.now() + 10_000;
+    let matches = await matchingFiles(vaultPath, files);
+    while (matches.length !== Object.keys(files).length && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        matches = await matchingFiles(vaultPath, files);
+    }
+    return matches;
 }
 
 async function main() {
@@ -148,8 +159,20 @@ async function main() {
             await settle();
             return JSON.stringify({seeded:true});
         `);
+        const opened = await evaluate<{ opened: boolean }>(
+            `return JSON.stringify({opened:app.commands.executeCommandById('obsidian-livesync:livesync-plugin-dialog-ex')});`
+        );
+        if (!opened.opened) throw new Error("Could not open the Customisation Sync dialogue command");
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const dialogue = await waitForVisibleObsidianDialogue(page, "Customization Sync (Beta3)");
+            await dialogue
+                .locator("label")
+                .filter({ hasText: "Maintenance mode" })
+                .locator('input[type="checkbox"]')
+                .check();
+            await dialogue.getByRole("button", { name: "Reload", exact: true }).click();
+        });
         const catalogue = await evaluate<{ files: string[]; documents: number }>(`${configCode}${settleCode}
-            await addOn.reloadPluginList(false);
             await settle();
             ${sourceRowCode}
             let documents=0;
@@ -167,13 +190,16 @@ async function main() {
                 .sort()
         );
         await removeFixtures(vault.path, pluginFiles);
-        const firstApply = await evaluate(
-            `${configCode}${sourceRowCode}return JSON.stringify({applied:await addOn.applyDataV2(row)});`
-        );
-        report.firstApply = firstApply;
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const dialogue = await waitForVisibleObsidianDialogue(page, "Customization Sync (Beta3)");
+            const row = dialogue.locator(`.filerow:has(select option[value="${sourceTerm}"])`);
+            await row.locator("select").selectOption(sourceTerm);
+            await row.locator(".body").getByRole("button", { name: "✓", exact: true }).click();
+        });
+        report.firstApply = { action: "UI Apply", sourceTerm };
         record(
             "#1271: first Apply restores all file contents",
-            await matchingFiles(vault.path, pluginFiles),
+            await waitForMatchingFiles(vault.path, pluginFiles),
             Object.keys(pluginFiles).sort()
         );
 

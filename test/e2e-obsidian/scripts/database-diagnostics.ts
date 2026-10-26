@@ -31,6 +31,18 @@ type DiagnosticPageGlobal = typeof globalThis & {
     diagnosticDownload?: { name: string; content: string };
 };
 
+async function findVisibleElement(page: Page, selector: string): Promise<Locator> {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+        for (const candidate of page.context().pages()) {
+            const element = candidate.locator(selector);
+            if (await element.isVisible()) return element;
+        }
+        await page.waitForTimeout(50);
+    }
+    throw new Error(`No Obsidian renderer contains the visible element: ${selector}`);
+}
+
 async function openCommand(page: Page, kind: "usage" | "integrity") {
     const id = kind === "usage" ? "analyse-database" : "inspect-database-integrity";
     const opened = await page.evaluate(
@@ -243,11 +255,14 @@ async function assertDiagnosticFileLookup(
     session: ObsidianLiveSyncSession,
     mobile = false
 ): Promise<void> {
+    const dialoguePage = hatch.page();
+    const viewport = page.viewportSize();
+    if (viewport) await dialoguePage.setViewportSize(viewport);
     const setting = hatch.locator(".setting-item").filter({
-        has: page.getByText("Find a file from a report pseudonym", { exact: true }),
+        has: hatch.page().getByText("Find a file from a report pseudonym", { exact: true }),
     });
     await setting.getByRole("button", { name: "Find file", exact: true }).click();
-    const dialogue = page.locator(".diagnostic-file-lookup");
+    const dialogue = dialoguePage.locator(".diagnostic-file-lookup");
     await dialogue.waitFor({ state: "visible", timeout });
     const input = dialogue.getByLabel("Report path pseudonym", { exact: true });
     await input.fill("file-001");
@@ -259,8 +274,8 @@ async function assertDiagnosticFileLookup(
     await candidates.first().waitFor({ timeout });
     assert.equal(await candidates.count(), 2, "Distinct Metadata IDs claiming the same path must remain selectable");
     if (mobile) {
-        await assertNoHorizontalOverflow(page, dialogue, { label: "Pseudonym file lookup matches" });
-        await assertNoHorizontalOverflow(page, dialogue.locator(".lookup-candidates"), {
+        await assertNoHorizontalOverflow(dialoguePage, dialogue, { label: "Pseudonym file lookup matches" });
+        await assertNoHorizontalOverflow(dialoguePage, dialogue.locator(".lookup-candidates"), {
             label: "Pseudonym file lookup candidate list",
         });
         assert.ok(
@@ -270,7 +285,7 @@ async function assertDiagnosticFileLookup(
         await captureObsidianElement(
             session.remoteDebuggingPort,
             "database-diagnostics-file-matches-mobile.png",
-            (page) => page.locator(".modal-container").filter({ has: page.locator(".diagnostic-file-lookup") })
+            (page) => findVisibleElement(page, ".modal-container:has(.diagnostic-file-lookup)")
         );
     }
     const shadow = candidates.filter({ hasText: shadowId });
@@ -294,28 +309,30 @@ async function assertDiagnosticFileLookup(
     for (const privateValue of [fixturePath, shadowId, fixtureContent.trim()]) {
         assert.ok(!json.includes(privateValue), "A follow-up report must preserve the original report's pseudonyms");
     }
-    await installDiagnosticExportInterception(page);
+    await installDiagnosticExportInterception(dialoguePage);
     await dialogue.getByRole("button", { name: "Copy report", exact: true }).click();
-    assert.equal(await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticClipboard), json);
+    assert.equal(await dialoguePage.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticClipboard), json);
     await dialogue.getByRole("button", { name: "Save report", exact: true }).click();
-    await page.waitForFunction(() => !!(globalThis as DiagnosticPageGlobal).diagnosticDownload, undefined, { timeout });
-    assert.deepEqual(await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticDownload), {
+    await dialoguePage.waitForFunction(() => !!(globalThis as DiagnosticPageGlobal).diagnosticDownload, undefined, {
+        timeout,
+    });
+    assert.deepEqual(await dialoguePage.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticDownload), {
         name: "diagnostic-file-report.json",
         content: json,
     });
-    await assertDesktopDiagnosticResultLayout(page, dialogue, "saving a follow-up report");
+    await assertDesktopDiagnosticResultLayout(dialoguePage, dialogue, "saving a follow-up report");
     if (mobile) {
-        const modal = page.locator(".modal-container").filter({ has: dialogue });
-        await assertMobileDialogueLayout(page, modal, "Pseudonym file follow-up report");
-        await assertNoHorizontalOverflow(page, dialogue, { label: "Pseudonym file follow-up content" });
-        await assertNoHorizontalOverflow(page, dialogue.locator(".report-token"), {
+        const modal = dialoguePage.locator(".modal-container").filter({ has: dialogue });
+        await assertMobileDialogueLayout(dialoguePage, modal, "Pseudonym file follow-up report");
+        await assertNoHorizontalOverflow(dialoguePage, dialogue, { label: "Pseudonym file follow-up content" });
+        await assertNoHorizontalOverflow(dialoguePage, dialogue.locator(".report-token"), {
             label: "Pseudonym file follow-up token",
         });
     }
     await captureObsidianElement(
         session.remoteDebuggingPort,
         mobile ? "database-diagnostics-file-follow-up-mobile.png" : "database-diagnostics-file-follow-up.png",
-        (page) => page.locator(".modal-container").filter({ has: page.locator(".diagnostic-file-lookup") })
+        (page) => findVisibleElement(page, ".modal-container:has(.diagnostic-file-lookup)")
     );
     await dialogue.getByRole("radio", { name: "MARKDOWN", exact: true }).check();
     const markdown = await dialogue.locator("textarea").inputValue();
@@ -379,10 +396,10 @@ async function assertFollowUpStopsAfterClose(page: Page, hatch: Locator, token: 
     })()`);
     try {
         const setting = hatch.locator(".setting-item").filter({
-            has: page.getByText("Find a file from a report pseudonym", { exact: true }),
+            has: hatch.page().getByText("Find a file from a report pseudonym", { exact: true }),
         });
         await setting.getByRole("button", { name: "Find file", exact: true }).click();
-        const dialogue = page.locator(".diagnostic-file-lookup");
+        const dialogue = hatch.page().locator(".diagnostic-file-lookup");
         await dialogue.getByLabel("Report path pseudonym", { exact: true }).fill(token);
         await dialogue.getByRole("button", { name: "Find file", exact: true }).click();
         const candidate = dialogue.locator("[data-diagnostic-candidate]").filter({ hasText: shadowId });
@@ -466,7 +483,7 @@ async function main(): Promise<void> {
         const activeSession = session;
         let usageJSON = "";
         let usageFixtureRow: { path: string; id: string; revision: string } | undefined;
-        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const desktopScreenshot = await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             await page.setViewportSize({ width: 800, height: 600 });
             const choice = await openCommand(page, "usage");
             await choice.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).focus();
@@ -560,13 +577,15 @@ async function main(): Promise<void> {
             hatch = await (await openLiveSyncSettings(page, timeout)).openPage("Hatch");
             await assertFollowUpStopsAfterClose(page, hatch, usageFixtureRow.path);
             await captureObsidianElement(activeSession.remoteDebuggingPort, "database-diagnostics-hatch.png", (page) =>
-                page.locator(".modal.mod-settings")
+                findVisibleElement(page, ".modal.mod-settings")
             );
             const setting = hatch
                 .locator(".setting-item")
-                .filter({ has: page.getByText("Inspect database integrity", { exact: true }) });
+                .filter({ has: hatch.page().getByText("Inspect database integrity", { exact: true }) });
             await setting.getByRole("button", { name: "Inspect", exact: true }).click();
-            const progressDialogue = page.locator(".database-diagnostic");
+            const progressDialogue = await findVisibleElement(page, ".database-diagnostic");
+            const progressPage = progressDialogue.page();
+            await progressPage.setViewportSize({ width: 800, height: 600 });
             assert.equal(
                 await progressDialogue
                     .getByRole("radio", { name: "Pseudonyms (recommended)", exact: true })
@@ -579,7 +598,7 @@ async function main(): Promise<void> {
                     .isChecked(),
                 true
             );
-            await assertDesktopDiagnosticChoiceLayout(page, progressDialogue);
+            await assertDesktopDiagnosticChoiceLayout(progressPage, progressDialogue);
             await installDiagnosticReadGate(cli, activeSession, shadowId, "metadata");
             try {
                 await progressDialogue.getByRole("button", { name: "Begin inspection", exact: true }).click();
@@ -593,7 +612,7 @@ async function main(): Promise<void> {
                 await captureObsidianElement(
                     activeSession.remoteDebuggingPort,
                     "database-diagnostics-progress.png",
-                    (page) => page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") })
+                    (page) => findVisibleElement(page, ".modal-container:has(.database-diagnostic)")
                 );
                 await progressDialogue.getByRole("button", { name: "Cancel inspection", exact: true }).click();
                 await evalObsidianJson(
@@ -601,7 +620,7 @@ async function main(): Promise<void> {
                     `(async()=>{globalThis.databaseDiagnosticReadGate?.release();return JSON.stringify(true);})()`,
                     activeSession.cliEnv
                 );
-                await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
+                await progressPage.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
                 await assertFormatChoices(progressDialogue, ["MARKDOWN", "JSON"]);
                 await chooseFormat(progressDialogue, "json");
                 assert.equal(JSON.parse(await progressDialogue.locator("textarea").inputValue()).status, "cancelled");
@@ -612,33 +631,41 @@ async function main(): Promise<void> {
             }
 
             await setting.getByRole("button", { name: "Inspect", exact: true }).click();
-            const integrity = page.locator(".database-diagnostic");
+            const integrity = await findVisibleElement(page, ".database-diagnostic");
+            const integrityPage = integrity.page();
             assert.equal(
                 await integrity.getByRole("radio", { name: "Pseudonyms (recommended)", exact: true }).isChecked(),
                 true
             );
             await integrity.getByRole("button", { name: "Begin inspection", exact: true }).click();
-            await page.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
+            await integrityPage.locator('[data-diagnostic-phase="result"]').waitFor({ timeout });
             await assertFormatChoices(integrity, ["MARKDOWN", "JSON"]);
             assert.equal(await integrity.getByRole("radio", { name: "MARKDOWN", exact: true }).isChecked(), true);
             const markdownReport = await integrity.locator("textarea").inputValue();
             const markdownDetailsWithCodeBlock =
                 /<details>\s*<summary>Database integrity report \(partial\)<\/summary>\s*(`{3,})text\r?\n[\s\S]*?\1\s*<\/details>/;
             assert.match(markdownReport, markdownDetailsWithCodeBlock);
-            await installDiagnosticExportInterception(page);
+            await installDiagnosticExportInterception(integrityPage);
             await integrity.getByRole("button", { name: "Copy report", exact: true }).click();
             assert.equal(
-                await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticClipboard),
+                await integrityPage.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticClipboard),
                 markdownReport
             );
             await integrity.getByRole("button", { name: "Save report", exact: true }).click();
-            await page.waitForFunction(() => !!(globalThis as DiagnosticPageGlobal).diagnosticDownload, undefined, {
-                timeout,
-            });
-            assert.deepEqual(await page.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticDownload), {
-                name: "database-integrity-partial.md",
-                content: markdownReport,
-            });
+            await integrityPage.waitForFunction(
+                () => !!(globalThis as DiagnosticPageGlobal).diagnosticDownload,
+                undefined,
+                {
+                    timeout,
+                }
+            );
+            assert.deepEqual(
+                await integrityPage.evaluate(() => (globalThis as DiagnosticPageGlobal).diagnosticDownload),
+                {
+                    name: "database-integrity-partial.md",
+                    content: markdownReport,
+                }
+            );
             await chooseFormat(integrity, "json");
             const reportText = await integrity.locator("textarea").inputValue();
             const integrityReport = JSON.parse(reportText);
@@ -670,15 +697,17 @@ async function main(): Promise<void> {
             );
             for (const privateValue of [fixturePath, shadowId, fixtureContent.trim()])
                 assert.ok(!reportText.includes(privateValue));
+            const screenshot = await captureObsidianElement(
+                activeSession.remoteDebuggingPort,
+                "database-diagnostics-desktop.png",
+                (page) => findVisibleElement(page, ".modal-container:has(.database-diagnostic)")
+            );
+            await integrity.getByRole("button", { name: "Close", exact: true }).click();
+            await integrity.waitFor({ state: "hidden", timeout });
+            await settingsNavigator.close();
+            return screenshot;
         });
-        const desktopScreenshot = await captureObsidianElement(
-            session.remoteDebuggingPort,
-            "database-diagnostics-desktop.png",
-            (page) => page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") })
-        );
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
-            await page.locator(".database-diagnostic").getByRole("button", { name: "Close", exact: true }).click();
-            await page.keyboard.press("Escape");
             const localOnly = await openCommand(page, "integrity");
             await localOnly.getByRole("checkbox", { name: "Include remote database", exact: true }).uncheck();
             await localOnly.getByRole("button", { name: "Begin inspection", exact: true }).click();
@@ -780,7 +809,7 @@ async function main(): Promise<void> {
         const mobileScreenshot = await captureObsidianElement(
             session.remoteDebuggingPort,
             "database-diagnostics-mobile.png",
-            (page) => page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") })
+            (page) => findVisibleElement(page, ".modal-container:has(.database-diagnostic)")
         );
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             await page.setViewportSize({ width: 375, height: 667 });
@@ -828,7 +857,7 @@ async function main(): Promise<void> {
         const mobileResultScreenshot = await captureObsidianElement(
             session.remoteDebuggingPort,
             "database-diagnostics-mobile-result.png",
-            (page) => page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") })
+            (page) => findVisibleElement(page, ".modal-container:has(.database-diagnostic)")
         );
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             await page.setViewportSize({ width: 375, height: 667 });
@@ -857,7 +886,7 @@ async function main(): Promise<void> {
             await captureObsidianElement(
                 activeSession.remoteDebuggingPort,
                 "database-diagnostics-mobile-saved.png",
-                (page) => page.locator(".modal-container").filter({ has: page.locator(".database-diagnostic") })
+                (page) => findVisibleElement(page, ".modal-container:has(.database-diagnostic)")
             );
             await dialogue.getByRole("button", { name: "Close", exact: true }).click();
             await dialogue.waitFor({ state: "hidden", timeout });

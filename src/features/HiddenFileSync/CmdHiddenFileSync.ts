@@ -69,6 +69,9 @@ type HiddenFileInitialisationProgress = {
 const HIDDEN_FILE_NOTICE_GROUP = "hidden-file-changes";
 const HIDDEN_FILE_NOTICE_DURATION_MS = 20_000;
 
+export const HIDDEN_FILE_SYNC_DISABLED_NOTICE =
+    "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.";
+
 function getComparingMTime(
     doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
     includeDeleted = false
@@ -1444,6 +1447,11 @@ Offline Changed files: ${files.length}`;
         initialisationProgress?: HiddenFileInitialisationProgress
     ) {
         const logLevel = showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO;
+        if (!this.isThisModuleEnabled()) {
+            this._log($msg(HIDDEN_FILE_SYNC_DISABLED_NOTICE), logLevel);
+            initialisationProgress?.done($msg("Hidden File Sync initialisation was not started."));
+            return false;
+        }
         const p = initialisationProgress ?? this._progress("[⚙ Initialise]\n", logLevel);
         // p.log("Resolving conflicts before starting...");
         // await this.resolveConflictOnInternalFiles();
@@ -1494,6 +1502,7 @@ Offline Changed files: ${files.length}`;
             await this.scanAllDatabaseChanges(showChildNotices, true, false);
         }
         p.done();
+        return true;
     }
     // <-- Initialization functions
 
@@ -1925,6 +1934,7 @@ Offline Changed files: ${files.length}`;
 
     async configureHiddenFileSync(mode: OptionalSyncFeatureMode) {
         let initialisationProgress: HiddenFileInitialisationProgress | undefined;
+        let initialised = false;
         let result: ConfigureHiddenFileSyncResult;
         try {
             result = await configureHiddenFileSyncMode(mode, {
@@ -1954,7 +1964,7 @@ Offline Changed files: ${files.length}`;
                     );
                 },
                 initialise: async (direction) => {
-                    await this.initialiseInternalFileSync(direction, true, false, initialisationProgress);
+                    initialised = await this.initialiseInternalFileSync(direction, true, false, initialisationProgress);
                     initialisationProgress = undefined;
                 },
             });
@@ -1962,7 +1972,7 @@ Offline Changed files: ${files.length}`;
             initialisationProgress?.done("Failed");
             throw error;
         }
-        if (result == "ignored" || result == "disabled") {
+        if (result == "ignored" || result == "disabled" || !initialised) {
             return;
         }
         // this.plugin.settings.useAdvancedMode = true;

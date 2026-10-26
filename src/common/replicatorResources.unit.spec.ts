@@ -5,6 +5,7 @@ import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 
 const mocks = vi.hoisted(() => ({
     logger: vi.fn(),
+    initialFetchFastForwardResource: undefined as unknown,
     couchDB: [] as Array<{
         host: unknown;
         isMobile: ReturnType<typeof vi.fn>;
@@ -12,6 +13,9 @@ const mocks = vi.hoisted(() => ({
         getRemoteStatus: ReturnType<typeof vi.fn>;
         getRemotePreferredTweakValues: ReturnType<typeof vi.fn>;
         getReplicationPBKDF2Salt: ReturnType<typeof vi.fn>;
+        getJoinedDevices: ReturnType<typeof vi.fn>;
+        forgetJoinedDevice: ReturnType<typeof vi.fn>;
+        createInitialFetchFastForwardResource: ReturnType<typeof vi.fn>;
         closeReplication: ReturnType<typeof vi.fn>;
     }>,
     objectStorage: [] as Array<{
@@ -20,6 +24,8 @@ const mocks = vi.hoisted(() => ({
         getRemoteStatus: ReturnType<typeof vi.fn>;
         getRemotePreferredTweakValues: ReturnType<typeof vi.fn>;
         getReplicationPBKDF2Salt: ReturnType<typeof vi.fn>;
+        getJoinedDevices: ReturnType<typeof vi.fn>;
+        forgetJoinedDevice: ReturnType<typeof vi.fn>;
         closeReplication: ReturnType<typeof vi.fn>;
     }>,
     checkSyncInfo: vi.fn(async () => true),
@@ -42,6 +48,9 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicato
         getRemoteStatus = vi.fn();
         getRemotePreferredTweakValues = vi.fn();
         getReplicationPBKDF2Salt = vi.fn();
+        getJoinedDevices = vi.fn();
+        forgetJoinedDevice = vi.fn();
+        createInitialFetchFastForwardResource = vi.fn(() => mocks.initialFetchFastForwardResource);
         closeReplication = vi.fn();
 
         constructor(host: unknown) {
@@ -58,6 +67,8 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
         getRemoteStatus = vi.fn();
         getRemotePreferredTweakValues = vi.fn();
         getReplicationPBKDF2Salt = vi.fn();
+        getJoinedDevices = vi.fn();
+        forgetJoinedDevice = vi.fn();
         closeReplication = vi.fn();
 
         constructor(host: unknown) {
@@ -69,10 +80,13 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
 
 import {
     createCouchDBConnectionProbeFactory,
+    createCouchDBJoinedDevicesResourceFactory,
+    createCouchDBInitialFetchFastForwardResourceFactory,
     createCouchDBPreferredTweakProbeFactory,
     createCouchDBSecuritySeedResourceFactory,
     createCouchDBSynchronisationInformationResourceFactory,
     createObjectStorageConnectionProbeFactory,
+    createObjectStorageJoinedDevicesResourceFactory,
     createObjectStoragePreferredTweakProbeFactory,
     createObjectStorageSecuritySeedResourceFactory,
 } from "./replicatorResources";
@@ -92,6 +106,7 @@ describe("replicator probe factories", () => {
     beforeEach(() => {
         mocks.couchDB.length = 0;
         mocks.objectStorage.length = 0;
+        mocks.initialFetchFastForwardResource = undefined;
         mocks.checkSyncInfo.mockReset().mockResolvedValue(true);
         mocks.logger.mockClear();
     });
@@ -225,6 +240,65 @@ describe("replicator probe factories", () => {
         expect(connectionReplicator.getRemoteStatus).toHaveBeenCalledWith(snapshot);
         expect(preferredReplicator.getRemotePreferredTweakValues).toHaveBeenCalledWith(snapshot);
     });
+
+    it.each([
+        {
+            kind: "CouchDB",
+            remoteType: REMOTE_COUCHDB,
+            createFactory: createCouchDBJoinedDevicesResourceFactory,
+            instances: () => mocks.couchDB,
+        },
+        {
+            kind: "Object Storage",
+            remoteType: REMOTE_MINIO,
+            createFactory: createObjectStorageJoinedDevicesResourceFactory,
+            instances: () => mocks.objectStorage,
+        },
+    ])(
+        "keeps $kind joined-device operations on an owned settings snapshot",
+        async ({ remoteType, createFactory, instances }) => {
+            const host = { name: "host" };
+            const source = createSettings({ remoteType });
+            const snapshot = { ...source };
+            const factory = createFactory(host as never);
+            const resource = await factory(source);
+            const nextResource = await factory(source);
+            const [replicator, nextReplicator] = instances();
+            expect(instances()).toHaveLength(2);
+            expect(replicator.host).toBe(host);
+            expect(replicator.getJoinedDevices).not.toHaveBeenCalled();
+            expect(replicator.forgetJoinedDevice).not.toHaveBeenCalled();
+            const devices = {
+                milestonePresent: true,
+                locked: false,
+                cleaned: false,
+                devices: [{ id: "other", accepted: true }],
+            };
+            replicator.getJoinedDevices.mockResolvedValue(devices);
+            replicator.forgetJoinedDevice.mockResolvedValue("conflict");
+
+            source.couchDB_DBNAME = "changed-vault";
+            source.bucket = "changed-bucket";
+            await expect(resource.read()).resolves.toBe(devices);
+            await expect(resource.forget("other")).resolves.toBe("conflict");
+            expect(replicator.getJoinedDevices).toHaveBeenCalledWith(snapshot);
+            expect(replicator.getJoinedDevices.mock.calls[0][0]).not.toBe(source);
+            expect(replicator.forgetJoinedDevice).toHaveBeenCalledWith(snapshot, "other");
+
+            const failure = new Error("remote unavailable");
+            replicator.getJoinedDevices.mockRejectedValue(failure);
+            await expect(resource.read()).rejects.toBe(failure);
+            replicator.forgetJoinedDevice.mockRejectedValue(failure);
+            await expect(resource.forget("other")).rejects.toBe(failure);
+            const disposal = resource.dispose();
+            expect(resource.dispose()).toBe(disposal);
+            await disposal;
+            expect(replicator.closeReplication).toHaveBeenCalledOnce();
+            expect(nextReplicator.closeReplication).not.toHaveBeenCalled();
+            await nextResource.dispose();
+            expect(nextReplicator.closeReplication).toHaveBeenCalledOnce();
+        }
+    );
 
     it("shares one successful asynchronous disposal promise for every probe kind", async () => {
         const couchProbe = await createCouchDBPreferredTweakProbeFactory({} as never)(createSettings());
@@ -369,5 +443,30 @@ describe("replicator probe factories", () => {
 
         await resource.dispose();
         expect(replicator.closeReplication).toHaveBeenCalledOnce();
+    });
+
+    it("creates an Initial Fetch Fast Forward resource from a settings snapshot and leaves ownership to the resource", async () => {
+        const host = { name: "host" };
+        const settings = createSettings();
+        const snapshot = { ...settings };
+        const prepare = vi.fn(async () => undefined);
+        const dispose = vi.fn(async () => undefined);
+        const resource = { prepare, dispose };
+        const factory = createCouchDBInitialFetchFastForwardResourceFactory(host as never);
+        mocks.initialFetchFastForwardResource = resource;
+
+        const result = await factory(settings);
+        const replicator = mocks.couchDB[0];
+
+        settings.couchDB_URI = "https://changed.example.test";
+        expect(replicator.createInitialFetchFastForwardResource).toHaveBeenCalledWith(snapshot);
+        expect(replicator.createInitialFetchFastForwardResource.mock.calls[0][0]).not.toBe(settings);
+        expect(replicator.host).toBe(host);
+        expect(result).toBe(resource);
+
+        await expect(result.prepare()).resolves.toBeUndefined();
+        await result.dispose();
+        expect(prepare).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
     });
 });

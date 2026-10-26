@@ -90,14 +90,14 @@ function createRuntime(): ReviewHarnessRuntime & {
             detail: "File content hash measurements completed.",
             observations: ["SHA-256, 4 KiB: median=1.00 ms; range=1.00–1.00 ms"],
         })),
-        readContinuation() {
+        async readContinuation() {
             return this.continuation;
         },
-        writeContinuation(value) {
+        async writeContinuation(value) {
             this.events.push("write");
             this.continuation = value;
         },
-        deleteContinuation() {
+        async deleteContinuation() {
             this.events.push("delete");
             this.continuation = null;
         },
@@ -251,7 +251,7 @@ describe("ReviewHarnessController", () => {
         expect(controller.snapshot().running).toBe(false);
     });
 
-    it("deletes a one-shot continuation before exposing the resumed guided step", () => {
+    it("deletes a one-shot continuation before exposing the resumed guided step", async () => {
         const runtime = createRuntime();
         runtime.continuation = JSON.stringify({
             formatVersion: 1,
@@ -262,7 +262,7 @@ describe("ReviewHarnessController", () => {
         });
         const controller = new ReviewHarnessController(runtime);
 
-        controller.consumeContinuation();
+        await controller.consumeContinuation();
 
         expect(runtime.events).toEqual(["delete"]);
         expect(controller.snapshot().results["compatibility-review"]).toMatchObject({
@@ -271,7 +271,7 @@ describe("ReviewHarnessController", () => {
         expect(controller.snapshot().resumedRequestId).toBe("compatibility-review-2026-07-18T11:59:00.000Z");
     });
 
-    it("does not copy rejected continuation values into the report", () => {
+    it("does not copy rejected continuation values into the report", async () => {
         const runtime = createRuntime();
         runtime.continuation = JSON.stringify({
             formatVersion: 1,
@@ -282,7 +282,7 @@ describe("ReviewHarnessController", () => {
         });
         const controller = new ReviewHarnessController(runtime);
 
-        controller.consumeContinuation();
+        await controller.consumeContinuation();
 
         expect(controller.snapshot().continuationError).toContain("private-vault");
         expect(controller.snapshot().results["compatibility-review"].detail).toBe(
@@ -292,7 +292,7 @@ describe("ReviewHarnessController", () => {
         expect(controller.createReport()).not.toContain("secret-note.md");
     });
 
-    it("does not accept an injected request ID which could enter the report transcript", () => {
+    it("does not accept an injected request ID which could enter the report transcript", async () => {
         const runtime = createRuntime();
         runtime.continuation = JSON.stringify({
             formatVersion: 1,
@@ -303,18 +303,18 @@ describe("ReviewHarnessController", () => {
         });
         const controller = new ReviewHarnessController(runtime);
 
-        controller.consumeContinuation();
+        await controller.consumeContinuation();
 
         expect(controller.snapshot().results["compatibility-review"].status).toBe("failed");
         expect(controller.createReport()).not.toContain("private-vault");
         expect(controller.createReport()).not.toContain("secret-note.md");
     });
 
-    it("persists the fixed continuation before requesting restart", () => {
+    it("persists the fixed continuation before requesting restart", async () => {
         const runtime = createRuntime();
         const controller = new ReviewHarnessController(runtime);
 
-        controller.prepareCompatibilityReviewRestart();
+        await controller.prepareCompatibilityReviewRestart();
 
         expect(runtime.events).toEqual(["write", "restart"]);
         expect(JSON.parse(runtime.continuation!)).toMatchObject({
@@ -322,6 +322,135 @@ describe("ReviewHarnessController", () => {
             scenarioId: "compatibility-review",
             stage: "awaiting-restart",
         });
+    });
+
+    it("waits for the continuation save before requesting restart", async () => {
+        const runtime = createRuntime();
+        let markSaveStarted!: () => void;
+        const saveStarted = new Promise<void>((resolve) => {
+            markSaveStarted = resolve;
+        });
+        let finishSave!: () => void;
+        const saving = new Promise<void>((resolve) => {
+            finishSave = resolve;
+        });
+        runtime.writeContinuation = vi.fn(async (value) => {
+            runtime.events.push("write-started");
+            markSaveStarted();
+            await saving;
+            runtime.continuation = value;
+            runtime.events.push("write-saved");
+        });
+        const controller = new ReviewHarnessController(runtime);
+
+        const preparing = controller.prepareCompatibilityReviewRestart();
+        await saveStarted;
+
+        expect(runtime.events).toEqual(["write-started"]);
+        expect(runtime.restart).not.toHaveBeenCalled();
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("idle");
+
+        finishSave();
+        await preparing;
+
+        expect(runtime.events).toEqual(["write-started", "write-saved", "restart"]);
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("waiting-for-user");
+    });
+
+    it("keeps the guided review retryable when saving its continuation fails", async () => {
+        const runtime = createRuntime();
+        const controller = new ReviewHarnessController(runtime);
+        await controller.runScenario("compatibility-review");
+        runtime.writeContinuation = vi.fn(async () => {
+            runtime.events.push("write-failed");
+            throw new Error("continuation save failed");
+        });
+
+        await expect(controller.prepareCompatibilityReviewRestart()).rejects.toThrow("continuation save failed");
+
+        expect(runtime.events).toEqual(["write-failed"]);
+        expect(runtime.restart).not.toHaveBeenCalled();
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("waiting-for-user");
+    });
+
+    it("waits for one continuation deletion before exposing it and coalesces concurrent consumption", async () => {
+        const runtime = createRuntime();
+        runtime.continuation = JSON.stringify({
+            formatVersion: 1,
+            requestId: "compatibility-review-2026-07-18T11:59:00.000Z",
+            scenarioId: "compatibility-review",
+            stage: "awaiting-restart",
+            requestedAt: "2026-07-18T11:59:00.000Z",
+        });
+        let markDeleteStarted!: () => void;
+        const deleteStarted = new Promise<void>((resolve) => {
+            markDeleteStarted = resolve;
+        });
+        let finishDelete!: () => void;
+        const deleting = new Promise<void>((resolve) => {
+            finishDelete = resolve;
+        });
+        runtime.readContinuation = vi.fn(async () => {
+            runtime.events.push("read");
+            return runtime.continuation;
+        });
+        runtime.deleteContinuation = vi.fn(async () => {
+            runtime.events.push("delete-started");
+            markDeleteStarted();
+            await deleting;
+            runtime.continuation = null;
+            runtime.events.push("delete-finished");
+        });
+        const controller = new ReviewHarnessController(runtime);
+
+        const firstConsumption = controller.consumeContinuation();
+        const duplicateConsumption = controller.consumeContinuation();
+        await deleteStarted;
+
+        expect(duplicateConsumption).toBe(firstConsumption);
+        expect(runtime.events).toEqual(["read", "delete-started"]);
+        expect(controller.snapshot().resumedRequestId).toBeNull();
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("idle");
+
+        finishDelete();
+        await firstConsumption;
+
+        expect(runtime.events).toEqual(["read", "delete-started", "delete-finished"]);
+        expect(runtime.readContinuation).toHaveBeenCalledOnce();
+        expect(runtime.deleteContinuation).toHaveBeenCalledOnce();
+        expect(controller.snapshot().resumedRequestId).toBe("compatibility-review-2026-07-18T11:59:00.000Z");
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("waiting-for-user");
+    });
+
+    it("keeps a failed continuation deletion available for retry", async () => {
+        const runtime = createRuntime();
+        runtime.continuation = JSON.stringify({
+            formatVersion: 1,
+            requestId: "compatibility-review-2026-07-18T11:59:00.000Z",
+            scenarioId: "compatibility-review",
+            stage: "awaiting-restart",
+            requestedAt: "2026-07-18T11:59:00.000Z",
+        });
+        runtime.deleteContinuation = vi
+            .fn<ReviewHarnessRuntime["deleteContinuation"]>()
+            .mockRejectedValueOnce(new Error("continuation delete failed"))
+            .mockImplementation(async () => {
+                runtime.events.push("delete");
+                runtime.continuation = null;
+            });
+        const controller = new ReviewHarnessController(runtime);
+
+        await expect(controller.consumeContinuation()).rejects.toThrow("continuation delete failed");
+
+        expect(runtime.continuation).not.toBeNull();
+        expect(controller.snapshot().resumedRequestId).toBeNull();
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("idle");
+
+        await controller.consumeContinuation();
+
+        expect(runtime.continuation).toBeNull();
+        expect(controller.snapshot().resumedRequestId).toBe("compatibility-review-2026-07-18T11:59:00.000Z");
+        expect(controller.snapshot().results["compatibility-review"].status).toBe("waiting-for-user");
     });
 
     it("passes only after the actual compatibility review clears its pause", async () => {

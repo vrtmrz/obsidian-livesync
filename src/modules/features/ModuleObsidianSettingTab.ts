@@ -8,13 +8,13 @@ import { openObsidianSettings } from "@/common/obsidianSettings.ts";
 export class ModuleObsidianSettingDialogue extends AbstractObsidianModule {
     settingTab!: ObsidianLiveSyncSettingTab;
 
-    _everyOnloadAfterLoadSettings(): Promise<boolean> {
+    async _everyOnloadAfterLoadSettings(): Promise<boolean> {
         this.settingTab = new ObsidianLiveSyncSettingTab(this.app, this.plugin);
-        this.settingTab.reloadAllSettings(true);
+        await this.settingTab.loadSettings();
         this.plugin.addSettingTab(this.settingTab);
         eventHub.onEvent(EVENT_REQUEST_OPEN_SETTINGS, () => this.openSetting());
 
-        return Promise.resolve(true);
+        return true;
     }
 
     openSetting() {
