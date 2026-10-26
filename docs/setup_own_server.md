@@ -128,6 +128,9 @@ export database=obsidiannotes
 curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
 
+> [!TIP]
+> In fish, `hostname` is read-only and cannot be exported. Pass the values through `env` instead: `curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | env hostname=http://localhost:5984 username=<...> password=<...> database=obsidiannotes bash`.
+
 If it results like the following:
 ```
 CouchDB provisioning completed.
@@ -173,20 +176,20 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 
 ### 1. Generate the setup URI on a desktop device or server
 
-The `username` and `password` here are the credentials which Self-hosted LiveSync will store for routine access to this database. They may be the administrator credentials from step 2. If you have separately configured a CouchDB account with the required access to this database, use that account instead. Neither the provisioning wrapper nor the Setup URI generator creates that separate account.
+The `LIVESYNC_USER` and `LIVESYNC_PASS` here are the credentials which Self-hosted LiveSync will store for routine access to this database. They may be the administrator credentials from step 2. If you have separately configured a CouchDB account with the required access to this database, use that account instead. Neither the provisioning wrapper nor the Setup URI generator creates that separate account.
 
 ```bash
-export hostname=https://tiles-photograph-routine-groundwater.trycloudflare.com
-export database=obsidiannotes
-export username=<INSERT COUCHDB USERNAME FOR LIVESYNC>
-export password=<INSERT THE COUCHDB PASSWORD>
-export passphrase=<INSERT A STRONG VAULT ENCRYPTION PASSPHRASE>
+export LIVESYNC_HOST=https://tiles-photograph-routine-groundwater.trycloudflare.com
+export LIVESYNC_DB=obsidiannotes
+export LIVESYNC_USER=<INSERT COUCHDB USERNAME FOR LIVESYNC>
+export LIVESYNC_PASS=<INSERT THE COUCHDB PASSWORD>
+export LIVESYNC_PASSPHRASE=<INSERT A STRONG VAULT ENCRYPTION PASSPHRASE>
 export uri_passphrase=<INSERT A SEPARATE SETUP URI PASSPHRASE> # Optional
 deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/setup/generate_setup_uri.ts
 ```
 
 > [!TIP]
-> `passphrase` protects the synchronised Vault data with end-to-end encryption. `uri_passphrase` protects only the Setup URI. Use different values, store both securely, and do not send the Setup URI and its passphrase through the same channel.
+> `LIVESYNC_PASSPHRASE` protects the synchronised Vault data with end-to-end encryption. `uri_passphrase` protects only the Setup URI. Use different values, store both securely, and do not send the Setup URI and its passphrase through the same channel.
 >
 > If `uri_passphrase` is omitted, the generator creates a cryptographically random value and prints it once.
 

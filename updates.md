@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Setup tools
+
+#### Fixed
+
+- We can generate a Setup URI with prefixed connection and encryption variables, avoiding collisions with shell or system variables such as `hostname` and `USERNAME`. (#817, #1274)
+    - The generator reads `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE`. The previous names remain supported when the corresponding prefixed value is unset or blank.
+
 ### Synchronisation
 
 - We can run startup integrity checks with lower memory use for healthy Vault files. Files that change between the size check and content reading no longer trigger an unnecessary repair warning when their actual sizes agree and there are no conflicts. (#1283)
