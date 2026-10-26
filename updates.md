@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Customisation Sync
+
+#### Fixed
+
+- We can reload the customisation list and apply every file in a multi-file item on the first attempt. (#1271)
+    - Reloading or clearing the list also prevents earlier pending updates from restoring removed files and items.
+
 ### Setup tools
 
 #### Fixed
