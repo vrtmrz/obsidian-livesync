@@ -21,6 +21,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Synchronisation
 
+#### Fixed
+
+- We receive a clear Notice when **Automatic** requires Hidden File Sync to be enabled on this device. Our existing mode remains unchanged, and hidden-file initialisation cannot start while the feature is disabled. (#1270)
+- We can initialise a whole plug-in's **MAIN** and **DATA** selections using the chosen Automatic initial action.
 - We can run startup integrity checks with lower memory use for healthy Vault files. Files that change between the size check and content reading no longer trigger an unnecessary repair warning when their actual sizes agree and there are no conflicts. (#1283)
 
 ## 1.0.40

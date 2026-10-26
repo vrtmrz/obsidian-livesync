@@ -63,6 +63,21 @@ const manualMergeJsonPath = ".obsidian/livesync-e2e-manual-merge.json";
 const targetPath = ".obsidian/livesync-targeted/only-a.json";
 const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
 const hiddenFileInitialisationStateKey = "__livesyncE2EHiddenFileInitialisation";
+const disabledInitialisationProbeKey = "__livesyncE2EDisabledHiddenInitialisation";
+
+type DisabledInitialisationSnapshot = {
+    syncInternalFiles: boolean;
+    hiddenFiles: { id: string; path: string; rev: string; deleted: boolean }[];
+    processedFiles: [string, string | undefined][];
+    processedDatabaseFiles: [string, string | undefined][];
+};
+
+type DisabledInitialisationObservation = {
+    result: boolean | null;
+    before: DisabledInitialisationSnapshot;
+    after: DisabledInitialisationSnapshot;
+    progressNotices: string[];
+};
 
 type RunnerContext = {
     binary: string;
@@ -131,6 +146,114 @@ async function waitForPathDeleted(
         await new Promise((resolve) => setTimeout(resolve, 250));
     }
     throw new Error(`Timed out waiting for deleted file: ${join(vaultPath, path)}`);
+}
+
+async function assertDisabledInitialisationIsNoOp(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault
+): Promise<void> {
+    const snippetExisted = await pathExists(vault.path, snippetPath);
+    const originalSnippet = snippetExisted ? await readVaultFile(vault.path, snippetPath) : undefined;
+    const originalJson = await readVaultFile(vault.path, mergeJsonPath);
+    const preservedSnippet = "body { --disabled-hidden-initialisation: preserved; }\n";
+    const preservedJson = JSON.stringify({ disabledInitialisation: "preserved" }, null, 4) + "\n";
+    await writeVaultFile(vault.path, snippetPath, preservedSnippet);
+    await writeVaultFile(vault.path, mergeJsonPath, preservedJson);
+
+    try {
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            await page.evaluate((stateKey) => {
+                const state = { progressNotices: [] as string[] };
+                const observer = new MutationObserver(() => {
+                    for (const notice of document.querySelectorAll<HTMLElement>(".notice")) {
+                        const text = notice.textContent?.trim() ?? "";
+                        if (text.includes("[⚙") && !state.progressNotices.includes(text)) {
+                            state.progressNotices.push(text);
+                        }
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+                (globalThis as unknown as Record<string, { progressNotices: string[]; observer: MutationObserver }>)[
+                    stateKey
+                ] = { ...state, observer };
+            }, disabledInitialisationProbeKey);
+        });
+
+        const observation = await evalObsidianJson<DisabledInitialisationObservation>(
+            context.cliBinary,
+            [
+                "(async()=>{",
+                `const targetFiles=${JSON.stringify([snippetPath, mergeJsonPath])};`,
+                "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                "const addOn=core.getAddOn('HiddenFileSync');",
+                "const snapshot=async()=>{",
+                "const files=await addOn.getAllDatabaseFiles();",
+                "const markers=(cache)=>Array.from(cache.keys()).sort().map((path)=>[path,cache.get(path)]);",
+                "return {",
+                "syncInternalFiles:core.settings.syncInternalFiles,",
+                "hiddenFiles:files.map((entry)=>({id:entry._id,path:addOn.getPath(entry),rev:entry._rev??'',deleted:!!(entry.deleted||entry._deleted)})).sort((a,b)=>a.path.localeCompare(b.path)),",
+                "processedFiles:markers(addOn._fileInfoLastProcessed),",
+                "processedDatabaseFiles:markers(addOn._databaseInfoLastProcessed),",
+                "};};",
+                "const before=await snapshot();",
+                "const result=await addOn.initialiseInternalFileSync('pullForce',true,targetFiles);",
+                "const after=await snapshot();",
+                "return JSON.stringify({result:result===undefined?null:result,before,after});",
+                "})()",
+            ].join(""),
+            session.cliEnv,
+            hiddenFileCliTimeoutMs
+        );
+        const progressNotices = await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            return await page.evaluate((stateKey) => {
+                const state = (
+                    globalThis as unknown as Record<
+                        string,
+                        { progressNotices: string[]; observer: MutationObserver } | undefined
+                    >
+                )[stateKey];
+                state?.observer.disconnect();
+                return state?.progressNotices ?? [];
+            }, disabledInitialisationProbeKey);
+        });
+
+        const failures: string[] = [];
+        if (observation.result !== false)
+            failures.push(`expected false result, received ${String(observation.result)}`);
+        if (observation.before.syncInternalFiles !== false || observation.after.syncInternalFiles !== false) {
+            failures.push("Hidden File Sync setting changed while initialisation was disabled");
+        }
+        if (JSON.stringify(observation.before) !== JSON.stringify(observation.after)) {
+            failures.push("local hidden database state or processed markers changed");
+        }
+        if ((await readVaultFile(vault.path, snippetPath)) !== preservedSnippet) {
+            failures.push("the existing local snippet was deleted or replaced");
+        }
+        if ((await readVaultFile(vault.path, mergeJsonPath)) !== preservedJson) {
+            failures.push("the existing local JSON file was replaced");
+        }
+        if (progressNotices.length > 0)
+            failures.push(`initialisation created progress Notices: ${JSON.stringify(progressNotices)}`);
+        if (failures.length > 0) {
+            throw new Error(
+                `Disabled Hidden File Sync initialisation was not a no-op: ${failures.join("; ")}\n${JSON.stringify({
+                    observation,
+                    progressNotices,
+                })}`
+            );
+        }
+        console.log(
+            "Disabled Hidden File Sync initialisation returned false without changing hidden files or cached state."
+        );
+    } finally {
+        await writeVaultFile(vault.path, mergeJsonPath, originalJson);
+        if (snippetExisted && originalSnippet !== undefined) {
+            await writeVaultFile(vault.path, snippetPath, originalSnippet);
+        } else {
+            await removeVaultFile(vault.path, snippetPath);
+        }
+    }
 }
 
 function hasJsonValues(content: string, values: Record<string, unknown>): boolean {
@@ -649,6 +772,7 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                 "Transient start-up Notices remained before the Hidden File Sync initialisation check."
             );
         });
+        await assertDisabledInitialisationIsNoOp(context, session, vault);
         await withObsidianPage(port, async (page) => {
             await page.evaluate((stateKey) => {
                 const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;

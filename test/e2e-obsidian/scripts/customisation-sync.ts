@@ -1,6 +1,12 @@
 import { mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { VERSIONING_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    MODE_AUTOMATIC,
+    VERSIONING_DOCID,
+    type ObsidianLiveSyncSettings,
+    type LoadedEntry,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
@@ -23,11 +29,12 @@ import {
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
+    waitForLocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { waitForVisibleObsidianDialogue, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
-import type { Locator } from "playwright";
+import type { Locator, Page } from "playwright";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "20000";
@@ -59,6 +66,18 @@ const pluginDir = ".obsidian/plugins/livesync-e2e-sample";
 const pluginManifestPath = `${pluginDir}/manifest.json`;
 const pluginMainPath = `${pluginDir}/main.js`;
 const pluginStylesPath = `${pluginDir}/styles.css`;
+const pluginDisplayName = "LiveSync E2E Sample";
+const pluginDataPath = `${pluginDir}/data.json`;
+const pluginDataContent = JSON.stringify({ source: "customisation-sync-a", enabled: true }, null, 4) + "\n";
+const targetPluginDataContent = JSON.stringify({ source: "customisation-sync-b", enabled: true }, null, 4) + "\n";
+const existingAutomaticKey = "SNIPPET/livesync-e2e-existing-automatic.css";
+const existingAutomaticSelections: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
+    [existingAutomaticKey]: {
+        key: existingAutomaticKey,
+        mode: MODE_AUTOMATIC,
+        files: ["snippets/livesync-e2e-existing-automatic.css"],
+    },
+};
 const identicalSnippetPath = ".obsidian/snippets/livesync-customisation-e2e-identical.css";
 const identicalSnippetContent = ".livesync-customisation-identical { color: #3d6f54; }\n";
 const differentSnippetPath = ".obsidian/snippets/livesync-customisation-e2e-different.css";
@@ -104,7 +123,8 @@ const pluginFixtures = [
     { path: pluginStylesPath, source: pluginStylesContent, target: targetPluginStylesContent },
 ] as const;
 
-type CustomisationSyncCase = "all" | "visibility" | "mtime";
+type CustomisationSyncCase = "all" | "visibility" | "mtime" | "automatic";
+type AutomaticInitialAction = "Overwrite Remote" | "Overwrite Local" | "Use newer";
 
 type CustomisationSyncTestGlobal = typeof globalThis & {
     app?: { commands?: { executeCommandById(commandId: string): boolean } };
@@ -131,6 +151,14 @@ type CustomisationScanResult = {
     files: string[];
 };
 
+type AutomaticSyncSnapshot = {
+    syncInternalFiles: boolean;
+    pluginSyncExtendedSetting: Record<string, { key: string; mode: number; files: string[] }>;
+    hiddenFiles: { path: string; rev: string; deleted: boolean }[];
+    processedFiles: [string, string | undefined][];
+    processedDatabaseFiles: [string, string | undefined][];
+};
+
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
     const fullPath = join(vaultPath, path);
     await mkdir(dirname(fullPath), { recursive: true });
@@ -147,10 +175,11 @@ function selectedCase(): CustomisationSyncCase {
     if (args.length === 0) return "all";
     const arg = args[0];
     if (args.length !== 1 || !arg?.startsWith("--case=")) {
-        throw new Error("Usage: test:e2e:obsidian:customisation-sync [--case=all|visibility|mtime]");
+        throw new Error("Usage: test:e2e:obsidian:customisation-sync [--case=all|visibility|mtime|automatic]");
     }
     const selected = arg.slice("--case=".length);
-    if (selected === "all" || selected === "visibility" || selected === "mtime") return selected;
+    if (selected === "all" || selected === "visibility" || selected === "mtime" || selected === "automatic")
+        return selected;
     throw new Error(`Unknown Customisation Sync E2E case: ${selected}`);
 }
 
@@ -244,6 +273,282 @@ async function inspectPluginFreshnessAndNewestSelection(session: ObsidianLiveSyn
     });
 }
 
+async function openAutomaticModeForPlugin(page: Page, pluginName: string): Promise<Locator> {
+    const opened = await page.evaluate(() =>
+        (globalThis as CustomisationSyncTestGlobal).app?.commands?.executeCommandById(
+            "obsidian-livesync:livesync-plugin-dialog-ex"
+        )
+    );
+    if (opened !== true) throw new Error("Could not open the Customisation Sync dialogue command.");
+    const dialogue = await waitForVisibleObsidianDialogue(page, "Customization Sync (Beta3)");
+    const pluginRow = dialogue.locator(".labelrow").filter({ hasText: pluginName }).first();
+    await pluginRow.waitFor({ state: "visible", timeout: 10000 });
+    await pluginRow.locator("button.status").click();
+    const automaticOption = page.locator(".menu-item").filter({ hasText: "Automatic" }).last();
+    await automaticOption.waitFor({ state: "visible", timeout: 10000 });
+    await automaticOption.click();
+    return dialogue;
+}
+
+async function selectAutomaticInitialAction(page: Page, label: AutomaticInitialAction): Promise<void> {
+    const action = page.locator(".menu-item").filter({ hasText: label }).last();
+    await action.waitFor({ state: "visible", timeout: 10000 });
+    await action.click();
+}
+
+async function readAutomaticSyncSnapshot(cliBinary: string, env: NodeJS.ProcessEnv): Promise<AutomaticSyncSnapshot> {
+    return await evalObsidianJson<AutomaticSyncSnapshot>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const hidden=core.getAddOn('HiddenFileSync');",
+            "const files=await hidden.getAllDatabaseFiles();",
+            "const processed=(cache)=>Array.from(cache.keys()).sort().map((path)=>[path,cache.get(path)]);",
+            "return JSON.stringify({",
+            "syncInternalFiles:core.settings.syncInternalFiles,",
+            "pluginSyncExtendedSetting:core.settings.pluginSyncExtendedSetting,",
+            "hiddenFiles:files.map((entry)=>{const path=hidden.getPath(entry);return {path:path.startsWith('i:')?path.slice(2):path,rev:entry._rev??'',deleted:!!(entry.deleted||entry._deleted)};}).sort((a,b)=>a.path.localeCompare(b.path)),",
+            "processedFiles:processed(hidden._fileInfoLastProcessed),",
+            "processedDatabaseFiles:processed(hidden._databaseInfoLastProcessed),",
+            "});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function readAutomaticFileContents(context: RunnerContext, session: ObsidianLiveSyncSession) {
+    const files = await evalObsidianJson<
+        { path: string; entry: LoadedEntry | false; local: string; localMtime: number }[]
+    >(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            `const paths=${JSON.stringify([pluginStylesPath, pluginDataPath])};`,
+            "const files=await Promise.all(paths.map(async(path)=>{",
+            "const entry=await core.localDatabase.getDBEntry('i:'+path,undefined,false,true);",
+            "const stat=await app.vault.adapter.stat(path);",
+            "if(!stat) throw new Error('Missing Automatic fixture file: '+path);",
+            "return {path,entry,local:await app.vault.adapter.read(path),localMtime:stat.mtime};",
+            "}));",
+            "return JSON.stringify(files);",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    return await Promise.all(
+        files.map(async (file) => ({
+            path: file.path,
+            stored: file.entry ? await readAsBlob(file.entry).text() : null,
+            storedMtime: file.entry ? file.entry.mtime : 0,
+            local: file.local,
+            localMtime: file.localMtime,
+        }))
+    );
+}
+
+async function setHiddenSyncEnabledForFixture(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    enabled: boolean
+): Promise<void> {
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            `core.settings.syncInternalFiles=${JSON.stringify(enabled)};`,
+            "return JSON.stringify({syncInternalFiles:core.settings.syncInternalFiles});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function inspectAutomaticSyncSelection(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault,
+    pluginName: string,
+    initialAction: AutomaticInitialAction
+): Promise<void> {
+    const noticeText =
+        "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.";
+    const trackedFiles = [pluginStylesPath, pluginDataPath];
+    const contentsBefore = await Promise.all(trackedFiles.map((path) => readVaultFile(vault.path, path)));
+    const disabledBefore = await readAutomaticSyncSnapshot(context.cliBinary, session.cliEnv);
+    assertEqual(
+        JSON.stringify(disabledBefore.pluginSyncExtendedSetting[existingAutomaticKey]),
+        JSON.stringify(existingAutomaticSelections[existingAutomaticKey]),
+        "The fixture did not retain the saved Automatic selection while Hidden File Sync was disabled."
+    );
+
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const dialogue = await openAutomaticModeForPlugin(page, pluginDisplayName);
+        const notice = page.locator(".notice:visible").filter({ hasText: noticeText }).last();
+        await notice.waitFor({ state: "visible", timeout: 10000 });
+        const initialActionMenu = page.locator(".menu:visible").filter({ hasText: "Initial Action" });
+        if ((await initialActionMenu.count()) !== 0) {
+            throw new Error("Automatic displayed an Initial Action menu while Hidden File Sync was disabled.");
+        }
+        await page.keyboard.press("Escape");
+        await dialogue.waitFor({ state: "hidden", timeout: 10000 });
+        await notice.click({ force: true });
+        await notice.waitFor({ state: "hidden", timeout: 10000 });
+    });
+
+    const disabledAfter = await readAutomaticSyncSnapshot(context.cliBinary, session.cliEnv);
+    const contentsAfter = await Promise.all(trackedFiles.map((path) => readVaultFile(vault.path, path)));
+    if (JSON.stringify(disabledAfter) !== JSON.stringify(disabledBefore)) {
+        throw new Error(
+            `Automatic changed Hidden File Sync state while it was disabled: ${JSON.stringify({
+                before: disabledBefore,
+                after: disabledAfter,
+            })}`
+        );
+    }
+    assertEqual(
+        JSON.stringify(contentsAfter),
+        JSON.stringify(contentsBefore),
+        "Automatic changed plug-in files while Hidden File Sync was disabled."
+    );
+
+    // Exercise the second guard: the user may open Initial Action while enabled,
+    // then disable Hidden File Sync before choosing a direction.
+    await setHiddenSyncEnabledForFixture(context.cliBinary, session.cliEnv, true);
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        await openAutomaticModeForPlugin(page, pluginDisplayName);
+        const initialActionMenu = page.locator(".menu:visible").filter({ hasText: "Initial Action" });
+        await initialActionMenu.waitFor({ state: "visible", timeout: 10000 });
+    });
+    await setHiddenSyncEnabledForFixture(context.cliBinary, session.cliEnv, false);
+    const beforeDisabledAction = await readAutomaticSyncSnapshot(context.cliBinary, session.cliEnv);
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        await selectAutomaticInitialAction(page, "Overwrite Remote");
+        const notice = page.locator(".notice:visible").filter({ hasText: noticeText }).last();
+        await notice.waitFor({ state: "visible", timeout: 10000 });
+        await notice.click({ force: true });
+        await notice.waitFor({ state: "hidden", timeout: 10000 });
+    });
+    const afterDisabledAction = await readAutomaticSyncSnapshot(context.cliBinary, session.cliEnv);
+    if (JSON.stringify(afterDisabledAction) !== JSON.stringify(beforeDisabledAction)) {
+        throw new Error(
+            `Automatic changed Hidden File Sync state after it was disabled from Initial Action: ${JSON.stringify({
+                before: beforeDisabledAction,
+                after: afterDisabledAction,
+            })}`
+        );
+    }
+    assertEqual(
+        JSON.stringify(await Promise.all(trackedFiles.map((path) => readVaultFile(vault.path, path)))),
+        JSON.stringify(contentsBefore),
+        "Automatic changed plug-in files after Hidden File Sync was disabled from Initial Action."
+    );
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        await page.keyboard.press("Escape");
+    });
+
+    await setHiddenSyncEnabledForFixture(context.cliBinary, session.cliEnv, true);
+    if (initialAction !== "Overwrite Remote") {
+        const fixtures = [
+            {
+                path: pluginStylesPath,
+                stored: pluginStylesContent,
+                local: targetPluginStylesContent,
+                storedIsNewer: true,
+            },
+            {
+                path: pluginDataPath,
+                stored: pluginDataContent,
+                local: targetPluginDataContent,
+                storedIsNewer: false,
+            },
+        ];
+        const actualFiles = await readAutomaticFileContents(context, session);
+        for (const fixture of fixtures) {
+            const actual = actualFiles.find((file) => file.path === fixture.path);
+            if (
+                !actual ||
+                actual.stored !== fixture.stored ||
+                actual.local !== fixture.local ||
+                actual.storedMtime > actual.localMtime !== fixture.storedIsNewer ||
+                actual.storedMtime === actual.localMtime
+            ) {
+                throw new Error(
+                    `Automatic direction fixture did not retain distinct contents and modification times: ${JSON.stringify(actual)}`
+                );
+            }
+        }
+    }
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const dialogue = await openAutomaticModeForPlugin(page, pluginDisplayName);
+        await selectAutomaticInitialAction(page, initialAction);
+        for (const label of ["MAIN", "DATA"]) {
+            const row = dialogue.locator(".filerow").filter({ hasText: label }).first();
+            await row.locator(".statusnote").filter({ hasText: "Automatic" }).waitFor({ state: "visible" });
+        }
+        await page.keyboard.press("Escape");
+        await dialogue.waitFor({ state: "hidden", timeout: 10000 });
+    });
+
+    for (const path of [pluginManifestPath, pluginMainPath, pluginStylesPath, pluginDataPath]) {
+        await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, path, { hidden: true });
+    }
+    const enabled = await readAutomaticSyncSnapshot(context.cliBinary, session.cliEnv);
+    const mainMode = enabled.pluginSyncExtendedSetting[`PLUGIN_MAIN/${pluginName}`];
+    const dataMode = enabled.pluginSyncExtendedSetting[`PLUGIN_DATA/${pluginName}`];
+    if (mainMode?.mode !== MODE_AUTOMATIC || dataMode?.mode !== MODE_AUTOMATIC) {
+        throw new Error(
+            `Automatic did not save both plug-in group child settings: ${JSON.stringify({ mainMode, dataMode })}`
+        );
+    }
+    assertEqual(
+        JSON.stringify([...mainMode.files].sort()),
+        JSON.stringify([
+            `plugins/${pluginName}/main.js`,
+            `plugins/${pluginName}/manifest.json`,
+            `plugins/${pluginName}/styles.css`,
+        ]),
+        "Automatic did not select the PLUGIN_MAIN files."
+    );
+    assertEqual(
+        JSON.stringify([...dataMode.files].sort()),
+        JSON.stringify([`plugins/${pluginName}/data.json`]),
+        "Automatic did not select the PLUGIN_DATA file."
+    );
+    assertEqual(
+        enabled.hiddenFiles.filter((entry) => entry.path.startsWith(pluginDir + "/")).length,
+        4,
+        "Automatic did not initialise all files in the PLUGIN_ALL group."
+    );
+    const expectedFiles = [
+        {
+            path: pluginStylesPath,
+            content: initialAction === "Overwrite Remote" ? targetPluginStylesContent : pluginStylesContent,
+        },
+        {
+            path: pluginDataPath,
+            content: initialAction === "Overwrite Local" ? pluginDataContent : targetPluginDataContent,
+        },
+    ];
+    const deadline = Date.now() + 15000;
+    let actualFiles = await readAutomaticFileContents(context, session);
+    const contentsMatch = () =>
+        actualFiles.every(
+            (file, index) => file.stored === expectedFiles[index].content && file.local === expectedFiles[index].content
+        );
+    while (!contentsMatch() && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        actualFiles = await readAutomaticFileContents(context, session);
+    }
+    if (!contentsMatch()) {
+        throw new Error(`${initialAction} did not apply both MAIN and DATA: ${JSON.stringify(actualFiles)}`);
+    }
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+}
+
 async function removeVaultFile(vaultPath: string, path: string): Promise<void> {
     await rm(join(vaultPath, path), { force: true });
 }
@@ -287,7 +592,8 @@ async function waitForPathContent(
 async function startConfiguredSession(
     context: RunnerContext,
     vault: TemporaryVault,
-    deviceName: string
+    deviceName: string,
+    settings: Partial<Pick<ObsidianLiveSyncSettings, "syncInternalFiles" | "pluginSyncExtendedSetting">> = {}
 ): Promise<ObsidianLiveSyncSession> {
     const couchDbSettings = {
         uri: context.couchDb.uri,
@@ -306,6 +612,7 @@ async function startConfiguredSession(
         autoSweepPlugins: false,
         autoSweepPluginsPeriodic: false,
         syncInternalFiles: false,
+        ...settings,
     };
     const session = await startObsidianLiveSyncSession({
         binary: context.binary,
@@ -319,6 +626,18 @@ async function startConfiguredSession(
     });
     await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
     await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
+    if (Object.keys(settings.pluginSyncExtendedSetting ?? {}).length > 0) {
+        const restoredSelections = await evalObsidianJson<ObsidianLiveSyncSettings["pluginSyncExtendedSetting"]>(
+            context.cliBinary,
+            "JSON.stringify(app.plugins.plugins['obsidian-livesync'].core.settings.pluginSyncExtendedSetting)",
+            session.cliEnv
+        );
+        assertEqual(
+            JSON.stringify(restoredSelections),
+            JSON.stringify(settings.pluginSyncExtendedSetting),
+            "The saved Automatic selection changed during start-up."
+        );
+    }
     await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, customisationSettings);
     await evalObsidianJson<unknown>(
         context.cliBinary,
@@ -389,7 +708,7 @@ async function storeCustomisationFile(cliBinary: string, env: NodeJS.ProcessEnv,
 async function deleteCustomisationSyncEntry(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_DATA",
     name: string,
     term?: string
 ): Promise<void> {
@@ -418,7 +737,7 @@ async function deleteCustomisationSyncEntry(
 async function waitForCustomisationEntry(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_DATA",
     name: string,
     term?: string,
     timeoutMs = Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000)
@@ -430,7 +749,7 @@ async function waitForCustomisationEntry(
 async function waitForCustomisationEntries(
     cliBinary: string,
     env: NodeJS.ProcessEnv,
-    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN",
+    category: "CONFIG" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_DATA",
     name: string,
     count: number,
     term?: string,
@@ -570,10 +889,13 @@ async function applyRemoteCustomisationGroup(
     );
 }
 
-async function main(): Promise<void> {
-    const testCase = selectedCase();
+async function runWorkflow(
+    testCase: CustomisationSyncCase,
+    initialAction: AutomaticInitialAction = "Overwrite Remote"
+): Promise<void> {
     const testVisibility = testCase === "all" || testCase === "visibility";
     const testMtime = testCase === "all" || testCase === "mtime";
+    const testAutomatic = testCase === "automatic";
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
     if (!cli.binary) {
@@ -604,6 +926,11 @@ async function main(): Promise<void> {
         await writeVaultFile(vaultA.path, pluginManifestPath, pluginManifestContent);
         await writeVaultFile(vaultA.path, pluginMainPath, pluginMainContent);
         await writeVaultFile(vaultA.path, pluginStylesPath, pluginStylesContent);
+        if (testAutomatic) {
+            await writeVaultFile(vaultA.path, pluginDataPath, pluginDataContent);
+            await setVaultFileMtime(vaultA.path, pluginStylesPath, targetPluginMtime);
+            await setVaultFileMtime(vaultA.path, pluginDataPath, sourcePluginMtime);
+        }
         if (testVisibility) {
             for (const fixture of visibilityFixtures) {
                 await writeVaultFile(vaultA.path, fixture.path, fixture.source);
@@ -627,6 +954,14 @@ async function main(): Promise<void> {
                 await setVaultFileMtime(vaultB.path, fixture.path, targetPluginMtime);
             }
         }
+        if (testAutomatic) {
+            for (const fixture of pluginFixtures) {
+                await writeVaultFile(vaultB.path, fixture.path, fixture.target);
+            }
+            await writeVaultFile(vaultB.path, pluginDataPath, targetPluginDataContent);
+            await setVaultFileMtime(vaultB.path, pluginStylesPath, sourcePluginMtime);
+            await setVaultFileMtime(vaultB.path, pluginDataPath, targetPluginMtime);
+        }
 
         let session = await startConfiguredSession(context, vaultA, sourceDeviceName);
         const scanResult = await scanCustomisations(context.cliBinary, session.cliEnv);
@@ -635,6 +970,9 @@ async function main(): Promise<void> {
         await storeCustomisationFile(context.cliBinary, session.cliEnv, configPath);
         for (const fixture of pluginFixtures) {
             await storeCustomisationFile(context.cliBinary, session.cliEnv, fixture.path);
+        }
+        if (testAutomatic) {
+            await storeCustomisationFile(context.cliBinary, session.cliEnv, pluginDataPath);
         }
         if (testVisibility) {
             for (const fixture of visibilityFixtures) {
@@ -650,15 +988,35 @@ async function main(): Promise<void> {
             pluginName,
             3
         );
+        const pluginDataEntry = testAutomatic
+            ? await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "PLUGIN_DATA", pluginName)
+            : undefined;
+        if (testAutomatic && initialAction !== "Overwrite Remote") {
+            await setHiddenSyncEnabledForFixture(context.cliBinary, session.cliEnv, true);
+            await evalObsidianJson<unknown>(
+                context.cliBinary,
+                [
+                    "(async()=>{",
+                    "const hidden=app.plugins.plugins['obsidian-livesync'].core.getAddOn('HiddenFileSync');",
+                    `const paths=${JSON.stringify([pluginManifestPath, pluginMainPath, pluginStylesPath, pluginDataPath])};`,
+                    "const result=await hidden.initialiseInternalFileSync('pushForce',false,paths);",
+                    "if(result!==true) throw new Error('Could not prepare source hidden-file documents.');",
+                    "return JSON.stringify({initialised:result});",
+                    "})()",
+                ].join(""),
+                session.cliEnv
+            );
+            await setHiddenSyncEnabledForFixture(context.cliBinary, session.cliEnv, false);
+        }
         await pushLocalChanges(context.cliBinary, session.cliEnv);
         await waitForCouchDbDocs(context.couchDb, context.dbName, (docs) => {
             const ids = new Set(docs.map((doc) => doc._id));
-            const entries = [entry, configEntry, ...pluginEntries];
+            const entries = [entry, configEntry, ...pluginEntries, ...(pluginDataEntry ? [pluginDataEntry] : [])];
             return entries.every(
                 (target) => ids.has(target.id) && target.children.every((childId) => ids.has(childId))
             );
         });
-        for (const target of [entry, configEntry, ...pluginEntries]) {
+        for (const target of [entry, configEntry, ...pluginEntries, ...(pluginDataEntry ? [pluginDataEntry] : [])]) {
             const remoteEntry = await fetchCouchDbDocument(context.couchDb, context.dbName, target.id);
             if (
                 !remoteEntry.path?.startsWith("/\\:") ||
@@ -678,8 +1036,15 @@ async function main(): Promise<void> {
             throw new Error("The remote feature list does not declare encrypted internal Metadata.");
         }
         await session.app.stop();
+        if (testAutomatic && initialAction === "Overwrite Remote") {
+            for (const path of [pluginManifestPath, pluginMainPath, pluginStylesPath, pluginDataPath]) {
+                await removeVaultFile(vaultA.path, path);
+            }
+        }
 
-        session = await startConfiguredSession(context, vaultB, targetDeviceName);
+        session = await startConfiguredSession(context, vaultB, targetDeviceName, {
+            pluginSyncExtendedSetting: testAutomatic ? existingAutomaticSelections : {},
+        });
         if (testVisibility) {
             for (const fixture of visibilityFixtures) {
                 await storeCustomisationFile(context.cliBinary, session.cliEnv, fixture.path);
@@ -692,6 +1057,15 @@ async function main(): Promise<void> {
         }
         await pushLocalChanges(context.cliBinary, session.cliEnv);
         await waitForCustomisationEntry(context.cliBinary, session.cliEnv, "SNIPPET", snippetName, sourceDeviceName);
+        if (testAutomatic) {
+            await waitForCustomisationEntry(
+                context.cliBinary,
+                session.cliEnv,
+                "PLUGIN_DATA",
+                pluginName,
+                sourceDeviceName
+            );
+        }
         if (testVisibility) {
             for (const fixture of visibilityFixtures) {
                 const name = fixture.path.split("/").pop() ?? fixture.path;
@@ -721,9 +1095,42 @@ async function main(): Promise<void> {
         try {
             if (testVisibility) await inspectCustomisationVisibility(session);
             if (testMtime) await inspectPluginFreshnessAndNewestSelection(session);
+            if (testAutomatic) {
+                await inspectAutomaticSyncSelection(context, session, vaultB, pluginName, initialAction);
+            }
         } catch (error) {
             await session.app.stop().catch(() => undefined);
             throw error;
+        }
+        if (testAutomatic) {
+            await session.app.stop();
+            const receivingVault = initialAction === "Overwrite Remote" ? vaultA : await createTemporaryVault();
+            session = await startConfiguredSession(context, receivingVault, sourceDeviceName, {
+                syncInternalFiles: true,
+            });
+            try {
+                await pushLocalChanges(context.cliBinary, session.cliEnv);
+                const expectedStyles =
+                    initialAction === "Overwrite Remote" ? targetPluginStylesContent : pluginStylesContent;
+                const expectedData = initialAction === "Overwrite Local" ? pluginDataContent : targetPluginDataContent;
+                const receivedStyles = await waitForPathContent(
+                    receivingVault.path,
+                    pluginStylesPath,
+                    (content) => content === expectedStyles
+                );
+                const receivedData = await waitForPathContent(
+                    receivingVault.path,
+                    pluginDataPath,
+                    (content) => content === expectedData
+                );
+                assertEqual(receivedStyles, expectedStyles, "Automatic plug-in group lost PLUGIN_MAIN files.");
+                assertEqual(receivedData, expectedData, "Automatic plug-in group lost the PLUGIN_DATA file.");
+            } finally {
+                await session.app.stop();
+                if (receivingVault !== vaultA) await receivingVault.dispose();
+            }
+            console.log(`Automatic ${initialAction} initialised and transferred both plug-in group children.`);
+            return;
         }
         if (testCase !== "all") {
             await session.app.stop();
@@ -838,6 +1245,18 @@ async function main(): Promise<void> {
                 console.warn(error instanceof Error ? error.message : error);
             });
         }
+    }
+}
+
+async function main(): Promise<void> {
+    const testCase = selectedCase();
+    if (testCase === "automatic") {
+        for (const action of ["Overwrite Remote", "Overwrite Local", "Use newer"] as const) {
+            console.log(`Checking Automatic initial action: ${action}`);
+            await runWorkflow(testCase, action);
+        }
+    } else {
+        await runWorkflow(testCase);
     }
 }
 
