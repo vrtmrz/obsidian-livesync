@@ -19,6 +19,22 @@ import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker
 import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
 import { VaultScanResults } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 
+const OBSIDIAN_PLATFORMS = new Set([
+    "android-app",
+    "ios",
+    "macos",
+    "mobile-app",
+    "mobile",
+    "safari",
+    "desktop",
+    "desktop-app",
+    "unknown-obsidian",
+]);
+
+function isObsidianPlatform(platform: string): boolean {
+    return OBSIDIAN_PLATFORMS.has(platform);
+}
+
 export class ModuleLiveSyncMain extends AbstractModule {
     async _onLiveSyncReady() {
         if (!(await this.core.services.appLifecycle.onLayoutReady())) return false;
@@ -44,13 +60,20 @@ export class ModuleLiveSyncMain extends AbstractModule {
             }
         }
         // Ordinary start-up may continue when individual files could not be
-        // processed. Explicit Fetch and Rebuild flows retain the strict default.
+        // processed. Explicit Fetch and Rebuild flows remain strict.
         const { ignoreSuspending = false, continueOnFileFailure = true } = this.core.startupDatabaseOptions;
+        // Only ordinary Obsidian start-up honours the opt-out. Keep other hosts
+        // and explicit operation modes strict.
+        const strictContentCheck =
+            !isObsidianPlatform(this.services.API.getPlatform()) ||
+            this.settings.strictContentCheckOnStartup === true ||
+            this.core.startupDatabaseOptions.continueOnFileFailure === false;
         const initialisationResult = await this.services.databaseEvents.initialiseDatabase(
             false,
             false,
             ignoreSuspending,
-            continueOnFileFailure
+            continueOnFileFailure,
+            { strictContentCheck }
         );
         if (initialisationResult === VaultScanResults.FAILED) {
             this._log($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);

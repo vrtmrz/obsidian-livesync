@@ -90,9 +90,11 @@ describe("ModuleLiveSyncMain", () => {
                 },
             },
             services: {
+                API: { getPlatform: () => "desktop" },
                 databaseEvents: { initialiseDatabase },
             },
             settings: {
+                strictContentCheckOnStartup: false,
                 suspendFileWatching: false,
                 suspendParseReplicationResult: false,
             },
@@ -102,7 +104,7 @@ describe("ModuleLiveSyncMain", () => {
         const result = await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
 
         expect(result).toBe(false);
-        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, false, true);
+        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, false, true, { strictContentCheck: false });
         expect(log).toHaveBeenCalledWith("Ui.Common.LocalDatabaseInitialisationFailed", LOG_LEVEL_NOTICE);
     });
 
@@ -120,6 +122,7 @@ describe("ModuleLiveSyncMain", () => {
                 services: { appLifecycle },
             },
             services: {
+                API: { getPlatform: () => "desktop" },
                 appLifecycle,
                 control: { applySettings: vi.fn(async () => undefined) },
                 databaseEvents: { initialiseDatabase },
@@ -152,6 +155,7 @@ describe("ModuleLiveSyncMain", () => {
                 },
             },
             services: {
+                API: { getPlatform: () => "desktop" },
                 databaseEvents: { initialiseDatabase },
             },
             settings: {
@@ -163,6 +167,96 @@ describe("ModuleLiveSyncMain", () => {
 
         await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
 
-        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, true, false);
+        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, true, false, { strictContentCheck: true });
+    });
+
+    it("passes the strict content check setting for ordinary Obsidian start-up", async () => {
+        const initialiseDatabase = vi.fn(async () => false);
+        const host = {
+            core: {
+                startupDatabaseOptions: {},
+                services: {
+                    appLifecycle: {
+                        onLayoutReady: vi.fn(async () => true),
+                    },
+                },
+            },
+            services: {
+                API: { getPlatform: () => "desktop" },
+                databaseEvents: { initialiseDatabase },
+            },
+            settings: {
+                strictContentCheckOnStartup: true,
+                suspendFileWatching: false,
+                suspendParseReplicationResult: false,
+            },
+            _log: vi.fn(),
+        };
+
+        await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
+
+        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, false, true, { strictContentCheck: true });
+    });
+
+    it.each(["server", "browser"])(
+        "keeps the strict content check on non-Obsidian host start-up (%s)",
+        async (platform) => {
+            const initialiseDatabase = vi.fn(async () => false);
+            const host = {
+                core: {
+                    startupDatabaseOptions: { ignoreSuspending: false, continueOnFileFailure: true },
+                    services: {
+                        appLifecycle: {
+                            onLayoutReady: vi.fn(async () => true),
+                        },
+                    },
+                },
+                services: {
+                    API: { getPlatform: () => platform },
+                    databaseEvents: { initialiseDatabase },
+                },
+                settings: {
+                    strictContentCheckOnStartup: false,
+                    suspendFileWatching: false,
+                    suspendParseReplicationResult: false,
+                },
+                _log: vi.fn(),
+            };
+
+            await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
+
+            expect(initialiseDatabase).toHaveBeenCalledWith(false, false, false, true, { strictContentCheck: true });
+        }
+    );
+
+    it("keeps explicit recovery startup options strict when the setting is off", async () => {
+        const initialiseDatabase = vi.fn(async () => false);
+        const host = {
+            core: {
+                startupDatabaseOptions: {
+                    ignoreSuspending: false,
+                    continueOnFileFailure: false,
+                },
+                services: {
+                    appLifecycle: {
+                        onLayoutReady: vi.fn(async () => true),
+                    },
+                },
+            },
+            services: {
+                API: { getPlatform: () => "desktop" },
+                databaseEvents: { initialiseDatabase },
+            },
+            settings: {
+                strictContentCheckOnStartup: false,
+                suspendFileWatching: false,
+                suspendParseReplicationResult: false,
+            },
+            _log: vi.fn(),
+        };
+
+        await ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
+
+        expect(initialiseDatabase).toHaveBeenCalledWith(false, false, false, false, { strictContentCheck: true });
     });
 });

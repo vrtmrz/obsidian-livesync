@@ -17,7 +17,7 @@ const rangeMessages = {
 };
 
 describe("Advanced setting specifications", () => {
-    it("lists only the ten controls currently exposed by the Advanced page", () => {
+    it("lists only the eleven controls currently exposed by the Advanced page", () => {
         const groups = createAdvancedSettingSpecGroups({ isCouchDB: () => true });
 
         expect(groups.map(({ heading }) => heading)).toEqual([
@@ -30,6 +30,7 @@ describe("Advanced setting specifications", () => {
             "hashCacheMaxCount",
             "chunkSplitterVersion",
             "customChunkSize",
+            "strictContentCheckOnStartup",
             "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
@@ -38,6 +39,17 @@ describe("Advanced setting specifications", () => {
             "autoAcceptCompatibleTweak",
             "enableCompression",
         ]);
+    });
+
+    it("exposes strict content checking as an ungated Advanced toggle", () => {
+        const spec = createAdvancedSettingSpecGroups({ isCouchDB: () => false })
+            .find(({ heading }) => heading === "Local Database Tweak")
+            ?.items.find(({ key }) => key === "strictContentCheckOnStartup");
+        if (!spec) throw new Error("Strict content checking is not exposed on the Advanced page");
+
+        expect(spec.control).toEqual({ type: "toggle" });
+        expect(spec.visible).toBeUndefined();
+        expect(spec.disabled).toBeUndefined();
     });
 
     it("keeps path identity and the four remote chunk controls CouchDB-only", () => {

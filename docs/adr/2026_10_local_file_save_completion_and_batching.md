@@ -59,10 +59,12 @@ that evidence. The inspected Commonlib source is commit
 
 ## Decision
 
-Make local file processing recoverable until its result is established, use
-content and provenance to reconcile ambiguous timestamps, and enable batching
-in LiveSync mode only through an explicit choice after those contracts pass
-verification. Apply the recovery contract with batching enabled or disabled.
+Make local file processing recoverable until its result is established, retain
+strict content and provenance reconciliation for manual and recovery scans, and
+enable batching in LiveSync mode only through an explicit choice after those
+contracts pass verification. Ordinary Obsidian start-up may skip a body read
+only under the exact-match conditions below. Apply the recovery contract with
+batching enabled or disabled.
 
 The content-reconciliation change targets selected ordinary files in the
 Offline Scanner's `NEWER_WINS` / `sync-newer` action. Keep the existing action
@@ -208,12 +210,14 @@ finishes; correctness must also follow from the persistent record and start-up
 reconciliation. Remote availability must not determine whether local pending
 work survives shutdown.
 
-### 4. Reconcile content when timestamps are inconclusive
+### 4. Preserve strict content reconciliation
 
-Retain the existing timestamp tolerance for platforms with coarse modification
-times. Timestamp equality, including exactly equal raw timestamps, does not
-prove content equality. The Offline Scanner must establish one of the following
-outcomes through the ordinary non-forced file handler and its provenance rules:
+Strict content checking retains the timestamp and provenance reconciliation
+contract for platforms with coarse modification times. Timestamp equality,
+including exactly equal raw timestamps, does not prove content equality. With
+strict checking enabled, the Offline Scanner must establish one of the
+following outcomes through the ordinary non-forced file handler and its
+provenance rules:
 
 | Evidence                                                                                                                | Required outcome                                                                                                                  |
 | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -223,7 +227,19 @@ outcomes through the ordinary non-forced file handler and its provenance rules:
 | Vault content has no provable origin and matches no current live leaf                                                   | Preserve it according to the existing independent-branch rules. Do not attach it to an arbitrary database winner.                 |
 | Required content or provenance cannot be read, or state changes during comparison                                       | Retain unresolved work and report or re-evaluate it. Do not mark it reconciled merely because the timestamp comparison is `EVEN`. |
 
-The table describes stable-state reconciliation, not atomic database and
+The `strictContentCheck` scan option is strict when omitted. Ordinary Obsidian
+start-up can opt out through **Strict content check on startup**, which is
+disabled by default. With the option disabled, a body read may be skipped only
+when the file's raw modification time, byte size, and valid device-local
+provenance exactly match a conflict-free current revision and no file
+processing is pending. All other files retain strict content reconciliation.
+An unrecorded edit that preserves its exact size and modification time can
+therefore remain undetected by ordinary start-up while the option is disabled.
+Manual scans, Fetch, Rebuild, and other explicit recovery operations remain
+strict. Pending-event replay, incoming-change protection, and deletion guards
+remain active in both modes.
+
+The table describes stable-state strict reconciliation, not atomic database and
 provenance persistence. Replay in the pre-provenance gap may create an
 identical sibling; with no remote descendant, one of the identical branches
 is tombstoned, leaving one live leaf with the exact saved content. If replication has
@@ -249,12 +265,14 @@ Obsidian start-up can report `completed-with-file-failures` and allow unaffected
 files to proceed; an unresolved pair must not become `completed` to achieve
 that result. Keep the stricter callers' existing completion requirements.
 
-This deliberately extends the current equal-time scanner contract. Existing
-provenance tests expect no database write during that scan, including for an
-edited file. Preserve their unchanged-file and later incoming-protection
-scenarios; change the edited-file expectation to require preservation during
-the scan itself. Test both identical timestamps and distinct raw timestamps
-within one comparison bucket.
+Keep the original unchanged-file, edited-file, untracked-provenance,
+incoming-protection, and concurrent-recheck fixtures under strict content
+checking, including identical timestamps and distinct raw timestamps within
+one comparison bucket. Do not weaken those strict-mode assertions to describe
+the ordinary start-up opt-out. Test the opt-out separately: only the exact
+stat, provenance, conflict-free, and no-pending-processing match may skip a
+body read. Pending-event replay and incoming or deletion guards remain covered
+with the opt-out enabled.
 
 ### 5. Make batch timing and activation explicit
 
@@ -369,7 +387,9 @@ matrix is:
 | Handler returns false, throws, or snapshot persistence fails                                                         | Flush reports failure; pending work is retained; unrelated recoverable work can continue.                                              |
 | Buffered or in-progress work exists with no waiting timer                                                            | Flush still waits for actual completion.                                                                                               |
 | A flush overlaps new typing or a rename/delete barrier                                                               | The captured work completes without waiting for later work or deadlocking.                                                             |
-| Equal timestamps: unchanged, edited, untracked, pruned provenance, unavailable Chunks, or concurrent recheck changes | Preserve correct ancestry and bytes, avoid duplicate revisions, and distinguish unresolved comparisons from successful reconciliation. |
+| Strict check: equal timestamps, unchanged or edited files, untracked or pruned provenance, unavailable Chunks, or concurrent recheck changes | Preserve correct ancestry and bytes, avoid duplicate revisions, and distinguish unresolved comparisons from successful reconciliation. |
+| Start-up check disabled: exact raw time, size, and provenance match with no conflict or pending processing | The body read may be skipped; an unrecorded edit which preserves exact size and modification time remains an accepted limitation. |
+| Pending-event replay and incoming or deletion guards, with either start-up setting | Keep replay and protection active; do not skip work or remove a file based only on matching statistics. |
 | Settings save followed by stop; ordinary unload; interruption during replay                                          | No operation is forgotten because a settings callback or shutdown released its timer.                                                  |
 | Sustained edits and more paths than available processing slots                                                       | Observe the intentional-delay deadline and progress of unrelated ready files.                                                          |
 | Old settings, mode changes, explicit opt-in, and settings import                                                     | Existing LiveSync mode users retain immediate saving until they choose batching.                                                       |

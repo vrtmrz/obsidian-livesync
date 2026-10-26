@@ -23,6 +23,7 @@ export function createAdvancedSettingSpecGroups({
                     control: { type: "dropdown", options: () => ChunkAlgorithmNames },
                 },
                 { key: "customChunkSize", control: { type: "number", min: 0, allowZero: true } },
+                { key: "strictContentCheckOnStartup", control: { type: "toggle" } },
                 {
                     key: "pathNormalizationVersion",
                     holdValue: true,

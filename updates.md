@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+#### Changed
+
+- Ordinary start-up can skip reading file content when the exact modification time, size, and recorded device-local provenance match a conflict-free revision, with no pending file processing.
+    - **Strict content check on startup** keeps full content comparisons enabled. The setting is disabled by default; an edit which preserves its exact size and modification time can go undetected by this start-up scan. Manual scans and explicit recovery operations remain strict.
+
 ## 1.0.41
 
 26th October, 2026
