@@ -42,6 +42,7 @@ on:
       - '.github/workflows/cli-p2p-tests.yml'
       - '.github/workflows/cli-docker-validation.yml'
       - '.github/workflows/cli-docker.yml'
+      - '.github/workflows/library-preview.yml'
       - '.github/workflows/unit-ci.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -80,6 +81,7 @@ on:
       - '.github/workflows/cli-p2p-tests.yml'
       - '.github/workflows/cli-docker-validation.yml'
       - '.github/workflows/cli-docker.yml'
+      - '.github/workflows/library-preview.yml'
       - '.github/workflows/unit-ci.yml'
 
 permissions:
@@ -149,6 +151,9 @@ jobs:
         with:
           node-version: '24.x'
           cache: 'npm'
+
+      - name: Test library preview workflow inputs
+        run: node --test --test-isolation=none test/workflows/libraryPreviewInputs.test.mjs
 
       - name: Verify clean installation with npm 10
         run: npx --yes npm@10.9.4 ci --ignore-scripts --no-audit --no-fund
