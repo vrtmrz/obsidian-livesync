@@ -21,6 +21,7 @@ const focusedScenarios = new Set([
     "configuration-encryption-sync",
     "review-harness",
     "p2p-pane",
+    "replication-status",
     "vault-reflection",
     "couchdb-upload",
     "couchdb-http-cache",

@@ -839,3 +839,37 @@ body.is-mobile .livesync-compatibility-review-notice {
     outline-offset: 1px;
     border-radius: 2px;
 }
+
+.livesync-stat-item {
+    font-variant-numeric: tabular-nums;
+}
+
+.livesync-stat-item.livesync-stat-inactive {
+    display: none;
+}
+
+.syncstatusbar .livesync-stat-item {
+    white-space: pre;
+}
+
+.livesync-status-statusline
+    > .livesync-stat-item:not(.livesync-stat-inactive)
+    ~ .livesync-stat-item:not(
+        .livesync-stat-push-remaining,
+        .livesync-stat-pull-remaining,
+        .livesync-stat-ff,
+        .livesync-stat-p2p
+    ) {
+    margin-inline-start: 1em;
+}
+
+.livesync-stat-value {
+    display: inline-block;
+    width: var(--livesync-stat-width, auto);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.livesync-stat-value[hidden] {
+    display: none;
+}

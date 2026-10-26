@@ -30,6 +30,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### New Feature
 
+- We can see CouchDB change-history comparison progressing before new documents arrive, with a ⏩ status icon and a comparison count before the upload count. An unchanged count disappears after three seconds.
+- We can hide or style individual status items with CSS snippets using the `livesync-stat-` classes. Tabular, right-aligned numbers retain their width while visible, reducing movement as counts change. Wider gaps between editor status items make the counts easier to read. The `livesync-stat-inactive` class lets CSS snippets control how inactive items disappear.
 - We can enable **Batch database updates in LiveSync mode** to combine repeated local edits before sending them to other devices.
     - The choice starts disabled, including when older settings contain the previously ignored batch option. Each mode retains its own choice and uses the same minimum and maximum delays.
     - Batching delays remote visibility and reduces intermediate updates. It does not establish when a template has finished or prevent genuine concurrent edits.
