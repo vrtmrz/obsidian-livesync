@@ -669,17 +669,28 @@ Setup URIs preserve both sleep preferences. Older Setup URIs which do not contai
 #### Batch database update
 
 Setting key: batchSave
-Reducing the frequency with which on-disk changes are reflected into the DB
+
+Combine repeated local file updates before saving them to the local database in modes other than LiveSync mode. This reduces intermediate database revisions and delays their availability to other devices.
+
+#### Batch database updates in LiveSync mode
+
+Setting key: batchSaveInLiveSync
+
+Apply the same bounded delay in LiveSync mode. This separate choice is disabled by default for both existing settings and new Vaults. An older configuration containing `liveSync: true` and `batchSave: true` does not enable it. The settings interface shows the choice for the current mode, and switching modes preserves both choices. Older clients continue to ignore batching in LiveSync mode.
+
+Both choices share the delays below. Manual synchronisation, deletion, or renaming can end a batch early. Batching reduces intermediate updates; it does not identify when a template has finished or prevent genuine concurrent edits on different devices.
 
 #### Minimum delay for batch database updating
 
 Setting key: batchSaveMinimumDelay
-Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.
+
+Seconds of quiet after the latest eligible edit before saving to the local database, subject to the maximum delay below.
 
 #### Maximum delay for batch database updating
 
 Setting key: batchSaveMaximumDelay
-Saving will be performed forcefully after this number of seconds.
+
+Maximum intentional delay in seconds from the first pending update to a file. Later edits do not restart this limit, and waiting for a processing slot does not add another batch delay. This limit makes the work eligible to run; it does not guarantee database completion or receipt by another device within that time.
 
 ### 4. Deletion Propagation (Advanced)
 

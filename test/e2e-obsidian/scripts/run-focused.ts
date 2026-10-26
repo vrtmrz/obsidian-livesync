@@ -44,6 +44,8 @@ const focusedScenarios = new Set([
     "hidden-file-selectors",
     "customisation-sync",
     "customisation-catalogue-reload",
+    "optional-file-save-completion",
+    "livesync-batch",
     "received-change-readiness",
     "internal-metadata-doctor",
     "setting-markdown-export",

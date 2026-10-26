@@ -171,20 +171,18 @@ export function paneSyncSettings(
         }
     });
 
-    void addPanel(
-        paneEl,
-        $msg("obsidianLiveSyncSettingTab.titleUpdateThinning"),
-        undefined,
-        visibleOnly(() => !this.isConfiguredAs("syncMode", "LIVESYNC"))
-    ).then((paneEl) => {
-        new Setting(paneEl).autoWireToggle("batchSave");
+    void addPanel(paneEl, $msg("obsidianLiveSyncSettingTab.titleUpdateThinning")).then((paneEl) => {
+        const inLiveSyncMode = () => this.isConfiguredAs("syncMode", "LIVESYNC");
+        const batchEnabled = () => this.isConfiguredAs(inLiveSyncMode() ? "batchSaveInLiveSync" : "batchSave", true);
+        new Setting(paneEl).autoWireToggle("batchSave", { onUpdate: visibleOnly(() => !inLiveSyncMode()) });
+        new Setting(paneEl).autoWireToggle("batchSaveInLiveSync", { onUpdate: visibleOnly(inLiveSyncMode) });
         new Setting(paneEl).autoWireNumeric("batchSaveMinimumDelay", {
             acceptZero: true,
-            onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true)),
+            onUpdate: visibleOnly(batchEnabled),
         });
         new Setting(paneEl).autoWireNumeric("batchSaveMaximumDelay", {
             acceptZero: true,
-            onUpdate: visibleOnly(() => this.isConfiguredAs("batchSave", true)),
+            onUpdate: visibleOnly(batchEnabled),
         });
     });
 
