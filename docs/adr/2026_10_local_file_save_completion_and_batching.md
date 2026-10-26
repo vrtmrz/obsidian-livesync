@@ -143,9 +143,30 @@ policy-approved skip before the manager can acknowledge either safely.
 
 A crash after the database write but before snapshot removal can replay an
 operation. Replay must check current storage and revision provenance, retain
-the existing protection against stale restored events, and avoid duplicate
-revisions or deletion of a newer same-path file. It must be safe to interrupt
-replay again. Existing saved snapshots remain readable.
+the existing protection against stale restored events, and never delete a
+newer same-path file. Once both the database write and provenance write have
+completed, replay must not add another revision. If the database write
+succeeded before provenance was recorded, replay may first create an identical
+sibling even when no remote descendant has arrived. In the tested case
+without a remote edit, replay creates that sibling. Duplicate handling then
+tombstones one of the identical branches and converges to one live leaf with
+the exact saved content.
+Another restart must add no revision. Replay must remain safe to interrupt;
+existing saved snapshots remain readable.
+
+The database write and the device-local provenance write are separate,
+sequential operations. A stop between them can leave the previous provenance
+record in place. This pre-provenance gap is the known exception to the
+no-extra-revision result after both writes complete: replay can first create a
+duplicate sibling; one of the identical branches is then tombstoned while
+one live leaf retains the saved bytes when no remote descendant has arrived. If continuous
+replication advances the local database during the gap, replay can instead
+expose the local content as a sibling of that descendant. The [conflict
+resolution specification](../specs_conflict_resolution.md#known-potentially-problematic-behaviour)
+records the required mergeable and manual-resolution outcomes. The per-file
+lock does not fence replication writes. The interruption window is expected
+to be very rare, but its field frequency is unmeasured; this decision adds no
+transaction or second journal to close the interval.
 
 Boolean failure, an exception, and an unavailable comparison are not successful
 completion. Keep unresolved work recoverable and report the failure through the
@@ -201,6 +222,14 @@ outcomes through the ordinary non-forced file handler and its provenance rules:
 | Vault content differs from its recorded revision                                                                        | Preserve the edit on that recorded branch. Keep independent concurrent branches available for conflict resolution.                |
 | Vault content has no provable origin and matches no current live leaf                                                   | Preserve it according to the existing independent-branch rules. Do not attach it to an arbitrary database winner.                 |
 | Required content or provenance cannot be read, or state changes during comparison                                       | Retain unresolved work and report or re-evaluate it. Do not mark it reconciled merely because the timestamp comparison is `EVEN`. |
+
+The table describes stable-state reconciliation, not atomic database and
+provenance persistence. Replay in the pre-provenance gap may create an
+identical sibling; with no remote descendant, one of the identical branches
+is tombstoned, leaving one live leaf with the exact saved content. If replication has
+already added a descendant, preserve its exact content through an existing
+safe merge, or retain both branches for manual resolution. See [Known
+potentially problematic behaviour](../specs_conflict_resolution.md#known-potentially-problematic-behaviour).
 
 Revalidate the relevant file and database state before acting on a comparison.
 Reuse the existing content and provenance checks; avoid a separate conflict
@@ -333,7 +362,9 @@ matrix is:
 | Scenario                                                                                                             | Required observation                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Stop after dequeue, timer release, or during a database write                                                        | Pending work remains recoverable; restart eventually represents the saved Vault edit.                                                  |
-| Database write succeeds before snapshot cleanup; restart twice                                                       | Replay creates no duplicate revision and preserves later edits.                                                                        |
+| Database and provenance writes are complete before replay; restart twice | Replay adds no extra revision. |
+| Stop after the database write but before provenance; no remote descendant; replay twice | The tested replay creates an identical sibling and tombstones one of the two branches; one live leaf retains exact saved content, and the second restart adds no revision. |
+| A remote descendant arrives during the pre-provenance gap | The mergeable case preserves its exact content and ancestry; the overlapping case retains both bodies for manual resolution. |
 | Old and new events share a path; snapshot writes overlap                                                             | Completing old work cannot remove new work or regress the durable snapshot.                                                            |
 | Handler returns false, throws, or snapshot persistence fails                                                         | Flush reports failure; pending work is retained; unrelated recoverable work can continue.                                              |
 | Buffered or in-progress work exists with no waiting timer                                                            | Flush still waits for actual completion.                                                                                               |
