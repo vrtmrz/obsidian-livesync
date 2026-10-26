@@ -166,6 +166,14 @@ Legacy Modules remain grouped by directory:
 - `features/` contains optional features; and
 - `extras/` contains development and testing tools.
 
+### UI commands and dialogue ownership
+
+Declare shared UI requests with `declareUICommand<Request, Result>` from `@vrtmrz/livesync-commonlib/ui-commands`. The host's `services.UI.commands` registry owns one handler per declaration. A serviceFeature registers the handler, releases it on unload, and owns the associated dialogue lifetime. Callers receive a typed result or an explicit `unavailable` result; handler failures propagate.
+
+`OPEN_JOINED_DEVICES` is shared by Remote Configuration, version Notices, and the command palette. `useJoinedDevicesFeature` registers it once and gives the dialogue narrow refresh, forget, and cancellation callbacks. Each remote operation uses a settings snapshot and releases its finite resource in `finally`. Results from an old remote configuration or a closed dialogue are discarded. A write already sent to the captured remote can still complete after the dialogue closes.
+
+The registry belongs to one UIService instance. Reuse the same declaration object at each call site, and keep active UI cleanup in the feature and dialogue owner. `UIService` disposes the registry when the host's context emits the plug-in-unloaded event.
+
 ### Key Architectural Components
 
 - **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper
@@ -204,6 +212,9 @@ The [multiple-device conflict test procedure](test/README.md#multiple-device-con
 
 ### File Structure Conventions
 
+- **Class modules**: Start a new or renamed TypeScript or JavaScript filename with an upper-case letter when the file contains a class with the same name.
+- **Function modules**: Start the filename with a lower-case letter when the module primarily exports functions, such as `initialFetchFastForward.ts`. Follow the surrounding filename style for the rest of the basename. Corresponding test files use the same basename.
+- **Existing files**: Retain established names for unrelated files and separate conventions for components or other file types.
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
 - **Development code**: Use `.dev.ts` suffix (replaced with `.prod.ts` in production)
 - **Path aliases**: `@/*` maps to `src/*`; Commonlib uses package exports rather than a source alias
@@ -309,6 +320,8 @@ Existing legacy Modules continue to register their handlers in `onBindFunction()
   database and Replicator readiness. See
   [the declarative settings adapter ADR](docs/adr/2026_08_declarative_settings_adapter.md).
 - Use `this.services.setting.saveSettingData()` instead of using plugin methods directly
+- Inject `@vrtmrz/value-store` at host composition. `setting.deviceValues` uses exact device-local keys; `setting.config` and the Service Hub `config` share the existing Vault and database-suffix scope. Await reads, writes, and deletions before advancing the workflow. Browser and Obsidian hosts retain their Web Storage keys, and the CLI retains its existing flat JSON string map.
+- Seed the settings tab with `await settingTab.loadSettings()` before registration. Its editing buffer remains synchronous for Obsidian rendering; storage failures must not replace a previously loaded value with an empty default.
 
 ### Database Operations
 

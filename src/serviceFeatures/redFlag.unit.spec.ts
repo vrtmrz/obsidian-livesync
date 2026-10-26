@@ -107,13 +107,15 @@ const createSettingServiceMock = () => {
         }),
         suspendAllSync: vi.fn(() => Promise.resolve()),
         suspendExtraSync: vi.fn(() => Promise.resolve()),
-        getSmallConfig: vi.fn((key: string) => smallConfig.get(key) ?? ""),
-        setSmallConfig: vi.fn((key: string, value: string) => {
-            smallConfig.set(key, value);
-        }),
-        deleteSmallConfig: vi.fn((key: string) => {
-            smallConfig.delete(key);
-        }),
+        config: {
+            getValue: vi.fn(async (key: string, defaultValue = "") => smallConfig.get(key) ?? defaultValue),
+            setValue: vi.fn(async (key: string, value: string) => {
+                smallConfig.set(key, value);
+            }),
+            delete: vi.fn(async (key: string) => {
+                smallConfig.delete(key);
+            }),
+        },
     };
 };
 
@@ -785,7 +787,7 @@ describe("Red Flag Feature", () => {
             );
 
             expect(host.mocks.ui.confirm.confirmWithMessage).not.toHaveBeenCalled();
-            expect(host.mocks.setting.deleteSmallConfig).toHaveBeenCalledWith("simple-fetch-mode");
+            expect(host.mocks.setting.config.delete).toHaveBeenCalledWith("simple-fetch-mode");
             expect(cleanupFlag).not.toHaveBeenCalled();
         });
 
@@ -830,7 +832,7 @@ describe("Red Flag Feature", () => {
             });
             expect(host.mocks.rebuilder.finishRebuild).not.toHaveBeenCalled();
             expect(cleanupFlag).not.toHaveBeenCalled();
-            expect(host.mocks.setting.deleteSmallConfig).not.toHaveBeenCalledWith("simple-fetch-mode");
+            expect(host.mocks.setting.config.delete).not.toHaveBeenCalledWith("simple-fetch-mode");
         });
 
         it("re-suspends both reflection directions when finalisation fails after releasing them", async () => {
@@ -892,7 +894,7 @@ describe("Red Flag Feature", () => {
 
             await askAndPerformFastSetupOnScheduledFetchAll(host as any, log, cleanupFlag);
 
-            expect(host.mocks.setting.deleteSmallConfig).toHaveBeenCalledWith("simple-fetch-mode");
+            expect(host.mocks.setting.config.delete).toHaveBeenCalledWith("simple-fetch-mode");
         });
 
         it("should return false and cleanup when quick flow is cancelled", async () => {

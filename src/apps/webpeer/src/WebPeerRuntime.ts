@@ -7,6 +7,8 @@ import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/t
 import { useP2PReplicatorFeature } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/useP2PReplicatorFeature";
 import { ServiceContext, type LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
+import type { ValueStore, ValueDeleter } from "@vrtmrz/value-store";
+import { createWebStorageValueStore } from "@vrtmrz/value-store/web-storage";
 import { unique } from "octagonal-wheels/collection";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 
@@ -20,6 +22,7 @@ import { translateLiveSyncMessage } from "@/common/translation";
 import { WEBPEER_STORE_NAME, createWebPeerPersistence } from "./WebPeerPersistence";
 
 export interface WebPeerRuntimeOptions {
+    deviceValues?: ValueStore & ValueDeleter;
     context?: ServiceContext;
     store?: SimpleStore<unknown>;
     deviceName?: string;
@@ -62,6 +65,7 @@ export class WebPeerRuntime {
         this.context = options.context ?? new ServiceContext({ translate: translateLiveSyncMessage });
         this.services = createLiveSyncBrowserServiceHub<ServiceContext>({
             context: this.context,
+            deviceValues: options.deviceValues ?? createWebStorageValueStore(compatGlobal.localStorage, { prefix: "" }),
             getSystemVaultName: () => options.systemVaultName ?? WEBPEER_STORE_NAME,
             settings: persistence.settings,
             restart: {
@@ -103,7 +107,7 @@ export class WebPeerRuntime {
         await this.services.setting.loadSettings();
         const deviceName = this.options.deviceName?.trim();
         if (deviceName) {
-            this.services.config.setSmallConfig(SETTING_KEY_P2P_DEVICE_NAME, deviceName);
+            await this.services.config.setValue(SETTING_KEY_P2P_DEVICE_NAME, deviceName);
         }
         const opened = await this.services.database.openDatabase({
             replicator: this.services.replicator,
@@ -192,7 +196,7 @@ export class WebPeerRuntime {
         );
     }
 
-    getDeviceName(): string {
-        return this.services.config.getSmallConfig(SETTING_KEY_P2P_DEVICE_NAME) || this.services.vault.getVaultName();
+    async getDeviceName(): Promise<string> {
+        return (await this.services.config.getValue(SETTING_KEY_P2P_DEVICE_NAME)) || this.services.vault.getVaultName();
     }
 }

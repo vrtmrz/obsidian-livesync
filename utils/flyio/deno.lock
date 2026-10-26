@@ -1,9 +1,25 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@vrtmrz/livesync-commonlib@0.1.34": "0.1.34"
+    "npm:@vrtmrz/livesync-commonlib@0.2.0": "0.2.0"
   },
   "npm": {
+    "@aws-crypto/sha256-js@5.2.0": {
+      "integrity": "sha512-FFQQyu7edu4ufvIZ+OadFpHHOt+eSTBaYaki44c+akjg7qZg9oOQeLlk77F6tSYqjDAFClrHJk9tMf0HdVyOvA==",
+      "dependencies": [
+        "@aws-crypto/util",
+        "@aws-sdk/types",
+        "tslib"
+      ]
+    },
+    "@aws-crypto/util@5.2.0": {
+      "integrity": "sha512-4RkU9EsI6ZpBve5fseQlGNUWKMa1RLPQ1dnjnQoe07ldfIzcsGb5hC5W0Dm7u423KWzawlrpbjXBrXCEv9zazQ==",
+      "dependencies": [
+        "@aws-sdk/types",
+        "@smithy/util-utf8",
+        "tslib"
+      ]
+    },
     "@aws-sdk/checksums@3.1000.18": {
       "integrity": "sha512-IImkbEyXdV6/uaF5r6Wkk+8718mQw1ll83j0a4a30R3JM/rHVFdWAiT4jtJpFjJiIwM/oJ6SxIxr0z2TaQUGqw==",
       "dependencies": [
@@ -230,6 +246,12 @@
         "tslib"
       ]
     },
+    "@smithy/is-array-buffer@2.2.0": {
+      "integrity": "sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA==",
+      "dependencies": [
+        "tslib"
+      ]
+    },
     "@smithy/md5-js@4.4.10": {
       "integrity": "sha512-XI5xhWxRkWuiLNj0/Z30vLTPpZe9UQcg57Ox/n4vzGmFiHSrD+xAmx6ubEcWt6u69IOH+4LAucpaZk5AMxB8oQ==",
       "dependencies": [
@@ -267,10 +289,24 @@
         "tslib"
       ]
     },
+    "@smithy/util-buffer-from@2.2.0": {
+      "integrity": "sha512-IJdWBbTcMQ6DA0gdNhh/BwrLkDR+ADW5Kr1aZmd4k3DIF6ezMV4R2NIAmT08wQJ3yUK82thHWmC/TnK/wpMMIA==",
+      "dependencies": [
+        "@smithy/is-array-buffer",
+        "tslib"
+      ]
+    },
     "@smithy/util-retry@4.5.10": {
       "integrity": "sha512-hYu5ieq8myuO29xCQV0IIhicRm1aO0lcNBeMcF1mVVAVQC0oylPGKFliMq5NbxtdOvRxJWCMuir2gwKI91f1lw==",
       "dependencies": [
         "@smithy/core",
+        "tslib"
+      ]
+    },
+    "@smithy/util-utf8@2.3.0": {
+      "integrity": "sha512-R8Rdn8Hy72KKcebgLiv8jQcQkXoLMOGGv5uI1/k0l+snqkOzQ1R0ChUBCxWMlBsFMekWjq0wRudIweFs7sKT5A==",
+      "dependencies": [
+        "@smithy/util-buffer-from",
         "tslib"
       ]
     },
@@ -284,9 +320,10 @@
         "@trystero-p2p/core"
       ]
     },
-    "@vrtmrz/livesync-commonlib@0.1.34": {
-      "integrity": "sha512-EeVpeFg3W43cpN+x0BZvFj9fN+eQFil9vohvmLLV1z/8bCTT0Hsq/bfRV59oL0qFNggPetkwyCZUusdfjajNOw==",
+    "@vrtmrz/livesync-commonlib@0.2.0": {
+      "integrity": "sha512-K24Pkke+FTjZI7DjIV7qkZk+BmC9VebN3da+2cVD9SWOgoGl7OvDyXTHDafbrmmM4vi4ydaydAEh9glO1xHF6A==",
       "dependencies": [
+        "@aws-crypto/sha256-js",
         "@aws-sdk/client-s3",
         "@smithy/fetch-http-handler",
         "@smithy/md5-js",
@@ -294,6 +331,7 @@
         "@smithy/types",
         "@smithy/util-retry",
         "@trystero-p2p/nostr",
+        "@vrtmrz/value-store",
         "diff-match-patch",
         "events",
         "fflate",
@@ -305,9 +343,11 @@
         "pouchdb-adapter-idb",
         "pouchdb-adapter-indexeddb",
         "pouchdb-adapter-memory",
+        "pouchdb-checkpointer",
         "pouchdb-core",
         "pouchdb-errors",
         "pouchdb-find",
+        "pouchdb-generate-replication-id",
         "pouchdb-mapreduce",
         "pouchdb-merge",
         "pouchdb-replication",
@@ -316,6 +356,9 @@
         "transform-pouch",
         "xxhash-wasm-102@npm:xxhash-wasm@1.1.0"
       ]
+    },
+    "@vrtmrz/value-store@0.1.0": {
+      "integrity": "sha512-M62f1j0bnJkqpgI5sYxnkXUAOSDEwQbYrLf+w58gCCm4sjIXDmFzDJd2duXabRbktBlACt9P99yjN/9gOAPxrA=="
     },
     "abstract-leveldown@2.7.2": {
       "integrity": "sha512-+OVvxH2rHVEhWLdbudP6p0+dNMXu8JA1CbhP19T8paTYAcX7oJ4OVjT+ZUVpv7mITxXHqDMej+GdqXBmXkw09w==",
@@ -497,8 +540,8 @@
       ],
       "deprecated": true
     },
-    "minimatch@10.2.5": {
-      "integrity": "sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==",
+    "minimatch@10.2.6": {
+      "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==",
       "dependencies": [
         "brace-expansion"
       ]
@@ -509,8 +552,8 @@
         "whatwg-url"
       ]
     },
-    "octagonal-wheels@0.1.54": {
-      "integrity": "sha512-Je3ancYhjKX7UY2K19T/qTjG8C9nK8YVrACr5naIf78mN4bbjQkYyWmlj+ooifV/moWVsQrp4fEWz/7mv6It3A==",
+    "octagonal-wheels@0.1.55": {
+      "integrity": "sha512-mHsQv/h4Tw4ZGJCmTxXFlgeRvPuL9s47C0arD8Njqld+DKr3ppaWjVteEBP+9bWFSOpv/a1u2yY3LYNFGmuexg==",
       "dependencies": [
         "idb"
       ]

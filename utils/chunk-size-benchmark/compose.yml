@@ -1,0 +1,30 @@
+services:
+  relay:
+    image: ghcr.io/hoytech/strfry@sha256:36f1886d185a88ca57c66ebe52e6e9e8428dac2486eea0a5d50ff934f18b60c3
+    command: ["--config", "/etc/strfry.conf", "relay"]
+    volumes:
+      - ../../test/fixtures/p2p-relay/strfry.conf:/etc/strfry.conf:ro
+    tmpfs:
+      - /app/strfry-db:rw,size=128m,mode=1777
+    ports:
+      - "127.0.0.1:14094:7777"
+    mem_limit: 256m
+  couchdb:
+    image: couchdb:3.5.0@sha256:1c0a30a54535377bc9ae23f42efb1ca4e92abe796f78ec98b768ac1d5874cc1b
+    environment:
+      COUCHDB_USER: bench
+      COUCHDB_PASSWORD: benchmark-only-password
+      COUCHDB_SINGLE_NODE: "true"
+    ports:
+      - "127.0.0.1:15994:5984"
+    mem_limit: 768m
+  object-storage:
+    image: rustfs/rustfs:1.0.0-rc.6@sha256:97171b3d72cd47dc81000f92ea84de25608bfc35a94c965501afaeb5d99f6035
+    environment:
+      RUSTFS_ACCESS_KEY: bench-access-key
+      RUSTFS_SECRET_KEY: benchmark-only-secret-key
+      RUSTFS_CONSOLE_ENABLE: "false"
+    command: ["/data"]
+    ports:
+      - "127.0.0.1:19094:9000"
+    mem_limit: 1g

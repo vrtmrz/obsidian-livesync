@@ -64,9 +64,17 @@ function configureIdDerivation(
 function requireValue(
   environment: SetupGeneratorEnvironment,
   name: string,
+  legacyName?: string,
 ): string {
-  const value = environment[name]?.trim();
-  if (!value) throw new Error(`${name} is required`);
+  const value = environment[name]?.trim() ||
+    (legacyName && environment[legacyName]?.trim());
+  if (!value) {
+    throw new Error(
+      legacyName
+        ? `${name} (or ${legacyName}) is required`
+        : `${name} is required`,
+    );
+  }
   return value;
 }
 
@@ -97,7 +105,7 @@ function applyEncryptedVaultSettings(
   Object.assign(settings, {
     isConfigured: true,
     encrypt: true,
-    passphrase: requireValue(environment, "passphrase"),
+    passphrase: requireValue(environment, "LIVESYNC_PASSPHRASE", "passphrase"),
     usePathObfuscation: true,
   });
 }
@@ -107,10 +115,10 @@ function createCouchDBSettings(
 ): ObsidianLiveSyncSettings {
   const settings = createNewVaultSettings();
   Object.assign(settings, PREFERRED_SETTING_SELF_HOSTED, {
-    couchDB_URI: requireValue(environment, "hostname"),
-    couchDB_USER: requireValue(environment, "username"),
-    couchDB_PASSWORD: requireValue(environment, "password"),
-    couchDB_DBNAME: requireValue(environment, "database"),
+    couchDB_URI: requireValue(environment, "LIVESYNC_HOST", "hostname"),
+    couchDB_USER: requireValue(environment, "LIVESYNC_USER", "username"),
+    couchDB_PASSWORD: requireValue(environment, "LIVESYNC_PASS", "password"),
+    couchDB_DBNAME: requireValue(environment, "LIVESYNC_DB", "database"),
     batchSave: true,
     periodicReplication: true,
     syncOnStart: true,

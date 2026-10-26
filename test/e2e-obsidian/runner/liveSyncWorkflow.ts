@@ -111,7 +111,7 @@ export async function readE2eCompatibilityMarker(
     return await evalObsidianJson<CompatibilityMarkerState>(
         cliBinary,
         [
-            "(()=>{",
+            "(async()=>{",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
             "const setting=core.services.setting;",
             "const settings=setting.currentSettings();",
@@ -122,7 +122,7 @@ export async function readE2eCompatibilityMarker(
             "return JSON.stringify({",
             "vaultName,additionalSuffix,expectedStorageKey,",
             "rawStorageValue:localStorage.getItem(expectedStorageKey),",
-            "serviceValue:setting.getSmallConfig(markerKey),",
+            "serviceValue:await setting.config.getValue(markerKey,''),",
             "versionUpFlash:settings.versionUpFlash,",
             "});",
             "})()",

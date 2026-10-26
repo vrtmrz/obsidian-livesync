@@ -1,3 +1,4 @@
+import { MemoryValueStore } from "@vrtmrz/value-store";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
@@ -37,11 +38,6 @@ import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/
 import { SetupManager, UserMode } from "./SetupManager";
 
 class TestSettingService extends SettingService<ServiceContext> {
-    protected setItem(_key: string, _value: string): void {}
-    protected getItem(_key: string): string {
-        return "";
-    }
-    protected deleteItem(_key: string): void {}
     protected saveData(_setting: ObsidianLiveSyncSettings): Promise<void> {
         return Promise.resolve();
     }
@@ -65,6 +61,7 @@ function createLegacyRemoteSetting(): ObsidianLiveSyncSettings {
 
 function createSetupManager() {
     const setting = new TestSettingService(new ServiceContext(), {
+        deviceValues: new MemoryValueStore(),
         APIService: {
             getSystemVaultName: vi.fn(() => "vault"),
             getAppID: vi.fn(() => "app"),
@@ -172,10 +169,12 @@ describe("SetupManager", () => {
         const { manager, dialogManager } = createSetupManager();
         dialogManager.openWithExplicitCancel.mockResolvedValueOnce("configure-manually");
         const configureManually = vi.spyOn(manager, "onConfigureManually").mockResolvedValue(true);
+        const newVaultSettings = createNewVaultSettings();
 
         await manager.onOnboard(UserMode.NewUser);
 
-        expect(configureManually).toHaveBeenCalledWith(createNewVaultSettings(), UserMode.NewUser);
+        expect(newVaultSettings.customChunkSize).toBe(0);
+        expect(configureManually).toHaveBeenCalledWith(newVaultSettings, UserMode.NewUser);
     });
 
     it("compatibility: normalises imported flat remote settings from a Setup URI before applying", async () => {
@@ -487,8 +486,15 @@ describe("SetupManager", () => {
         expect(applySettings).not.toHaveBeenCalled();
     });
 
-    it("preserves modern profiles, display names, and the active selection from a Setup URI", async () => {
+    it.each([
+        { importedSize: 0, expectedSize: 0 },
+        { importedSize: undefined, expectedSize: 60 },
+    ])("preserves modern Setup URI profiles and adopts the supplied chunk size $importedSize", async ({ importedSize, expectedSize }) => {
         const { manager, setting, dialogManager } = createSetupManager();
+        setting.settings = {
+            ...setting.currentSettings(),
+            customChunkSize: 60,
+        };
         const imported = {
             ...DEFAULT_SETTINGS,
             remoteConfigurations: {
@@ -507,6 +513,8 @@ describe("SetupManager", () => {
             },
             activeConfigurationId: "archive",
         } as ObsidianLiveSyncSettings;
+        if (importedSize === undefined) delete (imported as Partial<ObsidianLiveSyncSettings>).customChunkSize;
+        else imported.customChunkSize = importedSize;
         dialogManager.openWithExplicitCancel
             .mockResolvedValueOnce(imported)
             .mockResolvedValueOnce("compatible-existing-user");
@@ -514,6 +522,7 @@ describe("SetupManager", () => {
         await manager.onUseSetupURI(UserMode.Unknown, "mock-config://modern-settings");
 
         const current = setting.currentSettings();
+        expect(current.customChunkSize).toBe(expectedSize);
         expect(current.remoteConfigurations).toEqual(imported.remoteConfigurations);
         expect(current.activeConfigurationId).toBe("archive");
         expect(Object.keys(current.remoteConfigurations).some((id) => id.startsWith("legacy-"))).toBe(false);
@@ -523,6 +532,7 @@ describe("SetupManager", () => {
         const { manager, setting, dialogManager } = createSetupManager();
         setting.settings = {
             ...setting.currentSettings(),
+            customChunkSize: 60,
             isConfigured: true,
             remoteConfigurations: {
                 existing: {
@@ -554,6 +564,7 @@ describe("SetupManager", () => {
         await manager.onCouchDBManualSetup(UserMode.ExistingUser, setting.currentSettings());
 
         const current = setting.currentSettings();
+        expect(current.customChunkSize).toBe(60);
         expect(current.remoteConfigurations.existing).toBeDefined();
         expect(Object.keys(current.remoteConfigurations)).toHaveLength(2);
         expect(current.activeConfigurationId).not.toBe("existing");
@@ -662,6 +673,7 @@ describe("SetupManager", () => {
         await manager.onP2PManualSetup(UserMode.NewUser, setting.currentSettings());
 
         const current = setting.currentSettings();
+        expect(current.customChunkSize).toBe(0);
         expect(Object.keys(current.remoteConfigurations)).toHaveLength(1);
         expect(current.activeConfigurationId).not.toBe("");
         expect(current.P2P_ActiveRemoteConfigurationId).toBe(current.activeConfigurationId);

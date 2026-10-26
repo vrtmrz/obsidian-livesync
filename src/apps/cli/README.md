@@ -719,8 +719,8 @@ src/apps/cli/
 │   └── ServiceFileAccessImpl.ts
 ├── services/
 │   ├── NodeKeyValueDBService.ts
-│   ├── NodeServiceHub.ts
-│   └── NodeSettingService.ts
+│   ├── NodeLocalStorage.ts
+│   └── NodeServiceHub.ts
 ├── test/
 │   ├── test-e2e-two-vaults-common.sh
 │   ├── test-e2e-two-vaults-matrix.sh
