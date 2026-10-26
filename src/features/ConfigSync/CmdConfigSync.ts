@@ -416,6 +416,7 @@ export class ConfigSync extends LiveSyncCommands {
     periodicPluginSweepProcessor = new PeriodicProcessor(this.core, async () => await this.scanAllConfigFiles(false));
 
     pluginList: IPluginDataExDisplay[] = [];
+    private pluginListGeneration = 0;
     showPluginSyncModal() {
         if (!this.isThisModuleEnabled()) {
             return;
@@ -536,6 +537,7 @@ export class ConfigSync extends LiveSyncCommands {
         return Promise.resolve(true);
     }
     async reloadPluginList(showMessage: boolean) {
+        this.pluginListGeneration++;
         this.pluginList = [];
         this.loadedManifest_mTime.clear();
         pluginList.set(this.pluginList);
@@ -765,39 +767,46 @@ export class ConfigSync extends LiveSyncCommands {
     updatingV2Count = 0;
 
     async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
+        const generation = this.pluginListGeneration;
+        const isCurrent = () => generation === this.pluginListGeneration && this.isThisModuleEnabled();
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
 
-            const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
-            let entry: PluginDataExDisplayV2 | undefined = undefined;
+            await serialized(`config:catalogue:${pathV1}`, async () => {
+                if (!isCurrent()) return;
+                const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
+                let entry: PluginDataExDisplayV2 | undefined = undefined;
 
-            if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
-                const newEntry = this.createPluginDataFromV2(unifiedFilenameWithKey);
-                if (newEntry) {
-                    entry = newEntry;
+                if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
+                    const newEntry = this.createPluginDataFromV2(unifiedFilenameWithKey);
+                    if (newEntry) {
+                        entry = newEntry;
+                    }
+                } else if (oldEntry instanceof PluginDataExDisplayV2) {
+                    entry = oldEntry;
                 }
-            } else if (oldEntry instanceof PluginDataExDisplayV2) {
-                entry = oldEntry;
-            }
-            if (!entry) return;
-            const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
-            if (file) {
-                await entry.setFile(file);
-            } else {
-                entry.deleteFile(unifiedFilenameWithKey);
-                if (entry.files.length == 0) {
-                    this.pluginList = this.pluginList.filter((e) => e.documentPath != pathV1);
+                if (!entry) return;
+                const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
+                if (!isCurrent()) return;
+                if (file) {
+                    await entry.setFile(file);
+                } else {
+                    entry.deleteFile(unifiedFilenameWithKey);
+                    if (entry.files.length == 0) {
+                        this.pluginList = this.pluginList.filter((e) => e.documentPath != pathV1);
+                    }
                 }
-            }
-            const newList = this.pluginList.filter((e) => e.documentPath != entry.documentPath);
-            newList.push(entry);
-            this.pluginList = newList;
+                if (!isCurrent()) return;
+                const newList = this.pluginList.filter((e) => e.documentPath != entry.documentPath);
+                newList.push(entry);
+                this.pluginList = newList;
 
-            scheduleTask("updatePluginListV2", 100, () => {
-                pluginList.set(this.pluginList);
+                scheduleTask("updatePluginListV2", 100, () => {
+                    pluginList.set(this.pluginList);
+                });
             });
         } finally {
             this.updatingV2Count--;
@@ -875,11 +884,13 @@ export class ConfigSync extends LiveSyncCommands {
 
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
         if (!this.isThisModuleEnabled()) {
+            this.pluginListGeneration++;
             this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
             pluginList.set(this.pluginList);
             return;
         }
+        const generation = this.pluginListGeneration;
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
@@ -892,6 +903,7 @@ export class ConfigSync extends LiveSyncCommands {
                   })
                 : this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
             for await (const v of plugins) {
+                if (generation !== this.pluginListGeneration || !this.isThisModuleEnabled()) return;
                 if (v.deleted || v._deleted) continue;
                 if (v.path.indexOf("%") !== -1) {
                     fireAndForget(() => this.updatePluginListV2(showMessage, v.path));

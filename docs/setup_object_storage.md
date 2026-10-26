@@ -24,7 +24,7 @@ export secret_key=<SECRET KEY>
 export bucket=vault-data
 export region=auto
 export bucket_prefix=my-vault
-export passphrase=<A STRONG VAULT ENCRYPTION PASSPHRASE>
+export LIVESYNC_PASSPHRASE=<A STRONG VAULT ENCRYPTION PASSPHRASE>
 export uri_passphrase=<A SEPARATE SETUP URI PASSPHRASE>
 deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/setup/generate_setup_uri.ts
 ```

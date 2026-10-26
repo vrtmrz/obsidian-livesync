@@ -1,4 +1,5 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { assertLocatorWithinViewport, assertNoHorizontalOverflow } from "@vrtmrz/obsidian-test-session";
 import { VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
@@ -59,6 +60,10 @@ type LiveSyncTestPlugin = {
                     useEdgeCaseMode: boolean;
                     hashCacheMaxCount: number;
                     customChunkSize: number;
+                    liveSync: boolean;
+                    periodicReplication: boolean;
+                    batchSave: boolean;
+                    batchSaveInLiveSync: boolean;
                 };
                 config: { getValue(key: string, defaultValue: string): Promise<string> };
             };
@@ -643,6 +648,105 @@ async function verifyConfigDoctorFollowsCompatibilityReview(): Promise<string> {
     return screenshot;
 }
 
+async function verifyBatchSettings(vaultPath: string): Promise<void> {
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        let navigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        let settingsPage = await navigator.openPage("Sync Settings");
+        const row = (name: string) =>
+            settingsPage.locator(".setting-item").filter({ has: page.getByText(name, { exact: true }) });
+        const legacyName = "Batch database update";
+        const liveName = "Batch database updates in LiveSync mode";
+        const delays = ["Minimum delay for batch database updating", "Maximum delay for batch database updating"];
+
+        async function assertState(liveSync: boolean, batchSave: boolean, batchSaveInLiveSync: boolean) {
+            await page.waitForFunction(
+                (expected) => {
+                    const settings = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins[
+                        "obsidian-livesync"
+                    ]?.core.services.setting.currentSettings();
+                    return (
+                        settings?.liveSync === expected.liveSync &&
+                        settings?.batchSave === expected.batchSave &&
+                        settings?.batchSaveInLiveSync === expected.batchSaveInLiveSync
+                    );
+                },
+                { liveSync, batchSave, batchSaveInLiveSync },
+                { timeout: uiTimeoutMs }
+            );
+            const visibleName = liveSync ? liveName : legacyName;
+            await row(visibleName).waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await row(liveSync ? legacyName : liveName).waitFor({ state: "hidden", timeout: uiTimeoutMs });
+            const enabled = liveSync ? batchSaveInLiveSync : batchSave;
+            if ((await row(visibleName).locator(".checkbox-container.is-enabled").count()) !== Number(enabled)) {
+                throw new Error(`The displayed batching choice did not match ${visibleName}: ${enabled}`);
+            }
+            for (const name of delays) {
+                await row(name).waitFor({ state: enabled ? "visible" : "hidden", timeout: uiTimeoutMs });
+            }
+        }
+
+        async function mode(value: "ONEVENTS" | "PERIODIC" | "LIVESYNC") {
+            await row("Sync Mode").locator("select").selectOption(value);
+            await page.waitForFunction(
+                (value) => {
+                    const settings = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins[
+                        "obsidian-livesync"
+                    ]?.core.services.setting.currentSettings();
+                    return (
+                        settings?.liveSync === (value === "LIVESYNC") &&
+                        settings?.periodicReplication === (value === "PERIODIC")
+                    );
+                },
+                value,
+                { timeout: uiTimeoutMs }
+            );
+        }
+
+        await assertState(false, false, false);
+        await row(legacyName).locator(".checkbox-container").click();
+        await assertState(false, true, false);
+        await mode("LIVESYNC");
+        await assertState(true, true, false);
+        await row(liveName).locator(".checkbox-container").click();
+        await assertState(true, true, true);
+        await mode("PERIODIC");
+        await assertState(false, true, true);
+        await row(legacyName).locator(".checkbox-container").click();
+        await assertState(false, false, true);
+        await mode("LIVESYNC");
+        await assertState(true, false, true);
+        await row(liveName).locator(".checkbox-container").click();
+        await assertState(true, false, false);
+        await mode("ONEVENTS");
+        await assertState(false, false, false);
+        await row(legacyName).locator(".checkbox-container").click();
+        await assertState(false, true, false);
+        await navigator.close();
+        navigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        settingsPage = await navigator.openPage("Sync Settings");
+        await assertState(false, true, false);
+        await mode("LIVESYNC");
+        await assertState(true, true, false);
+        await navigator.close();
+        const saved = JSON.parse(
+            await readFile(join(vaultPath, ".obsidian/plugins/obsidian-livesync/data.json"), "utf8")
+        );
+        if (saved.batchSave !== true || saved.batchSaveInLiveSync !== false || saved.liveSync !== true) {
+            throw new Error("The independent batching choices were not saved to plug-in data.");
+        }
+        navigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        settingsPage = await navigator.openPage("Sync Settings");
+        await assertState(true, true, false);
+        await mode("ONEVENTS");
+        await row(legacyName).locator(".checkbox-container").click();
+        await assertState(false, false, false);
+        await navigator.close();
+        console.log(
+            "Batching controls start disabled, show the current mode's delays, and retain independent saved choices."
+        );
+    });
+}
+
 async function verifyEffectiveSettings(): Promise<"declarative" | "imperative"> {
     return await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
         const sleepPreferences = await page.evaluate(() => {
@@ -1080,6 +1184,7 @@ async function main(): Promise<void> {
             console.log(`Config Doctor screenshot: ${configDoctorScreenshot}`);
         }
         settingsRenderer = await verifyEffectiveSettings();
+        await verifyBatchSettings(vault.path);
         const initialisation = await verifyPendingSettingsInitialisationFlow();
         const p2pInitialisation = await captureP2PSettingsInitialisationDialogue();
         console.log(

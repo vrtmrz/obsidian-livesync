@@ -286,8 +286,9 @@ async function main(): Promise<void> {
             artifactRoot,
             vault: slot.vault,
             startupGraceMs: 1000,
+            pluginStartup: restart ? "natural" : undefined,
             pluginData: restart ? undefined : createE2eCouchDbPluginData(couch, overrides),
-            localStorageEntries: createE2eObsidianDeviceLocalState(slot.vault.name),
+            localStorageEntries: restart ? undefined : createE2eObsidianDeviceLocalState(slot.vault.name),
             env: { E2E_OBSIDIAN_REMOTE_DEBUGGING_PORT: String(await availablePort()) },
             lifecycle: {
                 beforeLaunch: async () => {
@@ -710,7 +711,7 @@ async function main(): Promise<void> {
                 if (restartBucket)
                     await evaluate(
                         pair.a,
-                        `const deadline=Date.now()+3000;
+                        `const deadline=Date.now()+core.services.setting.currentSettings().batchSaveMinimumDelay*1000+3000;
                     while(!globalThis.__issue1207Batch.inflightPaused&&Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,10));
                     if(!globalThis.__issue1207Batch.inflightPaused) throw new Error('The in-flight test gate did not start');`
                     );

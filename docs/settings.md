@@ -806,6 +806,8 @@ When a saved setting changes whether a normal file can be reflected, LiveSync re
 
 Customisation Sync is a supported, advanced opt-in feature. Its current per-file implementation is covered by a two-Vault real-Obsidian workflow for snippets, configuration files, and plug-in files. Hidden File Sync is a separate feature with different setup, selection, and conflict behaviour; do not use both features to manage the same files.
 
+**Automatic** delegates an item's files to Hidden File Sync. Enable and initialise Hidden File Sync in **Sync Settings** on this device first, after reviewing its [target and ignore patterns](./tips/hidden-file-sync.md#review-the-file-selection). Choosing Automatic while Hidden File Sync is disabled displays a Notice and leaves the current mode unchanged. Existing Automatic assignments, including those imported from another device, remain saved while Hidden File Sync is disabled.
+
 ### 1. Customisation Sync
 
 #### Device name

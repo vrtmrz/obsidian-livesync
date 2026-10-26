@@ -12,6 +12,20 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Customisation Sync
+
+#### Fixed
+
+- We can reload the customisation list and apply every file in a multi-file item on the first attempt. (#1271)
+    - Reloading or clearing the list also prevents earlier pending updates from restoring removed files and items.
+
+### Setup tools
+
+#### Fixed
+
+- We can generate a Setup URI with prefixed connection and encryption variables, avoiding collisions with shell or system variables such as `hostname` and `USERNAME`. (#817, #1274)
+    - The generator reads `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE`. The previous names remain supported when the corresponding prefixed value is unset or blank.
+
 ### Synchronisation
 
 #### New Feature
@@ -27,6 +41,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - Hidden File Sync and Customisation Sync now report completion after saving, including delayed customisation updates. Failed saves remain pending, while unchanged notifications allow later edits to proceed.
 - Start-up reconciliation checks content when modification times are equal, so an edit within the same timestamp interval is not mistaken for an unchanged file.
     - Existing revision provenance preserves the correct edit branch. Unreadable or continually changing content remains unresolved rather than being reported as successfully reconciled.
+- We receive a clear Notice when **Automatic** requires Hidden File Sync to be enabled on this device. Our existing mode remains unchanged, and hidden-file initialisation cannot start while the feature is disabled. (#1270)
+- We can initialise a whole plug-in's **MAIN** and **DATA** selections using the chosen Automatic initial action.
 - We can run startup integrity checks with lower memory use for healthy Vault files. Files that change between the size check and content reading no longer trigger an unnecessary repair warning when their actual sizes agree and there are no conflicts. (#1283)
 
 ## 1.0.40
