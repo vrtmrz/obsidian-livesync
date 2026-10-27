@@ -1,12 +1,11 @@
 # Self-hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
-Find setup guides, troubleshooting, technical references, design decisions, and historical material in the [documentation index](docs/README.md).
-
-
 Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It leverages robust server solutions such as CouchDB or object storage systems (e.g., MinIO, S3, R2, etc.) to ensure reliable data synchronisation.
 
 Additionally, it supports peer-to-peer synchronisation using WebRTC, enabling devices to exchange notes without a central data-storage server. A signalling relay is still required for peer discovery. See [How peer-to-peer synchronisation works](./docs/p2p.md).
+
+Find setup guides, troubleshooting, technical references, design decisions, and historical material in the [documentation index](docs/README.md).
 
 ![obsidian_live_sync_demo](https://user-images.githubusercontent.com/45774780/137355323-f57a8b09-abf2-4501-836c-8cb7d2ff24a3.gif)
 
@@ -36,39 +35,23 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 
 ## How to Use
 
-### 3-minute setup - CouchDB on fly.io
-
-**Recommended for beginners**
-
-[![LiveSync Setup onto Fly.io SpeedRun 2024 using Google Colab](https://img.youtube.com/vi/7sa_I1832Xc/0.jpg)](https://www.youtube.com/watch?v=7sa_I1832Xc)
-
-1. [Set up CouchDB on fly.io](docs/setup_flyio.md)
-2. Configure plug-in in [Quick Setup](docs/quick_setup.md)
-
 ### Setup workflows
 
 Choose a synchronisation method, prepare its server where required, then follow the corresponding client setup:
 
-1. CouchDB
-   1. Prepare the server:
-      - [Set up your own CouchDB server](docs/setup_own_server.md).
-      - [Set up CouchDB on fly.io](docs/setup_flyio.md).
-   2. Configure the clients by following [CouchDB Quick Setup](docs/quick_setup.md).
-2. Object Storage
-   1. Prepare the server. A maintained MinIO server installation guide is not currently available here, so set up an S3-compatible service or server of your choice.
-   2. Configure the clients by following [Object Storage Setup](docs/setup_object_storage.md).
-3. Peer-to-Peer
-   1. No central data-storage server is required. The project's public signalling relay requires no server provisioning; controlled deployments can provide another compatible relay.
-   2. Configure the clients by following [Peer-to-Peer Setup](docs/setup_p2p.md).
+| Method | What you need | Setup guides |
+| --- | --- | --- |
+| CouchDB | A CouchDB server you operate or trust. | [Own server](docs/setup_own_server.md), [Docker stack](docker/README.md), [Fly.io](docs/setup_flyio.md), or [IBM Cloudant](docs/setup_cloudant.md); then [Quick Setup](docs/quick_setup.md). |
+| Object Storage | An S3-compatible service or server. | [Object Storage Setup](docs/setup_object_storage.md). |
+| Peer-to-Peer | A signalling relay and an online device containing the data you need. | [P2P communication model](docs/p2p.md), then [Peer-to-Peer Setup](docs/setup_p2p.md). |
 
-Each workflow establishes ordinary note synchronisation on the first device, generates a Setup URI for each additional device from that working device, and verifies synchronisation in both directions.
+The project's public P2P signalling relay requires no server provisioning; controlled deployments can provide another compatible relay. A maintained MinIO server installation guide is not currently available here, so Object Storage users need to prepare their chosen S3-compatible service or server separately.
 
-> [!TIP]
-> Fly.io is no longer free. Fortunately, we can still use IBM Cloudant despite some limitations. Refer to [Set up IBM Cloudant](docs/setup_cloudant.md).
-> We can also use peer-to-peer synchronisation without a central data-storage server; a signalling relay is still used for peer discovery. Alternatively, cheap object storage like Cloudflare R2 can be used for free.
-> However, most importantly, we can use a server that we trust. Therefore, please set up your own server.
-> CouchDB can also be run on a Raspberry Pi (please be mindful of your server's security).
+Each workflow establishes ordinary note synchronisation on the first device, generates a Setup URI for each additional device from that working device, and verifies synchronisation in both directions. The linked hosting guides explain provider-specific setup and costs.
 
+<a id="3-minute-setup---couchdb-on-flyio"></a>
+
+For the Fly.io video walkthrough, see [automated setup](docs/setup_flyio.md#a-very-automated-setup).
 
 ### Third-party managed CouchDB hosting
 
@@ -79,52 +62,11 @@ If you would rather not set up and maintain a server yourself, Zenith Hosting of
 
 ## Information in the Status Bar
 
-Synchronisation status is shown in the status bar with the following icons.
+<a id="customising-status-items-with-css-snippets"></a>
 
--   Activity Indicator
-    -   📲 A finite remote operation is in progress
-    -   🌐N Approximate remote requests currently in progress
--   Status
-    -   ⏹️ Stopped
-    -   ⏩ Comparing CouchDB change history, including entries already held locally
-    -   💤 LiveSync enabled. Waiting for changes
-    -   ⚡️ Synchronisation in progress
-    -   ⚠ An error occurred
--   Statistical Indicators
-     -   ↑ Uploaded chunks and metadata
-     -   ↓ Downloaded chunks and metadata
--   Progress Indicators
-     -   📥 Unprocessed transferred items
-     -   📄 Working database operation
-     -   💾 Working write storage processes
-     -   ⏳ Working read storage processes
-     -   🛫 Pending read storage processes
-     -   📬 Batched read storage processes
-     -   ⚙️ Working or pending storage processes for hidden files
-     -   🛄 Pending initial on-demand chunk requests
-     -   🔁 Pending chunk retries, including retry delays
-     -   🔌 Working customisation items (configuration, snippets, and plug-ins)
+See the [status display guide](docs/tips/status-display.md) for icon meanings, progress counters, and [CSS customisation](docs/tips/status-display.md#customising-status-items-with-css-snippets).
 
-To prevent file and database corruption, please avoid closing Obsidian until all progress indicators have disappeared as much as possible (although the plug-in will attempt to resume if interrupted). This is especially important if you have deleted or renamed files.
-
-When CouchDB change history is being compared, `(⏩ 1200) ↑ 0 ↓ 0` can appear before any new documents arrive. The count is the number of candidate changes-feed entries compared during the current replication attempt, including repeated entries on retries. It is separate from downloaded Chunks and Metadata, and is neither a Vault file count nor a count of entries already present locally. It appears before the upload count, disappears after three seconds without a change, and reappears when the count changes. The ⏩ status icon follows comparison activity independently of that timer.
-
-### Customising status items with CSS snippets
-
-The status bar and editor overlay use individual spans with the common `livesync-stat-` class prefix. CSS snippets can hide or style the items we need. For example, this hides the comparison count and P2P summary:
-
-```css
-.livesync-stat-ff,
-.livesync-stat-p2p {
-    display: none;
-}
-```
-
-The item classes include `livesync-stat-network`, `livesync-stat-sync`, `livesync-stat-sent`, `livesync-stat-push-remaining`, `livesync-stat-arrived`, `livesync-stat-pull-remaining`, `livesync-stat-ff`, and `livesync-stat-p2p`. File-processing items use `livesync-stat-file-processing`, `livesync-stat-file-pending`, and `livesync-stat-file-batched`; queue items use `livesync-stat-queue-` followed by `replication`, `database`, `storage`, `chunk-initial`, `chunk-retrying`, `plugin-scan`, `hidden-files`, or `conflicts`. The skipped-file indicator uses `livesync-stat-file-skip`.
-
-All items also have `livesync-stat-item`. Numeric children use `livesync-stat-value`, tabular digits, and right alignment. Each numeric item retains its widest displayed digit count during an active period, reducing movement as counts decrease. The editor overlay uses wider gaps between items, while remaining counts stay beside their transfer totals.
-
-Inactive items receive `livesync-stat-inactive` instead of the HTML `hidden` attribute. The default CSS hides them immediately. They retain their last text, numeric width, and position amongst the other items so that CSS snippets can customise how they disappear. The numeric width starts afresh when an item becomes active again.
+Allow pending file operations to finish before closing Obsidian, especially after deleting or renaming files.
 
 ## Tips and Troubleshooting
 - If you want a faster and simpler initial replication when setting up subsequent devices, see the [Fast Setup Guide](docs/tips/fast-setup.md).
