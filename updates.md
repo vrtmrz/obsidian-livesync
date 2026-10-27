@@ -12,16 +12,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### Synchronisation
+## 1.0.42
 
-#### Changed
+27th October, 2026
 
-- Ordinary start-up can skip reading file content when the exact modification time, size, and recorded device-local provenance match a conflict-free revision, with no pending file processing.
-    - **Strict content check on startup** keeps full content comparisons enabled. The setting is disabled by default; an edit which preserves its exact size and modification time can go undetected by this start-up scan. Manual scans and explicit recovery operations remain strict.
-
-## 1.0.41
-
-26th October, 2026
+Making content checks mandatory in the 1.0.41 pre-release came with a little too much overhead, so 1.0.42 makes them optional. This has turned into a slightly larger release.
 
 ### Synchronisation
 
@@ -36,6 +31,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
         - This count represents history entries, not files remaining to synchronise.
 - Status counts are easier to follow, with less movement as values change.
     - CSS snippets can hide unwanted items or style individual `livesync-stat-` items, including inactive ones.
+
+- We can choose stricter content checks at start-up.
+    - Enable **Strict content check on startup** to compare file contents even when their modification times and sizes match the recorded local database state. This can increase start-up time in large Vaults.
+    - The setting is disabled by default. Ordinary start-up can skip content reads when the exact modification time, file size, and recorded database revision match, with no conflicts or pending file changes.
+    - While the setting is disabled, an edit which preserves its exact size and modification time can go undetected during start-up. Manual scans and explicit recovery operations remain strict.
 
 #### Fixed
 

@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "1.0.41",
+    "version": "1.0.42",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -204,7 +204,7 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "0.2.1",
+        "@vrtmrz/livesync-commonlib": "0.2.2",
         "@vrtmrz/obsidian-plugin-kit": "0.1.4",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",
