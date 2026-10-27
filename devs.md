@@ -1,5 +1,7 @@
 # Self-hosted LiveSync Development Guide
 
+Use the [documentation index](docs/README.md) to find implementation references, architectural decisions, proposals, and historical material for the area being changed.
+
 ## Project Overview
 
 Self-hosted LiveSync is an Obsidian plugin for synchronising vaults across devices using CouchDB, MinIO/S3, or peer-to-peer WebRTC. The codebase uses a modular architecture with TypeScript, Svelte, and PouchDB.
@@ -78,7 +80,7 @@ Regression tests remain in the suite owned by the implementation under test. Plu
 
 - **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current Replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Self-hosted setup tools** (`utils/couchdb/`, `utils/setup/`, and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current CouchDB, Object Storage, and random-room P2P Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
-- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and RustFS fixtures managed by the wrapper.
+- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. After source changes, run the build-owning wrapper, for example `npm run test:e2e:obsidian:focused -- two-vault-sync`, with the required fixture already running. Direct scenario scripts reuse the existing bundle and are suitable for reruns only while that build remains unchanged. Use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and RustFS fixtures managed by the wrapper.
 
 - **Docker Services**: Service-backed tests use CouchDB and RustFS (S3). Canonical P2P validation owns its relay through the CLI Compose runner:
 

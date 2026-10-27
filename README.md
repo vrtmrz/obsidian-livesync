@@ -1,6 +1,8 @@
 # Self-hosted LiveSync
 [Japanese docs](./README_ja.md) - [Chinese docs](./README_cn.md).
 
+Find setup guides, troubleshooting, technical references, design decisions, and historical material in the [documentation index](docs/README.md).
+
 
 Self-hosted LiveSync is a community-developed synchronisation plug-in available on all Obsidian-compatible platforms. It leverages robust server solutions such as CouchDB or object storage systems (e.g., MinIO, S3, R2, etc.) to ensure reliable data synchronisation.
 

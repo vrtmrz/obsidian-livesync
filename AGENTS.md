@@ -2,6 +2,12 @@
 
 When working on this repository (writing code, comments, documentation, or commits), you MUST follow these guidelines to maintain consistency.
 
+## Documentation Navigation and Maintenance
+
+- Use the [documentation index](docs/README.md) to select the relevant implementation reference, ADR, proposal, or historical record. The required references below still apply.
+- When implementation or publication changes a recorded status, update its publication note and supporting references in the same change. Preserve the original decision date, reviewed-version baseline, and remaining follow-ups.
+- Mark superseded or frozen documents at their entry point and link to the maintained reference. Keep historical evidence distinguishable from current operating instructions, and preserve existing links when reorganising documentation.
+
 ## Required Reference Files
 
 Before making changes to documentation, user-facing text, or settings:
