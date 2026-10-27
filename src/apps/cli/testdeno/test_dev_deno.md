@@ -146,7 +146,7 @@ These flows do not require Bash on the host. The S3 matrix tasks, environment va
 
 ### `test-mirror.ts`
 
-- Verifies six core mirror scenarios.
+- Verifies seven core mirror scenarios, including an unrecognised revision origin.
 - Does not require an external remote.
 
 ### `test-sync-two-local-databases.ts`
@@ -247,11 +247,12 @@ deno task test:daemon
 deno task test:push-pull
 deno task test:sync-locked-remote
 
-# CouchDB-based tests
+# CouchDB and Object Storage tests
 deno task test:sync-two-local
 deno task test:decoupled-vault
 deno task test:remote-commands
 deno task test:e2e-couchdb
+deno task test:e2e-matrix
 
 # Explicit host-direct P2P diagnostics for cross-platform investigations.
 # These are not part of the default suite or release evidence.
@@ -260,7 +261,6 @@ deno task test:p2p-peers
 deno task test:p2p-sync
 deno task test:p2p-three-nodes
 deno task test:p2p-upload-download
-deno task test:e2e-matrix
 ```
 
 ---

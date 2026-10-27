@@ -51,7 +51,7 @@ Enter both client paths in the P2P profile's TURN server list:
 turn:turn.example.com:3478?transport=udp,turn:turn.example.com:3478?transport=tcp
 ```
 
-Use `TURN_USERNAME` and `TURN_PASSWORD` as the TURN username and credential. Keep the normal `Automatic` ICE policy unless a future LiveSync release offers `TURN relay only` and the direct path needs to be excluded deliberately.
+Use `TURN_USERNAME` and `TURN_PASSWORD` as the TURN username and credential. Keep the normal `Automatic` connection path unless the direct path needs to be excluded deliberately. Select `TURN relay only` under `Connection compatibility` to require the configured TURN route.
 
 Both synchronising devices must be able to reach the server. Prove an explicit two-way `Replicate now` round trip on the intended networks before relying on the configuration.
 

@@ -2,15 +2,16 @@
 date: 2026-10-17
 commonlib-version: "0.1.42"
 self-hosted-livesync-version: "1.0.37"
-status: unreleased
+status: released
 ---
 
 # Architectural Decision Record: Unicode Path Identity for CouchDB
 
 ## Status
 
-Accepted on 2026-10-17. The feature remains unreleased. Local validation
-evidence and platform limits are recorded in the design document.
+Accepted on 2026-10-17. Unicode NFC path identity was released in Self-hosted
+LiveSync 1.0.38 with Commonlib 0.1.42. Local validation evidence and platform
+limits are recorded in the design document.
 
 ## Context
 

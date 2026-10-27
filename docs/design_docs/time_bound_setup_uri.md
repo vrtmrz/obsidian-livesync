@@ -3,40 +3,42 @@ date: 2026-09-28
 commonlib-version: "0.1.33"
 feasibility-probe-version: "0.1.27"
 self-hosted-livesync-version: "1.0.32"
-status: implementing
+status: released
 ---
 
 # Time-bound Setup URIs
 
 ## Purpose and status
 
-Offer two modes when generating a [Setup URI](../glossary.md):
+The published Obsidian generator offers two choices when creating a [Setup URI](../glossary.md):
 
-- **Ephemeral**, selected by default, derives an effective passphrase from the
-  entered passphrase and the current fixed time window.
-- **Persistent** uses the entered passphrase and the existing URI format
-  unchanged. It also serves as the compatibility mode for older readers.
+- **Time-bound** (the `ephemeral` derivation mode), selected by default,
+  derives an effective passphrase from the entered passphrase and the current
+  fixed time window.
+- **Compatible (no time limit)** (the `persistent` derivation mode) uses the
+  entered passphrase and the existing URI format unchanged. It also serves as
+  the compatibility mode for older readers.
 
-The generation mode choice shows the exact time until which an Ephemeral URI
-can be opened through the ordinary reader. Import still requires only the URI and
-the entered passphrase. Neither the mode nor a timestamp is stored in the URI.
+The Time-bound choice shows the exact time until which the URI can be opened
+through the ordinary reader. Import still requires only the URI and the entered
+passphrase. Neither the mode nor a timestamp is stored in the URI.
 
-The design is technically feasible with the existing encryption primitives.
-An executable protocol probe passes 22 cases against Commonlib 0.1.27 and
-octagonal-wheels 0.1.54. The implementation was first published as Commonlib 0.1.32
-on the npm `next` tag. LiveSync now pins Commonlib 0.1.33 from that tag in its npm
-dependency and independent Deno tool imports. A mobile performance bound remains
-outstanding.
+Both URI availability choices shipped in Self-hosted LiveSync 1.0.33. The
+initial executable protocol probe passed 22 cases against Commonlib 0.1.27 and
+octagonal-wheels 0.1.54. The implementation was first published as Commonlib
+0.1.32 on the npm `next` tag. Current Self-hosted LiveSync 1.0.42 uses Commonlib
+0.2.2. A mobile performance bound remains outstanding.
 
-This document records the proposed key derivation and integration contract. The
-companion probe demonstrates them without changing an application entry point.
+This document records the protocol and the integration plan used for the
+published feature. The companion probe remains a standalone design check; it
+does not exercise an application entry point.
 
 ## Scope
 
-The first version offers Ephemeral and Persistent only. Ephemeral uses one
-fixed seven-day window shared by every implementation. Arbitrary start dates,
-custom end dates, selectable window lengths, and rolling seven-day lifetimes
-are outside this version.
+The published protocol offers the Ephemeral and Persistent modes only.
+Ephemeral uses one fixed seven-day window shared by every implementation.
+Arbitrary start dates, custom end dates, selectable window lengths, and rolling
+seven-day lifetimes are outside this version.
 
 Keep the current settings filtering, remote profiles, main and P2P selections,
 and short/full export variants. Time binding affects opening the exported
@@ -255,15 +257,16 @@ separately shared message.
 ## Ownership and compatibility
 
 Commonlib owns preparation of exported settings, the time-window calculation,
-passphrase derivation, format parsing, and dual-candidate decoding. Make these
-changes in the Commonlib repository. LiveSync must consume a validated packed
-artefact and then an exact reviewed package version, following
+passphrase derivation, format parsing, and dual-candidate decoding. These
+changes were made in the Commonlib repository. LiveSync consumes the reviewed
+Commonlib package, following
 [the Commonlib dependency workflow](../../devs.md#commonlib-dependency).
 
-Preserve the existing positional encoder API. Its third and fourth arguments
-already mean properties to remove and whether to omit default values. Add a
-separate encoder, provisionally `encodeTimeBoundSetupURI`, with an options
-object containing the mode and the existing export options. Its result is:
+The implementation preserves the existing positional encoder API. Its third
+and fourth arguments retain their meanings: properties to remove and whether
+to omit default values. It adds a separate `encodeTimeBoundSetupURI` encoder
+with an options object containing the mode and the existing export options.
+Its result is:
 
 ```typescript
 type TimeBoundSetupURIResult = {
@@ -272,27 +275,27 @@ type TimeBoundSetupURIResult = {
 };
 ```
 
-The new encoder defaults to Ephemeral. Preserve the old encoder's legacy
-behaviour for callers which have not migrated. Extend
-`decodeSettingsFromSetupURI` to try both candidates for `%$` while retaining its
+The new encoder defaults to Ephemeral. The old encoder retains its legacy
+behaviour for callers which have not migrated. The updated
+`decodeSettingsFromSetupURI` tries both candidates for `%$` while retaining its
 settings return contract and historical format handling. Persistent generation
-through the new API delegates to the old encoder. Time injection belongs in
+through the new API delegates to the old encoder. Time injection remains in
 internal test seams, not an import option exposed to users.
 
-| Surface                                                                              | Required work                                                                                                                                            |
+| Surface                                                                              | Published integration                                                                                                                                   |
 | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Obsidian generation](../../src/serviceFeatures/setupObsidian/setupUri.ts)           | Reuse the passphrase and copy dialogues, add a mode choice with the exact current window end, and use the new encoder for all three copy variants and the copy event. Preserve each variant's export filters.                 |
-| [Obsidian import](../../src/modules/features/SetupWizard/dialogs/UseSetupURI.svelte) | Consume the updated decoder and retain one authentication failure message. The existing prefix check indicates URI shape, not successful authentication. |
-| [Protocol handler](../../src/serviceFeatures/setupObsidian/setupProtocol.ts)         | Keep the existing `settings` reconstruction; test encoded delimiters for both modes.                                                                     |
-| [CLI setup](../../src/apps/cli/commands/runCommand.ts)                               | Consume the updated decoder and leave settings unchanged after any rejection.                                                                            |
-| [WebPeer generator](../../src/apps/webpeer/src/P2PCheckSetup.ts)                     | Choose a mode explicitly and return availability to its result UI; keep Ephemeral as the default.                                                        |
-| [Setup utility](../../utils/setup/generate_setup_uri.ts)                             | Add an explicit mode input, default to Ephemeral, and return/print the end time. Persistent is an explicit choice for durable provisioning output.       |
-| [Setup utility package facade](../../utils/setup/livesync-commonlib.ts)              | Update its independent Commonlib pin and associated lockfiles; updating the root npm dependency alone is insufficient.                                   |
+| [Obsidian generation](../../src/serviceFeatures/setupObsidian/setupUri.ts)           | Reuses the passphrase and copy dialogues, presents the mode choice and exact current window end, and uses the encoder for all copy variants and the copy event while preserving each variant's export filters. |
+| [Obsidian import](../../src/modules/features/SetupWizard/dialogs/UseSetupURI.svelte) | Consumes the updated decoder and retains one authentication failure message. The existing prefix check indicates URI shape, not successful authentication. |
+| [Protocol handler](../../src/serviceFeatures/setupObsidian/setupProtocol.ts)         | Retains the existing `settings` reconstruction; encoded delimiters remain part of protocol validation for both modes.                                 |
+| [CLI setup](../../src/apps/cli/commands/runCommand.ts)                               | Uses the updated decoder and leaves settings unchanged after a rejection.                                                                               |
+| [WebPeer generator](../../src/apps/webpeer/src/P2PCheckSetup.ts)                     | Explicitly selects Time-bound mode and returns availability to its result UI; this generator does not offer a Persistent choice.                                                    |
+| [Setup utility](../../utils/setup/generate_setup_uri.ts)                             | Accepts an explicit mode, defaults to Time-bound, and returns or prints the end time. Persistent is selected for durable provisioning output.          |
+| [Setup utility package facade](../../utils/setup/livesync-commonlib.ts)              | Retains its independent Commonlib pin and associated lockfiles, separate from the root npm dependency.                                                 |
 
-The Fly.io wrapper delegates to the setup utility and should inherit the same
-contract. All maintained generators must migrate explicitly before this
-feature is described as the default across applications. Non-interactive
-automation which needs a durable URI must select Persistent.
+The Fly.io wrapper delegates to the setup utility and inherits the same
+contract. The initial plan required each maintained generator to select a mode
+explicitly. Non-interactive automation which needs a durable URI selects
+Persistent.
 
 WebPeer hides an Ephemeral URI and disables its copy and additional-device
 actions after the window ends. Its connection monitor remains available for a
@@ -309,8 +312,9 @@ The assessed, unchanged Commonlib 0.1.27 decoder opens Persistent with the
 entered passphrase and rejects Ephemeral with that same passphrase. Persistent
 compatibility means compatibility with readers which already support the
 ordinary generated `%$` representation; it does not add that representation
-to still older readers. Historical supported versions and their settings
-schemas still need compatibility fixtures before rollout.
+to still older readers. This design does not establish compatibility with every
+historical reader or settings schema; compatibility fixtures are needed before
+making broader claims about them.
 
 Keep the original raw-passphrase behaviour of existing URIs. They are
 indistinguishable from newly generated Persistent URIs to the updated reader.
@@ -358,68 +362,72 @@ All 22 cases passed:
   and raw-passphrase candidates;
 - the deliberate limitation that clock rollback reproduces an old key.
 
-This demonstrates the proposed mechanism and baseline interoperability, not
-completed application support, formal mode indistinguishability, or a mobile
-latency bound. The present encryption API may perform two PBKDF2 derivations
-on a cold import. Do not infer production performance from this small probe,
-whose operations can reuse the dependency's in-memory key cache.
+The probe demonstrates feasibility and baseline interoperability. Application
+integration is recorded above; the probe does not establish formal mode
+indistinguishability or a mobile latency bound. The encryption API may perform
+two PBKDF2 derivations on a cold import. Do not infer production performance
+from this small probe, whose operations can reuse the dependency's in-memory
+key cache.
 
-Implementation validation must cover Commonlib unit and packed-package tests,
-plus shared fixed-input protocol vectors across consumers. Add targeted LiveSync
-tests for the generation metadata, cancellation, a window change during mode
-selection, encoded deep links, and rejected imports without settings writes. Extend CLI, WebPeer,
-and Deno setup-tool round trips, including their Persistent selection.
+The original implementation validation plan covered Commonlib unit and
+packed-package tests, plus shared fixed-input protocol vectors across consumers.
+It called for targeted LiveSync tests of generation metadata, cancellation, a
+window change during mode selection, encoded deep links, and rejected imports
+without settings writes, alongside CLI, WebPeer, and Deno setup-tool round trips
+for both modes.
 
-Then run the required LiveSync checks, unit suite, and production build, one
-broad process at a time with `NODE_OPTIONS=--max-old-space-size=3072` and bounded
-test workers. Use the existing focused real-Obsidian Setup URI workflow for
-copy/paste, deep-link import, cancellation, and successful setup. Verify
-selection-boundary handling with an injected test clock and mobile behaviour on a
-supported runtime; do not change the host's system clock. No remote database
-service is needed for the protocol tests themselves.
+The plan also called for the LiveSync checks, unit suite, and production build,
+one broad process at a time with `NODE_OPTIONS=--max-old-space-size=3072` and
+bounded test workers. It used the focused real-Obsidian Setup URI workflow for
+copy/paste, deep-link import, cancellation, and successful setup. Selection-
+boundary handling was to use an injected test clock; mobile behaviour requires
+a supported runtime and must not change the host's system clock. Protocol tests
+do not require a remote database service.
 
-There is no identified blocker in the Time-bound URI protocol. The Commonlib
-candidate based on 0.1.31 passed its type, unit, boundary, release-process,
-and packed-package gates before the 0.1.32 release. A clean `npm ci` against
-the published 0.1.32 artefact and the frozen Deno tool lock resolve the same
-registry integrity. LiveSync passes its source checks, production build, and
-1,034 unit tests on a local stack with [PR #1222](https://github.com/vrtmrz/obsidian-livesync/pull/1222).
-The two CLI installer tests need a runner which permits child processes; both
-pass under normal process permissions. The Deno setup-tool suite, CLI setup
+The original protocol assessment found no blocker in the Time-bound URI
+protocol. The Commonlib candidate based on 0.1.31 passed its type, unit,
+boundary, release-process, and packed-package gates before the 0.1.32 release. A
+clean `npm ci` against the published 0.1.32 artefact and the frozen Deno tool
+lock resolved the same registry integrity. In the original implementation
+baseline, LiveSync passed its source checks, production build, and 1,034 unit
+tests on a local stack with [PR #1222](https://github.com/vrtmrz/obsidian-livesync/pull/1222).
+The two CLI installer tests needed a runner which permits child processes; both
+passed under normal process permissions. The Deno setup-tool suite, CLI setup
 and file-operation contract, and WebPeer browser tests passed before stacking.
 
-Focused real-Obsidian generation checks pass on desktop and emulated mobile,
+The recorded real-Obsidian generation checks passed on desktop and emulated mobile,
 including the displayed Time-bound end, Compatible output, and mobile touch
-targets. A two-device CouchDB workflow now passes on the local stack: the
-provisioning tool creates a generation 12 database, the first device generates
+targets. A two-device CouchDB workflow passed on the local stack: the
+provisioning tool created a generation 12 database, the first device generated
 a Time-bound Setup URI after declaring its required generation 13 feature, and
-the second device imports it. An ordinary note completes a round trip, and a
-hidden snippet synchronises. The separate real-Obsidian tests for live remote
+the second device imported it. An ordinary note completed a round trip, and a
+hidden snippet synchronised. The separate real-Obsidian tests for live remote
 feature changes, internal Metadata migration, and a percent-prefixed E2EE
-passphrase also pass with published Commonlib 0.1.32. Unit and protocol tests
-cover window boundaries and preserve the existing distinction between an empty
-passphrase and cancellation. The WebPeer browser test confirms that its monitor
-remains available after the URI window ends for a device which has already
-imported the URI.
+passphrase also passed with published Commonlib 0.1.32. Unit and protocol tests
+covered window boundaries and preserved the existing distinction between an
+empty passphrase and cancellation. The WebPeer browser test confirmed that its
+monitor remained available after the URI window ended for a device which had
+already imported the URI.
 
-The current Commonlib 0.1.33 integration includes the merged host changes from
-PR #1222 and PR #1225. npm 10 and normal clean installations preserve the lockfile;
-source checks, the production build, 1,064 unit tests, and ten Deno setup-tool
-tests pass. Both URI modes preserve ID recovery and explicit legacy ID selection.
+The Commonlib 0.1.33 integration included the merged host changes from
+PR #1222 and PR #1225. At that baseline, npm 10 and normal clean installations
+preserved the lockfile; source checks, the production build, 1,064 unit tests,
+and ten Deno setup-tool tests passed. Both URI modes preserved ID recovery and
+explicit legacy ID selection.
 
-Real Obsidian tests cover independent ID keys through Time-bound, Compatible,
-and QR setup, encrypted local persistence, natural restarts of both devices,
-and bidirectional note transfers with stable document and Chunk IDs. Incorrect
-passphrases and past-window URIs leave runtime and persisted settings unchanged.
-The past clock belongs to an isolated fixture worker, not Obsidian or the host.
-CouchDB tests also cover a custom ID source and recovery code, rejection of
-incompatible document keys before remote writes, and the Doctor's decline,
-reminder, dismissal, and later acceptance paths. The detailed commands and the
-remaining published-artefact and physical-device checks are recorded in the
+Recorded real-Obsidian tests covered independent ID keys through Time-bound,
+Compatible, and QR setup, encrypted local persistence, natural restarts of both
+devices, and bidirectional note transfers with stable document and Chunk IDs.
+Incorrect passphrases and past-window URIs left runtime and persisted settings
+unchanged. The past clock belonged to an isolated fixture worker, not Obsidian
+or the host. CouchDB tests also covered a custom ID source and recovery code,
+rejection of incompatible document keys before remote writes, and the Doctor's
+decline, reminder, dismissal, and later acceptance paths. The detailed commands,
+remaining published-artefact checks, and physical-device checks are recorded in the
 [real Obsidian test guide](../../test/e2e-obsidian/README.md#combined-setup-and-security-regression-checks).
 
 Compatible preserves the URI encryption format; each receiving client must
 still support the shared settings and the remote's declared features. The host
 compatibility checks from PR #1222 remain necessary. These results do not
-establish a mobile performance bound. The first implementation changes only
-primary-language resources; translation changes require separate scope.
+establish a mobile performance bound. The initial implementation changed only
+primary-language resources; translation changes remain a separate scope.

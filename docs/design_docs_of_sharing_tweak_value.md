@@ -1,6 +1,6 @@
 # Sharing `Tweak values`
 
-NOTE: This is the planned feature design document. This is planned, but not be implemented now (v0.23.3). This has not reached the design freeze and will be added to from time to time.
+Historical design: this document records the original proposal written for v0.23.3. Tweak sharing and compatibility assessment are implemented in published releases. Use [Tweak compatibility and recovery](design_docs/tweak_compatibility.md) for the maintained contract, and [Settings](settings.md) for the available controls. The proposal and test plan below are retained as design history; they do not define the current behaviour.
 
 ## Goal
 
@@ -52,4 +52,4 @@ B: On the setting dialogue.
     - However, this might be an essential feature. Further efforts are desired.
 
 ### Consideration and Conclusion
-To be described after implemented, tested, and, released.
+The published implementation has evolved beyond this proposal, including classification of compatible differences and automatic alignment where configured. Its current decisions, recovery requirements, and remaining limitations are recorded in [Tweak compatibility and recovery](design_docs/tweak_compatibility.md). The original proposal does not establish that every item in its test plan was implemented unchanged.
