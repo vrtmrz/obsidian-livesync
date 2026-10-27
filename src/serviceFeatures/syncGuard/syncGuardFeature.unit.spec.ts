@@ -159,6 +159,23 @@ describe("useSyncGuardFeature", () => {
         await h.onUnload[0]();
     });
 
+    it("waits for the finite pull to settle when progress temporarily reports idle", async () => {
+        vi.useFakeTimers();
+        const h = setup({ minimumFiles: 1 });
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        h.finiteReplicationActivityCount.value = 1;
+        await h.parseHandlers[0]([receivedNote("first")]);
+        h.setCouchDbPhase("idle");
+        await vi.advanceTimersByTimeAsync(5_000); // Resource disposal may be asynchronous.
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
+        h.finiteReplicationActivityCount.value = 0;
+        h.setCouchDbPhase("continuous");
+        await vi.advanceTimersByTimeAsync(1);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("applying");
+        await h.onUnload[0]();
+    });
+
     it("ignores large P2P finite transfers when CouchDB catch-up is not running", async () => {
         const h = setup({ minimumFiles: 2 });
         await h.onResumed[0]();

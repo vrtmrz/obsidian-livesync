@@ -102,9 +102,14 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             guard.catchUpSucceeded();
             guard.catchUpActivityChanged(false, readPendingCount(), Date.now());
         } else if (guard.presentation.phase !== "idle" && terminalPhaseTimer === undefined) {
+            // The one-shot PouchDB progress observer can report 'idle' before the
+            // enclosing finite CouchDB pull has finished releasing its resources.
+            // This counter is not used to identify the provider; CouchDB phase owns that.
+            if (phase === "idle" && services.replicator.finiteReplicationActivityCount.value > 0) return;
             // PouchDB disposes its per-attempt progress observer with phase 'idle' just
-            // before Commonlib publishes 'continuous'. Defer the terminal observation by
-            // one event-loop turn so that this internal hand-off never looks like a failure.
+            // before Commonlib publishes 'continuous'. When the enclosing finite
+            // transfer settles, defer the terminal observation by one event-loop
+            // turn so that this internal hand-off never looks like a failure.
             terminalPhaseTimer = compatGlobal.setTimeout(() => {
                 terminalPhaseTimer = undefined;
                 const current = services.replicator.replicationStatics.value.couchDB?.phase;
@@ -119,6 +124,9 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         else guard.updateThreshold(services.setting.currentSettings().syncGuardMinimumFiles);
     };
     const onPendingChanged = () => checkForUnlock();
+    const onFiniteChanged = () => {
+        if (services.replicator.finiteReplicationActivityCount.value === 0) onReplicationChanged();
+    };
     const removeReflectionFailureHandler = services.context.events.onEvent(EVENT_VAULT_REFLECTION_FAILED, () => {
         guard.reflectionFailed();
     });
@@ -127,6 +135,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     });
 
     const replication = services.replicator.replicationStatics;
+    const finite = services.replicator.finiteReplicationActivityCount;
     const pendingSources = [
         services.replication.replicationResultCount,
         services.replication.databaseQueueCount,
@@ -139,6 +148,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         chunkFetchCounts,
     ];
     replication.onChanged(onReplicationChanged);
+    finite.onChanged(onFiniteChanged);
     for (const source of pendingSources) source.onChanged(onPendingChanged);
 
     // Register before the ordinary replication scheduling handler so the first finite pull
@@ -164,6 +174,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         stopTimer();
         stopTerminalPhaseTimer();
         replication.offChanged(onReplicationChanged);
+        finite.offChanged(onFiniteChanged);
         for (const source of pendingSources) source.offChanged(onPendingChanged);
         overlay.dispose();
         removeSettingSavedHandler();
