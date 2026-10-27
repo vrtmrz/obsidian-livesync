@@ -176,6 +176,41 @@ describe("useSyncGuardFeature", () => {
         await h.onUnload[0]();
     });
 
+    it("keeps received-note counting across duplicate resume during transient idle with finite pull active", async () => {
+        vi.useFakeTimers();
+        const h = setup({ minimumFiles: 3 });
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        h.finiteReplicationActivityCount.value = 1;
+        await h.parseHandlers[0]([receivedNote("first"), receivedNote("second")]);
+        h.setCouchDbPhase("idle");
+        await h.onResumed[0](); // Must not reset the already observed two notes.
+        await h.parseHandlers[0]([receivedNote("third")]);
+        expect(h.updates[h.updates.length - 1]).toMatchObject({
+            phase: "transferring",
+            receivedFiles: 3,
+        });
+        h.finiteReplicationActivityCount.value = 0;
+        h.setCouchDbPhase("continuous");
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("applying");
+        await h.onUnload[0]();
+    });
+
+    it("honours manual bypass across duplicate resume while catch-up reports transient idle", async () => {
+        vi.useFakeTimers();
+        const h = setup({ minimumFiles: 1 });
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        h.finiteReplicationActivityCount.value = 1;
+        await h.parseHandlers[0]([receivedNote("first")]);
+        h.bypass();
+        h.setCouchDbPhase("idle");
+        await h.onResumed[0]();
+        await h.parseHandlers[0]([receivedNote("second")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
+        await h.onUnload[0]();
+    });
+
     it("ignores large P2P finite transfers when CouchDB catch-up is not running", async () => {
         const h = setup({ minimumFiles: 2 });
         await h.onResumed[0]();

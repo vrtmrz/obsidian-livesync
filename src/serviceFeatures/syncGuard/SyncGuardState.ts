@@ -33,6 +33,10 @@ export class SyncGuardState {
         return this.bypassed;
     }
 
+    get isCatchUpActive(): boolean {
+        return this.catchUpActive;
+    }
+
     /** Begins a fresh, initially non-blocking observation window on app resume. */
     resume(enabled: boolean, minimumFiles: number): void {
         this.minimumFiles = Number.isFinite(minimumFiles) ? Math.max(1, Math.floor(minimumFiles)) : 20;

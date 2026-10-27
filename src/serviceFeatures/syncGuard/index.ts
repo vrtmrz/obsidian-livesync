@@ -72,9 +72,12 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             guard.disable();
             return;
         }
-        // A duplicate resume in the same active catch-up must honour a user's
-        // explicit decision to continue editing rather than silently re-lock.
-        if (guard.wasBypassed && isCouchDbCatchUp()) {
+        // PouchDB briefly reports 'idle' when disposing its progress observer, while
+        // the enclosing CouchDB catch-up still owns the previous guard generation.
+        // Do not reset that generation on duplicate resume, even before the threshold.
+        const sameCatchUp = guard.isCatchUpActive || isCouchDbCatchUp();
+        // An explicit bypass must survive this same transient 'idle'.
+        if (guard.wasBypassed && sameCatchUp) {
             return;
         }
         // Duplicate resume notifications or a visibility transition must not discard an
@@ -83,7 +86,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             guard.presentation.phase === "interrupted") {
             return;
         }
-        if (guard.presentation.phase === "observing" && isCouchDbCatchUp()) {
+        if (guard.presentation.phase === "observing" && sameCatchUp) {
             return;
         }
         guard.resume(Boolean(isEnabled()), settings.syncGuardMinimumFiles);
