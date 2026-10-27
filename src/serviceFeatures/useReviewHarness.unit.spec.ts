@@ -31,6 +31,15 @@ function createFixture(options: { enableDebugTools?: boolean; continuation?: str
     const layoutReadyHandlers: Array<() => Promise<boolean>> = [];
     const local = new Map<string, string>();
     if (options.continuation) local.set(REVIEW_HARNESS_STATE_KEY, options.continuation);
+    const config = {
+        getValue: vi.fn(async (key: string, defaultValue = "") => local.get(key) ?? defaultValue),
+        setValue: vi.fn(async (key: string, value: string) => {
+            local.set(key, value);
+        }),
+        delete: vi.fn(async (key: string) => {
+            local.delete(key);
+        }),
+    };
     const settings = {
         enableDebugTools: options.enableDebugTools ?? true,
         liveSync: false,
@@ -63,10 +72,8 @@ function createFixture(options: { enableDebugTools?: boolean; continuation?: str
                 requiresSyncReview: true,
                 reviewReasons: [],
             }),
-            getSmallConfig: (key: string) => local.get(key) ?? "",
-            setSmallConfig: (key: string, value: string) => local.set(key, value),
-            deleteSmallConfig: (key: string) => local.delete(key),
         },
+        config,
         appLifecycle: {
             onSettingLoaded: {
                 addHandler: vi.fn((handler: () => Promise<boolean>) => settingLoadedHandlers.push(handler)),
@@ -106,6 +113,7 @@ function createFixture(options: { enableDebugTools?: boolean; continuation?: str
         api,
         settings,
         local,
+        config,
         settingLoadedHandlers,
         layoutReadyHandlers,
         compatibilityReview,
@@ -142,6 +150,74 @@ describe("Review Harness composition", () => {
         await fixture.layoutReadyHandlers[0]();
 
         expect(fixture.api.showWindow).toHaveBeenCalledWith(VIEW_TYPE_REVIEW_HARNESS);
+    });
+
+    it("holds the setting-loaded lifecycle until continuation deletion has completed", async () => {
+        const requestedAt = "2026-07-18T11:59:00.000Z";
+        const continuation = JSON.stringify({
+            formatVersion: 1,
+            requestId: `compatibility-review-${requestedAt}`,
+            scenarioId: "compatibility-review",
+            stage: "awaiting-restart",
+            requestedAt,
+        });
+        const fixture = createFixture({ continuation });
+        let markDeleteStarted!: () => void;
+        const deleteStarted = new Promise<void>((resolve) => {
+            markDeleteStarted = resolve;
+        });
+        let finishDelete!: () => void;
+        const deleting = new Promise<void>((resolve) => {
+            finishDelete = resolve;
+        });
+        fixture.config.delete.mockImplementation(async (key) => {
+            markDeleteStarted();
+            await deleting;
+            fixture.local.delete(key);
+        });
+
+        const loading = fixture.settingLoadedHandlers[0]();
+        await deleteStarted;
+
+        expect(fixture.local.has(REVIEW_HARNESS_STATE_KEY)).toBe(true);
+        expect(fixture.controller.snapshot().resumedRequestId).toBeNull();
+        expect(fixture.api.registerWindow).not.toHaveBeenCalled();
+
+        finishDelete();
+        await loading;
+
+        expect(fixture.local.has(REVIEW_HARNESS_STATE_KEY)).toBe(false);
+        expect(fixture.controller.snapshot().resumedRequestId).toBe(`compatibility-review-${requestedAt}`);
+        expect(fixture.api.registerWindow).toHaveBeenCalledOnce();
+    });
+
+    it("can retry one-shot continuation consumption after a deletion failure", async () => {
+        const requestedAt = "2026-07-18T11:59:00.000Z";
+        const continuation = JSON.stringify({
+            formatVersion: 1,
+            requestId: `compatibility-review-${requestedAt}`,
+            scenarioId: "compatibility-review",
+            stage: "awaiting-restart",
+            requestedAt,
+        });
+        const fixture = createFixture({ continuation });
+        fixture.config.delete
+            .mockRejectedValueOnce(new Error("continuation delete failed"))
+            .mockImplementation(async (key) => {
+                fixture.local.delete(key);
+            });
+
+        await expect(fixture.settingLoadedHandlers[0]()).rejects.toThrow("continuation delete failed");
+
+        expect(fixture.local.has(REVIEW_HARNESS_STATE_KEY)).toBe(true);
+        expect(fixture.controller.snapshot().resumedRequestId).toBeNull();
+        expect(fixture.api.registerWindow).not.toHaveBeenCalled();
+
+        await fixture.settingLoadedHandlers[0]();
+
+        expect(fixture.local.has(REVIEW_HARNESS_STATE_KEY)).toBe(false);
+        expect(fixture.controller.snapshot().resumedRequestId).toBe(`compatibility-review-${requestedAt}`);
+        expect(fixture.api.registerWindow).toHaveBeenCalledOnce();
     });
 
     it("uses the actual compatibility controller as the guided review boundary", async () => {

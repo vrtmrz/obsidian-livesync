@@ -1,4 +1,5 @@
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
+import { LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
 import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
@@ -53,6 +54,7 @@ import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianR
 import { useSyncGuardFeature } from "./serviceFeatures/syncGuard";
 import { SyncGuardOverlay } from "./serviceFeatures/syncGuard/SyncGuardOverlay";
 import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
+import { useJoinedDevicesFeature } from "./serviceFeatures/useJoinedDevices";
 import { useDatabaseDiagnosticsFeature } from "./serviceFeatures/useDatabaseDiagnostics";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
@@ -200,6 +202,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 useObsidianReplicationRibbonFeature(core);
                 useSyncGuardFeature(core, (onBypass) => new SyncGuardOverlay(this.app.workspace.containerEl, onBypass));
                 useDatabaseDiagnosticsFeature(core);
+                useJoinedDevicesFeature(core, serviceHub.context.noticeGroups);
                 useRemoteConfiguration(core);
 
                 useSetupProtocolFeature(core, setupManager);
@@ -234,6 +237,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         void this._startUp();
     }
     override onunload(): void {
-        return void this.core.services.control.onUnload();
+        void this.core.services.control.onUnload().catch((error) => {
+            this.core.services.API.addLog(
+                "Failed to unload Self-hosted LiveSync: " + String(error),
+                LOG_LEVEL_URGENT,
+                "shutdown"
+            );
+        });
     }
 }

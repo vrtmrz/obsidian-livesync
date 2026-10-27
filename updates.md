@@ -16,6 +16,114 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Added an optional, device-local editing guard for substantial CouchDB LiveSync catch-up transfers. When enough incoming notes are detected, it covers the workspace until the transfer and local application queues have settled. The overlay can always be bypassed, and ordinary small transfers remain uninterrupted.
 
+## 1.0.42
+
+27th October, 2026
+
+Making content checks mandatory in the 1.0.41 pre-release came with a little too much overhead, so 1.0.42 makes them optional. This has turned into a slightly larger release.
+
+### Synchronisation
+
+#### New Feature
+
+- Rapid edits can produce fewer intermediate versions on other devices while LiveSync mode remains active.
+    - Enable **Batch database updates in LiveSync mode** to group successive local edits.
+        - Disabled by default; each synchronisation mode keeps its own choice.
+        - Updates reach other devices later. Batching does not detect template completion or prevent genuine concurrent-edit conflicts.
+- CouchDB synchronisation no longer looks idle while it is comparing change history.
+    - A ⏩ icon and comparison count show activity before documents are transferred.
+        - This count represents history entries, not files remaining to synchronise.
+- Status counts are easier to follow, with less movement as values change.
+    - CSS snippets can hide unwanted items or style individual `livesync-stat-` items, including inactive ones.
+
+- We can choose stricter content checks at start-up.
+    - Enable **Strict content check on startup** to compare file contents even when their modification times and sizes match the recorded local database state. This can increase start-up time in large Vaults.
+    - The setting is disabled by default. Ordinary start-up can skip content reads when the exact modification time, file size, and recorded database revision match, with no conflicts or pending file changes.
+    - While the setting is disabled, an edit which preserves its exact size and modification time can go undetected during start-up. Manual scans and explicit recovery operations remain strict.
+
+#### Fixed
+
+- Recent Vault edits remain recoverable after an interrupted local database save.
+    - This includes edits whose modification times compare equal to the database copy, and pending Hidden File Sync and Customisation Sync changes.
+- Manual synchronisation no longer starts before already accepted local changes finish saving to the database.
+    - Settings application also waits for those saves. Failed saves stay pending and report a failure.
+- Text from third-party tools is handled more robustly.
+    - Characters split across Chunks no longer trigger false corruption warnings.
+- Start-up integrity checks use less memory for healthy Vault files. (#1283)
+- Start-up checks avoid false repair warnings for files that change during inspection. (#1283)
+    - This applies when the final size matches the database and there are no conflicts.
+
+### Customisation Sync
+
+#### Fixed
+
+- Applying a multi-file customisation no longer skips files after the list is refreshed. (#1271)
+- Choosing **Automatic** now explains a missing Hidden File Sync prerequisite instead of proceeding into a failed initialisation. (#1270)
+    - Enable and initialise Hidden File Sync on this device first. The current mode is kept when the prerequisite is missing.
+- Initialising a whole plug-in in **Automatic** mode no longer omits its selected **MAIN** or **DATA** files.
+
+### Setup tools
+
+#### Fixed
+
+- Setup URI generation can avoid shell-variable collisions and unintended use of the operating-system username. (#817, #1274)
+    - Use `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE` for connection and encryption values.
+        - Existing scripts remain supported: the previous names are used when the corresponding prefixed value is unset or blank.
+
+### Miscellaneous
+
+- Dependencies have been updated, including security fixes.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @rwbru, for the original Setup URI environment-variable fix (#817).
+- @junkerderprovinz, for adapting that fix to the current generator while preserving compatibility with existing scripts (#1274).
+- @s-qin, for reducing memory use during start-up checks and avoiding repeated content decoding in Commonlib (#1283, Commonlib #184).
+
+## 1.0.40
+
+24th October, 2026
+
+This has turned into a slightly larger set of changes overall, but I have finally been able to implement the features I felt we would need.
+
+### Synchronisation
+
+#### New Feature
+
+- We can choose **Review devices** in Remote Configuration, the command palette, or a version Notice to review participating devices.
+    - Our device appears first, with its lockout state. Other records show the platform, plug-in version, app version, and last recorded connection time when available.
+    - An advisory Notice identifies Self-hosted LiveSync and lists newer and older versions separately, with one shared recommendation and **Review devices** action. The dialogue explains possible storage costs and P2P compatibility limits.
+- We can forget records belonging to lost or retired devices while preserving the remote lock state and other devices.
+    - Forgetting a record does not delete Vault files or revoke credentials. A returning device can register again on an unlocked remote.
+
+#### Fixed
+
+- We can reuse unchanged content more reliably after edits with the V3 Rabin–Karp chunk splitter.
+    - Corrected rolling-window processing lets boundary detection recover after an insertion. Existing content remains readable, and installing this update does not trigger a full re-chunk of our Vaults.
+    - Chunk-size values 0 and 1 now use content-defined binary boundaries below their maximum lengths, improving reuse after an insertion instead of producing fixed-length pieces.
+    - Editing or explicitly rewriting a file, recreating its chunks, or rebuilding from our files can produce different chunk boundaries and additional chunks. Older and updated devices can retain different chunk layouts; this affects reuse and storage, not the file contents.
+- We can preserve all conflict branches, including deleted branches, during Fast Setup.
+    - A fresh, complete Fast Fetch can also hand its verified progress to ordinary synchronisation before file watching resumes, reducing the first subsequent identifier scan. Existing resume cursors and On Demand chunk retrieval retain their existing behaviour.
+
+#### Changed
+
+- New setup uses the same Chunk-size recommendation of 0 across remote types, and Setting Doctor no longer recommends increasing every self-hosted V3 configuration to 60.
+    - Setting Doctor no longer flags the saved **Enhance chunk size** value. When rebuilding with V3 Rabin–Karp, we recommend setting it to 0. This is now an efficient choice across all supported remote types.
+    - Existing explicit and agreed values are retained. Smaller Chunks favour reuse during editing, but increase document counts and can make first uploads and large rebuilds slower. Mostly immutable binary Vaults can still benefit from a larger explicit value.
+
+### Hidden File Sync
+
+#### Fixed
+
+- We can synchronise selected hidden files while the normal-file allow-list is set. (#1272)
+    - Normal-file exclusion patterns still apply to hidden files, and the Selector descriptions now explain their scope.
+
+### CLI
+
+- Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.
+
 ## 1.0.39
 
 20th October, 2026
@@ -130,27 +238,3 @@ Thank you for your contributions!
 
 - @zeedif (#1213, #1214)
 - @lingting0 (#1242)
-
-## 1.0.35
-
-5th October, 2026
-
-### Synchronisation
-
-#### Fixed
-
-- We can continue synchronising after rebuilding an encrypted CouchDB remote, including when Hidden File Sync and Customisation Sync are enabled. (#1234)
-    - This plug-in reads the rebuilt data without reusing HTTP responses encrypted with the previous Security Seed.
-
-### Customisation Sync
-
-#### Fixed
-
-- Customisation Sync now waits until this plug-in is ready before handling configuration file events, and applying settings while synchronisation is suspended no longer scans configuration files. (#1220)
-    - Resuming synchronisation scans once and restarts the periodic scan when enabled.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @kimjansheden (#1220)

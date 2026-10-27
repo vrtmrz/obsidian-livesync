@@ -69,6 +69,10 @@ import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError"
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 
+import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
+import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import { PendingConfigSaves } from "./PendingConfigSaves";
+
 const d = "\u200b";
 const d2 = "\n";
 const UPDATED_CONFIGURATION_NOTICE_KEY = "config-sync:updated-configuration";
@@ -412,6 +416,7 @@ export class ConfigSync extends LiveSyncCommands {
     periodicPluginSweepProcessor = new PeriodicProcessor(this.core, async () => await this.scanAllConfigFiles(false));
 
     pluginList: IPluginDataExDisplay[] = [];
+    private pluginListGeneration = 0;
     showPluginSyncModal() {
         if (!this.isThisModuleEnabled()) {
             return;
@@ -532,6 +537,7 @@ export class ConfigSync extends LiveSyncCommands {
         return Promise.resolve(true);
     }
     async reloadPluginList(showMessage: boolean) {
+        this.pluginListGeneration++;
         this.pluginList = [];
         this.loadedManifest_mTime.clear();
         pluginList.set(this.pluginList);
@@ -761,39 +767,46 @@ export class ConfigSync extends LiveSyncCommands {
     updatingV2Count = 0;
 
     async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
+        const generation = this.pluginListGeneration;
+        const isCurrent = () => generation === this.pluginListGeneration && this.isThisModuleEnabled();
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
 
-            const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
-            let entry: PluginDataExDisplayV2 | undefined = undefined;
+            await serialized(`config:catalogue:${pathV1}`, async () => {
+                if (!isCurrent()) return;
+                const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
+                let entry: PluginDataExDisplayV2 | undefined = undefined;
 
-            if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
-                const newEntry = this.createPluginDataFromV2(unifiedFilenameWithKey);
-                if (newEntry) {
-                    entry = newEntry;
+                if (!oldEntry || !(oldEntry instanceof PluginDataExDisplayV2)) {
+                    const newEntry = this.createPluginDataFromV2(unifiedFilenameWithKey);
+                    if (newEntry) {
+                        entry = newEntry;
+                    }
+                } else if (oldEntry instanceof PluginDataExDisplayV2) {
+                    entry = oldEntry;
                 }
-            } else if (oldEntry instanceof PluginDataExDisplayV2) {
-                entry = oldEntry;
-            }
-            if (!entry) return;
-            const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
-            if (file) {
-                await entry.setFile(file);
-            } else {
-                entry.deleteFile(unifiedFilenameWithKey);
-                if (entry.files.length == 0) {
-                    this.pluginList = this.pluginList.filter((e) => e.documentPath != pathV1);
+                if (!entry) return;
+                const file = await this.createPluginDataExFileV2(unifiedFilenameWithKey);
+                if (!isCurrent()) return;
+                if (file) {
+                    await entry.setFile(file);
+                } else {
+                    entry.deleteFile(unifiedFilenameWithKey);
+                    if (entry.files.length == 0) {
+                        this.pluginList = this.pluginList.filter((e) => e.documentPath != pathV1);
+                    }
                 }
-            }
-            const newList = this.pluginList.filter((e) => e.documentPath != entry.documentPath);
-            newList.push(entry);
-            this.pluginList = newList;
+                if (!isCurrent()) return;
+                const newList = this.pluginList.filter((e) => e.documentPath != entry.documentPath);
+                newList.push(entry);
+                this.pluginList = newList;
 
-            scheduleTask("updatePluginListV2", 100, () => {
-                pluginList.set(this.pluginList);
+                scheduleTask("updatePluginListV2", 100, () => {
+                    pluginList.set(this.pluginList);
+                });
             });
         } finally {
             this.updatingV2Count--;
@@ -871,11 +884,13 @@ export class ConfigSync extends LiveSyncCommands {
 
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
         if (!this.isThisModuleEnabled()) {
+            this.pluginListGeneration++;
             this.pluginScanProcessor.clearQueue();
             this.pluginList = [];
             pluginList.set(this.pluginList);
             return;
         }
+        const generation = this.pluginListGeneration;
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
@@ -888,6 +903,7 @@ export class ConfigSync extends LiveSyncCommands {
                   })
                 : this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
             for await (const v of plugins) {
+                if (generation !== this.pluginListGeneration || !this.isThisModuleEnabled()) return;
                 if (v.deleted || v._deleted) continue;
                 if (v.path.indexOf("%") !== -1) {
                     fireAndForget(() => this.updatePluginListV2(showMessage, v.path));
@@ -1206,7 +1222,7 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     recentProcessedInternalFiles = [] as string[];
-    async makeEntryFromFile(path: FilePath): Promise<false | PluginDataExFile> {
+    async makeEntryFromFile(path: FilePath, requireCompletion = false): Promise<false | PluginDataExFile> {
         const stat = await this.core.storageAccess.statHidden(path);
         let version: string | undefined;
         let displayName: string | undefined;
@@ -1240,6 +1256,7 @@ export class ConfigSync extends LiveSyncCommands {
         } catch (ex) {
             this._log(`The file ${path} could not be encoded`);
             this._log(ex, LOG_LEVEL_VERBOSE);
+            if (requireCompletion) throw ex;
             return false;
         }
         const mtime = stat.mtime;
@@ -1254,6 +1271,15 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async storeCustomisationFileV2(path: FilePath, term: string, force = false) {
+        return await this.storeCustomisationFileV2Core(path, term, force, false);
+    }
+
+    private async storeCustomisationFileV2Core(
+        path: FilePath,
+        term: string,
+        force: boolean,
+        requireCompletion: boolean
+    ) {
         const vf = this.filenameWithUnifiedKey(path, term);
         return await serialized(`plugin-${vf}`, async () => {
             const prefixedFileName = vf;
@@ -1261,7 +1287,8 @@ export class ConfigSync extends LiveSyncCommands {
             const id = await this.path2id(prefixedFileName);
             const stat = await this.core.storageAccess.statHidden(path);
             if (!stat) {
-                return false;
+                if (!requireCompletion) return false;
+                return await this.deleteConfigOnDatabaseCore(vf, force, true);
             }
             const mtime = stat.mtime;
             const content = await this.core.storageAccess.readHiddenFileBinary(path);
@@ -1285,7 +1312,10 @@ export class ConfigSync extends LiveSyncCommands {
                         eden: {},
                     };
                 } else {
-                    if (this.services.path.isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN) {
+                    if (
+                        !requireCompletion &&
+                        this.services.path.isMarkedAsSameChanges(prefixedFileName, [old.mtime, mtime + 1]) == EVEN
+                    ) {
                         this._log(
                             `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Already checked the same)`,
                             LOG_LEVEL_DEBUG
@@ -1300,7 +1330,7 @@ export class ConfigSync extends LiveSyncCommands {
                     const dataStart = dataSrc.indexOf(DUMMY_END);
                     const oldContent = dataSrc.substring(dataStart + DUMMY_END.length);
                     const oldContentArray = base64ToArrayBuffer(oldContent);
-                    if (await isDocContentSame(oldContentArray, content)) {
+                    if (!old.deleted && (await isDocContentSame(oldContentArray, content))) {
                         this._log(
                             `STORAGE --> DB:${prefixedFileName}: (config) Skipped (the same content)`,
                             LOG_LEVEL_VERBOSE
@@ -1320,24 +1350,36 @@ export class ConfigSync extends LiveSyncCommands {
                     };
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
+                if (requireCompletion && (!ret || !ret.ok))
+                    throw new LiveSyncError(`Could not save customisation: ${path}`);
                 this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
                 fireAndForget(() => this.updatePluginListV2(false, this.filenameWithUnifiedKey(path)));
                 return ret;
             } catch (ex) {
                 this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
+                if (requireCompletion) throw ex;
                 return false;
             }
         });
     }
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
+        return await this.storeCustomizationFilesCore(path, termOverRide, false);
+    }
+
+    private async storeCustomizationFilesCore(
+        path: FilePath,
+        termOverRide: string | undefined,
+        requireCompletion: boolean
+    ) {
         const term = termOverRide || this.services.setting.getDeviceAndVaultName();
         if (term == "") {
             this._log($msg("We have to configure the device name"), LOG_LEVEL_NOTICE);
+            if (requireCompletion) throw new LiveSyncError("The device name is not configured");
             return;
         }
         if (this.useV2) {
-            return await this.storeCustomisationFileV2(path, term);
+            return await this.storeCustomisationFileV2Core(path, term, false, requireCompletion);
         }
         const vf = this.filenameToUnifiedKey(path, term);
         // console.warn(`Storing ${path} to ${bareVF} :--> ${keyedVF}`);
@@ -1378,7 +1420,7 @@ export class ConfigSync extends LiveSyncCommands {
                 fileTargets = ["manifest.json", "theme.css"].map((e) => `${parentPath}/${e}` as FilePath);
             }
             for (const target of fileTargets) {
-                const data = await this.makeEntryFromFile(target);
+                const data = await this.makeEntryFromFile(target, requireCompletion);
                 if (data == false) {
                     this._log(`Config: skipped (Possibly is not exist): ${target} `, LOG_LEVEL_VERBOSE);
                     continue;
@@ -1398,9 +1440,9 @@ export class ConfigSync extends LiveSyncCommands {
             // this._log(`Configuration saving: ${prefixedFileName}`);
             if (dt.files.length == 0) {
                 this._log(`Nothing left: deleting.. ${path}`);
-                await this.deleteConfigOnDatabase(prefixedFileName);
+                const deleted = await this.deleteConfigOnDatabaseCore(prefixedFileName, false, requireCompletion);
                 await this.updatePluginList(false, prefixedFileName);
-                return;
+                return requireCompletion ? deleted : undefined;
             }
 
             const content = createTextBlob(serialize(dt));
@@ -1422,7 +1464,7 @@ export class ConfigSync extends LiveSyncCommands {
                         eden: {},
                     };
                 } else {
-                    if (old.mtime == mtime) {
+                    if (!requireCompletion && old.mtime == mtime) {
                         // this._log(`STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same time)`, LOG_LEVEL_VERBOSE);
                         return true;
                     }
@@ -1443,7 +1485,7 @@ export class ConfigSync extends LiveSyncCommands {
                                     }
                                 });
                             const isSame = (await Promise.all(diffs)).every((e) => e == true);
-                            if (isSame) {
+                            if (isSame && !old.deleted) {
                                 this._log(
                                     `STORAGE --> DB:${prefixedFileName}: (config) Skipped (Same content)`,
                                     LOG_LEVEL_VERBOSE
@@ -1464,16 +1506,51 @@ export class ConfigSync extends LiveSyncCommands {
                     };
                 }
                 const ret = await this.localDatabase.putDBEntry(saveData);
+                if (requireCompletion && (!ret || !ret.ok))
+                    throw new LiveSyncError(`Could not save customisation: ${path}`);
                 await this.updatePluginList(false, saveData.path);
                 this._log(`STORAGE --> DB:${prefixedFileName}: (config) Done`);
                 return ret;
             } catch (ex) {
                 this._log(`STORAGE --> DB:${prefixedFileName}: (config) Failed`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
+                if (requireCompletion) throw ex;
                 return false;
             }
         });
     }
+    private pendingOptionalSaves?: PendingConfigSaves;
+
+    async _processOptionalFileEventWithResult(
+        path: FilePath,
+        options?: OptionalFileEventOptions
+    ): Promise<HandlerOutcome<void, string>> {
+        if (!this.isThisModuleEnabled() || !this.isTargetPath(path)) return { kind: "not-applicable" };
+        const configDir = normalizePath(this.configDir);
+        const handledElsewhere = Object.values(this.settings.pluginSyncExtendedSetting)
+            .filter((entry) => entry.mode !== MODE_SELECTIVE && entry.mode !== MODE_SHINY)
+            .flatMap((entry) => entry.files)
+            .some((file) => `${configDir}/${file}`.toLowerCase().startsWith(path.toLowerCase()));
+        if (handledElsewhere) return { kind: "not-applicable" };
+        if (!this._isDatabaseReady()) return { kind: "veto", value: "database-not-ready" };
+        const term = this.services.setting.getDeviceAndVaultName();
+        if (!term) return { kind: "veto", value: "device-name-not-configured" };
+        const stat = await this.core.storageAccess.statHidden(path);
+        if (stat && stat.type !== "file") return { kind: "not-applicable" };
+
+        // V1 saves a complete file group; V2 persists each file separately.
+        const key = this.useV2 ? this.filenameWithUnifiedKey(path, term) : this.filenameToUnifiedKey(path, term);
+        this.pendingOptionalSaves ??= new PendingConfigSaves();
+        await this.pendingOptionalSaves.enqueue(
+            key,
+            async () => {
+                await this.storeCustomizationFilesCore(path, term, true);
+            },
+            options?.whenFlushRequested
+        );
+        return { kind: "completed" };
+    }
+
     async _anyProcessOptionalFileEvent(path: FilePath): Promise<boolean> {
         return await this.watchVaultRawEventsAsync(path);
     }
@@ -1615,6 +1692,14 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async deleteConfigOnDatabase(prefixedFileName: FilePathWithPrefix, forceWrite = false) {
+        return await this.deleteConfigOnDatabaseCore(prefixedFileName, forceWrite, false);
+    }
+
+    private async deleteConfigOnDatabaseCore(
+        prefixedFileName: FilePathWithPrefix,
+        forceWrite: boolean,
+        requireCompletion: boolean
+    ) {
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
         return await serialized("file-x-" + prefixedFileName, async () => {
@@ -1640,13 +1725,15 @@ export class ConfigSync extends LiveSyncCommands {
                         type: "newnote",
                     };
                 }
-                await this.localDatabase.putRaw(saveData);
+                const result = await this.localDatabase.putRaw(saveData);
+                if (!result.ok) throw new LiveSyncError(`Could not delete customisation: ${prefixedFileName}`);
                 await this.updatePluginList(false, prefixedFileName);
                 this._log(`STORAGE -x> DB:${prefixedFileName}: (config) Done`);
                 return true;
             } catch (ex) {
                 this._log(`STORAGE -x> DB:${prefixedFileName}: (config) Failed`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
+                if (requireCompletion) throw ex;
                 return false;
             }
         });
@@ -1756,6 +1843,9 @@ export class ConfigSync extends LiveSyncCommands {
     }
     override onBindFunction(core: LiveSyncCore, services: InjectableServiceHub): void {
         services.fileProcessing.processOptionalFileEvent.addHandler(this._anyProcessOptionalFileEvent.bind(this));
+        services.fileProcessing.processOptionalFileEventWithResult?.addHandler(
+            this._processOptionalFileEventWithResult.bind(this)
+        );
         services.conflict.getOptionalConflictCheckMethod.addHandler(this._anyGetOptionalConflictCheckMethod.bind(this));
         services.replication.processVirtualDocument.addHandler(this._anyModuleParsedReplicationResultItem.bind(this));
         services.setting.onRealiseSetting.addHandler(this._everyRealizeSettingSyncMode.bind(this));

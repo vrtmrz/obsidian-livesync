@@ -17,13 +17,12 @@ export const SERVICE_CONTEXT_MEMBERS = [
     "vault",
     "test",
     "UI",
-    "config",
     "keyValueDB",
     "control",
-] as const satisfies readonly Exclude<keyof ServiceHub, "context">[];
+] as const satisfies readonly Exclude<keyof ServiceHub, "context" | "config">[];
 
 export type ServiceContextMember = (typeof SERVICE_CONTEXT_MEMBERS)[number];
-type MissingServiceContextMember = Exclude<Exclude<keyof ServiceHub, "context">, ServiceContextMember>;
+type MissingServiceContextMember = Exclude<Exclude<keyof ServiceHub, "context" | "config">, ServiceContextMember>;
 const serviceContextMembersAreExhaustive: [MissingServiceContextMember] extends [never] ? true : never = true;
 void serviceContextMembersAreExhaustive;
 

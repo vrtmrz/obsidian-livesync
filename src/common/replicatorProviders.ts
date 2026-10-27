@@ -28,7 +28,10 @@ import {
     getObjectStorageReplicatorConfigurationIdentity,
 } from "./replicatorConfigurationIdentity";
 import {
+    createCouchDBJoinedDevicesResourceFactory,
+    createObjectStorageJoinedDevicesResourceFactory,
     createCouchDBConnectionProbeFactory,
+    createCouchDBInitialFetchFastForwardResourceFactory,
     createCouchDBPreferredTweakProbeFactory,
     createCouchDBSecuritySeedResourceFactory,
     createCouchDBSynchronisationInformationResourceFactory,
@@ -115,6 +118,9 @@ export function createCentralReplicatorProviderDefinitions(
             configurationIdentity: getCouchDBReplicatorConfigurationIdentity,
             create: () => Promise.resolve(new LiveSyncCouchDBReplicator(host)),
             remoteResources: {
+                [REMOTE_RESOURCE_KINDS.JOINED_DEVICES]: supportedCapability(
+                    createCouchDBJoinedDevicesResourceFactory(host)
+                ),
                 [REMOTE_RESOURCE_KINDS.CONNECTION]: supportedCapability(createCouchDBConnectionProbeFactory(host)),
                 [REMOTE_RESOURCE_KINDS.PREFERRED_TWEAK]: supportedCapability(
                     createCouchDBPreferredTweakProbeFactory(host)
@@ -124,6 +130,9 @@ export function createCentralReplicatorProviderDefinitions(
                 ),
                 [REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION]: supportedCapability(
                     createCouchDBSynchronisationInformationResourceFactory(host)
+                ),
+                [REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]: supportedCapability(
+                    createCouchDBInitialFetchFastForwardResourceFactory(host)
                 ),
             },
             centralRemoteAdministration: COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
@@ -141,6 +150,9 @@ export function createCentralReplicatorProviderDefinitions(
             configurationIdentity: getObjectStorageReplicatorConfigurationIdentity,
             create: () => Promise.resolve(new LiveSyncJournalReplicator(host)),
             remoteResources: {
+                [REMOTE_RESOURCE_KINDS.JOINED_DEVICES]: supportedCapability(
+                    createObjectStorageJoinedDevicesResourceFactory(host)
+                ),
                 [REMOTE_RESOURCE_KINDS.CONNECTION]: supportedCapability(
                     createObjectStorageConnectionProbeFactory(host)
                 ),
@@ -151,6 +163,7 @@ export function createCentralReplicatorProviderDefinitions(
                     createObjectStorageSecuritySeedResourceFactory(host)
                 ),
                 [REMOTE_RESOURCE_KINDS.SYNCHRONISATION_INFORMATION]: CAPABILITY_NOT_APPLICABLE,
+                [REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]: CAPABILITY_NOT_APPLICABLE,
             },
             centralRemoteAdministration: OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
             userInitiatedOneShot: supportedCapability(objectStorageUserInitiatedOneShot),

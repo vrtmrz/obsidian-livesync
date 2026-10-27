@@ -1,3 +1,4 @@
+import { MemoryValueStore } from "@vrtmrz/value-store";
 import { describe, expect, it } from "vitest";
 import {
     DEFAULT_SETTINGS,
@@ -18,17 +19,7 @@ import {
 } from "./turnSettingsPrivacy";
 
 class MemorySettingService extends SettingService {
-    readonly items = new Map<string, string>();
     saved?: ObsidianLiveSyncSettings;
-    protected setItem(key: string, value: string) {
-        this.items.set(key, value);
-    }
-    protected getItem(key: string) {
-        return this.items.get(key) ?? "";
-    }
-    protected deleteItem(key: string) {
-        this.items.delete(key);
-    }
     protected saveData(settings: ObsidianLiveSyncSettings) {
         this.saved = structuredClone(settings);
         return Promise.resolve();
@@ -70,6 +61,7 @@ describe("managed TURN settings privacy", () => {
         const originalURI = ConnectionStringParser.serialize({ type: "p2p", settings: current });
         current.remoteConfigurations.managed.uri = originalURI;
         const service = new MemorySettingService(new ServiceContext(), {
+            deviceValues: new MemoryValueStore(),
             APIService: {
                 getSystemVaultName: () => "test-vault",
                 getAppID: () => "test-app",
