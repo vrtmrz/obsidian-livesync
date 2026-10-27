@@ -14,7 +14,7 @@ export class SyncGuardState {
     private phase: SyncGuardPhase = "idle";
     private receivedIds = new Set<string>();
     private minimumFiles = 20;
-    private finiteActive = false;
+    private catchUpActive = false;
     private observedCompletion = false;
     private hadReflectionFailure = false;
     private bypassed = false;
@@ -37,7 +37,7 @@ export class SyncGuardState {
     resume(enabled: boolean, minimumFiles: number): void {
         this.minimumFiles = Number.isFinite(minimumFiles) ? Math.max(1, Math.floor(minimumFiles)) : 20;
         this.receivedIds.clear();
-        this.finiteActive = false;
+        this.catchUpActive = false;
         this.observedCompletion = false;
         this.hadReflectionFailure = false;
         this.bypassed = false;
@@ -48,24 +48,24 @@ export class SyncGuardState {
     /** A changed setting takes effect during observation, without cancelling an active protection. */
     updateThreshold(minimumFiles: number): void {
         this.minimumFiles = Number.isFinite(minimumFiles) ? Math.max(1, Math.floor(minimumFiles)) : 20;
-        if (this.phase === "observing" && this.finiteActive && this.receivedIds.size >= this.minimumFiles) {
+        if (this.phase === "observing" && this.catchUpActive && this.receivedIds.size >= this.minimumFiles) {
             this.setPhase("transferring");
         }
     }
 
-    /** A completed finite pull is expected before the long-running live connection begins. */
-    finiteActivityChanged(active: boolean, pendingCount: number, now: number): void {
-        if (this.phase === "idle" || this.bypassed || this.finiteActive === active) return;
+    /** The CouchDB catch-up phase ends before continuous replication and Vault reflection finish. */
+    catchUpActivityChanged(active: boolean, pendingCount: number, now: number): void {
+        if (this.phase === "idle" || this.bypassed || this.catchUpActive === active) return;
         if (active) {
             // A retry or a second pull can begin while the Vault is still applying an earlier batch.
             // Do not let the previous successful completion unlock an active newer transfer.
-            this.finiteActive = true;
+            this.catchUpActive = true;
             this.observedCompletion = false;
             this.quiescentSince = undefined;
             if (this.isBlocking()) this.setPhase("transferring");
             return;
         }
-        this.finiteActive = false;
+        this.catchUpActive = false;
         if (!this.isBlocking()) {
             this.setPhase("idle");
         } else if (!this.observedCompletion || this.hadReflectionFailure) {
@@ -76,10 +76,10 @@ export class SyncGuardState {
         }
     }
 
-    /** Completion is observed while the finite catch-up is still in flight, not inferred from an idle queue. */
-    replicationStatusChanged(status: string): void {
-        if (this.phase === "idle" || this.bypassed || !this.finiteActive) return;
-        if (status === "COMPLETED") this.observedCompletion = true;
+    /** Only the catch-up → continuous transition proves that the initial pull succeeded. */
+    catchUpSucceeded(): void {
+        if (this.phase === "idle" || this.bypassed || !this.catchUpActive) return;
+        this.observedCompletion = true;
     }
 
     /** A network-complete batch is not a safe unlock when reflecting a received note failed. */
@@ -91,7 +91,7 @@ export class SyncGuardState {
 
     /** Count distinct incoming note Metadata, not Chunks or repeated revisions of a note. */
     receivedDocuments(ids: readonly string[]): void {
-        if (!this.finiteActive || this.bypassed || this.phase === "idle") return;
+        if (!this.catchUpActive || this.bypassed || this.phase === "idle") return;
         const wasBlocking = this.isBlocking();
         const previousCount = this.receivedIds.size;
         for (const id of ids) {

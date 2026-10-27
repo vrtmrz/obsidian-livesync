@@ -17,6 +17,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     const { services } = host;
     let disposed = false;
     let quietTimer: number | undefined;
+    let terminalPhaseTimer: number | undefined;
     const readPendingCount = () => {
         const counts = [
             services.replication.replicationResultCount.value,
@@ -35,6 +36,10 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     const stopTimer = () => {
         if (quietTimer !== undefined) compatGlobal.clearTimeout(quietTimer);
         quietTimer = undefined;
+    };
+    const stopTerminalPhaseTimer = () => {
+        if (terminalPhaseTimer !== undefined) compatGlobal.clearTimeout(terminalPhaseTimer);
+        terminalPhaseTimer = undefined;
     };
 
     let guard: SyncGuardState;
@@ -60,6 +65,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         return settings.isConfigured && settings.liveSync && settings.remoteType === REMOTE_COUCHDB &&
             settings.syncGuardEnabled;
     };
+    const isCouchDbCatchUp = () => services.replicator.replicationStatics.value.couchDB?.phase === "catch-up";
     const beginCatchUp = () => {
         const settings = services.setting.currentSettings();
         if (!isEnabled()) {
@@ -68,7 +74,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         }
         // A duplicate resume in the same active catch-up must honour a user's
         // explicit decision to continue editing rather than silently re-lock.
-        if (guard.wasBypassed && services.replicator.couchDbCatchUpActivityCount.value > 0) {
+        if (guard.wasBypassed && isCouchDbCatchUp()) {
             return;
         }
         // Duplicate resume notifications or a visibility transition must not discard an
@@ -77,22 +83,36 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             guard.presentation.phase === "interrupted") {
             return;
         }
-        if (guard.presentation.phase === "observing" &&
-            services.replicator.couchDbCatchUpActivityCount.value > 0) {
+        if (guard.presentation.phase === "observing" && isCouchDbCatchUp()) {
             return;
         }
         guard.resume(Boolean(isEnabled()), settings.syncGuardMinimumFiles);
-        guard.finiteActivityChanged(services.replicator.couchDbCatchUpActivityCount.value > 0, readPendingCount(), Date.now());
-    };
-    const onFiniteChanged = () => {
-        const active = services.replicator.couchDbCatchUpActivityCount.value > 0;
-        // Continuous replication can restart its finite pull following an internal reconnect,
-        // without an Obsidian onResumed notification. A new bounded transfer gets its own window.
-        if (active && guard.presentation.phase === "idle" && !guard.wasBypassed && isEnabled()) beginCatchUp();
-        guard.finiteActivityChanged(active, readPendingCount(), Date.now());
+        guard.catchUpActivityChanged(isCouchDbCatchUp(), readPendingCount(), Date.now());
     };
     const onReplicationChanged = () => {
-        guard.replicationStatusChanged(services.replicator.replicationStatics.value.syncStatus);
+        const phase = services.replicator.replicationStatics.value.couchDB?.phase;
+        if (phase === "catch-up") {
+            stopTerminalPhaseTimer();
+            // Also arm after an internal CouchDB reconnect without an Obsidian resume event.
+            if (guard.presentation.phase === "idle" && !guard.wasBypassed && isEnabled()) beginCatchUp();
+            guard.catchUpActivityChanged(true, readPendingCount(), Date.now());
+        } else if (phase === "continuous") {
+            stopTerminalPhaseTimer();
+            // Commonlib enters continuous only after a successful pull-only catch-up.
+            guard.catchUpSucceeded();
+            guard.catchUpActivityChanged(false, readPendingCount(), Date.now());
+        } else if (guard.presentation.phase !== "idle" && terminalPhaseTimer === undefined) {
+            // PouchDB disposes its per-attempt progress observer with phase 'idle' just
+            // before Commonlib publishes 'continuous'. Defer the terminal observation by
+            // one event-loop turn so that this internal hand-off never looks like a failure.
+            terminalPhaseTimer = compatGlobal.setTimeout(() => {
+                terminalPhaseTimer = undefined;
+                const current = services.replicator.replicationStatics.value.couchDB?.phase;
+                if (!disposed && current !== "catch-up" && current !== "continuous") {
+                    guard.catchUpActivityChanged(false, readPendingCount(), Date.now());
+                }
+            }, 0);
+        }
     };
     const onSettingsChanged = () => {
         if (!isEnabled()) guard.disable();
@@ -106,7 +126,6 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         onSettingsChanged();
     });
 
-    const finite = services.replicator.couchDbCatchUpActivityCount;
     const replication = services.replicator.replicationStatics;
     const pendingSources = [
         services.replication.replicationResultCount,
@@ -119,7 +138,6 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         collectingChunks,
         chunkFetchCounts,
     ];
-    finite.onChanged(onFiniteChanged);
     replication.onChanged(onReplicationChanged);
     for (const source of pendingSources) source.onChanged(onPendingChanged);
 
@@ -144,7 +162,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     services.appLifecycle.onUnload.addHandler(() => {
         disposed = true;
         stopTimer();
-        finite.offChanged(onFiniteChanged);
+        stopTerminalPhaseTimer();
         replication.offChanged(onReplicationChanged);
         for (const source of pendingSources) source.offChanged(onPendingChanged);
         overlay.dispose();
