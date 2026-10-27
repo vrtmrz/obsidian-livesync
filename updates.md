@@ -74,9 +74,9 @@ Making content checks mandatory in the 1.0.41 pre-release came with a little too
 
 Thank you for your contributions!
 
-- @rwbru, for the original Setup URI environment-variable fix ([#817](https://github.com/vrtmrz/obsidian-livesync/pull/817)).
-- @junkerderprovinz, for adapting that fix to the current generator while preserving compatibility with existing scripts ([#1274](https://github.com/vrtmrz/obsidian-livesync/pull/1274)).
-- @s-qin, for reducing memory use during start-up checks and avoiding repeated content decoding in Commonlib ([#1283](https://github.com/vrtmrz/obsidian-livesync/pull/1283), [Commonlib #184](https://github.com/vrtmrz/livesync-commonlib/pull/184)).
+- @rwbru, for the original Setup URI environment-variable fix (#817).
+- @junkerderprovinz, for adapting that fix to the current generator while preserving compatibility with existing scripts (#1274).
+- @s-qin, for reducing memory use during start-up checks and avoiding repeated content decoding in Commonlib (#1283, Commonlib #184).
 
 ## 1.0.40
 
