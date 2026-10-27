@@ -12,7 +12,7 @@ This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 > **What and why is the Fly.io?**  
 > At some point, we started to experience problems related to our IBM Cloudant account. At the same time, Self-hosted LiveSync started to improve its functionality, requiring CouchDB in a more natural state to use all its features.
 >
-> Then we found Fly.io. Fly.io is the PaaS Platform, which can be useable for a very reasonable price. It generally falls within the `Free Allowances` range in most cases.
+> Fly.io charges according to current account and resource usage, including Machines, persistent volumes, and network usage. Check [Fly.io pricing](https://fly.io/pricing/) and the [pricing documentation](https://fly.io/docs/about/pricing/) before deploying. A time-limited trial does not provide ongoing free hosting.
 
 ## Required materials
 
@@ -31,10 +31,10 @@ This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 4. Copy the Setup-URI and Use it in the Obsidian.
 5. You have been synchronised. Use the Setup-URI in subsequent devices.
 
-Steps 4 and 5 are detailed in the [Quick Setup](./quick_setup.md#1-using-setup-uris).
+For steps 4 and 5, see [Set up the first device](./quick_setup.md#set-up-the-first-device), then [Add another device](./quick_setup.md#add-another-device) for subsequent devices.
 
 > [!NOTE]
-> Your automatically configured configurations will be shown on the result in the Colab note like below, and **it will not be saved**. Please make a note of it somewhere.
+> Save your own generated connection details and Setup URI securely. This is a historical Colab output example from 2024; its values are illustrative and will differ for each deployment. Replace all example credentials before deployment.
 > ```
 > -- YOUR CONFIGURATION --
 > URL     : https://billowing-dawn-6619.fly.dev
@@ -45,15 +45,17 @@ Steps 4 and 5 are detailed in the [Quick Setup](./quick_setup.md#1-using-setup-u
 
 ### B. Scripted Setup
 
-Please refer to the document of [deploy-server.sh](../utils/readme.md#deploy-serversh).
+Please refer to the document of [deploy-server.sh](../utils/readme.md#flyio-deployment).
 
 ### C. Manual Setup
 
 | Used in the text | Meaning and where to use    | Memo                                                                     |
 | ---------------- | --------------------------- | ------------------------------------------------------------------------ |
-| campanella       | Username                    | It is less likely to fail if it consists only of letters and numbers.    |
-| dfusiuada9suy    | Password                    |                                                                          |
+| `<YOUR UNIQUE COUCHDB USERNAME>` | Username                    | Choose a unique value using only letters and numbers.                     |
+| `<YOUR UNIQUE COUCHDB PASSWORD>` | Password                    | Generate a strong, unique password for this instance.                     |
 | nrt              | Region to make the instance | We can use any [region](https://fly.io/docs/reference/regions/) near us. |
+
+Choose an available, unique Fly.io application name and replace both credential placeholders before deployment. Historical output below illustrates the command responses; use your own application name, hostname, and credentials.
 
 #### 1. Install flyctl
 
@@ -97,8 +99,8 @@ For more information, please refer to [Sign up](https://fly.io/docs/hands-on/sig
 
 
 ```bash
-$ fly launch --name=billowing-dawn-6619 --env="COUCHDB_USER=campanella" --copy-config=true --detach --no-deploy --region nrt --yes
-$ fly secrets set COUCHDB_PASSWORD=dfusiuada9suy
+$ fly launch --name='<YOUR UNIQUE APP NAME>' --env="COUCHDB_USER=<YOUR UNIQUE COUCHDB USERNAME>" --copy-config=true --detach --no-deploy --region nrt --yes
+$ fly secrets set COUCHDB_PASSWORD='<YOUR UNIQUE COUCHDB PASSWORD>'
 ```
 
 #### 4. Deploy
@@ -177,17 +179,17 @@ This section is set up using the REST API.
 - Mac or Linux:
 
 ```bash
-export couchHost=https://billowing-dawn-6619.fly.dev
-export couchUser=campanella
-export couchPwd=dfusiuada9suy
+export couchHost='https://<YOUR APP HOSTNAME>'
+export couchUser='<YOUR UNIQUE COUCHDB USERNAME>'
+export couchPwd='<YOUR UNIQUE COUCHDB PASSWORD>'
 ```
 
 - Windows
 
 ```powershell
-set couchHost https://billowing-dawn-6619.fly.dev
-set couchUser campanella
-set couchPwd dfusiuada9suy
+set couchHost 'https://<YOUR APP HOSTNAME>'
+set couchUser '<YOUR UNIQUE COUCHDB USERNAME>'
+set couchPwd '<YOUR UNIQUE COUCHDB PASSWORD>'
 $creds = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("${couchUser}:${couchPwd}"))
 ```
 
@@ -242,11 +244,11 @@ Note: Each of these should also be repeated until finished in 200.
 
 #### 6. Use it from Self-hosted LiveSync
 
-Now the CouchDB is ready to use from Self-hosted LiveSync. We can use `https://billowing-dawn-6619.fly.dev` in URI, `campanella` in `Username` and `dfusiuada9suy` in `Password` on Self-hosted LiveSync. The `Database name` could be anything you want.
-Please refer to the [Minimal Setup of the Quick Setup](./quick_setup.md#2-minimal-setup).
+Now the CouchDB is ready to use from Self-hosted LiveSync. Use your Fly.io app's hostname in `URI`, and the unique credentials configured above in `Username` and `Password`. The `Database name` could be anything you want.
+Please refer to [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device).
 
 ## Delete the Instance
 
 If you want to delete the CouchDB instance, you can do that in [fly.io Dashboard](https://fly.io/dashboard/personal)
 
-If you have done with [B. Scripted Setup](#b-scripted-setup), we can use [delete-server.sh](../utils/readme.md#delete-serversh).
+If you have done with [B. Scripted Setup](#b-scripted-setup), we can use [delete-server.sh](../utils/readme.md#flyio-deployment).

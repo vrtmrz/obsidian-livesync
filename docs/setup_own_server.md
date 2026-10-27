@@ -122,14 +122,14 @@ The `username` and `password` in this step are CouchDB administrator credentials
 
 ```
 export hostname=http://localhost:5984
-export username=<INSERT COUCHDB ADMINISTRATOR USERNAME HERE>
-export password=<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE>
+export username='<INSERT COUCHDB ADMINISTRATOR USERNAME HERE>'
+export password='<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE>'
 export database=obsidiannotes
 curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | bash
 ```
 
 > [!TIP]
-> In fish, `hostname` is read-only and cannot be exported. Pass the values through `env` instead: `curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | env hostname=http://localhost:5984 username=<...> password=<...> database=obsidiannotes bash`.
+> In fish, `hostname` is read-only and cannot be exported. Pass the values through `env` instead: `curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | env hostname='http://localhost:5984' username='<INSERT COUCHDB ADMINISTRATOR USERNAME HERE>' password='<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE>' database=obsidiannotes bash`.
 
 If it results like the following:
 ```
@@ -140,7 +140,7 @@ The wrapper runs the exact registry-pinned Commonlib consumer. When `database` i
 
 If you are using Docker Compose and the above command does not work or displays `ERROR: Hostname missing`, you can try running the following command, replacing the placeholders with your own values:
 ```
-curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname=http://<YOUR SERVER IP>:5984 username=<INSERT COUCHDB ADMINISTRATOR USERNAME HERE> password=<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE> database=obsidiannotes bash
+curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/couchdb/couchdb-init.sh | hostname='http://<YOUR SERVER IP>:5984' username='<INSERT COUCHDB ADMINISTRATOR USERNAME HERE>' password='<INSERT COUCHDB ADMINISTRATOR PASSWORD HERE>' database=obsidiannotes bash
 ```
 
 ## 3. Expose CouchDB to the Internet
@@ -148,13 +148,13 @@ curl -s https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/co
 - You can skip this instruction if you using only in intranet and only with desktop devices.
   - For mobile devices, Obsidian requires a valid SSL certificate. Usually, it needs exposing the internet.
 
-Whatever solutions we can use. For simplicity, the following sample uses Cloudflare Zero Trust for testing.
+For temporary testing, create a Cloudflare Quick Tunnel by following the [Quick Tunnels instructions](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/). It prints a random hostname which changes each time you create a tunnel, and the URL stops working when the `cloudflared` process stops. Quick Tunnels are intended for testing and development, not production. See the [Cloudflare Tunnel guide](https://developers.cloudflare.com/tunnel/get-started/) for durable use.
 
 ```
 cloudflared tunnel --url http://localhost:5984
 ```
 
-You will then get the following output:
+The following 2024 output is an example of the format. Its hostname is illustrative only; use the URL printed by your own tunnel instead.
 
 ```
 2024-02-14T10:35:25Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
@@ -167,7 +167,7 @@ You will then get the following output:
   :
   :
 ```
-Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our server. Make it into the background once, please.
+Use the URL printed by your tunnel as the server address. Keep the tunnel process running while you configure and test the client.
 
 
 ## 4. Client Setup
@@ -179,12 +179,12 @@ Now `https://tiles-photograph-routine-groundwater.trycloudflare.com` is our serv
 The `LIVESYNC_USER` and `LIVESYNC_PASS` here are the credentials which Self-hosted LiveSync will store for routine access to this database. They may be the administrator credentials from step 2. If you have separately configured a CouchDB account with the required access to this database, use that account instead. Neither the provisioning wrapper nor the Setup URI generator creates that separate account.
 
 ```bash
-export LIVESYNC_HOST=https://tiles-photograph-routine-groundwater.trycloudflare.com
+export LIVESYNC_HOST='<YOUR QUICK-TUNNEL URL>'
 export LIVESYNC_DB=obsidiannotes
-export LIVESYNC_USER=<INSERT COUCHDB USERNAME FOR LIVESYNC>
-export LIVESYNC_PASS=<INSERT THE COUCHDB PASSWORD>
-export LIVESYNC_PASSPHRASE=<INSERT A STRONG VAULT ENCRYPTION PASSPHRASE>
-export uri_passphrase=<INSERT A SEPARATE SETUP URI PASSPHRASE> # Optional
+export LIVESYNC_USER='<INSERT COUCHDB USERNAME FOR LIVESYNC>'
+export LIVESYNC_PASS='<INSERT THE COUCHDB PASSWORD>'
+export LIVESYNC_PASSPHRASE='<INSERT A STRONG VAULT ENCRYPTION PASSPHRASE>'
+export uri_passphrase='<INSERT A SEPARATE SETUP URI PASSPHRASE>' # Optional
 deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/setup/generate_setup_uri.ts
 ```
 
@@ -199,9 +199,9 @@ The generator consumes the exact registry-pinned Commonlib release used by the p
 
 By default, the URI is Ephemeral and can be opened only until the exact UTC time printed by the generator. This is the end of a fixed seven-day window, not seven days after creation. Set `uri_mode=persistent` before running the command if the URI needs no time condition or must be readable by an older client that supports the existing encrypted format.
 
-You will then get the following output:
+The output has the following form. The timestamp and values below are illustrative:
 
-```bash
+```text
 Generated couchdb Setup URI.
 Ephemeral: usable until 2026-10-01T00:00:00.000Z (UTC).
 Your passphrase for the Setup URI is: H7vX...a-random-32-character-value
