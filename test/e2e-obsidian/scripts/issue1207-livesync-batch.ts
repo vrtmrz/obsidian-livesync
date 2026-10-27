@@ -180,12 +180,17 @@ async function waitFor(
     throw new Error(`State did not settle: ${JSON.stringify(state)}`);
 }
 
-async function settled(pair: Pair, path: string, body: string): Promise<[Snapshot, Snapshot]> {
+async function settled(
+    pair: Pair,
+    path: string,
+    body: string,
+    allowDeletedBranches = false
+): Promise<[Snapshot, Snapshot]> {
     const ready = (state: Snapshot) =>
         state.content === body &&
         liveLeaves(state).length === 1 &&
         liveLeaves(state)[0].body === body &&
-        state.leaves.length === 1 &&
+        (allowDeletedBranches || state.leaves.length === 1) &&
         !state.waiting.some((item) => item.path === path);
     const deadline = Date.now() + 20000;
     let states: [Snapshot, Snapshot];
@@ -234,6 +239,15 @@ async function main(): Promise<void> {
     await assertCouchDbReachable(config);
     const dbName = makeUniqueDatabaseName(config.dbPrefix, "live-batch");
     const couch = { ...config, dbName };
+    const remoteRestartEdit = process.env.ISSUE1207_RESTART_REMOTE_EDIT;
+    check(
+        !remoteRestartEdit || ["mergeable", "conflicting"].includes(remoteRestartEdit),
+        "Unknown remote edit for the provenance restart case"
+    );
+    check(
+        !remoteRestartEdit || process.env.ISSUE1207_RESTART_BEFORE_PROVENANCE === "true",
+        "A remote restart edit requires the provenance gate"
+    );
     const overrides = {
         doctorProcessedVersion: "1.0.0",
         notifyThresholdOfRemoteStorageSize: -1,
@@ -248,7 +262,7 @@ async function main(): Promise<void> {
         syncAfterMerge: false,
         checkConflictOnlyOnOpen: true,
         showMergeDialogOnlyOnActive: true,
-        disableMarkdownAutoMerge: true,
+        disableMarkdownAutoMerge: !remoteRestartEdit,
         resolveConflictsByNewerFile: false,
         writeDocumentsIfConflicted: false,
         writeLogToTheFile: false,
@@ -259,8 +273,6 @@ async function main(): Promise<void> {
     evidence.commonlibVersion = JSON.parse(
         await readFile("node_modules/@vrtmrz/livesync-commonlib/package.json", "utf8")
     ).version;
-    evidence.sourceBaseRevision = "73a14d4e4b0b414a1acfe170d01500abb3dca2e9";
-    evidence.unreleasedImplementation = true;
     if (process.env.ISSUE1207_COMMONLIB_ARTEFACT) {
         evidence.commonlibArtefactSha256 = createHash("sha256")
             .update(new Uint8Array(readFileSync(process.env.ISSUE1207_COMMONLIB_ARTEFACT)))
@@ -370,6 +382,31 @@ async function main(): Promise<void> {
                             type:item.type,path:item.args?.file?.path,oldPath:item.args?.oldPath}))};`
                         ),
                     });
+                    if (name === "enabled-settings-save-restart" || name.startsWith("enabled-before-provenance")) {
+                        observations.push({
+                            name,
+                            device,
+                            revisionEvidence: await evaluate(
+                                page,
+                                `
+                            const path=${JSON.stringify(`${prefix}restart.md`)};
+                            const id=await core.services.path.path2id(path);
+                            const leaves=await core.localDatabase.getRaw(id,{open_revs:'all',revs:true});
+                            const revisions=new Set();
+                            for(const leaf of leaves){const h=leaf.ok?._revisions;
+                                for(let i=0;i<(h?.ids.length??0);i++)revisions.add((h.start-i)+'-'+h.ids[i]);}
+                            const result=[];
+                            for(const rev of revisions){
+                                const raw=await core.localDatabase.getRaw(id,{rev,revs:true}).catch(error=>({error:String(error)}));
+                                const doc=await core.localDatabase.getDBEntry(path,{rev,revs:true},false,true,true).catch(()=>false);
+                                result.push({rev,deleted:raw._deleted??false,ctime:raw.ctime,mtime:raw.mtime,
+                                    size:raw.size,error:raw.error,body:doc?(Array.isArray(doc.data)?doc.data.join(''):doc.data):null});
+                            }
+                            return {revisions:result,provenance:await core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1').get(path)};
+                        `
+                            ),
+                        });
+                    }
                     await page.screenshot({ path: join(diagnostics, `${name}-${device}-failure.png`) });
                     try {
                         await evaluate(page, "await manager.waitForIdle();");
@@ -663,27 +700,61 @@ async function main(): Promise<void> {
 
         const saveAfterEdit = process.env.ISSUE1207_RESTART_SAVE_AFTER_EDIT === "true";
         const restartBucket = process.env.ISSUE1207_RESTART_BUCKET;
+        const stopBeforeProvenance = process.env.ISSUE1207_RESTART_BEFORE_PROVENANCE === "true";
+        check(!stopBeforeProvenance || !restartBucket, "The provenance and timestamp gates are separate cases");
         check(
             !restartBucket || ["same", "exact", "different"].includes(restartBucket),
             "Unknown restart timestamp condition"
         );
-        const restartName = restartBucket
-            ? `enabled-inflight-restart-${restartBucket}`
-            : saveAfterEdit
-              ? "enabled-settings-save-restart"
-              : "enabled-restart";
+        const restartName = stopBeforeProvenance
+            ? `enabled-before-provenance${remoteRestartEdit ? `-${remoteRestartEdit}` : ""}-restart`
+            : restartBucket
+              ? `enabled-inflight-restart-${restartBucket}`
+              : saveAfterEdit
+                ? "enabled-settings-save-restart"
+                : "enabled-restart";
         await run(restartName, async () => {
             const path = `${prefix}restart.md`;
+            const beforeContent =
+                remoteRestartEdit === "mergeable"
+                    ? "Heading\n\nLocal: original\n\nRemote: original\n\nFooter\n"
+                    : "Before restart\n";
+            const localContent =
+                remoteRestartEdit === "mergeable"
+                    ? "Heading\n\nLocal: saved\n\nRemote: original\n\nFooter\n"
+                    : "Retained after restart\n";
+            const remoteContent =
+                remoteRestartEdit === "mergeable"
+                    ? "Heading\n\nLocal: saved\n\nRemote: changed remotely\n\nFooter\n"
+                    : "Remote edit after the durable save\n";
             const beforeRestart = await withPair(async (pair) => {
                 await options(pair.a, "enabled-batch", 5, 60);
                 await options(pair.b, "normal");
-                if (!saveAfterEdit)
+                // Remote cases keep continuous replication running while the local save is held.
+                if (!saveAfterEdit || remoteRestartEdit)
                     await evaluate(
                         pair.a,
                         "await core.services.setting.saveSettingData(); await core.services.control.applySettings();"
                     );
-                await create(pair.b, path, "Before restart\n");
-                const initial = await settled(pair, path, "Before restart\n");
+                await create(pair.b, path, beforeContent);
+                const initial = await settled(pair, path, beforeContent);
+                if (stopBeforeProvenance) {
+                    await evaluate(
+                        pair.a,
+                        `
+                        const access=core.serviceModules.databaseFileAccess;
+                        const original=access.storeWithBaseRevision.bind(access);
+                        access.storeWithBaseRevision=async(file,...args)=>{
+                            const revision=await original(file,...args);
+                            if(file.path===${JSON.stringify(path)}&&revision){
+                                globalThis.__issue1207Batch.beforeProvenanceRevision=revision;
+                                await new Promise(resolve=>setTimeout(resolve,30000));
+                            }
+                            return revision;
+                        };
+                    `
+                    );
+                }
                 if (restartBucket) {
                     check(initial[0].databaseMtime !== null, "Missing initial database mtime");
                     const mtime =
@@ -703,11 +774,27 @@ async function main(): Promise<void> {
                         };
                         await app.vault.modify(app.vault.getFileByPath(${JSON.stringify(path)}),"Retained after restart\\n",{mtime:${mtime}});`
                     );
-                } else await modify(pair.a, path, "Retained after restart\n");
+                } else await modify(pair.a, path, localContent);
                 const pending = await waitFor(pair.a, path, (state) =>
                     state.waiting.some((item) => item.path === path)
                 );
-                if (saveAfterEdit) await evaluate(pair.a, "await core.services.setting.saveSettingData();");
+                if (saveAfterEdit && !remoteRestartEdit) {
+                    await evaluate(pair.a, "await core.services.setting.saveSettingData();");
+                    observations.push({
+                        phase: "settings-save-before-stop",
+                        initial,
+                        pending,
+                        current: await Promise.all([snapshot(pair.a, path), snapshot(pair.b, path)]),
+                        sourceProbe: await evaluate(
+                            pair.a,
+                            `return {
+                            events:globalThis.__issue1207Batch.events,
+                            changes:globalThis.__issue1207Batch.changes,
+                            provenance:await core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1').get(${JSON.stringify(path)})
+                        };`
+                        ),
+                    });
+                }
                 if (restartBucket)
                     await evaluate(
                         pair.a,
@@ -715,6 +802,82 @@ async function main(): Promise<void> {
                     while(!globalThis.__issue1207Batch.inflightPaused&&Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,10));
                     if(!globalThis.__issue1207Batch.inflightPaused) throw new Error('The in-flight test gate did not start');`
                     );
+                let durableBeforeProvenance: Snapshot | undefined;
+                let remoteAdvanced: Snapshot | undefined;
+                if (stopBeforeProvenance) {
+                    await evaluate(
+                        pair.a,
+                        `
+                        const deadline=Date.now()+core.services.setting.currentSettings().batchSaveMinimumDelay*1000+5000;
+                        while(!globalThis.__issue1207Batch.beforeProvenanceRevision&&Date.now()<deadline)
+                            await new Promise(resolve=>setTimeout(resolve,10));
+                        if(!globalThis.__issue1207Batch.beforeProvenanceRevision)throw new Error('The durable-write provenance gate did not start');
+                    `
+                    );
+                    durableBeforeProvenance = await snapshot(pair.a, path);
+                    const provenance = await evaluate<{ revision: string }>(
+                        pair.a,
+                        `return await core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1').get(${JSON.stringify(path)});`
+                    );
+                    check(
+                        durableBeforeProvenance.rev !== initial[0].rev &&
+                            liveLeaves(durableBeforeProvenance)[0]?.body === localContent,
+                        "The gated database write is not durable"
+                    );
+                    check(
+                        provenance?.revision === initial[0].rev,
+                        "The fixture did not stop before provenance was updated"
+                    );
+                    observations.push({
+                        phase: "durable-before-provenance",
+                        state: durableBeforeProvenance,
+                        provenance,
+                    });
+                    if (remoteRestartEdit) {
+                        const receivedOriginal = await waitFor(
+                            pair.b,
+                            path,
+                            (state) => state.rev === durableBeforeProvenance!.rev && state.content === localContent
+                        );
+                        await modify(pair.b, path, remoteContent);
+                        remoteAdvanced = await waitFor(
+                            pair.b,
+                            path,
+                            (state) =>
+                                liveLeaves(state).length === 1 &&
+                                liveLeaves(state)[0].body === remoteContent &&
+                                state.rev === liveLeaves(state)[0].rev &&
+                                state.content === remoteContent
+                        );
+                        check(
+                            liveLeaves(remoteAdvanced)[0].ancestry.includes(durableBeforeProvenance.rev!),
+                            "The remote edit did not descend from the already durable local save"
+                        );
+                        const localDbAdvanced = await waitFor(
+                            pair.a,
+                            path,
+                            (state) =>
+                                state.rev === remoteAdvanced!.rev &&
+                                liveLeaves(state).length === 1 &&
+                                liveLeaves(state)[0].body === remoteContent
+                        );
+                        const stillOldProvenance = await evaluate<{ revision: string }>(
+                            pair.a,
+                            `return await core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1').get(${JSON.stringify(path)});`
+                        );
+                        check(
+                            localDbAdvanced.content === localContent && stillOldProvenance.revision === initial[0].rev,
+                            "The incoming DB change did not precede Vault reflection and provenance persistence"
+                        );
+                        observations.push({
+                            phase: "remote-edit-local-db-ahead-of-storage",
+                            receivedOriginal,
+                            remoteAdvanced,
+                            localDbAdvanced,
+                            stillOldProvenance,
+                        });
+                    }
+                }
                 await evaluate(pair.a, "await manager._takeSnapshot();");
                 check(pending.rev === initial[0].rev, "Restart test did not retain a pending edit");
                 if (restartBucket) {
@@ -746,16 +909,18 @@ async function main(): Promise<void> {
                         sameBucket,
                     });
                 }
-                if (!saveAfterEdit && !restartBucket) {
+                if (stopBeforeProvenance || (!saveAfterEdit && !restartBucket)) {
                     const strictState = await snapshot(pair.a, path);
                     const saved = await evaluate<Array<{ path: string }>>(
                         pair.a,
                         `return (await manager.adapter.persistence.loadSnapshot()).map(item=>({path:item.args?.file?.path}));`
                     );
-                    check(
-                        strictState.rev === initial[0].rev && strictState.waiting.some((item) => item.path === path),
-                        "Restart fixture flushed before shutdown"
-                    );
+                    if (!stopBeforeProvenance)
+                        check(
+                            strictState.rev === initial[0].rev &&
+                                strictState.waiting.some((item) => item.path === path),
+                            "Restart fixture flushed before shutdown"
+                        );
                     check(
                         saved.some((item) => item.path === path),
                         "Restart fixture did not persist the pending event"
@@ -778,12 +943,12 @@ async function main(): Promise<void> {
                         const settings=core.services.setting.currentSettings();
                         return {initialized:await core.kvDB.get('initialized'),restorationRequested:manager.snapShotRestored!==null,
                             settings:{isConfigured:settings.isConfigured,liveSync:settings.liveSync,batchSave:settings.batchSave,batchSaveInLiveSync:settings.batchSaveInLiveSync,
-                            suspendFileWatching:settings.suspendFileWatching},
+                            suspendFileWatching:settings.suspendFileWatching,disableMarkdownAutoMerge:settings.disableMarkdownAutoMerge},
                             events:events?.map(item=>({type:item.type,path:item.args?.file?.path,
                                 stat:item.args?.file?.stat,skipBatchWait:item.skipBatchWait}))};`
                         ),
                     });
-                return { initial, pending };
+                return { initial, pending, durableBeforeProvenance, remoteAdvanced };
             });
             await stop(slots[0]);
             const persistedSettings = JSON.parse(
@@ -817,11 +982,82 @@ async function main(): Promise<void> {
                             events:events?.map(item=>({type:item.type,path:item.args?.file?.path,stat:item.args?.file?.stat}))};`
                     ),
                 });
-                const result = await settled(pair, path, "Retained after restart\n");
+                if (remoteRestartEdit === "conflicting") {
+                    const preservesBothBodies = (state: Snapshot) => {
+                        const leaves = liveLeaves(state);
+                        return (
+                            leaves.length === 2 &&
+                            leaves.some((leaf) => leaf.body === localContent) &&
+                            leaves.some(
+                                (leaf) => leaf.body === remoteContent && leaf.rev === beforeRestart.remoteAdvanced!.rev
+                            )
+                        );
+                    };
+                    const result = await Promise.all([
+                        waitFor(pair.a, path, preservesBothBodies),
+                        waitFor(pair.b, path, preservesBothBodies),
+                    ]);
+                    check(
+                        result[0].content === localContent && result[1].content === remoteContent,
+                        "An unresolved conflict overwrote one of the preserved Vault contents"
+                    );
+                    const manualDialogue = pair.a.locator(".modal").filter({ hasText: "Conflicting changes" });
+                    await manualDialogue.waitFor({ state: "visible", timeout: 10000 });
+                    await pair.a.screenshot({ path: join(diagnostics, `${restartName}-manual-conflict.png`) });
+                    return { result, manualConflict: true, restoredGuard: result[0].shouldBatchSave };
+                }
+                const expectedContent = remoteRestartEdit ? remoteContent : localContent;
+                const result = await settled(pair, path, expectedContent, saveAfterEdit || stopBeforeProvenance);
                 check(result[0].shouldBatchSave, "The saved LiveSync batching choice was not restored");
+                if (beforeRestart.remoteAdvanced) {
+                    for (const state of result)
+                        check(
+                            liveLeaves(state)[0].ancestry.includes(beforeRestart.remoteAdvanced.rev!),
+                            "Sensible merge lost the later remote revision's ancestry"
+                        );
+                    check(
+                        (await pair.a.locator(".modal").filter({ hasText: "Conflicting changes" }).count()) === 0,
+                        "The mergeable recovery left a manual conflict dialogue"
+                    );
+                }
+                for (const [index, page] of [pair.a, pair.b].entries()) {
+                    const provenance = await evaluate<{ revision: string }>(
+                        page,
+                        `const store=core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1');
+                        const deadline=Date.now()+5000;
+                        let record;
+                        do {
+                            record=await store.get(${JSON.stringify(path)});
+                            if(record?.revision===${JSON.stringify(result[index].rev)})return record;
+                            await new Promise(resolve=>setTimeout(resolve,10));
+                        }while(Date.now()<deadline);
+                        return record;`
+                    );
+                    check(
+                        provenance?.revision === result[index].rev,
+                        "Recovery did not record the converged file revision"
+                    );
+                }
                 return { result, restoredGuard: result[0].shouldBatchSave };
             });
-            return { beforeRestart, afterRestart };
+            let repeatedRestart: Snapshot[] | undefined;
+            if (stopBeforeProvenance && remoteRestartEdit !== "conflicting") {
+                await stop(slots[0]);
+                await start(slots[0], true);
+                repeatedRestart = await withPair(async (pair) => {
+                    const result = await settled(pair, path, remoteRestartEdit ? remoteContent : localContent, true);
+                    check(
+                        result[0].rev === afterRestart.result[0].rev,
+                        "A repeated restart created another revision after recovery had converged"
+                    );
+                    check(
+                        result[0].leaves.length === afterRestart.result[0].leaves.length,
+                        "A repeated restart added another branch after recovery had converged"
+                    );
+                    return result;
+                });
+            }
+            return { beforeRestart, afterRestart, repeatedRestart };
         });
 
         await run("enabled-after-write-restart", async () => {

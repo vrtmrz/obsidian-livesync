@@ -989,6 +989,12 @@ If enabled, chunks will be split into no more than 100 items. However, dedupe is
 Setting key: useSegmenter
 If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.
 
+#### Strict content check on startup
+
+Setting key: strictContentCheckOnStartup
+
+When enabled, ordinary start-up compares file content with the local database even when the file's exact modification time and size match. When disabled (the default), this comparison can be skipped only when the modification time, size, and recorded device-local provenance match a conflict-free current revision, and no file processing is pending. An edit made outside the normal file-event path which preserves its exact modification time and size can therefore go undetected by ordinary start-up. Manual scans and explicit Fetch or Rebuild operations keep strict content checking.
+
 ### 3. Transfer Tweak
 
 #### Fetch chunks on demand

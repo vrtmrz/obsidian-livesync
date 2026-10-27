@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import { platform } from "node:process";
-import { copyBuildFiles } from "./utils/copy-build-files";
+import { copyBuildFiles } from "./scripts/copy-build-files";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function readJson(filePath: string) {

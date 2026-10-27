@@ -23,6 +23,7 @@ const focusedScenarios = new Set([
     "p2p-pane",
     "replication-status",
     "vault-reflection",
+    "third-party-chunks",
     "couchdb-upload",
     "couchdb-http-cache",
     "chunk-fetch-retry",
@@ -36,6 +37,8 @@ const focusedScenarios = new Set([
     "p2p-setup-uri-workflow",
     "partial-startup-file-failure",
     "startup-scan",
+    "startup-integrity",
+    "startup-content-check",
     "stale-file-restart",
     "folder-batch",
     "setup-uri-workflow",
@@ -52,6 +55,7 @@ const focusedScenarios = new Set([
     "setting-markdown-export",
     "setting-markdown-roundtrip",
     "upgrade-from-stable",
+    "upgrade-livesync-batching",
 ]);
 
 function usage(): string {

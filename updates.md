@@ -12,40 +12,71 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### Customisation Sync
+## 1.0.42
 
-#### Fixed
+27th October, 2026
 
-- We can reload the customisation list and apply every file in a multi-file item on the first attempt. (#1271)
-    - Reloading or clearing the list also prevents earlier pending updates from restoring removed files and items.
-
-### Setup tools
-
-#### Fixed
-
-- We can generate a Setup URI with prefixed connection and encryption variables, avoiding collisions with shell or system variables such as `hostname` and `USERNAME`. (#817, #1274)
-    - The generator reads `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE`. The previous names remain supported when the corresponding prefixed value is unset or blank.
+Making content checks mandatory in the 1.0.41 pre-release came with a little too much overhead, so 1.0.42 makes them optional. This has turned into a slightly larger release.
 
 ### Synchronisation
 
 #### New Feature
 
-- We can see CouchDB change-history comparison progressing before new documents arrive, with a ⏩ status icon and a comparison count before the upload count. An unchanged count disappears after three seconds.
-- We can hide or style individual status items with CSS snippets using the `livesync-stat-` classes. Tabular, right-aligned numbers retain their width while visible, reducing movement as counts change. Wider gaps between editor status items make the counts easier to read. The `livesync-stat-inactive` class lets CSS snippets control how inactive items disappear.
-- We can enable **Batch database updates in LiveSync mode** to combine repeated local edits before sending them to other devices.
-    - The choice starts disabled, including when older settings contain the previously ignored batch option. Each mode retains its own choice and uses the same minimum and maximum delays.
-    - Batching delays remote visibility and reduces intermediate updates. It does not establish when a template has finished or prevent genuine concurrent edits.
+- Rapid edits can produce fewer intermediate versions on other devices while LiveSync mode remains active.
+    - Enable **Batch database updates in LiveSync mode** to group successive local edits.
+        - Disabled by default; each synchronisation mode keeps its own choice.
+        - Updates reach other devices later. Batching does not detect template completion or prevent genuine concurrent-edit conflicts.
+- CouchDB synchronisation no longer looks idle while it is comparing change history.
+    - A ⏩ icon and comparison count show activity before documents are transferred.
+        - This count represents history entries, not files remaining to synchronise.
+- Status counts are easier to follow, with less movement as values change.
+    - CSS snippets can hide unwanted items or style individual `livesync-stat-` items, including inactive ones.
+
+- We can choose stricter content checks at start-up.
+    - Enable **Strict content check on startup** to compare file contents even when their modification times and sizes match the recorded local database state. This can increase start-up time in large Vaults.
+    - The setting is disabled by default. Ordinary start-up can skip content reads when the exact modification time, file size, and recorded database revision match, with no conflicts or pending file changes.
+    - While the setting is disabled, an edit which preserves its exact size and modification time can go undetected during start-up. Manual scans and explicit recovery operations remain strict.
 
 #### Fixed
 
-- Local changes remain available for recovery while their database save is running, including when the application stops after a batch delay ends.
-    - Manual synchronisation and settings application now wait for the accepted local saves to finish and report failures. Pending events retain the existing snapshot format.
-    - Hidden File Sync and Customisation Sync now report completion after saving, including delayed customisation updates. Failed saves remain pending, while unchanged notifications allow later edits to proceed.
-- Start-up reconciliation checks content when modification times are equal, so an edit within the same timestamp interval is not mistaken for an unchanged file.
-    - Existing revision provenance preserves the correct edit branch. Unreadable or continually changing content remains unresolved rather than being reported as successfully reconciled.
-- We receive a clear Notice when **Automatic** requires Hidden File Sync to be enabled on this device. Our existing mode remains unchanged, and hidden-file initialisation cannot start while the feature is disabled. (#1270)
-- We can initialise a whole plug-in's **MAIN** and **DATA** selections using the chosen Automatic initial action.
-- We can run startup integrity checks with lower memory use for healthy Vault files. Files that change between the size check and content reading no longer trigger an unnecessary repair warning when their actual sizes agree and there are no conflicts. (#1283)
+- Recent Vault edits remain recoverable after an interrupted local database save.
+    - This includes edits whose modification times compare equal to the database copy, and pending Hidden File Sync and Customisation Sync changes.
+- Manual synchronisation no longer starts before already accepted local changes finish saving to the database.
+    - Settings application also waits for those saves. Failed saves stay pending and report a failure.
+- Text from third-party tools is handled more robustly.
+    - Characters split across Chunks no longer trigger false corruption warnings.
+- Start-up integrity checks use less memory for healthy Vault files. (#1283)
+- Start-up checks avoid false repair warnings for files that change during inspection. (#1283)
+    - This applies when the final size matches the database and there are no conflicts.
+
+### Customisation Sync
+
+#### Fixed
+
+- Applying a multi-file customisation no longer skips files after the list is refreshed. (#1271)
+- Choosing **Automatic** now explains a missing Hidden File Sync prerequisite instead of proceeding into a failed initialisation. (#1270)
+    - Enable and initialise Hidden File Sync on this device first. The current mode is kept when the prerequisite is missing.
+- Initialising a whole plug-in in **Automatic** mode no longer omits its selected **MAIN** or **DATA** files.
+
+### Setup tools
+
+#### Fixed
+
+- Setup URI generation can avoid shell-variable collisions and unintended use of the operating-system username. (#817, #1274)
+    - Use `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE` for connection and encryption values.
+        - Existing scripts remain supported: the previous names are used when the corresponding prefixed value is unset or blank.
+
+### Miscellaneous
+
+- Dependencies have been updated, including security fixes.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @rwbru, for the original Setup URI environment-variable fix (#817).
+- @junkerderprovinz, for adapting that fix to the current generator while preserving compatibility with existing scripts (#1274).
+- @s-qin, for reducing memory use during start-up checks and avoiding repeated content decoding in Commonlib (#1283, Commonlib #184).
 
 ## 1.0.40
 

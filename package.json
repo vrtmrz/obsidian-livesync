@@ -1,6 +1,6 @@
 {
     "name": "obsidian-livesync",
-    "version": "1.0.40",
+    "version": "1.0.42",
     "description": "Reflect your vault changes to some other devices immediately. Please make sure to disable other synchronize solutions to avoid content corruption or duplication.",
     "main": "main.js",
     "type": "module",
@@ -88,6 +88,7 @@
         "test:e2e:obsidian:p2p-connection-check": "tsx test/e2e-obsidian/scripts/p2p-connection-check.ts",
         "test:e2e:obsidian:p2p-connection-check:services": "npm run test:e2e:obsidian:p2p-connection-check -- --manage-p2p",
         "test:e2e:obsidian:partial-startup-file-failure": "tsx test/e2e-obsidian/scripts/partial-startup-file-failure.ts",
+        "test:e2e:obsidian:startup-content-check": "tsx test/e2e-obsidian/scripts/startup-content-check.ts",
         "test:e2e:obsidian:startup-scan": "tsx test/e2e-obsidian/scripts/startup-scan.ts",
         "test:e2e:obsidian:stale-file-restart": "tsx test/e2e-obsidian/scripts/stale-file-restart.ts",
         "test:e2e:obsidian:folder-batch": "tsx test/e2e-obsidian/scripts/folder-batch.ts",
@@ -127,7 +128,10 @@
         "test:docker-all:start": "npm run test:docker-all:up && sleep 5 && npm run test:docker-all:init",
         "test:docker-all:stop": "npm run test:docker-all:down",
         "update-workspaces": "node update-workspaces.mjs",
-        "version": "node version-bump.mjs && node update-workspaces.mjs && npm run pretty:json && git add manifest.json versions.json src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json"
+        "version": "node version-bump.mjs && node update-workspaces.mjs && npm run pretty:json && git add manifest.json versions.json src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json",
+        "test:e2e:obsidian:startup-integrity": "tsx test/e2e-obsidian/scripts/startup-integrity.ts",
+        "test:e2e:obsidian:third-party-chunks": "tsx test/e2e-obsidian/scripts/third-party-chunks.ts",
+        "test:e2e:obsidian:upgrade-livesync-batching": "tsx test/e2e-obsidian/scripts/upgrade-livesync-batching.ts"
     },
     "keywords": [],
     "author": "vorotamoroz",
@@ -151,7 +155,7 @@
         "@types/pouchdb-replication": "^6.4.7",
         "@types/transform-pouch": "^1.0.6",
         "@typescript-eslint/parser": "8.69.0",
-        "@vitest/coverage-v8": "^4.1.11",
+        "@vitest/coverage-v8": "^4.1.12",
         "@vrtmrz/obsidian-test-session": "0.2.6",
         "dotenv-cli": "^11.0.0",
         "esbuild": "0.28.1",
@@ -186,8 +190,8 @@
         "tsx": "^4.21.0",
         "typescript": "6.0.3",
         "typescript-eslint": "8.69.0",
-        "vite": "^8.0.16",
-        "vitest": "^4.1.11",
+        "vite": "^8.1.6",
+        "vitest": "^4.1.12",
         "yaml": "^2.8.2"
     },
     "dependencies": {
@@ -200,7 +204,7 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "0.2.1",
+        "@vrtmrz/livesync-commonlib": "0.2.2",
         "@vrtmrz/obsidian-plugin-kit": "0.1.4",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",

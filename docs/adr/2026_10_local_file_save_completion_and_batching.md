@@ -59,10 +59,12 @@ that evidence. The inspected Commonlib source is commit
 
 ## Decision
 
-Make local file processing recoverable until its result is established, use
-content and provenance to reconcile ambiguous timestamps, and enable batching
-in LiveSync mode only through an explicit choice after those contracts pass
-verification. Apply the recovery contract with batching enabled or disabled.
+Make local file processing recoverable until its result is established, retain
+strict content and provenance reconciliation for manual and recovery scans, and
+enable batching in LiveSync mode only through an explicit choice after those
+contracts pass verification. Ordinary Obsidian start-up may skip a body read
+only under the exact-match conditions below. Apply the recovery contract with
+batching enabled or disabled.
 
 The content-reconciliation change targets selected ordinary files in the
 Offline Scanner's `NEWER_WINS` / `sync-newer` action. Keep the existing action
@@ -143,9 +145,30 @@ policy-approved skip before the manager can acknowledge either safely.
 
 A crash after the database write but before snapshot removal can replay an
 operation. Replay must check current storage and revision provenance, retain
-the existing protection against stale restored events, and avoid duplicate
-revisions or deletion of a newer same-path file. It must be safe to interrupt
-replay again. Existing saved snapshots remain readable.
+the existing protection against stale restored events, and never delete a
+newer same-path file. Once both the database write and provenance write have
+completed, replay must not add another revision. If the database write
+succeeded before provenance was recorded, replay may first create an identical
+sibling even when no remote descendant has arrived. In the tested case
+without a remote edit, replay creates that sibling. Duplicate handling then
+tombstones one of the identical branches and converges to one live leaf with
+the exact saved content.
+Another restart must add no revision. Replay must remain safe to interrupt;
+existing saved snapshots remain readable.
+
+The database write and the device-local provenance write are separate,
+sequential operations. A stop between them can leave the previous provenance
+record in place. This pre-provenance gap is the known exception to the
+no-extra-revision result after both writes complete: replay can first create a
+duplicate sibling; one of the identical branches is then tombstoned while
+one live leaf retains the saved bytes when no remote descendant has arrived. If continuous
+replication advances the local database during the gap, replay can instead
+expose the local content as a sibling of that descendant. The [conflict
+resolution specification](../specs_conflict_resolution.md#known-potentially-problematic-behaviour)
+records the required mergeable and manual-resolution outcomes. The per-file
+lock does not fence replication writes. The interruption window is expected
+to be very rare, but its field frequency is unmeasured; this decision adds no
+transaction or second journal to close the interval.
 
 Boolean failure, an exception, and an unavailable comparison are not successful
 completion. Keep unresolved work recoverable and report the failure through the
@@ -187,12 +210,14 @@ finishes; correctness must also follow from the persistent record and start-up
 reconciliation. Remote availability must not determine whether local pending
 work survives shutdown.
 
-### 4. Reconcile content when timestamps are inconclusive
+### 4. Preserve strict content reconciliation
 
-Retain the existing timestamp tolerance for platforms with coarse modification
-times. Timestamp equality, including exactly equal raw timestamps, does not
-prove content equality. The Offline Scanner must establish one of the following
-outcomes through the ordinary non-forced file handler and its provenance rules:
+Strict content checking retains the timestamp and provenance reconciliation
+contract for platforms with coarse modification times. Timestamp equality,
+including exactly equal raw timestamps, does not prove content equality. With
+strict checking enabled, the Offline Scanner must establish one of the
+following outcomes through the ordinary non-forced file handler and its
+provenance rules:
 
 | Evidence                                                                                                                | Required outcome                                                                                                                  |
 | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -201,6 +226,26 @@ outcomes through the ordinary non-forced file handler and its provenance rules:
 | Vault content differs from its recorded revision                                                                        | Preserve the edit on that recorded branch. Keep independent concurrent branches available for conflict resolution.                |
 | Vault content has no provable origin and matches no current live leaf                                                   | Preserve it according to the existing independent-branch rules. Do not attach it to an arbitrary database winner.                 |
 | Required content or provenance cannot be read, or state changes during comparison                                       | Retain unresolved work and report or re-evaluate it. Do not mark it reconciled merely because the timestamp comparison is `EVEN`. |
+
+The `strictContentCheck` scan option is strict when omitted. Ordinary Obsidian
+start-up can opt out through **Strict content check on startup**, which is
+disabled by default. With the option disabled, a body read may be skipped only
+when the file's raw modification time, byte size, and valid device-local
+provenance exactly match a conflict-free current revision and no file
+processing is pending. All other files retain strict content reconciliation.
+An unrecorded edit that preserves its exact size and modification time can
+therefore remain undetected by ordinary start-up while the option is disabled.
+Manual scans, Fetch, Rebuild, and other explicit recovery operations remain
+strict. Pending-event replay, incoming-change protection, and deletion guards
+remain active in both modes.
+
+The table describes stable-state strict reconciliation, not atomic database and
+provenance persistence. Replay in the pre-provenance gap may create an
+identical sibling; with no remote descendant, one of the identical branches
+is tombstoned, leaving one live leaf with the exact saved content. If replication has
+already added a descendant, preserve its exact content through an existing
+safe merge, or retain both branches for manual resolution. See [Known
+potentially problematic behaviour](../specs_conflict_resolution.md#known-potentially-problematic-behaviour).
 
 Revalidate the relevant file and database state before acting on a comparison.
 Reuse the existing content and provenance checks; avoid a separate conflict
@@ -220,12 +265,14 @@ Obsidian start-up can report `completed-with-file-failures` and allow unaffected
 files to proceed; an unresolved pair must not become `completed` to achieve
 that result. Keep the stricter callers' existing completion requirements.
 
-This deliberately extends the current equal-time scanner contract. Existing
-provenance tests expect no database write during that scan, including for an
-edited file. Preserve their unchanged-file and later incoming-protection
-scenarios; change the edited-file expectation to require preservation during
-the scan itself. Test both identical timestamps and distinct raw timestamps
-within one comparison bucket.
+Keep the original unchanged-file, edited-file, untracked-provenance,
+incoming-protection, and concurrent-recheck fixtures under strict content
+checking, including identical timestamps and distinct raw timestamps within
+one comparison bucket. Do not weaken those strict-mode assertions to describe
+the ordinary start-up opt-out. Test the opt-out separately: only the exact
+stat, provenance, conflict-free, and no-pending-processing match may skip a
+body read. Pending-event replay and incoming or deletion guards remain covered
+with the opt-out enabled.
 
 ### 5. Make batch timing and activation explicit
 
@@ -333,12 +380,16 @@ matrix is:
 | Scenario                                                                                                             | Required observation                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Stop after dequeue, timer release, or during a database write                                                        | Pending work remains recoverable; restart eventually represents the saved Vault edit.                                                  |
-| Database write succeeds before snapshot cleanup; restart twice                                                       | Replay creates no duplicate revision and preserves later edits.                                                                        |
+| Database and provenance writes are complete before replay; restart twice | Replay adds no extra revision. |
+| Stop after the database write but before provenance; no remote descendant; replay twice | The tested replay creates an identical sibling and tombstones one of the two branches; one live leaf retains exact saved content, and the second restart adds no revision. |
+| A remote descendant arrives during the pre-provenance gap | The mergeable case preserves its exact content and ancestry; the overlapping case retains both bodies for manual resolution. |
 | Old and new events share a path; snapshot writes overlap                                                             | Completing old work cannot remove new work or regress the durable snapshot.                                                            |
 | Handler returns false, throws, or snapshot persistence fails                                                         | Flush reports failure; pending work is retained; unrelated recoverable work can continue.                                              |
 | Buffered or in-progress work exists with no waiting timer                                                            | Flush still waits for actual completion.                                                                                               |
 | A flush overlaps new typing or a rename/delete barrier                                                               | The captured work completes without waiting for later work or deadlocking.                                                             |
-| Equal timestamps: unchanged, edited, untracked, pruned provenance, unavailable Chunks, or concurrent recheck changes | Preserve correct ancestry and bytes, avoid duplicate revisions, and distinguish unresolved comparisons from successful reconciliation. |
+| Strict check: equal timestamps, unchanged or edited files, untracked or pruned provenance, unavailable Chunks, or concurrent recheck changes | Preserve correct ancestry and bytes, avoid duplicate revisions, and distinguish unresolved comparisons from successful reconciliation. |
+| Start-up check disabled: exact raw time, size, and provenance match with no conflict or pending processing | The body read may be skipped; an unrecorded edit which preserves exact size and modification time remains an accepted limitation. |
+| Pending-event replay and incoming or deletion guards, with either start-up setting | Keep replay and protection active; do not skip work or remove a file based only on matching statistics. |
 | Settings save followed by stop; ordinary unload; interruption during replay                                          | No operation is forgotten because a settings callback or shutdown released its timer.                                                  |
 | Sustained edits and more paths than available processing slots                                                       | Observe the intentional-delay deadline and progress of unrelated ready files.                                                          |
 | Old settings, mode changes, explicit opt-in, and settings import                                                     | Existing LiveSync mode users retain immediate saving until they choose batching.                                                       |

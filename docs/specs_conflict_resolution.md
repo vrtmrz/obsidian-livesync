@@ -166,6 +166,49 @@ For ordinary saves and incoming reflection, a missing or unreadable recorded bas
 
 Provenance keys follow the selected [Unicode path identity](design_docs/unicode_path_identity.md#state-which-follows-the-selected-identity). In NFC mode, equivalent path spellings address the same record; the content evidence continues to describe file bytes, independently of that path spelling.
 
+## Known potentially problematic behaviour
+
+Saving a local file writes its revision to the local database, then writes
+device-local provenance in a separate operation. The writes are not atomic.
+If the process stops between them, provenance can still identify the revision
+which preceded the local edit. Continuous replication which was already
+running can add a remote descendant to the local database during this
+interval. The per-file lock covers file handling and Vault reflection; it
+does not block raw replication writes to the database.
+
+For example, local content `2-B` may have been saved as a child of
+displayed revision `1`, while provenance still identifies `1`.
+On restart, replay of the pending save can treat `2-B` as an edit of
+`1` and write sibling `2-D`. The tested case demonstrates that this
+pre-provenance gap alone can produce the duplicate. Without a remote
+descendant, replay creates this sibling; duplicate handling tombstones one
+of the identical branches and converges to one live leaf whose exact content
+matches the saved local file. A second restart must add no revision.
+
+If replication has already added descendant `3-C` during the gap, replay
+can expose an additional branch. When the revisions have a complete shared
+base and their text changes can be combined unambiguously, sensible merge can retain the
+exact content of the incoming descendant. In the tested fixture, merge
+produced revision `4` as a child of `3-C`; its file bytes were exactly
+those of `3-C`, `3-C` remained in its ancestry, and sibling
+`2-D` was tombstoned. The acceptance condition is retaining
+`3-C`'s exact content; it need not remain the current leaf. Both Vaults
+converged to those bytes. This observed outcome is limited to that mergeable
+fixture and is not a universal no-data-loss guarantee.
+
+When changes cannot be combined safely, as in the tested competing whole-line
+replacements, sensible merge does not combine the bodies. Both versions remain available for the existing
+manual conflict dialogue, even when sensible merge is enabled.
+
+An interruption in the database/provenance interval is expected to be very
+rare, especially when combined with a remote descendant arriving in that
+interval; the field frequency is unmeasured. Start-up replays restored work,
+scans, and commits pending local file work before marking the plug-in ready;
+ordinary replication proceeds after that ready boundary. This does not claim
+remote synchronisation before start-up readiness. The accepted design adds no
+cross-store transaction, second journal, or new persistent state to close the
+interval.
+
 ## Operations while a conflict exists
 
 - Editing a file writes a child of its recorded or uniquely reconstructed displayed revision.
