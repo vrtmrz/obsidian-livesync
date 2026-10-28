@@ -39,13 +39,13 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 
 Choose a synchronisation method, prepare its server where required, then follow the corresponding client setup:
 
-| Method | What you need | Setup guides |
-| --- | --- | --- |
-| CouchDB | A CouchDB server you operate or trust. | [Own server](docs/setup_own_server.md), [Docker stack](docker/README.md), [Fly.io](docs/setup_flyio.md), or [IBM Cloudant](docs/setup_cloudant.md); then [Quick Setup](docs/quick_setup.md). |
-| Object Storage | An S3-compatible service or server. | [Object Storage Setup](docs/setup_object_storage.md). |
-| Peer-to-Peer | A signalling relay and an online device containing the data you need. | [P2P communication model](docs/p2p.md), then [Peer-to-Peer Setup](docs/setup_p2p.md). |
+| Method | What you need | Nice to have | Setup guides |
+| --- | --- | --- | --- |
+| CouchDB | A CouchDB server you operate or trust. | — | [Own server](docs/setup_own_server.md), [Docker stack](docker/README.md), [Fly.io](docs/setup_flyio.md), or [IBM Cloudant](docs/setup_cloudant.md); then [Quick Setup](docs/quick_setup.md). |
+| Object Storage | An S3-compatible service or server. | — | [Object Storage Setup](docs/setup_object_storage.md). |
+| Peer-to-Peer | Nothing. | Your own signalling server. | [P2P communication model](docs/p2p.md), then [Peer-to-Peer Setup](docs/setup_p2p.md). |
 
-The project's public P2P signalling relay requires no server provisioning; controlled deployments can provide another compatible relay. A maintained MinIO server installation guide is not currently available here, so Object Storage users need to prepare their chosen S3-compatible service or server separately.
+P2P can use the project's public signalling relay, so there is no server to provision. An optional self-hosted signalling server must be Nostr-compatible. A maintained MinIO server installation guide is not currently available here, so Object Storage users need to prepare their chosen S3-compatible service or server separately.
 
 Each workflow establishes ordinary note synchronisation on the first device, generates a Setup URI for each additional device from that working device, and verifies synchronisation in both directions. The linked hosting guides explain provider-specific setup and costs.
 
@@ -62,9 +62,22 @@ If you would rather not set up and maintain a server yourself, Zenith Hosting of
 
 ## Information in the Status Bar
 
+Synchronisation status is shown in the status bar and inside the editor by default. The main indicators are:
+
+| Indicator | Meaning |
+| --- | --- |
+| ⏹️ | Stopped. |
+| 🌀 | Starting synchronisation. |
+| 💤 | LiveSync mode is waiting for changes. |
+| ⚡️ | Synchronisation is in progress. |
+| ⏩ | Comparing CouchDB change history, including entries already held locally. |
+| ⚠ | An error occurred. |
+| ↑ / ↓ | Uploaded / downloaded Chunks and Metadata. |
+| 📲 / 🌐N | A finite remote operation is in progress / approximate remote requests in progress. |
+
 <a id="customising-status-items-with-css-snippets"></a>
 
-See the [status display guide](docs/tips/status-display.md) for icon meanings, progress counters, and [CSS customisation](docs/tips/status-display.md#customising-status-items-with-css-snippets).
+See the [status display guide](docs/tips/status-display.md) for detailed progress counters and [CSS customisation](docs/tips/status-display.md#customising-status-items-with-css-snippets).
 
 Allow pending file operations to finish before closing Obsidian, especially after deleting or renaming files.
 
