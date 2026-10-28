@@ -43,9 +43,11 @@ Choose a synchronisation method, prepare its server where required, then follow 
 
 | Method | What you need | Nice to have | Setup guides |
 | --- | --- | --- | --- |
-| CouchDB | A CouchDB server. | — | [Set up your own server](docs/setup_own_server.md), [Docker stack](docker/README.md), or [Fly.io](docs/setup_flyio.md); then [Quick Setup](docs/quick_setup.md). |
+| CouchDB | A CouchDB server. | — | [Set up your own server](docs/setup_own_server.md), [Docker stack](docker/README.md), [Fly.io](docs/setup_flyio.md), or [IBM Cloudant (managed)](docs/setup_cloudant.md); then [Quick Setup](docs/quick_setup.md). |
 | Object Storage | An S3-compatible service or server. | — | [Object Storage Setup](docs/setup_object_storage.md). |
 | Peer-to-Peer | Nothing. | Your own signalling server. | [P2P communication model](docs/p2p.md), then [Peer-to-Peer Setup](docs/setup_p2p.md). |
+
+With your own server, you manage both the host and CouchDB; Docker is one way to deploy it. On Fly.io, you manage your CouchDB instance on hosted infrastructure. IBM Cloudant manages the database service.
 
 P2P can use the project's public signalling relay, so there is no server to provision. An optional self-hosted signalling server must be Nostr-compatible. A maintained MinIO server installation guide is not currently available here, so Object Storage users need to prepare their chosen S3-compatible service or server separately.
 
@@ -55,7 +57,9 @@ Each workflow establishes ordinary note synchronisation on the first device, gen
 
 For the Fly.io video walkthrough, see [automated setup](docs/setup_flyio.md#a-very-automated-setup).
 
-### Third-party managed CouchDB hosting
+<a id="third-party-managed-couchdb-hosting"></a>
+
+### Hosting services proposed by the community
 
 > [!NOTE]
 > The services below are operated by third parties. They are not official Self-hosted LiveSync services, and this project neither endorses nor recommends them. The providers proposed the listings in the table.
@@ -65,8 +69,6 @@ If you would rather not set up and maintain a server yourself, the following pro
 | Provider | Offering |
 | --- | --- |
 | [Zenith Hosting](https://zenith.hosting/host/obsidian-livesync) | Managed CouchDB hosting. |
-
-[IBM Cloudant](docs/setup_cloudant.md) is another managed alternative, with some limitations.
 
 Your synchronisation data will reside on a server operated by the provider. Consider whether that is acceptable for your Vault, and review the provider's current terms, pricing, and data-handling policies before using the service.
 
