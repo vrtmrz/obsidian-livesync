@@ -10,40 +10,45 @@ This document uses the independent revision properties defined under
 [Revision](../glossary.md#revision) and the general state model in
 [Conflict resolution and revision provenance](../specs_conflict_resolution.md).
 
-Document History can reconstruct an available historical revision from its
-Chunks and write that content to the Vault through **Back to this revision**.
-The current action writes directly through the storage adapter. It does not
-create a new Metadata revision, clear a logical deletion through a successor,
-or record which database revision produced the restored Vault file.
+Before the current restoration implementation, Document History could
+reconstruct an available historical revision from its Chunks and write that
+content to the Vault through **Back to this revision**. That action wrote
+directly through the storage adapter. It did not create a new Metadata revision,
+clear a logical deletion through a successor, or record which database revision
+produced the restored Vault file.
 
-This leaves a logically deleted Metadata document at `deleted: true` after the
-file has returned to the Vault. A later ordinary Vault save may create a
-non-deleted successor, but restoration must not depend on an unrelated later
-file event.
+That left a logically deleted Metadata document at `deleted: true` after the
+file had returned to the Vault. A later ordinary Vault save could create a
+non-deleted successor, but restoration needed to succeed without depending on
+an unrelated later file event.
 
-The same action does not inspect or preserve revision-tree intent explicitly
-when conflicts exist. Document History currently displays the ancestry of the
-PouchDB winner. It does not display the complete revision tree or the ancestry
-of every conflict leaf.
+Restoration does not resolve conflicts or provide a branch-aware history view.
+Document History displays the ancestry of the PouchDB winner; it does not
+display the complete revision tree or the ancestry of every conflict leaf.
 
 This design covers restoration of one readable historical revision of a normal
 Vault file. It creates a new non-deleted successor revision, reflects that exact
 revision to the Vault, and leaves every other conflict branch available for the
 existing conflict workflow.
 
+The current **Back to this revision** implementation writes that successor
+revision, reflects the exact created revision to the Vault, and records it as
+device-local provenance. The storage-only behaviour described above is the
+pre-fix history.
+
 ## Evidence
 
-A real-Obsidian exercise created a Markdown document, removed it through the
-Vault API, and waited for LiveSync to store a logical-deletion successor. The
-Metadata retained all referenced Chunks, and Document History could reconstruct
-the deleted content.
+A real-Obsidian exercise before the current restoration implementation created
+a Markdown document, removed it through the Vault API, and waited for LiveSync
+to store a logical-deletion successor. The Metadata retained all referenced
+Chunks, and Document History could reconstruct the deleted content.
 
 Selecting **Back to this revision** restored the file and its exact bytes to the
 Vault. The local database nevertheless retained the same deleted current
 revision after file processing had settled. An additional ordinary Vault save
-then created a new non-deleted successor. This demonstrates that content
-reconstruction works and that the missing operation is the database-aware
-restoration step.
+then created a new non-deleted successor. This historical reproduction showed
+that content reconstruction worked while the database-aware restoration step
+was missing.
 
 ## Revision-tree decision
 

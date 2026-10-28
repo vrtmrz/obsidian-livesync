@@ -2,6 +2,12 @@
 
 When working on this repository (writing code, comments, documentation, or commits), you MUST follow these guidelines to maintain consistency.
 
+## Documentation Navigation and Maintenance
+
+- Use the [documentation index](docs/README.md) to select the relevant implementation reference, ADR, proposal, or historical record. The required references below still apply.
+- When implementation or publication changes a recorded status, update its publication note and supporting references in the same change. Preserve the original decision date, reviewed-version baseline, and remaining follow-ups.
+- Mark superseded or frozen documents at their entry point and link to the maintained reference. Keep historical evidence distinguishable from current operating instructions, and preserve existing links when reorganising documentation.
+
 ## Required Reference Files
 
 Before making changes to documentation, user-facing text, or settings:
@@ -39,6 +45,13 @@ Always adhere to the following stylistic and spelling rules:
 
 ---
 
+## Release Notes
+
+- Follow the release-note scope and history rules in [devs.md](devs.md#release-notes). Structure substantive entries as the user-visible outcome, the method that produces it, and supporting conditions, defaults, limitations, or required actions. Put the outcome first and use subordinate items when the explanation needs them.
+- When a pull request explains only its implementation, consult the relevant issue or design decision to establish the problem it resolves. Verify the claimed outcome against the change and its evidence. Distinguish removing a cause from reducing occurrence, detecting a problem, or improving recovery.
+
+---
+
 ## Technical & Architecture Rules
 
 1. **Database Structure**:
@@ -53,6 +66,15 @@ Always adhere to the following stylistic and spelling rules:
      - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](src/apps/cli) using its local `package.json` scripts.
      - `webapp`: A Web-based application.
      - `webpeer`: A Web-based peer utility.
+
+---
+
+## Failure Assessment and Recovery
+
+- Establish the intended behaviour from [the conflict policy](devs.md#conflict-merge-policy) and [the revision-provenance contract](docs/specs_conflict_resolution.md) before classifying a failure. A visible conflict which preserves both versions can be the correct outcome; manual selection alone does not establish a serious defect.
+- Assess preservation of user edits and required revision ancestry separately from extra work, temporary synchronisation delays, or duplicate internal records. A successful automatic merge or an empty queue is not proof of correct recovery. Check the resulting contents and history, safe convergence, and behaviour after restart where applicable.
+- Distinguish data still present on a device or in readable history from irretrievable loss. Verify that a recovery source contains the affected edits before treating the failure as fully recoverable. Follow [the recovery guidance](docs/recovery.md) before recommending a rebuild or reset which could discard unique work.
+- Give demonstrated irreversible information loss particular weight. Describe the actual burden of safe manual conflict resolution without treating automation as a correctness requirement. If preservation, recovery, impact, or the appropriate response remains unclear, review the evidence and alternatives with the collaborating user before changing the design or accepting the risk; continue independent investigation.
 
 ---
 
