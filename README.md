@@ -20,11 +20,7 @@ Find setup guides, troubleshooting, technical references, design decisions, and 
   - Compatible solutions are supported.
 - Support end-to-end encryption.
 - Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Advanced)](docs/settings.md#6-customisation-sync-advanced) or [Hidden File Sync](docs/tips/hidden-file-sync.md).
-- Enable supported, opt-in WebRTC peer-to-peer synchronisation.
-  - No central data-storage server is required, but a signalling relay is still required for peer discovery.
-  - At least one device containing the required data must be online while another device synchronises.
-  - Follow the [Peer-to-Peer Setup](docs/setup_p2p.md) after reviewing the [P2P communication model](docs/p2p.md).
-  - If you would like to see how P2P setup and connectivity behave on your devices, try the guided connection check in the experimental [WebPeer browser utility](https://vrtmrz.github.io/obsidian-livesync/webpeer/). It uses an empty Vault and does not test note synchronisation. See the [WebPeer documentation](src/apps/webpeer/README.md) for its scope and limitations.
+- Synchronise peer-to-peer using WebRTC.
 
 This plug-in may be particularly useful for researchers, engineers, and developers who need to keep their notes fully self-hosted for security reasons. It is also suitable for anyone seeking the peace of mind that comes with knowing their notes remain entirely private.
 
@@ -60,7 +56,9 @@ The linked guides explain the setup and any provider-specific costs.
 
 For the Fly.io video walkthrough, see [automated setup](docs/setup_flyio.md#a-very-automated-setup).
 
-P2P can use the project's public signalling relay, so there is no server to provision. See [How peer-to-peer synchronisation works](docs/p2p.md) for more about the connection.
+P2P does not require a central data-storage server, but a signalling relay is still required for peer discovery. You can use the project's public signalling relay, so there is no server to provision. At least one device containing the required data must be online while another device synchronises. Follow the [Peer-to-Peer Setup](docs/setup_p2p.md) after reviewing the [P2P communication model](docs/p2p.md).
+
+If you would like to see how P2P setup and connectivity behave on your devices, try the guided connection check in the experimental [WebPeer browser utility](https://vrtmrz.github.io/obsidian-livesync/webpeer/). It uses an empty Vault and does not test note synchronisation. See the [WebPeer documentation](src/apps/webpeer/README.md) for its scope and limitations.
 
 ### Start synchronising
 
