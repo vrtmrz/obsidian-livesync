@@ -35,27 +35,38 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 
 ## How to Use
 
-### Setup workflows
+Self-hosting lets us choose a server we trust and manage it ourselves. Please set up and maintain your own server, and keep it secure.
 
-Self-hosting lets us choose a server we trust and manage it ourselves. For CouchDB, please set up and maintain your own instance. CouchDB can run on a Raspberry Pi, another server you operate, or infrastructure such as Fly.io. Please keep your server secure.
+<a id="setup-workflows"></a>
 
-Choose a synchronisation method, prepare its server where required, then follow the corresponding client setup:
+### What you need
 
-| Method | What you need | Nice to have | Setup guides |
-| --- | --- | --- | --- |
-| CouchDB | A CouchDB server. | — | [Set up your own server](docs/setup_own_server.md), [Docker stack](docker/README.md), [Fly.io](docs/setup_flyio.md), or [IBM Cloudant (managed)](docs/setup_cloudant.md); then [Quick Setup](docs/quick_setup.md). |
-| Object Storage | An S3-compatible service or server. | — | [Object Storage Setup](docs/setup_object_storage.md). |
-| Peer-to-Peer | Nothing. | Your own signalling server. | [P2P communication model](docs/p2p.md), then [Peer-to-Peer Setup](docs/setup_p2p.md). |
+| Method | What you need | Nice to have |
+| --- | --- | --- |
+| CouchDB | A CouchDB-compatible server. | — |
+| Object Storage | An S3-compatible service or server. | — |
+| Peer-to-Peer | Nothing. | Your own signalling server. |
 
-With your own server, you manage both the host and CouchDB; Docker is one way to deploy it. On Fly.io, you manage your CouchDB instance on hosted infrastructure. IBM Cloudant manages the database service.
+For a CouchDB-compatible server, choose a setup guide for your environment:
 
-P2P can use the project's public signalling relay, so there is no server to provision. An optional self-hosted signalling server must be Nostr-compatible. A maintained MinIO server installation guide is not currently available here, so Object Storage users need to prepare their chosen S3-compatible service or server separately.
+- [Your own server](docs/setup_own_server.md): run CouchDB on a Raspberry Pi or another server you manage.
+- [Docker](docker/README.md): deploy CouchDB with the supplied Docker stack.
+- [Fly.io](docs/setup_flyio.md): manage your own CouchDB instance on hosted infrastructure.
+- [IBM Cloudant (managed)](docs/setup_cloudant.md): use a database service managed by IBM.
 
-Each workflow establishes ordinary note synchronisation on the first device, generates a Setup URI for each additional device from that working device, and verifies synchronisation in both directions. The linked hosting guides explain provider-specific setup and costs.
+The linked guides explain the setup and any provider-specific costs.
 
 <a id="3-minute-setup---couchdb-on-flyio"></a>
 
 For the Fly.io video walkthrough, see [automated setup](docs/setup_flyio.md#a-very-automated-setup).
+
+P2P can use the project's public signalling relay, so there is no server to provision. See [How peer-to-peer synchronisation works](docs/p2p.md) for more about the connection.
+
+### Start synchronising
+
+1. Install and configure Self-hosted LiveSync on your first device using [Quick Setup](docs/quick_setup.md) for CouchDB, [Object Storage Setup](docs/setup_object_storage.md), or [Peer-to-Peer Setup](docs/setup_p2p.md).
+2. Generate a Setup URI from that working device and follow the same guide to add your other devices.
+3. Create test notes and confirm that they synchronise in both directions.
 
 <a id="third-party-managed-couchdb-hosting"></a>
 

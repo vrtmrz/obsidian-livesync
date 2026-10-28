@@ -8,7 +8,7 @@ A document's original date and reviewed-version fields describe its baseline. Re
 
 | Task | Start here |
 |---|---|
-| Choose a synchronisation method | [Project overview and setup workflows](../README.md#setup-workflows) |
+| Get started | [What you need](../README.md#what-you-need), then [Start synchronising](../README.md#start-synchronising) |
 | Choose a CouchDB setup | [Own server](setup_own_server.md), [Docker stack](../docker/README.md), [Fly.io](setup_flyio.md), or [IBM Cloudant (managed)](setup_cloudant.md) |
 | Configure CouchDB clients | [Quick setup](quick_setup.md) |
 | Find hosting services proposed by the community | [Third-party hosting listings](../README.md#hosting-services-proposed-by-the-community) |
