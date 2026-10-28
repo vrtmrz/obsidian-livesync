@@ -56,9 +56,15 @@ For the Fly.io video walkthrough, see [automated setup](docs/setup_flyio.md#a-ve
 ### Third-party managed CouchDB hosting
 
 > [!NOTE]
-> The following is a third-party hosting option proposed by Zenith Hosting. It is not an official Self-hosted LiveSync service, and it is neither endorsed nor recommended by this project.
+> The services below are operated by third parties. They are not official Self-hosted LiveSync services, and this project neither endorses nor recommends them.
 
-If you would rather not set up and maintain a server yourself, Zenith Hosting offers a managed CouchDB server which this plug-in can be configured to connect to: [Zenith Hosting](https://zenith.hosting/host/obsidian-livesync). As with any hosted service, your data will reside on a server operated by a third party, so please consider whether that is acceptable for your vault before using it.
+If you prefer a hosted CouchDB server, the following providers offer options for this plug-in:
+
+| Provider | Offering |
+| --- | --- |
+| [Zenith Hosting](https://zenith.hosting/host/obsidian-livesync) | Managed CouchDB hosting. |
+
+Your synchronisation data will reside on a server operated by the provider. Consider whether that is acceptable for your Vault, and review the provider's current terms, pricing, and data-handling policies before using the service.
 
 ## Information in the Status Bar
 
