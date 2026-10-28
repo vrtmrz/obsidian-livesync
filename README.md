@@ -19,7 +19,7 @@ Find setup guides, troubleshooting, technical references, design decisions, and 
 - Use open-source solutions for the server.
   - Compatible solutions are supported.
 - Support end-to-end encryption.
-- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Beta)](docs/settings.md#6-customisation-sync-advanced) or [Hidden File Sync](docs/tips/hidden-file-sync.md).
+- Synchronise settings, snippets, themes, and plug-ins via [Customisation Sync (Advanced)](docs/settings.md#6-customisation-sync-advanced) or [Hidden File Sync](docs/tips/hidden-file-sync.md).
 - Enable supported, opt-in WebRTC peer-to-peer synchronisation.
   - No central data-storage server is required, but a signalling relay is still required for peer discovery.
   - At least one device containing the required data must be online while another device synchronises.
