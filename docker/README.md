@@ -122,10 +122,14 @@ TS_AUTHKEY=tskey-auth-...
 TS_HOSTNAME=livesync
 ```
 
-Choose the exposure before starting the profile. The bundled `config/ts-serve.json` sets `AllowFunnel` to `true`, requesting public HTTPS when the tailnet permits Funnel. It is not a private-only default.
+**Two sub-modes**:
 
-- For private tailnet access, set that entry to `false` and verify the effective Serve configuration.
-- For public Funnel access, retain `true` and configure the required tailnet permissions. See the [Tailscale Docker guide](https://tailscale.com/blog/docker-tailscale-guide) for the distinction between Serve and Funnel.
+- **Private tailnet access (VPN / Serve)**: choose this for access from your own devices on your tailnet, subject to its access rules. Set `AllowFunnel` to `false` in `config/ts-serve.json`, and use the Tailscale app on those devices.
+- **Public HTTPS (Funnel)**: choose this when devices need to connect over the Internet without joining your tailnet. Keep `AllowFunnel` set to `true`, and allow Funnel for this server in your tailnet's access controls.
+
+Both modes use a Tailscale HTTPS name, such as `https://livesync.<tailnet>.ts.net`, so you do not need to buy a domain. Use the actual DNS name assigned to your server in Tailscale. See the [Tailscale Docker guide](https://tailscale.com/blog/docker-tailscale-guide) for HTTPS and Funnel prerequisites.
+
+Choose the mode before starting the profile. The bundled `config/ts-serve.json` sets `AllowFunnel` to `true`, requesting public HTTPS when the tailnet permits Funnel; change that entry to `false` to keep the Tailscale endpoint private. After starting or restarting the Tailscale service, check the effective configuration with `docker exec livesync-tailscale tailscale serve status`. The separate host HTTP port described above is unaffected by this choice.
 
 The bundled service expects `/dev/net/tun`. On hosts without that device, follow Tailscale's userspace-networking instructions and adjust the device mount as well as `TS_USERSPACE`; changing the environment variable alone leaves the required bind mount in place.
 
@@ -137,7 +141,11 @@ The bundled service expects `/dev/net/tun`. On hosts without that device, follow
 
 #### Step 1: Create a Cloudflare Tunnel
 
-Create a remotely managed tunnel using the current [Cloudflare Tunnel setup instructions](https://developers.cloudflare.com/tunnel/get-started/). Copy its connector token into `CF_TUNNEL_TOKEN` below. This Compose profile runs the connector; a separate host installation of `cloudflared` is unnecessary for this profile.
+1. Open the [Cloudflare dashboard](https://dash.cloudflare.com/) and go to **Networking → Tunnels**.
+2. Select **Create Tunnel**, give it a name such as `obsidian-livesync`, and create it.
+3. On the connector setup screen, copy the installation command into a text editor without running it. Extract only the tunnel token, the string beginning with `eyJ`, and put it in `CF_TUNNEL_TOKEN` in the next step. Keep the token private.
+
+For an existing tunnel, select it and use **Add a replica** to display the installation command again. This Compose profile starts the connector in step 4. Until then, the dashboard can show the tunnel as disconnected. See the official [tunnel setup](https://developers.cloudflare.com/tunnel/get-started/) and [token instructions](https://developers.cloudflare.com/tunnel/reference/tunnel-tokens/) for the current screens.
 
 #### Step 2: Configure Environment
 
@@ -268,7 +276,72 @@ docker run --rm --network none -v obsidian-livesync_couchdb-data:/data:ro \
 docker compose start couchdb
 ```
 
-Before restoration, preserve the existing database volume. Restore and verify the archive in a separate recovery volume with a compatible CouchDB installation before replacing the active data. Do not extract an archive over a running database. See [Backing up CouchDB](https://docs.couchdb.org/en/stable/maintenance/backups.html) for database, configuration, and replication-based backup options.
+### Restore a backup
+
+Restore into a new volume so that the current database remains available. The following Bash commands run from the `docker/` directory. Use a trusted archive from the backup above, and the same CouchDB image version used to create it. Keep the saved CouchDB configuration available too. Run each block only after the previous step succeeds.
+
+First, choose the archive and create a new recovery volume. Docker generates an unused volume name:
+
+```bash
+backupArchive='<BACKUP ARCHIVE FILENAME>'
+recoveryImage='<COUCHDB IMAGE TAG OR DIGEST FROM THE BACKUP>'
+recoveryVolume=$(docker volume create) &&
+docker run --rm --network none \
+  --mount "type=volume,src=$recoveryVolume,dst=/data" \
+  --mount "type=bind,src=$(pwd)/backup,dst=/backup,readonly" \
+  alpine:3.22 tar xzf "/backup/$backupArchive" -C /data
+```
+
+If extraction fails, stop here. The new recovery volume may be empty or incomplete; remove it with `docker volume rm "$recoveryVolume"` before retrying. The original database volume is unaffected.
+
+Start a temporary CouchDB with the restored data. It has no external network connection or published ports, so synchronising clients cannot reach it:
+
+```bash
+recoveryUser='<COUCHDB USERNAME>'
+recoveryPassword='<COUCHDB PASSWORD>'
+recoveryContainer=$(docker run -d --network none \
+  -e COUCHDB_USER="$recoveryUser" \
+  -e COUCHDB_PASSWORD="$recoveryPassword" \
+  --mount "type=volume,src=$recoveryVolume,dst=/opt/couchdb/data" \
+  "$recoveryImage")
+```
+
+Wait for CouchDB to start, then inspect its health, database list, and your restored database. Replace the database name with the one you backed up:
+
+```bash
+recoveryDatabase='<DATABASE NAME>'
+docker exec "$recoveryContainer" curl -fsS \
+  -u "$recoveryUser:$recoveryPassword" http://127.0.0.1:5984/_up
+docker exec "$recoveryContainer" curl -fsS \
+  -u "$recoveryUser:$recoveryPassword" http://127.0.0.1:5984/_all_dbs
+docker exec "$recoveryContainer" curl -fsS \
+  -u "$recoveryUser:$recoveryPassword" "http://127.0.0.1:5984/$recoveryDatabase"
+docker exec "$recoveryContainer" curl -fsS \
+  -u "$recoveryUser:$recoveryPassword" \
+  "http://127.0.0.1:5984/$recoveryDatabase/_all_docs?limit=5"
+```
+
+Compare the database names, document counts, and expected document IDs with your backup. These checks establish that CouchDB can read the restored files; they do not establish that every required note is present. If a check fails, inspect `docker logs "$recoveryContainer"` and keep the original volume in place.
+
+Once you have verified the restored database, stop and remove only the temporary container, and note the recovery volume name:
+
+```bash
+docker stop "$recoveryContainer" && docker rm "$recoveryContainer"
+docker volume inspect "$recoveryVolume" --format '{{.Name}}'
+```
+
+To use the restored copy, first [choose the authoritative copy](../docs/recovery.md#first-choose-the-authoritative-copy) and suspend synchronisation on your devices. Stop the stack with `docker compose down`, using the same profile options as usual and without `-v`. Save a copy of `docker-compose.yml`, then replace only its `couchdb-data` volume declaration with the following, using the printed recovery volume name. Keep the other volume declarations:
+
+```yaml
+volumes:
+  couchdb-data:
+    external: true
+    name: <RECOVERY VOLUME NAME>
+```
+
+Use the same CouchDB image version in the `couchdb` service, restore any saved configuration changes, and start the stack with your usual `docker compose up -d` profile command. The original volume and archive remain available. Verify the required notes from a separate test Vault. When the restored remote is your chosen source of truth, follow [Reset Synchronisation on This Device](../docs/recovery.md#reset-synchronisation-on-this-device) on your existing devices before resuming them, preserving any newer local work first.
+
+See [Backing up CouchDB](https://docs.couchdb.org/en/stable/maintenance/backups.html) for database, configuration, and replication-based backup options.
 
 ---
 
