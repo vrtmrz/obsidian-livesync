@@ -3,6 +3,8 @@
 
 This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 
+The CouchDB instance is yours to manage. You can configure it yourself or set up another instance and switch to it, following the preservation and recovery guidance below.
+
 > [!WARNING]
 > Before replacing or deleting an existing CouchDB instance, back up every available Vault and the remote database, then [choose the authoritative copy](recovery.md#first-choose-the-authoritative-copy). Stop or suspend synchronisation on other devices while reviewing recovery options. Local files alone do not establish that every needed edit or revision has been preserved.
 
