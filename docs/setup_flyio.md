@@ -4,9 +4,7 @@
 This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 
 > [!WARNING]
-> It is **your** instance. In Obsidian, we have files locally. Hence, do not hesitate to destroy the remote database if you feel something have got weird. We can launch and switch to the new CouchDB instance anytime[^1].
-> 
-[^1]: Actually, I am always building the database for reproduction of the issue like so.
+> Before replacing or deleting an existing CouchDB instance, back up every available Vault and the remote database, then [choose the authoritative copy](recovery.md#first-choose-the-authoritative-copy). Stop or suspend synchronisation on other devices while reviewing recovery options. Local files alone do not establish that every needed edit or revision has been preserved.
 
 > [!NOTE] 
 > **What and why is the Fly.io?**  
@@ -172,7 +170,7 @@ Visit your newly deployed app at https://billowing-dawn-6619.fly.dev/
 
 After the initial setup, CouchDB needs some more customisations to be used from Self-hosted LiveSync. It can be configured in browsers or by HTTP-REST APIs.
 
-This section is set up using the REST API.
+This section uses the REST API. The macOS and Linux commands require [jq](https://jqlang.org/download/) to encode credentials as JSON. Windows uses PowerShell's built-in `ConvertTo-Json`.
 
 1. Prepare environment variables.
 
@@ -198,13 +196,36 @@ $creds = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(
 - Mac or Linux
 
 ```bash
-curl -X POST "${couchHost}/_cluster_setup" -H "Content-Type: application/json" -d "{\"action\":\"enable_single_node\",\"username\":\"${couchUser}\",\"password\":\"${couchPwd}\",\"bind_address\":\"0.0.0.0\",\"port\":5984,\"singlenode\":true}"  --user "${couchUser}:${couchPwd}"
+clusterSetupJSON=$(jq -n \
+  --arg username "$couchUser" \
+  --arg password "$couchPwd" \
+  '{
+    action: "enable_single_node",
+    username: $username,
+    password: $password,
+    bind_address: "0.0.0.0",
+    port: 5984,
+    singlenode: true
+  }') &&
+curl -X POST "${couchHost}/_cluster_setup" \
+  -H "Content-Type: application/json" \
+  --data-binary "$clusterSetupJSON" \
+  --user "${couchUser}:${couchPwd}"
 ```
 
 - Windows
 
 ```powershell
-iwr -UseBasicParsing -Method 'POST' -ContentType 'application/json; charset=utf-8' -Headers @{ 'Authorization' = 'Basic ' + $creds } "${couchHost}/_cluster_setup" -Body "{""action"":""enable_single_node"",""username"":""${couchUser}"",""password"":""${couchPwd}"",""bind_address"":""0.0.0.0"",""port"":5984,""singlenode"":true}"
+$clusterSetupJSON = @{
+    action = 'enable_single_node'
+    username = $couchUser
+    password = $couchPwd
+    bind_address = '0.0.0.0'
+    port = 5984
+    singlenode = $true
+} | ConvertTo-Json -Compress
+
+iwr -UseBasicParsing -Method 'POST' -ContentType 'application/json; charset=utf-8' -Headers @{ 'Authorization' = 'Basic ' + $creds } "${couchHost}/_cluster_setup" -Body $clusterSetupJSON
 ```
 
 Note: if the response code is not 200. We have to retry the request once again.
@@ -248,6 +269,8 @@ Now the CouchDB is ready to use from Self-hosted LiveSync. Use your Fly.io app's
 Please refer to [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device).
 
 ## Delete the Instance
+
+Before deleting the instance, preserve the data you still need and follow [Recovery and flag files](recovery.md#first-choose-the-authoritative-copy).
 
 If you want to delete the CouchDB instance, you can do that in [fly.io Dashboard](https://fly.io/dashboard/personal)
 

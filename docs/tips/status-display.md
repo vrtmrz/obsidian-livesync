@@ -9,6 +9,7 @@ Use [General Settings](../settings.md#2-general-settings) to choose whether sync
     -   🌐N Approximate remote requests currently in progress
 -   Status
     -   ⏹️ Stopped
+    -   🌀 Starting synchronisation
     -   ⏩ Comparing CouchDB change history, including entries already held locally
     -   💤 LiveSync enabled. Waiting for changes
     -   ⚡️ Synchronisation in progress

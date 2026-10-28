@@ -10,7 +10,7 @@ A document's original date and reviewed-version fields describe its baseline. Re
 |---|---|
 | Choose a synchronisation method | [Project overview and setup workflows](../README.md#setup-workflows) |
 | Set up CouchDB clients | [CouchDB server setup](setup_own_server.md), then [Quick setup](quick_setup.md) |
-| Choose a packaged CouchDB deployment | [Docker stack](../docker/README.md), [Fly.io](setup_flyio.md), or [IBM Cloudant](setup_cloudant.md) |
+| Choose a CouchDB hosting option | [Docker stack](../docker/README.md), [Fly.io](setup_flyio.md), or [IBM Cloudant](setup_cloudant.md) |
 | Set up S3-compatible storage | [Object Storage Setup](setup_object_storage.md) |
 | Set up peer-to-peer synchronisation | [P2P communication model](p2p.md), then [Peer-to-Peer Setup](setup_p2p.md) |
 | Diagnose P2P connectivity | [Browser-assisted check](../src/apps/webpeer/README.md#p2p-connection-check), [network tips](tips/p2p-sync-tips.md), and [self-hosted TURN](../docker/coturn/README.md) |
