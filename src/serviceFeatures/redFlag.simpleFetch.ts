@@ -13,6 +13,7 @@ import {
 import { adjustSettingToRemoteIfNeeded, cancelScheduledInitialisation, processVaultInitialisation } from "./redFlag";
 import { $msg } from "@/common/translation";
 import type { AllMessageKeys } from "@/common/rosetta";
+import { readFetchSelection, saveFetchSelection, clearFetchSelection, describeFetchRemote } from "./redFlag.fetchState";
 
 export const SIMPLE_FETCH_STAGE1_REMOTE_WINS = "Overwrite all with remote files";
 export const SIMPLE_FETCH_STAGE1_NEWER_WINS = "Compare time and take newer";
@@ -25,8 +26,6 @@ export const SIMPLE_FETCH_STAGE2_REMOTE_DELETE_ALL = "Delete local files if not 
 export const SIMPLE_FETCH_STAGE2_NEWER_CLEANUP = "Delete local files if deleted on remote";
 export const SIMPLE_FETCH_STAGE2_NEWER_SYNC_ALL = "Keep local files even if deleted on remote";
 export const STAGE2_ABORT = "Cancel all and reboot";
-
-const SIMPLE_FETCH_MODE_KEY = "simple-fetch-mode";
 
 function buildSimpleFetchResult(stage1: string, stage2?: string) {
     if (stage1 === SIMPLE_FETCH_STAGE1_DETAILED) {
@@ -63,27 +62,8 @@ function buildSimpleFetchResult(stage1: string, stage2?: string) {
     return undefined;
 }
 
-async function rememberSimpleFetchMode(host: NecessaryServices<"setting", never>, stage1: string, stage2?: string) {
-    await host.services.setting.config.setValue(SIMPLE_FETCH_MODE_KEY, JSON.stringify({ stage1, stage2 }));
-}
-
-async function getRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
-    const saved = await host.services.setting.config.getValue(SIMPLE_FETCH_MODE_KEY, "");
-    if (!saved) return undefined;
-    let remembered: ReturnType<typeof buildSimpleFetchResult> = undefined;
-    try {
-        const { stage1, stage2 } = JSON.parse(saved) as { stage1?: string; stage2?: string };
-        if (stage1) remembered = buildSimpleFetchResult(stage1, stage2);
-    } catch {
-        // Clear below; the saved choice is optional and can be rebuilt by asking again.
-    }
-    if (remembered) return remembered;
-    await host.services.setting.config.delete(SIMPLE_FETCH_MODE_KEY);
-    return undefined;
-}
-
-async function clearRememberedSimpleFetchMode(host: NecessaryServices<"setting", never>) {
-    await host.services.setting.config.delete(SIMPLE_FETCH_MODE_KEY);
+function escapeMarkdownText(value: string): string {
+    return value.replace(/[\\`*_{}[\]()<>|]/g, "\\$&").replace(/[\r\n]/g, " ");
 }
 
 async function confirmTranslatedChoice(
@@ -101,10 +81,45 @@ async function confirmTranslatedChoice(
 }
 
 export async function askSimpleFetchMode(
-    host: NecessaryServices<"UI" | "setting", never>
+    host: NecessaryServices<"UI" | "setting", "storageAccess">
 ): Promise<{ mode: string; options: Partial<FullScanOptions> } | "cancelled" | "aborted"> {
-    const remembered = await getRememberedSimpleFetchMode(host);
-    if (remembered) return remembered;
+    const saved = await readFetchSelection(host);
+    const remembered =
+        typeof saved === "object" && saved.stage1 !== SIMPLE_FETCH_STAGE1_DETAILED
+            ? buildSimpleFetchResult(saved.stage1, saved.stage2)
+            : undefined;
+    const canSave = saved === "empty" || remembered !== undefined;
+    const remote = escapeMarkdownText(describeFetchRemote(host.services.setting.currentSettings()));
+    if (remembered && typeof saved === "object") {
+        const decision = await confirmTranslatedChoice(
+            host,
+            $msg("Resume scheduled fetch?"),
+            $msg(
+                "Apply these saved choices to the current remote?\n\nCurrent remote: ${REMOTE}\n\n- ${STAGE1}\n- ${STAGE2}\n\nThe fetch flag may remain after an interruption or an incomplete cleanup. Continue only if this fetch is still intended.",
+                {
+                    REMOTE: remote,
+                    STAGE1: $msg(saved.stage1 as AllMessageKeys),
+                    STAGE2: $msg(saved.stage2 as AllMessageKeys),
+                }
+            ),
+            ["Continue with these choices", "Choose again", SIMPLE_FETCH_STAGE1_CANCEL],
+            SIMPLE_FETCH_STAGE1_CANCEL
+        );
+        if (decision === "Continue with these choices") return remembered;
+        if (decision !== "Choose again") return "cancelled";
+    } else if (saved !== "empty") {
+        const decision = await confirmTranslatedChoice(
+            host,
+            $msg("Saved fetch choices could not be read"),
+            $msg(
+                "The fetch flag does not contain one supported selection. Choose new options and continue with the current remote?\n\nCurrent remote: ${REMOTE}\n\nThe flag contents will remain unchanged. The new choices apply only to this attempt; another restart will ask again. Completing or cancelling the fetch removes the flag.",
+                { REMOTE: remote }
+            ),
+            ["Choose new options and continue", SIMPLE_FETCH_STAGE1_CANCEL],
+            SIMPLE_FETCH_STAGE1_CANCEL
+        );
+        if (decision !== "Choose new options and continue") return "cancelled";
+    }
 
     const msg = $msg(
         `We are about to retrieve the remote data.
@@ -140,6 +155,7 @@ Firstly, how shall we handle the data retrieved from this remote source?
     if (!stage1 || stage1 === SIMPLE_FETCH_STAGE1_CANCEL) return "cancelled";
 
     if (stage1 === SIMPLE_FETCH_STAGE1_DETAILED) {
+        if (canSave) await clearFetchSelection(host);
         return buildSimpleFetchResult(stage1)!;
     }
 
@@ -166,9 +182,10 @@ Firstly, how shall we handle the data retrieved from this remote source?
         );
         if (!stage2) return "cancelled";
         if (stage2 === STAGE2_ABORT) {
+            if (canSave) await clearFetchSelection(host);
             return "aborted";
         }
-        await rememberSimpleFetchMode(host, stage1, stage2);
+        if (canSave) await saveFetchSelection(host, stage1, stage2);
         return buildSimpleFetchResult(stage1, stage2)!;
     }
 
@@ -195,9 +212,10 @@ Firstly, how shall we handle the data retrieved from this remote source?
         );
         if (!stage2) return "cancelled";
         if (stage2 === STAGE2_ABORT) {
+            if (canSave) await clearFetchSelection(host);
             return "aborted";
         }
-        await rememberSimpleFetchMode(host, stage1, stage2);
+        if (canSave) await saveFetchSelection(host, stage1, stage2);
         return buildSimpleFetchResult(stage1, stage2)!;
     }
 
@@ -233,18 +251,15 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
             "Remediation mode is active, so the detailed fetch flow is used instead of Simple Fetch.",
             LOG_LEVEL_NOTICE
         );
-        await clearRememberedSimpleFetchMode(host);
         return undefined;
     }
     const result = await askSimpleFetchMode(host);
     if (result === "cancelled") {
         log("Fetch cancelled by user.", LOG_LEVEL_NOTICE);
-        await clearRememberedSimpleFetchMode(host);
         return await cancelScheduledInitialisation(host, cleanupFlag);
     }
     if (result === "aborted") {
         log("Fetch exited by user.", LOG_LEVEL_NOTICE);
-        await clearRememberedSimpleFetchMode(host);
         host.services.appLifecycle.performRestart();
         return false;
     }
@@ -255,7 +270,6 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
     const settings = host.services.setting.currentSettings();
     if (!(await adjustSettingToRemoteIfNeeded(host, log, { preventFetchingConfig: false }, settings))) {
         log("Fetch initialisation cancelled by user.", LOG_LEVEL_NOTICE);
-        await clearRememberedSimpleFetchMode(host);
         return await cancelScheduledInitialisation(host, cleanupFlag);
     }
 
@@ -292,9 +306,10 @@ export async function askAndPerformFastSetupOnScheduledFetchAll(
                 return false;
             }
         }
-        await host.serviceModules.rebuilder.finishRebuild();
+        if (!(await host.serviceModules.rebuilder.finishRebuild())) {
+            throw new Error("Fast Setup could not finalise the rebuilt database.");
+        }
         await cleanupFlag();
-        await clearRememberedSimpleFetchMode(host);
         log("Simple fetch and scan operation completed.", LOG_LEVEL_NOTICE);
         return true;
     };
