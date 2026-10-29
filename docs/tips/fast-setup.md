@@ -1,8 +1,8 @@
 # Fast Setup (Simple Fetch)
 
-Fast Setup is a streamlined, user-friendly data retrieval and initialisation flow designed to simplify setting up secondary devices or recovering databases. 
+Fast Setup (Simple Fetch) is the preferred flow for initial replication to a new or empty secondary device. It can also be used for recovery, but a retrieval choice may replace local files. Preserve valuable local and remote copies before choosing how to handle a Vault that already contains work. See [Recovery and flag files](../recovery.md#first-choose-the-authoritative-copy) for guidance on identifying the authoritative copy.
 
-Instead of guiding the user through the detailed multi-step setup wizard dialogues, Fast Setup prompts the user with high-level sync decisions and automates database download and local storage scanning in one continuous process.
+Instead of guiding the user through the detailed multi-step setup wizard dialogues, Fast Setup prompts the user with high-level synchronisation decisions and automates data retrieval and local storage scanning in one process. The retrieval path depends on the selected remote.
 
 ---
 
@@ -16,14 +16,14 @@ On the next startup, the plug-in boots in scheduled fetch mode and opens a simpl
 
 ## Technical Characteristics
 
-Fast Setup leverages several backend optimisations to make the retrieval fast, safe, and clean:
+Fast Setup uses several retrieval and reflection behaviours:
 
-1. **Stream-based Replication for Speed**
-   - It fetches all remote metadata via stream reception, which is significantly faster than traditional chunk-by-chunk retrieval.
+1. **Stream-based Fast Fetch for CouchDB**
+   - The stream-based Fast Fetch path is CouchDB-specific. It retrieves remote Metadata incrementally; Object Storage and P2P use their own retrieval paths.
 2. **Delayed File Reflection to Prevent Corrupted Warnings**
-   - By suspending file reflection during the download phase, it prevents the plug-in from raising temporary or false "corrupted data synchronisation" or "size mismatch" warnings that can occur during the chunk download process.
-3. **Time-Based Comparison is Generally Sufficient**
-   - Since the vault is entering a fresh synchronisation or recovery state, comparing files based on their modification timestamps (newer-wins) is highly reliable and sufficient to reconcile files without needing complex manual conflict resolution.
+   - Delaying local file reflection during retrieval suppresses temporary synchronisation warnings while remote data is being fetched.
+3. **Timestamp Comparison Selects a Whole File**
+   - **Compare time and take newer** compares modification timestamps and selects one whole-file version. It does not merge file contents. Before choosing this policy for a Vault with existing work, preserve valuable local and remote edits and review [Recovery and flag files](../recovery.md#first-choose-the-authoritative-copy).
 
 ---
 
@@ -33,11 +33,11 @@ Fast Setup leverages several backend optimisations to make the retrieval fast, s
 You will be prompted to choose how the retrieved remote data will interact with your existing local files:
 
 1. **Compare time and take newer (newer-wins)**
-   - Compares the modified time of files and accepts the newer version.
-   - **Recommended if:** You have been using Self-hosted LiveSync and have made changes on multiple devices that you want to merge.
+   - Compares the modified time of files and selects the newer whole-file version; it does not combine edits from both versions.
+   - **Recommended if:** You have preserved both versions and deliberately want to select one according to its modification time.
 2. **Overwrite all with remote files (remote-wins)**
    - Remote data is treated as the source of truth.
-   - **Recommended if:** You are setting up a brand new device with an empty or clean vault.
+   - **Recommended if:** You are setting up a new secondary device with an empty Vault.
    - *Warning: This will overwrite local files with remote files. Please ensure you have a backup of your local vault before proceeding.*
 3. **Use the detailed flow (legacy)**
    - Switches back to the detailed, traditional setup wizard dialogues.

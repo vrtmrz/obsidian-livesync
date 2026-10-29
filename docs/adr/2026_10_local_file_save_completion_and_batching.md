@@ -2,15 +2,17 @@
 date: 2026-10-24
 commonlib-version: "0.2.0"
 self-hosted-livesync-version: "1.0.40"
-status: accepted-unreleased
+status: accepted
 ---
 
 # Architectural Decision Record: Local File Save Completion and Batching
 
 ## Status
 
-Accepted on 2026-10-25. The package versions above identify the investigated
-baseline, rather than a released implementation of this decision.
+Accepted on 2026-10-25. The recovery contracts and LiveSync mode batching in
+implementation-order steps 1–3 are present in current Self-hosted LiveSync
+1.0.42 with Commonlib 0.2.2. The version fields above retain the investigated
+baseline. Further same-path coalescing in step 4 remains a follow-up.
 
 ## Context
 
@@ -349,6 +351,9 @@ eliminating genuine concurrent-edit conflicts or as a confirmed fix for #1207.
 
 ## Ownership and implementation order
 
+The list below records the implementation sequence. Steps 1–3 are published
+in the current version line; the further coalescing in step 4 remains planned.
+
 1. **Commonlib recovery:** event ownership, ordered snapshot persistence,
    successful completion and failure propagation, finite flush boundaries, and
    same-time content reconciliation. Add focused failing regressions before
@@ -373,6 +378,11 @@ automation transaction API require a further design decision.
 
 ## Verification required
 
+The matrix below records the acceptance criteria for implementation steps 1–3
+and remains useful for regression work. Publication in the current version line
+does not extend the historical test results above to untested platforms or
+automation workflows.
+
 Use controlled promises at the manager and persistence boundaries for focused
 regressions, and real PouchDB tests for content and ancestry. The acceptance
 matrix is:
@@ -395,13 +405,13 @@ matrix is:
 | Old settings, mode changes, explicit opt-in, and settings import                                                     | Existing LiveSync mode users retain immediate saving until they choose batching.                                                       |
 | Incoming identical content, an edit, a deletion, or delete/recreate while waiting                                    | Preserve genuine branches without extra conflicts or loss of local work.                                                               |
 
-Keep the existing E2E comparison between batching disabled, an ignored legacy
-setting, and explicitly enabled batching. Repeat both directions, manual
-synchronisation, saved-snapshot restart, and controlled in-progress restart with
-the fix. Record the original failure separately from repaired results; a pass
-with a different timestamp bucket or a test-only bundle is not verification of
-the production fix. Run platform-specific lifecycle checks before extending the
-evidence to Windows or mobile.
+The original E2E plan compared batching disabled, an ignored legacy setting, and
+explicitly enabled batching in both directions, with manual synchronisation,
+saved-snapshot restart, and controlled in-progress restart. Record the original
+failure separately from repaired results; a pass with a different timestamp
+bucket or a test-only bundle is not verification of the production fix. Keep
+platform-specific lifecycle evidence bounded to the tested environments before
+extending conclusions to Windows or mobile.
 
 ## Alternatives and consequences
 

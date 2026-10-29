@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted — the user-facing controls will be introduced in stages. This record defines their boundaries before Commonlib settings and LiveSync interfaces are changed.
+Accepted. The P2P message-size presets and connection-path choice are present
+in current Self-hosted LiveSync 1.0.42 with Commonlib 0.2.2. The proposed
+`Test TURN server` action and concise route diagnostics in the Obsidian
+interface remain future work.
 
 ## Context
 
@@ -11,10 +14,12 @@ WebRTC connectivity depends on both devices, their browsers or embedded WebViews
 The current P2P transport has several relevant properties:
 
 - Trystero supplies the Nostr signalling strategy and the browser-owned WebRTC connection.
-- Commonlib limits one RPC wire payload to 15,360 bytes so it remains below Trystero's own action-chunk boundary.
-- Trystero supplies ordinary STUN servers and accepts an optional TURN server list with one username and credential.
-- ICE chooses a direct, server-reflexive, or TURN-relayed path automatically.
-- Commonlib can collect raw WebRTC statistics, but LiveSync does not yet present the selected candidate route in a concise diagnostic result.
+- Commonlib defaults to a 15,360-byte RPC wire payload limit, below Trystero's own action-chunk boundary; the presets below can lower it.
+- Manual TURN settings use one URL list, username, and credential. Managed preparation can supply multiple ICE server entries with their own credentials.
+- ICE chooses a direct, server-reflexive, or TURN-relayed path automatically unless the profile selects `TURN relay only`.
+- Commonlib can collect raw WebRTC statistics. The CLI reports the selected
+  candidate route, but the Obsidian interface does not yet present it in a
+  concise diagnostic result.
 
 Issue reports suggest that reducing the application payload may improve some mobile and constrained-network paths. A VPN such as Tailscale may also turn an unreliable route into a reliable one. These observations are consistent with NAT, path-MTU, fragmentation, or intermediary behaviour, but they do not prove one universal cause. Browser WebRTC implementations retain responsibility for SCTP, DTLS, ICE, packetisation, congestion control, and retransmission.
 
@@ -24,7 +29,7 @@ One low-level number cannot represent all of these concerns. Users need a small 
 
 ### Message-size presets
 
-LiveSync will expose a `P2P message size` choice with four presets:
+LiveSync exposes a `P2P message size` choice with four presets:
 
 | Label                   | Maximum RPC wire payload | Intended use                                                                    |
 | ----------------------- | -----------------------: | ------------------------------------------------------------------------------- |
@@ -37,11 +42,11 @@ This value limits Commonlib RPC wire payloads before Trystero applies its own fr
 
 The bound applies to outgoing messages. A device which only lowers its own value still receives messages produced under the sender's value. The selected preset therefore belongs to the P2P profile and is included in an encrypted Setup URI for additional devices. A device which was configured earlier must be changed separately; the interface and troubleshooting guidance must state that the same conservative preset should be selected on every participating device. An absent key preserves the current 15,360-byte default.
 
-Automatic negotiation or fallback between presets is deferred. A failed ordered data channel may require connection replacement before a smaller retry can prove anything, and changing transport parameters during a replication session would broaden the lifecycle contract considerably. The first implementation remains explicit, stable for one room lifetime, and inspectable.
+Automatic negotiation or fallback between presets is deferred. A failed ordered data channel may require connection replacement before a smaller retry can prove anything, and changing transport parameters during a replication session would broaden the lifecycle contract considerably. The implementation remains explicit, stable for one room lifetime, and inspectable.
 
 ### Connection path
 
-LiveSync will expose a separate `Connection path` choice:
+LiveSync exposes a separate `Connection path` choice:
 
 - `Automatic` retains normal ICE selection and is the default.
 - `TURN relay only` supplies `iceTransportPolicy: 'relay'` and prevents direct or server-reflexive candidates from being selected.
@@ -81,11 +86,15 @@ Where the browser exposes the evidence, the result should report:
 - UDP, TCP, or TLS transport; and
 - a bounded failure or inconclusive result.
 
-Ordinary P2P diagnostics should later summarise the selected candidate pair as direct, server-reflexive, or relayed, with its transport. Raw `getStats()` output remains supporting evidence rather than the primary interface.
+The proposed Obsidian P2P diagnostics should summarise the selected candidate
+pair as direct, server-reflexive, or relayed, with its transport. The CLI's
+candidate-route output does not provide this user-facing summary. Raw
+`getStats()` output remains supporting evidence rather than the primary
+interface.
 
 ### Placement and defaults
 
-These controls belong inside `P2P Configuration` under a `Connection compatibility` section. They do not require the repository-wide Advanced, Power User, or Edge Case modes. P2P itself remains a supported opt-in feature.
+These controls appear inside `P2P Configuration` under a `Connection compatibility` section. They do not require the repository-wide Advanced, Power User, or Edge Case modes. P2P itself remains a supported opt-in feature.
 
 Existing profiles retain the following defaults:
 
@@ -161,7 +170,8 @@ A layer-4 TLS router could share one public address between distinct CouchDB and
 
 ## Verification
 
-The first implementation stage must add focused tests before production changes:
+The following list records the original focused-test plan for the message-size
+and connection-path controls. It remains useful as regression coverage:
 
 - settings-schema defaults for absent keys;
 - P2P connection-string and Setup URI round trips which retain both transport compatibility settings;

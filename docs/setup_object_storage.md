@@ -18,14 +18,14 @@ The public generator applies the Object Storage preset and records the connectio
 
 ```sh
 export remote_type=s3
-export endpoint=https://objects.example.com
-export access_key=<ACCESS KEY>
-export secret_key=<SECRET KEY>
+export endpoint='https://objects.example.com'
+export access_key='<ACCESS KEY>'
+export secret_key='<SECRET KEY>'
 export bucket=vault-data
 export region=auto
 export bucket_prefix=my-vault
-export LIVESYNC_PASSPHRASE=<A STRONG VAULT ENCRYPTION PASSPHRASE>
-export uri_passphrase=<A SEPARATE SETUP URI PASSPHRASE>
+export LIVESYNC_PASSPHRASE='<A STRONG VAULT ENCRYPTION PASSPHRASE>'
+export uri_passphrase='<A SEPARATE SETUP URI PASSPHRASE>'
 deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/setup/generate_setup_uri.ts
 ```
 

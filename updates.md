@@ -19,6 +19,16 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
     - After updating during an interrupted Fetch, confirm the choices once more. Older separately stored choices are ignored; downloaded data and the existing checkpoint are not removed by this change.
 
+### Synchronisation
+
+- We can see CouchDB change-feed comparison progress separately for push and pull.
+    - The `⏩↑` and `⏩↓` counts show entries compared in each direction; the upload and download totals remain separate.
+    - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. See the [status display guide](docs/tips/status-display.md).
+
+### Translations
+
+- Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
+
 ## 1.0.42
 
 27th October, 2026
