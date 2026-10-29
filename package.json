@@ -132,7 +132,9 @@
         "version": "node version-bump.mjs && node update-workspaces.mjs && npm run pretty:json && git add manifest.json versions.json src/apps/cli/package.json src/apps/webpeer/package.json src/apps/webapp/package.json",
         "test:e2e:obsidian:startup-integrity": "tsx test/e2e-obsidian/scripts/startup-integrity.ts",
         "test:e2e:obsidian:third-party-chunks": "tsx test/e2e-obsidian/scripts/third-party-chunks.ts",
-        "test:e2e:obsidian:upgrade-livesync-batching": "tsx test/e2e-obsidian/scripts/upgrade-livesync-batching.ts"
+        "test:e2e:obsidian:upgrade-livesync-batching": "tsx test/e2e-obsidian/scripts/upgrade-livesync-batching.ts",
+        "pretest:browser-ui-lifecycle": "svelte-check --tsconfig test/browser-apps/ui-lifecycle/tsconfig.json --fail-on-warnings && vite build --config test/browser-apps/ui-lifecycle/vite.config.ts",
+        "test:browser-ui-lifecycle": "deno test -A --no-check --frozen --config test/browser-apps/deno.json --lock test/browser-apps/deno.lock test/browser-apps/ui-lifecycle/browser-ui-lifecycle.test.ts"
     },
     "keywords": [],
     "author": "vorotamoroz",

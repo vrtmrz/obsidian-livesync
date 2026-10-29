@@ -7,6 +7,7 @@ import type { InjectableAPIService } from "@vrtmrz/livesync-commonlib/compat/ser
 import { UIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/base/UIService";
 import DialogToCopy from "@/modules/services/LiveSyncUI/dialogues/DialogueToCopy.svelte";
 import { BrowserSvelteDialogManager } from "./BrowserSvelteDialogManager";
+import type { BrowserUiScope } from "./BrowserUiScope";
 
 export interface LiveSyncBrowserUIServiceDependencies<T extends ServiceContext> {
     API: InjectableAPIService<T>;
@@ -20,15 +21,19 @@ export class LiveSyncBrowserUIService<T extends ServiceContext> extends UIServic
     override get dialogToCopy() {
         return DialogToCopy;
     }
-    constructor(context: T, dependents: LiveSyncBrowserUIServiceDependencies<T>) {
+    constructor(context: T, dependents: LiveSyncBrowserUIServiceDependencies<T>, ui?: BrowserUiScope) {
         const browserConfirm = dependents.API.confirm;
-        const obsidianSvelteDialogManager = new BrowserSvelteDialogManager<T>(context, {
-            appLifecycle: dependents.appLifecycle,
-            config: dependents.config,
-            replicator: dependents.replicator,
-            confirm: browserConfirm,
-            control: dependents.control,
-        });
+        const obsidianSvelteDialogManager = new BrowserSvelteDialogManager<T>(
+            context,
+            {
+                appLifecycle: dependents.appLifecycle,
+                config: dependents.config,
+                replicator: dependents.replicator,
+                confirm: browserConfirm,
+                control: dependents.control,
+            },
+            ui
+        );
         super(context, {
             dialogManager: obsidianSvelteDialogManager,
             APIService: dependents.API,

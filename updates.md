@@ -16,6 +16,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Service log calls stay with the plug-in instance that registered them. Its log connection is released after the full shutdown, so stale instances cannot receive later service messages.
 
+### Browser applications
+
+- WebApp and WebPeer dialogues and menus remain with their owning application
+  and close on shutdown; closing or replacing a menu releases its component.
 
 ## 1.0.42
 

@@ -174,6 +174,18 @@ Declare shared UI requests with `declareUICommand<Request, Result>` from `@vrtmr
 
 The registry belongs to one UIService instance. Reuse the same declaration object at each call site, and keep active UI cleanup in the feature and dialogue owner. `UIService` disposes the registry when the host's context emits the plug-in-unloaded event.
 
+Each browser service hub creates a local `BrowserUiScope` with a `document` and
+`signal`, exposed as readonly `hub.browserUi`. Pass overrides through
+the service-hub option `ui: { document, signal }`; when `document` is omitted,
+the scope snapshots legacy `_activeDocument`. The scope is bound to
+its root `ServiceContext` unload event and optional parent `AbortSignal`, and is
+shared by browser confirmation and the Svelte dialogue manager. A dialogue
+resolves with its result or `undefined` on ordinary close; cancellation rejects
+with the abort reason, including `Error('Plug-in unloaded')` on root-context
+unload. A `Menu` can receive `hub.browserUi`; closing, replacing, or aborting it
+unmounts its Svelte component, and callbacks from a closed session cannot close
+the replacement.
+
 ### Key Architectural Components
 
 - **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper
