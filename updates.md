@@ -18,6 +18,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - The `⏩↑` and `⏩↓` counts show entries compared in each direction; the upload and download totals remain separate.
     - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. See the [status display guide](docs/tips/status-display.md).
 
+### Translations
+
+- Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
+
 ## 1.0.42
 
 27th October, 2026
