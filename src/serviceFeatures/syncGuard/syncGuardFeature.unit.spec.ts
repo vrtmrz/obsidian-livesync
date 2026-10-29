@@ -50,17 +50,20 @@ function setup(overrides: { enabled?: boolean; minimumFiles?: number } = {}) {
     const batched = reactiveSource(0);
     const conflictProcessQueueCount = reactiveSource(0);
     const settings = {
+        syncGuardEnabled: overrides.enabled ?? true,
+        syncGuardMinimumFiles: overrides.minimumFiles ?? 2,
+    };
+    const sharedSettings = {
         isConfigured: true,
         liveSync: true,
         remoteType: REMOTE_COUCHDB,
-        syncGuardEnabled: overrides.enabled ?? true,
-        syncGuardMinimumFiles: overrides.minimumFiles ?? 2,
     };
     const host = {
         services: {
             context: createServiceContext(),
             setting: {
-                currentSettings: () => settings,
+                currentSettings: () => sharedSettings,
+                syncGuardSettings: settings,
                 onSettingRealised: { addHandler: (fn: () => Promise<boolean>) => onSettingRealised.push(fn) },
             },
             replication: {

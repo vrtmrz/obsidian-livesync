@@ -3,6 +3,7 @@ import { REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { isAnyNote } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import type { LiveSyncCore } from "@/main.ts";
+import { getSyncGuardSettings } from "@/modules/services/ObsidianSettingService.ts";
 import { EVENT_SETTING_SAVED, EVENT_VAULT_REFLECTION_FAILED } from "@/common/events";
 import type { SyncGuardOverlay } from "./SyncGuardOverlay";
 import { SyncGuardState } from "./SyncGuardState";
@@ -63,11 +64,10 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     const isEnabled = () => {
         const settings = services.setting.currentSettings();
         return settings.isConfigured && settings.liveSync && settings.remoteType === REMOTE_COUCHDB &&
-            settings.syncGuardEnabled;
+            getSyncGuardSettings(services.setting).syncGuardEnabled;
     };
     const isCouchDbCatchUp = () => services.replicator.replicationStatics.value.couchDB?.phase === "catch-up";
     const beginCatchUp = () => {
-        const settings = services.setting.currentSettings();
         if (!isEnabled()) {
             guard.disable();
             return;
@@ -89,7 +89,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         if (guard.presentation.phase === "observing" && sameCatchUp) {
             return;
         }
-        guard.resume(Boolean(isEnabled()), settings.syncGuardMinimumFiles);
+        guard.resume(Boolean(isEnabled()), getSyncGuardSettings(services.setting).syncGuardMinimumFiles);
         guard.catchUpActivityChanged(isCouchDbCatchUp(), readPendingCount(), Date.now());
     };
     const onReplicationChanged = () => {
@@ -124,7 +124,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     };
     const onSettingsChanged = () => {
         if (!isEnabled()) guard.disable();
-        else guard.updateThreshold(services.setting.currentSettings().syncGuardMinimumFiles);
+        else guard.updateThreshold(getSyncGuardSettings(services.setting).syncGuardMinimumFiles);
     };
     const onPendingChanged = () => checkForUnlock();
     const onFiniteChanged = () => {
