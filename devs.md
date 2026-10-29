@@ -277,6 +277,8 @@ The scenario uses only fixed in-memory inputs. It does not read or write the Vau
 - Dev mode creates `ls-debug/` folder in `.obsidian/` for debug outputs (e.g., missing translations)
     - This causes pretty significant performance overhead.
 
+`ModuleLog` owns an `OwnedResource<LogFunction>` for its `API.addLog.setHandler` registration and keeps service log input in a per-instance buffer. The host wraps the complete asynchronous `control.onUnload()` in `withOwnedResource`. On successful shutdown, the handler and its global and per-instance observers remain registered through the final database close and final unload log. If `control.onUnload()` rejects, `withOwnedResource` releases them when the operation settles. Do not release it from an `onBeforeUnload` or module `onUnload` handler; both run before the host's complete unload finishes. The import-time global `Logger` bridge and display and report histories remain shared, while service log calls stay with their owning instance.
+
 #### Diagnostic and notice ownership
 
 - A Commonlib or service operation should normally record detailed diagnostics at `LOG_LEVEL_VERBOSE` and return a typed result which lets its caller distinguish complete, partial, and failed outcomes. Do not make callers infer an outcome by parsing log text.

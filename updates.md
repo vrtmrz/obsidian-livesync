@@ -12,6 +12,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Diagnostics
+
+- Service log calls stay with the plug-in instance that registered them. Its log connection is released after the full shutdown, so stale instances cannot receive later service messages.
+
+
 ## 1.0.42
 
 27th October, 2026

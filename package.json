@@ -100,6 +100,7 @@
         "test:e2e:obsidian:customisation-sync": "tsx test/e2e-obsidian/scripts/customisation-sync.ts",
         "test:e2e:obsidian:customisation-catalogue-reload": "tsx test/e2e-obsidian/scripts/customisation-catalogue-reload.ts",
         "test:e2e:obsidian:optional-file-save-completion": "tsx test/e2e-obsidian/scripts/optional-file-save-completion.ts",
+        "test:e2e:obsidian:log-lifecycle": "tsx test/e2e-obsidian/scripts/log-lifecycle.ts",
         "test:e2e:obsidian:livesync-batch": "tsx test/e2e-obsidian/scripts/issue1207-livesync-batch.ts",
         "test:e2e:obsidian:received-change-readiness": "tsx test/e2e-obsidian/scripts/received-change-readiness.ts",
         "test:e2e:obsidian:remote-feature-change": "tsx test/e2e-obsidian/scripts/remote-feature-change.ts",
