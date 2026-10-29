@@ -2,7 +2,11 @@ import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { REMOTE_COUCHDB, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { CouchDBReplicationPhase, ReplicationStatics } from "@vrtmrz/livesync-commonlib/replication";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { EVENT_SETTING_SAVED, EVENT_VAULT_REFLECTION_FAILED } from "@/common/events";
+import {
+    EVENT_SETTING_SAVED,
+    EVENT_SYNC_GUARD_PREFERENCES_CHANGED,
+    EVENT_VAULT_REFLECTION_FAILED,
+} from "@/common/events";
 import { describe, afterEach, expect, it, vi } from "vitest";
 import { useSyncGuardFeature } from "./index";
 import type { SyncGuardPresentation } from "./SyncGuardState";
@@ -375,10 +379,10 @@ describe("useSyncGuardFeature", () => {
         await h.parseHandlers[0]([receivedNote("one"), receivedNote("two")]);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("observing");
         h.settings.syncGuardMinimumFiles = 2;
-        h.events.emitEvent(EVENT_SETTING_SAVED, h.settings as never);
+        h.events.emitEvent(EVENT_SYNC_GUARD_PREFERENCES_CHANGED);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         h.settings.syncGuardEnabled = false;
-        h.events.emitEvent(EVENT_SETTING_SAVED, h.settings as never);
+        h.events.emitEvent(EVENT_SYNC_GUARD_PREFERENCES_CHANGED);
         expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
         await h.onUnload[0]();
     });

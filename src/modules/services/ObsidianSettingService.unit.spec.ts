@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
+import { EVENT_SYNC_GUARD_PREFERENCES_CHANGED } from "@/common/events.ts";
 import type { IAPIService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import { MemoryValueStore } from "@vrtmrz/value-store";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
@@ -142,7 +143,9 @@ describe("SyncGuard device-local settings", () => {
         await second.loadSettings();
         const initialSaveCount = saveData.mock.calls.length;
         const changed = vi.fn();
-        first.context.events.onEvent(EVENT_SETTING_SAVED, changed);
+        const unrelatedReplicationSettingsSaved = vi.fn();
+        first.context.events.onEvent(EVENT_SYNC_GUARD_PREFERENCES_CHANGED, changed);
+        first.context.events.onEvent(EVENT_SETTING_SAVED, unrelatedReplicationSettingsSaved);
 
         await setSyncGuardSetting(first, "syncGuardEnabled", true);
         await setSyncGuardSetting(first, "syncGuardMinimumFiles", 8);
@@ -153,6 +156,7 @@ describe("SyncGuard device-local settings", () => {
         await expect(localValues.getObject("first-vault--syncGuardEnabled")).resolves.toBe(true);
         await expect(localValues.getObject("first-vault--syncGuardMinimumFiles")).resolves.toBe(8);
         expect(changed).toHaveBeenCalledTimes(2);
+        expect(unrelatedReplicationSettingsSaved).not.toHaveBeenCalled();
         expect(saveData).toHaveBeenCalledTimes(initialSaveCount);
     });
 });

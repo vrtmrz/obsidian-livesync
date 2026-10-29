@@ -4,7 +4,11 @@ import { isAnyNote } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import type { LiveSyncCore } from "@/main.ts";
 import { getSyncGuardSettings } from "@/modules/services/ObsidianSettingService.ts";
-import { EVENT_SETTING_SAVED, EVENT_VAULT_REFLECTION_FAILED } from "@/common/events";
+import {
+    EVENT_SETTING_SAVED,
+    EVENT_SYNC_GUARD_PREFERENCES_CHANGED,
+    EVENT_VAULT_REFLECTION_FAILED,
+} from "@/common/events";
 import type { SyncGuardOverlay } from "./SyncGuardOverlay";
 import { SyncGuardState } from "./SyncGuardState";
 
@@ -136,6 +140,10 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
     const removeSettingSavedHandler = services.context.events.onEvent(EVENT_SETTING_SAVED, () => {
         onSettingsChanged();
     });
+    const removeSyncGuardPreferencesHandler = services.context.events.onEvent(
+        EVENT_SYNC_GUARD_PREFERENCES_CHANGED,
+        onSettingsChanged
+    );
 
     const replication = services.replicator.replicationStatics;
     const finite = services.replicator.finiteReplicationActivityCount;
@@ -181,6 +189,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
         for (const source of pendingSources) source.offChanged(onPendingChanged);
         overlay.dispose();
         removeSettingSavedHandler();
+        removeSyncGuardPreferencesHandler();
         removeReflectionFailureHandler();
         return Promise.resolve(true);
     });

@@ -8,6 +8,7 @@ import {
     type SettingServiceDependencies,
 } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
+import { EVENT_SYNC_GUARD_PREFERENCES_CHANGED } from "@/common/events.ts";
 
 export type SyncGuardSettings = {
     syncGuardEnabled: boolean;
@@ -92,7 +93,9 @@ export class ObsidianSettingService<T extends ObsidianServiceContext> extends Se
         if (this._syncGuardSettings[key] === value) return;
         await this.config.setObject(key, value);
         this._syncGuardSettings = { ...this._syncGuardSettings, [key]: value };
-        this.context.events.emitEvent(EVENT_SETTING_SAVED, this.currentSettings());
+        // These preferences change only the workspace overlay. Re-applying all
+        // replication settings would unnecessarily interrupt an active sync.
+        this.context.events.emitEvent(EVENT_SYNC_GUARD_PREFERENCES_CHANGED);
     }
 
     protected override async saveData(data: ObsidianLiveSyncSettings): Promise<void> {
