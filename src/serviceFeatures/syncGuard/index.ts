@@ -104,7 +104,7 @@ export function useSyncGuardFeature(host: LiveSyncCore, createOverlay: SyncGuard
             // Commonlib enters continuous only after a successful pull-only catch-up.
             guard.catchUpSucceeded();
             guard.catchUpActivityChanged(false, readPendingCount(), Date.now());
-        } else if (guard.presentation.phase !== "idle" && terminalPhaseTimer === undefined) {
+        } else if ((guard.presentation.phase !== "idle" || guard.isCatchUpActive) && terminalPhaseTimer === undefined) {
             // The one-shot PouchDB progress observer can report 'idle' before the
             // enclosing finite CouchDB pull has finished releasing its resources.
             // This counter is not used to identify the provider; CouchDB phase owns that.

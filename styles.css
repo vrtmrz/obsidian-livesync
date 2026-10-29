@@ -873,6 +873,8 @@ body.is-mobile .livesync-compatibility-review-notice {
 .sls-sync-guard-bypass {
     min-height: 44px;
     min-width: 44px;
+}
+
 .livesync-stat-item {
     font-variant-numeric: tabular-nums;
 }

@@ -54,6 +54,28 @@ describe("SyncGuardState", () => {
         expect(guard.presentation.phase).toBe("idle");
     });
 
+    it("expires the manual bypass when its catch-up completes and protects the next catch-up", () => {
+        const { guard } = setup();
+        guard.resume(true, 2);
+        guard.catchUpActivityChanged(true, 0, 0);
+        guard.receivedDocuments(["first", "second"]);
+        expect(guard.presentation.phase).toBe("transferring");
+        guard.bypass();
+        expect(guard.wasBypassed).toBe(true);
+        guard.catchUpActivityChanged(true, 0, 5);
+        expect(guard.isCatchUpActive).toBe(true);
+        guard.catchUpSucceeded();
+        guard.catchUpActivityChanged(false, 0, 10);
+        expect(guard.isCatchUpActive).toBe(false);
+        expect(guard.wasBypassed).toBe(false);
+        expect(guard.presentation.phase).toBe("idle");
+
+        guard.resume(true, 2);
+        guard.catchUpActivityChanged(true, 0, 20);
+        guard.receivedDocuments(["another-first", "another-second"]);
+        expect(guard.presentation).toEqual({ phase: "transferring", receivedFiles: 2 });
+    });
+
     it("does not unlock when a new pull starts while applying an earlier completed transfer", () => {
         const { guard } = setup();
         guard.resume(true, 1);

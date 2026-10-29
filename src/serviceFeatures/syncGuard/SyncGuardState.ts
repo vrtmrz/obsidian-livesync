@@ -59,7 +59,16 @@ export class SyncGuardState {
 
     /** The CouchDB catch-up phase ends before continuous replication and Vault reflection finish. */
     catchUpActivityChanged(active: boolean, pendingCount: number, now: number): void {
-        if (this.phase === "idle" || this.bypassed || this.catchUpActive === active) return;
+        if (this.catchUpActive === active) return;
+        // A manual bypass lasts only for this catch-up generation. Even while the
+        // overlay is closed, observe its terminal transition so that a later
+        // reconnect can protect the workspace again.
+        if (this.bypassed) {
+            this.catchUpActive = active;
+            if (!active) this.bypassed = false;
+            return;
+        }
+        if (this.phase === "idle") return;
         if (active) {
             // A retry or a second pull can begin while the Vault is still applying an earlier batch.
             // Do not let the previous successful completion unlock an active newer transfer.

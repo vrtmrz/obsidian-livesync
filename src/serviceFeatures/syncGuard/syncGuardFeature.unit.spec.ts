@@ -211,6 +211,51 @@ describe("useSyncGuardFeature", () => {
         await h.onUnload[0]();
     });
 
+    it("re-arms protection for a new substantial catch-up after bypass, completion, suspension and resume", async () => {
+        const h = setup({ minimumFiles: 2 });
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        await h.parseHandlers[0]([receivedNote("first"), receivedNote("second")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
+        h.bypass();
+
+        // A duplicate resume before the first transfer finishes must honour the bypass.
+        await h.onResumed[0]();
+        await h.parseHandlers[0]([receivedNote("third"), receivedNote("fourth")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
+
+        // Successful hand-off to Continuous retires the bypassed generation.
+        h.setCouchDbPhase("continuous");
+        await h.onSuspending[0]();
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        await h.parseHandlers[0]([receivedNote("new-first"), receivedNote("new-second")]);
+        expect(h.updates[h.updates.length - 1]).toMatchObject({
+            phase: "transferring",
+            receivedFiles: 2,
+        });
+        await h.onUnload[0]();
+    });
+
+    it("re-arms protection after bypassed catch-up fails and later restarts", async () => {
+        vi.useFakeTimers();
+        const h = setup({ minimumFiles: 1 });
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        h.finiteReplicationActivityCount.value = 1;
+        await h.parseHandlers[0]([receivedNote("failed")]);
+        h.bypass();
+        h.setCouchDbPhase("idle");
+        h.finiteReplicationActivityCount.value = 0;
+        await vi.advanceTimersByTimeAsync(1);
+        await h.onSuspending[0]();
+        await h.onResumed[0]();
+        h.setCouchDbPhase("catch-up");
+        await h.parseHandlers[0]([receivedNote("after-restart")]);
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
+        await h.onUnload[0]();
+    });
+
     it("ignores large P2P finite transfers when CouchDB catch-up is not running", async () => {
         const h = setup({ minimumFiles: 2 });
         await h.onResumed[0]();
@@ -335,7 +380,7 @@ describe("useSyncGuardFeature", () => {
         await h.onUnload[0]();
     });
 
-    it("does not re-lock after manual bypass when an internal reconnect starts", async () => {
+    it("re-locks on a new internal catch-up after a bypassed transfer has completed", async () => {
         const h = setup({ minimumFiles: 1 });
         await h.onResumed[0]();
         h.setCouchDbPhase("catch-up");
@@ -345,7 +390,7 @@ describe("useSyncGuardFeature", () => {
         h.setCouchDbPhase("continuous");
         h.setCouchDbPhase("catch-up");
         await h.parseHandlers[0]([receivedNote("second")]);
-        expect(h.updates[h.updates.length - 1]?.phase).toBe("idle");
+        expect(h.updates[h.updates.length - 1]?.phase).toBe("transferring");
         await h.onUnload[0]();
     });
 
