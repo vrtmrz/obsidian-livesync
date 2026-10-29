@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Synchronisation
+
+- We can see CouchDB change-feed comparison progress separately for push and pull.
+    - The `⏩↑` and `⏩↓` counts show entries compared in each direction; the upload and download totals remain separate.
+    - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. See the [status display guide](docs/tips/status-display.md).
+
 ## 1.0.42
 
 27th October, 2026
