@@ -59,7 +59,8 @@ import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
-import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import { forEachInScope } from "octagonal-wheels/concurrency/scopedIteration";
+import { withScope } from "octagonal-wheels/resource/scope";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
 import { $msg } from "@/common/translation";
@@ -68,6 +69,7 @@ import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
+import { createContentApplier } from "octagonal-wheels/content";
 
 import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
@@ -285,6 +287,10 @@ export type PluginDataExDisplay = {
     mtime: number;
 };
 type LoadedEntryPluginDataExFile = LoadedEntry & PluginDataExFile;
+type ConfigFileApplicationTarget = {
+    readonly path: FilePath;
+    readonly stat: { readonly mtime: number; readonly ctime: number };
+};
 
 function categoryToFolder(category: string, configDir: string = ""): string {
     switch (category) {
@@ -1027,44 +1033,63 @@ export class ConfigSync extends LiveSyncCommands {
                 await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
             } else {
                 const files = data.files;
+                const applyBinaryContent = createContentApplier<
+                    ConfigFileApplicationTarget,
+                    LoadedEntryPluginDataExFile,
+                    ArrayBuffer,
+                    ArrayBuffer
+                >({
+                    read: (target) => this.core.storageAccess.readHiddenFileBinary(target.path),
+                    onReadError: (ex, _path, file) => {
+                        this._log(`Could not read the file ${file.filename}`, LOG_LEVEL_VERBOSE);
+                        this._log(ex, LOG_LEVEL_VERBOSE);
+                        return new ArrayBuffer(0);
+                    },
+                    decode: (file) => base64ToArrayBuffer(file.data),
+                    isSame: (oldData, content) => isDocContentSame(oldData, content),
+                    write: (target, content) =>
+                        this.core.storageAccess.writeHiddenFileAuto(target.path, content, target.stat),
+                });
+                const applyTextContent = createContentApplier<
+                    ConfigFileApplicationTarget,
+                    LoadedEntryPluginDataExFile,
+                    string,
+                    string
+                >({
+                    read: (target) => this.core.storageAccess.readHiddenFileText(target.path),
+                    onReadError: (ex, _path, file) => {
+                        this._log(`Could not read the file ${file.filename}`, LOG_LEVEL_VERBOSE);
+                        this._log(ex, LOG_LEVEL_VERBOSE);
+                        return "";
+                    },
+                    decode: (file) => getDocData(file.data),
+                    isSame: (oldData, content) => isDocContentSame(oldData, content),
+                    write: (target, content) =>
+                        this.core.storageAccess.writeHiddenFileAuto(target.path, content, target.stat),
+                });
                 for (const f of files) {
                     // If files have applied, modified time will be updated to the current time.
-                    const stat = { mtime: f.mtime, ctime: f.ctime };
                     const path = `${baseDir}/${f.filename}` as FilePath;
+                    const target: ConfigFileApplicationTarget = {
+                        path,
+                        stat: { mtime: f.mtime, ctime: f.ctime },
+                    };
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                     // const contentEach = createBlob(f.data);
                     await this.core.storageAccess.ensureDir(path);
 
                     if (f.datatype == "newnote") {
-                        let oldData;
-                        try {
-                            oldData = await this.core.storageAccess.readHiddenFileBinary(path);
-                        } catch (ex) {
-                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                            oldData = new ArrayBuffer(0);
-                        }
-                        const content = base64ToArrayBuffer(f.data);
-                        if (await isDocContentSame(oldData, content)) {
+                        const result = await applyBinaryContent(target, f);
+                        if (result == "unchanged") {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
                     } else {
-                        let oldData;
-                        try {
-                            oldData = await this.core.storageAccess.readHiddenFileText(path);
-                        } catch (ex) {
-                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                            oldData = "";
-                        }
-                        const content = getDocData(f.data);
-                        if (await isDocContentSame(oldData, content)) {
+                        const result = await applyTextContent(target, f);
+                        if (result == "unchanged") {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
                     this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
                     await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
@@ -1613,49 +1638,35 @@ export class ConfigSync extends LiveSyncCommands {
                 const entries = this.localDatabase.findEntries(prefix + "", `${prefix}\u{10ffff}`, {
                     include_docs: true,
                 });
-                const tasks = [] as (() => Promise<void>)[];
-                const concurrency = 10;
-                const semaphore = Semaphore(concurrency);
+                const databaseEntries: { _id: string; path: FilePathWithPrefix }[] = [];
                 for await (const item of entries) {
-                    if (item.path.indexOf("%") !== -1) {
-                        continue;
-                    }
-                    tasks.push(async () => {
-                        const releaser = await semaphore.acquire();
+                    if (item.path.indexOf("%") === -1) databaseEntries.push(item);
+                }
+                await withScope({ term, localFileMap }, async (scope) => {
+                    await forEachInScope(scope, databaseEntries, { concurrency: 10 }, async (item, ctx) => {
                         try {
                             const unifiedFilenameWithKey = `${item._id}` as FilePathWithPrefix;
-                            const localPath = localFileMap.get(unifiedFilenameWithKey);
+                            const localPath = ctx.value.localFileMap.get(unifiedFilenameWithKey);
                             if (localPath) {
-                                await this.storeCustomisationFileV2(localPath, term);
-                                localFileMap.delete(unifiedFilenameWithKey);
+                                await this.storeCustomisationFileV2(localPath, ctx.value.term);
+                                ctx.value.localFileMap.delete(unifiedFilenameWithKey);
                             } else {
                                 await this.deleteConfigOnDatabase(unifiedFilenameWithKey);
                             }
                         } catch (ex) {
                             this._log(`scanAllConfigFiles - Error: ${item._id}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
-                        } finally {
-                            releaser();
                         }
                     });
-                }
-                await Promise.all(tasks.map((e) => e()));
-                // Extra files
-                const taskExtra = [] as (() => Promise<void>)[];
-                for (const [, filePath] of localFileMap) {
-                    taskExtra.push(async () => {
-                        const releaser = await semaphore.acquire();
+                    await forEachInScope(scope, localFileMap.values(), { concurrency: 10 }, async (filePath, ctx) => {
                         try {
-                            await this.storeCustomisationFileV2(filePath, term);
+                            await this.storeCustomisationFileV2(filePath, ctx.value.term);
                         } catch (ex) {
                             this._log(`scanAllConfigFiles - Error: ${filePath}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
-                        } finally {
-                            releaser();
                         }
                     });
-                }
-                await Promise.all(taskExtra.map((e) => e()));
+                });
                 fireAndForget(() => this.updatePluginList(false));
             } else {
                 const files = filesAll

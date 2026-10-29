@@ -1,3 +1,4 @@
+import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { reactive, reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -192,5 +193,123 @@ describe("createChunkFetchCounterLabel", () => {
         counts.value = { initial: 1, retrying: 0 };
 
         expect(withoutPadding()).toBe(" 🔁0");
+    });
+});
+
+describe("status timeout ownership", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-24T00:00:00Z"));
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+    });
+
+    it("counts the minimum lifetime from construction when activity is already visible", () => {
+        const source = reactiveSource(2);
+        const display = createMinimumVisibleActivityCount(source, 150);
+        vi.advanceTimersByTime(40);
+        source.value = 0;
+
+        vi.advanceTimersByTime(109);
+        expect(display.value).toBe(2);
+        vi.advanceTimersByTime(1);
+        expect(display.value).toBe(0);
+        display.dispose();
+    });
+
+    it("hides immediately for a non-positive minimum lifetime and clamps negative activity", () => {
+        const source = reactiveSource(-2);
+        const display = createMinimumVisibleActivityCount(source, -10);
+        expect(display.value).toBe(0);
+        source.value = 1;
+        source.value = -2;
+
+        expect(display.value).toBe(0);
+        expect(vi.getTimerCount()).toBe(0);
+        display.dispose();
+    });
+
+    it("keeps a zero-duration counter clear asynchronous", () => {
+        const source = reactiveSource(0);
+        const display = createPaddedCounterLabel(source, "A", 0);
+        source.value = 1;
+        source.value = 0;
+
+        expect(display.value).toBe(" A\u20070");
+        vi.advanceTimersByTime(0);
+        expect(display.value).toBe("");
+        display.dispose();
+    });
+
+    it.each(["activity", "label"] as const)(
+        "retains timer receivers, zero handles, and idempotent disposal for %s",
+        (kind) => {
+            const source = reactiveSource(0);
+            const offChanged = vi.spyOn(source, "offChanged");
+            const setTimer = vi.spyOn(compatGlobal as Window, "setTimeout").mockReturnValue(0);
+            const clearTimer = vi.spyOn(compatGlobal as Window, "clearTimeout").mockImplementation(() => {});
+            const display =
+                kind === "activity"
+                    ? createMinimumVisibleActivityCount(source, 150)
+                    : createPaddedCounterLabel(source, "A", 150);
+
+            source.value = 1;
+            source.value = 0;
+            expect(setTimer).toHaveBeenCalledTimes(1);
+            expect(setTimer.mock.contexts[0]).toBe(compatGlobal);
+            expect(setTimer.mock.calls[0][1]).toBe(150);
+            source.value = 2;
+            expect(clearTimer).toHaveBeenCalledExactlyOnceWith(0);
+            source.value = 0;
+            display.dispose();
+            display.dispose();
+            source.value = 3;
+
+            expect(setTimer).toHaveBeenCalledTimes(2);
+            expect(clearTimer).toHaveBeenCalledTimes(2);
+            expect(clearTimer.mock.calls).toEqual([[0], [0]]);
+            expect(clearTimer.mock.contexts).toEqual([compatGlobal, compatGlobal]);
+            expect(offChanged).toHaveBeenCalledTimes(1);
+        }
+    );
+
+    it("keeps pending clears independent between display instances", () => {
+        const firstSource = reactiveSource(0);
+        const secondSource = reactiveSource(0);
+        const first = createPaddedCounterLabel(firstSource, "A", 100);
+        const second = createPaddedCounterLabel(secondSource, "B", 100);
+        firstSource.value = 1;
+        firstSource.value = 0;
+        secondSource.value = 1;
+        secondSource.value = 0;
+        expect(vi.getTimerCount()).toBe(2);
+
+        first.dispose();
+        expect(vi.getTimerCount()).toBe(1);
+        vi.advanceTimersByTime(100);
+        expect(first.value).toBe(" A\u20070");
+        expect(second.value).toBe("");
+        second.dispose();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("disposes both child timers and its source subscription for chunk counts", () => {
+        const source = reactiveSource({ initial: 2, retrying: 3 });
+        const offChanged = vi.spyOn(source, "offChanged");
+        const display = createChunkFetchCounterLabel(source);
+        source.value = { initial: 0, retrying: 0 };
+        const lastLabel = display.value;
+        expect(vi.getTimerCount()).toBe(2);
+
+        display.dispose();
+        display.dispose();
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(STATUS_COUNTER_INACTIVE_LINGER_MS);
+        source.value = { initial: 4, retrying: 5 };
+        expect(display.value).toBe(lastLabel);
+        expect(offChanged).toHaveBeenCalledTimes(1);
     });
 });
