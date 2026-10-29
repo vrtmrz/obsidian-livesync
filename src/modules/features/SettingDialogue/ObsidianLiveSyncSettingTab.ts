@@ -77,6 +77,11 @@ import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from 
 import { SetupManager } from "@/modules/features/SetupManager.ts";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource.ts";
+import {
+    getSyncGuardSettings,
+    isSyncGuardSettingKey,
+    setSyncGuardSetting,
+} from "@/modules/services/ObsidianSettingService.ts";
 
 // For creating a document
 // const toc = new Set<string>();
@@ -138,6 +143,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             if (
                 this.isReconstructionRequiredSetting(k) ||
                 this.isConfigurationEncryptionSetting(k) ||
+                isSyncGuardSettingKey(k) ||
                 k in OnDialogSettingsDefault
             ) {
                 // //@ts-ignore
@@ -157,6 +163,10 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             (e) => this.isDirty(e) && !this.isReconstructionRequiredSetting(e)
         );
         await this.saveConfigurationEncryptionIfDirty(changedKeys);
+        for (const key of changedKeys.filter(isSyncGuardSettingKey)) {
+            await setSyncGuardSetting(this.services.setting, key, this.editingSettings[key]);
+            this.copySettingValue(this.initialSettings, this.editingSettings, key);
+        }
         this.applySetting(changedKeys);
         this.reloadAllSettings();
     }
@@ -177,6 +187,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         await this.saveConfigurationEncryptionIfDirty(appliedKeys);
         for (const k of appliedKeys) {
             if (this.isConfigurationEncryptionSetting(k)) continue;
+            if (isSyncGuardSettingKey(k)) {
+                await setSyncGuardSetting(this.services.setting, k, this.editingSettings[k]);
+                this.copySettingValue(this.initialSettings, this.editingSettings, k);
+                continue;
+            }
             if (k in OnDialogSettingsDefault) {
                 await this.saveLocalSetting(k as keyof OnDialogSettings);
                 this.copySettingValue(this.initialSettings, this.editingSettings, k);
@@ -307,7 +322,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         ret.configPassphrase = this.localConfigurationPassphrase;
         ret.preset = "";
         ret.deviceAndVaultName = this.services.setting.getDeviceAndVaultName();
-        return ret;
+        return { ...ret, ...getSyncGuardSettings(this.services.setting) };
     }
     computeAllLocalSettings(): Partial<OnDialogSettings> {
         const syncMode = this.editingSettings?.liveSync
@@ -375,7 +390,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             return;
         }
         const localSetting = this.reloadAllLocalSettings();
-        if (key in this.core.settings) {
+        if (isSyncGuardSettingKey(key) || key in this.core.settings) {
             if (key in localSetting) {
                 this.copySettingValue(this.initialSettings, localSetting, key);
                 this.copySettingValue(this.editingSettings, localSetting, key);
@@ -567,25 +582,25 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         const nativeTabIsShown =
             this.supportsDeclarativeSettings() && this.containerEl !== undefined && this.containerEl.isShown();
         if (this.isShown || nativeTabIsShown) {
-            const newConf = this.core.settings;
-            const keys = Object.keys(newConf) as (keyof ObsidianLiveSyncSettings)[];
+            const newConf = { ...this.core.settings, ...getSyncGuardSettings(this.services.setting) };
+            const keys = Object.keys(newConf) as AllSettingItemKey[];
             let hasLoaded = false;
             let catalogueVisibilityChanged = false;
             for (const k of keys) {
-                if (isObjectDifferent(newConf[k], this.initialSettings?.[k])) {
+                if (isObjectDifferent(Reflect.get(newConf, k), this.initialSettings?.[k])) {
                     // Something has changed
-                    if (this.isDirty(k as AllSettingItemKey)) {
+                    if (this.isDirty(k)) {
                         // And modified.
                         this.core.confirm.askInPopup(
                             `config-reloaded-${k}`,
                             $msg("obsidianLiveSyncSettingTab.msgSettingModified", {
-                                setting: getConfName(k as AllSettingItemKey),
+                                setting: getConfName(k),
                             }),
                             (anchor) => {
                                 anchor.text = $msg("obsidianLiveSyncSettingTab.optionHere");
                                 anchor.addEventListener("click", () => {
-                                    this.refreshSetting(k as AllSettingItemKey);
-                                    if (this.changesPageCatalogue(k as AllSettingItemKey)) {
+                                    this.refreshSetting(k);
+                                    if (this.changesPageCatalogue(k)) {
                                         this.requestCatalogueRefresh();
                                     } else {
                                         this.requestPageRefresh();
@@ -595,12 +610,12 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                         );
                     } else {
                         // not modified
-                        this.refreshSetting(k as AllSettingItemKey);
+                        this.refreshSetting(k);
                         if (k in OnDialogSettingsDefault) {
                             continue;
                         }
                         hasLoaded = true;
-                        if (this.changesPageCatalogue(k as AllSettingItemKey)) {
+                        if (this.changesPageCatalogue(k)) {
                             catalogueVisibilityChanged = true;
                         }
                     }
