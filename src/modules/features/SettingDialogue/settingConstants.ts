@@ -54,11 +54,11 @@ export const SettingInformation: Partial<Record<AllSettingItemKey, Configuration
 /** `getConfig` with the LiveSync catalogue applied by default. */
 export function getConfig(key: AllSettingItemKey, translate: MessageTranslator = translateLiveSyncMessage) {
     if (isSyncGuardSettingKey(key)) return syncGuardSettingInformation[key];
-    return getCommonlibConfig(key as CommonlibAllSettingItemKey, translate);
+    return getCommonlibConfig(key, translate);
 }
 
 /** `getConfName` with the LiveSync catalogue applied by default. See `getConfig`. */
 export function getConfName(key: AllSettingItemKey, translate: MessageTranslator = translateLiveSyncMessage) {
     if (isSyncGuardSettingKey(key)) return syncGuardSettingInformation[key].name;
-    return getCommonlibConfName(key as CommonlibAllSettingItemKey, translate);
+    return getCommonlibConfName(key, translate);
 }
