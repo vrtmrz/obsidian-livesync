@@ -73,6 +73,7 @@ describe("Review Harness ID measurements", () => {
             "JavaScript heap: before=2.00 MiB; highest sampled=5.00 MiB; after=1.00 MiB."
         );
         expect(result.observations.join("\n")).toContain("neither total app RAM nor a true peak");
+        expect(reads).toBe(245);
     });
 
     it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, "throws"])(

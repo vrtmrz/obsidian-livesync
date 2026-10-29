@@ -145,7 +145,7 @@ export class WebPeerRuntime {
 
     private showPeerMenu(peer: PeerStatus, event: MouseEvent): void {
         this.menu?.hide();
-        this.menu = new Menu()
+        this.menu = new Menu(this.services.browserUi)
             .addItem((item) =>
                 item.setTitle("📥 Only fetch").onClick(async () => {
                     await this.p2p.targetedTransfer.pullFromPeer(peer.peerId);

@@ -8,6 +8,7 @@ import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
 import { path } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
+import { findCaseInsensitiveFile } from "@/apps/caseInsensitiveFileLookup";
 
 /**
  * Complete file system adapter implementation for Node.js
@@ -87,27 +88,12 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             return await this.refreshResolvedFile(resolvedPath);
         }
 
-        const exact = await this.getAbstractFileByPath(pathStr);
-        if (exact) {
-            return exact;
-        }
-
-        const lowerPath = pathStr.toLowerCase();
-        for (const [cachedPath, cachedFile] of this.fileCache.entries()) {
-            if (cachedPath.toLowerCase() === lowerPath) {
-                return cachedFile;
-            }
-        }
-
-        await this.scanDirectory();
-
-        for (const [cachedPath, cachedFile] of this.fileCache.entries()) {
-            if (cachedPath.toLowerCase() === lowerPath) {
-                return cachedFile;
-            }
-        }
-
-        return null;
+        return await findCaseInsensitiveFile(
+            pathStr,
+            () => this.getAbstractFileByPath(pathStr),
+            this.fileCache,
+            () => this.scanDirectory()
+        );
     }
 
     async getFiles(): Promise<NodeFile[]> {
