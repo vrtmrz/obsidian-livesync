@@ -19,10 +19,11 @@ The command and view are registered only when developer tools are enabled. Disab
 | --- | --- | --- | --- |
 | Settings lifecycle | Automatic | Read-only | Exposes the seven synchronisation choices as typed observations and, for a genuinely new Vault, compares the selected recommendations with Commonlib's new-Vault contract. Existing-Vault setting preservation remains an automated migration and `settings-ui` E2E responsibility. |
 | Compatibility review boundary | Guided | Device-local state | Observes the current dedicated compatibility controller and opens its actual review action. The Harness does not restore Change Log acknowledgement, `lastReadUpdates`, or a separate manual Pass or Fail result. |
-| P2P composition | Automatic | Read-only | Confirms that the live P2P result resolves one replicator bound to the active Obsidian services. Peer discovery, replacement, reconnection, and transfer remain unit, CLI, and Compose E2E responsibilities. |
+| ID generation performance | Automatic, individual | Read-only | Measures legacy and independent IDs using fixed in-memory inputs, including key derivation and heap samples where available. Keep Obsidian in the foreground. |
+| File content hash performance | Manual | Read-only | Compares SHA-256 and xxHash64 on fixed in-memory Blob inputs. Input creation is excluded from hash timings; engine initialisation and warm-up are reported separately. |
 | Vault fixture round trip | Automatic, explicit | Dedicated Vault fixtures | After explicit confirmation, creates, reads, modifies, renames, and removes one owned fixture tree. General Vault reflection remains covered by its separate real-Obsidian E2E workflow. |
 
-**Automatic** runs only the two read-only local observations. **Full review** also starts the guided compatibility observation and asks before the Vault fixture scenario writes anything. A scenario can also be run individually.
+**Automatic** runs only Settings lifecycle. **Full review** visits all listed scenarios, including the guided compatibility review and the two performance measurements, and asks before the Vault fixture scenario writes anything. Each scenario can also be run individually; a scenario's mode label does not by itself include it in the Automatic action.
 
 These observations deliberately do not repeat stronger automated workflows. They exist to record which contracts the current real-device composition exposes while a maintainer reviews an immutable artefact.
 

@@ -33,7 +33,11 @@ The current benchmark measures the Node CLI process. It does not establish Obsid
 
 ## Reproducible benchmark
 
-The benchmark is implemented under `src/apps/cli/testdeno` and packaged by `test/bench-network`. It uses the real CLI mirror and synchronisation path, Commonlib 0.1.0-rc.4, CouchDB 3.5.0, the V3 Rabin–Karp splitter, optional Data Compression, and E2EE V2. It runs each of these conditions three times in rotating order:
+The benchmark is implemented under `src/apps/cli/testdeno` and packaged by `test/bench-network`. It exercises the real CLI mirror and synchronisation path. The recorded three-repeat result below used Commonlib 0.1.0-rc.4, CouchDB 3.5.0, the V3 Rabin–Karp splitter, optional Data Compression, and E2EE V2.
+
+The current Compose runner installs the checked-out repository's package and lockfile with `npm ci`; Self-hosted LiveSync 1.0.42 selects Commonlib 0.2.2. Running the command below measures that checkout, rather than recreating the older package environment automatically. Keep the recorded results associated with their original measurement date and dependency version.
+
+With the repeat count shown below, it runs each of these conditions three times in rotating order:
 
 - E2EE off, compression off;
 - E2EE off, compression on;

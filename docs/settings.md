@@ -161,6 +161,8 @@ Following panes will be shown when you enable this setting.
 
 ### 1. Appearance
 
+For icon meanings, progress counters, and CSS snippets, see the [status display guide](tips/status-display.md).
+
 #### Display Language
 
 Setting key: displayLanguage

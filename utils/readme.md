@@ -55,13 +55,13 @@ The generator defaults to `uri_mode=ephemeral`. The URI opens only during the cu
 
 ```sh
 export remote_type=s3
-export endpoint=https://objects.example.com
-export access_key=<ACCESS KEY>
-export secret_key=<SECRET KEY>
+export endpoint='https://objects.example.com'
+export access_key='<ACCESS KEY>'
+export secret_key='<SECRET KEY>'
 export bucket=vault-data
 export region=auto
 export bucket_prefix=team-a # Optional
-export LIVESYNC_PASSPHRASE=<A STRONG VAULT ENCRYPTION PASSPHRASE>
+export LIVESYNC_PASSPHRASE='<A STRONG VAULT ENCRYPTION PASSPHRASE>'
 deno run --minimum-dependency-age=0 --config=./flyio/deno.jsonc --frozen --lock=./flyio/deno.lock --allow-env ./setup/generate_setup_uri.ts
 ```
 
@@ -71,7 +71,7 @@ Optional Object Storage variables are `use_custom_request_handler`, `force_path_
 
 ```sh
 export remote_type=p2p
-export LIVESYNC_PASSPHRASE=<A STRONG VAULT ENCRYPTION PASSPHRASE>
+export LIVESYNC_PASSPHRASE='<A STRONG VAULT ENCRYPTION PASSPHRASE>'
 deno run --minimum-dependency-age=0 --config=./flyio/deno.jsonc --frozen --lock=./flyio/deno.lock --allow-env ./setup/generate_setup_uri.ts
 ```
 

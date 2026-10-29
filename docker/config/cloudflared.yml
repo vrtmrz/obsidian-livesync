@@ -2,17 +2,16 @@
 # =============================================================================
 #
 # Prerequisites:
-#   1. Create a tunnel in Cloudflare Zero Trust → Networks → Tunnels
+#   1. Create a remotely managed tunnel using the current Cloudflare dashboard guide.
 #   2. Copy the tunnel token to CF_TUNNEL_TOKEN in your .env
-#   3. Add a public hostname in the tunnel config:
+#   3. Add a published application route in the dashboard:
 #       Hostname : couchdb.yourdomain.com   (or whatever you set COUCHDB_DOMAIN to)
 #       Service  : http://couchdb:5984
 #
-# Known issue: Cloudflare's 100-second proxy timeout can interrupt CouchDB's
-# long-polling replication change feed, causing 524 errors.
-# MITIGATION: In the Obsidian plugin settings, enable:
-#   "Use Request API to avoid inevitable CORS problem"
-# This switches from long-poll to short-poll mode.
+# The token-managed Compose profile uses dashboard routing. The local ingress
+# example below describes locally managed routing and is not that profile's
+# source of routes. Diagnose 524 errors using current Cloudflare guidance.
+# The Obsidian Request API setting changes the HTTP adapter, not the sync mode.
 #
 # =============================================================================
 
@@ -23,7 +22,7 @@ ingress:
   - hostname: ${COUCHDB_DOMAIN}
     service: http://couchdb:5984
     originRequest:
-      # Increase timeouts for CouchDB replication streams
+      # Origin connection settings for this locally managed example
       connectTimeout: 30s
       keepAliveTimeout: 90s
       keepAliveConnections: 100
