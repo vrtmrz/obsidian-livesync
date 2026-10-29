@@ -1,5 +1,7 @@
 # Self-hosted LiveSync Development Guide
 
+Use the [documentation index](docs/README.md) to find implementation references, architectural decisions, proposals, and historical material for the area being changed.
+
 ## Project Overview
 
 Self-hosted LiveSync is an Obsidian plugin for synchronising vaults across devices using CouchDB, MinIO/S3, or peer-to-peer WebRTC. The codebase uses a modular architecture with TypeScript, Svelte, and PouchDB.
@@ -78,7 +80,7 @@ Regression tests remain in the suite owned by the implementation under test. Plu
 
 - **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current Replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Self-hosted setup tools** (`utils/couchdb/`, `utils/setup/`, and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current CouchDB, Object Storage, and random-room P2P Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
-- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. Run focused scripts such as `npm run test:e2e:obsidian:two-vault-sync`, or use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and RustFS fixtures managed by the wrapper.
+- **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. After source changes, run the build-owning wrapper, for example `npm run test:e2e:obsidian:focused -- two-vault-sync`, with the required fixture already running. Direct scenario scripts reuse the existing bundle and are suitable for reruns only while that build remains unchanged. Use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and RustFS fixtures managed by the wrapper.
 
 - **Docker Services**: Service-backed tests use CouchDB and RustFS (S3). Canonical P2P validation owns its relay through the CLI Compose runner:
 
@@ -166,6 +168,14 @@ Legacy Modules remain grouped by directory:
 - `features/` contains optional features; and
 - `extras/` contains development and testing tools.
 
+### UI commands and dialogue ownership
+
+Declare shared UI requests with `declareUICommand<Request, Result>` from `@vrtmrz/livesync-commonlib/ui-commands`. The host's `services.UI.commands` registry owns one handler per declaration. A serviceFeature registers the handler, releases it on unload, and owns the associated dialogue lifetime. Callers receive a typed result or an explicit `unavailable` result; handler failures propagate.
+
+`OPEN_JOINED_DEVICES` is shared by Remote Configuration, version Notices, and the command palette. `useJoinedDevicesFeature` registers it once and gives the dialogue narrow refresh, forget, and cancellation callbacks. Each remote operation uses a settings snapshot and releases its finite resource in `finally`. Results from an old remote configuration or a closed dialogue are discarded. A write already sent to the captured remote can still complete after the dialogue closes.
+
+The registry belongs to one UIService instance. Reuse the same declaration object at each call site, and keep active UI cleanup in the feature and dialogue owner. `UIService` disposes the registry when the host's context emits the plug-in-unloaded event.
+
 ### Key Architectural Components
 
 - **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper
@@ -204,6 +214,9 @@ The [multiple-device conflict test procedure](test/README.md#multiple-device-con
 
 ### File Structure Conventions
 
+- **Class modules**: Start a new or renamed TypeScript or JavaScript filename with an upper-case letter when the file contains a class with the same name.
+- **Function modules**: Start the filename with a lower-case letter when the module primarily exports functions, such as `initialFetchFastForward.ts`. Follow the surrounding filename style for the rest of the basename. Corresponding test files use the same basename.
+- **Existing files**: Retain established names for unrelated files and separate conventions for components or other file types.
 - **Platform-specific code**: Use `.platform.ts` suffix (replaced with `.obsidian.ts` in production builds via esbuild)
 - **Development code**: Use `.dev.ts` suffix (replaced with `.prod.ts` in production)
 - **Path aliases**: `@/*` maps to `src/*`; Commonlib uses package exports rather than a source alias
@@ -244,6 +257,18 @@ The measurement uses fixed in-memory inputs and keys, with no Vault, database, s
 Where `performance.memory` is available, the report includes approximate JavaScript heap samples before, during, and after measurement. These may include other Obsidian activity and garbage collection; they are neither total process RAM nor an exact peak. Unsupported devices explicitly report that heap measurements are unavailable.
 
 The developer-only adapter in `src/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime.ts` imports `HashManager` from Commonlib's public `/hashing` entry. Compilation, packed-package checks, and runtime tests cover this boundary. The algorithms remain owned by Commonlib.
+
+#### File content hash performance measurements
+
+Commonlib owns the algorithm choice and provenance contract. Its [file-reflection content hash decision](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/file-reflection-content-hash.md) records the SHA-256 rationale, xxHash64 comparison, measured costs, and conditions for reconsideration. This section describes the host-owned measurement procedure.
+
+Choose **Run** beside **File content hash performance** in the Review Harness. **Automatic** does not run this measurement; **Full review** includes it.
+
+The measurement compares the Self-hosted LiveSync SHA-256 file content hash helper with `xxHash64` for fixed in-memory `Blob` inputs of 4 KiB, 64 KiB, 1 MiB, and 50 MiB. Each input begins with the same deterministic byte sequence. Input construction is excluded from the timed samples; `xxHash64` engine initialisation is timed and reported separately. One 4-KiB warm-up call per algorithm is also measured separately and excluded from samples. SHA-256 uses the same helper as the product's file content hash path; `xxHash64` timing includes `Blob.arrayBuffer()` and `h64Raw`. Calls run one at a time, alternate algorithm order between samples, and yield to the interface between calls. The 50-MiB input uses the same three samples as the other sizes.
+
+The report gives the median and range for each algorithm and input size. Where `performance.memory` is available, it also records approximate JavaScript heap samples before, during, and after measurement. These samples may include other Obsidian activity and garbage collection; they are neither total process RAM nor a guaranteed peak. Unsupported devices explicitly report that heap measurements are unavailable.
+
+The scenario uses only fixed in-memory inputs. It does not read or write the Vault, database, settings, remote storage, or user content. It does not expose a hash-method setting or use a fixed performance threshold. The developer-only adapter in `src/features/ReviewHarness/reviewHarnessFileContentHashBenchmarkRuntime.ts` imports `computeFileContentHash` from Commonlib's public `/hashing` entry and `xxhashNew()` from `octagonal-wheels`. The benchmark compares the product helper with that package implementation; it does not change the hash method used by LiveSync.
 
 #### Logs
 
@@ -297,6 +322,8 @@ Existing legacy Modules continue to register their handlers in `onBindFunction()
   database and Replicator readiness. See
   [the declarative settings adapter ADR](docs/adr/2026_08_declarative_settings_adapter.md).
 - Use `this.services.setting.saveSettingData()` instead of using plugin methods directly
+- Inject `@vrtmrz/value-store` at host composition. `setting.deviceValues` uses exact device-local keys; `setting.config` and the Service Hub `config` share the existing Vault and database-suffix scope. Await reads, writes, and deletions before advancing the workflow. Browser and Obsidian hosts retain their Web Storage keys, and the CLI retains its existing flat JSON string map.
+- Seed the settings tab with `await settingTab.loadSettings()` before registration. Its editing buffer remains synchronous for Obsidian rendering; storage failures must not replace a previously loaded value with an empty default.
 
 ### Database Operations
 
@@ -328,6 +355,7 @@ This policy governs plug-in pre-releases and their accompanying CLI images. For 
 - Add only user-facing changes that help users understand what they gain, what has changed, or what they may need to do after updating.
 - Avoid listing purely internal refactors, maintenance chores, generated-file changes, and dependency updates unless they affect users; group and label them when they are included.
 - When preparing a release, replace `## Unreleased` with the target version heading (for example, `## 0.25.81`) and add a fresh empty `## Unreleased` section above it for the next cycle.
+- For a stable release, review the complete user-facing changes since the previous stable release. Classify new features and changed behaviour relative to that stable release. Include changes from intervening pre-releases which never became stable, even when their original notes have already moved into a release history.
 - Review and polish the released section in the release PR before tagging, because the content is embedded into the plug-in and may be reused as the GitHub Release notes.
 - Keep approximately the five most recent published plug-in versions in the embedded `updates.md`. Move older published sections unchanged into the appropriate release-line archive under `docs/releases/`, and update the history references when rotating them.
 
@@ -344,11 +372,12 @@ For a fix needed only by the CLI, use [CLI-only patch releases](#cli-only-patch-
 - For a hyphenated pre-release, run finalisation with `prerelease=true`; CLI publication remains optional. For a stable version awaiting BRAT validation, use `prerelease=true` and `publish_cli=false`.
 - Approve the `Release Obsidian Plugin` workflow for the `release` environment, then inspect the generated draft GitHub Release. When a hyphenated pre-release includes the CLI, confirm that it received only its immutable version and SHA-qualified image tags.
 - Publish the draft as a GitHub pre-release without replacing the latest stable release. Keep its release pull request in draft and leave its base branch unchanged throughout BRAT validation. Record that state in the pull request.
-- Validate the published release through BRAT. Confirm start-up, ordinary bidirectional synchronisation, and any regression scenario relevant to the release.
+- Validate installation or update through BRAT, and cold-start Obsidian to confirm the plug-in loads. Verify ordinary bidirectional synchronisation and relevant regression scenarios in real Obsidian against the published artefacts, or a build with matching hashes. When automated scenarios establish that coverage, BRAT acceptance need only cover installation or update and start-up; manually check any remaining release-specific behaviour. Record the artefact hashes and validation evidence as described in the [real Obsidian test guide](test/e2e-obsidian/README.md#combined-setup-and-security-regression-checks).
 - After a hyphenated pre-release passes, keep its release pull request unmerged. Add a reviewed metadata-only commit to the selected base branch which records the published version in `versions.json` and moves its exact tagged release notes out of `## Unreleased`, then close the release pull request only through a separate maintainer action.
 - After a stable version passes, remove the GitHub pre-release designation and make that exact release the latest stable release. Confirm that the release is no longer a pre-release, then mark its release pull request ready, merge the exact release commit into the selected base branch with a merge commit, and integrate that exact commit through the reviewed branch chain into the repository's default branch. Confirm that the default branch contains the matching stable metadata. Create the stable CLI tag and publish its `latest` and major-minor image tags, if selected, through a separate maintainer gate.
-- If BRAT validation fails, keep the release PR in draft and do not move published tags. Before preparing the next version, add a reviewed metadata-only commit to the selected base branch which records the published version in `versions.json` and moves its exact tagged release notes out of `## Unreleased`. Keep only changes made after that tag under `## Unreleased`. Compare the historical section with `git show <tag>:updates.md`; do not merge the failed release PR or describe it as validated. The next release PR can then rotate only the correction notes while preserving the immutable release history.
-- Prepare and publish the next patch or pre-release version from that reconciled base. Leave the failed release PR draft until it is deliberately closed as superseded under a separate maintainer action.
+- If BRAT validation fails, keep the release PR in draft and leave its published tag and artefacts unchanged. Prepare the correction on a new branch descended from that exact release commit, retaining its existing changes and `versions.json` entry. Prepare the next patch or pre-release version on that branch, with its own version, tag, and release PR. The selected base branch remains unchanged until a successor stable release passes validation and is promoted.
+- For the successor stable release, consolidate all user-facing changes since the last stable release, including changes from intervening pre-releases which never became stable. Preserve each published pre-release's exact tagged notes in the appropriate history under `docs/releases/`, and compare the archived section with `git show <tag>:updates.md`. The new release notes must describe the whole stable upgrade, including the correction.
+- After the successor stable release is validated and promoted, merge its exact release commit and ancestry through the reviewed branch chain. Leave the failed release PR in draft until it is deliberately closed as superseded under a separate maintainer action.
 - A hyphenated version is rejected unless `prerelease=true`. A stable version staged with `prerelease=true` is rejected unless `publish_cli=false`.
 
 ### Release Cheat Sheet
@@ -378,7 +407,7 @@ For a fix needed only by the CLI, use [CLI-only patch releases](#cli-only-patch-
 9. Validate the published release through BRAT, including start-up, ordinary bidirectional synchronisation, and any release-specific regression scenario.
 10. After a hyphenated pre-release passes, keep its release PR unmerged, reconcile its `versions.json` entry and exact release-note section into the selected base branch as metadata only, then close the PR through a separate maintainer action.
 11. After a stable version passes, remove the pre-release designation and make the exact release the latest stable release. Confirm that promotion, then mark the release PR ready, merge the exact release commit into the selected base branch, and integrate it through the reviewed branch chain into the repository's default branch. Confirm that the default branch contains the matching stable metadata, then publish stable CLI tags through a separate maintainer gate if selected.
-12. If validation fails, leave the PR in draft and do not move the published tags. Reconcile the published version's `updates.md` section and `versions.json` entry into the base branch as metadata only, then prepare the next patch or pre-release version from the remaining `## Unreleased` entries.
+12. If validation fails, leave the PR in draft and keep its published tag and artefacts unchanged. Start a new branch from that release commit, add the correction, and prepare the next patch or pre-release version. Retain the published version's `versions.json` entry and exact archived notes, and consolidate the successor stable release notes from the last stable release. Keep the base branch unchanged until the successor stable release is validated and promoted.
 
 ### CLI-only patch releases
 

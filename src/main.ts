@@ -1,4 +1,5 @@
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
+import { LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
 import { setGetLanguage } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 setGetLanguage(getLanguage);
@@ -51,6 +52,8 @@ import { useInteractiveConflictResolutionFeature } from "./serviceFeatures/inter
 import { ConflictResolveModal } from "./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
 import { useObsidianReplicationRibbonFeature } from "./serviceFeatures/obsidianReplicationRibbon.ts";
 import { useStartupLifecycleFeature } from "./serviceFeatures/startupLifecycle";
+import { useJoinedDevicesFeature } from "./serviceFeatures/useJoinedDevices";
+import { useDatabaseDiagnosticsFeature } from "./serviceFeatures/useDatabaseDiagnostics";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
@@ -112,6 +115,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
         });
         const rebuilder = new ServiceRebuilder({
+            path: services.path,
             events: services.context.events,
             API: services.API,
             database: services.database,
@@ -184,12 +188,18 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                     core,
                     (_compatibilityReplicator, p2p) => createInteractiveP2PReplication(p2p),
                     createOpenRebuildUI(this.app),
-                    { prepareP2PSettings: useP2PSettingsPreparation(core.services.API.webCompatFetch.bind(core.services.API)) }
+                    {
+                        prepareP2PSettings: useP2PSettingsPreparation(
+                            core.services.API.webCompatFetch.bind(core.services.API)
+                        ),
+                    }
                 );
                 setupManager.registerP2PSetupConnectionProbe(replicator.connectionProbe);
                 useP2PReplicatorCommands(core, replicator);
                 useP2PReplicatorUI(core, core, replicator, createInteractiveP2PReplication(replicator));
                 useObsidianReplicationRibbonFeature(core);
+                useDatabaseDiagnosticsFeature(core);
+                useJoinedDevicesFeature(core, serviceHub.context.noticeGroups);
                 useRemoteConfiguration(core);
 
                 useSetupProtocolFeature(core, setupManager);
@@ -224,6 +234,12 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         void this._startUp();
     }
     override onunload(): void {
-        return void this.core.services.control.onUnload();
+        void this.core.services.control.onUnload().catch((error) => {
+            this.core.services.API.addLog(
+                "Failed to unload Self-hosted LiveSync: " + String(error),
+                LOG_LEVEL_URGENT,
+                "shutdown"
+            );
+        });
     }
 }

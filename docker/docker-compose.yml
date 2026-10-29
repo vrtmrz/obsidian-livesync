@@ -2,7 +2,7 @@
 # =============================================================================
 #  PROFILES
 #  --------
-#  (default)              CouchDB only — LAN/localhost access, no TLS
+#  (default)              CouchDB only — host HTTP port, no TLS
 #                         Suitable for desktop-only use or testing.
 #
 #  --profile caddy        CouchDB + Caddy reverse proxy
@@ -14,7 +14,7 @@
 #
 #  --profile cloudflare   CouchDB + cloudflared tunnel daemon
 #                         Free public HTTPS via Cloudflare. Needs a CF account + tunnel token.
-#                         NOTE: Enable "Use Request API" in the Obsidian plugin to avoid 524 timeouts.
+#                         Review proxy timeouts separately from the Obsidian HTTP adapter setting.
 #
 #  QUICK START (local test):
 #    cp .env.example .env && edit .env
@@ -147,8 +147,8 @@ services:
   # PROFILE: cloudflare — cloudflared tunnel daemon
   # Requirements: Cloudflare account, tunnel token from CF Zero Trust dashboard
   # Usage: docker compose --profile cloudflare up -d
-  # NOTE: Enable "Use Request API" toggle in the Obsidian LiveSync plugin settings
-  #       to avoid Cloudflare's 100-second proxy timeout (524 errors).
+  # NOTE: The Request API setting changes the HTTP adapter, not the sync mode.
+  #       Diagnose proxy timeouts using the Docker README and current provider limits.
   # ---------------------------------------------------------------------------
   cloudflared:
     image: cloudflare/cloudflared:latest

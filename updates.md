@@ -16,6 +16,170 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
 
+## 1.0.42
+
+27th October, 2026
+
+Making content checks mandatory in the 1.0.41 pre-release came with a little too much overhead, so 1.0.42 makes them optional. This has turned into a slightly larger release.
+
+### Synchronisation
+
+#### New Feature
+
+- Rapid edits can produce fewer intermediate versions on other devices while LiveSync mode remains active.
+    - Enable **Batch database updates in LiveSync mode** to group successive local edits.
+        - Disabled by default; each synchronisation mode keeps its own choice.
+        - Updates reach other devices later. Batching does not detect template completion or prevent genuine concurrent-edit conflicts.
+- CouchDB synchronisation no longer looks idle while it is comparing change history.
+    - A ⏩ icon and comparison count show activity before documents are transferred.
+        - This count represents history entries, not files remaining to synchronise.
+- Status counts are easier to follow, with less movement as values change.
+    - CSS snippets can hide unwanted items or style individual `livesync-stat-` items, including inactive ones.
+
+- We can choose stricter content checks at start-up.
+    - Enable **Strict content check on startup** to compare file contents even when their modification times and sizes match the recorded local database state. This can increase start-up time in large Vaults.
+    - The setting is disabled by default. Ordinary start-up can skip content reads when the exact modification time, file size, and recorded database revision match, with no conflicts or pending file changes.
+    - While the setting is disabled, an edit which preserves its exact size and modification time can go undetected during start-up. Manual scans and explicit recovery operations remain strict.
+
+#### Fixed
+
+- Recent Vault edits remain recoverable after an interrupted local database save.
+    - This includes edits whose modification times compare equal to the database copy, and pending Hidden File Sync and Customisation Sync changes.
+- Manual synchronisation no longer starts before already accepted local changes finish saving to the database.
+    - Settings application also waits for those saves. Failed saves stay pending and report a failure.
+- Text from third-party tools is handled more robustly.
+    - Characters split across Chunks no longer trigger false corruption warnings.
+- Start-up integrity checks use less memory for healthy Vault files. (#1283)
+- Start-up checks avoid false repair warnings for files that change during inspection. (#1283)
+    - This applies when the final size matches the database and there are no conflicts.
+
+### Customisation Sync
+
+#### Fixed
+
+- Applying a multi-file customisation no longer skips files after the list is refreshed. (#1271)
+- Choosing **Automatic** now explains a missing Hidden File Sync prerequisite instead of proceeding into a failed initialisation. (#1270)
+    - Enable and initialise Hidden File Sync on this device first. The current mode is kept when the prerequisite is missing.
+- Initialising a whole plug-in in **Automatic** mode no longer omits its selected **MAIN** or **DATA** files.
+
+### Setup tools
+
+#### Fixed
+
+- Setup URI generation can avoid shell-variable collisions and unintended use of the operating-system username. (#817, #1274)
+    - Use `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE` for connection and encryption values.
+        - Existing scripts remain supported: the previous names are used when the corresponding prefixed value is unset or blank.
+
+### Miscellaneous
+
+- Dependencies have been updated, including security fixes.
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @rwbru, for the original Setup URI environment-variable fix (#817).
+- @junkerderprovinz, for adapting that fix to the current generator while preserving compatibility with existing scripts (#1274).
+- @s-qin, for reducing memory use during start-up checks and avoiding repeated content decoding in Commonlib (#1283, Commonlib #184).
+
+## 1.0.40
+
+24th October, 2026
+
+This has turned into a slightly larger set of changes overall, but I have finally been able to implement the features I felt we would need.
+
+### Synchronisation
+
+#### New Feature
+
+- We can choose **Review devices** in Remote Configuration, the command palette, or a version Notice to review participating devices.
+    - Our device appears first, with its lockout state. Other records show the platform, plug-in version, app version, and last recorded connection time when available.
+    - An advisory Notice identifies Self-hosted LiveSync and lists newer and older versions separately, with one shared recommendation and **Review devices** action. The dialogue explains possible storage costs and P2P compatibility limits.
+- We can forget records belonging to lost or retired devices while preserving the remote lock state and other devices.
+    - Forgetting a record does not delete Vault files or revoke credentials. A returning device can register again on an unlocked remote.
+
+#### Fixed
+
+- We can reuse unchanged content more reliably after edits with the V3 Rabin–Karp chunk splitter.
+    - Corrected rolling-window processing lets boundary detection recover after an insertion. Existing content remains readable, and installing this update does not trigger a full re-chunk of our Vaults.
+    - Chunk-size values 0 and 1 now use content-defined binary boundaries below their maximum lengths, improving reuse after an insertion instead of producing fixed-length pieces.
+    - Editing or explicitly rewriting a file, recreating its chunks, or rebuilding from our files can produce different chunk boundaries and additional chunks. Older and updated devices can retain different chunk layouts; this affects reuse and storage, not the file contents.
+- We can preserve all conflict branches, including deleted branches, during Fast Setup.
+    - A fresh, complete Fast Fetch can also hand its verified progress to ordinary synchronisation before file watching resumes, reducing the first subsequent identifier scan. Existing resume cursors and On Demand chunk retrieval retain their existing behaviour.
+
+#### Changed
+
+- New setup uses the same Chunk-size recommendation of 0 across remote types, and Setting Doctor no longer recommends increasing every self-hosted V3 configuration to 60.
+    - Setting Doctor no longer flags the saved **Enhance chunk size** value. When rebuilding with V3 Rabin–Karp, we recommend setting it to 0. This is now an efficient choice across all supported remote types.
+    - Existing explicit and agreed values are retained. Smaller Chunks favour reuse during editing, but increase document counts and can make first uploads and large rebuilds slower. Mostly immutable binary Vaults can still benefit from a larger explicit value.
+
+### Hidden File Sync
+
+#### Fixed
+
+- We can synchronise selected hidden files while the normal-file allow-list is set. (#1272)
+    - Normal-file exclusion patterns still apply to hidden files, and the Selector descriptions now explain their scope.
+
+### CLI
+
+- Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.
+
+## 1.0.39
+
+20th October, 2026
+
+I have been finding troubleshooting difficult, so I decided to go back to basics and prepare the tools we need.
+
+### Synchronisation
+
+#### Fixed
+
+- We can migrate to NFC path identity when deletion or rename history would otherwise block Rebuild or Fetch. (#1259)
+    - Logical deletions without unresolved conflicts no longer block operations which replace the local database. Conflicting histories and ambiguous current files still require review.
+
+### Diagnostics
+
+- We can inspect file differences and current conflicts across the local database, CouchDB, and the Vault without changing databases or settings.
+    - Integrity inspection compares Metadata for normal files and checks content for suspect groups. **Include remote database** is enabled by default and can be cleared for one run. Reports distinguish an excluded remote from an unavailable source and retain the evidence collected so far.
+- We can share reports using pseudonyms and find the affected files locally for follow-up.
+    - Integrity and Usage offer original names or pseudonyms before each run, and omit file contents and credentials in both modes. Path pseudonyms use a random public salt for each report; revision pseudonyms retain their generation number.
+    - The Hatch lookup searches current Vault paths and local Metadata for normal files. It preserves separate document IDs for the same path and can prepare a report for the selected document using the original salt. Public salts permit guessed-path checks.
+- We can follow progress in large inspections and stop work when enough evidence has been collected.
+    - Integrity shows counts and a gauge for each stage, reduces remote requests with bulk reads and bounded concurrency, and logs read and request timings. Usage shows revision discovery with a growing total, followed by cancellable accounting.
+    - Closing a follow-up dialogue stops further reads after the active read settles. Complete Usage reports retain the existing TSV columns; partial reports use JSON to retain their status and reasons.
+- We can read and share large Integrity reports more easily.
+    - Compact Markdown retains every observation and its follow-up references, with state counts, a review index, and a field guide. It includes available size, modification-time, Chunk-reference, and case/NFC evidence without additional database or Vault reads. JSON retains the full structure.
+    - Markdown reports use a collapsible code block for sharing in issues. Review candidates indicate where to investigate; they do not establish corruption, and unchecked content remains distinct from healthy content.
+- We can find reporting actions more easily in Hatch and keep report controls visible in smaller windows.
+    - The five reporting tools are grouped separately from checks, recovery, and reset operations. Name and format choices remain visible, and the report preview resizes around the controls.
+- We can request and provide targeted troubleshooting evidence through the issue-reporting guide.
+    - Direct links cover Integrity, Usage, pseudonym lookup, and follow-up reports, with request examples for issue discussions.
+
+## 1.0.38
+
+17th October, 2026
+
+### Synchronisation
+
+#### Added
+
+- We can opt into NFC path identity for CouchDB synchronisation between the CLI and Obsidian. This prevents decomposed or mixed Unicode file names from becoming inaccessible through a receiving device's normalised path. (#1259)
+    - Existing Vaults retain their current identity rules. Migration requires updated clients, a Rebuild from a complete authoritative Vault, and a Fetch on the other devices.
+    - Reconstruction stops when the supported host file listing or local Metadata exposes ambiguous files or parent folders under NFC and the configured case handling. The CLI retains existing physical file names. P2P and Object Storage do not support the new mode.
+
+#### Fixed
+
+- We can synchronise file deletions and renames when **Do not keep metadata of deleted files.** is enabled.
+    - A file restored during the final deletion check remains in the receiving Vault.
+- We can resolve configuration mismatches when **Encrypt internal file Properties** is enabled but its encryption prerequisites are inactive. (#1180)
+    - Compatible chunk settings can be aligned automatically, or reviewed through `Sync now`. Applying those settings preserves our inactive encryption preference.
+- We can receive synchronised updates to unchanged files even after the local database has discarded their recorded revision, avoiding unnecessary conflicts. (#1207)
+    - Saved content evidence survives revision-history pruning. Genuine local edits remain protected, and older records are upgraded only after their content is verified.
+
+### Maintenance
+
+- The Review Harness can compare SHA-256 and xxHash64 file-content hashing on the current device, with fixed inputs from 4 KiB to 50 MiB and separate initialisation and warm-up measurements.
+
 ## 1.0.37
 
 16th October, 2026
@@ -74,120 +238,3 @@ Thank you for your contributions!
 
 - @zeedif (#1213, #1214)
 - @lingting0 (#1242)
-
-## 1.0.35
-
-5th October, 2026
-
-### Synchronisation
-
-#### Fixed
-
-- We can continue synchronising after rebuilding an encrypted CouchDB remote, including when Hidden File Sync and Customisation Sync are enabled. (#1234)
-    - This plug-in reads the rebuilt data without reusing HTTP responses encrypted with the previous Security Seed.
-
-### Customisation Sync
-
-#### Fixed
-
-- Customisation Sync now waits until this plug-in is ready before handling configuration file events, and applying settings while synchronisation is suspended no longer scans configuration files. (#1220)
-    - Resuming synchronisation scans once and restarts the periodic scan when enabled.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @kimjansheden (#1220)
-
-## 1.0.34
-
-2nd October, 2026
-
-### Security
-
-- Fixed an issue where sensitive information could be included in exported configuration data under certain conditions. Updating is recommended. (refs #1218)
-- Improved configuration persistence and JSON conflict handling.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @kimjansheden (#1218)
-
-## 1.0.33
-
-1st October, 2026
-
-This has turned into quite a substantial release, and I think it brings meaningful improvements to the core of Self-hosted LiveSync. If you notice anything, please feel free to let me know.
-
-### Privacy and compatibility
-
-#### New Feature
-
-- An optional saved ID key can generate encrypted Chunk IDs and obfuscated Metadata document IDs independently of the current E2EE passphrase.
-    - New Vaults use a random key by default; existing Vaults keep their current ID configuration by default. You can also derive a key from the current E2EE passphrase, enter a separate source, or import a recovery code. The source is not retained; the saved key can be revealed locally as a recovery code.
-    - The saved key stays in place when the E2EE passphrase changes or E2EE is turned off. Share it with another device through a protected Setup URI. Changing document IDs on an existing remote requires the usual Rebuild and Fetch procedure.
-- We can now keep the file properties used by Hidden File Sync and Customisation Sync private in CouchDB.
-    - **Encrypt internal file Properties** extends E2EE V2 and Property Encryption to their paths, times, sizes, and Chunk references.
-    - Existing configurations keep this preference disabled. New Vaults enable it for use when the required encryption settings are active.
-    - Update every synchronising device before enabling it. It protects future writes; a manual remote Rebuild is strongly recommended to protect existing properties.
-- We can now see which unsupported feature prevents a client from synchronising with CouchDB.
-    - Clients check the features required by the remote before transferring data or resetting the local database for Fast Fetch. Receiving an unsupported requirement also stops active replication.
-
-- We can now compare ID generation performance on a desktop or mobile device through **Open review harness**, available with the developers' debug tools enabled.
-    - The copied report includes legacy and independent ID timings and, where available, approximate JavaScript heap samples. The measurement uses fixed test data and keeps our Vault and settings unchanged.
-
-#### Fixed
-
-- Updated `brace-expansion` and `markdown-it` to include upstream security fixes.
-- We can now keep using an E2EE passphrase beginning with `%` after restarting Obsidian. (#1221)
-    - This plug-in encrypts it before saving the settings. If an earlier version saved it in plain text, re-enter the passphrase used to encrypt the existing data after updating. Treat that passphrase as exposed if the affected `data.json` was shared.
-- A receiving device now retries an unavailable CouchDB Chunk when file Metadata arrives before that Chunk is visible, helping rapid edits reach the Vault after an initial on-demand lookup misses it. (#1224)
-    - Retries start after two seconds and continue with increasing delays while finite replication is active. When it ends, this plug-in checks locally and makes a final lookup if needed, without waiting out the remaining retry delay.
-- We can now distinguish initial on-demand Chunk requests (`🛄`) from retries (`🔁`) in the status bar. These replace `🧩`; each pending Chunk appears in one category, including while a retry is waiting.
-
-### Synchronisation and storage
-
-#### Fixed
-
-- Received changes held during start-up or a fetch are applied when this plug-in becomes ready, without waiting for another change or a settings save. **Suspend database reflecting** continues to hold changes (#1200).
-- Customisation Sync now compares full millisecond timestamps, so the freshness labels and **Select All Shiny** no longer mistake an older copy for a newer one because of timestamp truncation. (#1194)
-- **Hide not applicable items** now hides identical Customisation Sync items and refreshes the list when toggled. Items with applicable differences stay visible. (#1193)
-
-### Interface and translation
-
-#### Improved
-
-- More settings and messages are now available in Russian. (#1187)
-    - Dialogues show generated QR codes, key pairs, and database sizes again.
-- We can now use updated Spanish translations for settings and messages. (#1212)
-
-### Setup
-
-#### New Feature
-
-- We can now share a Setup URI with a displayed time limit, or choose **Compatible** for reuse without a time limit.
-    - **Time-bound** uses the current fixed seven-day UTC window, so the displayed end may be less than seven days away. Compatible retains the existing URI format; receiving devices still need to support the shared settings.
-    - The time condition applies when opening the URI. It does not revoke imported credentials or prevent reuse after rolling the device clock back.
-
-#### Improved
-
-- We can now distinguish the three Setup URI and QR code choices by their short labels and icons: initialise or overwrite the remote, join this device, or apply settings only.
-
-#### Fixed
-
-- We can now add a device or open a copied Vault without a compatibility pause solely because its device-local version record is absent.
-    - Existing version or settings incompatibilities still require review. A pause already saved by an earlier release still needs one explicit resume action.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @kimjansheden (#1219)
-- @Immick (#1195, #1196)
-- @bolikcraft (#1187)
-- @speedy-axolotl (#1212)
-
-### Issue replies
-
-I am a little behind on replying to issues, but I am reading them and will respond as I work through them. I have had little uninterrupted time recently, and that should improve soon.

@@ -11,6 +11,7 @@ export type PersistedSettingKey = PersistedBooleanSettingKey | PersistedStringSe
 type SettingSpecBase<K extends PersistedSettingKey, C> = {
     key: K;
     control: C;
+    holdValue?: boolean;
     visible?: () => boolean;
     disabled?: () => boolean;
     aliases?: string[];
@@ -34,6 +35,14 @@ type NumberSettingSpec = SettingSpecBase<
     }
 >;
 
+type NumericDropdownSettingSpec = SettingSpecBase<
+    PersistedNumericSettingKey,
+    {
+        type: "numeric-dropdown";
+        options: () => Record<string, string>;
+    }
+>;
+
 type DropdownSettingSpec = SettingSpecBase<
     PersistedStringSettingKey,
     {
@@ -42,7 +51,7 @@ type DropdownSettingSpec = SettingSpecBase<
     }
 >;
 
-export type SettingSpec = ToggleSettingSpec | NumberSettingSpec | DropdownSettingSpec;
+export type SettingSpec = ToggleSettingSpec | NumberSettingSpec | NumericDropdownSettingSpec | DropdownSettingSpec;
 
 /** An existing Advanced-page panel and the standard controls rendered within it. */
 export type SettingSpecGroup = {
@@ -54,7 +63,7 @@ export type SettingSpecMessages = {
     valueShouldBeInRange: (range: { min?: number; max?: number }) => string;
 };
 
-type LegacySettingOptions = Pick<AutoWireOption, "onUpdate">;
+type LegacySettingOptions = Pick<AutoWireOption, "holdValue" | "onUpdate">;
 
 export type LegacySettingBinding =
     | {
@@ -72,6 +81,11 @@ export type LegacySettingBinding =
           };
       }
     | {
+          type: "numeric-dropdown";
+          key: PersistedNumericSettingKey;
+          options: LegacySettingOptions & { options: Record<string, string> };
+      }
+    | {
           type: "dropdown";
           key: PersistedStringSettingKey;
           options: LegacySettingOptions & { options: Record<string, string> };
@@ -82,6 +96,10 @@ export interface LegacySettingSpecRenderer {
     autoWireNumeric(
         key: AllNumericItemKey,
         options: AutoWireOption & { clampMin?: number; clampMax?: number; acceptZero?: boolean }
+    ): unknown;
+    autoWireNumericDropDown(
+        key: AllNumericItemKey,
+        options: AutoWireOption & { options: Record<string, string> }
     ): unknown;
     autoWireDropDown(key: AllStringItemKey, options: AutoWireOption & { options: Record<string, string> }): unknown;
 }
@@ -94,15 +112,21 @@ function isNumberSettingSpec(spec: SettingSpec): spec is NumberSettingSpec {
     return spec.control.type === "number";
 }
 
+function isNumericDropdownSettingSpec(spec: SettingSpec): spec is NumericDropdownSettingSpec {
+    return spec.control.type === "numeric-dropdown";
+}
+
 function toLegacyUpdateOptions(spec: SettingSpec): LegacySettingOptions {
-    if (!spec.visible && !spec.disabled) {
-        return {};
-    }
     return {
-        onUpdate: (): OnUpdateResult => ({
-            ...(spec.visible ? { visibility: spec.visible() } : {}),
-            ...(spec.disabled ? { disabled: spec.disabled() } : {}),
-        }),
+        ...(spec.holdValue ? { holdValue: spec.holdValue } : {}),
+        ...(!spec.visible && !spec.disabled
+            ? {}
+            : {
+                  onUpdate: (): OnUpdateResult => ({
+                      ...(spec.visible ? { visibility: spec.visible() } : {}),
+                      ...(spec.disabled ? { disabled: spec.disabled() } : {}),
+                  }),
+              }),
     };
 }
 
@@ -131,6 +155,16 @@ export function toLegacySettingBinding(spec: SettingSpec): LegacySettingBinding 
             },
         };
     }
+    if (isNumericDropdownSettingSpec(spec)) {
+        return {
+            type: "numeric-dropdown",
+            key: spec.key,
+            options: {
+                ...updateOptions,
+                options: spec.control.options(),
+            },
+        };
+    }
     return {
         type: "dropdown",
         key: spec.key,
@@ -150,6 +184,9 @@ export function renderLegacySettingSpec(renderer: LegacySettingSpecRenderer, spe
             return;
         case "number":
             renderer.autoWireNumeric(binding.key, binding.options);
+            return;
+        case "numeric-dropdown":
+            renderer.autoWireNumericDropDown(binding.key, binding.options);
             return;
         case "dropdown":
             renderer.autoWireDropDown(binding.key, binding.options);
@@ -176,6 +213,12 @@ export function isValidSettingSpecValue(spec: SettingSpec, value: unknown): bool
             return typeof value === "boolean";
         case "number":
             return typeof value === "number" && !numberIsOutOfRange(value, spec.control);
+        case "numeric-dropdown":
+            return (
+                typeof value === "number" &&
+                Number.isInteger(value) &&
+                Object.prototype.hasOwnProperty.call(spec.control.options(), `${value}`)
+            );
         case "dropdown":
             return typeof value === "string" && Object.prototype.hasOwnProperty.call(spec.control.options(), value);
     }
@@ -229,6 +272,14 @@ export function toObsidianSettingDefinition(
             };
             break;
         }
+        case "numeric-dropdown":
+            control = {
+                type: "dropdown",
+                key: spec.key,
+                options: spec.control.options(),
+                ...(spec.disabled ? { disabled: spec.disabled } : {}),
+            };
+            break;
         case "dropdown":
             control = {
                 type: "dropdown",

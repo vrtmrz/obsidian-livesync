@@ -4,11 +4,16 @@
  * The source Vault creates a remote preferred profile with a missing legacy
  * filename-case value. The target has the effective false value, but differs
  * in the chunk size and V2 customisation setting. Applying the ordinary
- * remote settings action must permit a fresh synchronisation without a Fetch. A
+ * remote settings action must permit a fresh synchronisation without a Fetch.
  * Separate true/false and true/missing case controls keep Fetch required.
+ * An enabled but inactive internal Metadata encryption preference must survive
+ * ordinary setting adoption and restart, and must not suppress the Sync now dialogue.
+ * Automatic alignment and adoption which enables an encryption prerequisite also
+ * exercise two-way transfer and restart against independent remote databases.
  */
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { MILESTONE_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
@@ -52,6 +57,7 @@ const sourceNotePath = "E2E/tweak-compatibility/source.md";
 const restartedNotePath = "E2E/tweak-compatibility/restarted.md";
 const sourceNoteContent = `# Tweak compatibility source\n\n${"source-content ".repeat(1200)}\n`;
 const restartedNoteContent = `# Tweak compatibility restart\n\n${"restart-content ".repeat(1200)}\n`;
+const artifactRoot = resolve(process.env.E2E_LIVESYNC_TARGET_ARTIFACT_ROOT?.trim() || process.cwd());
 
 type MilestoneDocument = CouchDbDocument & {
     tweak_values?: Record<string, unknown>;
@@ -129,6 +135,21 @@ async function replicateOnce(cliBinary: string, env: NodeJS.ProcessEnv): Promise
     );
 }
 
+async function runSyncNow(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await evalObsidianJson<boolean>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const command=app.commands.commands['obsidian-livesync:livesync-replicate'];",
+            "if(typeof command?.callback!=='function') throw new Error('Sync now command is unavailable');",
+            "await command.callback();",
+            "return JSON.stringify(true);",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
 async function selectCompatibilityAction(
     port: number,
     action: string,
@@ -191,6 +212,7 @@ async function startSession(
         binary,
         cliBinary,
         vault,
+        artifactRoot,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         ...(pluginData === undefined ? {} : { pluginData }),
         localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
@@ -220,17 +242,29 @@ async function prepareConfiguredSession(
 async function readTweakState(
     cliBinary: string,
     env: NodeJS.ProcessEnv
-): Promise<{ customChunkSize: unknown; usePluginSyncV2: unknown; handleFilenameCaseSensitive: unknown }> {
+): Promise<{
+    customChunkSize: unknown;
+    usePluginSyncV2: unknown;
+    handleFilenameCaseSensitive: unknown;
+    encryptInternalMetadata: unknown;
+    encrypt: unknown;
+    usePathObfuscation: unknown;
+    tweakModified: unknown;
+}> {
     return await evalObsidianJson<{
         customChunkSize: unknown;
         usePluginSyncV2: unknown;
         handleFilenameCaseSensitive: unknown;
+        encryptInternalMetadata: unknown;
+        encrypt: unknown;
+        usePathObfuscation: unknown;
+        tweakModified: unknown;
     }>(
         cliBinary,
         [
             "(()=>{",
             "const settings=app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings();",
-            "return JSON.stringify({customChunkSize:settings.customChunkSize,usePluginSyncV2:settings.usePluginSyncV2,handleFilenameCaseSensitive:settings.handleFilenameCaseSensitive});",
+            "return JSON.stringify({customChunkSize:settings.customChunkSize,usePluginSyncV2:settings.usePluginSyncV2,handleFilenameCaseSensitive:settings.handleFilenameCaseSensitive,encryptInternalMetadata:settings.encryptInternalMetadata,encrypt:settings.encrypt,usePathObfuscation:settings.usePathObfuscation,tweakModified:settings.tweakModified});",
             "})()",
         ].join(""),
         env
@@ -314,11 +348,157 @@ async function verifyStaleTargetChoice(
     );
 }
 
+async function verifyRecoveryContinuity(
+    binary: string,
+    cliBinary: string,
+    couchDb: CouchDbConfig,
+    scenario: "automatic" | "encrypt" | "usePathObfuscation"
+): Promise<void> {
+    const automatic = scenario === "automatic";
+    const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, `tweak-${scenario.toLowerCase()}`);
+    const settings = couchDbSettings(couchDb, dbName);
+    const sourceVault = await createTemporaryVault();
+    const targetVault = await createTemporaryVault();
+    const sourceSettings = {
+        encrypt: !automatic,
+        usePathObfuscation: !automatic,
+        encryptInternalMetadata: false,
+        passphrase: "tweak-recovery-e2e-secret",
+        E2EEAlgorithm: "v2",
+        idDerivationVersion: 0,
+        customChunkSize: 0,
+        autoAcceptCompatibleTweak: false,
+    };
+    const expectedState = {
+        encrypt: !automatic,
+        usePathObfuscation: !automatic,
+        encryptInternalMetadata: automatic,
+        customChunkSize: 0,
+    };
+    let session: ObsidianLiveSyncSession | undefined;
+    const assertAdoptedSettings = async () => {
+        assert(session, "The recovery scenario has no active Obsidian session.");
+        const state = await readTweakState(cliBinary, session.cliEnv);
+        for (const [key, value] of Object.entries(expectedState)) {
+            assertEqual(state[key as keyof typeof state], value, `${scenario}: incorrect adopted ${key}.`);
+        }
+        const milestone = (await fetchCouchDbDocument(couchDb, dbName, milestoneId)) as MilestoneDocument;
+        const preferred = milestone.tweak_values?.PREFERRED;
+        assert(isRecord(preferred), `${scenario}: the remote preferred profile is missing.`);
+        for (const [key, value] of Object.entries({ ...expectedState, encryptInternalMetadata: false })) {
+            assertEqual(preferred[key], value, `${scenario}: incorrect remote ${key}.`);
+        }
+    };
+
+    try {
+        await createCouchDbDatabase(couchDb, dbName);
+        console.log(`Recovery continuity scenario: ${scenario} (${dbName})`);
+        session = await prepareConfiguredSession(binary, cliBinary, sourceVault, settings, sourceSettings);
+        await prepareRemote(cliBinary, session.cliEnv);
+        await writeNote(cliBinary, session.cliEnv, sourceNotePath, sourceNoteContent);
+        await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, sourceNotePath);
+        assertEqual(
+            (await replicateOnce(cliBinary, session.cliEnv)).succeeded,
+            true,
+            `${scenario}: source upload failed.`
+        );
+        await session.app.stop();
+        session = undefined;
+
+        session = await prepareConfiguredSession(binary, cliBinary, targetVault, settings, {
+            ...sourceSettings,
+            encryptInternalMetadata: true,
+            ...(automatic ? { customChunkSize: 60, autoAcceptCompatibleTweak: true } : { [scenario]: false }),
+        });
+        await prepareRemote(cliBinary, session.cliEnv);
+        const initialState = await readTweakState(cliBinary, session.cliEnv);
+        assertEqual(initialState.encryptInternalMetadata, true, `${scenario}: the saved preference is not enabled.`);
+        // The target was configured last. Make the remote profile newer so automatic
+        // alignment must adopt its chunk setting, rather than publish the target's.
+        if (automatic) {
+            assertEqual(initialState.customChunkSize, 60, "The automatic alignment fixture has no chunk mismatch.");
+            const milestone = (await fetchCouchDbDocument(couchDb, dbName, milestoneId)) as MilestoneDocument;
+            const preferred = milestone.tweak_values?.PREFERRED;
+            assert(isRecord(preferred), "The automatic alignment fixture has no remote preferred profile.");
+            assertEqual(preferred.customChunkSize, 0, "The remote fixture has the wrong chunk setting.");
+            preferred.tweakModified =
+                (typeof initialState.tweakModified === "number" ? initialState.tweakModified : 0) + 1;
+            await putCouchDbDocument(couchDb, dbName, milestone);
+        } else {
+            assertEqual(initialState[scenario], false, `${scenario}: the encryption prerequisite is already enabled.`);
+        }
+        const adoption = replicateOnce(cliBinary, session.cliEnv);
+        if (!automatic) {
+            await selectCompatibilityAction(
+                session.remoteDebuggingPort,
+                applySettingsWithFetchAction,
+                applySettingsAction
+            );
+        }
+        await adoption;
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        await assertAdoptedSettings();
+        if (!automatic) {
+            // The real Fetch must reflect the source before a subsequent replication
+            // could hide a failure to rebuild or decrypt the local database.
+            await waitForPathContent(targetVault.path, sourceNotePath, sourceNoteContent);
+        }
+        assertEqual(
+            (await replicateOnce(cliBinary, session.cliEnv)).succeeded,
+            true,
+            `${scenario}: synchronisation after adoption failed.`
+        );
+        await waitForPathContent(targetVault.path, sourceNotePath, sourceNoteContent);
+        await session.app.stop();
+        session = undefined;
+
+        session = await startSession(binary, cliBinary, targetVault);
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        await assertE2eCompatibilityMarker(cliBinary, session.cliEnv);
+        await assertAdoptedSettings();
+        await writeNote(cliBinary, session.cliEnv, restartedNotePath, restartedNoteContent);
+        await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, restartedNotePath);
+        assertEqual(
+            (await replicateOnce(cliBinary, session.cliEnv)).succeeded,
+            true,
+            `${scenario}: upload after restart failed.`
+        );
+        await assertAdoptedSettings();
+        await session.app.stop();
+        session = undefined;
+
+        session = await startSession(binary, cliBinary, sourceVault);
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        assertEqual(
+            (await replicateOnce(cliBinary, session.cliEnv)).succeeded,
+            true,
+            `${scenario}: return transfer failed.`
+        );
+        await waitForPathContent(sourceVault.path, restartedNotePath, restartedNoteContent);
+        console.log(`Recovery continuity passed: ${scenario}, persisted settings, restart, and two-way content.`);
+    } finally {
+        if (session) await session.app.stop().catch(() => undefined);
+        await Promise.all([sourceVault.dispose(), targetVault.dispose()]);
+        if (process.env.E2E_OBSIDIAN_KEEP_COUCHDB !== "true") {
+            await deleteCouchDbDatabase(couchDb, dbName).catch((error: unknown) => {
+                console.warn(error instanceof Error ? error.message : error);
+            });
+        }
+    }
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
     if (!cli.binary) {
         throw new Error(`Could not find obsidian-cli. Checked paths: ${cli.checked.join(", ")}`);
+    }
+    console.log(`Plug-in artefacts: ${artifactRoot}`);
+    for (const name of ["main.js", "manifest.json", "styles.css"]) {
+        const hash = createHash("sha256")
+            .update(new Uint8Array(await readFile(join(artifactRoot, name))))
+            .digest("hex");
+        console.log(`SHA-256 ${name}: ${hash}`);
     }
 
     const couchDb = await loadCouchDbConfig();
@@ -360,12 +540,20 @@ async function main(): Promise<void> {
         await removeLegacyCasePreference(couchDb, dbName);
 
         targetSession = await prepareConfiguredSession(binary, cli.binary, targetVault, settings, {
+            encrypt: false,
+            encryptInternalMetadata: true,
             customChunkSize: 60,
             usePluginSyncV2: true,
             handleFilenameCaseSensitive: false,
             autoAcceptCompatibleTweak: false,
         });
         await prepareRemote(cli.binary, targetSession.cliEnv);
+        const commandPromise = runSyncNow(cli.binary, targetSession.cliEnv);
+        await selectCompatibilityAction(targetSession.remoteDebuggingPort, dismissAction);
+        await commandPromise;
+        const dismissedState = await readTweakState(cli.binary, targetSession.cliEnv);
+        assertEqual(dismissedState.customChunkSize, 60, "Dismissing Sync now changed the chunk size.");
+        assertEqual(dismissedState.encryptInternalMetadata, true, "Dismissing Sync now changed the saved preference.");
         const targetReplicationPromise = replicateOnce(cli.binary, targetSession.cliEnv);
         await selectCompatibilityAction(targetSession.remoteDebuggingPort, applySettingsAction);
         const targetReplication = await targetReplicationPromise;
@@ -383,6 +571,11 @@ async function main(): Promise<void> {
         await waitForLiveSyncCoreReady(cli.binary, targetSession.cliEnv);
         await assertE2eCompatibilityMarker(cli.binary, targetSession.cliEnv);
         const restartedState = await readTweakState(cli.binary, targetSession.cliEnv);
+        assertEqual(
+            restartedState.encryptInternalMetadata,
+            true,
+            "The inactive internal Metadata encryption preference was not retained after adoption and restart."
+        );
         assertEqual(
             restartedState.customChunkSize,
             0,
@@ -469,6 +662,9 @@ async function main(): Promise<void> {
         controlSession = undefined;
 
         console.log("Tweak compatibility also rejected a stale Fetch choice after the remote changed.");
+        for (const scenario of ["automatic", "encrypt", "usePathObfuscation"] as const) {
+            await verifyRecoveryContinuity(binary, cli.binary, couchDb, scenario);
+        }
     } finally {
         if (sourceSession) await sourceSession.app.stop().catch(() => undefined);
         if (targetSession) await targetSession.app.stop().catch(() => undefined);

@@ -1297,6 +1297,10 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "CouchDB 连接调优",
         "zh-tw": "CouchDB 連線調校",
     },
+    "CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1.":
+        {
+            def: "CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1.",
+        },
     "CouchDB validates the database name when you connect. The name must not be empty.": {
         def: "CouchDB validates the database name when you connect. The name must not be empty.",
         es: "CouchDB valida el nombre de la base de datos al conectar. El nombre no puede estar vacío.",
@@ -3870,6 +3874,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Позже",
         zh: "稍后",
         "zh-tw": "稍後",
+    },
+    "Legacy path identity": {
+        def: "Legacy path identity",
     },
     "Limit: {datetime} ({timestamp})": {
         def: "Limit: {datetime} ({timestamp})",
@@ -7936,6 +7943,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Путь",
         zh: "路径",
         "zh-tw": "路徑",
+    },
+    "Path identity mode": {
+        def: "Path identity mode",
     },
     "Path Obfuscation": {
         def: "Path Obfuscation",
@@ -13773,6 +13783,9 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Выберите удалённую базу для синхронизации",
         zh: "输入服务器信息",
         "zh-tw": "選擇同步遠端",
+    },
+    "Unicode NFC path identity": {
+        def: "Unicode NFC path identity",
     },
     "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.": {
         def: "Unique name between all synchronized devices. To edit this setting, please disable customization sync once.",

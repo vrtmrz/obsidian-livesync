@@ -14,3 +14,9 @@ export {
     type SecuritySeedResourceHost,
 } from "./securitySeed";
 export { createCouchDBSynchronisationInformationResourceFactory } from "./synchronisationInformation";
+
+export {
+    createCouchDBJoinedDevicesResourceFactory,
+    createObjectStorageJoinedDevicesResourceFactory,
+} from "./joinedDevices";
+export { createCouchDBInitialFetchFastForwardResourceFactory } from "./initialFetchFastForward";

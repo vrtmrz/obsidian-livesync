@@ -43,7 +43,7 @@ describe("paneAdvanced", () => {
         };
 
         paneAdvanced.call(host as never, {} as HTMLElement, { addPanel } as never);
-        await vi.waitFor(() => expect(settingHarness.rendered).toHaveLength(9));
+        await vi.waitFor(() => expect(settingHarness.rendered).toHaveLength(11));
 
         expect(addPanel.mock.calls.map(([, heading]) => heading)).toEqual([
             "Memory cache",
@@ -53,6 +53,8 @@ describe("paneAdvanced", () => {
         ]);
         expect(settingHarness.createdIn).toEqual([
             panelElements.get("Memory cache"),
+            panelElements.get("Local Database Tweak"),
+            panelElements.get("Local Database Tweak"),
             panelElements.get("Local Database Tweak"),
             panelElements.get("Local Database Tweak"),
             panelElements.get("Transfer Tweak"),
@@ -66,6 +68,8 @@ describe("paneAdvanced", () => {
             "hashCacheMaxCount",
             "chunkSplitterVersion",
             "customChunkSize",
+            "strictContentCheckOnStartup",
+            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",

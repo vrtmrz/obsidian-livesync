@@ -243,6 +243,29 @@ export class LiveSyncSetting extends Setting {
         });
         return this;
     }
+
+    autoWireNumericDropDown(key: AllNumericItemKey, opt: AutoWireOption & { options: Record<string, string> }) {
+        const conf = this.autoWireSetting(key, opt);
+        this.addDropdown((dropdown) => {
+            this.autoWiredComponent = dropdown;
+            const setValue = wrapMemo((value: string) => {
+                dropdown.setValue(value);
+            });
+
+            dropdown.addOptions(opt.options);
+            this.invalidateValue = () => setValue(`${LiveSyncSetting.env.editingSettings[key] ?? ""}`);
+            this.invalidateValue();
+            dropdown.onChange(async (value) => {
+                const numericValue = Number(value);
+                if (!Number.isInteger(numericValue) || !Object.prototype.hasOwnProperty.call(opt.options, value)) {
+                    return false;
+                }
+                await this.commitValue(numericValue);
+            });
+            this.autoWireComponent(this.autoWiredComponent, conf, opt);
+        });
+        return this;
+    }
     addApplyButton(keys: AllSettingItemKey[], text?: string) {
         this.addButton((button) => {
             this.applyButtonComponent = button;

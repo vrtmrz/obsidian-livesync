@@ -1,15 +1,17 @@
 ---
-date: 2026-09-08
-commonlib-version: "0.1.24"
-self-hosted-livesync-version: "1.0.27"
-status: unreleased
+date: 2026-10-17
+commonlib-version: "0.1.42"
+self-hosted-livesync-version: "1.0.37"
+status: released
 ---
 
 # Tweak compatibility and recovery
 
-This document describes the integration of Commonlib 0.1.24 with
-Self-hosted LiveSync 1.0.27. Commonlib owns the interpretation of synchronisation
-settings; LiveSync owns the dialogues and operations which consume that result.
+This document describes the compatibility and recovery contract introduced
+after the Self-hosted LiveSync 1.0.37 and Commonlib 0.1.42 baseline recorded
+above. The current assessment is included in Self-hosted LiveSync 1.0.42 with
+Commonlib 0.2.2. Commonlib owns the interpretation of synchronisation settings;
+LiveSync owns the dialogues and operations which consume that result.
 
 ## Shared assessment
 
@@ -25,11 +27,16 @@ document IDs. An explicitly enabled value is therefore different from either an
 explicitly disabled value or a missing value. Settings whose historical missing
 value has not been established remain unadvertised; the evaluator does not
 invent defaults or turn every falsy value into an absent value.
+`pathNormalizationVersion` is another explicit compatibility rule: missing and
+`0` select legacy identity, while `1` requires coordinated reconstruction.
+The [Unicode path identity design](unicode_path_identity.md) defines its
+admission checks and supported transports.
 
 The central replication gate, mismatch dialogues, and RedFlag Fetch preparation
 consume the same effective differences. The P2P transport retains its separate
 policy: ordinary representation differences warn without rejecting transfer,
-while its existing passphrase and peer checks still apply. Sharing assessment
+while its existing passphrase and peer checks still apply. NFC path identity
+is outside that warning-only policy: P2P refuses version `1`. Sharing assessment
 does not make the central replication policy appropriate for every transport.
 
 ## Host responsibilities
@@ -65,6 +72,15 @@ for a decision and before applying it. A changed target or changed settings
 discard that decision. The signature used for this check can contain sensitive
 configuration and must not be logged, persisted, or included in diagnostics.
 
+Central replication can assess an effective value which differs from a saved
+preference, such as internal Metadata encryption whose prerequisites are inactive.
+Recovery accepts the current saved or effective snapshot without treating that
+representation difference as a settings change. Applying assessed changes retains
+saved preferences only when they leave the adopted effective values unchanged.
+If adoption activates encryption prerequisites, the adopted encryption value
+takes precedence. The full settings signature still detects a preference changed
+while awaiting a decision.
+
 The active publication reservation is not held while waiting for the dialogue.
 Remote writes use the failed attempt's publication guard. Fetch and Rebuild use
 their existing owners and propagate failure without claiming a successful
@@ -91,3 +107,11 @@ replication, explicit Fetch, and replication after restart. A unit test which
 mocks Fetch does not establish those behaviours, and a corrected mismatch
 dialogue alone does not establish the cause of a reported persistent automatic
 synchronisation failure.
+
+The `tweak-compatibility` real-Obsidian scenario covers automatic and manual
+adoption, stale target rejection, and adoption which activates either E2EE or
+Property Encryption. Those prerequisite changes must retain the adopted
+effective Metadata encryption value through Fetch, restart, and two-way file
+transfer. See the [test guide](../../test/e2e-obsidian/README.md) for the scenario
+and explicit artefact selection. The cause of an earlier saved chunk-size
+change is separate from these recovery guarantees.

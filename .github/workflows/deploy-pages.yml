@@ -14,6 +14,7 @@ on:
       - 'package-lock.json'
       - '.github/workflows/deploy-pages.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'aggregator.html'
       - 'src/**'
@@ -32,6 +33,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Validate and package Pages site
     runs-on: ubuntu-latest
     steps:

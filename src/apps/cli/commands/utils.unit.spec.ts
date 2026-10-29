@@ -1,6 +1,20 @@
 import { path } from "@vrtmrz/livesync-commonlib/node";
 import { describe, expect, it } from "vitest";
-import { toDatabaseRelativePath } from "./utils";
+import { getForceRequirementError, toDatabaseRelativePath } from "./utils";
+
+describe("getForceRequirementError", () => {
+    it.each([
+        ["rebuild", "Command 'rebuild' requires --force because it replaces the local and remote databases."],
+        ["fetch", "Command 'fetch' requires --force because it replaces the local database with remote state."],
+    ] as const)("requires force for %s", (command, expected) => {
+        expect(getForceRequirementError(command, false)).toBe(expected);
+        expect(getForceRequirementError(command, true)).toBeUndefined();
+    });
+
+    it("does not require force for ordinary commands", () => {
+        expect(getForceRequirementError("sync", false)).toBeUndefined();
+    });
+});
 
 describe("toDatabaseRelativePath", () => {
     const databasePath = path.resolve("/tmp/livesync-vault");

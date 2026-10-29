@@ -32,6 +32,10 @@ Enabling Hidden File Sync requires an initialisation direction:
 
 Prefer a narrow target list. Device-specific workspace state and another plug-in's credentials are usually poor candidates for cross-device synchronisation.
 
+`Normal Files` → `Synchronising files` limits ordinary files only. Hidden File Sync uses its own `Target patterns`. The `Non-Synchronising files` patterns under `Normal Files` also exclude matching hidden files, so review them alongside the hidden-file selectors.
+
+If an earlier version skipped hidden files because of the normal-file allow-list, repeat Hidden File Sync initialisation after updating. A routine scan can skip unchanged files which were already checked. Back up the Vault and choose the intended source direction as described above.
+
 Target patterns also control directory traversal. A pattern must therefore match each parent directory as well as the intended files. For example, the following pattern admits the `.obsidian` parent and only its `snippets` subtree:
 
 ```text
@@ -67,6 +71,12 @@ Hidden File Sync must be enabled independently after ordinary setup on each devi
 5. Verify representative files before enabling the feature on the next device.
 
 If you later run Rebuild or Fetch as a recovery operation, expect optional features to be disabled again. Complete ordinary recovery first, then repeat this guide deliberately.
+
+## Automatic in Customisation Sync
+
+**Automatic** delegates an item's files to Hidden File Sync. Enable Hidden File Sync on this device through the steps above before choosing Automatic. If Hidden File Sync is disabled, the choice displays a Notice without changing the item's mode or starting initialisation. Previously saved Automatic assignments remain saved, so this prerequisite also applies after importing settings from another device.
+
+Once Hidden File Sync is enabled, choose the item's initial action in Customisation Sync. Selecting a whole plug-in applies that action to both its **MAIN** and **DATA** selections.
 
 ## Related settings
 

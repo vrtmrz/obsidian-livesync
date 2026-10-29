@@ -28,7 +28,11 @@ process.env.E2E_OBSIDIAN_COUCHDB_TIMEOUT_MS ??= "30000";
 process.env.E2E_OBSIDIAN_FILE_TIMEOUT_MS ??= "30000";
 
 const liveSyncCli = resolve("src/apps/cli/dist/index.cjs");
-const notePath = "E2E/cli-to-obsidian.md";
+const migrateUnicodePaths = process.env.E2E_OBSIDIAN_UNICODE_MIGRATION === "true";
+const unicodePaths = migrateUnicodePaths || process.env.E2E_OBSIDIAN_UNICODE_PATHS === "true";
+const useEncryption = !unicodePaths || process.env.E2E_OBSIDIAN_UNICODE_ENCRYPTION === "true";
+const notePath = unicodePaths ? "Cafe\u0301/r\u00e9sume\u0301.md" : "E2E/cli-to-obsidian.md";
+const receivedNotePath = unicodePaths ? notePath.normalize("NFC") : notePath;
 const noteContent = [
     "# CLI to real Obsidian",
     "",
@@ -54,6 +58,7 @@ type CliFileInfo = {
     id: string;
     children: string[];
     expectedCtime?: number;
+    legacyId?: string;
 };
 
 function parseCommandLine(value: string): string[] {
@@ -126,14 +131,15 @@ function resolveLiveSyncCliCommand(): LiveSyncCliCommand {
     return { executable: process.execPath, prefixArgs: [liveSyncCli] };
 }
 
-async function runLiveSyncCli(command: LiveSyncCliCommand, args: string[]): Promise<CliResult> {
+async function runLiveSyncCli(command: LiveSyncCliCommand, args: string[], input?: string): Promise<CliResult> {
     return await new Promise((resolvePromise, reject) => {
         const timeoutMs = Number(process.env.E2E_LIVESYNC_CLI_TIMEOUT_MS ?? 60000);
         const child = spawn(command.executable, [...command.prefixArgs, ...args], {
             cwd: process.cwd(),
             env: process.env,
-            stdio: ["ignore", "pipe", "pipe"],
+            stdio: ["pipe", "pipe", "pipe"],
         });
+        child.stdin.end(input);
         let stdout = "";
         let stderr = "";
         child.stdout.on("data", (chunk: Buffer) => {
@@ -183,7 +189,8 @@ async function configureLiveSyncCli(
     command: LiveSyncCliCommand,
     settingsPath: string,
     couchDb: Awaited<ReturnType<typeof loadCouchDbConfig>>,
-    dbName: string
+    dbName: string,
+    pathNormalizationVersion = unicodePaths ? 1 : 0
 ): Promise<void> {
     await runLiveSyncCli(command, ["init-settings", "--force", settingsPath]);
     const settings = JSON.parse(await readFile(settingsPath, "utf-8")) as Record<string, unknown>;
@@ -210,14 +217,60 @@ async function configureLiveSyncCli(
         handleFilenameCaseSensitive: false,
         doNotUseFixedRevisionForChunks: true,
         E2EEAlgorithm: "v2",
-        encrypt: true,
+        encrypt: useEncryption,
         passphrase: e2eePassphrase,
-        usePathObfuscation: true,
-        encryptInternalMetadata: true,
+        usePathObfuscation: useEncryption,
+        encryptInternalMetadata: useEncryption,
+        deleteMetadataOfDeletedFiles: false,
+        pathNormalizationVersion,
         doctorProcessedVersion: "0.25.27",
         isConfigured: true,
     });
     await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
+}
+
+async function startLiveSyncCliDaemon(command: LiveSyncCliCommand, databasePath: string, settingsPath: string) {
+    const child = spawn(
+        command.executable,
+        [...command.prefixArgs, databasePath, "--settings", settingsPath, "--interval", "1", "daemon"],
+        { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"] }
+    );
+    let output = "";
+    let spawnError: Error | undefined;
+    child.stdout.on("data", (chunk: Buffer) => {
+        output += chunk.toString("utf-8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+        output += chunk.toString("utf-8");
+    });
+    child.on("error", (error) => {
+        spawnError = error;
+    });
+    const stop = async () => {
+        if (child.exitCode !== null || child.signalCode !== null || spawnError) return;
+        await new Promise<void>((resolvePromise) => {
+            const timeout = setTimeout(() => child.kill("SIGKILL"), 10000);
+            child.once("exit", () => {
+                clearTimeout(timeout);
+                resolvePromise();
+            });
+            child.kill("SIGTERM");
+        });
+    };
+    const deadline = Date.now() + Number(process.env.E2E_LIVESYNC_CLI_TIMEOUT_MS ?? 60000);
+    try {
+        while (!output.includes("[Daemon] Polling mode:")) {
+            if (spawnError) throw spawnError;
+            if (child.exitCode !== null || child.signalCode !== null || Date.now() >= deadline) {
+                throw new Error(`The CLI daemon did not become ready.\n${output}`);
+            }
+            await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+        }
+        return { stop, getOutput: () => output };
+    } catch (error) {
+        await stop();
+        throw error;
+    }
 }
 
 async function writeCliNote(
@@ -280,6 +333,107 @@ async function waitForVaultContent(
     throw new Error(`Timed out waiting for CLI-created note at ${fullPath}. Last content:\n${lastContent}`);
 }
 
+async function migrateCliDatabases(
+    command: LiveSyncCliCommand,
+    cliState: string,
+    databasePath: string,
+    settingsPath: string,
+    couchDb: Awaited<ReturnType<typeof loadCouchDbConfig>>,
+    dbName: string,
+    legacyFileInfo: CliFileInfo
+): Promise<CliFileInfo> {
+    await runLiveSyncCli(
+        command,
+        [databasePath, "--settings", settingsPath, "put", receivedNotePath],
+        "Obsolete composed-path content.\n"
+    );
+    const aliasInfo = await runLiveSyncCli(command, [
+        databasePath,
+        "--settings",
+        settingsPath,
+        "info",
+        receivedNotePath,
+    ]);
+    const deletedAliasId = (JSON.parse(aliasInfo.stdout) as CliFileInfo).id;
+    if (deletedAliasId === legacyFileInfo.id)
+        throw new Error("The legacy Unicode fixture needs distinct Metadata IDs.");
+    await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "rm", receivedNotePath]);
+    await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "sync"]);
+    await waitForCouchDbDocs(couchDb, dbName, (docs) =>
+        docs.some((doc) => doc._id === deletedAliasId && doc.deleted === true)
+    );
+
+    const secondaryDatabasePath = join(cliState, "secondary-database");
+    const secondarySettingsPath = join(cliState, "secondary-settings.json");
+    await mkdir(secondaryDatabasePath, { recursive: true });
+    await configureLiveSyncCli(command, secondarySettingsPath, couchDb, dbName, 0);
+    await runLiveSyncCli(command, [secondaryDatabasePath, "--settings", secondarySettingsPath, "sync"]);
+    await runLiveSyncCli(command, [secondaryDatabasePath, "--settings", secondarySettingsPath, "mirror"]);
+    assertEqual(
+        await readFile(join(secondaryDatabasePath, notePath), "utf-8"),
+        editedNoteContent,
+        "The secondary CLI did not materialise the legacy NFD note before migration."
+    );
+
+    for (const path of [settingsPath, secondarySettingsPath]) {
+        const settings = JSON.parse(await readFile(path, "utf-8"));
+        settings.pathNormalizationVersion = 1;
+        await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
+    }
+    await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "rebuild", "--force", "--write-settings"]);
+    const info = await runLiveSyncCli(command, [databasePath, "--settings", settingsPath, "info", notePath]);
+    const fileInfo = JSON.parse(info.stdout) as CliFileInfo;
+    if (fileInfo.id === legacyFileInfo.id) {
+        throw new Error("Rebuild retained the legacy NFD document ID.");
+    }
+    await waitForCouchDbDocs(couchDb, dbName, (docs) => {
+        const ids = new Set(docs.map((doc) => doc._id));
+        return (
+            !ids.has(legacyFileInfo.id) &&
+            ids.has(fileInfo.id) &&
+            fileInfo.children.every((childId) => ids.has(childId)) &&
+            docs.some((doc) => Array.isArray(doc.used_features) && doc.used_features.includes("nfc-path-identity-v1"))
+        );
+    });
+    await runLiveSyncCli(command, [
+        secondaryDatabasePath,
+        "--settings",
+        secondarySettingsPath,
+        "fetch",
+        "--force",
+        "--write-settings",
+    ]);
+    const secondaryInfo = await runLiveSyncCli(command, [
+        secondaryDatabasePath,
+        "--settings",
+        secondarySettingsPath,
+        "info",
+        notePath,
+    ]);
+    assertEqual(
+        (JSON.parse(secondaryInfo.stdout) as CliFileInfo).id,
+        fileInfo.id,
+        "Fetch did not replace the secondary CLI's legacy document identity."
+    );
+    for (const path of [databasePath, secondaryDatabasePath]) {
+        assertEqual(
+            await readFile(join(path, notePath), "utf-8"),
+            editedNoteContent,
+            "Migration changed the content of the original NFD physical file."
+        );
+        await access(join(path, receivedNotePath)).then(
+            () => {
+                throw new Error("Migration created a second NFC physical file.");
+            },
+            (error: NodeJS.ErrnoException) => {
+                if (error.code !== "ENOENT") throw error;
+            }
+        );
+    }
+    console.log("CLI Rebuild and Fetch passed with obsolete logical deletions and preserved both NFD physical files.");
+    return { ...fileInfo, expectedCtime: legacyFileInfo.expectedCtime, legacyId: legacyFileInfo.id };
+}
+
 async function main(): Promise<void> {
     const liveSyncCliCommand = resolveLiveSyncCliCommand();
     if (process.env.LIVESYNC_CLI_COMMAND === undefined) {
@@ -304,12 +458,19 @@ async function main(): Promise<void> {
     const cliSourcePath = join(cliState, "source", "cli-to-obsidian.md");
     const vault = await createTemporaryVault();
     let session: ObsidianLiveSyncSession | undefined;
+    let daemon: Awaited<ReturnType<typeof startLiveSyncCliDaemon>> | undefined;
 
     try {
         await assertCouchDbReachable(couchDb);
         await createCouchDbDatabase(couchDb, dbName);
         await mkdir(cliDatabasePath, { recursive: true });
-        await configureLiveSyncCli(liveSyncCliCommand, cliSettingsPath, couchDb, dbName);
+        await configureLiveSyncCli(
+            liveSyncCliCommand,
+            cliSettingsPath,
+            couchDb,
+            dbName,
+            migrateUnicodePaths ? 0 : undefined
+        );
 
         if (process.env.LIVESYNC_CLI_COMMAND === undefined) {
             console.log(`Using locally built LiveSync CLI: ${liveSyncCli}`);
@@ -323,7 +484,21 @@ async function main(): Promise<void> {
         console.log(`Temporary Obsidian vault: ${vault.path}`);
         console.log(`Temporary CouchDB database: ${dbName}`);
 
-        const cliFileInfo = await writeCliNote(liveSyncCliCommand, cliDatabasePath, cliSettingsPath, cliSourcePath);
+        let cliFileInfo = await writeCliNote(liveSyncCliCommand, cliDatabasePath, cliSettingsPath, cliSourcePath);
+        if (migrateUnicodePaths) {
+            cliFileInfo = await migrateCliDatabases(
+                liveSyncCliCommand,
+                cliState,
+                cliDatabasePath,
+                cliSettingsPath,
+                couchDb,
+                dbName,
+                cliFileInfo
+            );
+        }
+        if (unicodePaths && !useEncryption) {
+            assertEqual(cliFileInfo.id, receivedNotePath.toLowerCase(), "The CLI did not derive an NFC document ID.");
+        }
         await waitForCouchDbDocs(couchDb, dbName, (docs) => {
             const ids = new Set(docs.map((doc) => doc._id));
             return ids.has(cliFileInfo.id) && cliFileInfo.children.every((childId) => ids.has(childId));
@@ -342,10 +517,11 @@ async function main(): Promise<void> {
                     dbName,
                 },
                 {
-                    encrypt: true,
+                    encrypt: useEncryption,
                     passphrase: e2eePassphrase,
-                    usePathObfuscation: true,
-                    encryptInternalMetadata: true,
+                    usePathObfuscation: useEncryption,
+                    encryptInternalMetadata: useEncryption,
+                    pathNormalizationVersion: unicodePaths ? 1 : 0,
                     E2EEAlgorithm: "v2",
                 }
             ),
@@ -355,15 +531,54 @@ async function main(): Promise<void> {
         await prepareRemote(obsidianCli.binary, session.cliEnv);
         await pushLocalChanges(obsidianCli.binary, session.cliEnv);
 
-        const received = await waitForVaultContent(vault.path, notePath);
+        const received = await waitForVaultContent(vault.path, receivedNotePath);
         assertEqual(received, editedNoteContent, "The real Obsidian plug-in did not materialise the CLI-edited note.");
+        if (cliFileInfo.legacyId) {
+            const fetched = await evalObsidianJson<{
+                obsoleteRetained: boolean;
+                currentDeleted: boolean;
+                currentPath: string;
+                previousPath: string;
+                content: string;
+            }>(
+                obsidianCli.binary,
+                [
+                    "(async()=>{",
+                    "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                    "if(core.settings.useRequestAPI) throw new Error('This case requires Streaming Fast Fetch.');",
+                    "await core.services.setting.applyPartial({suspendParseReplicationResult:true,suspendFileWatching:true});",
+                    `const legacyId=${JSON.stringify(cliFileInfo.legacyId)};`,
+                    `const {_rev,...current}=await core.localDatabase.localDatabase.get(${JSON.stringify(cliFileInfo.id)});`,
+                    `await core.localDatabase.localDatabase.put({...current,_id:legacyId,path:${JSON.stringify(notePath)},deleted:true});`,
+                    "await core.serviceModules.rebuilder.$fetchLocalDBFast(true);",
+                    `const restored=await core.localDatabase.localDatabase.get(${JSON.stringify(cliFileInfo.id)});`,
+                    "const rows=await core.localDatabase.localDatabase.allDocs();",
+                    "return JSON.stringify({",
+                    "obsoleteRetained:rows.rows.some(row=>row.id===legacyId),",
+                    "currentDeleted:restored.deleted===true,",
+                    "currentPath:restored.path,",
+                    "previousPath:current.path,",
+                    `content:await app.vault.adapter.read(${JSON.stringify(receivedNotePath)}),`,
+                    "});",
+                    "})()",
+                ].join(""),
+                session.cliEnv
+            );
+            assertEqual(fetched.obsoleteRetained, false, "Fast Fetch retained obsolete local Metadata.");
+            assertEqual(fetched.currentDeleted, false, "Fast Fetch returned logically deleted current Metadata.");
+            assertEqual(fetched.currentPath, fetched.previousPath, "Fast Fetch changed the current Metadata path.");
+            assertEqual(fetched.content, editedNoteContent, "Fast Fetch changed the synchronised file content.");
+            console.log(
+                "Real Obsidian Fast Fetch replaced obsolete logical deletions and retained current Metadata and file content."
+            );
+        }
         if (cliFileInfo.expectedCtime !== undefined) {
             const receivedCtime = await evalObsidianJson<number>(
                 obsidianCli.binary,
                 [
                     "(async()=>{",
                     "const core=app.plugins.plugins['obsidian-livesync'].core;",
-                    `const entry=await core.localDatabase.getDBEntry(${JSON.stringify(notePath)},undefined,false,true);`,
+                    `const entry=await core.localDatabase.getDBEntry(${JSON.stringify(receivedNotePath)},undefined,false,true);`,
                     "return JSON.stringify(entry.ctime);",
                     "})()",
                 ].join(""),
@@ -376,12 +591,78 @@ async function main(): Promise<void> {
             );
             console.log("The CLI edit retained the filesystem creation time in the real Obsidian client's Metadata.");
         } else {
-            console.log("Creation-time verification skipped: native stats did not expose distinct creation and change times.");
+            console.log(
+                "Creation-time verification skipped: native stats did not expose distinct creation and change times."
+            );
         }
-        console.log(
-            "CLI-edited encrypted note was retrieved by the real Obsidian plug-in with identical content."
-        );
+        if (unicodePaths) {
+            const returnedContent = `${editedNoteContent}\nUpdated in Obsidian.\n`;
+            await evalObsidianJson(
+                obsidianCli.binary,
+                [
+                    "(async()=>{",
+                    `const path=${JSON.stringify(receivedNotePath)};`,
+                    "const file=app.vault.getAbstractFileByPath(path);",
+                    "await new Promise(resolve=>setTimeout(resolve,Math.max(0,file.stat.mtime+2500-Date.now())));",
+                    `await app.vault.modify(file,${JSON.stringify(returnedContent)});`,
+                    "return JSON.stringify(true);})()",
+                ].join(""),
+                session.cliEnv
+            );
+            await pushLocalChanges(obsidianCli.binary, session.cliEnv);
+            await runLiveSyncCli(liveSyncCliCommand, [cliDatabasePath, "--settings", cliSettingsPath, "sync"]);
+            await runLiveSyncCli(liveSyncCliCommand, [cliDatabasePath, "--settings", cliSettingsPath, "mirror"]);
+            assertEqual(
+                await readFile(join(cliDatabasePath, notePath), "utf-8"),
+                returnedContent,
+                "The Obsidian update did not reach the original NFD physical file."
+            );
+            await access(join(cliDatabasePath, receivedNotePath)).then(
+                () => {
+                    throw new Error("The CLI created a second NFC physical file.");
+                },
+                (error: NodeJS.ErrnoException) => {
+                    if (error.code !== "ENOENT") throw error;
+                }
+            );
+            // The mirror command intentionally keeps tombstoned local files. The daemon applies remote deletions.
+            daemon = await startLiveSyncCliDaemon(liveSyncCliCommand, cliDatabasePath, cliSettingsPath);
+            await evalObsidianJson(
+                obsidianCli.binary,
+                [
+                    "(async()=>{",
+                    `const file=app.vault.getAbstractFileByPath(${JSON.stringify(receivedNotePath)});`,
+                    "await new Promise(resolve=>setTimeout(resolve,Math.max(0,file.stat.mtime+2500-Date.now())));",
+                    "await app.vault.delete(file);",
+                    "return JSON.stringify(true);})()",
+                ].join(""),
+                session.cliEnv
+            );
+            await pushLocalChanges(obsidianCli.binary, session.cliEnv);
+            const deletionDeadline = Date.now() + Number(process.env.E2E_OBSIDIAN_FILE_TIMEOUT_MS);
+            for (;;) {
+                try {
+                    await access(join(cliDatabasePath, notePath));
+                } catch (error) {
+                    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+                    break;
+                }
+                if (Date.now() >= deletionDeadline) {
+                    throw new Error(
+                        `The Obsidian deletion did not remove the original NFD physical file.\n${daemon.getOutput()}`
+                    );
+                }
+                await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+            }
+            await daemon.stop();
+            daemon = undefined;
+            console.log(
+                "NFC path identity preserved the NFD physical name through creation, remote update, and deletion."
+            );
+        }
+        console.log("CLI-edited note was retrieved by the real Obsidian plug-in with identical content.");
     } finally {
+        await daemon?.stop();
         if (session) {
             await session.app.stop();
         }

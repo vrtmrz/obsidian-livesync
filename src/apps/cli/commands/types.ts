@@ -22,6 +22,8 @@ export type CLICommand =
     | "rm"
     | "resolve"
     | "mirror"
+    | "rebuild"
+    | "fetch"
     | "remote-add"
     | "remote-rm"
     | "remote-ls"
@@ -100,6 +102,8 @@ export const VALID_COMMANDS = new Set([
     "rm",
     "resolve",
     "mirror",
+    "rebuild",
+    "fetch",
     "remote-add",
     "remote-rm",
     "remote-ls",

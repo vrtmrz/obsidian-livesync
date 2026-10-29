@@ -17,6 +17,8 @@ import {
 import type { CompatibilityReviewController } from "./compatibilityReview";
 import { runReviewHarnessIdBenchmark } from "@/features/ReviewHarness/reviewHarnessIdBenchmark";
 import { createIdBenchmarkOperations } from "@/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime";
+import { runReviewHarnessFileContentHashBenchmark } from "@/features/ReviewHarness/reviewHarnessFileContentHashBenchmark";
+import { createFileContentHashBenchmarkOperations } from "@/features/ReviewHarness/reviewHarnessFileContentHashBenchmarkRuntime";
 
 async function runVaultRoundTrip(plugin: ObsidianLiveSyncPlugin): Promise<ReviewHarnessScenarioResult> {
     const vault = plugin.app.vault;
@@ -62,9 +64,14 @@ export function useReviewHarness(
         runVaultRoundTrip: () => runVaultRoundTrip(plugin),
         runIdBenchmark: async () =>
             runReviewHarnessIdBenchmark(await createIdBenchmarkOperations(), activeWindow.performance),
-        readContinuation: () => services.setting.getSmallConfig(REVIEW_HARNESS_STATE_KEY),
-        writeContinuation: (value) => services.setting.setSmallConfig(REVIEW_HARNESS_STATE_KEY, value),
-        deleteContinuation: () => services.setting.deleteSmallConfig(REVIEW_HARNESS_STATE_KEY),
+        runFileContentHashBenchmark: async () =>
+            runReviewHarnessFileContentHashBenchmark(
+                await createFileContentHashBenchmarkOperations(activeWindow.performance),
+                activeWindow.performance
+            ),
+        readContinuation: () => services.config.getValue(REVIEW_HARNESS_STATE_KEY, ""),
+        writeContinuation: (value) => services.config.setValue(REVIEW_HARNESS_STATE_KEY, value),
+        deleteContinuation: () => services.config.delete(REVIEW_HARNESS_STATE_KEY),
         restart: () => services.appLifecycle.performRestart(),
         reportError: (error) => services.API.addLog(error, LOG_LEVEL_NOTICE),
         copyText: async (value) => {
@@ -87,14 +94,14 @@ export function useReviewHarness(
     let registered = false;
     let openAfterLayout = false;
 
-    services.appLifecycle.onSettingLoaded.addHandler(() => {
+    services.appLifecycle.onSettingLoaded.addHandler(async () => {
         if (!continuationConsumed) {
+            await controller.consumeContinuation();
             continuationConsumed = true;
-            controller.consumeContinuation();
         }
         const snapshot = controller.snapshot();
         openAfterLayout = snapshot.resumedRequestId !== null || snapshot.continuationError !== null;
-        if (!services.setting.currentSettings().enableDebugTools || registered) return Promise.resolve(true);
+        if (!services.setting.currentSettings().enableDebugTools || registered) return true;
 
         registered = true;
         services.API.registerWindow(
@@ -108,7 +115,7 @@ export function useReviewHarness(
                 void services.API.showWindow(VIEW_TYPE_REVIEW_HARNESS);
             },
         });
-        return Promise.resolve(true);
+        return true;
     });
 
     services.appLifecycle.onLayoutReady.addHandler(() => {

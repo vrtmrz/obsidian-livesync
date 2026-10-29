@@ -1,10 +1,11 @@
+import { MemoryValueStore } from "@vrtmrz/value-store";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { DEFAULT_SETTINGS, SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { EVENT_LAYOUT_READY } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { WebPeerRuntime } from "@/apps/webpeer/src/WebPeerRuntime";
+import { WebPeerRuntime, type WebPeerRuntimeOptions } from "@/apps/webpeer/src/WebPeerRuntime";
 
 function createMemoryStore(): SimpleStore<unknown> {
     const values = new Map<string, unknown>();
@@ -22,11 +23,31 @@ function createMemoryStore(): SimpleStore<unknown> {
 }
 
 describe("WebPeer runtime composition", () => {
+    const runtimes = new Set<WebPeerRuntime>();
+
+    function createRuntime(options: WebPeerRuntimeOptions): WebPeerRuntime {
+        const runtime = new WebPeerRuntime(options);
+        runtimes.add(runtime);
+        return runtime;
+    }
+
+    afterEach(async () => {
+        try {
+            for (const runtime of runtimes) {
+                await runtime.shutdown();
+            }
+        } finally {
+            runtimes.clear();
+            vi.restoreAllMocks();
+        }
+    });
+
     it("preserves one context and live P2P result across the service graph and pane host", () => {
         const context = createServiceContext({
             translate: (key) => `webpeer:${key}`,
         });
-        const runtime = new WebPeerRuntime({
+        const runtime = createRuntime({
+            deviceValues: new MemoryValueStore(),
             context,
             store: createMemoryStore(),
         });
@@ -42,7 +63,8 @@ describe("WebPeer runtime composition", () => {
     });
 
     it("loads settings and opens the local database before announcing layout readiness", async () => {
-        const runtime = new WebPeerRuntime({
+        const runtime = createRuntime({
+            deviceValues: new MemoryValueStore(),
             store: createMemoryStore(),
         });
         const loadSettings = vi.spyOn(runtime.services.setting, "loadSettings").mockResolvedValue(undefined);
@@ -67,7 +89,8 @@ describe("WebPeer runtime composition", () => {
     it("delegates automatic P2P startup to the resumed lifecycle handler", async () => {
         vi.useFakeTimers();
         try {
-            const runtime = new WebPeerRuntime({
+            const runtime = createRuntime({
+                deviceValues: new MemoryValueStore(),
                 store: createMemoryStore(),
             });
             vi.spyOn(runtime.services.setting, "loadSettings").mockResolvedValue(undefined);
@@ -77,9 +100,7 @@ describe("WebPeer runtime composition", () => {
                 P2P_Enabled: true,
             });
             vi.spyOn(runtime.services.database, "openDatabase").mockResolvedValue(true);
-            const onResumed = vi
-                .spyOn(runtime.services.appLifecycle, "onResumed")
-                .mockResolvedValue(true);
+            const onResumed = vi.spyOn(runtime.services.appLifecycle, "onResumed").mockResolvedValue(true);
             const open = vi.spyOn(runtime.p2p.transportLifecycle, "connect").mockResolvedValue(undefined);
 
             await runtime.start();
@@ -93,17 +114,20 @@ describe("WebPeer runtime composition", () => {
     });
 
     it("rejects start when the browser-local database cannot be opened", async () => {
-        const runtime = new WebPeerRuntime({
+        const runtime = createRuntime({
+            deviceValues: new MemoryValueStore(),
             store: createMemoryStore(),
         });
         vi.spyOn(runtime.services.setting, "loadSettings").mockResolvedValue(undefined);
+        vi.spyOn(runtime.services.setting, "currentSettings").mockReturnValue({ ...DEFAULT_SETTINGS });
         vi.spyOn(runtime.services.database, "openDatabase").mockResolvedValue(false);
 
         await expect(runtime.start()).rejects.toThrow("WebPeer local database could not be opened");
     });
 
     it("isolates a specialised runtime and applies its device name before opening the database", async () => {
-        const runtime = new WebPeerRuntime({
+        const runtime = createRuntime({
+            deviceValues: new MemoryValueStore(),
             store: createMemoryStore(),
             deviceName: "  p2p-check-browser-desktop-abc  ",
             systemVaultName: "p2p-check-vault",
@@ -114,15 +138,39 @@ describe("WebPeer runtime composition", () => {
             P2P_AutoStart: false,
             P2P_Enabled: false,
         });
-        const setSmallConfig = vi.spyOn(runtime.services.config, "setSmallConfig").mockImplementation(() => undefined);
+        let finishWrite!: () => void;
+        const setValue = vi.spyOn(runtime.services.config, "setValue").mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishWrite = resolve;
+                })
+        );
         const openDatabase = vi.spyOn(runtime.services.database, "openDatabase").mockImplementation(async () => {
-            expect(setSmallConfig).toHaveBeenCalledWith(SETTING_KEY_P2P_DEVICE_NAME, "p2p-check-browser-desktop-abc");
+            expect(setValue).toHaveBeenCalledWith(SETTING_KEY_P2P_DEVICE_NAME, "p2p-check-browser-desktop-abc");
             return true;
         });
 
-        await runtime.start();
+        const starting = runtime.start();
+        await vi.waitFor(() => expect(setValue).toHaveBeenCalledOnce());
+        expect(openDatabase).not.toHaveBeenCalled();
+        finishWrite();
+        await starting;
 
         expect(runtime.services.API.getSystemVaultName()).toBe("p2p-check-vault");
         expect(openDatabase).toHaveBeenCalledOnce();
+    });
+
+    it("reads the current device name after the pane updates the store", async () => {
+        const runtime = createRuntime({
+            deviceValues: new MemoryValueStore(),
+            store: createMemoryStore(),
+            systemVaultName: "webpeer-vault",
+        });
+        vi.spyOn(runtime.services.setting, "currentSettings").mockReturnValue({ ...DEFAULT_SETTINGS });
+        expect(await runtime.getDeviceName()).toBe("webpeer-vault");
+        await runtime.services.config.setValue(SETTING_KEY_P2P_DEVICE_NAME, "first-name");
+        expect(await runtime.getDeviceName()).toBe("first-name");
+        await runtime.services.config.setValue(SETTING_KEY_P2P_DEVICE_NAME, "renamed-device");
+        expect(await runtime.getDeviceName()).toBe("renamed-device");
     });
 });

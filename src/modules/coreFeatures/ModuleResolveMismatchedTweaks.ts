@@ -16,11 +16,12 @@ import { AbstractModule } from "@/modules/AbstractModule.ts";
 import { $msg, translateIfAvailable } from "@/common/translation";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
-import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
+import { REMOTE_COUCHDB, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     REMOTE_RESOURCE_KINDS,
+    usesEncryptedInternalMetadata,
     type ReplicationAttemptFailure,
     type ReplicatorInstance,
 } from "@vrtmrz/livesync-commonlib/replication";
@@ -62,10 +63,14 @@ function definedTweaks(values: TweakValues): TweakValues {
     );
 }
 
-function settingsAfterAdoption(assessment: TweakAssessment, direction: "adoptPreferred" | "adoptCurrent"): TweakValues {
+function settingsAfterAdoption(
+    assessment: TweakAssessment,
+    direction: "adoptPreferred" | "adoptCurrent",
+    currentSettings: TweakValues = assessment.currentValues
+): TweakValues {
     const comparedKeys = new Set<string>(assessment.entries.map((entry) => entry.key));
     const source = direction === "adoptPreferred" ? assessment.preferredValues : assessment.currentValues;
-    const target = direction === "adoptPreferred" ? assessment.currentValues : assessment.preferredValues;
+    const target = direction === "adoptPreferred" ? currentSettings : assessment.preferredValues;
     const recommendations = Object.fromEntries(
         Object.entries(source).filter(([key, value]) => !comparedKeys.has(key) && value !== undefined)
     );
@@ -100,7 +105,9 @@ function resolutionSettingsSignature(settings: ObsidianLiveSyncSettings): string
 
 export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     private requiresIdConfigurationReview(assessment: TweakAssessment): boolean {
-        if (!assessment.entries.some(({ key, relation }) => key === "idDerivationVersion" && relation === "different")) {
+        if (
+            !assessment.entries.some(({ key, relation }) => key === "idDerivationVersion" && relation === "different")
+        ) {
             return false;
         }
         Logger(
@@ -208,7 +215,17 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
     ): Promise<[TweakValues | boolean, boolean]> {
         if (assessment.alignment === "matched") return [false, false];
         if (this.requiresIdConfigurationReview(assessment)) return [false, false];
-        const acceptedSettings = settingsAfterAdoption(assessment, "adoptPreferred");
+        // Retain saved preferences only when they leave the adopted effective values unchanged.
+        const assessedSettings = settingsAfterAdoption(assessment, "adoptPreferred");
+        const acceptedSettings = settingsAfterAdoption(assessment, "adoptPreferred", this.settings);
+        if (
+            this.settings.remoteType === REMOTE_COUCHDB &&
+            usesEncryptedInternalMetadata({ ...this.settings, ...acceptedSettings }) !==
+                usesEncryptedInternalMetadata({ ...this.settings, ...assessedSettings })
+        ) {
+            // Adopting encryption prerequisites can activate a previously inactive preference.
+            acceptedSettings.encryptInternalMetadata = assessedSettings.encryptInternalMetadata;
+        }
         const autoAcceptSide = await this._shouldAutoAcceptCompatibleLossy(assessment);
         if (autoAcceptSide === "REMOTE") return [acceptedSettings, false];
         if (autoAcceptSide === "CURRENT") return [true, false];
@@ -279,8 +296,15 @@ export class ModuleResolvingMismatchedTweaks extends AbstractModule {
         const signature = resolutionSettingsSignature(this.settings);
         const publication = await this.services.replicator.acquireActiveReplicatorContext();
         if (resolutionSettingsSignature(this.settings) !== signature) return "IGNORE";
-        const currentTweaks = JSON.stringify(extractObject(TweakValuesTemplate, this.settings));
-        if (JSON.stringify(extractObject(TweakValuesTemplate, assessment.currentValues)) !== currentTweaks) {
+        const currentTweaks = extractObject(TweakValuesTemplate, this.settings);
+        const effectiveTweaks = {
+            ...currentTweaks,
+            encryptInternalMetadata:
+                this.settings.remoteType === REMOTE_COUCHDB && usesEncryptedInternalMetadata(this.settings),
+        };
+        const assessedTweaks = JSON.stringify(extractObject(TweakValuesTemplate, assessment.currentValues));
+        // Replication supplies effective values; legacy callers can supply saved preferences.
+        if (assessedTweaks !== JSON.stringify(currentTweaks) && assessedTweaks !== JSON.stringify(effectiveTweaks)) {
             return "IGNORE";
         }
         const [conf, rebuildRequired] = await this.services.tweakValue.checkAndAskResolvingMismatched(

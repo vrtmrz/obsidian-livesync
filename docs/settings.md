@@ -161,6 +161,8 @@ Following panes will be shown when you enable this setting.
 
 ### 1. Appearance
 
+For icon meanings, progress counters, and CSS snippets, see the [status display guide](tips/status-display.md).
+
 #### Display Language
 
 Setting key: displayLanguage
@@ -233,6 +235,16 @@ Each profile has an opaque identifier and a presentation name. The name does not
 Setting key: remoteType
 
 The active connection type. This is automatically projected to the legacy configuration when you activate a connection profile.
+
+### Joined devices
+
+Choose **Review devices** under **Joined devices** to read the device records on the active CouchDB or Object Storage connection. The same **Review devices** action is available from the command palette and version Notices. **Refresh** reads the remote again. This device appears first, including when its record is absent from the remote. Opening or refreshing this dialogue does not create a missing CouchDB database.
+
+The list shows each device ID, recorded platform, plug-in version, app version, and last recorded connection time. Older clients may have incomplete information. These records do not establish whether a device is online. On a locked remote, a device outside the accepted list is shown as **Locked out**.
+
+Before synchronisation starts, and when this dialogue refreshes, Self-hosted LiveSync checks for recorded plug-in versions newer or older than its own. These Notices recommend reviewing and aligning plug-in versions across devices; they are advisory and do not stop synchronisation. The dialogue explains that synchronisation between different versions is generally safe unless the connection is explicitly blocked, but may be less efficient or use more storage. P2P synchronisation may also be unavailable. Unknown development version labels are left unclassified. Automatic checks run at most once per minute when synchronisation starts; they do not poll a continuously running connection.
+
+**Forget device** removes another device's participation records after confirmation. It preserves the remote lock state and every other device. It does not delete Vault files or revoke credentials. A device can register again on an unlocked remote; on a locked remote, the existing recovery process applies. The result is checked after saving to CouchDB; if it cannot be confirmed, refresh the list and try again. CouchDB stores these records together in a local document which does not reject simultaneous updates, so changes from other devices can be overwritten. Pausing synchronisation on the other devices avoids that overlap. Object Storage uses conditional updates; if the server cannot support them, the record is retained.
 
 ### 2. Notification
 
@@ -659,17 +671,28 @@ Setup URIs preserve both sleep preferences. Older Setup URIs which do not contai
 #### Batch database update
 
 Setting key: batchSave
-Reducing the frequency with which on-disk changes are reflected into the DB
+
+Combine repeated local file updates before saving them to the local database in modes other than LiveSync mode. This reduces intermediate database revisions and delays their availability to other devices.
+
+#### Batch database updates in LiveSync mode
+
+Setting key: batchSaveInLiveSync
+
+Apply the same bounded delay in LiveSync mode. This separate choice is disabled by default for both existing settings and new Vaults. An older configuration containing `liveSync: true` and `batchSave: true` does not enable it. The settings interface shows the choice for the current mode, and switching modes preserves both choices. Older clients continue to ignore batching in LiveSync mode.
+
+Both choices share the delays below. Manual synchronisation, deletion, or renaming can end a batch early. Batching reduces intermediate updates; it does not identify when a template has finished or prevent genuine concurrent edits on different devices.
 
 #### Minimum delay for batch database updating
 
 Setting key: batchSaveMinimumDelay
-Seconds. Saving to the local database will be delayed until this value after we stop typing or saving.
+
+Seconds of quiet after the latest eligible edit before saving to the local database, subject to the maximum delay below.
 
 #### Maximum delay for batch database updating
 
 Setting key: batchSaveMaximumDelay
-Saving will be performed forcefully after this number of seconds.
+
+Maximum intentional delay in seconds from the first pending update to a file. Later edits do not restart this limit, and waiting for a processing slot does not add another batch delay. This limit makes the work eligible to run; it does not guarantee database completion or receipt by another device within that time.
 
 ### 4. Deletion Propagation (Advanced)
 
@@ -750,11 +773,13 @@ If enabled, the notification of hidden files change will be suppressed.
 
 #### Synchronising files
 
-(RegExp) Empty to sync all files. Set filter as a regular expression to limit synchronising files.
+Setting key: syncOnlyRegEx
+(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.
 
 #### Non-Synchronising files
 
-(RegExp) If this is set, any changes to local and remote files that match this will be skipped.
+Setting key: syncIgnoreRegEx
+(RegExp) Skip changes to matching normal and hidden files, locally and remotely.
 
 #### Maximum file size
 
@@ -782,6 +807,8 @@ When a saved setting changes whether a normal file can be reflected, LiveSync re
 ## 6. Customisation sync (Advanced)
 
 Customisation Sync is a supported, advanced opt-in feature. Its current per-file implementation is covered by a two-Vault real-Obsidian workflow for snippets, configuration files, and plug-in files. Hidden File Sync is a separate feature with different setup, selection, and conflict behaviour; do not use both features to manage the same files.
+
+**Automatic** delegates an item's files to Hidden File Sync. Enable and initialise Hidden File Sync in **Sync Settings** on this device first, after reviewing its [target and ignore patterns](./tips/hidden-file-sync.md#review-the-file-selection). Choosing Automatic while Hidden File Sync is disabled displays a Notice and leaves the current mode unchanged. Existing Automatic assignments, including those imported from another device, remain saved while Hidden File Sync is disabled.
 
 ### 1. Customisation Sync
 
@@ -820,9 +847,13 @@ Open the dialogue
 
 ## 7. Hatch
 
-### 1. Reporting Issue
+### 1. Reporting Tools
 
-#### Make report to inform the issue
+This panel groups the five actions that collect reports or inspect database state. These actions provide diagnostic information; they do not repair or reset the database.
+
+#### Prepare a report to inform an issue
+
+Select **Copy Report to clipboard** to collect diagnostic information and recent logs for a support report. Review the report before sharing it because it can contain sensitive information.
 
 #### Copy database information for a file
 
@@ -830,12 +861,48 @@ Select a file to copy its local database information. The command **Copy databas
 
 The report includes the Vault-relative path, document and chunk identifiers, local database revisions, conflicts, and local chunk availability. It does not query the remote or include file contents. Paths and identifiers can still be private metadata, so review the report before sharing it.
 
+#### Find a file from a report pseudonym
+
+Paste a path pseudonym from a diagnostic report, then select **Find file**. The lookup checks the current Vault and local normal-file Metadata only; it does not contact the remote database. It returns every matching local candidate, and shows each candidate's real Vault path and document ID only in this local dialogue. Multiple local document IDs for one path remain separate candidates. The follow-up for a Vault-only candidate marks Metadata as not inspected, because no local document was selected. No match can mean that the file was renamed or deleted, or that the matching Metadata exists only remotely.
+
+For a selected candidate, open an existing Vault file or prepare a shareable local report using the original report's pseudonym salt and the exact selected document ID. The report includes current, conflict, and history status, Chunk availability, merge bases, and Vault size facts; it does not include file contents or credentials. Its history status listing does not scan every historical body.
+
+Path pseudonyms use the report's public eight-character salt. Someone with the report can test a guessed path against a pseudonym. The same salt reproduces path and identifier pseudonyms in a targeted follow-up; older ordinal pseudonyms cannot be looked up with this tool.
+
+#### Inspect database integrity
+
+Select **Inspect** to choose original names or temporary pseudonyms and inspect normal-file Metadata and current conflicts. **Include remote database** is selected by default; clear it to inspect only the local database and Vault. This choice applies to the current run only, and the report marks remote coverage as not checked when excluded. The command **Inspect database integrity** opens the same dialogue. The inspection is read-only; its findings do not authorise deletion or perform repairs. See [Collect a report](troubleshooting.md#collect-a-report) for coverage, report formats, privacy, and cancellation, and the [compact Markdown reading guide](troubleshooting.md#read-the-compact-markdown-integrity-report) for interpreting its state and review index.
+
+#### Analyse database usage
+
+Select **Analyse** to choose a name policy and report local revision and Chunk usage. The command **Analyse Database Usage (advanced)** opens the same dialogue when [advanced features](#enable-advanced-features) are enabled. Complete runs offer TSV and JSON; incomplete runs retain their status and reasons in JSON. Existing on-demand Chunk fetching stays unchanged. See [Collect a report](troubleshooting.md#collect-a-report) for accounting limits and export instructions.
+
+### 2. Checks and Recovery
+
+This panel groups checks that may lead to changes to settings or database contents.
+
+#### Setting Doctor
+
+Run Setting Doctor to check for configuration mismatches or suboptimal settings. Applying its recommendations can change settings or request a database rebuild, so review the recommendations before proceeding.
+
+#### Scan for broken files
+
+Scan for files which are not stored correctly in the database. The scan can offer repair actions that change database contents; review each proposed action before confirming it.
+
+### 3. TroubleShooting
+
+This panel keeps the remote storage notification check and file logging controls separate from report collection and recovery checks.
+
+#### Reset notification threshold and check the remote database usage
+
+Reset the remote storage size threshold and check the remote storage size again. This changes the saved notification threshold.
+
 #### Write logs into the file
 
 Setting key: writeLogToTheFile
 Warning! This will have a serious impact on performance. And the logs will not be synchronised under the default name. Please be careful with logs; they often contain your confidential information.
 
-### 2. Scram Switches
+### 4. Scram Switches
 
 Emergency controls to suspend synchronisation processes in order to prevent database corruption. If a critical mismatch or sync error occurs, the plug-in may automatically enter a Scram state and suspend operations.
 
@@ -851,7 +918,7 @@ Setting key: suspendParseReplicationResult
 
 Stop reflecting database changes to storage files.
 
-### 3. Recovery and Repair
+### 5. Recovery and Repair
 
 #### Recreate chunks for current Vault files
 
@@ -871,7 +938,7 @@ After confirmation, resolve every conflict by modification time. This logically 
 
 #### Check and convert non-path-obfuscated files
 
-### 4. Reset
+### 6. Reset
 
 #### Back to non-configured
 
@@ -896,6 +963,18 @@ Setting key: hashCacheMaxAmount
 
 Setting key: customChunkSize
 
+New setup uses 0 for every remote type. With V3 Rabin–Karp, this gives binary
+Chunks a 100 KiB maximum, a 25 KiB minimum, and an approximate 25 KiB candidate
+gap. The candidate gap is not the mean Chunk length. Text below 4 MiB retains
+adaptive smaller boundaries; large text uses the binary thresholds with
+UTF-8-safe cuts.
+
+Larger values can reduce document counts for mostly immutable binary files,
+but can increase the new content stored after an edit. Existing explicit and
+agreed values are retained. Updating the plug-in does not re-chunk the Vault;
+editing, forced writes, Chunk recreation, or a full Rebuild can create new
+boundaries while existing content remains readable.
+
 #### Chunk Splitter
 
 Setting key: chunkSplitterVersion
@@ -912,12 +991,21 @@ If enabled, chunks will be split into no more than 100 items. However, dedupe is
 Setting key: useSegmenter
 If this enabled, chunks will be split into semantically meaningful segments. Not all platforms support this feature.
 
+#### Strict content check on startup
+
+Setting key: strictContentCheckOnStartup
+
+When enabled, ordinary start-up compares file content with the local database even when the file's exact modification time and size match. When disabled (the default), this comparison can be skipped only when the modification time, size, and recorded device-local provenance match a conflict-free current revision, and no file processing is pending. An edit made outside the normal file-event path which preserves its exact modification time and size can therefore go undetected by ordinary start-up. Manual scans and explicit Fetch or Rebuild operations keep strict content checking.
+
 ### 3. Transfer Tweak
 
 #### Fetch chunks on demand
 
 Setting key: readChunksOnline
-(ex. Read chunks online) If this option is enabled, LiveSync reads chunks online directly instead of replicating them locally. Increasing Custom chunk size is recommended.
+If enabled, this plug-in obtains missing Chunks when they are needed instead
+of including all Chunks in ordinary pull replication. New setup retains the
+same Chunk-size recommendation of 0. This setting does not re-chunk content
+already stored by another device.
 
 #### Batch size of on-demand fetching
 
@@ -970,12 +1058,18 @@ The setting remains disabled by default because the measured storage and transfe
 #### Batch size
 
 Setting key: batch_size
-Number of changes to sync at a time. Defaults to 50. Minimum is 2.
+Number of changes in an ordinary CouchDB replication batch. The schema default
+is 25, and the minimum is 2. Changing this value alone preserves the
+replication checkpoint. Larger counts can reduce round trips, but do not bound
+the final request size or memory use.
 
 #### Batch limit
 
 Setting key: batches_limit
-Number of batches to process at a time. Defaults to 40. Minimum is 2. This along with batch size controls how many docs are kept in memory at a time.
+Number of changes batches which PouchDB can read ahead. The schema default is
+25, and the minimum is 2. This does not create parallel body transfers;
+PouchDB processes one current replication batch at a time. It does not control
+the separate P2P or Object Storage transfer units.
 
 #### Use timeouts instead of heartbeats
 
@@ -1011,6 +1105,8 @@ Requires restart of Obsidian
 #### Do not keep metadata of deleted files.
 
 Setting key: deleteMetadataOfDeletedFiles
+
+For an unconflicted file, disabling this setting records a logical deletion in the Metadata document; enabling it removes that document through a PouchDB tombstone instead. Both behaviours propagate file deletions and the source side of a rename. Before removing a Vault file, LiveSync revalidates the current winning revision; if this final check observes a concurrent restoration, it keeps the restored file. This setting changes how the deletion is represented; file content remains stored separately in Chunks. Deletion during an unresolved conflict follows the separate [displayed-branch rules](specs_conflict_resolution.md#operations-while-a-conflict-exists).
 
 #### Delete old metadata of deleted files on start-up
 
@@ -1049,6 +1145,18 @@ If this enabled, All files are handled as case-Sensitive (Previous behaviour).
 When this setting is disabled, changing only the letter case of a file name within the same directory is synchronised as a rename. Changing the letter case of a directory name is not supported by this handling.
 
 New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. Earlier releases also followed the case-insensitive branch when this value was absent, so 1.0 saves a missing legacy value as `false` without requiring a compatibility review or database rebuild.
+
+#### Unicode path identity
+
+Setting key: pathNormalizationVersion
+
+Version `0` preserves legacy file identity and is the default for existing and new settings. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. This mode currently supports CouchDB only.
+
+Version `1` requires a coordinated migration: set it on the source client before Rebuild, then set it on each remaining client before Fetch. Changing the setting alone does not migrate existing Metadata. Follow [Migrate to Unicode NFC path identity](recovery.md#migrate-to-unicode-nfc-path-identity) for the complete procedure. Do not resume a version `0` client against the migrated remote.
+
+The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
+
+Distinct files or retained Metadata documents which derive the same identity stop reconstruction before either database is reset. When replacing the local database, Rebuild and Fetch exclude logical deletions without unresolved conflicts; a deleted winner with unresolved conflicts still participates in the check. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
 
 ### 4. Compatibility (Internal API Usage)
 

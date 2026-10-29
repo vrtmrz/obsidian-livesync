@@ -22,9 +22,10 @@ export interface ReviewHarnessRuntime {
     openCompatibilityReview(): Promise<void>;
     runVaultRoundTrip(): Promise<ReviewHarnessScenarioResult>;
     runIdBenchmark(): Promise<ReviewHarnessScenarioResult>;
-    readContinuation(): string | null;
-    writeContinuation(value: string): void;
-    deleteContinuation(): void;
+    runFileContentHashBenchmark(): Promise<ReviewHarnessScenarioResult>;
+    readContinuation(): Promise<string | null>;
+    writeContinuation(value: string): Promise<void>;
+    deleteContinuation(): Promise<void>;
     restart(): void;
     reportError(error: unknown): void;
     copyText(value: string): Promise<void>;
@@ -67,6 +68,7 @@ export class ReviewHarnessController {
     private current: ReviewHarnessScenarioId | null = null;
     private resumedRequestId: string | null = null;
     private continuationError: string | null = null;
+    private continuationConsumption: Promise<void> | undefined;
 
     constructor(private readonly runtime: ReviewHarnessRuntime) {}
 
@@ -101,10 +103,20 @@ export class ReviewHarnessController {
         };
     }
 
-    consumeContinuation(): void {
-        const serialised = this.runtime.readContinuation();
+    consumeContinuation(): Promise<void> {
+        if (this.continuationConsumption) return this.continuationConsumption;
+        const consumption = this.consumeContinuationFromStore();
+        const trackedConsumption = consumption.finally(() => {
+            if (this.continuationConsumption === trackedConsumption) this.continuationConsumption = undefined;
+        });
+        this.continuationConsumption = trackedConsumption;
+        return trackedConsumption;
+    }
+
+    private async consumeContinuationFromStore(): Promise<void> {
+        const serialised = await this.runtime.readContinuation();
         if (!serialised) return;
-        this.runtime.deleteContinuation();
+        await this.runtime.deleteContinuation();
         const parsed = parsePendingReviewRun(serialised);
         if (!parsed.pendingRun) {
             this.continuationError = parsed.error ?? "The Review Harness continuation was invalid.";
@@ -162,6 +174,8 @@ export class ReviewHarnessController {
                 result = await this.runtime.runVaultRoundTrip();
             } else if (id === "id-generation-performance") {
                 result = await this.runtime.runIdBenchmark();
+            } else if (id === "file-content-hash-performance") {
+                result = await this.runtime.runFileContentHashBenchmark();
             } else {
                 const inspection = this.inspectCompatibilityReview();
                 result =
@@ -229,7 +243,7 @@ export class ReviewHarnessController {
         this.record("scenario-failed", id);
     }
 
-    prepareCompatibilityReviewRestart(): void {
+    async prepareCompatibilityReviewRestart(): Promise<void> {
         const requestedAt = this.runtime.now().toISOString();
         const pending = {
             formatVersion: 1,
@@ -238,7 +252,7 @@ export class ReviewHarnessController {
             stage: "awaiting-restart",
             requestedAt,
         } as const;
-        this.runtime.writeContinuation(JSON.stringify(pending));
+        await this.runtime.writeContinuation(JSON.stringify(pending));
         this.results["compatibility-review"] = {
             status: "waiting-for-user",
             detail: "Restart requested. The one-shot continuation will be removed before the review resumes.",

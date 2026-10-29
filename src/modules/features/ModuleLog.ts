@@ -4,7 +4,6 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_VERBOSE,
     PREFIXMD_LOGFILE,
-    type DatabaseConnectingStatus,
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
@@ -31,16 +30,14 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@/common/translation";
 import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
-import {
-    REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS,
-    formatRemoteActivityStatusLabel,
-    getTrackedRequestCount,
-} from "./RemoteActivityStatus.ts";
+import { REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS, getTrackedRequestCount } from "./RemoteActivityStatus.ts";
 import {
     createChunkFetchCounterLabel,
     createMinimumVisibleActivityCount,
     createPaddedCounterLabel,
 } from "./StatusBarDisplay.ts";
+import { createFastForwardCheckedChangesDisplay, projectReplicationStatusLabel } from "./ReplicationStatusLabel.ts";
+import { createStatusBarRenderer, type StatusBarPart, type StatusBarRenderer } from "./StatusBarRenderer.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import { isValidPath } from "@/common/utils.ts";
@@ -124,7 +121,14 @@ export class ModuleLog extends AbstractObsidianModule {
     logHistory?: HTMLDivElement;
     messageArea?: HTMLDivElement;
 
-    statusBarLabels!: ReactiveValue<{ message: string; status: string }>;
+    statusBarRenderer?: StatusBarRenderer;
+    statusLineRenderer?: StatusBarRenderer;
+    statusBarLabels!: ReactiveValue<{
+        message: string;
+        status: string;
+        parts: readonly StatusBarPart[];
+        statusBarParts: readonly StatusBarPart[];
+    }>;
     statusLog = reactiveSource("");
     activeFileStatus = reactiveSource("");
     notifies: { [key: string]: { count: number } } = {};
@@ -164,79 +168,54 @@ export class ModuleLog extends AbstractObsidianModule {
         );
 
         const requestingStatLabel = computed(() => {
-            return formatRemoteActivityStatusLabel({
+            return {
                 remoteOperationCount: Math.max(0, this.services.replicator.boundedRemoteActivityCount.value),
                 trackedRequestCount: displayedTrackedRequestCount.value,
-            });
+            };
         });
 
-        const replicationStatLabel = computed(() => {
-            const e = this.services.replicator.replicationStatics.value;
-            const sent = e.sent;
-            const arrived = e.arrived;
-            const maxPullSeq = e.maxPullSeq;
-            const maxPushSeq = e.maxPushSeq;
-            const lastSyncPullSeq = e.lastSyncPullSeq;
-            const lastSyncPushSeq = e.lastSyncPushSeq;
-            let pushLast = "";
-            let pullLast = "";
-            let w = "";
-            const labels: Partial<Record<DatabaseConnectingStatus, string>> = {
-                CONNECTED: "⚡",
-                JOURNAL_SEND: "📦↑",
-                JOURNAL_RECEIVE: "📦↓",
-            };
-            switch (e.syncStatus) {
-                case "CLOSED":
-                case "COMPLETED":
-                case "NOT_CONNECTED":
-                    w = "⏹";
-                    break;
-                case "STARTED":
-                    w = "🌀";
-                    break;
-                case "PAUSED":
-                    w = "💤";
-                    break;
-                case "CONNECTED":
-                case "JOURNAL_SEND":
-                case "JOURNAL_RECEIVE":
-                    w = labels[e.syncStatus] || "⚡";
-                    pushLast =
-                        lastSyncPushSeq == 0
-                            ? ""
-                            : lastSyncPushSeq >= maxPushSeq
-                              ? " (LIVE)"
-                              : ` (${maxPushSeq - lastSyncPushSeq})`;
-                    pullLast =
-                        lastSyncPullSeq == 0
-                            ? ""
-                            : lastSyncPullSeq >= maxPullSeq
-                              ? " (LIVE)"
-                              : ` (${maxPullSeq - lastSyncPullSeq})`;
-                    break;
-                case "ERRORED":
-                    w = "⚠";
-                    break;
-                default:
-                    w = "?";
-            }
-            return { w, sent, pushLast, arrived, pullLast };
-        });
+        const fastForwardCount = registerDisplay(
+            createFastForwardCheckedChangesDisplay(this.services.replicator.replicationStatics)
+        );
+        const replicationStatLabel = computed(() =>
+            projectReplicationStatusLabel(
+                this.services.replicator.replicationStatics.value,
+                requestingStatLabel(),
+                fastForwardCount.value
+            )
+        );
         const labelProc = registerDisplay(createPaddedCounterLabel(this.services.fileProcessing.processing, `⏳`));
         const labelPend = registerDisplay(createPaddedCounterLabel(this.services.fileProcessing.totalQueued, `🛫`));
         const labelInBatchDelay = registerDisplay(createPaddedCounterLabel(this.services.fileProcessing.batched, `📬`));
         const waitingLabel = computed(() => {
             return `${labelProc.value}${labelPend.value}${labelInBatchDelay.value}`;
         });
+        const counterPart = (key: string, mark: string, value: number | undefined): StatusBarPart[] =>
+            value === undefined ? [] : [{ key, text: " " + mark, value }];
         const statusLineLabel = computed(() => {
-            const { w, sent, pushLast, arrived, pullLast } = replicationStatLabel();
+            const replication = replicationStatLabel();
             const queued = queueCountLabel();
             const waiting = waitingLabel();
-            const networkActivity = requestingStatLabel();
             const p2p = this.p2pLogCollector.p2pReplicationLine.value;
+            const firstLineParts = [
+                ...replication.parts,
+                ...counterPart("file-processing", "⏳", labelProc.count.value),
+                ...counterPart("file-pending", "🛫", labelPend.count.value),
+                ...counterPart("file-batched", "📬", labelInBatchDelay.count.value),
+                ...counterPart("queue-replication", "📥", labelReplication.count.value),
+                ...counterPart("queue-database", "📄", labelDBCount.count.value),
+                ...counterPart("queue-storage", "💾", labelStorageCount.count.value),
+                ...counterPart("queue-chunk-initial", "🛄", labelChunkCount.initialCount.value),
+                ...counterPart("queue-chunk-retrying", "🔁", labelChunkCount.retryingCount.value),
+                ...counterPart("queue-plugin-scan", "🔌", labelPluginScanCount.count.value),
+                ...counterPart("queue-hidden-files", "⚙️", labelHiddenFilesCount.count.value),
+                ...counterPart("queue-conflicts", "🔩", labelConflictProcessCount.count.value),
+            ];
             return {
-                message: `${networkActivity}Sync: ${w} ↑ ${sent}${pushLast} ↓ ${arrived}${pullLast}${waiting}${queued}${p2p == "" ? "" : "\n" + p2p}`,
+                message: replication.message + waiting + queued + (p2p === "" ? "" : "\n" + p2p),
+                parts: p2p === "" ? firstLineParts : [...firstLineParts, { key: "p2p", text: "\n" + p2p }],
+                statusBarParts: firstLineParts,
+                hasP2P: p2p !== "",
             };
         });
 
@@ -244,13 +223,16 @@ export class ModuleLog extends AbstractObsidianModule {
             const scheduleMessage = this.services.appLifecycle.isReloadingScheduled()
                 ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n`
                 : "";
-            const { message } = statusLineLabel();
+            const { message, parts, statusBarParts, hasP2P } = statusLineLabel();
             const fileStatus = this.activeFileStatus.value;
             const status = scheduleMessage + this.statusLog.value;
             const fileStatusIcon = `${fileStatus && this.settings.hideFileWarningNotice ? " ⛔ SKIP" : ""}`;
+            const skipPart = fileStatusIcon === "" ? [] : [{ key: "file-skip", text: fileStatusIcon }];
             return {
                 message: `${message}${fileStatusIcon}`,
                 status,
+                parts: [...parts, ...skipPart],
+                statusBarParts: hasP2P ? statusBarParts : [...statusBarParts, ...skipPart],
             };
         });
         this.statusBarLabels = statusBarLabels;
@@ -391,7 +373,8 @@ export class ModuleLog extends AbstractObsidianModule {
                 newLog = newLog.substring(moduleTagEnd + MARK_LOG_SEPARATOR.length + 1);
             }
 
-            this.statusBar?.setText(newMsg.split("\n")[0]);
+            const { parts, statusBarParts } = this.statusBarLabels.value;
+            this.statusBarRenderer?.render(statusBarParts);
             if (this.statusDiv) {
                 this.statusDiv.setCssStyles({ display: this.settings?.showStatusOnEditor ? "" : "none" });
             }
@@ -409,7 +392,7 @@ export class ModuleLog extends AbstractObsidianModule {
                     const recentLogs = recent.reverse().join("\n");
                     if (isDirty("recentLogs", recentLogs)) this.logHistory!.innerText = recentLogs;
                 }
-                if (isDirty("newMsg", newMsg)) this.statusLine!.innerText = newMsg;
+                if (isDirty("newMsg", newMsg)) this.statusLineRenderer?.render(parts);
                 if (isDirty("newLog", newLog)) this.logMessage!.innerText = newLog;
             } else {
                 // const root = activeDocument.documentElement;
@@ -504,6 +487,16 @@ ${stringifyYaml(info)}
         if (this.settings?.showStatusOnStatusbar) {
             this.statusBar = this.services.API.addStatusBarItem();
             this.statusBar?.addClass("syncstatusbar");
+        }
+        if (this.statusLine) {
+            const renderer = createStatusBarRenderer(this.statusLine);
+            this.statusLineRenderer = renderer;
+            this.plugin.register(() => renderer.dispose());
+        }
+        if (this.statusBar) {
+            const renderer = createStatusBarRenderer(this.statusBar);
+            this.statusBarRenderer = renderer;
+            this.plugin.register(() => renderer.dispose());
         }
         this.adjustStatusDivPosition();
         this._log("Log module loaded", LOG_LEVEL_INFO);

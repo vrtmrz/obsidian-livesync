@@ -7,6 +7,111 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.":
+        "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.",
+    "Hidden File Sync initialisation was not started.": "Hidden File Sync initialisation was not started.",
+    "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.":
+        "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.",
+    "(RegExp) Skip changes to matching normal and hidden files, locally and remotely.":
+        "(RegExp) Skip changes to matching normal and hidden files, locally and remotely.",
+    "Unknown platform": "Unknown platform",
+    "This removes only this device's record from the remote.":
+        "This removes only this device's record from the remote.",
+    "This remote is unlocked. A device that returns can register again.":
+        "This remote is unlocked. A device that returns can register again.",
+    "This remote is locked. Use the existing recovery process for devices that need to join again.":
+        "This remote is locked. Use the existing recovery process for devices that need to join again.",
+    "This remote is locked. If the device returns, use the existing recovery process to join it again.":
+        "This remote is locked. If the device returns, use the existing recovery process to join it again.",
+    "This remote does not support conditional updates, so the device record could not be removed.":
+        "This remote does not support conditional updates, so the device record could not be removed.",
+    "This remote does not currently have a record of joined devices.":
+        "This remote does not currently have a record of joined devices.",
+    "This list shows device information recorded by the remote. It does not show whether a device is online now.":
+        "This list shows device information recorded by the remote. It does not show whether a device is online now.",
+    "This device has been locked out. Use the existing recovery process to join again.":
+        "This device has been locked out. Use the existing recovery process to join again.",
+    "This device": "This device",
+    "This remote has been cleaned. Use the existing recovery process to join devices again as needed.":
+        "This remote has been cleaned. Use the existing recovery process to join devices again as needed.",
+    "The device record was forgotten.": "The device record was forgotten.",
+    "The device record was already absent.": "The device record was already absent.",
+    "The device list changed while you were trying to forget this device. Refresh the list before trying again.":
+        "The device list changed while you were trying to forget this device. Refresh the list before trying again.",
+    "The device information could not be loaded. Close this dialogue and open Joined devices again if the remote configuration has changed.":
+        "The device information could not be loaded. Close this dialogue and open Joined devices again if the remote configuration has changed.",
+    "Review device records for the active CouchDB or Object Storage connection.":
+        "Review device records for the active CouchDB or Object Storage connection.",
+    Refresh: "Refresh",
+    "Plug-in version": "Plug-in version",
+    Platform: "Platform",
+    "Older Self-hosted LiveSync versions detected: ${versions}.":
+        "Older Self-hosted LiveSync versions detected: ${versions}.",
+    "Newer Self-hosted LiveSync versions detected: ${versions}.":
+        "Newer Self-hosted LiveSync versions detected: ${versions}.",
+    "Reviewing and aligning Self-hosted LiveSync versions across devices is recommended.":
+        "Reviewing and aligning Self-hosted LiveSync versions across devices is recommended.",
+    Open: "Open",
+    "Not recorded": "Not recorded",
+    "Not accepted": "Not accepted",
+    "No joined devices are recorded on this remote.": "No joined devices are recorded on this remote.",
+    "Locked out": "Locked out",
+    "Loading joined devices…": "Loading joined devices…",
+    "Last recorded": "Last recorded",
+    "Joined devices could not be updated. Refresh the list and try again. If the remote configuration has changed, close this dialogue and open Joined devices again.":
+        "Joined devices could not be updated. Refresh the list and try again. If the remote configuration has changed, close this dialogue and open Joined devices again.",
+    "Joined devices are available after database startup with an active CouchDB or Object Storage connection.":
+        "Joined devices are available after database startup with an active CouchDB or Object Storage connection.",
+    "Joined devices": "Joined devices",
+    "Review devices": "Review devices",
+    "Synchronisation between different plug-in versions is generally safe unless the connection is explicitly blocked. However, it may be less efficient or use more storage, and P2P synchronisation may be unavailable.":
+        "Synchronisation between different plug-in versions is generally safe unless the connection is explicitly blocked. However, it may be less efficient or use more storage, and P2P synchronisation may be unavailable.",
+    "Forgetting…": "Forgetting…",
+    "Forgetting the record does not delete Vault files or revoke credentials.":
+        "Forgetting the record does not delete Vault files or revoke credentials.",
+    "Forget this device record?": "Forget this device record?",
+    "Forget device": "Forget device",
+    Close: "Close",
+    Cancel: "Cancel",
+    "App version": "App version",
+    Accepted: "Accepted",
+    "Preparing follow-up report…": "Preparing follow-up report…",
+    "Cancelling local search. Checked ${COUNT} entries.": "Cancelling local search. Checked ${COUNT} entries.",
+    "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.":
+        "Search current Vault paths and current local Metadata only. Older history and remote-only files are not searched.",
+    "The lookup does not read file contents or contact a remote database. Follow-up reports include current conflicts and merge bases.":
+        "The lookup does not read file contents or contact a remote database. Follow-up reports include current conflicts and merge bases.",
+    "Local file diagnostic report": "Local file diagnostic report",
+    "Checked ${COUNT} local entries.": "Checked ${COUNT} local entries.",
+    "Enter a valid report path pseudonym.": "Enter a valid report path pseudonym.",
+    "Search cancelled. Matches found so far are shown.": "Search cancelled. Matches found so far are shown.",
+    "No matches were found in current Vault paths or current local Metadata. Older history and remote-only files are not searched.":
+        "No matches were found in current Vault paths or current local Metadata. Older history and remote-only files are not searched.",
+    "Found ${COUNT} local matches.": "Found ${COUNT} local matches.",
+    "The local search could not finish.": "The local search could not finish.",
+    "The file could not be opened.": "The file could not be opened.",
+    "The follow-up report could not be prepared.": "The follow-up report could not be prepared.",
+    "Report path pseudonym": "Report path pseudonym",
+    Source: "Source",
+    Metadata: "Metadata",
+    Vault: "Vault",
+    "Metadata document ID": "Metadata document ID",
+    "No current Metadata document": "No current Metadata document",
+    "Current Vault file": "Current Vault file",
+    Present: "Present",
+    Missing: "Missing",
+    "Open file": "Open file",
+    "Prepare follow-up report": "Prepare follow-up report",
+    "This report uses pseudonyms. Review its coverage before sharing.":
+        "This report uses pseudonyms. Review its coverage before sharing.",
+    "Back to matches": "Back to matches",
+    "Reading revisions": "Reading revisions",
+    "Calculating database usage": "Calculating database usage",
+    "Discovering revisions": "Discovering revisions",
+    "Find a file from a report pseudonym": "Find a file from a report pseudonym",
+    "Find matching paths in this Vault and local Metadata, then prepare a follow-up report using the same pseudonyms.":
+        "Find matching paths in this Vault and local Metadata, then prepare a follow-up report using the same pseudonyms.",
+    "Find file": "Find file",
     "⚠️ Initialise or overwrite the remote": "⚠️ Initialise or overwrite the remote",
     "🔗 Join this device": "🔗 Join this device",
     "⚙️ Apply settings only (advanced)": "⚙️ Apply settings only (advanced)",
@@ -251,6 +356,48 @@ export const liveSyncProvisionalEnglishMessages = {
     "An ID source is required to enable this option.": "An ID source is required to enable this option.",
     "The ID source or recovery code is invalid. Check it and try again.":
         "The ID source or recovery code is invalid. Check it and try again.",
+    "Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.":
+        "Read normal-file Metadata and current conflicts locally and in CouchDB, then compare content for suspect groups. Choose original names or pseudonyms before starting.",
+    Inspect: "Inspect",
+    "Inspect database integrity": "Inspect database integrity",
+    "Inspection completed. Review the findings and coverage before sharing.":
+        "Inspection completed. Review the findings and coverage before sharing.",
+    "Inspection partially completed. Some information could not be checked; review the reported reasons.":
+        "Inspection partially completed. Some information could not be checked; review the reported reasons.",
+    "Inspection failed. The report records the available evidence and reasons.":
+        "Inspection failed. The report records the available evidence and reasons.",
+    "Inspection cancelled. The report contains only the evidence collected so far.":
+        "Inspection cancelled. The report contains only the evidence collected so far.",
+    "Report copied.": "Report copied.",
+    "Copy failed. Select the report text and copy it manually.":
+        "Copy failed. Select the report text and copy it manually.",
+    "Download requested. You can also copy the report if downloads are unavailable on this device.":
+        "Download requested. You can also copy the report if downloads are unavailable on this device.",
+    "Pseudonyms include a public salt, so guessed paths can be checked. Original names include private filenames. Reports omit file contents and credentials.":
+        "Pseudonyms include a public salt, so guessed paths can be checked. Original names include private filenames. Reports omit file contents and credentials.",
+    "Read available local revisions and report their Chunk references. Settings are left unchanged.":
+        "Read available local revisions and report their Chunk references. Settings are left unchanged.",
+    "Inspect normal-file Metadata, current conflicts, and suspect content against the Vault. Remote inspection supports CouchDB. Older history is excluded; findings do not authorise deletion.":
+        "Inspect normal-file Metadata, current conflicts, and suspect content against the Vault. Remote inspection supports CouchDB. Older history is excluded; findings do not authorise deletion.",
+    "Include remote database": "Include remote database",
+    "Names in this report": "Names in this report",
+    "Pseudonyms (recommended)": "Pseudonyms (recommended)",
+    "Original names": "Original names",
+    "Cancelling inspection…": "Cancelling inspection…",
+    "Items inspected": "Items inspected",
+    "Cancel inspection": "Cancel inspection",
+    "This report uses temporary pseudonyms. Counts and relationships remain visible.":
+        "This report uses temporary pseudonyms. Counts and relationships remain visible.",
+    "This report contains original paths and identifiers. Review them before sharing.":
+        "This report contains original paths and identifiers. Review them before sharing.",
+    "Partial Usage results are available as JSON so their coverage and reasons stay with the rows.":
+        "Partial Usage results are available as JSON so their coverage and reasons stay with the rows.",
+    "Report format": "Report format",
+    "Diagnostic report": "Diagnostic report",
+    "Copy report": "Copy report",
+    "Save report": "Save report",
+    "The inspection could not finish. Close this dialogue and try again after database startup.":
+        "The inspection could not finish. Close this dialogue and try again after database startup.",
 } as const;
 
 export type LiveSyncProvisionalMessageKey = keyof typeof liveSyncProvisionalEnglishMessages;

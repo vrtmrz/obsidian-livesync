@@ -22,6 +22,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - '.github/workflows/cli-deno-tests.yml'
       - 'src/apps/cli/**'
@@ -66,6 +67,7 @@ concurrency:
 
 jobs:
   prepare:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -125,6 +127,7 @@ jobs:
           retention-days: 1
 
   test:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 60

@@ -98,7 +98,7 @@ npm run test:docker-couchdb:start
 NODE_OPTIONS=--max-old-space-size=3072 npm run test:integration -- src/serviceModules/FileHandler.multidevice.integration.spec.ts --maxWorkers=1
 ```
 
-The expected result is five passing tests. Each case creates a uniquely named remote database and removes it during teardown. Stop the fixture after the run, including when the test command fails:
+The expected result is seven passing tests. Each case creates a uniquely named remote database and removes it during teardown. Stop the fixture after the run, including when the test command fails:
 
 ```bash
 npm run test:docker-couchdb:stop
@@ -116,7 +116,9 @@ Each simulated device owns a separate real PouchDB database, `LiveSyncLocalDB` m
 | Four editing devices | Repeat the same sequence with four independently edited branches. | All four contents are initially preserved, and the same unchanged-save and convergence guarantees hold. |
 | A genuine edit on a losing device | After three-way resolution reaches its DB, a device adds content to its still-unreflected losing file, then saves and replicates it. | The new revision extends that device's recorded branch. The selected result and the new edit remain readable on every replica. |
 | Missing provenance | After four-way resolution, remove a losing device's provenance record and set its file to the original historical ancestor's content. Save, remove provenance again, and repeat the save. | The file becomes one fresh independent root, distinct from the historical root. Both contents remain readable after replication, and repeated saves create no duplicates. CLI `resolve` can select the independent root and propagate its resolution. |
-| Compacted base | After four-way resolution, compact a losing device's local DB and confirm that its recorded revision body is unavailable. Save the remaining file, then repeat after removing provenance. | The file is preserved as one independent conflict rather than discarded. Both contents remain readable on every replica, repeated saves create no duplicates, and CLI `resolve` can select the independent root and propagate its resolution. |
+| Compacted base with verified unchanged content | After four-way resolution, retain a losing device's content hash, compact its local DB, and confirm that its recorded revision body is unavailable. Process the unchanged file twice. | The selected content is reflected without adding a database revision or conflict, provenance advances to that revision, and all replicas retain only the selected branch. |
+| Compacted base with legacy provenance | After four-way resolution, retain only the losing device's revision and observed modification time, compact its local DB, and confirm that the recorded revision body is unavailable. Save the remaining file, then repeat after removing provenance. | The file is preserved as one independent conflict. Both contents remain readable on every replica, repeated saves create no duplicates, and CLI `resolve` can select the independent root and propagate its resolution. |
+| Compacted base with a genuine edit | After four-way resolution and local compaction, retain the losing device's content hash but edit its file without changing its byte length or modification time. | The changed content is preserved as one independent conflict, remains readable on every replica, and can be selected through CLI `resolve`. Repeated saves after provenance loss create no duplicates. |
 
 ### Coverage boundaries
 

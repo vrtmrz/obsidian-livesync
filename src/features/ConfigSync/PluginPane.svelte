@@ -20,10 +20,14 @@
         MODE_SHINY,
     } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { normalizePath } from "@/deps";
-    import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
+    import {
+        HiddenFileSync,
+        HIDDEN_FILE_SYNC_DISABLED_NOTICE,
+    } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     import { $msg as translateMessage } from "@/common/translation";
+    import { getAutomaticSyncTargetFiles } from "./getAutomaticSyncTargetFiles.ts";
     import {
         REPLICATION_PROGRESS_PRESENTATIONS,
         USER_INITIATED_REPLICATION_AUTHORITY,
@@ -139,6 +143,11 @@
     async function deleteData(data: IPluginDataExDisplay): Promise<boolean> {
         return await addOn.deleteData(data);
     }
+    function checkAutomaticSyncAvailable() {
+        if (addOnHiddenFileSync.isThisModuleEnabled()) return true;
+        Logger(translateMessage(HIDDEN_FILE_SYNC_DISABLED_NOTICE), LOG_LEVEL_NOTICE);
+        return false;
+    }
     function askMode(evt: MouseEvent, title: string, key: string) {
         const menu = new Menu();
         menu.addItem((item) => item.setTitle(title).setIsLabel(true));
@@ -149,6 +158,7 @@
                 item.setTitle(`${getIcon(mode as SYNC_MODE)}:${TITLES[mode]}`)
                     .onClick((e) => {
                         if (mode === MODE_AUTOMATIC) {
+                            if (!checkAutomaticSyncAvailable()) return;
                             askOverwriteModeForAutomatic(evt, key);
                         } else {
                             setMode(key, mode as SYNC_MODE);
@@ -161,10 +171,11 @@
         menu.showAtMouseEvent(evt);
     }
     function applyAutomaticSync(key: string, direction: "pushForce" | "pullForce" | "safe") {
+        if (!checkAutomaticSyncAvailable()) return;
         setMode(key, MODE_AUTOMATIC);
         const configDir = normalizePath(plugin.core.services.API.getSystemConfigDir());
-        const files = (plugin.core.settings.pluginSyncExtendedSetting[key]?.files ?? []).map((e) => `${configDir}/${e}`);
-        addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
+        const files = getAutomaticSyncTargetFiles(key, configDir, plugin.core.settings.pluginSyncExtendedSetting);
+        void addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {
         const menu = new Menu();

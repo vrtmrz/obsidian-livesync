@@ -9,9 +9,9 @@ type Concurrency = {
     "cancel-in-progress"?: boolean | string;
 };
 type Workflow = {
-    on?: Partial<Record<Trigger, { paths?: string[] }>>;
+    on?: Partial<Record<Trigger, { paths?: string[]; types?: string[] }>>;
     concurrency?: Concurrency;
-    jobs?: Record<string, { concurrency?: Concurrency }>;
+    jobs?: Record<string, { if?: string; concurrency?: Concurrency }>;
 };
 
 function readWorkflow(filename: string): Workflow {
@@ -25,6 +25,18 @@ function matchesAnyPath(patterns: string[], filename: string): boolean {
 
 const pagesWorkflow = readWorkflow("deploy-pages.yml");
 const unitWorkflow = readWorkflow("unit-ci.yml");
+
+describe("Pages pull request lifecycle", () => {
+    it("defers draft validation and starts checks when the pull request is ready", () => {
+        expect(pagesWorkflow.jobs?.build?.if).toBe(
+            "${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}"
+        );
+        expect(pagesWorkflow.on?.pull_request?.types).toEqual(
+            expect.arrayContaining(["opened", "synchronize", "reopened", "ready_for_review"])
+        );
+        expect(pagesWorkflow.jobs?.deploy?.if).toBe("github.event_name != 'pull_request'");
+    });
+});
 
 describe("CI workflow path filters", () => {
     it.each(["push", "pull_request"] as const)("runs Pages checks for the manifest on %s", (trigger) => {

@@ -18,6 +18,26 @@ Use the least destructive operation which matches the evidence:
 
 Do not switch transport, enable P2P, or run Garbage Collection as a substitute for diagnosing a stopped CouchDB or Object Storage setup.
 
+## Migrate to Unicode NFC path identity
+
+Use this coordinated migration when CLI and Obsidian clients share a CouchDB database and composed and decomposed Unicode spellings should identify the same path. Version `0` remains the default and preserves legacy identity. Version `1` is supported with CouchDB only; it is unsupported with Object Storage and P2P.
+
+This migration reconstructs the databases from one authoritative Vault. It does not rewrite document IDs in place or rename files.
+
+1. Update every participating CLI and Obsidian client to a version which supports Unicode NFC path identity. Back up a complete authoritative Vault and the CouchDB database. Stop synchronisation and editing on every device until the migration is complete.
+2. Choose the complete Vault which contains the intended files. Review any composed and decomposed names which would map to the same path identity, and resolve them before reconstruction. If Rebuild or Fetch reports an ambiguous path or Metadata ID, stop and resolve that collision before retrying; LiveSync does not choose or merge the files for you.
+3. On the source client, select **Unicode NFC path identity** (`pathNormalizationVersion: 1`). In Obsidian, choose **Overwrite Server Data with This Device's Files**. In the CLI, set the same value in its settings and run `rebuild` with `--force --write-settings`.
+4. On each remaining client, select **Unicode NFC path identity** (`pathNormalizationVersion: 1`) before fetching. In Obsidian, choose **Reset Synchronisation on This Device**. In the CLI, set the same value in its settings and run `fetch` with `--force --write-settings`.
+5. Confirm that every client uses version `1` and that the expected files are present before resuming synchronisation. Do not reconnect a version `0` client to the migrated database.
+
+Rebuild and both Fetch paths ignore local logical deletions without unresolved conflicts when replacing the local database. Deletion or rename history alone therefore does not block this migration. Fully tombstoned documents are already absent from the Metadata check. Unresolved conflicts and ambiguous current files still require review, even when a conflict's winning revision is logically deleted. Remote-only Rebuild retains its existing ID checks and is not a substitute for the source Rebuild above.
+
+A remote deletion which has not reached this device does not establish that its local Metadata is deleted. Inspect the local state and preserve unsynchronised content before resolving a reported collision. Manual deletion of every database is not a prerequisite for this procedure. Clients already using NFC identity do not need to repeat the migration for this change.
+
+The Inspector's **Repair this Metadata document ID** action repairs one local entry; it is not a bulk migration tool. Use the Rebuild and Fetch procedure above for path identity changes.
+
+This procedure does not establish native macOS or iOS filesystem behaviour. Obsidian's collision checks use the paths exposed by its Vault APIs; see [Unicode path identity](settings.md#unicode-path-identity) for that visibility limit.
+
 ## Suspend before diagnosis
 
 Close Obsidian completely, then create an empty file or directory named `redflag.md` at the root of the Vault. On the next start, LiveSync enters its emergency suspension state before ordinary database, file-watching, and synchronisation work continues.

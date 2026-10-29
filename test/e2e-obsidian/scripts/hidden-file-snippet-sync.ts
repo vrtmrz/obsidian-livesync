@@ -63,12 +63,28 @@ const manualMergeJsonPath = ".obsidian/livesync-e2e-manual-merge.json";
 const targetPath = ".obsidian/livesync-targeted/only-a.json";
 const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
 const hiddenFileInitialisationStateKey = "__livesyncE2EHiddenFileInitialisation";
+const disabledInitialisationProbeKey = "__livesyncE2EDisabledHiddenInitialisation";
+
+type DisabledInitialisationSnapshot = {
+    syncInternalFiles: boolean;
+    hiddenFiles: { id: string; path: string; rev: string; deleted: boolean }[];
+    processedFiles: [string, string | undefined][];
+    processedDatabaseFiles: [string, string | undefined][];
+};
+
+type DisabledInitialisationObservation = {
+    result: boolean | null;
+    before: DisabledInitialisationSnapshot;
+    after: DisabledInitialisationSnapshot;
+    progressNotices: string[];
+};
 
 type RunnerContext = {
     binary: string;
     cliBinary: string;
     couchDb: CouchDbConfig;
     dbName: string;
+    activeSessions: Set<ObsidianLiveSyncSession>;
 };
 
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
@@ -130,6 +146,114 @@ async function waitForPathDeleted(
         await new Promise((resolve) => setTimeout(resolve, 250));
     }
     throw new Error(`Timed out waiting for deleted file: ${join(vaultPath, path)}`);
+}
+
+async function assertDisabledInitialisationIsNoOp(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault
+): Promise<void> {
+    const snippetExisted = await pathExists(vault.path, snippetPath);
+    const originalSnippet = snippetExisted ? await readVaultFile(vault.path, snippetPath) : undefined;
+    const originalJson = await readVaultFile(vault.path, mergeJsonPath);
+    const preservedSnippet = "body { --disabled-hidden-initialisation: preserved; }\n";
+    const preservedJson = JSON.stringify({ disabledInitialisation: "preserved" }, null, 4) + "\n";
+    await writeVaultFile(vault.path, snippetPath, preservedSnippet);
+    await writeVaultFile(vault.path, mergeJsonPath, preservedJson);
+
+    try {
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            await page.evaluate((stateKey) => {
+                const state = { progressNotices: [] as string[] };
+                const observer = new MutationObserver(() => {
+                    for (const notice of document.querySelectorAll<HTMLElement>(".notice")) {
+                        const text = notice.textContent?.trim() ?? "";
+                        if (text.includes("[⚙") && !state.progressNotices.includes(text)) {
+                            state.progressNotices.push(text);
+                        }
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+                (globalThis as unknown as Record<string, { progressNotices: string[]; observer: MutationObserver }>)[
+                    stateKey
+                ] = { ...state, observer };
+            }, disabledInitialisationProbeKey);
+        });
+
+        const observation = await evalObsidianJson<DisabledInitialisationObservation>(
+            context.cliBinary,
+            [
+                "(async()=>{",
+                `const targetFiles=${JSON.stringify([snippetPath, mergeJsonPath])};`,
+                "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                "const addOn=core.getAddOn('HiddenFileSync');",
+                "const snapshot=async()=>{",
+                "const files=await addOn.getAllDatabaseFiles();",
+                "const markers=(cache)=>Array.from(cache.keys()).sort().map((path)=>[path,cache.get(path)]);",
+                "return {",
+                "syncInternalFiles:core.settings.syncInternalFiles,",
+                "hiddenFiles:files.map((entry)=>({id:entry._id,path:addOn.getPath(entry),rev:entry._rev??'',deleted:!!(entry.deleted||entry._deleted)})).sort((a,b)=>a.path.localeCompare(b.path)),",
+                "processedFiles:markers(addOn._fileInfoLastProcessed),",
+                "processedDatabaseFiles:markers(addOn._databaseInfoLastProcessed),",
+                "};};",
+                "const before=await snapshot();",
+                "const result=await addOn.initialiseInternalFileSync('pullForce',true,targetFiles);",
+                "const after=await snapshot();",
+                "return JSON.stringify({result:result===undefined?null:result,before,after});",
+                "})()",
+            ].join(""),
+            session.cliEnv,
+            hiddenFileCliTimeoutMs
+        );
+        const progressNotices = await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            return await page.evaluate((stateKey) => {
+                const state = (
+                    globalThis as unknown as Record<
+                        string,
+                        { progressNotices: string[]; observer: MutationObserver } | undefined
+                    >
+                )[stateKey];
+                state?.observer.disconnect();
+                return state?.progressNotices ?? [];
+            }, disabledInitialisationProbeKey);
+        });
+
+        const failures: string[] = [];
+        if (observation.result !== false)
+            failures.push(`expected false result, received ${String(observation.result)}`);
+        if (observation.before.syncInternalFiles !== false || observation.after.syncInternalFiles !== false) {
+            failures.push("Hidden File Sync setting changed while initialisation was disabled");
+        }
+        if (JSON.stringify(observation.before) !== JSON.stringify(observation.after)) {
+            failures.push("local hidden database state or processed markers changed");
+        }
+        if ((await readVaultFile(vault.path, snippetPath)) !== preservedSnippet) {
+            failures.push("the existing local snippet was deleted or replaced");
+        }
+        if ((await readVaultFile(vault.path, mergeJsonPath)) !== preservedJson) {
+            failures.push("the existing local JSON file was replaced");
+        }
+        if (progressNotices.length > 0)
+            failures.push(`initialisation created progress Notices: ${JSON.stringify(progressNotices)}`);
+        if (failures.length > 0) {
+            throw new Error(
+                `Disabled Hidden File Sync initialisation was not a no-op: ${failures.join("; ")}\n${JSON.stringify({
+                    observation,
+                    progressNotices,
+                })}`
+            );
+        }
+        console.log(
+            "Disabled Hidden File Sync initialisation returned false without changing hidden files or cached state."
+        );
+    } finally {
+        await writeVaultFile(vault.path, mergeJsonPath, originalJson);
+        if (snippetExisted && originalSnippet !== undefined) {
+            await writeVaultFile(vault.path, snippetPath, originalSnippet);
+        } else {
+            await removeVaultFile(vault.path, snippetPath);
+        }
+    }
 }
 
 function hasJsonValues(content: string, values: Record<string, unknown>): boolean {
@@ -348,11 +472,17 @@ async function startConfiguredSession(
         pluginData: createE2eCouchDbPluginData(couchDbSettings, hiddenFileSettings),
         localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
     });
+    context.activeSessions.add(session);
     await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
     await assertE2eCompatibilityMarker(context.cliBinary, session.cliEnv);
     await configureCouchDb(context.cliBinary, session.cliEnv, couchDbSettings, hiddenFileSettings);
     await prepareRemote(context.cliBinary, session.cliEnv);
     return session;
+}
+
+async function stopSession(context: RunnerContext, session: ObsidianLiveSyncSession): Promise<void> {
+    await session.app.stop();
+    context.activeSessions.delete(session);
 }
 
 async function uploadHiddenFile(
@@ -430,12 +560,12 @@ async function runCreateRoundTrip(
         throw new Error("Remote Rebuild did not declare and encrypt internal Metadata for its accepted writer.");
     }
     console.log("Remote Rebuild declared the feature and preserved encrypted Hidden File Sync Metadata.");
-    await session.app.stop();
+    await stopSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await pullAndApplyHiddenFiles(context, session);
     const received = await waitForPathContent(vaultB.path, snippetPath, (content) => content === snippetContent);
-    await session.app.stop();
+    await stopSession(context, session);
 
     assertEqual(received, snippetContent, "Hidden snippet content did not round-trip to the second vault.");
     console.log(`Hidden create round-trip copied ${entry.id} to the second vault.`);
@@ -450,12 +580,12 @@ async function runDeleteRoundTrip(
     let session = await startConfiguredSession(context, vaultA);
     await scanHiddenStorage(context.cliBinary, session.cliEnv);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
-    await session.app.stop();
+    await stopSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await pullAndApplyHiddenFiles(context, session);
     await waitForPathDeleted(vaultB.path, snippetPath);
-    await session.app.stop();
+    await stopSession(context, session);
 
     console.log("Hidden delete round-trip removed the snippet from the second vault.");
 }
@@ -476,14 +606,14 @@ async function runJsonConflictRoundTrip(
     const mergedOnB = await waitForPathContent(vaultB.path, mergeJsonPath, (content) =>
         hasJsonValues(content, { fromA: true, fromB: true })
     );
-    await session.app.stop();
+    await stopSession(context, session);
 
     session = await startConfiguredSession(context, vaultA);
     await pullAndApplyHiddenFiles(context, session);
     const mergedOnA = await waitForPathContent(vaultA.path, mergeJsonPath, (content) =>
         hasJsonValues(content, { fromA: true, fromB: true })
     );
-    await session.app.stop();
+    await stopSession(context, session);
 
     assertEqual(mergedOnA, mergedOnB, "Merged hidden JSON content was not consistent across both vaults.");
     console.log("Hidden JSON conflict was automatically merged and round-tripped.");
@@ -503,7 +633,7 @@ async function runJsonManualConflictResolution(context: RunnerContext, vault: Te
     const merged = await waitForPathContent(vault.path, manualMergeJsonPath, (content) =>
         hasJsonValues(content, { shared: "right", fromA: true, fromB: true })
     );
-    await session.app.stop();
+    await stopSession(context, session);
 
     const parsed = JSON.parse(merged);
     assertEqual(parsed.shared, "right", "Manual JSON conflict resolution did not apply the selected merged result.");
@@ -517,17 +647,19 @@ async function runTargetMismatch(
     vaultA: TemporaryVault,
     vaultB: TemporaryVault
 ): Promise<void> {
+    const selectors = { syncOnlyRegEx: String.raw`\.(md|pdf)$` };
     const targetContent = JSON.stringify({ onlyA: true, targetMismatch: true }, null, 4) + "\n";
     await writeVaultFile(vaultA.path, targetPath, targetContent);
 
-    let session = await startConfiguredSession(context, vaultA);
+    let session = await startConfiguredSession(context, vaultA, selectors);
     try {
         await uploadHiddenFile(context, session, targetPath);
     } finally {
-        await session.app.stop();
+        await stopSession(context, session);
     }
 
     session = await startConfiguredSession(context, vaultB, {
+        ...selectors,
         syncInternalFilesTargetPatterns: "snippets",
     });
     try {
@@ -538,10 +670,11 @@ async function runTargetMismatch(
             "Hidden file was applied on a device where it was not a target file."
         );
     } finally {
-        await session.app.stop();
+        await stopSession(context, session);
     }
 
     session = await startConfiguredSession(context, vaultB, {
+        ...selectors,
         syncInternalFilesTargetPatterns: "",
     });
     let received = "";
@@ -549,11 +682,17 @@ async function runTargetMismatch(
         await pullAndApplyHiddenFiles(context, session, { resolveConflicts: false });
         received = await waitForPathContent(vaultB.path, targetPath, (content) => content === targetContent);
     } finally {
-        await session.app.stop();
+        await stopSession(context, session);
     }
 
-    assertEqual(received, targetContent, "Hidden file was not applied after it became a target file.");
-    console.log("Hidden target mismatch respected per-device target patterns, then applied after enabling the target.");
+    assertEqual(
+        received,
+        targetContent,
+        "The normal file allow-list blocked a selected hidden file from the other device."
+    );
+    console.log(
+        "A normal Markdown/PDF allow-list preserved hidden target exclusion and exact remote restoration after enabling the target."
+    );
 }
 
 async function setHiddenFileNoticeFixtures(port: number, itemIds: string[], includeRestart: boolean): Promise<void> {
@@ -633,6 +772,7 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
                 "Transient start-up Notices remained before the Hidden File Sync initialisation check."
             );
         });
+        await assertDisabledInitialisationIsNoOp(context, session, vault);
         await withObsidianPage(port, async (page) => {
             await page.evaluate((stateKey) => {
                 const obsidianApp = (globalThis as typeof globalThis & { app: any }).app;
@@ -828,7 +968,7 @@ async function runInitialisationNoticeGrouping(context: RunnerContext, vault: Te
             `Hidden File Sync showed one progress Notice before settings were saved and retained it throughout initialisation. Screenshot: ${screenshotPath}`
         );
     } finally {
-        await session.app.stop();
+        await stopSession(context, session);
     }
 }
 
@@ -889,7 +1029,7 @@ async function runConfigurationNoticeGrouping(context: RunnerContext, vault: Tem
     } finally {
         await clearHiddenFileNoticeFixtures(port).catch(() => undefined);
         await setObsidianMobileTestMode(port, false, timeoutMs).catch(() => undefined);
-        await session.app.stop();
+        await stopSession(context, session);
     }
 }
 
@@ -904,7 +1044,7 @@ async function main(): Promise<void> {
     const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "hidden-roundtrip");
     const vaultA = await createTemporaryVault();
     const vaultB = await createTemporaryVault();
-    const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName };
+    const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName, activeSessions: new Set() };
 
     try {
         await assertCouchDbReachable(couchDb);
@@ -923,6 +1063,7 @@ async function main(): Promise<void> {
         await runInitialisationNoticeGrouping(context, vaultB);
         await runConfigurationNoticeGrouping(context, vaultB);
     } finally {
+        for (const session of context.activeSessions) await stopSession(context, session);
         await vaultA.dispose();
         await vaultB.dispose();
         if (process.env.E2E_OBSIDIAN_KEEP_COUCHDB !== "true") {

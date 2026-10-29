@@ -1,4 +1,5 @@
 import { ItemView, Notice, Setting, type WorkspaceLeaf } from "@/deps";
+import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
 import {
     REVIEW_HARNESS_SCENARIOS,
     type ReviewHarnessScenarioId,
@@ -101,7 +102,7 @@ export class ReviewHarnessView extends ItemView {
                 true
             );
             this.addActionButton(actions, "Restart and return", "review-harness-restart", () =>
-                this.controller.prepareCompatibilityReviewRestart()
+                this.controller.prepareCompatibilityReviewRestart().catch((error) => Logger(error, LOG_LEVEL_NOTICE))
             );
         }
     }

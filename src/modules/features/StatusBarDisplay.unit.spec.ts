@@ -111,6 +111,24 @@ describe("createPaddedCounterLabel", () => {
         display.dispose();
     });
 
+    it("exposes the numeric value while retaining zero through the existing linger", () => {
+        const source = reactiveSource(0);
+        const display = createPaddedCounterLabel(source, "📥");
+
+        expect(display.count.value).toBeUndefined();
+        source.value = 9;
+        expect(display.count.value).toBe(9);
+        source.value = 0;
+        expect(display.count.value).toBe(0);
+
+        vi.advanceTimersByTime(STATUS_COUNTER_INACTIVE_LINGER_MS - 1);
+        expect(display.count.value).toBe(0);
+        vi.advanceTimersByTime(1);
+        expect(display.count.value).toBeUndefined();
+
+        display.dispose();
+    });
+
     it("cancels the pending clear when counter activity resumes", () => {
         const source = reactiveSource(0);
         const display = createPaddedCounterLabel(source, "📄");

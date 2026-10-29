@@ -9,9 +9,9 @@ authors:
   - name: "Self-hosted LiveSync Contributors"
 repository-code: "https://github.com/vrtmrz/obsidian-livesync"
 url: "https://github.com/vrtmrz/obsidian-livesync"
-version: 1.0.23
-doi: 10.5281/zenodo.22247183
-date-released: "2026-09-05"
+version: 1.0.38
+doi: 10.5281/zenodo.23438598
+date-released: "2026-10-17"
 license: MIT
 keywords:
   - obsidian

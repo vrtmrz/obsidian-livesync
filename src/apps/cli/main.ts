@@ -1,6 +1,5 @@
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 import { NodeServiceContext, NodeServiceHub } from "./services/NodeServiceHub";
-import { configureNodeLocalStorage, ensureGlobalNodeLocalStorage } from "./services/NodeLocalStorage";
 import { LiveSyncBaseCore, type StartupDatabaseOptions } from "@/LiveSyncBaseCore";
 import { initialiseServiceModulesCLI } from "./serviceModules/CLIServiceModules";
 import {
@@ -21,6 +20,7 @@ import {
 import { runCommand } from "./commands/runCommand";
 import { isCLICommand } from "./commands/types";
 import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types";
+import { getForceRequirementError } from "./commands/utils";
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
@@ -47,6 +47,7 @@ const SETTINGS_FILE = ".livesync/settings.json";
 interface CLIVaultSyncMode {
     readonly watchFiles: boolean;
     readonly reflectReplicationResults: boolean;
+    readonly scanOnStartup?: boolean;
     readonly startupDatabaseOptions: StartupDatabaseOptions;
 }
 
@@ -62,9 +63,20 @@ const VAULT_SYNC_MODES: Readonly<Partial<Record<CLICommand, CLIVaultSyncMode>>> 
         reflectReplicationResults: false,
         startupDatabaseOptions: { ignoreSuspending: true, continueOnFileFailure: false },
     },
+    rebuild: {
+        watchFiles: false,
+        reflectReplicationResults: false,
+        scanOnStartup: false,
+        startupDatabaseOptions: { ignoreSuspending: false, continueOnFileFailure: false },
+    },
+    fetch: {
+        watchFiles: false,
+        reflectReplicationResults: true,
+        scanOnStartup: false,
+        startupDatabaseOptions: { ignoreSuspending: false, continueOnFileFailure: false },
+    },
 };
 
-ensureGlobalNodeLocalStorage();
 defaultLoggerEnv.minLogLevel = LOG_LEVEL_DEBUG;
 
 /** Injectable command boundary used by CLI integration probes. */
@@ -90,6 +102,8 @@ Commands:
     p2p-sync <peer> <timeout>
                             Sync with the specified peer-id or peer-name
     p2p-host                Start P2P host mode and wait until interrupted
+    rebuild                 Rebuild local and remote databases from the selected Vault (requires --force)
+    fetch                   Replace the local database with remote state and reflect it to the Vault (requires --force)
     push <src> <dst>        Push local file <src> into local database path <dst>
     pull <src> <dst>        Pull file <src> from local database into local file <dst>
     pull-rev <src> <dst> <rev>   Pull file <src> at specific revision <rev> into local file <dst>
@@ -122,8 +136,9 @@ Commands:
                             Show remote database status
 
 Options:
-  --vault <path>, -V <path>  (daemon/mirror) Path to the vault directory containing .md files
+  --vault <path>, -V <path>  (daemon/mirror/rebuild/fetch) Path to the vault directory containing .md files
                               (defaults to database-path; allows separate PouchDB and vault dirs)
+  --force, -f             Required for rebuild and fetch because they replace databases
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --write-settings         Write setting changes after a successful command
   --compat-remote-admin-exit-zero
@@ -319,6 +334,12 @@ export async function main(
     commandRunner: CliCommandRunner = runCommand
 ) {
     const options = parseArgs(standardIo);
+    const forceRequirementError = getForceRequirementError(options.command, options.force);
+    if (forceRequirementError) {
+        writeStderrLine(standardIo, `[Error] ${forceRequirementError}`);
+        process.exitCode = 1;
+        return;
+    }
     const vaultSyncMode = VAULT_SYNC_MODES[options.command];
     if (options.interval && options.command !== "daemon") {
         writeStderrLine(
@@ -377,8 +398,6 @@ export async function main(
     const settingsPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : path.join(databasePath, SETTINGS_FILE);
-    configureNodeLocalStorage(path.join(databasePath, ".livesync", "runtime", "local-storage.json"));
-
     // Resolve vault path: mirror positional argument takes priority,
     // then --vault flag, otherwise fall back to databasePath.
     const vaultPath =
@@ -521,7 +540,7 @@ export async function main(
         () => [], // No add-ons
         (core, coreFeatureViews) => {
             replicationScheduling = coreFeatureViews.replicationScheduling;
-            if (vaultSyncMode) {
+            if (vaultSyncMode && vaultSyncMode.scanOnStartup !== false) {
                 useOfflineScanner(core);
             }
             // Register P2P replicator feature.
@@ -640,6 +659,10 @@ export async function main(
         }
         if (!readyResult) {
             throw new Error("Failed to initialise LiveSync.");
+        }
+        if (vaultSyncMode?.scanOnStartup === false) {
+            // Keep the startup reset clean, then enable scans for the explicit Rebuild or Fetch operation.
+            useOfflineScanner(core);
         }
         const settingsBeforeCommand = cloneSettings(core.services.setting.currentSettings());
         const transientSettingKeys = changedSettingKeys(settingsBeforeSuspend, settingsAfterSuspend);

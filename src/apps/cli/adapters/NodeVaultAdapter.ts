@@ -2,6 +2,7 @@ import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/co
 import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
 import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
+import { UnicodeResolvingNodeStorageAdapter } from "./UnicodeResolvingNodeStorageAdapter";
 
 /**
  * Vault adapter implementation for Node.js
@@ -73,8 +74,16 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
     }
 
     private async toNodeFile(path: string): Promise<NodeFile> {
-        const stat = await this.storage.stat(path);
+        const resolvedPath =
+            this.storage instanceof UnicodeResolvingNodeStorageAdapter
+                ? await this.storage.resolveLogicalPath(path, undefined, false)
+                : path;
+        if (resolvedPath === null) throw new Error(`Could not read created file metadata: ${path}`);
+        const stat =
+            this.storage instanceof UnicodeResolvingNodeStorageAdapter
+                ? await this.storage.statExact(resolvedPath)
+                : await this.storage.stat(resolvedPath);
         if (stat?.type !== "file") throw new Error(`Could not read created file metadata: ${path}`);
-        return { path: path as FilePath, stat };
+        return { path: resolvedPath as FilePath, stat };
     }
 }

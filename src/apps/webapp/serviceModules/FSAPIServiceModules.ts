@@ -90,6 +90,7 @@ export function initialiseServiceModulesFSAPI(
 
     // Rebuilder (platform-independent)
     const rebuilder = new ServiceRebuilder({
+        path: services.path,
         events: services.context.events,
         API: services.API,
         database: services.database,

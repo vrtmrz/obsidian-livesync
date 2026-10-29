@@ -2,7 +2,7 @@
 date: 2026-09-04
 commonlib-version: "0.1.21"
 self-hosted-livesync-version: "1.0.24"
-status: unreleased
+status: released
 ---
 
 # Path component length compatibility
@@ -11,9 +11,9 @@ status: unreleased
 
 File systems place limits on each file or folder name, rather than applying one
 common limit to an entire Vault-relative path. Those limits are also expressed
-in different units. Self-hosted LiveSync therefore treats 255 UTF-8 bytes as a
-focused Android and Linux compatibility warning, not as a universal definition
-of a valid path.
+in different units. The warning shipped in Self-hosted LiveSync 1.0.26. It
+treats 255 UTF-8 bytes as a focused Android and Linux compatibility warning,
+not as a universal definition of a valid path.
 
 ## Basis for the 255-byte warning
 
