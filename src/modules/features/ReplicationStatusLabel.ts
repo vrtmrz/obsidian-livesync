@@ -13,13 +13,25 @@ import {
 
 export const FAST_FORWARD_COUNT_LINGER_MS = 3_000;
 
-function readPositiveCheckedChanges(source: ReactiveValue<ReplicationStatics>): number | undefined {
-    const count = source.value.couchDB?.pull?.checkedChanges;
+export type FastForwardCheckedChanges = {
+    push?: number;
+    pull?: number;
+};
+
+function readPositiveCheckedChanges(
+    source: ReactiveValue<ReplicationStatics>,
+    direction: keyof FastForwardCheckedChanges
+): number | undefined {
+    const count = source.value.couchDB?.[direction]?.checkedChanges;
     return typeof count === "number" && Number.isFinite(count) && count > 0 ? count : undefined;
 }
 
+function copyCheckedChanges(counts: FastForwardCheckedChanges): FastForwardCheckedChanges {
+    return { ...counts };
+}
+
 /**
- * Briefly displays changing CouchDB pull-feed comparison counts.
+ * Briefly displays changing CouchDB push- and pull-feed comparison counts.
  *
  * Unrelated replication-stat changes do not extend the linger or redisplay an
  * expired count. A positive initial snapshot is displayed to late subscribers.
@@ -27,46 +39,61 @@ function readPositiveCheckedChanges(source: ReactiveValue<ReplicationStatics>): 
 export function createFastForwardCheckedChangesDisplay(
     source: ReactiveValue<ReplicationStatics>,
     lingerMs = FAST_FORWARD_COUNT_LINGER_MS
-): DisposableReactiveValue<number | undefined> {
-    const displayed = reactiveSource<number | undefined>(undefined);
+): DisposableReactiveValue<FastForwardCheckedChanges> {
+    const displayed = reactiveSource<FastForwardCheckedChanges>({});
     const linger = Math.max(0, lingerMs);
-    let lastObserved = readPositiveCheckedChanges(source);
-    let clearTimer: number | undefined;
+    const directions: (keyof FastForwardCheckedChanges)[] = ["push", "pull"];
+    const lastObserved: FastForwardCheckedChanges = {};
+    const clearTimers = new Map<keyof FastForwardCheckedChanges, number>();
     let disposed = false;
 
-    const cancelClear = () => {
-        if (clearTimer === undefined) return;
-        compatGlobal.clearTimeout(clearTimer);
-        clearTimer = undefined;
+    const cancelClear = (direction: keyof FastForwardCheckedChanges) => {
+        const timer = clearTimers.get(direction);
+        if (timer === undefined) return;
+        compatGlobal.clearTimeout(timer);
+        clearTimers.delete(direction);
     };
-    const scheduleClear = () => {
-        clearTimer = compatGlobal.setTimeout(() => {
-            clearTimer = undefined;
+    const scheduleClear = (direction: keyof FastForwardCheckedChanges) => {
+        const timer = compatGlobal.setTimeout(() => {
+            clearTimers.delete(direction);
             if (disposed) return;
-            if (readPositiveCheckedChanges(source) !== lastObserved) {
+            if (readPositiveCheckedChanges(source, direction) !== lastObserved[direction]) {
                 update();
                 return;
             }
-            displayed.value = undefined;
+            const nextDisplayed = copyCheckedChanges(displayed.value);
+            delete nextDisplayed[direction];
+            displayed.value = nextDisplayed;
         }, linger);
+        clearTimers.set(direction, timer);
     };
     const update = () => {
         if (disposed) return;
-        const nextCount = readPositiveCheckedChanges(source);
-        if (nextCount === lastObserved) return;
-        lastObserved = nextCount;
-        cancelClear();
-        if (nextCount === undefined) {
-            displayed.value = undefined;
-            return;
+        const nextDisplayed = copyCheckedChanges(displayed.value);
+        let changed = false;
+        for (const direction of directions) {
+            const nextCount = readPositiveCheckedChanges(source, direction);
+            if (nextCount === lastObserved[direction]) continue;
+            lastObserved[direction] = nextCount;
+            cancelClear(direction);
+            if (nextCount === undefined) {
+                delete nextDisplayed[direction];
+                changed = true;
+                continue;
+            }
+            nextDisplayed[direction] = nextCount;
+            scheduleClear(direction);
+            changed = true;
         }
-        displayed.value = nextCount;
-        scheduleClear();
+        if (changed) displayed.value = nextDisplayed;
     };
 
-    if (lastObserved !== undefined) {
-        displayed.value = lastObserved;
-        scheduleClear();
+    for (const direction of directions) {
+        const count = readPositiveCheckedChanges(source, direction);
+        if (count === undefined) continue;
+        lastObserved[direction] = count;
+        displayed.value = { ...displayed.value, [direction]: count };
+        scheduleClear(direction);
     }
     source.onChanged(update);
 
@@ -83,7 +110,7 @@ export function createFastForwardCheckedChangesDisplay(
         dispose() {
             if (disposed) return;
             disposed = true;
-            cancelClear();
+            for (const direction of directions) cancelClear(direction);
             source.offChanged(update);
         },
     };
@@ -113,7 +140,7 @@ function remainingSequenceLabel(
 export function projectReplicationStatusLabel(
     stats: ReplicationStatics,
     networkStatus: RemoteActivityStatus,
-    fastForwardCount?: number
+    fastForwardCounts?: FastForwardCheckedChanges
 ): ReplicationStatusProjection {
     const { sent, arrived, maxPullSeq, maxPushSeq, lastSyncPullSeq, lastSyncPushSeq } = stats;
     const networkActivity = formatRemoteActivityStatusLabel(networkStatus);
@@ -154,14 +181,19 @@ export function projectReplicationStatusLabel(
         (couchDB.pull?.checking === true || couchDB.push?.checking === true);
     if (isFastForwardChecking) icon = "⏩";
 
-    const visibleFastForwardCount =
-        couchDB !== undefined &&
-        typeof fastForwardCount === "number" &&
-        Number.isFinite(fastForwardCount) &&
-        fastForwardCount > 0
-            ? fastForwardCount
-            : undefined;
-    const fastForwardLabel = visibleFastForwardCount === undefined ? "" : " (⏩ " + visibleFastForwardCount + ")";
+    const visibleFastForwardCounts: FastForwardCheckedChanges = {};
+    if (couchDB !== undefined) {
+        for (const direction of ["push", "pull"] as const) {
+            const count = fastForwardCounts?.[direction];
+            if (typeof count === "number" && Number.isFinite(count) && count > 0) {
+                visibleFastForwardCounts[direction] = count;
+            }
+        }
+    }
+    const fastForwardLabels = (["push", "pull"] as const)
+        .filter((direction) => visibleFastForwardCounts[direction] !== undefined)
+        .map((direction) => ` (⏩${direction === "push" ? "↑" : "↓"} ${visibleFastForwardCounts[direction]})`);
+    const fastForwardLabel = fastForwardLabels.join("");
 
     const parts: StatusBarPart[] = [];
     if (networkStatus.trackedRequestCount > 0) {
@@ -177,13 +209,15 @@ export function projectReplicationStatusLabel(
         parts.push({ key: "network", text: networkActivity });
     }
     parts.push({ key: "sync", text: "Sync: " + icon });
-    if (visibleFastForwardCount !== undefined) {
+    for (const direction of ["push", "pull"] as const) {
+        const count = visibleFastForwardCounts[direction];
+        if (count === undefined) continue;
         parts.push({
-            key: "ff",
-            text: " (⏩ ",
-            value: visibleFastForwardCount,
+            key: `ff-${direction}`,
+            text: ` (⏩${direction === "push" ? "↑" : "↓"} `,
+            value: count,
             suffix: ")",
-            title: "Compared CouchDB feed entries",
+            title: `Compared CouchDB ${direction} feed entries`,
         });
     }
     parts.push({ key: "sent", text: " ↑ ", value: sent });

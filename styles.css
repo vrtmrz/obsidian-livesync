@@ -857,7 +857,8 @@ body.is-mobile .livesync-compatibility-review-notice {
     ~ .livesync-stat-item:not(
         .livesync-stat-push-remaining,
         .livesync-stat-pull-remaining,
-        .livesync-stat-ff,
+        .livesync-stat-ff-push,
+        .livesync-stat-ff-pull,
         .livesync-stat-p2p
     ) {
     margin-inline-start: 1em;
