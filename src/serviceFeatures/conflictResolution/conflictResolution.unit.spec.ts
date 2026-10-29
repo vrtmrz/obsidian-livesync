@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { InjectableConflictService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableConflictService";
 import {
@@ -15,6 +15,12 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { EVENT_CONFLICT_CANCELLED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
+import type { IAPIService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
+import {
+    createInstanceLogFunction,
+    MARK_LOG_SEPARATOR,
+    type LogFunction,
+} from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import type { ConflictResolutionHost } from "./index";
 import { createConflictResolutionOperations, useConflictResolutionFeature } from "./index";
 import type { ConflictResolutionOperationsDependencies } from "./operations";
@@ -64,13 +70,15 @@ function createHarness(options: HarnessOptions = {}) {
         vault: { getActiveFilePath: activeFile },
     };
     const serviceModules = { databaseFileAccess, fileHandler, storageAccess };
+    const log = createInstanceLogFunction("SF:ConflictResolution", services.API as unknown as IAPIService);
 
     if (options.compose !== false) {
-        useConflictResolutionFeature({ services, serviceModules } as unknown as ConflictResolutionHost);
+        useConflictResolutionFeature({ services, serviceModules, log } as unknown as ConflictResolutionHost);
     }
 
     return {
         addLog,
+        log,
         conflict,
         context,
         databaseFileAccess,
@@ -151,6 +159,87 @@ function createOperationsHarness() {
 }
 
 describe("conflict resolution serviceFeature", () => {
+    it("declares a borrowed logger and only the services used by conflict resolution", () => {
+        expectTypeOf<keyof ConflictResolutionHost["services"]>().toEqualTypeOf<
+            "context" | "appLifecycle" | "conflict" | "database" | "replication" | "setting" | "vault"
+        >();
+        expectTypeOf<ConflictResolutionHost["log"]>().toEqualTypeOf<LogFunction>();
+    });
+
+    it("uses the injected logger for the checker and resolver without an API service", async () => {
+        const harness = createHarness({
+            compose: false,
+            settings: { checkConflictOnlyOnOpen: true },
+            activeFile: "active.md" as FilePathWithPrefix,
+        });
+        const { API, ...services } = harness.services;
+        const log = vi.fn<LogFunction>();
+        useConflictResolutionFeature({
+            services,
+            serviceModules: harness.serviceModules,
+            log,
+        } as unknown as ConflictResolutionHost);
+        harness.databaseFileAccess.fetchEntryMeta.mockResolvedValue(false);
+
+        await harness.conflict.queueCheckForIfOpen("other.md" as FilePathWithPrefix);
+        await harness.conflict.resolveByNewest("missing.md" as FilePathWithPrefix);
+
+        expect(log).toHaveBeenNthCalledWith(
+            1,
+            "other.md is conflicted, merging process has been postponed.",
+            LOG_LEVEL_NOTICE
+        );
+        expect(log).toHaveBeenNthCalledWith(2, "Could not get current revision of missing.md");
+        expect(API.addLog).not.toHaveBeenCalled();
+    });
+
+    it("keeps separately selected loggers isolated when legacy API services are shared", async () => {
+        const first = createHarness({ compose: false });
+        const second = createHarness({ compose: false });
+        const firstLog = vi.fn<LogFunction>();
+        const secondLog = vi.fn<LogFunction>();
+        const sharedAPI = first.services.API;
+        useConflictResolutionFeature({
+            services: first.services,
+            serviceModules: first.serviceModules,
+            log: firstLog,
+        } as unknown as ConflictResolutionHost);
+        useConflictResolutionFeature({
+            services: { ...second.services, API: sharedAPI },
+            serviceModules: second.serviceModules,
+            log: secondLog,
+        } as unknown as ConflictResolutionHost);
+        first.databaseFileAccess.fetchEntryMeta.mockResolvedValue(false);
+        second.databaseFileAccess.fetchEntryMeta.mockResolvedValue(false);
+
+        await first.conflict.resolveByNewest("first.md" as FilePathWithPrefix);
+        await second.conflict.resolveByNewest("second.md" as FilePathWithPrefix);
+
+        expect(firstLog).toHaveBeenCalledExactlyOnceWith("Could not get current revision of first.md");
+        expect(secondLog).toHaveBeenCalledExactlyOnceWith("Could not get current revision of second.md");
+        expect(sharedAPI.addLog).not.toHaveBeenCalled();
+    });
+
+    it("retains the prefix, level, and key selected by the host logger", async () => {
+        const harness = createHarness({ compose: false });
+        const { API, ...services } = harness.services;
+        useConflictResolutionFeature({
+            services,
+            serviceModules: harness.serviceModules,
+            log: harness.log,
+        } as unknown as ConflictResolutionHost);
+
+        await harness.conflict.resolveByDeletingRevision("same.md" as FilePathWithPrefix, "1-old", "same");
+        await harness.conflict.resolveAllConflictedFilesByNewerOnes();
+
+        expect(API.addLog).toHaveBeenCalledWith(
+            `[SF:ConflictResolution]${MARK_LOG_SEPARATOR} same.md has been merged automatically`,
+            LOG_LEVEL_INFO,
+            ""
+        );
+        expect(API.addLog).toHaveBeenLastCalledWith("Done!", LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+    });
+
     it("keeps resolver operations on narrow collaborators and extension seams", async () => {
         const harness = createOperationsHarness();
         const path = "same.md" as FilePathWithPrefix;
@@ -557,6 +646,7 @@ describe("conflict resolution serviceFeature", () => {
         useConflictResolutionFeature({
             services: harness.services,
             serviceModules: harness.serviceModules,
+            log: harness.log,
         } as unknown as ConflictResolutionHost);
 
         for (const registration of registrations) {

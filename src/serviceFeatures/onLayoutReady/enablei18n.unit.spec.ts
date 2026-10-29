@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 
 const noticeState = vi.hoisted(() => ({
     instances: [] as Array<{ hide: ReturnType<typeof vi.fn>; duration: number }>,
@@ -61,6 +61,14 @@ describe("automatic display language", () => {
     afterEach(() => {
         vi.unstubAllGlobals();
         vi.restoreAllMocks();
+    });
+
+    it("declares only the services it needs and returns a boolean promise", () => {
+        type FeatureHost = Parameters<typeof enableI18nFeature>[0];
+
+        expectTypeOf<keyof FeatureHost["services"]>().toEqualTypeOf<"context" | "setting" | "API" | "appLifecycle">();
+        expectTypeOf<keyof FeatureHost["serviceModules"]>().toBeNever();
+        expectTypeOf<ReturnType<typeof enableI18nFeature>>().toEqualTypeOf<Promise<boolean>>();
     });
 
     it("lets start-up continue and opens translation details only from a persistent Notice", async () => {

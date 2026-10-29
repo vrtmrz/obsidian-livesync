@@ -97,16 +97,6 @@ export function findAttrFromParent(el: HTMLElement, attr: string): string {
     return "";
 }
 
-export function wrapMemo<T>(func: (arg: T) => void) {
-    let buf: T | undefined = undefined;
-    return (arg: T) => {
-        if (buf !== arg) {
-            func(arg);
-            buf = arg;
-        }
-    };
-}
-
 /**
  * Defers pane construction until the owning settings page can confirm that its
  * render scope is still active.
