@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixes
+
+- A new Join or scheduled Fetch asks for data-handling choices again, even after a previous Fetch changed the local database suffix.
+    - Fast Setup retains interrupted choices in an editable Markdown code block in the fetch flag. On restart, we confirm the current remote and saved choices, choose again, or cancel; a remaining flag never reapplies choices silently.
+    - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
+    - After updating during an interrupted Fetch, confirm the choices once more. Older separately stored choices are ignored; downloaded data and the existing checkpoint are not removed by this change.
+
 ## 1.0.42
 
 27th October, 2026

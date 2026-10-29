@@ -68,6 +68,49 @@ Once you confirm your choices:
 
 Fast Setup records the last successfully stored remote position as it saves documents. A transient connection interruption is retried automatically from that position. The operation reports completion only after the captured remote state has been stored successfully.
 
-If an error while decrypting data, reading the remote response, or writing to the local database stops the operation, LiveSync does not run the Vault scan or finalise the reconstructed local database. It retains the saved position, the selected data-processing method, and the fetch flag. File watching and database reflection also remain suspended so that a partly reconstructed database cannot be applied to the Vault or combined with new local changes.
+If an error while decrypting data, reading the remote response, or writing to the local database stops the operation, LiveSync does not run the Vault scan or finalise the reconstructed local database. It retains the saved position and the fetch flag. Any valid stored choices remain available for confirmation on restart. File watching and database reflection also remain suspended so that a partly reconstructed database cannot be applied to the Vault or combined with new local changes.
 
 Review the first specific error in **Show log**, correct its cause, then restart Obsidian to retry from the retained state. While you intend to continue the operation, do not remove the fetch flag or manually resume the Scram switches. If the same error remains after a restart, leave LiveSync suspended, preserve the available data, and [collect a report](../troubleshooting.md#collect-a-report).
+
+
+## Remembered choices in the fetch flag
+
+Fast Setup stores its choices in a `json` code block inside `flag_fetch.md` (or
+`redflag3.md` when that is the only fetch flag). The file remains Markdown and
+can be opened and edited in Obsidian. Explanatory text outside the state block
+is preserved when the choices are updated. The entire flag file is temporary:
+it is removed when the operation completes or is cancelled.
+
+After an interruption, a restart shows the current remote and the saved
+choices. We can continue with those choices, choose again, or cancel the
+scheduled Fetch. Saved choices are never applied without confirmation, even
+when the previous Fetch completed but its flag could not be removed.
+
+Starting a new Join or scheduling another Fetch replaces `flag_fetch.md` with
+an empty flag and asks for new choices. If both filenames exist, `flag_fetch.md`
+takes precedence, including when it is empty; completion removes both aliases.
+
+The generated block has `type: "livesync-fast-setup"`, `version: 1`, and the two
+stable English choice values (`stage1` and `stage2`). It stores no connection
+credentials. Only recognised combinations of the existing choices are accepted.
+The confirmation applies the choices to the currently selected remote,
+including after changing P2P connection settings.
+
+An empty flag starts the normal choice dialogues. If a non-empty flag has no
+readable supported selection, the plug-in asks whether to choose new options
+and continue. This includes malformed JSON, unsupported versions, duplicate
+state blocks, and incomplete Markdown fences. Continuing leaves the file
+contents unchanged and uses the new choices only for that attempt. Another
+restart asks again; the plug-in does not repair the Markdown or append a
+replacement block. Completing or cancelling the Fetch removes the entire flag,
+including any explanatory text.
+
+A storage read or write failure stops the operation; it is not treated as an
+empty flag. If flag deletion fails at the end, file watching and database
+reflection remain suspended until the failure is resolved. A remaining flag
+will ask for confirmation again on restart.
+
+Older versions stored choices separately in device-local storage. Those values
+are no longer reused because they may have survived a completed Fetch. After
+updating during an interrupted operation, confirm the choices once more. This
+change does not itself remove downloaded data or the Fast Fetch checkpoint.

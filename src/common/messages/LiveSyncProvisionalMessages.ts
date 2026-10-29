@@ -398,6 +398,15 @@ export const liveSyncProvisionalEnglishMessages = {
     "Save report": "Save report",
     "The inspection could not finish. Close this dialogue and try again after database startup.":
         "The inspection could not finish. Close this dialogue and try again after database startup.",
+    "Resume scheduled fetch?": "Resume scheduled fetch?",
+    "Apply these saved choices to the current remote?\n\nCurrent remote: ${REMOTE}\n\n- ${STAGE1}\n- ${STAGE2}\n\nThe fetch flag may remain after an interruption or an incomplete cleanup. Continue only if this fetch is still intended.":
+        "Apply these saved choices to the current remote?\n\nCurrent remote: ${REMOTE}\n\n- ${STAGE1}\n- ${STAGE2}\n\nThe fetch flag may remain after an interruption or an incomplete cleanup. Continue only if this fetch is still intended.",
+    "Continue with these choices": "Continue with these choices",
+    "Choose again": "Choose again",
+    "Saved fetch choices could not be read": "Saved fetch choices could not be read",
+    "The fetch flag does not contain one supported selection. Choose new options and continue with the current remote?\n\nCurrent remote: ${REMOTE}\n\nThe flag contents will remain unchanged. The new choices apply only to this attempt; another restart will ask again. Completing or cancelling the fetch removes the flag.":
+        "The fetch flag does not contain one supported selection. Choose new options and continue with the current remote?\n\nCurrent remote: ${REMOTE}\n\nThe flag contents will remain unchanged. The new choices apply only to this attempt; another restart will ask again. Completing or cancelling the fetch removes the flag.",
+    "Choose new options and continue": "Choose new options and continue",
 } as const;
 
 export type LiveSyncProvisionalMessageKey = keyof typeof liveSyncProvisionalEnglishMessages;
