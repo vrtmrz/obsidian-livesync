@@ -60,7 +60,12 @@ const terserOption = {
         hoist_vars: true,
         // toplevel: "vars",
     },
-    mangle: false,
+    // Keep property keys, reflective names, and eval-visible bindings stable.
+    mangle: {
+        properties: false,
+        toplevel: false,
+        eval: false,
+    },
 
     ecma: 2018, // specify one of: 5, 2015, 2016, etc.
     enclose: false, // or specify true, or "args:values"

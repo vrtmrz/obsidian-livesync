@@ -47,6 +47,12 @@ npm run test:e2e:browser-apps:interop    # Run WebApp → WebPeer → CLI in Com
 npm run test:e2e:obsidian:local-suite    # Run the real Obsidian local suite
 ```
 
+### Production minification
+
+Production builds remove unused declarations and shorten local identifiers while retaining class and function names used by module discovery and diagnostic stacks. `terser.config.mjs` also preserves property names, top-level bindings, and identifiers visible to direct `eval` calls. Keep these boundaries when changing compression settings; `test/build/terserConfig.unit.spec.ts` checks the generated code against host properties, persisted keys, reflective names, and exception stacks.
+
+Compare bundle bytes and gzip bytes from the same source, dependency artefacts, and build inputs. Validate import-time registration and the resulting plug-in in the affected real-runtime workflows. The iOS syntax check is one part of compatibility verification; it does not measure performance or replace physical-device testing.
+
 ### Tips
 
 Select the narrowest unit, integration, CLI E2E, or real Obsidian E2E command that owns the behaviour being changed. The obsolete mocked browser Harness has been retired.

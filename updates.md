@@ -12,6 +12,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Maintenance
+
+- The plug-in bundle is smaller, reducing the download for installation and updates.
+    - Builds remove unused code and shorten local identifiers while retaining class and function names for diagnostics.
+
 ### Diagnostics
 
 - Service log calls stay with the plug-in instance that registered them. Its log connection is released after the full shutdown, so stale instances cannot receive later service messages.

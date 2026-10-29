@@ -121,6 +121,13 @@ export default defineConfig([
         },
     },
     {
+        files: ["src/apps/cli/vite.config.ts", "src/apps/webapp/vite.config.ts"],
+        rules: {
+            // Vite loads these configurations before the application source alias is available.
+            "livesync-imports/prefer-source-alias": "off",
+        },
+    },
+    {
         files: ["src/apps/browser/**/*.{ts,svelte}", "src/apps/webapp/**/*.ts"],
         rules: {
             // Browser applications use the DOM rather than Obsidian's DOM extensions.
