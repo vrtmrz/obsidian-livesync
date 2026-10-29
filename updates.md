@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Translations
+
+- Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
+
 ## 1.0.37
 
 16th October, 2026
