@@ -50,6 +50,8 @@ Set `showVerboseLog: true` only in isolated plug-in data when a focused investig
 
 Collect evidence before cleanup, and keep process, Vault, profile, and remote-fixture cleanup in `finally`. After `app.emulateMobile(true)`, use the active CDP renderer for fixture operations because Obsidian may remove desktop-only CLI commands. Visually inspect screenshots before copying selected images into user documentation; a passing locator assertion does not establish that a dialogue is readable or unobstructed.
 
+The dialogue scenario simulates the host keyboard-height variable while the mobile CouchDB setup dialogue is open. It verifies that the space after the final action does not grow with the keyboard height and restores the original variable and scroll position afterwards. It also checks that the warning about saving without a connection test scrolls with the form and leaves room for at least two input rows above the fixed actions. This layout fixture does not open a physical software keyboard.
+
 ## Local Setup
 
 Set `OBSIDIAN_BINARY` when Obsidian is not installed in a standard location. Set `OBSIDIAN_CLI` as well when its companion executable is outside the built-in discovery paths.

@@ -67,13 +67,17 @@
         gap: 0.5em;
         display: flex;
         flex-direction: column;
-        padding-bottom: var(--keyboard-height, 0px);
+        padding-bottom: 0;
         user-select: text;
         -webkit-user-select: text;
     }
 
     .dialog-host :global(button) {
         margin-left: 10px;
+    }
+
+    .dialog-host :global(.button-group > button) {
+        margin-left: 0;
     }
 
     .dialog-host :global(.button-group) {

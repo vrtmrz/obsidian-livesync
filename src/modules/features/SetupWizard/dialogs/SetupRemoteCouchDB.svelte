@@ -314,14 +314,16 @@
 {#if processing}
     {translateMessage("Checking connection... Please wait.")}
 {:else}
+    {#if setupMode === "settings"}
+        <InfoNote warning>
+            {translateMessage(
+                "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected."
+            )}
+        </InfoNote>
+    {/if}
     <UserDecisions>
         <Decision title={primaryActionTitle} important disabled={!canProceed} commit={() => checkAndCommit()} />
         {#if setupMode === "settings"}
-            <InfoNote warning>
-                {translateMessage(
-                    "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected."
-                )}
-            </InfoNote>
             <Decision
                 title={translateMessage("Save without connecting")}
                 disabled={!canProceed}

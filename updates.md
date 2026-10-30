@@ -14,6 +14,14 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixes
 
+- Buttons in confirmation and setup dialogues now align with the content above them. Confirmation dialogue buttons also have space for keyboard focus outlines.
+
+- Mobile confirmation dialogues now retain Obsidian's standard content spacing. Text and password prompts stay above the software keyboard.
+
+- Setup dialogues no longer add a large blank area below their buttons when the software keyboard is open.
+
+- CouchDB connection fields have more room above the software keyboard. The warning about saving without a connection test now scrolls with the form.
+
 - A new Join or scheduled Fetch asks for data-handling choices again, even after a previous Fetch changed the local database suffix.
     - Fast Setup retains interrupted choices in an editable Markdown code block in the fetch flag. On restart, we confirm the current remote and saved choices, choose again, or cancel; a remaining flag never reapplies choices silently.
     - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
