@@ -12,9 +12,24 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixes
+
+- A new Join or scheduled Fetch asks for data-handling choices again, even after a previous Fetch changed the local database suffix.
+    - Fast Setup retains interrupted choices in an editable Markdown code block in the fetch flag. On restart, we confirm the current remote and saved choices, choose again, or cancel; a remaining flag never reapplies choices silently.
+    - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
+    - After updating during an interrupted Fetch, confirm the choices once more. Older separately stored choices are ignored; downloaded data and the existing checkpoint are not removed by this change.
+
 ### Synchronisation
 
 - Added an optional, device-local editing guard for substantial CouchDB LiveSync catch-up transfers. When enough incoming notes are detected, it covers the workspace until the transfer and local application queues have settled. The overlay can always be bypassed, and ordinary small transfers remain uninterrupted.
+
+- We can see CouchDB change-feed comparison progress separately for push and pull.
+    - The `⏩↑` and `⏩↓` counts show entries compared in each direction; the upload and download totals remain separate.
+    - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. See the [status display guide](docs/tips/status-display.md).
+
+### Translations
+
+- Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
 
 ## 1.0.42
 

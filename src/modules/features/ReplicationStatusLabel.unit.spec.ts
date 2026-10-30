@@ -90,18 +90,22 @@ describe("projectReplicationStatusLabel", () => {
             const idleWithCount = projectReplicationStatusLabel(
                 stats({ syncStatus, couchDB: couchDBProgress("idle", 19, true) }),
                 noNetworkActivity,
-                19
+                { push: 19, pull: 19 }
             );
             expect(idleWithCount.icon).toBe(icon);
-            expect(idleWithCount.parts.some((part) => part.key === "ff")).toBe(true);
+            expect(idleWithCount.parts.some((part) => part.key === "ff-push")).toBe(true);
+            expect(idleWithCount.parts.some((part) => part.key === "ff-pull")).toBe(true);
 
-            const withoutCouchDB = projectReplicationStatusLabel(stats({ syncStatus }), noNetworkActivity, 19);
+            const withoutCouchDB = projectReplicationStatusLabel(stats({ syncStatus }), noNetworkActivity, {
+                push: 19,
+                pull: 19,
+            });
             expect(withoutCouchDB.icon).toBe(icon);
-            expect(withoutCouchDB.parts.some((part) => part.key === "ff")).toBe(false);
+            expect(withoutCouchDB.parts.some((part) => part.key.startsWith("ff-"))).toBe(false);
         }
 
         const noFastForward = projectReplicationStatusLabel(stats(), noNetworkActivity);
-        expect(noFastForward.parts.some((part) => part.key === "ff")).toBe(false);
+        expect(noFastForward.parts.some((part) => part.key.startsWith("ff-"))).toBe(false);
         expect(noFastForward.message).toBe("Sync: ⚡ ↑ 0 ↓ 0");
     });
 
@@ -123,17 +127,39 @@ describe("projectReplicationStatusLabel", () => {
                 couchDB: couchDBProgress("continuous", 1200, false),
             }),
             noNetworkActivity,
-            1200
+            { pull: 1200 }
         );
         expect(transferred.icon).toBe("⚡");
-        expect(transferred.message).toBe("Sync: ⚡ (⏩ 1200) ↑ 0 ↓ 7");
-        expect(transferred.parts.map((part) => part.key)).toEqual(["sync", "ff", "sent", "arrived"]);
+        expect(transferred.message).toBe("Sync: ⚡ (⏩↓ 1200) ↑ 0 ↓ 7");
+        expect(transferred.parts.map((part) => part.key)).toEqual(["sync", "ff-pull", "sent", "arrived"]);
         expect(transferred.parts[1]).toMatchObject({
-            key: "ff",
-            text: " (⏩ ",
+            key: "ff-pull",
+            text: " (⏩↓ ",
             value: 1200,
             suffix: ")",
+            title: "Compared CouchDB pull feed entries",
         });
+
+        const pushChecking = projectReplicationStatusLabel(
+            stats({
+                couchDB: {
+                    phase: "continuous",
+                    push: { checkedChanges: 71975, completedBatches: 2878, checking: true },
+                },
+            }),
+            noNetworkActivity,
+            { push: 71975 }
+        );
+        expect(pushChecking.icon).toBe("⏩");
+        expect(pushChecking.message).toBe("Sync: ⏩ (⏩↑ 71975) ↑ 0 ↓ 0");
+        expect(pushChecking.parts[1]).toMatchObject({ key: "ff-push", value: 71975 });
+
+        const bothChecking = projectReplicationStatusLabel(
+            stats({ couchDB: couchDBProgress("continuous", 10, true) }),
+            noNetworkActivity,
+            { push: 71975, pull: 10 }
+        );
+        expect(bothChecking.message).toBe("Sync: ⏩ (⏩↑ 71975) (⏩↓ 10) ↑ 0 ↓ 0");
 
         const idle = projectReplicationStatusLabel(
             stats({
@@ -142,10 +168,10 @@ describe("projectReplicationStatusLabel", () => {
                 couchDB: couchDBProgress("idle", 1200, false),
             }),
             noNetworkActivity,
-            1200
+            { pull: 1200 }
         );
         expect(idle.icon).toBe("⚡");
-        expect(idle.message).toBe("Sync: ⚡ (⏩ 1200) ↑ 0 ↓ 7");
+        expect(idle.message).toBe("Sync: ⚡ (⏩↓ 1200) ↑ 0 ↓ 7");
     });
 
     it("keeps the error icon ahead of an active CouchDB checking indicator", () => {
@@ -154,7 +180,7 @@ describe("projectReplicationStatusLabel", () => {
                 syncStatus: "ERRORED",
                 couchDB: {
                     ...couchDBProgress("one-shot", 2, true),
-                    push: { checkedChanges: 0, completedBatches: 0, checking: true },
+                    push: { checkedChanges: 2, completedBatches: 1, checking: true },
                 },
             }),
             noNetworkActivity
@@ -181,41 +207,41 @@ describe("createFastForwardCheckedChangesDisplay", () => {
         );
         const display = createFastForwardCheckedChangesDisplay(source);
 
-        expect(display.value).toBe(1200);
+        expect(display.value).toEqual({ pull: 1200 });
         vi.advanceTimersByTime(1000);
         source.value = stats({
             sent: 3,
             couchDB: couchDBProgress("idle", 1200, false),
         });
-        expect(display.value).toBe(1200);
+        expect(display.value).toEqual({ pull: 1200 });
         vi.advanceTimersByTime(FAST_FORWARD_COUNT_LINGER_MS - 1001);
-        expect(display.value).toBe(1200);
+        expect(display.value).toEqual({ pull: 1200 });
 
         source.value = stats({
             sent: 4,
             couchDB: couchDBProgress("idle", 1200, false),
         });
         vi.advanceTimersByTime(1);
-        expect(display.value).toBeUndefined();
+        expect(display.value).toEqual({});
 
         source.value = stats({
             syncStatus: "PAUSED",
             couchDB: couchDBProgress("continuous", 1200, true),
         });
-        expect(display.value).toBeUndefined();
+        expect(display.value).toEqual({});
 
         source.value = stats({
             couchDB: couchDBProgress("continuous", 1201, true),
         });
-        expect(display.value).toBe(1201);
+        expect(display.value).toEqual({ pull: 1201 });
 
         source.value = stats({
             couchDB: couchDBProgress("one-shot", 0, true),
         });
-        expect(display.value).toBeUndefined();
+        expect(display.value).toEqual({});
 
         source.value = stats();
-        expect(display.value).toBeUndefined();
+        expect(display.value).toEqual({});
         display.dispose();
     });
 
@@ -227,16 +253,46 @@ describe("createFastForwardCheckedChangesDisplay", () => {
         vi.advanceTimersByTime(FAST_FORWARD_COUNT_LINGER_MS);
         source.value = stats({ couchDB: couchDBProgress("continuous", 6, true) });
 
-        expect(display.value).toBe(5);
+        expect(display.value).toEqual({ pull: 5 });
     });
 
     it("does not display progress for providers without CouchDB replication state", () => {
         const source = reactiveSource(stats());
         const display = createFastForwardCheckedChangesDisplay(source);
 
-        expect(display.value).toBeUndefined();
+        expect(display.value).toEqual({});
         source.value = stats({ couchDB: { phase: "continuous" } });
-        expect(display.value).toBeUndefined();
+        expect(display.value).toEqual({});
+        display.dispose();
+    });
+
+    it("tracks push and pull independently and expires only the direction that stopped changing", () => {
+        const source = reactiveSource(
+            stats({
+                couchDB: {
+                    phase: "catch-up",
+                    pull: { checkedChanges: 4, completedBatches: 1, checking: true },
+                    push: { checkedChanges: 40, completedBatches: 2, checking: true },
+                },
+            })
+        );
+        const display = createFastForwardCheckedChangesDisplay(source, 100);
+
+        expect(display.value).toEqual({ push: 40, pull: 4 });
+        vi.advanceTimersByTime(50);
+        source.value = stats({
+            couchDB: {
+                phase: "catch-up",
+                pull: { checkedChanges: 4, completedBatches: 1, checking: true },
+                push: { checkedChanges: 41, completedBatches: 2, checking: true },
+            },
+        });
+        expect(display.value).toEqual({ push: 41, pull: 4 });
+
+        vi.advanceTimersByTime(50);
+        expect(display.value).toEqual({ push: 41 });
+        vi.advanceTimersByTime(50);
+        expect(display.value).toEqual({});
         display.dispose();
     });
 });
