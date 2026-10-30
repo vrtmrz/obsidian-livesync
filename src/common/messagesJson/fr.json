@@ -34,7 +34,7 @@
     "Delay merge conflict prompt for inactive files.": "Différer l'invite de conflit de fusion pour les fichiers inactifs.",
     "Delete old metadata of deleted files on start-up": "Supprimer les anciennes métadonnées des fichiers effacés au démarrage",
     "Device name": "Nom de l'appareil",
-    "dialog.yourLanguageAvailable": "Self-hosted LiveSync dispose d'une traduction pour votre langue, le paramètre %{Display language} a donc été activé.\n\nNote : Tous les messages ne sont pas traduits. Nous attendons vos contributions !\nNote 2 : Si vous créez un ticket, **veuillez revenir à %{lang-def}** puis prendre des captures d'écran, messages et journaux. Cela peut être fait dans la boîte de dialogue des paramètres.\nBonne utilisation !",
+    "dialog.yourLanguageAvailable": "Self-hosted LiveSync dispose d'une traduction pour votre langue, le paramètre %{Display Language} a donc été activé.\n\nNote : Tous les messages ne sont pas traduits. Nous attendons vos contributions !\nNote 2 : Si vous créez un ticket, **veuillez revenir à %{lang-def}** puis prendre des captures d'écran, messages et journaux. Cela peut être fait dans la boîte de dialogue des paramètres.\nBonne utilisation !",
     "dialog.yourLanguageAvailable.btnRevertToDefault": "Conserver %{lang-def}",
     "dialog.yourLanguageAvailable.Title": " Une traduction est disponible !",
     "Disables logging, only shows notifications. Please disable if you report an issue.": "Désactive la journalisation, n'affiche que les notifications. Veuillez désactiver si vous signalez un problème.",

@@ -53,7 +53,7 @@ dialog:
   yourLanguageAvailable:
     _value: >-
       Self-hosted LiveSync dispose d'une traduction pour votre langue, le
-      paramètre %{Display language} a donc été activé.
+      paramètre %{Display Language} a donc été activé.
 
 
       Note : Tous les messages ne sont pas traduits. Nous attendons vos

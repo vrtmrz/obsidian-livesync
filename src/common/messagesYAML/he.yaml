@@ -46,7 +46,7 @@ Device name: שם מכשיר
 dialog:
   yourLanguageAvailable:
     _value: >-
-      ל-Self-hosted LiveSync יש תרגום לשפתך, ולכן הגדרת %{Display language} הופעלה.
+      ל-Self-hosted LiveSync יש תרגום לשפתך, ולכן הגדרת %{Display Language} הופעלה.
 
 
       הערה: לא כל ההודעות מתורגמות. אנחנו ממתינים לתרומותיך!
