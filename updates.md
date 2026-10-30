@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Buttons in confirmation and setup dialogues now align with the content above them. Confirmation dialogue buttons also have space for keyboard focus outlines.
 
+- Mobile confirmation dialogues now retain Obsidian's standard content spacing. Text and password prompts stay above the software keyboard.
+
 - Setup dialogues no longer add a large blank area below their buttons when the software keyboard is open.
 
 - CouchDB connection fields have more room above the software keyboard. The warning about saving without a connection test now scrolls with the form.
