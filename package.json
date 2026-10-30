@@ -102,6 +102,7 @@
         "test:e2e:obsidian:optional-file-save-completion": "tsx test/e2e-obsidian/scripts/optional-file-save-completion.ts",
         "test:e2e:obsidian:livesync-batch": "tsx test/e2e-obsidian/scripts/issue1207-livesync-batch.ts",
         "test:e2e:obsidian:received-change-readiness": "tsx test/e2e-obsidian/scripts/received-change-readiness.ts",
+        "test:e2e:obsidian:sync-guard": "tsx test/e2e-obsidian/scripts/sync-guard.ts",
         "test:e2e:obsidian:remote-feature-change": "tsx test/e2e-obsidian/scripts/remote-feature-change.ts",
         "test:e2e:obsidian:internal-metadata-migration": "tsx test/e2e-obsidian/scripts/internal-metadata-migration.ts",
         "test:e2e:obsidian:internal-metadata-doctor": "tsx test/e2e-obsidian/scripts/internal-metadata-migration.ts --doctor",
