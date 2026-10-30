@@ -52,10 +52,12 @@ services:
       - "${COUCHDB_PORT:-5984}:5984"
     healthcheck:
       # Test with admin credentials — ensures both CouchDB is up AND auth is ready.
-      # ${COUCHDB_USER} / ${COUCHDB_PASSWORD} are expanded by Docker Compose here.
+      # Expand quoted container variables so shell characters in credentials stay literal.
       test:
         - "CMD-SHELL"
-        - "curl -sf -u ${COUCHDB_USER}:${COUCHDB_PASSWORD} http://localhost:5984/_session | grep -q ok || exit 1"
+        - >-
+          curl -fSs --max-time 4 --user "$${COUCHDB_USER}:$${COUCHDB_PASSWORD}"
+          http://127.0.0.1:5984/_session | grep -q "_admin"
       interval: 5s
       timeout: 5s
       retries: 24
