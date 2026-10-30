@@ -76,6 +76,10 @@
         margin-left: 10px;
     }
 
+    .dialog-host :global(.button-group > button) {
+        margin-left: 0;
+    }
+
     .dialog-host :global(.button-group) {
         display: flex;
         flex-direction: column;

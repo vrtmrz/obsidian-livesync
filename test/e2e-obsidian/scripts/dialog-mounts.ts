@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Page } from "playwright";
+import type { Locator, Page } from "playwright";
 import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import { decryptString } from "@vrtmrz/livesync-commonlib/compat/encryption/stringEncryption";
 import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -400,6 +400,37 @@ async function verifyRemoteSizeNoticeAndDialogue(): Promise<{
     };
 }
 
+async function assertDialogueActionAlignment(modal: Locator, mode: DialogueMode, name: string): Promise<void> {
+    const groups = await modal.locator(".dialog-host .button-group").evaluateAll((elements) => {
+        return elements
+            .filter((element) => element.getClientRects().length > 0)
+            .map((element) => {
+                const group = element.getBoundingClientRect();
+                const buttons = Array.from(element.children)
+                    .filter((child) => child instanceof HTMLButtonElement && child.getClientRects().length > 0)
+                    .map((child) => {
+                        const rect = child.getBoundingClientRect();
+                        return { left: rect.left, right: rect.right, width: rect.width };
+                    });
+                return { group: { left: group.left, right: group.right, width: group.width }, buttons };
+            })
+            .filter((group) => group.buttons.length > 0);
+    });
+    if (groups.length === 0) {
+        throw new Error(`Expected visible action buttons in ${name} (${mode}).`);
+    }
+    console.log(JSON.stringify({ event: "dialogue-action-alignment", name, mode, groups }));
+    for (const { group, buttons } of groups) {
+        for (const button of buttons) {
+            if (Math.abs(button.left - group.left) > 1 || Math.abs(button.right - group.right) > 1) {
+                throw new Error(
+                    `Expected ${name} (${mode}) action buttons to align with both edges of their content column: ${JSON.stringify({ group, button })}`
+                );
+            }
+        }
+    }
+}
+
 async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string> {
     await openRemoteSelectionDialogue();
     const screenshotPath = await captureObsidianDialogue(
@@ -446,6 +477,7 @@ async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string
             await modal
                 .getByRole("button", { name: "No, please take me back" })
                 .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await assertDialogueActionAlignment(modal, mode, "remote selection dialogue");
             if (mode === "mobile") {
                 await assertMobileDialogueLayout(page, modal, "remote selection dialogue");
             }
@@ -526,6 +558,7 @@ async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string
                     throw new Error(`Expected vertical CouchDB actions, received ${flexDirection}.`);
                 }
             }
+            await assertDialogueActionAlignment(modal, mode, "CouchDB settings dialogue");
             if (mode === "mobile") {
                 await assertMobileDialogueLayout(page, modal, "CouchDB settings dialogue");
             }
