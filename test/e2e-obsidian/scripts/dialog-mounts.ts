@@ -505,6 +505,14 @@ async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promi
         );
         await modal.locator('input[name="couchdb-username"]').focus();
         await page.waitForTimeout(350);
+        await page.screenshot({
+            path: join(
+                process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e",
+                "setup-couchdb-keyboard-form.png"
+            ),
+            animations: "disabled",
+            style: ".notice-container { visibility: hidden !important; }",
+        });
         const warning = modal.locator(".sls-info-note").filter({
             hasText:
                 "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.",
@@ -548,6 +556,7 @@ async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promi
                 formHeight: Math.min(footerTop, contentRect.bottom, modalRect.bottom) - formTop,
                 rowHeight: row.height + (parseFloat(getComputedStyle(host).rowGap) || 0),
                 footerBottom,
+                actionBounds: actions.map((action) => ({ top: action.top, bottom: action.bottom })),
             };
         });
         console.log(JSON.stringify({ event: "couchdb-keyboard-form-space", keyboardHeight, bounds }));
@@ -561,14 +570,6 @@ async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promi
                 `Expected room for at least two input rows above keyboard actions: ${JSON.stringify(bounds)}`
             );
         }
-        await page.screenshot({
-            path: join(
-                process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e",
-                "setup-couchdb-keyboard-form.png"
-            ),
-            animations: "disabled",
-            style: ".notice-container { visibility: hidden !important; }",
-        });
     } finally {
         await page.evaluate((entries) => {
             for (const { name, value, priority } of entries) {
