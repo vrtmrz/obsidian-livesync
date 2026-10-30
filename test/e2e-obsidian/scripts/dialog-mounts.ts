@@ -7,7 +7,13 @@ import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/c
 import { $msg } from "../../../src/common/translation.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { createE2eCouchDbPluginData, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
-import { assertMobileDialogueLayout, assertMobileNoticeLayout, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
+import {
+    assertMobileDialogueLayout,
+    assertMobileNoticeLayout,
+    iPhoneSafeArea,
+    mobileViewport,
+    setObsidianMobileTestMode,
+} from "../runner/mobileUi.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import {
     captureObsidianDialogue,
@@ -472,6 +478,106 @@ async function assertNoExtraKeyboardSpace(page: Page, modal: Locator): Promise<v
     }
 }
 
+async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promise<void> {
+    const originalViewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+    const properties = ["--keyboard-height", "--safe-area-inset-top", "--safe-area-inset-bottom"];
+    const original = await page.evaluate(
+        (names) =>
+            names.map((name) => ({
+                name,
+                value: document.body.style.getPropertyValue(name),
+                priority: document.body.style.getPropertyPriority(name),
+            })),
+        properties
+    );
+    const content = modal.locator(".modal-content");
+    const originalScroll = await content.evaluate((element) => element.scrollTop);
+    const keyboardHeight = Math.round(mobileViewport.height * 0.42);
+    try {
+        await page.setViewportSize(mobileViewport);
+        await page.evaluate(
+            ({ keyboardHeight, top }) => {
+                document.body.style.setProperty("--keyboard-height", `${keyboardHeight}px`);
+                document.body.style.setProperty("--safe-area-inset-bottom", `${keyboardHeight}px`);
+                document.body.style.setProperty("--safe-area-inset-top", `${top}px`);
+            },
+            { keyboardHeight, top: iPhoneSafeArea.top }
+        );
+        await modal.locator('input[name="couchdb-username"]').focus();
+        await page.waitForTimeout(350);
+        const warning = modal.locator(".sls-info-note").filter({
+            hasText:
+                "Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.",
+        });
+        if ((await warning.count()) !== 1) throw new Error("Expected the untested-save warning to remain available.");
+        const pinned = await warning.evaluate((element) => {
+            for (let parent = element.parentElement; parent !== null; parent = parent.parentElement) {
+                if (parent.classList.contains("modal-content")) break;
+                const position = getComputedStyle(parent).position;
+                if (position === "sticky" || position === "fixed") return true;
+            }
+            return false;
+        });
+        if (pinned) throw new Error("The untested-save warning still occupies the fixed action area.");
+        const bounds = await modal.evaluate((element) => {
+            const host = element.querySelector(".dialog-host");
+            const content = element.querySelector(".modal-content");
+            const footerElement = host?.querySelector(":scope > .button-group");
+            const rowElement = host?.querySelector(".row");
+            if (!host || !content || !footerElement || !rowElement)
+                throw new Error("CouchDB form layout is unavailable.");
+            const footer = footerElement.getBoundingClientRect();
+            const row = rowElement.getBoundingClientRect();
+            const modalElement = element.querySelector(".modal");
+            if (!modalElement) throw new Error("The CouchDB modal is unavailable.");
+            const modalRect = modalElement.getBoundingClientRect();
+            const contentRect = content.getBoundingClientRect();
+            const headerBottom =
+                element.querySelector(".modal-header")?.getBoundingClientRect().bottom ?? modalRect.top;
+            const formTop = Math.max(contentRect.top, modalRect.top, headerBottom);
+            return {
+                width: innerWidth,
+                height: innerHeight,
+                formTop,
+                footerTop: footer.top,
+                formHeight: Math.min(footer.top, contentRect.bottom, modalRect.bottom) - formTop,
+                rowHeight: row.height + (parseFloat(getComputedStyle(host).rowGap) || 0),
+                footerBottom: footer.bottom,
+            };
+        });
+        console.log(JSON.stringify({ event: "couchdb-keyboard-form-space", keyboardHeight, bounds }));
+        if (
+            bounds.width !== mobileViewport.width ||
+            bounds.height !== mobileViewport.height ||
+            bounds.formHeight < bounds.rowHeight * 2 ||
+            bounds.footerBottom > bounds.height - keyboardHeight + 1
+        ) {
+            throw new Error(
+                `Expected room for at least two input rows above keyboard actions: ${JSON.stringify(bounds)}`
+            );
+        }
+        await page.screenshot({
+            path: join(
+                process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e",
+                "setup-couchdb-keyboard-form.png"
+            ),
+            animations: "disabled",
+            style: ".notice-container { visibility: hidden !important; }",
+        });
+    } finally {
+        await page.evaluate((entries) => {
+            for (const { name, value, priority } of entries) {
+                if (value === "") document.body.style.removeProperty(name);
+                else document.body.style.setProperty(name, value, priority);
+            }
+        }, original);
+        await page.setViewportSize(originalViewport);
+        await content.evaluate((element, top) => {
+            element.scrollTop = top;
+        }, originalScroll);
+    }
+}
+
 async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string> {
     await openRemoteSelectionDialogue();
     const screenshotPath = await captureObsidianDialogue(
@@ -603,6 +709,7 @@ async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string
             if (mode === "mobile") {
                 await assertMobileDialogueLayout(page, modal, "CouchDB settings dialogue");
                 await assertNoExtraKeyboardSpace(page, modal);
+                await assertCouchDBKeyboardFormSpace(page, modal);
             }
         }
     );
