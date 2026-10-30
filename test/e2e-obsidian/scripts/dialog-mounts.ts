@@ -528,6 +528,11 @@ async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promi
                 throw new Error("CouchDB form layout is unavailable.");
             const footer = footerElement.getBoundingClientRect();
             const row = rowElement.getBoundingClientRect();
+            const actions = Array.from(footerElement.querySelectorAll("button"), (button) =>
+                button.getBoundingClientRect()
+            );
+            const footerTop = Math.min(footer.top, ...actions.map((action) => action.top));
+            const footerBottom = Math.max(footer.bottom, ...actions.map((action) => action.bottom));
             const modalElement = element.querySelector(".modal");
             if (!modalElement) throw new Error("The CouchDB modal is unavailable.");
             const modalRect = modalElement.getBoundingClientRect();
@@ -539,10 +544,10 @@ async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promi
                 width: innerWidth,
                 height: innerHeight,
                 formTop,
-                footerTop: footer.top,
-                formHeight: Math.min(footer.top, contentRect.bottom, modalRect.bottom) - formTop,
+                footerTop,
+                formHeight: Math.min(footerTop, contentRect.bottom, modalRect.bottom) - formTop,
                 rowHeight: row.height + (parseFloat(getComputedStyle(host).rowGap) || 0),
-                footerBottom: footer.bottom,
+                footerBottom,
             };
         });
         console.log(JSON.stringify({ event: "couchdb-keyboard-form-space", keyboardHeight, bounds }));
