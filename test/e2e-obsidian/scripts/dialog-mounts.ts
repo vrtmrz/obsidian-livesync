@@ -530,7 +530,8 @@ async function assertCouchDBKeyboardFormSpace(page: Page, modal: Locator): Promi
         const bounds = await modal.evaluate((element) => {
             const host = element.querySelector(".dialog-host");
             const content = element.querySelector(".modal-content");
-            const footerElement = host?.querySelector(":scope > .button-group");
+            const actionGroups = host?.querySelectorAll(":scope > .button-group");
+            const footerElement = actionGroups?.item(actionGroups.length - 1);
             const rowElement = host?.querySelector(".row");
             if (!host || !content || !footerElement || !rowElement)
                 throw new Error("CouchDB form layout is unavailable.");
