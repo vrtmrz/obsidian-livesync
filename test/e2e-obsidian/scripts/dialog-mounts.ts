@@ -431,6 +431,47 @@ async function assertDialogueActionAlignment(modal: Locator, mode: DialogueMode,
     }
 }
 
+async function assertNoExtraKeyboardSpace(page: Page, modal: Locator): Promise<void> {
+    const original = await page.evaluate(() => ({
+        value: document.body.style.getPropertyValue("--keyboard-height"),
+        priority: document.body.style.getPropertyPriority("--keyboard-height"),
+    }));
+    const originalScroll = await modal.locator(".modal-content").evaluate((element) => element.scrollTop);
+    const keyboardHeight = await page.evaluate(() => Math.round(innerHeight * 0.4));
+    let baseline: number | undefined;
+    try {
+        for (const height of [0, keyboardHeight, 0]) {
+            await page.evaluate((value) => document.body.style.setProperty("--keyboard-height", `${value}px`), height);
+            await modal.locator(".modal-content").evaluate((element) => {
+                element.scrollTop = element.scrollHeight;
+            });
+            const gap = await modal.locator(".dialog-host").evaluate((host) => {
+                const buttons = Array.from(host.querySelectorAll("button")).filter(
+                    (button) => button.getClientRects().length > 0
+                );
+                const last = buttons[buttons.length - 1];
+                if (last === undefined) throw new Error("The dialogue has no action button.");
+                return host.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom;
+            });
+            console.log(JSON.stringify({ event: "dialogue-keyboard-spacing", height, gap, baseline }));
+            baseline ??= gap;
+            if (Math.abs(gap - baseline) > 1) {
+                throw new Error(
+                    `Expected the keyboard not to add blank content after the final action: ${JSON.stringify({ height, gap, baseline })}`
+                );
+            }
+        }
+    } finally {
+        await page.evaluate(({ value, priority }) => {
+            if (value === "") document.body.style.removeProperty("--keyboard-height");
+            else document.body.style.setProperty("--keyboard-height", value, priority);
+        }, original);
+        await modal.locator(".modal-content").evaluate((element, top) => {
+            element.scrollTop = top;
+        }, originalScroll);
+    }
+}
+
 async function verifyRemoteSelectionDialogue(mode: DialogueMode): Promise<string> {
     await openRemoteSelectionDialogue();
     const screenshotPath = await captureObsidianDialogue(
@@ -561,6 +602,7 @@ async function verifyCouchDBSettingsDialogue(mode: DialogueMode): Promise<string
             await assertDialogueActionAlignment(modal, mode, "CouchDB settings dialogue");
             if (mode === "mobile") {
                 await assertMobileDialogueLayout(page, modal, "CouchDB settings dialogue");
+                await assertNoExtraKeyboardSpace(page, modal);
             }
         }
     );
