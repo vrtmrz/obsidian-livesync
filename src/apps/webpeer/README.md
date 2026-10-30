@@ -49,6 +49,8 @@ After the first device connects, **Try another device without resetting** keeps 
 
 Serve the production build over HTTPS or from `localhost`. Downloading `check.html` alone is not supported because the page uses built module assets and origin-scoped browser storage. The generated credentials are temporary and must not replace the settings of a production Vault.
 
+The generated Setup URI is Time-bound, and the page shows when its current fixed UTC window ends. After that time, the page hides the URI and QR code and disables the additional-device action. Start a fresh check to configure another device. A monitor for a device which already imported the settings remains available.
+
 The detailed scope and result semantics are recorded in the [browser-assisted P2P connection-check ADR](../../../docs/adr/2026_07_p2p_connection_check.md).
 
 ## Storage and lifecycle

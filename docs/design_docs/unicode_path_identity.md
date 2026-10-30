@@ -2,7 +2,7 @@
 date: 2026-10-19
 commonlib-version: "0.1.43"
 self-hosted-livesync-version: "1.0.38"
-status: unreleased
+status: released
 ---
 
 # Unicode path identity
@@ -17,8 +17,10 @@ Commonlib's [consumer contract](https://github.com/vrtmrz/livesync-commonlib/blo
 defines the shared package boundary.
 
 NFC identity shipped in Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`.
-The deletion handling in reconstruction below uses Commonlib `0.1.43` and
-remains unreleased in Self-hosted LiveSync.
+Conflict-aware deletion handling during reconstruction was added separately
+and is included in current Commonlib `0.2.2`, used by Self-hosted LiveSync
+`1.0.42`. This later handling is distinct from the initial NFC identity
+release.
 
 ## Scope
 

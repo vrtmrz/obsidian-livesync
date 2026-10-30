@@ -2,7 +2,7 @@
 date: 2026-09-16
 commonlib-version: "0.1.25"
 self-hosted-livesync-version: "1.0.28"
-status: unreleased
+status: released
 ---
 
 # TURN credentials in P2P connection settings
@@ -13,6 +13,9 @@ This design addresses [Issue #1182](https://github.com/vrtmrz/obsidian-livesync/
 by acquiring temporary TURN credentials on the device before opening a P2P room.
 The [P2P transport compatibility ADR](../adr/2026_08_p2p_transport_compatibility.md)
 records the connection and persistence policy.
+
+Managed Cloudflare TURN credentials shipped in Self-hosted LiveSync 1.0.29.
+This document records the design and its remaining runtime verification limits.
 
 LiveSync prepares a connection copy of `P2PSyncSetting`. Commonlib owns the room
 lifecycle and consumes the resulting ICE settings. Service-specific HTTP and

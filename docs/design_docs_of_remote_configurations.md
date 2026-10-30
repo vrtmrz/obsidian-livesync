@@ -1,5 +1,9 @@
 # The design document of remote configuration management
 
+## Implementation status
+
+This document describes the profile catalogue and its runtime projections as used by Self-hosted LiveSync 1.0.42 with Commonlib 0.2.2. Commonlib owns profile migration, activation, and protected settings persistence. The [Replicator architecture](design_docs/replicator_architecture.md) and [P2P service lifecycle decision](adr/2026_08_replicator_capabilities_02_p2p_service_lifecycle.md) describe the separate P2P service boundary.
+
 ## Goal
 
 - Allow us to manage multiple remote connections in a single vault.
@@ -33,7 +37,9 @@ Once multiple remotes of the same type became desirable, the previous model no l
 The current settings now have two layers for remote configuration.
 
 1. A stored collection of named remotes.
-2. One active remote projected into the legacy flat settings fields.
+2. One active main remote projected into the legacy flat settings fields.
+
+The P2P service also has its own selected profile, recorded by `P2P_ActiveRemoteConfigurationId`. This permits the P2P service to use a selected P2P profile alongside a CouchDB or Object Storage main remote; it does not introduce a second main remote.
 
 This means the replication and database layers can continue to read the effective remote from the existing settings fields, while the settings dialogue and migration logic can manage many stored remotes.
 
@@ -54,6 +60,7 @@ type RemoteConfiguration = {
 type RemoteConfigurations = {
     remoteConfigurations: Record<string, RemoteConfiguration>;
     activeConfigurationId: string;
+    P2P_ActiveRemoteConfigurationId: string;
 };
 ```
 
@@ -116,7 +123,11 @@ Therefore:
 - Import trusts the supplied connection string as-is after parsing.
 - We should regard exported connection strings as sensitive information, much like Setup URI or a credentials-bearing configuration file.
 
-The `isEncrypted` field is currently reserved for future expansion. At present, the connection string itself is stored plainly inside the settings data, in the same sense that the effective runtime configuration can contain usable remote credentials.
+The `isEncrypted` field identifies an encrypted profile URI in persisted settings. When settings are saved with configuration encryption enabled, Commonlib encrypts the profile URIs and records `isEncrypted: true`. Loading protected settings decrypts the URIs into the runtime settings and clears that runtime flag before profile activation. The runtime settings and the persisted representation therefore have different purposes.
+
+Protection depends on the configured settings-passphrase policy and a usable key. A plaintext configuration is not made confidential by the presence of the field alone. Consult [Encrypting sensitive configuration items](settings.md#encrypting-sensitive-configuration-items) for that policy.
+
+Clipboard export serialises the usable connection string. Treat that exported value as sensitive even when its saved profile URI is encrypted at rest; storage protection does not encrypt the clipboard representation.
 
 ### Migration strategy
 
@@ -129,7 +140,7 @@ Rules:
 - If no remote list exists and the legacy fields contain a Peer-to-Peer configuration, create `legacy-p2p`.
 - If more than one legacy remote is populated, create all possible entries and select the active one according to `remoteType`.
 
-This migration is intentionally additive. It does not remove the flat fields because they remain necessary as the active runtime projection.
+This migration is intentionally additive. It does not remove the flat fields because they remain necessary as the active runtime projection. A migrated legacy P2P profile also initialises the separate P2P selection. Loading an existing profile catalogue does not unconditionally replace an intentionally empty P2P selection.
 
 ### Normalisation and application paths
 
@@ -190,7 +201,7 @@ The feature should be tested from four viewpoints.
 
 ## Outlook
 
-Import/export configuration strings should also be encrypted in the future, but this is a separate feature that can be added on top of the current design.
+A separately encrypted representation for clipboard import and export remains a possible extension. Encryption of profile URIs in persisted settings is already implemented as described above.
 
 ## Consideration and conclusion
 
@@ -203,4 +214,4 @@ Its core idea is modest but effective.
 - Project it into the legacy settings for runtime use.
 - Normalise every imported settings object through the same path.
 
-This keeps the implementation understandable and migration-friendly. It also opens the door for future work, such as encrypted per-remote storage, richer remote metadata, or remote-scoped options, without forcing another large redesign of how remotes are represented.
+This keeps the implementation understandable and migration-friendly. It also opens the door for future work, such as richer remote metadata or remote-scoped options, without forcing another large redesign of how remotes are represented.

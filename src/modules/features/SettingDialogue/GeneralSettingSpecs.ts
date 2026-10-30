@@ -35,6 +35,8 @@ export function createGeneralSettingSpecGroups({
                 },
                 { key: "showStatusOnStatusbar", control: { type: "toggle" } },
                 { key: "hideFileWarningNotice", control: { type: "toggle" } },
+                { key: "syncGuardEnabled", control: { type: "toggle" } },
+                { key: "syncGuardMinimumFiles", control: { type: "number", min: 1 } },
                 {
                     key: "networkWarningStyle",
                     control: {

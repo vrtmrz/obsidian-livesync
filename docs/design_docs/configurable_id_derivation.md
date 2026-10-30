@@ -2,7 +2,7 @@
 date: 2026-09-29
 commonlib-version: "0.1.33"
 self-hosted-livesync-version: "1.0.32"
-status: unreleased
+status: released
 ---
 
 # Configurable ID derivation
@@ -21,12 +21,12 @@ including its passphrase-persistence correction at commit
 the `next` tag, provides the construction described here. It replaces the
 independent Chunk algorithm from the `0.1.32` prerelease without a
 compatibility branch or a new settings version. Legacy ID generation remains
-unchanged. LiveSync pins the published `0.1.33` package and its registry
-integrity in the lockfile.
+unchanged. At that implementation baseline, LiveSync pinned the published
+`0.1.33` package and its registry integrity in the lockfile.
 Its [Internal Metadata encryption design](https://github.com/vrtmrz/obsidian-livesync/blob/126d6eadb858a79a08ad7f600061e54fc8d31196/docs/design_docs/internal_metadata_encryption.md)
 remains the basis for Properties encryption and CouchDB feature admission.
-This document records an unreleased LiveSync feature. It does not select a
-plug-in release version.
+Independent ID derivation shipped in Self-hosted LiveSync 1.0.33. This document
+retains the design and package baseline recorded above.
 
 ## Feasibility
 

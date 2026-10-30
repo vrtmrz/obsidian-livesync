@@ -7,6 +7,14 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Synchronisation protection": "Synchronisation protection",
+    "Synchronising your Vault": "Synchronising your Vault",
+    "Receiving changes from the server…": "Receiving changes from the server…",
+    "Applying received changes to local notes…": "Applying received changes to local notes…",
+    "Synchronisation was interrupted. You can continue locally, but some notes may be out of date.":
+        "Synchronisation was interrupted. You can continue locally, but some notes may be out of date.",
+    "At least ${COUNT} changed files received": "At least ${COUNT} changed files received",
+    "Continue without waiting": "Continue without waiting",
     "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.":
         "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.",
     "Hidden File Sync initialisation was not started.": "Hidden File Sync initialisation was not started.",
@@ -398,6 +406,15 @@ export const liveSyncProvisionalEnglishMessages = {
     "Save report": "Save report",
     "The inspection could not finish. Close this dialogue and try again after database startup.":
         "The inspection could not finish. Close this dialogue and try again after database startup.",
+    "Resume scheduled fetch?": "Resume scheduled fetch?",
+    "Apply these saved choices to the current remote?\n\nCurrent remote: ${REMOTE}\n\n- ${STAGE1}\n- ${STAGE2}\n\nThe fetch flag may remain after an interruption or an incomplete cleanup. Continue only if this fetch is still intended.":
+        "Apply these saved choices to the current remote?\n\nCurrent remote: ${REMOTE}\n\n- ${STAGE1}\n- ${STAGE2}\n\nThe fetch flag may remain after an interruption or an incomplete cleanup. Continue only if this fetch is still intended.",
+    "Continue with these choices": "Continue with these choices",
+    "Choose again": "Choose again",
+    "Saved fetch choices could not be read": "Saved fetch choices could not be read",
+    "The fetch flag does not contain one supported selection. Choose new options and continue with the current remote?\n\nCurrent remote: ${REMOTE}\n\nThe flag contents will remain unchanged. The new choices apply only to this attempt; another restart will ask again. Completing or cancelling the fetch removes the flag.":
+        "The fetch flag does not contain one supported selection. Choose new options and continue with the current remote?\n\nCurrent remote: ${REMOTE}\n\nThe flag contents will remain unchanged. The new choices apply only to this attempt; another restart will ask again. Completing or cancelling the fetch removes the flag.",
+    "Choose new options and continue": "Choose new options and continue",
 } as const;
 
 export type LiveSyncProvisionalMessageKey = keyof typeof liveSyncProvisionalEnglishMessages;

@@ -2479,3 +2479,156 @@ You should perform this operation only in exceptional circumstances, such as whe
 "Synchronisation Issues Detected": "Synchronisation Issues Detected"
 "Use the detailed flow": "Use the detailed flow"
 "We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.": "We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow."
+SettingService.ConfigurationPassphraseDeviceLocalDescription:
+    This passphrase stays on this device. When another device needs to decrypt
+    protected settings without a saved key, enter the same passphrase at
+    start-up.
+SettingService.ConfigurationPassphraseTitle: Configuration passphrase
+SettingService.ConfigurationPassphraseRetryTitle: Configuration could not be
+    decrypted. Enter the configuration passphrase again.
+SettingService.ConfigurationPassphraseCancelled: Configuration passphrase entry
+    was cancelled or unavailable. Start-up was stopped; saved settings were
+    retained.
+SettingService.ConfigurationEncryptionSaveFailed: Configuration encryption could
+    not be saved. Verify the saved settings and device key before retrying.
+SettingService.ConfigurationPassphraseRollbackFailed: The configuration
+    passphrase could not be restored after a write failure. Verify the saved
+    settings and device key before retrying.
+SettingService.ConfigurationCouldNotBeDecrypted: Existing configuration could
+    not be decrypted. The configuration key was not changed.
+Active Remote Type: Active Remote Type
+Application ID: Application ID
+Auto-accept compatible tweak mismatches: Auto-accept compatible tweak mismatches
+Automatically accepts mismatches that are compatible but potentially lossy by comparing tweak modification times.:
+    Automatically accepts mismatches that are compatible but potentially lossy
+    by comparing tweak modification times.
+Automatically broadcast changes to connected peers: Automatically broadcast changes to connected peers
+Automatically start P2P connection on launch: Automatically start P2P connection on launch
+Chunk Splitter: Chunk Splitter
+Chunk revisions are always derived from their content. This stored key is retained only for compatibility.:
+    Chunk revisions are always derived from their content. This stored key is
+    retained only for compatibility.
+Content-derived chunk revisions (obsolete setting): Content-derived chunk revisions (obsolete setting)
+"Custom headers for requesting the CouchDB. e.g. `x-custom-header1: value1\n x-custom-header2: value2`": |-
+    Custom headers for requesting the CouchDB. e.g. `x-custom-header1: value1
+     x-custom-header2: value2`
+"Custom headers for requesting the bucket. e.g. `x-custom-header1: value1\n x-custom-header2: value2`": |-
+    Custom headers for requesting the bucket. e.g. `x-custom-header1: value1
+     x-custom-header2: value2`
+Desktop only; uses more battery and network.: Desktop only; uses more battery and network.
+Effectively a directory. Should end with `/`. e.g., `vault-name/`.: Effectively a directory. Should end with `/`. e.g., `vault-name/`.
+Enable Developers' Debug Tools (If available).: Enable Developers' Debug Tools (If available).
+Enable P2P Synchronization: Enable P2P Synchronization
+Enable forcePathStyle: Enable forcePathStyle
+Enable per-file customization sync: Enable per-file customization sync
+Encrypt internal file Properties: Encrypt internal file Properties
+Encrypt file properties (paths, times, sizes, and Chunk references) used by Hidden File Sync and Customisation Sync. This affects future writes; manually rebuild the remote database to protect existing properties. Requires E2EE V2, Property Encryption, and compatible clients on every device.:
+    Encrypt file properties (paths, times, sizes, and Chunk references) used by
+    Hidden File Sync and Customisation Sync. This affects future writes;
+    manually rebuild the remote database to protect existing properties.
+    Requires E2EE V2, Property Encryption, and compatible clients on every
+    device.
+Encryption passphrase. If changed, you should overwrite the server's database with the new (encrypted) files.:
+    Encryption passphrase. If changed, you should overwrite the server's
+    database with the new (encrypted) files.
+End-to-End Encryption Algorithm: End-to-End Encryption Algorithm
+File prefix on the bucket: File prefix on the bucket
+Files with modification times greater than this value (in seconds since the Unix epoch) will not have their events reflected. Set to 0 to disable this limit.:
+    Files with modification times greater than this value (in seconds since the
+    Unix epoch) will not have their events reflected. Set to 0 to disable this
+    limit.
+If enabled, changes will be automatically broadcasted to all connected peers. Notified peers will start fetching the changes.:
+    If enabled, changes will be automatically broadcasted to all connected
+    peers. Notified peers will start fetching the changes.
+If enabled, efficient per-file customization sync will be used. A minor migration is required when enabling this feature, and all devices must be updated to v0.23.18. Enabling this feature will result in losing compatibility with older versions.:
+    If enabled, efficient per-file customization sync will be used. A minor
+    migration is required when enabling this feature, and all devices must be
+    updated to v0.23.18. Enabling this feature will result in losing
+    compatibility with older versions.
+If enabled, the P2P connection will be automatically started when the application launches.:
+    If enabled, the P2P connection will be automatically started when the
+    application launches.
+If enabled, the file properties will be encrypted in the remote database. This is useful for protecting sensitive information in file paths, sizes, and IDs of its chunks. If you are using V1 E2EE, this only obfuscates the file path.:
+    If enabled, the file properties will be encrypted in the remote database.
+    This is useful for protecting sensitive information in file paths, sizes,
+    and IDs of its chunks. If you are using V1 E2EE, this only obfuscates the
+    file path.
+If enabled, the forcePathStyle option will be used for bucket operations.: If enabled, the forcePathStyle option will be used for bucket operations.
+If enabled, the plugin will not attempt to connect to the remote database even if the chunk was not found locally.:
+    If enabled, the plugin will not attempt to connect to the remote database
+    even if the chunk was not found locally.
+If enabled, the request API will be used to avoid `inevitable` CORS problems. This is a workaround and may not work in all cases. PLEASE READ THE DOCUMENTATION BEFORE USING THIS OPTION. This is a less-secure option.:
+    If enabled, the request API will be used to avoid `inevitable` CORS
+    problems. This is a workaround and may not work in all cases. PLEASE READ
+    THE DOCUMENTATION BEFORE USING THIS OPTION. This is a less-secure option.
+If this enabled, JWT will be used for authentication.: If this enabled, JWT will be used for authentication.
+Internal timestamp for resolving compatible tweak mismatches.: Internal timestamp for resolving compatible tweak mismatches.
+Keep replication active in the background: Keep replication active in the background
+Key ID: Key ID
+Keypair or pre-shared key: Keypair or pre-shared key
+Last tweak modified timestamp: Last tweak modified timestamp
+Longest chunk line threshold value (Not Configurable from the UI Now).: Longest chunk line threshold value (Not Configurable from the UI Now).
+MB per request: MB per request
+Maximum file modification time for reflected file events: Maximum file modification time for reflected file events
+Maximum request size for manually resending chunks: Maximum request size for manually resending chunks
+Minimum Chunk Size (Not Configurable from the UI Now).: Minimum Chunk Size (Not Configurable from the UI Now).
+Move remotely deleted files to the trash, instead of deleting. (This setting is ineffective from Obsidian v1.7.2 onwards, as deletion always respects your Obsidian preferences.):
+    Move remotely deleted files to the trash, instead of deleting. (This setting
+    is ineffective from Obsidian v1.7.2 onwards, as deletion always respects
+    your Obsidian preferences.)
+Now we can choose how to split the chunks; V3 is the most efficient. If you have troubled, please make this Default or Legacy.:
+    Now we can choose how to split the chunks; V3 is the most efficient. If you
+    have troubled, please make this Default or Legacy.
+Please use V2, V1 is deprecated and will be removed in the future, It was not a very appropriate algorithm. Only for compatibility V1 is kept.:
+    Please use V2, V1 is deprecated and will be removed in the future, It was
+    not a very appropriate algorithm. Only for compatibility V1 is kept.
+Process files even if seems to be corrupted: Process files even if seems to be corrupted
+Rotation Duration: Rotation Duration
+Signalling Relays: Signalling Relays
+Subject (whoami): Subject (whoami)
+TURN Servers: TURN Servers
+The Application ID for P2P connection. This should be same among your devices. Default is 'self-hosted-livesync' and could not be modified from the UI.:
+    The Application ID for P2P connection. This should be same among your
+    devices. Default is 'self-hosted-livesync' and could not be modified from
+    the UI.
+The Nostr relay servers to establish connections for P2P connections. Multiple servers can be separated by commas.:
+    The Nostr relay servers to establish connections for P2P connections.
+    Multiple servers can be separated by commas.
+The Passphrase for P2P connection. This should be same among your devices.: The Passphrase for P2P connection. This should be same among your devices.
+The Room ID for P2P connection. This should be same among your devices.: The Room ID for P2P connection. This should be same among your devices.
+The Rotation duration of token in minutes. Each generated tokens will be valid only within this duration.:
+    The Rotation duration of token in minutes. Each generated tokens will be
+    valid only within this duration.
+The TURN servers to use for P2P connections. Multiple servers can be separated by commas.:
+    The TURN servers to use for P2P connections. Multiple servers can be
+    separated by commas.
+The algorithm used for JWT authentication.: The algorithm used for JWT authentication.
+The credential/password for the TURN servers.: The credential/password for the TURN servers.
+The key (PSK in HSxxx in base64, or private key in ESxxx in PEM) used for JWT authentication.:
+    The key (PSK in HSxxx in base64, or private key in ESxxx in PEM) used for
+    JWT authentication.
+The key ID. this should be matched with CouchDB->jwt_keys->ALG:_`kid`.: The key ID. this should be matched with CouchDB->jwt_keys->ALG:_`kid`.
+The subject for JWT authentication. Mostly username.: The subject for JWT authentication. Mostly username.
+The username for the TURN servers.: The username for the TURN servers.
+Use JWT instead of Basic Authentication: Use JWT instead of Basic Authentication
+Use Only Local Chunks: Use Only Local Chunks
+Use Request API to avoid `inevitable` CORS problem: Use Request API to avoid `inevitable` CORS problem
+While enabled, it causes very performance impact but debugging replication testing and other features will be enabled. Please disable this if you have not read the source code. Requires restart of Obsidian. Sometimes there is no implementation.:
+    While enabled, it causes very performance impact but debugging replication
+    testing and other features will be enabled. Please disable this if you have
+    not read the source code. Requires restart of Obsidian. Sometimes there is
+    no implementation.
+You can enable this setting to process the files with size mismatches, these files can be created by some APIs or integrations.:
+    You can enable this setting to process the files with size mismatches, these
+    files can be created by some APIs or integrations.
+xxhash64 is the current default.: xxhash64 is the current default.
+Allow sleep during synchronisation: Allow sleep during synchronisation
+Allow the operating system to sleep while finite synchronisation operations are in progress.:
+    Allow the operating system to sleep while finite synchronisation operations
+    are in progress.
+Allow sleep during synchronisation on the desktop: Allow sleep during synchronisation on the desktop
+Desktop only. Allow sleep on this device even when the general option is disabled.:
+    Desktop only. Allow sleep on this device even when the general option is
+    disabled.
+Enable advanced mode: Enable advanced mode
+Enable power user mode: Enable power user mode

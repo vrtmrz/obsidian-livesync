@@ -2,14 +2,15 @@
 date: 2026-09-27
 commonlib-version: "0.1.30"
 self-hosted-livesync-version: "1.0.32"
-status: unreleased
+status: released
 ---
 
 # Internal Metadata encryption and remote feature changes
 
 This document defines the LiveSync integration of Commonlib's remote feature
 contract and encrypted Metadata for Hidden File Sync and Customisation Sync.
-It describes unreleased behaviour being implemented in this branch.
+The implementation shipped in Self-hosted LiveSync 1.0.33; this document
+retains its original design and implementation context.
 
 Commonlib's companion `docs/remote-feature-compatibility.md` is the
 source of truth for the wire document, identifiers, validation, and shared
@@ -159,11 +160,11 @@ after alignment. With the preference subsequently OFF, verify that Fast Fetch
 still decodes encrypted Metadata and preserves the remote feature declaration.
 
 Keep the primary-language settings and troubleshooting guides, the
-database-compatibility ADR, and Unreleased notes aligned with this behaviour.
-Keep the detailed shared protocol in Commonlib and link to it after publication;
-do not maintain another copy of its wire schema here. Translations are a separate
-change. Update tested-version evidence when the implementation and its
-validation have been accepted.
+database-compatibility ADR, and release notes consistent with this behaviour.
+Commonlib's companion document remains the source of truth for the shared
+protocol; this document does not repeat its wire schema. Translations remain a
+separate change. The version fields above retain the original design baseline;
+add later tested-version evidence only when validation is recorded.
 
 Related application contracts: [Replicator architecture](replicator_architecture.md),
 [Tweak compatibility](tweak_compatibility.md), and

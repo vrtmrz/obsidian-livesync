@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { withObsidianPage } from "../runner/ui.ts";
@@ -8,7 +9,7 @@ import { setObsidianMobileTestModeBeforePluginStart } from "../runner/mobileUi.t
 const fixturePath = "replication-status-e2e.md";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_UI_TIMEOUT_MS ?? 10000);
 const fastForwardLingerMs = 3000;
-const numericKeys = ["network", "sent", "push-remaining", "arrived", "pull-remaining", "ff"] as const;
+const numericKeys = ["network", "sent", "push-remaining", "arrived", "pull-remaining", "ff-push", "ff-pull"] as const;
 
 type TestReplicationStatics = {
     sent: number;
@@ -17,9 +18,9 @@ type TestReplicationStatics = {
     maxPushSeq: number;
     lastSyncPullSeq: number;
     lastSyncPushSeq: number;
-    syncStatus: "CONNECTED";
+    syncStatus: "CONNECTED" | "PAUSED" | "ERRORED";
     couchDB: {
-        phase: "continuous";
+        phase: "continuous" | "idle";
         pull: { checkedChanges: number; completedBatches: number; checking: boolean };
         push: { checkedChanges: number; completedBatches: number; checking: boolean };
     };
@@ -33,6 +34,8 @@ type TestLeaf = {
     detach?: () => void;
 };
 type TestWorkspace = {
+    layoutReady?: boolean;
+    getMostRecentLeaf?: () => TestLeaf | null;
     activeLeaf?: TestLeaf | null;
     getLeaf?: (newLeaf?: boolean | "split" | "tab" | "window", direction?: "horizontal" | "vertical") => TestLeaf;
     openPopoutLeaf?: () => TestLeaf;
@@ -106,7 +109,12 @@ function failUnless(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
 }
 
-function replicationStats(checkedChanges: number, sent: number, arrived: number): TestReplicationStatics {
+function replicationStats(
+    checkedChanges: number,
+    sent: number,
+    arrived: number,
+    pushCheckedChanges = 0
+): TestReplicationStatics {
     return {
         sent,
         arrived,
@@ -118,7 +126,7 @@ function replicationStats(checkedChanges: number, sent: number, arrived: number)
         couchDB: {
             phase: "continuous",
             pull: { checkedChanges, completedBatches: 0, checking: true },
-            push: { checkedChanges: 0, completedBatches: 0, checking: false },
+            push: { checkedChanges: pushCheckedChanges, completedBatches: 0, checking: pushCheckedChanges > 0 },
         },
     };
 }
@@ -252,7 +260,7 @@ async function getStatusDiagnostics(page: Page): Promise<Record<string, unknown>
         const status = document.querySelector<HTMLElement>(".livesync-status");
         const statusParent = status?.parentElement;
         const activeLeaf = app?.workspace?.activeLeaf;
-        const recentLeaf = app?.workspace?.getLeaf?.(false);
+        const recentLeaf = app?.workspace?.getMostRecentLeaf?.();
         const statusStyle = status ? getComputedStyle(status) : undefined;
         const statusParentStyle = statusParent ? getComputedStyle(statusParent) : undefined;
         const activeLeafContainer = activeLeaf?.view?.containerEl;
@@ -284,7 +292,11 @@ async function getStatusDiagnostics(page: Page): Promise<Record<string, unknown>
                       visibility: statusParentStyle?.visibility,
                   }
                 : undefined,
+            workspaceLayoutReady: app?.workspace?.layoutReady,
             moduleHasStatusDiv: moduleLog?.statusDiv !== undefined,
+            moduleStatusDivConnected: moduleLog?.statusDiv?.isConnected,
+            moduleStatusDivParent: moduleLog?.statusDiv?.parentElement?.className,
+            recentLeafIsActive: recentLeaf === activeLeaf,
             moduleStatusLine: moduleLog?.statusLine
                 ? {
                       tag: moduleLog.statusLine.tagName,
@@ -557,7 +569,7 @@ async function assertStatusBarItemSpacing(page: Page): Promise<void> {
 async function assertInactiveItemStyling(page: Page): Promise<void> {
     const roots = [".livesync-status-statusline", ".syncstatusbar"];
     for (const root of roots) {
-        const state = await page.locator(`${root} .livesync-stat-ff`).evaluate((element) => {
+        const state = await page.locator(`${root} .livesync-stat-ff-pull`).evaluate((element) => {
             const item = element as HTMLElement;
             return {
                 inactive: item.classList.contains("livesync-stat-inactive"),
@@ -588,7 +600,7 @@ async function assertInactiveItemStyling(page: Page): Promise<void> {
     try {
         for (const root of roots) {
             failUnless(
-                await page.locator(`${root} .livesync-stat-ff`).isVisible(),
+                await page.locator(`${root} .livesync-stat-ff-pull`).isVisible(),
                 `A CSS override could not reveal the inactive item in ${root}.`
             );
         }
@@ -597,9 +609,218 @@ async function assertInactiveItemStyling(page: Page): Promise<void> {
     }
     for (const root of roots) {
         failUnless(
-            await page.locator(`${root} .livesync-stat-ff`).isHidden(),
+            await page.locator(`${root} .livesync-stat-ff-pull`).isHidden(),
             `The default inactive style was not restored in ${root}.`
         );
+    }
+}
+
+async function waitForComparisonCounts(page: Page, push?: number, pull?: number): Promise<void> {
+    await page.waitForFunction(
+        ({ push, pull }) =>
+            [".livesync-status-statusline", ".syncstatusbar"].every((root) =>
+                (["push", "pull"] as const).every((direction) => {
+                    const value = document.querySelector(
+                        `${root} .livesync-stat-ff-${direction}:not(.livesync-stat-inactive) .livesync-stat-value`
+                    );
+                    const expected = direction === "push" ? push : pull;
+                    return expected === undefined ? value === null : value?.textContent?.trim() === String(expected);
+                })
+            ),
+        { push, pull },
+        { timeout: uiTimeoutMs }
+    );
+}
+
+async function waitForSyncIcon(page: Page, icon: string): Promise<void> {
+    await page.waitForFunction(
+        (expected) =>
+            [".livesync-status-statusline", ".syncstatusbar"].every(
+                (root) => document.querySelector(`${root} .livesync-stat-sync`)?.textContent === `Sync: ${expected}`
+            ),
+        icon,
+        { timeout: uiTimeoutMs }
+    );
+}
+
+async function assertDirectionalComparison(page: Page): Promise<void> {
+    const pushOnly = replicationStats(0, 0, 0, 71975);
+    pushOnly.couchDB.pull.checking = false;
+    await injectReplicationStats(page, pushOnly, 0, 0);
+    await waitForComparisonCounts(page, 71975);
+    await waitForSyncIcon(page, "⏩");
+    for (const root of [".livesync-status-statusline", ".syncstatusbar"]) {
+        failUnless(
+            (await page.locator(`${root} .livesync-stat-sent .livesync-stat-value`).textContent())?.trim() === "0",
+            `Push comparison changed the transfer count in ${root}.`
+        );
+    }
+
+    await injectReplicationStats(page, replicationStats(4, 0, 0, 40), 0, 0);
+    await waitForComparisonCounts(page, 40, 4);
+    for (const direction of ["push", "pull"]) {
+        const margin = await page
+            .locator(`.livesync-status-statusline .livesync-stat-ff-${direction}`)
+            .evaluate((element) => Number.parseFloat(getComputedStyle(element).marginInlineStart));
+        failUnless(margin === 0, `The ${direction} comparison item acquired an extra ${margin}px editor gap.`);
+    }
+    for (let update = 1; update <= 3; update++) {
+        await page.waitForTimeout(700);
+        await injectReplicationStats(page, replicationStats(4, 0, 0, 40 + update), 0, 0);
+    }
+    await waitForComparisonCounts(page, 43);
+    await waitForComparisonCounts(page);
+    await injectReplicationStats(page, replicationStats(4, 7, 11, 43), 0, 0);
+    await waitForPartText(page, "arrived", "11");
+    await waitForComparisonCounts(page);
+
+    const idle = replicationStats(4, 7, 11, 43);
+    idle.syncStatus = "PAUSED";
+    idle.couchDB.phase = "idle";
+    idle.couchDB.push.checking = false;
+    idle.couchDB.pull.checking = false;
+    await injectReplicationStats(page, idle, 0, 0);
+    await waitForSyncIcon(page, "💤");
+    await waitForComparisonCounts(page);
+
+    const failed = replicationStats(5, 7, 11, 44);
+    failed.syncStatus = "ERRORED";
+    await injectReplicationStats(page, failed, 0, 0);
+    await waitForComparisonCounts(page, 44, 5);
+    await waitForSyncIcon(page, "⚠");
+
+    await injectReplicationStats(page, replicationStats(0, 0, 0), 0, 0);
+    await waitForComparisonCounts(page);
+    await injectReplicationStats(page, replicationStats(1, 0, 0, 1), 0, 0);
+    await waitForComparisonCounts(page, 1, 1);
+    await waitForSyncIcon(page, "⏩");
+    const labels = await page.evaluate(() => {
+        const modules = (globalThis as TestWindow).app?.plugins?.plugins?.["obsidian-livesync"]?.core?.modules ?? [];
+        const moduleLog = modules.find(
+            (entry): entry is TestLogModule =>
+                typeof entry === "object" && entry !== null && (entry as TestLogModule).statusBarLabels !== undefined
+        );
+        return moduleLog?.statusBarLabels?.value.message;
+    });
+    failUnless(
+        labels?.includes("(⏩↑ 1) (⏩↓ 1) ↑ 0 (LIVE) ↓ 0 (LIVE)"),
+        `The plain-text status did not distinguish comparison directions from transfers: ${labels}`
+    );
+    console.log(
+        "Directional comparison passed: push-only, independent expiry, idle/error icons, and fresh-run counts."
+    );
+}
+
+function documentedAnimationSnippet(): string {
+    const guide = readFileSync(new URL("../../../docs/tips/status-display.md", import.meta.url), "utf8");
+    const section = guide.split("### Animate editor status items")[1];
+    const snippet = section?.match(/```css\r?\n([\s\S]*?)\r?\n```/u)?.[1];
+    failUnless(snippet, "The documented editor animation snippet could not be found.");
+    return snippet;
+}
+
+async function assertDocumentedAnimation(page: Page): Promise<void> {
+    const css = documentedAnimationSnippet();
+    const fallbackCss = css.replace("@supports (width: calc-size(auto, size))", "@supports (width: e2e-unsupported)");
+    failUnless(fallbackCss !== css, "The animation example is missing its calc-size feature guard.");
+    const selector = ".livesync-status-statusline .livesync-stat-ff-push";
+    await injectReplicationStats(page, replicationStats(0, 0, 0, 200), 0, 0);
+    await waitForComparisonCounts(page, 200);
+    const fallback = await page.addStyleTag({ content: fallbackCss });
+    try {
+        await injectReplicationStats(page, replicationStats(0, 0, 0), 0, 0);
+        await waitForComparisonCounts(page);
+        failUnless(
+            (await page.locator(selector).evaluate((element) => getComputedStyle(element).display)) === "none",
+            "An unsupported animation guard overrode the default inactive-item hiding."
+        );
+    } finally {
+        await fallback.evaluate((element) => element.parentNode?.removeChild(element));
+    }
+
+    const supported = await page.evaluate(() => CSS.supports("width", "calc-size(auto, size)"));
+    if (!supported) {
+        console.log("Documented snippet: default hiding passed; this runtime does not support calc-size animations.");
+        return;
+    }
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const style = await page.addStyleTag({ content: css });
+    try {
+        const item = page.locator(selector);
+        await injectReplicationStats(page, replicationStats(0, 0, 0, 201), 0, 0);
+        await waitForComparisonCounts(page, 201);
+        await page.waitForFunction(
+            (selector) => {
+                const item = document.querySelector<HTMLElement>(selector);
+                return item !== null && item.getBoundingClientRect().width > 1 && item.getAnimations().length === 0;
+            },
+            selector,
+            { timeout: uiTimeoutMs }
+        );
+        const openWidth = await item.evaluate((element) => element.getBoundingClientRect().width);
+        const original = await item.elementHandle();
+        failUnless(original, "The animated comparison item is missing.");
+        await injectReplicationStats(page, replicationStats(0, 0, 0), 0, 0);
+        await page.waitForFunction(
+            ({ selector, openWidth }) => {
+                const item = document.querySelector<HTMLElement>(selector);
+                const width = item?.getBoundingClientRect().width ?? 0;
+                return item?.classList.contains("livesync-stat-inactive") && width > 0.5 && width < openWidth - 0.5;
+            },
+            { selector, openWidth },
+            { timeout: uiTimeoutMs }
+        );
+        await page.waitForFunction(
+            (selector) => {
+                const item = document.querySelector<HTMLElement>(selector);
+                return item !== null && item.getBoundingClientRect().width < 0.5 && item.getAnimations().length === 0;
+            },
+            selector,
+            { timeout: uiTimeoutMs }
+        );
+        const collapsed = await item.evaluate((element) => ({
+            display: getComputedStyle(element).display,
+            margin: getComputedStyle(element).marginInlineStart,
+            ariaHidden: element.getAttribute("aria-hidden"),
+        }));
+        failUnless(
+            collapsed.display === "inline-block" && collapsed.margin === "0px" && collapsed.ariaHidden === "true",
+            "The animated inactive item lost its collapsed layout or accessibility state."
+        );
+        await injectReplicationStats(page, replicationStats(0, 0, 0, 202), 0, 0);
+        await waitForComparisonCounts(page, 202);
+        await page.waitForFunction(
+            ({ selector, openWidth }) => {
+                const item = document.querySelector<HTMLElement>(selector);
+                return item !== null && Math.abs(item.getBoundingClientRect().width - openWidth) < 0.5;
+            },
+            { selector, openWidth },
+            { timeout: uiTimeoutMs }
+        );
+        failUnless(
+            await original.evaluate((element, selector) => element === document.querySelector(selector), selector),
+            "Reopening an animated item replaced its retained DOM node."
+        );
+        await original.dispose();
+
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await injectReplicationStats(page, replicationStats(0, 0, 0), 0, 0);
+        await waitForComparisonCounts(page);
+        const reduced = await item.evaluate((element) => ({
+            width: element.getBoundingClientRect().width,
+            transition: getComputedStyle(element).transitionProperty,
+            animations: element.getAnimations().length,
+        }));
+        failUnless(
+            reduced.width < 0.5 && reduced.transition === "none" && reduced.animations === 0,
+            "The documented snippet did not honour reduced motion."
+        );
+        console.log(
+            "Documented snippet passed: interpolated collapse, retained-node reopening, reduced motion, and disabled-guard fallback."
+        );
+    } finally {
+        await style.evaluate((element) => element.parentNode?.removeChild(element));
+        await page.emulateMedia({ reducedMotion: null });
     }
 }
 
@@ -846,7 +1067,7 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
         let popoutPage: Page | undefined;
         let mainWindow: MainWindowControl | undefined;
         try {
-            await installFixtureFile(page);
+            console.log(`Replication status runtime: ${await page.evaluate(() => navigator.userAgent)}`);
             try {
                 await page.locator(".livesync-status").waitFor({ state: "attached", timeout: uiTimeoutMs });
             } catch (error) {
@@ -882,11 +1103,11 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
             const startedAt = Date.now();
             await injectReplicationStats(page, initialStats, 0, 0);
             await waitForPartText(page, "arrived", "0");
-            await waitForPartText(page, "ff", "1000");
+            await waitForPartText(page, "ff-pull", "1000");
             await assertStatusBarItemSpacing(page);
             for (const root of [".livesync-status-statusline", ".syncstatusbar"]) {
                 failUnless(
-                    (await page.locator(`${root} .livesync-stat-ff + .livesync-stat-sent`).count()) === 1,
+                    (await page.locator(`${root} .livesync-stat-ff-pull + .livesync-stat-sent`).count()) === 1,
                     `The comparison count did not appear immediately before uploads in ${root}.`
                 );
             }
@@ -902,7 +1123,7 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
             await page.waitForFunction(
                 () =>
                     document
-                        .querySelector(".livesync-status-statusline .livesync-stat-ff")
+                        .querySelector(".livesync-status-statusline .livesync-stat-ff-pull")
                         ?.classList.contains("livesync-stat-inactive") === true,
                 undefined,
                 { timeout: uiTimeoutMs }
@@ -914,11 +1135,11 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
                 "The fast-forward checking icon disappeared when its count expired."
             );
 
-            await injectReplicationStats(page, replicationStats(1001, 1001, 1001), 1001, 0);
+            await injectReplicationStats(page, replicationStats(1001, 1001, 1001, 1001), 1001, 0);
             const wideWidths = await assertNumericWidths(page, "1001");
             const wideStatusBarWidth = await measureStatusBarNetworkWidth(page, "1001");
             failUnless(wideStatusBarWidth.cssWidth === "4ch", "The status-bar network count did not reserve 4ch.");
-            await injectReplicationStats(page, replicationStats(7, 7, 7), 7, 0);
+            await injectReplicationStats(page, replicationStats(7, 7, 7, 7), 7, 0);
             const narrowWidths = await assertNumericWidths(page, "7");
             const narrowStatusBarWidth = await measureStatusBarNetworkWidth(page, "7");
             for (const key of numericKeys) {
@@ -941,6 +1162,8 @@ async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void
             console.log(
                 `Identical status render: 1000 iterations, 0 DOM mutations, ${repeatedRender.elapsedMs.toFixed(2)} ms.`
             );
+
+            await assertDirectionalComparison(page);
 
             await createSplitLeaf(page);
             await assertSingleOverlay(page.context().pages());
@@ -1030,13 +1253,15 @@ async function main(): Promise<void> {
                 binary,
                 cliBinary: cli.binary,
                 vault,
-                lifecycle: mobile
-                    ? {
-                          beforePluginStart: async ({ remoteDebuggingPort }) => {
-                              await setObsidianMobileTestModeBeforePluginStart(remoteDebuggingPort, true, uiTimeoutMs);
-                          },
-                      }
-                    : undefined,
+                lifecycle: {
+                    beforePluginStart: async ({ remoteDebuggingPort }) => {
+                        if (mobile) {
+                            await setObsidianMobileTestModeBeforePluginStart(remoteDebuggingPort, true, uiTimeoutMs);
+                        }
+                        // Prepare the editor before asynchronous plug-in loading can place the overlay in it.
+                        await withObsidianPage(remoteDebuggingPort, installFixtureFile);
+                    },
+                },
                 startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
                 pluginData: {
                     liveSync: false,
@@ -1080,6 +1305,8 @@ async function main(): Promise<void> {
                     );
                 }
                 await assertEditorItemSpacing(page, mobile);
+                if (mobile) await assertDirectionalComparison(page);
+                await assertDocumentedAnimation(page);
             });
         } finally {
             if (session) await session.app.stop();

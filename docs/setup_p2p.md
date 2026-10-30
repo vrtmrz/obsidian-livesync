@@ -127,11 +127,11 @@ The public Setup URI generator is also available when configuration must be crea
 
 ```sh
 export remote_type=p2p
-export p2p_relays=wss://relay.example.com
-export p2p_room_id=<A PRIVATE ROOM ID> # Optional; generated when omitted
-export p2p_passphrase=<A PRIVATE P2P PASSPHRASE> # Optional; generated when omitted
-export LIVESYNC_PASSPHRASE=<A STRONG VAULT ENCRYPTION PASSPHRASE>
-export uri_passphrase=<A SEPARATE SETUP URI PASSPHRASE>
+export p2p_relays='wss://relay.example.com'
+export p2p_room_id='<A PRIVATE ROOM ID>' # Optional; generated when omitted
+export p2p_passphrase='<A PRIVATE P2P PASSPHRASE>' # Optional; generated when omitted
+export LIVESYNC_PASSPHRASE='<A STRONG VAULT ENCRYPTION PASSPHRASE>'
+export uri_passphrase='<A SEPARATE SETUP URI PASSPHRASE>'
 deno run --minimum-dependency-age=0 --allow-env https://raw.githubusercontent.com/vrtmrz/obsidian-livesync/main/utils/setup/generate_setup_uri.ts
 ```
 

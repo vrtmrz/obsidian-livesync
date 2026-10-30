@@ -4,7 +4,7 @@ import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/servic
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { fireAndForget } from "octagonal-wheels/promises";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
-import { EVENT_APPLICATION_READY } from "@/common/events";
+import { EVENT_APPLICATION_READY, EVENT_VAULT_REFLECTION_FAILED } from "@/common/events";
 import { createAutomaticReplicationTriggers } from "./automaticTriggers";
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 import { createOnlineReplicationPreflight, createSecuritySeedPreflight } from "./preflight";
@@ -38,6 +38,7 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
         ? services.replicator
         : undefined;
     const resultProcessor = new ReplicateResultProcessor({
+        onVaultReflectionFailure: () => services.context.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED),
         currentSettings: () => services.setting.currentSettings(),
         getKeyValueDB: () => services.keyValueDB.kvDB,
         getLocalDatabase: () => core.localDatabase,

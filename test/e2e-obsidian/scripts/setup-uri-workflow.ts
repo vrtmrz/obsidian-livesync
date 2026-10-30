@@ -192,6 +192,7 @@ async function startUnconfiguredSession(
         binary: context.binary,
         cliBinary: context.cliBinary,
         vault,
+        artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT,
         startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
     });
     context.activeSessions.add(session);
@@ -210,11 +211,29 @@ async function stopTrackedSessions(context: RunnerContext): Promise<void> {
     }
 }
 
-async function enterSetupURI(port: number, mode: "new" | "existing", artifact: SetupArtifact): Promise<void> {
+async function enterSetupURI(
+    port: number,
+    mode: "new" | "existing",
+    artifact: SetupArtifact,
+    repeat = false
+): Promise<void> {
     await withObsidianPage(port, async (page) => {
-        const invitation = page.locator(".notice").filter({ hasText: "Welcome to Self-hosted LiveSync" });
-        await invitation.waitFor({ state: "visible", timeout: uiTimeoutMs });
-        await invitation.locator(".sls-onboarding-invitation-action").click({ timeout: uiTimeoutMs });
+        if (repeat) {
+            const navigator = await openLiveSyncSettings(page, uiTimeoutMs);
+            const panel =
+                navigator.renderer === "declarative"
+                    ? (await navigator.returnToCatalogue(), navigator.dialogue)
+                    : await navigator.openPage("Quick Setup");
+            const rerun = panel.locator(".setting-item").filter({
+                has: page.locator(".setting-item-name").filter({ hasText: "Rerun Onboarding Wizard" }),
+            });
+            if (navigator.renderer === "declarative") await rerun.click({ timeout: uiTimeoutMs });
+            else await rerun.getByRole("button", { name: "Rerun Wizard", exact: true }).click({ timeout: uiTimeoutMs });
+        } else {
+            const invitation = page.locator(".notice").filter({ hasText: "Welcome to Self-hosted LiveSync" });
+            await invitation.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await invitation.locator(".sls-onboarding-invitation-action").click({ timeout: uiTimeoutMs });
+        }
 
         const intro = modalByTitle(page, "Welcome to Self-hosted LiveSync");
         await intro.waitFor({ state: "visible", timeout: uiTimeoutMs });
@@ -669,6 +688,154 @@ async function captureFailure(session: ObsidianLiveSyncSession): Promise<void> {
     ).catch(() => undefined);
 }
 
+async function assertFetchFlagsAbsent(port: number): Promise<void> {
+    const flags = await withObsidianPage(
+        port,
+        async (page) =>
+            await page.evaluate(async () => {
+                const app = (globalThis as any).app;
+                return await Promise.all(
+                    ["flag_fetch.md", "redflag3.md"].map((path) => app.vault.adapter.exists(path))
+                );
+            })
+    );
+    assertEqual(flags.some(Boolean), false, "A completed Fetch retained a fetch flag.");
+}
+
+async function verifyInterruptedFetchRestart(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault,
+    artifact: SetupArtifact,
+    unreadable = false
+): Promise<void> {
+    const port = session.remoteDebuggingPort;
+    await enterSetupURI(port, "existing", artifact, true);
+    await captureAndStartInitialisation(port, "existing");
+    await withObsidianPage(port, async (page) => {
+        await modalByTitle(page, "Data retrieval scheduled").waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await page.evaluate(() => {
+            const core = (globalThis as any).app.plugins.plugins["obsidian-livesync"].core;
+            core.rebuilder.$fetchLocalDBFast = async () => {
+                await core.rebuilder.resetLocalDatabase();
+                (globalThis as any).__fetchChoiceInterrupted = true;
+                throw new Error("E2E: interrupted after resetting the local database");
+            };
+        });
+    });
+    await confirmFastFetch(port);
+    const pending = await withObsidianPage(port, async (page) => {
+        await page.waitForFunction(
+            () => {
+                const core = (globalThis as any).app.plugins.plugins["obsidian-livesync"].core;
+                const settings = core.services.setting.currentSettings();
+                return (
+                    (globalThis as any).__fetchChoiceInterrupted === true &&
+                    settings.suspendFileWatching &&
+                    settings.suspendParseReplicationResult
+                );
+            },
+            undefined,
+            { timeout: uiTimeoutMs }
+        );
+        return await page.evaluate(async () => {
+            const app = (globalThis as any).app;
+            const core = app.plugins.plugins["obsidian-livesync"].core;
+            return {
+                markdown: await app.vault.adapter.read("flag_fetch.md"),
+                suffix: core.services.setting.currentSettings().additionalSuffixOfDatabaseName,
+                appId: core.services.API.getAppID(),
+            };
+        });
+    });
+    assertEqual(pending.suffix, pending.appId, "The interrupted Fetch did not change the database suffix.");
+    const block = /```json\s*\n([\s\S]*?)\n```/.exec(pending.markdown);
+    if (!block) throw new Error("The pending Fetch has no editable JSON code block.");
+    const selection = JSON.parse(block[1]);
+    assertEqual(selection.type, "livesync-fast-setup", "Unexpected saved Fetch state.");
+    assertEqual(selection.stage1, "Overwrite all with remote files", "The first Fetch choice was not retained.");
+    assertEqual(
+        selection.stage2,
+        "Keep local files even if not on remote",
+        "The second Fetch choice was not retained."
+    );
+
+    const localPath = `E2E/setup-uri/retained-during-recovery${unreadable ? "-unreadable" : ""}.md`;
+    const localContent = "# Local recovery note\n\nRetain this local-only file after restart.\n";
+    await withObsidianPage(port, async (page) => {
+        await page.evaluate(
+            async ({ localPath, localContent, unreadable }) => {
+                const app = (globalThis as any).app;
+                const flag = app.vault.getAbstractFileByPath("flag_fetch.md");
+                const markdown = await app.vault.read(flag);
+                await app.vault.modify(
+                    flag,
+                    "# Recovery notes\n\nEdited in Obsidian before restarting.\n\n" +
+                        (unreadable ? "<!-- unfinished comment\n" : "") +
+                        markdown
+                );
+                await app.vault.create(localPath, localContent);
+                await app.workspace.openLinkText("flag_fetch.md", "", false);
+            },
+            { localPath, localContent, unreadable }
+        );
+    });
+    await captureObsidianPage(port, "issue-1244-editable-fetch-flag.png", async () => undefined);
+    await withObsidianPage(port, async (page) => {
+        await page.evaluate(() =>
+            (globalThis as any).app.plugins.plugins["obsidian-livesync"].core.services.appLifecycle.performRestart()
+        );
+    });
+    const title = unreadable ? "Saved fetch choices could not be read" : "Resume scheduled fetch?";
+    await withObsidianPage(port, async (page) => {
+        const modal = modalByTitle(page, title);
+        await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const message = await modal.textContent();
+        if (!message?.includes("Current remote:") || !message.includes(context.dbName)) {
+            throw new Error("The resume dialogue did not identify the current remote.");
+        }
+        if (!unreadable && (!message.includes(selection.stage1) || !message.includes(selection.stage2))) {
+            throw new Error("The resume dialogue did not display both saved choices.");
+        }
+        if (unreadable) {
+            await page.evaluate(async () => {
+                const app = (globalThis as any).app;
+                const core = app.plugins.plugins["obsidian-livesync"].core;
+                const originalMarkdown = await app.vault.adapter.read("flag_fetch.md");
+                const fetch = core.rebuilder.$fetchLocalDBFast.bind(core.rebuilder);
+                core.rebuilder.$fetchLocalDBFast = async (...args: unknown[]) => {
+                    if ((await app.vault.adapter.read("flag_fetch.md")) !== originalMarkdown) {
+                        throw new Error("Choosing new options rewrote the unreadable fetch flag.");
+                    }
+                    return await fetch(...args);
+                };
+            });
+        }
+    });
+    await captureObsidianPage(
+        port,
+        unreadable ? "issue-1244-unreadable-confirmation.png" : "issue-1244-resume-confirmation.png",
+        async () => undefined
+    );
+    await withObsidianPage(port, async (page) => {
+        await modalByTitle(page, title)
+            .getByRole("button", {
+                name: unreadable ? "Choose new options and continue" : "Continue with these choices",
+                exact: true,
+            })
+            .click({ timeout: uiTimeoutMs });
+    });
+    if (unreadable) await confirmFastFetch(port);
+    await finishInitialisation(port, "issue-1244-resumed.png", context.cliBinary, session.cliEnv);
+    await assertFetchFlagsAbsent(port);
+    await waitForPathContent(vault.path, notePath, noteContent);
+    await waitForPathContent(vault.path, localPath, localContent);
+    console.log(
+        "ISSUE_1244_RESTART " +
+            JSON.stringify({ prompted: true, unreadable, localOnlyFilePreserved: true, flagRemoved: true })
+    );
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -768,6 +935,66 @@ async function main(): Promise<void> {
             const secondState = secondCompletion.state;
             await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
             assertEqual(secondState.remoteType, "", "The second device did not activate the CouchDB remote profile.");
+            if (process.env.E2E_OBSIDIAN_ISSUE_1244 === "true") {
+                const observations: Array<{ attempt: number; prompted: boolean; state: unknown }> = [];
+                const record = async (attempt: number, prompted: boolean) => {
+                    const state = await withObsidianPage(
+                        session.remoteDebuggingPort,
+                        async (page) =>
+                            await page.evaluate(() => {
+                                const core = (globalThis as any).app.plugins.plugins["obsidian-livesync"].core;
+                                return {
+                                    suffix: core.services.setting.currentSettings().additionalSuffixOfDatabaseName,
+                                    appId: core.services.API.getAppID(),
+                                    savedChoices: Object.keys(localStorage)
+                                        .filter((key) => key.endsWith("-simple-fetch-mode"))
+                                        .map((key) => ({ key, value: localStorage.getItem(key) })),
+                                };
+                            })
+                    );
+                    await assertFetchFlagsAbsent(session.remoteDebuggingPort);
+                    observations.push({ attempt, prompted, state });
+                    console.log(`ISSUE_1244 ${JSON.stringify(observations[observations.length - 1])}`);
+                };
+                await waitForPathContent(vaultB.path, notePath, noteContent);
+                await record(1, true);
+                for (const attempt of [2, 3]) {
+                    await enterSetupURI(session.remoteDebuggingPort, "existing", secondDeviceArtifact, true);
+                    await captureAndStartInitialisation(session.remoteDebuggingPort, "existing");
+                    const prompted = await withObsidianPage(
+                        session.remoteDebuggingPort,
+                        async (page) =>
+                            await modalByTitle(page, "Data retrieval scheduled")
+                                .waitFor({ state: "visible", timeout: 15000 })
+                                .then(
+                                    () => true,
+                                    () => false
+                                )
+                    );
+                    if (prompted) await confirmFastFetch(session.remoteDebuggingPort);
+                    await finishInitialisation(
+                        session.remoteDebuggingPort,
+                        `issue-1244-join-${attempt}.png`,
+                        context.cliBinary,
+                        session.cliEnv
+                    );
+                    await resumeCompatibilityReviewIfShown(session.remoteDebuggingPort);
+                    await waitForPathContent(vaultB.path, notePath, noteContent);
+                    await captureObsidianPage(
+                        session.remoteDebuggingPort,
+                        `issue-1244-after-join-${attempt}.png`,
+                        async () => undefined
+                    );
+                    await record(attempt, prompted);
+                }
+                assertEqual(
+                    observations.every((observation) => observation.prompted),
+                    true,
+                    `Every completed Join must offer fetch choices on the next Join: ${JSON.stringify(observations)}`
+                );
+                await verifyInterruptedFetchRestart(context, session, vaultB, secondDeviceArtifact);
+                await verifyInterruptedFetchRestart(context, session, vaultB, secondDeviceArtifact, true);
+            }
             await enableHiddenFileSync(context.cliBinary, session.cliEnv);
             await pushLocalChanges(context.cliBinary, session.cliEnv);
             await scanHiddenDatabase(context.cliBinary, session.cliEnv);

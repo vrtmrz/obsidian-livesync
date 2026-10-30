@@ -1,5 +1,7 @@
 ## The design document of the journal sync
 
+Historical design: this is the first Journal Sync design. Its original transfer sequence and discussion of possible storage backends are retained as history. For the maintained pipeline and storage-adapter design, read [Journal Replicator 2nd Edition](design_docs_of_journalsync_2nd.md) and the [Replicator architecture](design_docs/replicator_architecture.md). Use [Object Storage Setup](setup_object_storage.md) for supported client setup. A possible backend discussed here is not evidence that an adapter is available in the current release.
+
 Original title: Synchronise without CouchDB 
 
 ### Goal

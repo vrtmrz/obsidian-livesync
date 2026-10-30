@@ -2,15 +2,16 @@
 date: 2026-10-17
 commonlib-version: "0.1.42"
 self-hosted-livesync-version: "1.0.37"
-status: unreleased
+status: released
 ---
 
 # Tweak compatibility and recovery
 
-This document describes the compatibility and recovery contract, including
-unreleased changes after Self-hosted LiveSync 1.0.37 using Commonlib 0.1.42.
-Commonlib owns the interpretation of synchronisation settings; LiveSync owns
-the dialogues and operations which consume that result.
+This document describes the compatibility and recovery contract introduced
+after the Self-hosted LiveSync 1.0.37 and Commonlib 0.1.42 baseline recorded
+above. The current assessment is included in Self-hosted LiveSync 1.0.42 with
+Commonlib 0.2.2. Commonlib owns the interpretation of synchronisation settings;
+LiveSync owns the dialogues and operations which consume that result.
 
 ## Shared assessment
 

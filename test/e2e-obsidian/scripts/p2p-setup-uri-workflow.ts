@@ -330,7 +330,8 @@ async function fetchFromFirstPeer(
     sessionA: ObsidianLiveSyncSession,
     portA: number,
     portB: number,
-    screenshots: string[]
+    screenshots: string[],
+    selectionScreenshot = "guide-p2p-setup-select-first-device.png"
 ): Promise<void> {
     try {
         await withObsidianPage(portB, async (page) => {
@@ -363,7 +364,7 @@ async function fetchFromFirstPeer(
                 .join("\n")
         );
     }
-    screenshots.push(await captureGuideDialogue(portB, "guide-p2p-setup-select-first-device.png", "P2P Rebuild"));
+    screenshots.push(await captureGuideDialogue(portB, selectionScreenshot, "P2P Rebuild"));
 
     let finished = false;
     const acceptor = acceptConnectionRequests([portA, portB], () => finished, screenshots);
@@ -388,6 +389,186 @@ async function fetchFromFirstPeer(
             await modal.getByRole("button", { name: "Skip and close" }).click({ timeout: uiTimeoutMs });
         }
     });
+}
+
+async function verifyInterruptedFetchRestart(
+    context: RunnerContext,
+    sessionA: ObsidianLiveSyncSession,
+    sessionB: ObsidianLiveSyncSession,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault,
+    screenshots: string[]
+): Promise<void> {
+    const portA = sessionA.remoteDebuggingPort;
+    const portB = sessionB.remoteDebuggingPort;
+    const remotePath = "E2E/p2p/fetched-after-restart.md";
+    const remoteContent = "# P2P recovery source\n\nFetch these exact bytes after confirming the saved choices.\n";
+    const localPath = "E2E/p2p/local-only-during-recovery.md";
+    const localContent = "# Local recovery note\n\nKeep these exact bytes while restarting the P2P Fetch.\n";
+    await writeNote(context.cliBinary, sessionA.cliEnv, remotePath, remoteContent);
+
+    await withObsidianPage(portB, async (page) => {
+        const before = await page.evaluate(async (path) => {
+            const app = (globalThis as any).app;
+            const core = app.plugins.plugins["obsidian-livesync"].core;
+            return {
+                inVault: await app.vault.adapter.exists(path),
+                inDatabase: !!(await core.localDatabase.getDBEntry(path, undefined, false, true)),
+            };
+        }, remotePath);
+        assertEqual(before.inVault, false, "The recovery source note already existed in the receiving Vault.");
+        assertEqual(before.inDatabase, false, "The recovery source note arrived before the scheduled P2P Fetch.");
+        await page.evaluate(async () => {
+            const core = (globalThis as any).app.plugins.plugins["obsidian-livesync"].core;
+            if (!(await core.rebuilder.scheduleFetch())) throw new Error("Could not schedule the P2P Fetch.");
+        });
+    });
+
+    await withObsidianPage(portB, async (page) => {
+        await modalByTitle(page, "Data retrieval scheduled").waitFor({ state: "visible", timeout: uiTimeoutMs });
+        await page.evaluate(() => {
+            const core = (globalThis as any).app.plugins.plugins["obsidian-livesync"].core;
+            const fetch = core.rebuilder.$fetchLocalDBFast.bind(core.rebuilder);
+            // Keep the actual P2P transport and interrupt before the subsequent Vault scan.
+            core.rebuilder.$fetchLocalDBFast = async (...args: unknown[]) => {
+                await fetch(...args);
+                (globalThis as any).__p2pFetchInterrupted = true;
+                throw new Error("E2E: interrupted after P2P receive and before Vault reflection");
+            };
+        });
+    });
+    screenshots.push(...(await confirmFastFetch(portB, { scenario: "p2p-fetch-restart", guide: "p2p-fetch-restart" })));
+    await fetchFromFirstPeer(sessionA, portA, portB, screenshots, "p2p-fetch-interrupted-select-source.png");
+
+    const pending = await withObsidianPage(portB, async (page) => {
+        await page.waitForFunction(
+            () => {
+                const core = (globalThis as any).app.plugins.plugins["obsidian-livesync"].core;
+                const settings = core.services.setting.currentSettings();
+                return (
+                    (globalThis as any).__p2pFetchInterrupted === true &&
+                    settings.suspendFileWatching &&
+                    settings.suspendParseReplicationResult
+                );
+            },
+            undefined,
+            { timeout: uiTimeoutMs }
+        );
+        return await page.evaluate(
+            async ({ remotePath, localPath, localContent }) => {
+                const app = (globalThis as any).app;
+                const core = app.plugins.plugins["obsidian-livesync"].core;
+                const remoteEntry = await core.localDatabase.getDBEntry(remotePath, undefined, false, true);
+                const remoteInVault = await app.vault.adapter.exists(remotePath);
+                await app.vault.create(localPath, localContent);
+                return {
+                    received: !!remoteEntry,
+                    remoteInVault,
+                    markdown: await app.vault.adapter.read("flag_fetch.md"),
+                    room: core.services.setting.currentSettings().P2P_roomID,
+                };
+            },
+            { remotePath, localPath, localContent }
+        );
+    });
+    assertEqual(pending.received, true, "The interruption occurred before the real P2P receive completed.");
+    assertEqual(pending.remoteInVault, false, "The interrupted P2P Fetch reflected the source note too early.");
+    const block = /```json\s*\n([\s\S]*?)\n```/.exec(pending.markdown);
+    if (!block) throw new Error("The interrupted P2P Fetch did not retain its choices in the flag.");
+    const selection = JSON.parse(block[1]);
+    assertEqual(selection.stage1, "Overwrite all with remote files", "The P2P overwrite choice was not retained.");
+    assertEqual(
+        selection.stage2,
+        "Keep local files even if not on remote",
+        "The P2P preservation choice was not retained."
+    );
+    console.log("P2P workflow: received the recovery note, interrupted before reflection, and retained the choices.");
+
+    await withObsidianPage(portB, async (page) => {
+        await page.evaluate(() =>
+            (globalThis as any).app.plugins.plugins["obsidian-livesync"].core.services.appLifecycle.performRestart()
+        );
+    });
+    await withObsidianPage(portB, async (page) => {
+        const modal = modalByTitle(page, "Resume scheduled fetch?");
+        await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const message = await modal.innerText();
+        for (const expected of ["Current remote:", "P2P", pending.room, selection.stage1, selection.stage2]) {
+            if (!message.includes(expected))
+                throw new Error("The P2P resume dialogue omitted the remote or saved choices.");
+        }
+        const beforeConfirmation = await page.evaluate(async (remotePath) => {
+            const app = (globalThis as any).app;
+            const core = app.plugins.plugins["obsidian-livesync"].core;
+            const settings = core.services.setting.currentSettings();
+            return {
+                reloaded: (globalThis as any).__p2pFetchInterrupted === undefined,
+                remoteInVault: await app.vault.adapter.exists(remotePath),
+                markdown: await app.vault.adapter.read("flag_fetch.md"),
+                suspendFileWatching: settings.suspendFileWatching,
+                suspendParseReplicationResult: settings.suspendParseReplicationResult,
+            };
+        }, remotePath);
+        assertEqual(beforeConfirmation.reloaded, true, "Obsidian did not reload before the recovery confirmation.");
+        assertEqual(beforeConfirmation.remoteInVault, false, "The source note was reflected before confirmation.");
+        assertEqual(beforeConfirmation.markdown, pending.markdown, "Restart changed the retained P2P choices.");
+        assertEqual(beforeConfirmation.suspendFileWatching, true, "File watching resumed before confirmation.");
+        assertEqual(
+            beforeConfirmation.suspendParseReplicationResult,
+            true,
+            "Database reflection resumed before confirmation."
+        );
+    });
+    screenshots.push(await captureGuideDialogue(portB, "p2p-fetch-resume-confirmation.png", "Resume scheduled fetch?"));
+    await withObsidianPage(portB, async (page) => {
+        await modalByTitle(page, "Resume scheduled fetch?")
+            .getByRole("button", { name: "Continue with these choices", exact: true })
+            .click({ timeout: uiTimeoutMs });
+    });
+    await fetchFromFirstPeer(sessionA, portA, portB, screenshots, "p2p-fetch-resumed-select-source.png");
+    await finishInitialisation(portB, context.cliBinary, sessionB.cliEnv);
+    await waitForPathContent(vaultB, remotePath, remoteContent);
+    await waitForPathContent(vaultB, localPath, localContent);
+    await waitForPathContent(vaultA, remotePath, remoteContent);
+    const completed = await withObsidianPage(
+        portB,
+        async (page) =>
+            await page.evaluate(async () => {
+                const app = (globalThis as any).app;
+                const settings = app.plugins.plugins["obsidian-livesync"].core.services.setting.currentSettings();
+                return {
+                    flags: await Promise.all(
+                        ["flag_fetch.md", "redflag3.md"].map((path) => app.vault.adapter.exists(path))
+                    ),
+                    suspendFileWatching: settings.suspendFileWatching,
+                    suspendParseReplicationResult: settings.suspendParseReplicationResult,
+                };
+            })
+    );
+    assertEqual(completed.flags.some(Boolean), false, "The resumed P2P Fetch retained a fetch flag.");
+    assertEqual(completed.suspendFileWatching, false, "File watching remained suspended after P2P recovery.");
+    assertEqual(
+        completed.suspendParseReplicationResult,
+        false,
+        "Database reflection remained suspended after P2P recovery."
+    );
+    const sourceHasLocalNote = await withObsidianPage(
+        portA,
+        async (page) =>
+            await page.evaluate(async (path) => (globalThis as any).app.vault.adapter.exists(path), localPath)
+    );
+    assertEqual(sourceHasLocalNote, false, "The recovery note was not local-only during the Fetch.");
+    console.log(
+        "P2P_FETCH_RESTART " +
+            JSON.stringify({
+                realReceiveBeforeInterruption: true,
+                promptedAfterReload: true,
+                remoteContentPreserved: true,
+                localOnlyContentPreserved: true,
+                flagsRemoved: true,
+                reflectionResumed: true,
+            })
+    );
 }
 
 async function replicateFromStatusPane(port: number): Promise<void> {
@@ -538,6 +719,8 @@ async function main(): Promise<void> {
             await captureNote(portB, noteFromFirst, "P2P from the first device", "guide-p2p-setup-first-to-second.png")
         );
         console.log("P2P workflow: initial Fetch from the first device completed.");
+
+        await verifyInterruptedFetchRestart(context, sessionA, sessionB, vaultA, vaultB, screenshots);
 
         await writeNote(context.cliBinary, sessionB.cliEnv, noteFromSecond, secondContent);
         await reconnectP2PStatus(portA);

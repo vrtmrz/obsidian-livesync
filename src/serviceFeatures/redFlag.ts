@@ -15,6 +15,7 @@ import type {
     RebuildEverythingResult,
 } from "@/modules/features/SetupWizard/dialogs/setupDialogTypes";
 import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch";
+import { deleteFetchFlags } from "./redFlag.fetchState";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { isP2PMainRemote } from "@/common/remoteConfiguration";
@@ -136,10 +137,7 @@ export function createFetchAllFlagHandler(
         (await isFlagFileExist(host, FlagFilesHumanReadable.FETCH_ALL));
 
     // Cleanup fetch all flag files
-    const cleanupFlag = async () => {
-        await deleteFlagFile(host, log, FlagFilesOriginal.FETCH_ALL);
-        await deleteFlagFile(host, log, FlagFilesHumanReadable.FETCH_ALL);
-    };
+    const cleanupFlag = () => deleteFetchFlags(host);
 
     // Handle the fetch all scheduled operation
     const onScheduled = async () => {
@@ -189,27 +187,45 @@ export function createFetchAllFlagHandler(
             log("Fetch initialisation cancelled by user.", LOG_LEVEL_NOTICE);
             return await cancelScheduledInitialisation(host, cleanupFlag);
         }
-        return await processVaultInitialisation(host, log, async () => {
-            const vaultStateToAction = mapVaultStateToAction[vault];
-            const { makeLocalChunkBeforeSync, makeLocalFilesBeforeSync } = vaultStateToAction;
-            log(
-                `Fetching everything with settings: makeLocalChunkBeforeSync=${makeLocalChunkBeforeSync}, makeLocalFilesBeforeSync=${makeLocalFilesBeforeSync}`,
-                LOG_LEVEL_INFO
-            );
-            await host.serviceModules.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, !makeLocalFilesBeforeSync);
-            await cleanupFlag();
-            log("Fetch everything operation completed. Vault files will be gradually synced.", LOG_LEVEL_NOTICE);
-            return true;
-        });
+        return await processVaultInitialisation(
+            host,
+            log,
+            async () => {
+                const vaultStateToAction = mapVaultStateToAction[vault];
+                const { makeLocalChunkBeforeSync, makeLocalFilesBeforeSync } = vaultStateToAction;
+                log(
+                    `Fetching everything with settings: makeLocalChunkBeforeSync=${makeLocalChunkBeforeSync}, makeLocalFilesBeforeSync=${makeLocalFilesBeforeSync}`,
+                    LOG_LEVEL_INFO
+                );
+                await host.serviceModules.rebuilder.$fetchLocal(makeLocalChunkBeforeSync, !makeLocalFilesBeforeSync);
+                await cleanupFlag();
+                log("Fetch everything operation completed. Vault files will be gradually synced.", LOG_LEVEL_NOTICE);
+                return true;
+            },
+            "resume-on-success"
+        );
     };
 
     return {
         priority: 10,
         check: () => isFlagActive(),
         handle: async () => {
-            const res = await onScheduled();
-            if (res) {
-                return await verifyAndUnlockSuspension(host, log);
+            try {
+                const res = await onScheduled();
+                if (res) return await verifyAndUnlockSuspension(host, log);
+            } catch (ex) {
+                log(
+                    "Could not prepare or finish the scheduled fetch. File and database reflection remain suspended.",
+                    LOG_LEVEL_NOTICE
+                );
+                log(ex, LOG_LEVEL_VERBOSE);
+                await host.services.setting.applyPartial(
+                    {
+                        suspendFileWatching: true,
+                        suspendParseReplicationResult: true,
+                    },
+                    true
+                );
             }
             return false;
         },
@@ -373,7 +389,7 @@ export async function cancelScheduledInitialisation(
     return false;
 }
 
-type InitialisationSuspensionPolicy = "resume" | "keep" | "keep-on-failure";
+type InitialisationSuspensionPolicy = "resume" | "keep" | "keep-on-failure" | "resume-on-success";
 
 /**
  * Process Vault initialisation with file watching and synchronisation suspended.
@@ -417,6 +433,14 @@ export async function processVaultInitialisation(
             await host.services.setting.applyPartial({ suspendFileWatching: false }, true);
         } else if (suspensionPolicy === "keep") {
             await host.services.setting.applyPartial({ suspendFileWatching: true }, true);
+        } else if (suspensionPolicy === "resume-on-success") {
+            // Detailed Fetch owns its database reflection state on success or cancellation.
+            await host.services.setting.applyPartial(
+                completed
+                    ? { suspendFileWatching: false }
+                    : { suspendFileWatching: true, suspendParseReplicationResult: true },
+                true
+            );
         } else {
             // Fast Setup owns both directions at this boundary. Reasserting the
             // outcome also covers a late failure after finishRebuild started to

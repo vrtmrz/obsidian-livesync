@@ -49,6 +49,8 @@ const unusedStartupDependencies: readonly [string, readonly string[]][] = [
     ["./serviceFeatures/interactiveConflictResolution", ["useInteractiveConflictResolutionFeature"]],
     ["./modules/features/InteractiveConflictResolving/ConflictResolveModal.ts", ["ConflictResolveModal"]],
     ["./serviceFeatures/obsidianReplicationRibbon.ts", ["useObsidianReplicationRibbonFeature"]],
+    ["./serviceFeatures/syncGuard", ["useSyncGuardFeature"]],
+    ["./serviceFeatures/syncGuard/SyncGuardOverlay", ["SyncGuardOverlay"]],
     ["./serviceFeatures/startupLifecycle", ["useStartupLifecycleFeature"]],
     ["./serviceFeatures/useJoinedDevices", ["useJoinedDevicesFeature"]],
     ["./serviceFeatures/useDatabaseDiagnostics", ["useDatabaseDiagnosticsFeature"]],
