@@ -14,6 +14,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixes
 
+- Buttons in shared confirmation dialogues now align with the message text, with space for keyboard focus outlines.
+
 - A new Join or scheduled Fetch asks for data-handling choices again, even after a previous Fetch changed the local database suffix.
     - Fast Setup retains interrupted choices in an editable Markdown code block in the fetch flag. On restart, we confirm the current remote and saved choices, choose again, or cancel; a remaining flag never reapplies choices silently.
     - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
