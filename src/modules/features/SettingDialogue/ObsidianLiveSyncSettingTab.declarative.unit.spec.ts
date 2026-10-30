@@ -1,6 +1,7 @@
 import { MemoryValueStore } from "@vrtmrz/value-store";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { DEFAULT_SYNC_GUARD_SETTINGS, type SyncGuardSettings } from "@/modules/services/ObsidianSettingService.ts";
 import type { SettingDefinitionGroup, SettingDefinitionItem, SettingDefinitionPage } from "obsidian";
 import type { PageFunctions } from "./SettingPane.ts";
 
@@ -152,6 +153,7 @@ type SettingsTabOptions = {
 };
 
 function createSettingsTab(options: SettingsTabOptions = {}): ObsidianLiveSyncSettingTab {
+    const syncGuardSettings: SyncGuardSettings = { ...DEFAULT_SYNC_GUARD_SETTINGS };
     const core = {
         settings: { ...DEFAULT_SETTINGS, useAdvancedMode: true },
         confirm: {
@@ -160,6 +162,10 @@ function createSettingsTab(options: SettingsTabOptions = {}): ObsidianLiveSyncSe
         services: {
             setting: {
                 deviceValues: new MemoryValueStore(),
+                syncGuardSettings,
+                setSyncGuardSetting: vi.fn(async (key: keyof SyncGuardSettings, value: boolean | number) => {
+                    Object.assign(syncGuardSettings, { [key]: value });
+                }),
                 getDeviceAndVaultName: vi.fn(() => ""),
                 saveSettingData: vi.fn(async () => undefined),
             },
@@ -179,8 +185,8 @@ function createSettingsTab(options: SettingsTabOptions = {}): ObsidianLiveSyncSe
     };
     const tab = new ObsidianLiveSyncSettingTab({} as never, plugin as never);
     Object.assign(tab, {
-        _editingSettings: { ...DEFAULT_SETTINGS, useAdvancedMode: true },
-        initialSettings: { ...DEFAULT_SETTINGS, useAdvancedMode: true },
+        _editingSettings: { ...DEFAULT_SETTINGS, ...syncGuardSettings, useAdvancedMode: true },
+        initialSettings: { ...DEFAULT_SETTINGS, ...syncGuardSettings, useAdvancedMode: true },
     });
     return tab;
 }
@@ -335,6 +341,8 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
             "showOnlyIconsOnEditor",
             "showStatusOnStatusbar",
             "hideFileWarningNotice",
+            "syncGuardEnabled",
+            "syncGuardMinimumFiles",
             "networkWarningStyle",
         ]);
         expect(
@@ -343,6 +351,39 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         expect(
             extraMenus?.items?.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
         ).toEqual(["useAdvancedMode", "usePowerUserMode", "useEdgeCaseMode"]);
+    });
+
+    it("persists declarative SyncGuard controls through Obsidian's local settings service", async () => {
+        const tab = createSettingsTab();
+        const setting = tab.services.setting as typeof tab.services.setting & {
+            setSyncGuardSetting: ReturnType<typeof vi.fn>;
+        };
+        const initialCoreSettings = { ...tab.core.settings };
+
+        await tab.setControlValue("syncGuardEnabled", true);
+        await tab.setControlValue("syncGuardMinimumFiles", 6);
+
+        expect(setting.setSyncGuardSetting).toHaveBeenNthCalledWith(1, "syncGuardEnabled", true);
+        expect(setting.setSyncGuardSetting).toHaveBeenNthCalledWith(2, "syncGuardMinimumFiles", 6);
+        expect(tab.getControlValue("syncGuardEnabled")).toBe(true);
+        expect(tab.getControlValue("syncGuardMinimumFiles")).toBe(6);
+        expect(tab.core.settings).toEqual(initialCoreSettings);
+        expect(setting.saveSettingData).not.toHaveBeenCalled();
+    });
+
+    it("refreshes active settings when local SyncGuard preferences change elsewhere", async () => {
+        const tab = createSettingsTab();
+        tab.isShown = true;
+        const refresh = vi.spyOn(tab, "requestPageRefresh").mockImplementation(() => undefined);
+        const setting = tab.services.setting as typeof tab.services.setting & { syncGuardSettings: SyncGuardSettings };
+        setting.syncGuardSettings.syncGuardEnabled = true;
+        setting.syncGuardSettings.syncGuardMinimumFiles = 13;
+
+        await tab.requestReload();
+
+        expect(tab.editingSettings.syncGuardEnabled).toBe(true);
+        expect(tab.editingSettings.syncGuardMinimumFiles).toBe(13);
+        expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("omits the old Setup child page and keeps standard General and Advanced pages native", () => {

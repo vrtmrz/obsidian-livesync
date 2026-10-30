@@ -840,6 +840,41 @@ body.is-mobile .livesync-compatibility-review-notice {
     border-radius: 2px;
 }
 
+/* An optional, workspace-only barrier during a substantial catch-up. Other Obsidian dialogues remain usable. */
+.sls-sync-guard {
+    position: absolute;
+    inset: 0;
+    z-index: var(--layer-cover, 30);
+    display: grid;
+    place-items: center;
+    padding: var(--size-4-4);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    pointer-events: auto;
+}
+
+.sls-sync-guard-panel {
+    width: min(100%, 30rem);
+    padding: var(--size-4-6);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-l);
+    background: var(--background-secondary);
+    text-align: center;
+}
+
+.sls-sync-guard-panel h2 {
+    margin-block-start: 0;
+}
+
+.sls-sync-guard-count {
+    color: var(--text-muted);
+}
+
+.sls-sync-guard-bypass {
+    min-height: 44px;
+    min-width: 44px;
+}
+
 .livesync-stat-item {
     font-variant-numeric: tabular-nums;
 }

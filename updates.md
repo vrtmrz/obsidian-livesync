@@ -21,6 +21,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Synchronisation
 
+- Added an optional, device-local editing guard for substantial CouchDB LiveSync catch-up transfers. When enough incoming notes are detected, it covers the workspace until the transfer and local application queues have settled. The overlay can always be bypassed, and ordinary small transfers remain uninterrupted.
+
 - We can see CouchDB change-feed comparison progress separately for push and pull.
     - The `⏩↑` and `⏩↓` counts show entries compared in each direction; the upload and download totals remain separate.
     - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. See the [status display guide](docs/tips/status-display.md).

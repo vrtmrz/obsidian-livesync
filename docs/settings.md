@@ -202,6 +202,26 @@ Setting key: networkWarningStyle
 
 How to display network errors when the sync server is unreachable.
 
+#### Protect the workspace during a large catch-up (opt-in)
+
+Setting key: syncGuardEnabled
+
+When enabled on this device, the workspace temporarily blocks interaction after a large batch of incoming note changes is detected during CouchDB LiveSync startup or resume. Incoming changes continue to be received and applied while the workspace is protected. The overlay can be bypassed at any time, including when synchronisation fails or the remote is unavailable. The preference is device-local; it does not affect other synchronising devices.
+
+Both SyncGuard preferences are stored locally for this device, Vault, and [Database suffix](#database-suffix), separately from the main plug-in settings. They are not transferred through Setup URIs. Existing values saved by earlier test builds are migrated to device-local storage when the plug-in starts.
+
+After changing the Database suffix, restart Obsidian, then check both SyncGuard preferences before relying on the overlay. Until Obsidian restarts, the settings screen can still show the previous suffix's values.
+
+The threshold avoids interruption for ordinary small transfers. However, the number of changes cannot be known before they arrive: some notes may be updated before the guard activates. The guard is a user-interface aid, not an atomic Vault snapshot or a restriction on other plug-ins and external tools. It does not apply to other remote types or to ordinary live changes after the initial catch-up.
+
+**Continue without waiting** releases the workspace while synchronisation continues, so some notes may still be out of date. SyncGuard is primarily a start-up or resume safeguard; after a manual bypass, an internal reconnection does not necessarily show the overlay again. Check the synchronisation status when you need to know whether later changes have settled.
+
+#### Minimum received files to protect the workspace
+
+Setting key: syncGuardMinimumFiles
+
+The number of distinct incoming note Metadata documents required to activate the guard during a catch-up (default: 20). Chunk documents and repeated revisions of the same note do not increase the count. After activation, the guard remains until the network catch-up completes successfully and all observed local application work settles. If the catch-up fails, use **Continue without waiting** to work offline.
+
 ### 2. Logging
 
 #### Show only notifications
@@ -1171,6 +1191,8 @@ Do not use internal API
 
 Setting key: additionalSuffixOfDatabaseName
 LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.
+
+After changing this value, restart Obsidian and check the [SyncGuard preferences](#protect-the-workspace-during-a-large-catch-up-opt-in) for the selected suffix.
 
 #### The Hash algorithm for chunk IDs (compatibility)
 

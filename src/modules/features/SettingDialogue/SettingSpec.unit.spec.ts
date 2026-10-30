@@ -142,6 +142,8 @@ describe("General setting specifications", () => {
             "showOnlyIconsOnEditor",
             "showStatusOnStatusbar",
             "hideFileWarningNotice",
+            "syncGuardEnabled",
+            "syncGuardMinimumFiles",
             "networkWarningStyle",
             "lessInformationInLog",
             "showVerboseLog",
