@@ -58,6 +58,7 @@ const testSteps: Step[] = [
     { name: "startup scan", args: ["run", "test:e2e:obsidian:startup-scan"] },
     { name: "provisioned Setup URI workflow", args: ["run", "test:e2e:obsidian:setup-uri-workflow"] },
     { name: "two-vault synchronisation", args: ["run", "test:e2e:obsidian:two-vault-sync"] },
+    { name: "SyncGuard catch-up protection", args: ["run", "test:e2e:obsidian:sync-guard"] },
     { name: "hidden file selectors", args: ["run", "test:e2e:obsidian:hidden-file-selectors"] },
     { name: "hidden file snippet synchronisation", args: ["run", "test:e2e:obsidian:hidden-file-snippet-sync"] },
     { name: "Customisation Sync", args: ["run", "test:e2e:obsidian:customisation-sync"] },
