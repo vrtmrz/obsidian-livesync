@@ -55,7 +55,6 @@ import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_b
 import { cancelTask, EVEN, isCustomisationSyncMetadata, isPluginMetadata, scheduleTask } from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
@@ -74,6 +73,7 @@ import { createModificationHandler } from "octagonal-wheels/modification";
 import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import { PendingConfigSaves } from "./PendingConfigSaves";
+import { ConfigScanQueue } from "./ConfigScanQueue";
 
 const d = "\u200b";
 const d2 = "\n";
@@ -394,13 +394,6 @@ export type PluginDataEx = {
 };
 
 export class ConfigSync extends LiveSyncCommands {
-    constructor(core: LiveSyncCore) {
-        super(core);
-        pluginScanningCount.onChanged((e) => {
-            const total = e.value;
-            pluginIsEnumerating.set(total != 0);
-        });
-    }
     get configDir() {
         return this.core.services.API.getSystemConfigDir();
     }
@@ -423,6 +416,7 @@ export class ConfigSync extends LiveSyncCommands {
 
     pluginList: IPluginDataExDisplay[] = [];
     private pluginListGeneration = 0;
+    private unloaded = false;
     showPluginSyncModal() {
         if (!this.isThisModuleEnabled()) {
             return;
@@ -441,11 +435,18 @@ export class ConfigSync extends LiveSyncCommands {
             this.pluginDialog = undefined;
         }
     }
-    onunload() {
+    onunload(): Promise<void> {
+        this.unloaded = true;
+        this.resetPluginList();
+        const stopped = this.pluginScanProcessor.stop();
+        pluginScanningCount.value = 0;
+        pluginIsEnumerating.set(false);
+        cancelTask("updatePluginListV2");
         cancelTask(UPDATED_CONFIGURATION_NOTICE_KEY);
         this.hidePluginSyncModal();
         this.periodicPluginSweepProcessor?.disable();
         this.services.context.notices.hide(UPDATED_CONFIGURATION_NOTICE_KEY);
+        return stopped;
     }
     addRibbonIcon = this.services.API.addRibbonIcon.bind(this.services.API);
     onload() {
@@ -542,11 +543,21 @@ export class ConfigSync extends LiveSyncCommands {
         q?.toggleClass("sls-hidden", !this.isThisModuleEnabled());
         return Promise.resolve(true);
     }
-    async reloadPluginList(showMessage: boolean) {
+    private isCurrentPluginList(generation: number): boolean {
+        return !this.unloaded && generation === this.pluginListGeneration && this.isThisModuleEnabled();
+    }
+
+    private resetPluginList(): void {
         this.pluginListGeneration++;
+        this.pluginScanProcessor.clearPending();
         this.pluginList = [];
         this.loadedManifest_mTime.clear();
         pluginList.set(this.pluginList);
+    }
+
+    async reloadPluginList(showMessage: boolean) {
+        if (this.unloaded) return;
+        this.resetPluginList();
         await this.updatePluginList(showMessage);
     }
     async loadPluginData(path: FilePathWithPrefix): Promise<PluginDataExDisplay | false> {
@@ -581,43 +592,37 @@ export class ConfigSync extends LiveSyncCommands {
         return false;
     }
 
-    pluginScanProcessor = new QueueProcessor(
-        async (v: AnyEntry[]) => {
-            const plugin = v[0];
-            if (this.useV2) {
-                await this.migrateV1ToV2(false, plugin);
-                return [];
-            }
-            const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
-            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
+    pluginScanProcessor = new ConfigScanQueue<{ entry: AnyEntry; generation: number }>({
+        process: async ({ entry: plugin, generation }) => {
+            if (!this.isCurrentPluginList(generation)) return;
             try {
+                if (this.useV2) {
+                    // Once started, migration owns its writes through completion.
+                    await this.migrateV1ToV2(false, plugin);
+                    return;
+                }
+                const path = plugin.path || this.getPath(plugin);
+                const oldEntry = this.pluginList.find((entry) => entry.documentPath == path);
+                if (oldEntry && oldEntry.mtime == plugin.mtime) return;
                 const pluginData = await this.loadPluginData(path);
+                if (!this.isCurrentPluginList(generation)) return;
                 if (pluginData) {
-                    let newList = [...this.pluginList];
-                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
+                    const newList = this.pluginList.filter((entry) => entry.documentPath != pluginData.documentPath);
                     newList.push(pluginData);
                     this.pluginList = newList;
                     pluginList.set(newList);
                 }
-                // Failed to load
-                return [];
             } catch (ex) {
-                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+                this._log(`Something happened at enumerating customization :${plugin.path}`, LOG_LEVEL_NOTICE);
                 this._log(ex, LOG_LEVEL_VERBOSE);
             }
-            return [];
         },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 100,
-            yieldThreshold: 10,
-            maintainDelay: false,
-            totalRemainingReactiveSource: pluginScanningCount,
-        }
-    ).startPipeline();
+        onProgress: (remaining) => {
+            if (this.unloaded) return;
+            pluginScanningCount.value = remaining;
+            pluginIsEnumerating.set(remaining !== 0);
+        },
+    });
 
     filenameToUnifiedKey(path: string, termOverRide?: string) {
         const term = termOverRide || this.services.setting.getDeviceAndVaultName();
@@ -740,7 +745,7 @@ export class ConfigSync extends LiveSyncCommands {
 
     async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
         const generation = this.pluginListGeneration;
-        const isCurrent = () => generation === this.pluginListGeneration && this.isThisModuleEnabled();
+        const isCurrent = () => this.isCurrentPluginList(generation);
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
@@ -855,11 +860,9 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
+        if (this.unloaded) return;
         if (!this.isThisModuleEnabled()) {
-            this.pluginListGeneration++;
-            this.pluginScanProcessor.clearQueue();
-            this.pluginList = [];
-            pluginList.set(this.pluginList);
+            this.resetPluginList();
             return;
         }
         const generation = this.pluginListGeneration;
@@ -875,7 +878,7 @@ export class ConfigSync extends LiveSyncCommands {
                   })
                 : this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
             for await (const v of plugins) {
-                if (generation !== this.pluginListGeneration || !this.isThisModuleEnabled()) return;
+                if (!this.isCurrentPluginList(generation)) return;
                 if (v.deleted || v._deleted) continue;
                 if (v.path.indexOf("%") !== -1) {
                     fireAndForget(() => this.updatePluginListV2(showMessage, v.path));
@@ -884,7 +887,7 @@ export class ConfigSync extends LiveSyncCommands {
 
                 const path = v.path || this.getPath(v);
                 if (updatedDocumentPath && updatedDocumentPath != path) continue;
-                this.pluginScanProcessor.enqueue(v);
+                this.pluginScanProcessor.enqueue({ entry: v, generation });
             }
         } finally {
             pluginIsEnumerating.set(false);
@@ -1206,6 +1209,7 @@ export class ConfigSync extends LiveSyncCommands {
         return true;
     }
     _everyRealizeSettingSyncMode(): Promise<boolean> {
+        if (!this.isThisModuleEnabled()) this.resetPluginList();
         // applySettings calls onResuming after this handler when synchronisation is active.
         // That handler scans and restarts the sweep; doing so here would scan twice.
         this.periodicPluginSweepProcessor?.disable();
@@ -1742,6 +1746,7 @@ export class ConfigSync extends LiveSyncCommands {
             this.core.settings.usePluginSync = false;
             this.core.settings.autoSweepPlugins = false;
         }
+        this.resetPluginList();
         return Promise.resolve(true);
     }
 

@@ -308,7 +308,7 @@ export class LiveSyncBaseCore<
 }
 
 export interface IMinimumLiveSyncCommands {
-    onunload(): void;
+    onunload(): void | Promise<void>;
     onload(): void | Promise<void>;
     constructor: { name: string };
 }

@@ -14,6 +14,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixes
 
+- Reloading the Customisation Sync catalogue no longer allows an earlier legacy-format scan to put outdated items back into the list.
+    - Reloading or disabling Customisation Sync discards unstarted scans and ignores stale read results. Migrations to per-file storage which have already started are allowed to finish.
+
 - Buttons in confirmation and setup dialogues now align with the content above them. Confirmation dialogue buttons also have space for keyboard focus outlines.
 
 - Mobile confirmation dialogues now retain Obsidian's standard content spacing. Text and password prompts stay above the software keyboard.
