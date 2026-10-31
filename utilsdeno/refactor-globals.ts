@@ -67,8 +67,7 @@ for (const sourceFile of project.getSourceFiles()) {
     if (
         posixFilePath.endsWith(".spec.ts") ||
         posixFilePath.endsWith(".test.ts") ||
-        posixFilePath.includes("/_test/") ||
-        posixFilePath.includes("/testdeno/")
+        posixFilePath.includes("/_test/")
     ) {
         continue;
     }

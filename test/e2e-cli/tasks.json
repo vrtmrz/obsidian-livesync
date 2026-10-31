@@ -1,0 +1,198 @@
+{
+  "test:helpers": {
+    "test": [
+      "helpers/process.test.ts"
+    ]
+  },
+  "test": {
+    "tasks": [
+      "test:ci"
+    ]
+  },
+  "test:ci": {
+    "script": "run-ci-suite.ts"
+  },
+  "test:p2p:compose": {
+    "script": "run-compose-p2p.ts"
+  },
+  "test:local": {
+    "tasks": [
+      "test:setup-put-cat",
+      "test:mirror",
+      "test:daemon"
+    ]
+  },
+  "test:daemon": {
+    "test": [
+      "test-daemon.ts"
+    ]
+  },
+  "test:daemon-startup": {
+    "test": [
+      "test-daemon-startup.ts"
+    ]
+  },
+  "test:decoupled-vault": {
+    "test": [
+      "test-decoupled-vault.ts"
+    ]
+  },
+  "test:remote-commands": {
+    "test": [
+      "test-remote-commands.ts"
+    ]
+  },
+  "test:settings-writeback": {
+    "test": [
+      "test-settings-writeback.ts"
+    ]
+  },
+  "test:remote-administration-exit-codes": {
+    "test": [
+      "test-remote-administration-exit-codes.ts"
+    ]
+  },
+  "test:push-pull": {
+    "test": [
+      "test-push-pull.ts"
+    ]
+  },
+  "test:setup-put-cat": {
+    "test": [
+      "test-setup-put-cat.ts"
+    ]
+  },
+  "test:mirror": {
+    "test": [
+      "test-mirror.ts"
+    ]
+  },
+  "test:sync-two-local": {
+    "test": [
+      "test-sync-two-local-databases.ts"
+    ]
+  },
+  "test:sync-locked-remote": {
+    "test": [
+      "test-sync-locked-remote.ts"
+    ]
+  },
+  "test:p2p-host": {
+    "test": [
+      "test-p2p-host.ts"
+    ]
+  },
+  "test:p2p-peers": {
+    "test": [
+      "test-p2p-peers-local-relay.ts"
+    ]
+  },
+  "test:p2p-sync": {
+    "test": [
+      "test-p2p-sync.ts"
+    ]
+  },
+  "test:p2p-automatic-host": {
+    "test": [
+      "test-p2p-automatic-host.ts"
+    ]
+  },
+  "test:p2p-replacement": {
+    "test": [
+      "test-p2p-replicator-replacement.ts"
+    ]
+  },
+  "test:p2p-relay-disconnect": {
+    "test": [
+      "test-p2p-relay-disconnect.ts"
+    ]
+  },
+  "test:p2p:ci": {
+    "test": [
+      "test-p2p-sync.ts",
+      "test-p2p-automatic-host.ts",
+      "test-p2p-replicator-replacement.ts",
+      "test-p2p-relay-disconnect.ts"
+    ]
+  },
+  "test:p2p-three-nodes": {
+    "test": [
+      "test-p2p-three-nodes-conflict.ts"
+    ]
+  },
+  "test:p2p-upload-download": {
+    "test": [
+      "test-p2p-upload-download-repro.ts"
+    ]
+  },
+  "test:benchmark-contract": {
+    "test": [
+      "test-benchmark-contract.ts"
+    ]
+  },
+  "bench:p2p": {
+    "script": "bench-p2p.ts"
+  },
+  "bench:couchdb": {
+    "script": "bench-couchdb.ts"
+  },
+  "bench:compression": {
+    "script": "bench-compression.ts"
+  },
+  "bench:cases": {
+    "script": "bench-network-cases.ts"
+  },
+  "bench:latency-sweep": {
+    "script": "bench-latency-sweep.ts"
+  },
+  "bench:p2p-split-node": {
+    "script": "bench-p2p-split-node.ts"
+  },
+  "bench:item1": {
+    "command": "bash",
+    "args": [
+      "./bench-run-item1.sh"
+    ]
+  },
+  "bench:item1:full": {
+    "command": "bash",
+    "args": [
+      "-lc",
+      "BENCH_MD_FILE_COUNT=1500 BENCH_MD_MIN_SIZE_BYTES=1024 BENCH_MD_MAX_SIZE_BYTES=20480 BENCH_BIN_FILE_COUNT=500 BENCH_BIN_SIZE_BYTES=102400 BENCH_COUCHDB_RTT_MS=50 bash ./bench-run-item1.sh"
+    ]
+  },
+  "test:e2e-couchdb": {
+    "test": [
+      "test-e2e-two-vaults-couchdb.ts"
+    ]
+  },
+  "test:e2e-matrix": {
+    "test": [
+      "test-e2e-two-vaults-matrix.ts"
+    ]
+  },
+  "test:e2e-matrix:couchdb-enc0": {
+    "test": [
+      "test-e2e-two-vaults-matrix.ts"
+    ],
+    "filter": "e2e matrix: COUCHDB-enc0"
+  },
+  "test:e2e-matrix:couchdb-enc1": {
+    "test": [
+      "test-e2e-two-vaults-matrix.ts"
+    ],
+    "filter": "e2e matrix: COUCHDB-enc1"
+  },
+  "test:e2e-matrix:minio-enc0": {
+    "test": [
+      "test-e2e-two-vaults-matrix.ts"
+    ],
+    "filter": "e2e matrix: MINIO-enc0"
+  },
+  "test:e2e-matrix:minio-enc1": {
+    "test": [
+      "test-e2e-two-vaults-matrix.ts"
+    ],
+    "filter": "e2e matrix: MINIO-enc1"
+  }
+}

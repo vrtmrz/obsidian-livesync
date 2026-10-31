@@ -74,10 +74,10 @@ services:
       BENCH_COMMAND: ${BENCH_COMMAND:-cases}
       BENCH_CASES: ${BENCH_CASES:-couchdb-baseline,p2p-direct-local}
       BENCH_REPEAT_COUNT: ${BENCH_REPEAT_COUNT:-1}
-      BENCH_CASES_ROOT: /workspace/src/apps/cli/testdeno/bench-results
-      BENCH_COMPRESSION_RESULT_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_CASES_ROOT: /workspace/test/e2e-cli/bench-results
+      BENCH_COMPRESSION_RESULT_ROOT: /workspace/test/e2e-cli/bench-results
       BENCH_COMPRESSION_REPEAT_COUNT: ${BENCH_COMPRESSION_REPEAT_COUNT:-1}
-      BENCH_SWEEP_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_SWEEP_ROOT: /workspace/test/e2e-cli/bench-results
       BENCH_SWEEP_RTT_MS: ${BENCH_SWEEP_RTT_MS:-20,50,100,150,300}
       BENCH_SWEEP_INCLUDE_P2P: ${BENCH_SWEEP_INCLUDE_P2P:-true}
       BENCH_COUCHDB_MANAGED: "false"
@@ -110,7 +110,7 @@ services:
       TURN_SERVERS: ${TURN_SERVERS:-none}
       LIVESYNC_P2P_PEERS_RETRY: ${LIVESYNC_P2P_PEERS_RETRY:-1}
     volumes:
-      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+      - ./bench-results:/workspace/test/e2e-cli/bench-results
 
   couchdb-shim:
     build:
@@ -156,8 +156,8 @@ services:
       BENCH_COMMAND: ${BENCH_COMMAND:-cases}
       BENCH_CASES: ${BENCH_CASES:-couchdb-netem-home-wifi}
       BENCH_REPEAT_COUNT: ${BENCH_REPEAT_COUNT:-1}
-      BENCH_CASES_ROOT: /workspace/src/apps/cli/testdeno/bench-results
-      BENCH_SWEEP_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_CASES_ROOT: /workspace/test/e2e-cli/bench-results
+      BENCH_SWEEP_ROOT: /workspace/test/e2e-cli/bench-results
       BENCH_COUCHDB_MANAGED: "false"
       BENCH_COUCHDB_BACKEND_URI: http://couchdb-shim:5984
       BENCH_SHIM_COUCHDB_URI: http://couchdb-shim:5984
@@ -173,7 +173,7 @@ services:
       BENCH_SYNC_TIMEOUT: ${BENCH_SYNC_TIMEOUT:-300}
       BENCH_LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
     volumes:
-      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+      - ./bench-results:/workspace/test/e2e-cli/bench-results
 
   p2p-signalling-shim:
     build:
@@ -219,7 +219,7 @@ services:
       BENCH_COMMAND: ${BENCH_COMMAND:-cases}
       BENCH_CASES: ${BENCH_CASES:-p2p-signalling-netem-home-wifi}
       BENCH_REPEAT_COUNT: ${BENCH_REPEAT_COUNT:-1}
-      BENCH_CASES_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_CASES_ROOT: /workspace/test/e2e-cli/bench-results
       BENCH_SIGNAL_SHIM_RELAY: ws://p2p-signalling-shim:7777/
       BENCH_MD_FILE_COUNT: ${BENCH_MD_FILE_COUNT:-20}
       BENCH_MD_MIN_SIZE_BYTES: ${BENCH_MD_MIN_SIZE_BYTES:-512}
@@ -232,7 +232,7 @@ services:
       LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS: ${LIVESYNC_P2P_RELAY_READY_TIMEOUT_MS:-60000}
       BENCH_LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
     volumes:
-      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+      - ./bench-results:/workspace/test/e2e-cli/bench-results
 
   p2p-split-host:
     build:
@@ -250,7 +250,7 @@ services:
       BENCH_P2P_SPLIT_ROLE: host
       BENCH_SPLIT_RUN_ID: ${BENCH_SPLIT_RUN_ID:-bench-split-run}
       BENCH_SPLIT_WORK_ROOT: /p2p-work
-      BENCH_SPLIT_RESULT_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_SPLIT_RESULT_ROOT: /workspace/test/e2e-cli/bench-results
       BENCH_RELAY: ws://nostr-relay:7777/
       BENCH_APP_ID: ${BENCH_APP_ID:-self-hosted-livesync-cli-benchmark}
       BENCH_ROOM_ID: ${BENCH_ROOM_ID:-bench-split-room}
@@ -276,7 +276,7 @@ services:
       LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
     volumes:
       - p2p-split-work:/p2p-work
-      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+      - ./bench-results:/workspace/test/e2e-cli/bench-results
 
   p2p-split-client:
     build:
@@ -296,7 +296,7 @@ services:
       BENCH_P2P_SPLIT_ROLE: client
       BENCH_SPLIT_RUN_ID: ${BENCH_SPLIT_RUN_ID:-bench-split-run}
       BENCH_SPLIT_WORK_ROOT: /p2p-work
-      BENCH_SPLIT_RESULT_ROOT: /workspace/src/apps/cli/testdeno/bench-results
+      BENCH_SPLIT_RESULT_ROOT: /workspace/test/e2e-cli/bench-results
       BENCH_RELAY: ws://nostr-relay:7777/
       BENCH_APP_ID: ${BENCH_APP_ID:-self-hosted-livesync-cli-benchmark}
       BENCH_ROOM_ID: ${BENCH_ROOM_ID:-bench-split-room}
@@ -317,7 +317,7 @@ services:
       LIVESYNC_TEST_TEE: ${BENCH_LIVESYNC_TEST_TEE:-0}
     volumes:
       - p2p-split-work:/p2p-work
-      - ./bench-results:/workspace/src/apps/cli/testdeno/bench-results
+      - ./bench-results:/workspace/test/e2e-cli/bench-results
 
   netem-smoke:
     build:

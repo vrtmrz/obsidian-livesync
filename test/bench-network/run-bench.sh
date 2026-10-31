@@ -3,16 +3,16 @@ set -eu
 
 case "${BENCH_COMMAND:-cases}" in
   cases)
-    exec deno task bench:cases
+    exec node run-task.ts bench:cases
     ;;
   latency-sweep)
-    exec deno task bench:latency-sweep
+    exec node run-task.ts bench:latency-sweep
     ;;
   compression)
-    exec deno task bench:compression
+    exec node run-task.ts bench:compression
     ;;
   p2p-split-node)
-    exec deno task bench:p2p-split-node
+    exec node run-task.ts bench:p2p-split-node
     ;;
   *)
     echo "Unknown BENCH_COMMAND: ${BENCH_COMMAND}" >&2

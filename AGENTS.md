@@ -63,7 +63,7 @@ Always adhere to the following stylistic and spelling rules:
    - Treat `@vrtmrz/livesync-commonlib` as an external, authoritative package. Make Commonlib changes in its repository, validate the packed artefact and downstream LiveSync consumer, and update the exact dependency here. Do not recreate a `src/lib` source mirror or generated `_types` fallback.
 4. **Application Directories**:
    - The directory [src/apps](src/apps) contains independent application modules:
-     - `cli`: A Command Line Interface application. Tests specifically for the CLI (both unit and End-to-End tests) are located and executed within [src/apps/cli](src/apps/cli) using its local `package.json` scripts.
+     - `cli`: A Command Line Interface application. CLI unit tests are next to their source under [src/apps/cli](src/apps/cli), while CLI End-to-End tests are in [test/e2e-cli](test/e2e-cli) and run through the local [CLI package scripts](src/apps/cli/package.json).
      - `webapp`: A Web-based application.
      - `webpeer`: A Web-based peer utility.
 

@@ -12,6 +12,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
+
 ## 1.0.43
 
 30th October, 2026

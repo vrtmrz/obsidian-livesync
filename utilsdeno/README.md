@@ -95,6 +95,6 @@ Ensures that internal plug-in import statements are standardised to the `@/` ali
 
 ## Safety and Exclusions
 
-*   **Tests Excluded**: All scripts automatically skip files located in `_test/` or `testdeno/` folders, as well as files ending with `.spec.ts` or `.test.ts`.
+*   **Source Scope and Tests**: `refactor-styles.ts` and `refactor-globals.ts` process files only inside the project `src/` directory. They skip files in `_test/` folders and files ending with `.spec.ts` or `.test.ts`. The CLI E2E suite is under `test/e2e-cli/`, outside that source scope.
 *   **Package Boundary**: These tools operate on this repository only. Changes to Commonlib belong in its own repository and must be validated with its package checks.
 *   **Verification**: Always run `npm run check` and `npm run test:unit` after performing refactoring tasks to verify that type safety and tests remain intact.

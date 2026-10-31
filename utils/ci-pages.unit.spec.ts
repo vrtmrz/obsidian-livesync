@@ -57,7 +57,7 @@ describe("CI workflow path filters", () => {
             "utils/ci-pages.unit.spec.ts",
             "utils/cli-ci.unit.spec.ts",
             ".github/workflows/cli-docker.yml",
-            ".github/workflows/cli-deno-tests.yml",
+            ".github/workflows/cli-node-tests.yml",
             ".github/workflows/cli-p2p-tests.yml",
             ".github/workflows/cli-docker-validation.yml",
         ];

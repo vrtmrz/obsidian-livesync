@@ -19,7 +19,7 @@ production/
 coverage/
 _testdata/
 test/bench-network/bench-results/
-src/apps/cli/testdeno/bench-results/
+test/e2e-cli/bench-results/
 
 # Local environment / secrets
 .env

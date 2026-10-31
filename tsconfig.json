@@ -30,6 +30,7 @@
         "src/**/*.test.ts",
         "**/_test/**",
         "test/browser-apps",
+        "test/e2e-cli",
         "test/styles/*.deno.ts",
         "utilsdeno"
     ]
