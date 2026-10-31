@@ -619,40 +619,6 @@ export class ConfigSync extends LiveSyncCommands {
         }
     ).startPipeline();
 
-    pluginScanProcessorV2 = new QueueProcessor(
-        async (v: AnyEntry[]) => {
-            const plugin = v[0];
-            const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
-            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
-            try {
-                const pluginData = await this.loadPluginData(path);
-                if (pluginData) {
-                    let newList = [...this.pluginList];
-                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
-                    newList.push(pluginData);
-                    this.pluginList = newList;
-                    pluginList.set(newList);
-                }
-                // Failed to load
-                return [];
-            } catch (ex) {
-                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-            }
-            return [];
-        },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 100,
-            yieldThreshold: 10,
-            maintainDelay: false,
-            totalRemainingReactiveSource: pluginScanningCount,
-        }
-    ).startPipeline();
-
     filenameToUnifiedKey(path: string, termOverRide?: string) {
         const term = termOverRide || this.services.setting.getDeviceAndVaultName();
         const category = this.getFileCategory(path);

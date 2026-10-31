@@ -54,7 +54,6 @@ async function waitForCondition(predicate: () => boolean, message: string) {
 afterEach(() => {
     for (const configSync of queueOwners.splice(0)) {
         configSync.pluginScanProcessor.terminateAll();
-        configSync.pluginScanProcessorV2.terminateAll();
     }
     vi.restoreAllMocks();
     pluginList.set([]);
@@ -102,7 +101,6 @@ describe("ConfigSync legacy catalogue queue", () => {
             expect(configSync.pluginScanProcessor.remaining).toBe(0);
         } finally {
             configSync?.pluginScanProcessor.terminateAll();
-            configSync?.pluginScanProcessorV2.terminateAll();
             await fixture.dispose();
         }
     });
