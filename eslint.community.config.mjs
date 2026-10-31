@@ -20,7 +20,7 @@ export default defineConfig(
         "**/*.unit.spec.ts",
         "**/test/**",
         "src/apps/_test/**",
-        "src/apps/cli/testdeno/**",
+        "test/e2e-cli/**",
     ]),
     {
         languageOptions: {

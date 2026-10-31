@@ -1,0 +1,228 @@
+name: cli-node-tests
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+    paths:
+      - '.github/workflows/cli-node-tests.yml'
+      - 'src/apps/cli/**'
+      - '!src/apps/cli/**/*.md'
+      - 'test/e2e-cli/**'
+      - '!test/e2e-cli/**/*.md'
+      - 'src/LiveSyncBaseCore.ts'
+      - 'src/common/**'
+      - 'src/serviceFeatures/**'
+      - 'src/serviceModules/**'
+      - 'src/integrations/**'
+      - 'src/modules/AbstractModule.ts'
+      - 'src/modules/main/**'
+      - 'src/modules/coreFeatures/**'
+      - 'manifest.json'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/cli-node-tests.yml'
+      - 'src/apps/cli/**'
+      - '!src/apps/cli/**/*.md'
+      - 'test/e2e-cli/**'
+      - '!test/e2e-cli/**/*.md'
+      - 'src/LiveSyncBaseCore.ts'
+      - 'src/common/**'
+      - 'src/serviceFeatures/**'
+      - 'src/serviceModules/**'
+      - 'src/integrations/**'
+      - 'src/modules/AbstractModule.ts'
+      - 'src/modules/main/**'
+      - 'src/modules/coreFeatures/**'
+      - 'manifest.json'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+    inputs:
+      test_task:
+        description: 'Node.js test task to run'
+        type: choice
+        options:
+          - test:ci
+          - test:local
+          - test:e2e-matrix
+        default: test:ci
+      enable_debug:
+        description: 'Enable verbose and debug logging'
+        type: boolean
+        default: false
+      use_coturn:
+        description: 'Enable local coturn container for P2P tests'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'workflow_dispatch' || inputs.test_task != 'test:local') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --max-old-space-size=3072
+    outputs:
+      task_matrix: ${{ steps.select.outputs.task_matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Select task matrix
+        id: select
+        shell: bash
+        env:
+          SELECTED_TASK: ${{ github.event_name == 'workflow_dispatch' && inputs.test_task || 'test:ci' }}
+        run: |
+          set -euo pipefail
+          echo "[INFO] Selected task set: $SELECTED_TASK"
+
+          case "$SELECTED_TASK" in
+            test:ci)
+              TASK_MATRIX=$(jq -c . test/e2e-cli/ci-tasks.json)
+              ;;
+            test:local)
+              TASK_MATRIX='["test:local"]'
+              ;;
+            test:e2e-matrix)
+              TASK_MATRIX='["test:e2e-matrix:couchdb-enc0","test:e2e-matrix:couchdb-enc1","test:e2e-matrix:minio-enc0","test:e2e-matrix:minio-enc1"]'
+              ;;
+            *)
+              echo "[ERROR] Unknown task set: $SELECTED_TASK" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "task_matrix=$TASK_MATRIX" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '26.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        working-directory: src/apps/cli
+        run: npm run build
+
+      - name: Upload CLI bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: cli-bundle
+          path: src/apps/cli/dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  test:
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'workflow_dispatch' || inputs.test_task != 'test:local') }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --max-old-space-size=3072
+    strategy:
+      fail-fast: false
+      matrix:
+        task: ${{ fromJson(needs.prepare.outputs.task_matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '26.x'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download CLI bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-bundle
+          path: src/apps/cli/dist/
+
+      - name: Create .test.env
+        working-directory: src/apps/cli
+        run: |
+          cat <<EOF > .test.env
+          hostname=http://127.0.0.1:5989/
+          dbname=livesync-test-db-ci
+          username=admin
+          password=testpassword
+          minioEndpoint=http://127.0.0.1:9000
+          accessKey=minioadmin
+          secretKey=minioadmin
+          bucketName=livesync-test-bucket-ci
+          EOF
+
+      - name: Run Node.js tests
+        working-directory: test/e2e-cli
+        env:
+          LIVESYNC_DOCKER_MODE: native
+          LIVESYNC_CLI_RETRY: 3
+          LIVESYNC_CLI_DEBUG: ${{ inputs.enable_debug == true && '1' || '0' }}
+          LIVESYNC_CLI_VERBOSE: ${{ inputs.enable_debug == true && '1' || '0' }}
+          LIVESYNC_USE_COTURN: ${{ inputs.use_coturn == true && '1' || '0' }}
+        run: |
+          TASK="${{ matrix.task }}"
+          echo "[INFO] Running Node.js task: $TASK"
+          node run-task.ts "$TASK"
+
+      - name: Stop leftover containers
+        if: always()
+        run: |
+          docker stop couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
+          docker rm couchdb-test minio-test relay-test coturn-test >/dev/null 2>&1 || true
+
+  local-smoke:
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'workflow_dispatch' || inputs.test_task == 'test:local') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      NODE_OPTIONS: --max-old-space-size=3072
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '26.x'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build CLI
+        env:
+          LIVESYNC_CLI_TEST_SUPPORT: '1'
+        run: npm run build --workspace self-hosted-livesync-cli
+
+      - name: Run local smoke tests
+        working-directory: src/apps/cli
+        run: node ../../../test/e2e-cli/run-task.ts test:local

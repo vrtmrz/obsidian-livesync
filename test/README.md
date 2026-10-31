@@ -32,7 +32,7 @@ NODE_OPTIONS=--max-old-space-size=3072 npm run test:unit -- --maxWorkers=1
 | --- | --- |
 | Multiple-device file conflicts and stale-file protection | [CouchDB procedure below](#multiple-device-conflict-regression-tests) |
 | Obsidian startup, file watching, persistence, and UI | [Real Obsidian E2E](e2e-obsidian/README.md) |
-| CLI subprocesses, filesystem workflows, and P2P | [CLI Deno tests](../src/apps/cli/testdeno/test_dev_deno.md) and [test authoring](../src/apps/cli/testdeno/CONTRIBUTING_TESTS.md) |
+| CLI subprocesses, filesystem workflows, and P2P | [CLI Node.js tests](../test/e2e-cli/test_dev_node.md) and [test authoring](../test/e2e-cli/CONTRIBUTING_TESTS.md) |
 | WebApp, WebPeer, and browser interoperability | [Browser application tests](browser-apps/README.md) |
 
 ## Community Review checks and CI confirmation
@@ -58,8 +58,8 @@ Run the native CLI subprocess suite after building the CLI:
 
 ```bash
 NODE_OPTIONS=--max-old-space-size=3072 npm run build --workspace self-hosted-livesync-cli
-cd src/apps/cli/testdeno
-deno test -A --no-check test-mirror.ts
+cd test/e2e-cli
+node --test --test-concurrency=1 test-mirror.ts
 ```
 
 The expected result is seven passing steps. These cover storage-only and database-only files, database deletion, an ordinary local edit, incoming database content, an omitted Vault path, and local content with unknown provenance.
@@ -75,7 +75,7 @@ NODE_OPTIONS=--max-old-space-size=3072 npm run build:docker --workspace self-hos
 npm run test:e2e:docker:mirror --workspace self-hosted-livesync-cli
 ```
 
-The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Deno and Bash suites.
+The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Node.js and Bash suites.
 
 ## Multiple-device conflict regression tests
 

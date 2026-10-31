@@ -48,7 +48,7 @@ export default defineConfig([
         "test/**",
         "**/test/**",
         "src/apps/_test/**",
-        "src/apps/cli/testdeno/**",
+        "test/e2e-cli/**",
         "**/*.test.ts",
         "**/*.unit.spec.ts",
         "**/test.ts",

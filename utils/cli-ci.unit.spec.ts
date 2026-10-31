@@ -19,7 +19,8 @@ type Workflow = {
             if?: string;
             permissions?: Record<string, string>;
             "runs-on"?: string;
-            strategy?: { matrix?: { include?: Array<{ arch: string; runner: string }> } };
+            strategy?: { matrix?: { include?: Array<{ arch: string; runner: string }>; os?: string[] } };
+            services?: Record<string, unknown>;
         }
     >;
 };
@@ -35,12 +36,12 @@ function matches(paths: string[], file: string): boolean {
     return included;
 }
 function localTasks(): string[] {
-    const runner = readFileSync(new URL("src/apps/cli/testdeno/run-ci-suite.ts", root), "utf8");
+    const runner = readFileSync(new URL("test/e2e-cli/run-ci-suite.ts", root), "utf8");
     expect(runner).toContain('import TASKS from "./ci-tasks.json" with { type: "json" }');
-    return JSON.parse(readFileSync(new URL("src/apps/cli/testdeno/ci-tasks.json", root), "utf8")) as string[];
+    return JSON.parse(readFileSync(new URL("test/e2e-cli/ci-tasks.json", root), "utf8")) as string[];
 }
 function selectedTasks(task: string): string[] {
-    const select = workflow("cli-deno-tests.yml").jobs.prepare.steps?.find((step) => step.id === "select");
+    const select = workflow("cli-node-tests.yml").jobs.prepare.steps?.find((step) => step.id === "select");
     expect(select?.run).toBeDefined();
     const directory = mkdtempSync(join(tmpdir(), "livesync-ci-matrix-"));
     const output = join(directory, "output");
@@ -67,19 +68,20 @@ describe("CLI CI selection", () => {
         expect(selectedTasks("test:ci")).toEqual(
             expect.arrayContaining(["test:settings-writeback", "test:remote-administration-exit-codes"])
         );
-        const tasks = JSON.parse(readFileSync(new URL("src/apps/cli/testdeno/deno.json", root), "utf8")).tasks;
-        expect(localTasks().filter((task) => !(task in tasks))).toEqual([]);
+        const tasks = JSON.parse(readFileSync(new URL("test/e2e-cli/tasks.json", root), "utf8"));
+        expect(localTasks().filter((task) => !Object.hasOwn(tasks, task))).toEqual([]);
+        expect(tasks["test:local"]).toEqual({ tasks: ["test:setup-put-cat", "test:mirror", "test:daemon"] });
         expect(new Set(localTasks()).size).toBe(localTasks().length);
     });
     it("keeps the selected manual subsets", () => {
-        expect(selectedTasks("test:local")).toEqual(["test:setup-put-cat", "test:mirror", "test:daemon"]);
+        expect(selectedTasks("test:local")).toEqual(["test:local"]);
         expect(selectedTasks("test:e2e-matrix")).toEqual(
             localTasks().filter((task) => task.startsWith("test:e2e-matrix:"))
         );
     });
     it.each([
-        ["cli-deno-tests.yml", "push"],
-        ["cli-deno-tests.yml", "pull_request"],
+        ["cli-node-tests.yml", "push"],
+        ["cli-node-tests.yml", "pull_request"],
         ["cli-p2p-tests.yml", "push"],
         ["cli-p2p-tests.yml", "pull_request"],
         ["cli-docker.yml", "push"],
@@ -105,16 +107,45 @@ describe("CLI CI selection", () => {
         expect(inputs.filter((file) => !matches(paths, file))).toEqual([]);
         expect(matches(paths, "src/modules/features/ModuleObsidianSettingTab.ts")).toBe(false);
         expect(matches(paths, "docs/settings.md")).toBe(false);
-        expect(matches(paths, "src/apps/cli/testdeno/CONTRIBUTING_TESTS.md")).toBe(false);
     });
+    it.each([
+        ["cli-node-tests.yml", "push"],
+        ["cli-node-tests.yml", "pull_request"],
+        ["cli-p2p-tests.yml", "push"],
+        ["cli-p2p-tests.yml", "pull_request"],
+    ])("runs CLI E2E workflows for suite changes and skips suite documentation in %s on %s", (name, event) => {
+        const paths = workflow(name).on[event].paths ?? [];
+        expect(matches(paths, "test/e2e-cli/test-setup-put-cat.ts")).toBe(true);
+        expect(matches(paths, "test/e2e-cli/CONTRIBUTING_TESTS.md")).toBe(false);
+    });
+
     it("runs Compose alone for a change to its fixture", () => {
         const file = "test/bench-network/compose.yml";
         expect(matches(workflow("cli-p2p-tests.yml").on.pull_request.paths ?? [], file)).toBe(true);
-        expect(matches(workflow("cli-deno-tests.yml").on.pull_request.paths ?? [], file)).toBe(false);
+        expect(matches(workflow("cli-node-tests.yml").on.pull_request.paths ?? [], file)).toBe(false);
         expect(matches(workflow("cli-docker-validation.yml").on.pull_request.paths ?? [], file)).toBe(false);
     });
+    it("uses Node 26 for CLI tests and runs local smoke tests on three platforms without Docker", () => {
+        const { prepare, test, "local-smoke": localSmoke } = workflow("cli-node-tests.yml").jobs;
+        for (const job of [prepare, test, localSmoke]) {
+            const setupNode = job.steps?.find((step) => step.uses?.startsWith("actions/setup-node@"));
+            expect(setupNode?.with?.["node-version"]).toBe("26.x");
+            expect(job.steps?.some((step) => step.uses?.startsWith("denoland/setup-deno@"))).toBe(false);
+        }
+        expect(localSmoke.if).toBe(
+            "${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'workflow_dispatch' || inputs.test_task == 'test:local') }}"
+        );
+        expect(localSmoke.strategy?.matrix?.os).toEqual(["ubuntu-latest", "macos-latest", "windows-latest"]);
+        expect(localSmoke["runs-on"]).toBe("${{ matrix.os }}");
+        expect(localSmoke.services).toBeUndefined();
+        expect(localSmoke.steps?.some((step) => step.run?.includes("docker"))).toBe(false);
+        expect(localSmoke.steps?.filter((step) => step.run?.includes("npm run build --workspace self-hosted-livesync-cli"))).toHaveLength(1);
+        expect(localSmoke.steps?.find((step) => step.run?.includes("test:local"))?.run).toContain("node ../../../test/e2e-cli/run-task.ts test:local");
+        expect(test.steps?.find((step) => step.run?.includes("node run-task.ts"))?.run).toContain('node run-task.ts "$TASK"');
+    });
+
     it("passes a single CLI build to every standard test job", () => {
-        const { prepare, test } = workflow("cli-deno-tests.yml").jobs;
+        const { prepare, test } = workflow("cli-node-tests.yml").jobs;
         expect(test.needs).toBe("prepare");
         expect(prepare.steps?.filter((step) => step.run === "npm run build")).toHaveLength(1);
         expect(test.steps?.some((step) => step.run?.includes("npm run build"))).toBe(false);
