@@ -14,6 +14,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixes
 
+- Hidden File Sync now stores newer local files during `Merge` initialisation by comparing local and database modification times in the correct direction.
+
 - Reloading the Customisation Sync catalogue no longer allows an earlier legacy-format scan to put outdated items back into the list.
     - Reloading or disabling Customisation Sync discards unstarted scans and ignores stale read results. Migrations to per-file storage which have already started are allowed to finish.
 

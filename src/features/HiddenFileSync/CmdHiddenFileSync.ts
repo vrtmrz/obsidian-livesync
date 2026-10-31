@@ -688,7 +688,7 @@ Offline Changed files: ${processFiles.length}`;
                     const dbMTime = getComparingMTime(filesOnDB, includeDeleted);
                     const diff = compareMTime(storageMTime, dbMTime);
 
-                    if (diff != TARGET_IS_NEW) {
+                    if (diff != BASE_IS_NEW) {
                         this._log(`Hidden file:${path} is not new.`, LOG_LEVEL_VERBOSE);
                         if (filesOnDB && stat) {
                             // OnlyNew not handles the deletion.
