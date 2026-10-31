@@ -25,7 +25,7 @@ import {
 } from "./settingConstants.ts";
 import { $msg } from "@/common/translation";
 import type { AutoWireOption, OnUpdateResult } from "./SettingPane.ts";
-import { wrapMemo } from "octagonal-wheels/function";
+import { onlyWhenChanged } from "octagonal-wheels/function";
 import { setButtonDestructiveState } from "./settingComponentStyles.ts";
 
 export class LiveSyncSetting extends Setting {
@@ -118,7 +118,7 @@ export class LiveSyncSetting extends Setting {
         const conf = this.autoWireSetting(key, opt);
         addComponent((text) => {
             this.autoWiredComponent = text;
-            const setValue = wrapMemo((value: string) => {
+            const setValue = onlyWhenChanged((value: string) => {
                 text.setValue(value);
             });
             this.invalidateValue = () => setValue(`${LiveSyncSetting.env.editingSettings[key]}`);
@@ -167,7 +167,7 @@ export class LiveSyncSetting extends Setting {
                 text.inputEl.setAttribute("max", `${opt.clampMax}`);
             }
             let lastError = false;
-            const setValue = wrapMemo((value: string) => {
+            const setValue = onlyWhenChanged((value: string) => {
                 text.setValue(value);
             });
             this.invalidateValue = () => {
@@ -213,7 +213,7 @@ export class LiveSyncSetting extends Setting {
         const conf = this.autoWireSetting(key, opt);
         this.addToggle((toggle) => {
             this.autoWiredComponent = toggle;
-            const setValue = wrapMemo((value: boolean) => {
+            const setValue = onlyWhenChanged((value: boolean) => {
                 toggle.setValue(opt?.invert ? !value : value);
             });
             this.invalidateValue = () =>
@@ -232,7 +232,7 @@ export class LiveSyncSetting extends Setting {
         const conf = this.autoWireSetting(key, opt);
         this.addDropdown((dropdown) => {
             this.autoWiredComponent = dropdown;
-            const setValue = wrapMemo((value: string) => {
+            const setValue = onlyWhenChanged((value: string) => {
                 dropdown.setValue(value);
             });
 
@@ -252,7 +252,7 @@ export class LiveSyncSetting extends Setting {
         const conf = this.autoWireSetting(key, opt);
         this.addDropdown((dropdown) => {
             this.autoWiredComponent = dropdown;
-            const setValue = wrapMemo((value: string) => {
+            const setValue = onlyWhenChanged((value: string) => {
                 dropdown.setValue(value);
             });
 

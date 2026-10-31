@@ -54,10 +54,10 @@ vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
 
-vi.mock("octagonal-wheels/concurrency/scopedIteration", { spy: true });
+vi.mock("octagonal-wheels/concurrency/scoped.iteration", { spy: true });
 
 import { LOG_LEVEL_VERBOSE, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import * as iterationModule from "octagonal-wheels/concurrency/scopedIteration";
+import * as iterationModule from "octagonal-wheels/concurrency/scoped.iteration";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { ConfigSync } from "./CmdConfigSync";
 
@@ -262,8 +262,8 @@ describe("ConfigSync scoped iteration composition", () => {
     it.each(["database", "extra"])("propagates a %s runner failure outside per-item recovery", async (batch) => {
         const fixture = setup(["extra"], [row("stale")]);
         const error = new Error("iteration");
-        const actual = await vi.importActual<typeof import("octagonal-wheels/concurrency/scopedIteration")>(
-            "octagonal-wheels/concurrency/scopedIteration"
+        const actual = await vi.importActual<typeof import("octagonal-wheels/concurrency/scoped.iteration")>(
+            "octagonal-wheels/concurrency/scoped.iteration"
         );
         if (batch === "extra") {
             vi.mocked(iterationModule.forEachInScope).mockImplementationOnce(actual.forEachInScope);

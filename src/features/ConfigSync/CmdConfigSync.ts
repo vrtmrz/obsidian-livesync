@@ -59,7 +59,7 @@ import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
-import { forEachInScope } from "octagonal-wheels/concurrency/scopedIteration";
+import { forEachInScope } from "octagonal-wheels/concurrency/scoped.iteration";
 import { withScope } from "octagonal-wheels/resource/scope";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
@@ -69,7 +69,7 @@ import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
-import { createContentApplier } from "octagonal-wheels/content";
+import { createModificationHandler } from "octagonal-wheels/modification";
 
 import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
@@ -1033,7 +1033,7 @@ export class ConfigSync extends LiveSyncCommands {
                 await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
             } else {
                 const files = data.files;
-                const applyBinaryContent = createContentApplier<
+                const applyBinaryContent = createModificationHandler<
                     ConfigFileApplicationTarget,
                     LoadedEntryPluginDataExFile,
                     ArrayBuffer,
@@ -1050,7 +1050,7 @@ export class ConfigSync extends LiveSyncCommands {
                     write: (target, content) =>
                         this.core.storageAccess.writeHiddenFileAuto(target.path, content, target.stat),
                 });
-                const applyTextContent = createContentApplier<
+                const applyTextContent = createModificationHandler<
                     ConfigFileApplicationTarget,
                     LoadedEntryPluginDataExFile,
                     string,
