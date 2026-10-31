@@ -29,6 +29,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Synchronisation
 
+- Devices using the legacy IndexedDB adapter now use the standard recovery dialogue when a remote retains an old cleanup lock.
+    - The obsolete in-place `Cleanup` option has been removed. We can fetch the remote again, explicitly unlock the device, or dismiss the dialogue; dismissal remains the default.
+    - Fetch replaces the local database, so preserve unsynchronised work and any required local history first. Unlock only when the local and remote databases are already aligned. Garbage Collection V3 is unchanged.
+
 - Added an optional, device-local editing guard for substantial CouchDB LiveSync catch-up transfers. When enough incoming notes are detected, it covers the workspace until the transfer and local application queues have settled. The overlay can always be bypassed, and ordinary small transfers remain uninterrupted.
 
 - We can see CouchDB change-feed comparison progress separately for push and pull.
