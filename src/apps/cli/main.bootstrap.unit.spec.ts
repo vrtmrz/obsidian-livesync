@@ -3,6 +3,7 @@ import { appendFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import {
@@ -19,6 +20,11 @@ import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import { main, type CliCommandRunner } from "./main";
 import { cloneSettings } from "./settingsPersistence";
 import type { CLICommand } from "./commands/types";
+
+vi.mock("@vrtmrz/livesync-commonlib/node", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/node")>();
+    return { ...actual, path: { ...actual.path } };
+});
 
 vi.mock("chokidar", { spy: true });
 vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", { spy: true });
@@ -87,6 +93,36 @@ describe("CLI database preparation", () => {
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
+
+    it.each([
+        { separator: "/", platform: "POSIX" },
+        { separator: "\\", platform: "Windows" },
+    ])("excludes internal Vault paths with the $platform host separator", async ({ separator }) => {
+        const targets = [
+            "headless-vault-livesync-v2/LOCK",
+            ".livesync/settings.json",
+            "notes/.private/secret.md",
+            "notes/local.md",
+        ];
+        const observed: boolean[] = [];
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            const originalSeparator = path.sep;
+            try {
+                Object.defineProperty(path, "sep", { value: separator });
+                for (const target of targets) {
+                    observed.push(await core.services.vault.isTargetFile(target as FilePathWithPrefix));
+                }
+            } finally {
+                Object.defineProperty(path, "sep", { value: originalSeparator });
+            }
+            return false;
+        });
+
+        await start("ls", runner);
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(observed).toEqual([false, false, false, true]);
+    });
 
     it("loads legacy device values and persists configuration through the service-owned store", async () => {
         const localStoragePath = join(directory, ".livesync", "runtime", "local-storage.json");

@@ -550,7 +550,7 @@ export async function main(
             // Add target filter to prevent internal files are handled
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
-                const parts = targetPath.split(path.sep);
+                const parts = targetPath.split("/");
                 // if some part of the path starts with dot, treat it as internal file and ignore.
                 if (parts.some((part) => part.startsWith("."))) {
                     return await Promise.resolve(false);
