@@ -165,6 +165,75 @@ describe("ConfigScanQueue", () => {
         expect(scans.remaining).toBe(0);
     });
 
+    it("invalidates prefetched work after clearing and admits replacements alongside active scans", async () => {
+        const finishFirst = gate();
+        const finishReplacement = gate();
+        let scans!: ConfigScanQueue<string>;
+        const seen: string[] = [];
+        scans = queue<string>({
+            process: async (item) => {
+                seen.push(item);
+                if (item === "first") {
+                    void Promise.resolve().then(() => Promise.resolve().then(() => scans.clearPending()));
+                    await finishFirst.promise;
+                } else if (item === "replacement") {
+                    await finishReplacement.promise;
+                }
+            },
+        });
+        scans.enqueue("first");
+        scans.enqueue("stale");
+        await vi.advanceTimersByTimeAsync(100);
+        expect(seen).toEqual(["first"]);
+        expect(scans.remaining).toBe(1);
+
+        scans.enqueue("replacement");
+        await vi.advanceTimersByTimeAsync(100);
+        expect(seen).toEqual(["first", "replacement"]);
+        expect(scans.remaining).toBe(2);
+
+        finishFirst.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(scans.remaining).toBe(1);
+        finishReplacement.resolve();
+        await scans.waitForIdle();
+        expect(scans.remaining).toBe(0);
+    });
+
+    it("keeps the ten-scan limit across clear and replacement work", async () => {
+        const finish = Array.from({ length: 12 }, () => gate());
+        const seen: number[] = [];
+        let active = 0;
+        let maximum = 0;
+        const scans = queue<number>({
+            process: async (item) => {
+                seen.push(item);
+                maximum = Math.max(maximum, ++active);
+                await finish[item].promise;
+                active--;
+            },
+        });
+        for (let item = 0; item < 10; item++) scans.enqueue(item);
+        await vi.advanceTimersByTimeAsync(100);
+        expect(seen).toEqual(Array.from({ length: 10 }, (_, index) => index));
+
+        scans.clearPending();
+        scans.enqueue(10);
+        scans.enqueue(11);
+        await vi.advanceTimersByTimeAsync(100);
+        expect(seen).toEqual(Array.from({ length: 10 }, (_, index) => index));
+        expect(maximum).toBe(10);
+
+        finish[0].resolve();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(seen).toEqual(Array.from({ length: 11 }, (_, index) => index));
+        expect(maximum).toBe(10);
+        finish.forEach((item) => item.resolve());
+        await scans.waitForIdle();
+        expect(seen).toEqual(Array.from({ length: 12 }, (_, index) => index));
+        expect(maximum).toBe(10);
+    });
+
     it("stops while waiting for input, joins active work, and rejects later admission", async () => {
         const finish = gate();
         const seen: number[] = [];

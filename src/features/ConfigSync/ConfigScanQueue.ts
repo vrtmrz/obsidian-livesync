@@ -1,6 +1,7 @@
 import { compatGlobal, type CompatTimeoutHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { createNotifier } from "octagonal-wheels/concurrency/notifier";
 import { forEachInScope } from "octagonal-wheels/concurrency/scopedIteration";
+import { createAsyncQueue, type AsyncQueue } from "octagonal-wheels/iterable/asyncQueue";
 import { withScope, type Awaitable } from "octagonal-wheels/resource/scope";
 
 interface ConfigScanQueueOptions<T> {
@@ -9,12 +10,20 @@ interface ConfigScanQueueOptions<T> {
     onProgress?: (remaining: number) => void;
 }
 
-type PendingScan<T> = { value: T };
+interface PendingQueue<T> {
+    fifo: AsyncQueue<T>;
+    iterator: AsyncIterator<T>;
+}
+
+interface PendingScan<T> {
+    value: T;
+    queue: PendingQueue<T>;
+}
 
 /** Owns FIFO admission, the initial scan delay, and completion for one catalogue. */
 export class ConfigScanQueue<T> {
-    private pending: (PendingScan<T> | undefined)[] = [];
-    private head = 0;
+    private pending: PendingQueue<T>;
+    private pendingCount = 0;
     private active = 0;
     private ready = false;
     private stopped = false;
@@ -24,10 +33,13 @@ export class ConfigScanQueue<T> {
     private running?: Promise<void>;
     private readonly changed = createNotifier();
 
-    constructor(private readonly options: ConfigScanQueueOptions<T>) {}
+    constructor(private readonly options: ConfigScanQueueOptions<T>) {
+        this.pending = this.createPendingQueue();
+    }
 
-    private get pendingCount() {
-        return this.pending.length - this.head;
+    private createPendingQueue(): PendingQueue<T> {
+        const fifo = createAsyncQueue<T>();
+        return { fifo, iterator: fifo[Symbol.asyncIterator]() };
     }
 
     get remaining(): number {
@@ -36,17 +48,20 @@ export class ConfigScanQueue<T> {
 
     enqueue(value: T): void {
         if (!this.canDispatch()) throw new Error("The customisation scan queue is closed.");
-        this.pending.push({ value });
+        this.pending.fifo.enqueue(value);
+        this.pendingCount++;
         this.reportProgress();
         this.schedule();
     }
 
     /** Discard unstarted scans; active reads and migrations retain their slots. */
     clearPending(): void {
-        this.pending = [];
-        this.head = 0;
+        const discarded = this.pending;
+        this.pending = this.createPendingQueue();
+        this.pendingCount = 0;
         this.ready = false;
         this.clearTimer();
+        discarded.fifo.dispose();
         this.reportProgress();
     }
 
@@ -96,26 +111,29 @@ export class ConfigScanQueue<T> {
     }
 
     private claim(entry: PendingScan<T>): boolean {
-        if (!this.canDispatch() || this.pending[this.head] !== entry) return false;
-        this.pending[this.head++] = undefined;
-        if (this.pendingCount === 0) {
-            this.pending = [];
-            this.head = 0;
-            this.ready = false;
-        } else if (this.head >= 1024 && this.head * 2 >= this.pending.length) {
-            this.pending = this.pending.slice(this.head);
-            this.head = 0;
-        }
+        if (!this.canDispatch() || this.pending !== entry.queue) return false;
+        this.pendingCount--;
+        if (this.pendingCount === 0) this.ready = false;
         return true;
     }
 
     private async *availableWork() {
         while (this.canDispatch()) {
-            const entry = this.pending[this.head];
-            if (this.ready && entry) {
-                // The callback claims the item so clearing a pulled item also cancels it.
-                yield entry;
-            } else if (this.active > 0) {
+            const pending = this.pending;
+            if (!this.ready) {
+                if (this.active === 0 && this.pendingCount === 0) return;
+                await this.changed.wait();
+                continue;
+            }
+            if (pending.fifo.size > 0) {
+                const entry = await pending.iterator.next();
+                if (entry.done) {
+                    if (pending !== this.pending) continue;
+                    return;
+                }
+                // The callback checks queue identity so clearing a pulled item cancels it.
+                yield { value: entry.value, queue: pending };
+            } else if (this.active > 0 || this.pendingCount > 0) {
                 // Keep free slots available to later arrivals while a slow scan finishes.
                 await this.changed.wait();
             } else {
