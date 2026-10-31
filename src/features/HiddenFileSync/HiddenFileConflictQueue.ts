@@ -1,7 +1,7 @@
 import { compatGlobal, type CompatTimeoutHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { withCancellation } from "octagonal-wheels/concurrency/cancellation";
 import { createNotifier } from "octagonal-wheels/concurrency/notifier";
-import { forEachInScope } from "octagonal-wheels/concurrency/scopedIteration";
+import { forEachInScope } from "octagonal-wheels/concurrency/scoped.iteration";
 import { createAsyncQueue } from "octagonal-wheels/iterable/asyncQueue";
 import { withOwnedResource } from "octagonal-wheels/resource";
 
