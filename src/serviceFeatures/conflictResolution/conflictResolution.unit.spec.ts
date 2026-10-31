@@ -6,6 +6,7 @@ import {
     DEFAULT_SETTINGS,
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
     MISSING_OR_ERROR,
     NOT_CONFLICTED,
     type FilePath,
@@ -812,6 +813,56 @@ describe("conflict resolution serviceFeature", () => {
         } finally {
             unregister();
         }
+    });
+
+    it("continues checking accepted and later paths after one resolver rejects", async () => {
+        const harness = createHarness();
+        const failure = new Error("Conflict check failed");
+        const resolve = vi.fn().mockRejectedValueOnce(failure).mockResolvedValue(undefined);
+        harness.conflict.resolve.setHandler(resolve, true);
+        const first = "failed.md" as FilePathWithPrefix;
+        const second = "accepted.md" as FilePathWithPrefix;
+        const later = "later.md" as FilePathWithPrefix;
+
+        await Promise.all([harness.conflict.queueCheckFor(first), harness.conflict.queueCheckFor(second)]);
+        await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(true);
+        await harness.conflict.queueCheckFor(later);
+        await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(true);
+
+        expect(resolve.mock.calls.map(([path]) => path)).toEqual([first, second, later]);
+        expect(harness.addLog).toHaveBeenCalledWith(
+            `[SF:ConflictResolution]${MARK_LOG_SEPARATOR} Conflict check failed: ${first}`,
+            LOG_LEVEL_INFO,
+            ""
+        );
+        expect(harness.addLog).toHaveBeenCalledWith(failure, LOG_LEVEL_VERBOSE, "");
+        expect(harness.conflict.conflictProcessQueueCount.value).toBe(0);
+    });
+
+    it("drains requeued automatic checks when every resolver slot is occupied", async () => {
+        const harness = createHarness({ settings: { syncAfterMerge: false } });
+        const paths = Array.from({ length: 10 }, (_, index) => `requeue-${index}.md` as FilePathWithPrefix);
+        const firstChecks = new Set<FilePathWithPrefix>();
+        const finishers: Array<() => void> = [];
+        harness.tryAutoMerge.mockImplementation(async (path: FilePathWithPrefix) => {
+            if (firstChecks.has(path)) return { ok: NOT_CONFLICTED };
+            firstChecks.add(path);
+            await new Promise<void>((resolve) => {
+                finishers.push(resolve);
+            });
+            return { ok: AUTO_MERGED };
+        });
+
+        await Promise.all(paths.map((path) => harness.conflict.queueCheckFor(path)));
+        await vi.waitFor(() => expect(finishers).toHaveLength(10));
+        const completion = harness.conflict.ensureAllProcessed();
+        for (const finish of finishers) finish();
+
+        await expect(completion).resolves.toBe(true);
+        for (const path of paths) {
+            expect(harness.tryAutoMerge.mock.calls.filter(([checked]) => checked === path)).toHaveLength(2);
+        }
+        expect(harness.conflict.conflictProcessQueueCount.value).toBe(0);
     });
 
     it("honours optional conflict handlers before entering the check queue", async () => {
