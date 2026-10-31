@@ -45,7 +45,7 @@ import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.t
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { createCoalescingNotifier } from "octagonal-wheels/concurrency/coalescingNotifier";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
+import { HiddenFileConflictQueue } from "./HiddenFileConflictQueue.ts";
 import {
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
@@ -108,6 +108,8 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
     onunload() {
         this.periodicInternalFileScanProcessor?.disable();
+        this.conflictResolutionProcessor.dispose();
+        this.pendingConflictChecks.clear();
     }
     onload() {
         this.services.API.addCommand({
@@ -745,7 +747,7 @@ Offline Changed files: ${processFiles.length}`;
     queueConflictCheck(path: FilePathWithPrefix) {
         if (this.pendingConflictChecks.has(path)) return;
         this.pendingConflictChecks.add(path);
-        this.conflictResolutionProcessor.enqueue(path);
+        if (!this.conflictResolutionProcessor.enqueue(path)) this.pendingConflictChecks.delete(path);
     }
 
     finishConflictCheck(path: FilePathWithPrefix) {
@@ -802,9 +804,8 @@ Offline Changed files: ${processFiles.length}`;
         }
         // check the file again
     }
-    conflictResolutionProcessor = new QueueProcessor(
-        async (paths: FilePathWithPrefix[]) => {
-            const path = paths[0];
+    conflictResolutionProcessor = new HiddenFileConflictQueue(
+        async (path: FilePathWithPrefix) => {
             try {
                 // Retrieve data
                 const id = await this.path2id(path, ICHeader);
@@ -872,46 +873,32 @@ Offline Changed files: ${processFiles.length}`;
                 return [];
             }
         },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 5,
-            delay: 10,
-            keepResultUntilDownstreamConnected: true,
-            yieldThreshold: 10,
-            pipeTo: new QueueProcessor(
-                async (results) => {
-                    const { id, doc, path, revA, revB } = results[0];
-                    const prefixedPath = addPrefix(path, ICHeader);
-                    const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
-                    const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
-                    try {
-                        if (docAMerge != false && docBMerge != false) {
-                            if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
-                                // Again for other conflicted revisions.
-                                this.requeueConflictCheck(path);
-                            } else {
-                                this.finishConflictCheck(path);
-                            }
-                            return;
-                        } else {
-                            // If either revision could not read, force resolving by the newer one.
-                            await this.resolveByNewerEntry(id, path, doc, revA, revB);
-                        }
-                    } catch (ex) {
+        async (result) => {
+            const { id, doc, path, revA, revB } = result;
+            const prefixedPath = addPrefix(path, ICHeader);
+            const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
+            const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
+            try {
+                if (docAMerge != false && docBMerge != false) {
+                    if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
+                        // Again for other conflicted revisions.
+                        this.requeueConflictCheck(path);
+                    } else {
                         this.finishConflictCheck(path);
-                        throw ex;
                     }
-                },
-                {
-                    suspended: false,
-                    batchSize: 1,
-                    concurrentLimit: 1,
-                    delay: 10,
-                    keepResultUntilDownstreamConnected: false,
-                    yieldThreshold: 10,
+                    return;
+                } else {
+                    // If either revision could not read, force resolving by the newer one.
+                    await this.resolveByNewerEntry(id, path, doc, revA, revB);
                 }
-            ),
+            } catch (ex) {
+                this.finishConflictCheck(path);
+                throw ex;
+            }
+        },
+        (error) => {
+            this._log("Processor error!");
+            this._log(error, LOG_LEVEL_VERBOSE);
         }
     );
 
