@@ -71,6 +71,8 @@ npm run test:e2e:coverage --workspace self-hosted-livesync-cli -- test:ci
 
 The runner defaults to `test:local`, which does not require services. It writes HTML, JSON, and text reports under `coverage/cli-e2e/`. The runner enables CLI bundle source maps only for the coverage build with `LIVESYNC_CLI_COVERAGE=1`; ordinary builds do not enable them.
 
+The CLI Node.js workflow runs this local smoke coverage on Linux and publishes the HTML and JSON reports as the `cli-e2e-local-coverage` artifact, retained for seven days. This artifact covers `test:local` only and is separate from unit-test and service-backed/P2P coverage.
+
 ## Environment variables
 
 ### CouchDB

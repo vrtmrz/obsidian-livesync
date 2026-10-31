@@ -144,6 +144,33 @@ describe("CLI CI selection", () => {
         expect(test.steps?.find((step) => step.run?.includes("node run-task.ts"))?.run).toContain('node run-task.ts "$TASK"');
     });
 
+    it("collects local smoke coverage once on Linux and retains its reports for seven days", () => {
+        const steps = workflow("cli-node-tests.yml").jobs["local-smoke"].steps ?? [];
+        const coverage = steps.filter((step) => step.run?.includes("test:e2e:coverage"));
+        expect(coverage).toHaveLength(1);
+        expect(coverage[0].run).toBe("npm run test:e2e:coverage --workspace self-hosted-livesync-cli");
+        expect(coverage[0].if).toBe("${{ matrix.os == 'ubuntu-latest' }}");
+        for (const step of steps.filter(
+            (step) => step.run?.includes("npm run build --workspace") || step.run?.includes("run-task.ts test:local")
+        )) {
+            expect(step.if).toBe("${{ matrix.os != 'ubuntu-latest' }}");
+        }
+        const uploads = steps.filter((step) => step.uses?.startsWith("actions/upload-artifact@"));
+        expect(uploads).toHaveLength(1);
+        const upload = uploads[0];
+        expect(upload.if).toBe("${{ always() && matrix.os == 'ubuntu-latest' }}");
+        expect(upload.with?.name).toBe("cli-e2e-local-coverage");
+        expect(upload.with?.["retention-days"]).toBe(7);
+        expect(upload.with?.["if-no-files-found"]).toBe("warn");
+        const paths = String(upload.with?.path).trim().split("\n");
+        expect(matches(paths, "coverage/cli-e2e/index.html")).toBe(true);
+        expect(matches(paths, "coverage/cli-e2e/src/apps/cli/main.ts.html")).toBe(true);
+        expect(matches(paths, "coverage/cli-e2e/base.css")).toBe(true);
+        expect(matches(paths, "coverage/cli-e2e/coverage-final.json")).toBe(true);
+        expect(matches(paths, "coverage/cli-e2e/raw/coverage-123.json")).toBe(false);
+        expect(matches(paths, "coverage/unit/index.html")).toBe(false);
+    });
+
     it("passes a single CLI build to every standard test job", () => {
         const { prepare, test } = workflow("cli-node-tests.yml").jobs;
         expect(test.needs).toBe("prepare");

@@ -219,10 +219,27 @@ jobs:
         run: npm ci
 
       - name: Build CLI
+        if: ${{ matrix.os != 'ubuntu-latest' }}
         env:
           LIVESYNC_CLI_TEST_SUPPORT: '1'
         run: npm run build --workspace self-hosted-livesync-cli
 
       - name: Run local smoke tests
+        if: ${{ matrix.os != 'ubuntu-latest' }}
         working-directory: src/apps/cli
         run: node ../../../test/e2e-cli/run-task.ts test:local
+
+      - name: Run local smoke tests with coverage
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: npm run test:e2e:coverage --workspace self-hosted-livesync-cli
+
+      - name: Upload local smoke coverage reports
+        if: ${{ always() && matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: cli-e2e-local-coverage
+          path: |
+            coverage/cli-e2e/**
+            !coverage/cli-e2e/raw/**
+          if-no-files-found: warn
+          retention-days: 7
