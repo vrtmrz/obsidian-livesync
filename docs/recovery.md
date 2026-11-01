@@ -22,7 +22,7 @@ Do not switch transport, enable P2P, or run Garbage Collection as a substitute f
 
 This procedure addresses [issue #1303](https://github.com/vrtmrz/obsidian-livesync/issues/1303): an older Journal receiver can truncate a Chunk at a raw unit separator (`U+001F`) within its data. This can damage a received text file, including a plug-in's `main.js`, while the original batch remains intact in the bucket.
 
-The receiver correction is currently unreleased. Use a build containing that correction on every participating client before recovery; versions 1.0.42 and 1.0.43 still contain the defect. Updating alone does not repair Chunks already stored locally. Resetting only the Journal received history is also insufficient because ordinary reception skips existing Chunk IDs.
+The receiver correction is available in Commonlib 0.2.3 and is included in the unreleased Self-hosted LiveSync build. Use a build containing that correction on every participating client before recovery; versions 1.0.42 and 1.0.43 still contain the defect. Updating alone does not repair Chunks already stored locally. Resetting only the Journal received history is also insufficient because ordinary reception skips existing Chunk IDs.
 
 ### Preserve the intact source
 
