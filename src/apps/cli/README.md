@@ -88,6 +88,7 @@ livesync-cli [database-path] [command] [args...]
     - The selected local database suffix is saved automatically, so later commands use the reconstructed database.
 - `fetch`: Replace the local database with the configured remote state, then reflect fetched files to the selected Vault. Existing local database state is discarded, so this command requires `--force`.
     - The selected local database suffix is saved automatically, including when `--write-settings` is omitted.
+    - Differing local files can remain and be preserved as conflict branches alongside the fetched content. For recovery from an intact remote, preserve the existing Vault separately and Fetch into an empty Vault; `--force` does not force file overwriting.
 - `ls [prefix]`: List files currently stored in the local database.
 - `push <src> <dst>`: Push a local file `<src>` into the database at path `<dst>`.
 - `pull <src> <dst>`: Pull a file `<src>` from the database into local file `<dst>`.
