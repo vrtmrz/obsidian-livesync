@@ -13,6 +13,10 @@ Accepted on 2026-10-17. Unicode NFC path identity was released in Self-hosted
 LiveSync 1.0.38 with Commonlib 0.1.42. Local validation evidence and platform
 limits are recorded in the design document.
 
+The maintained design now also describes an unreleased Journal and P2P
+extension and the move to General Settings. The decision below retains the
+initial CouchDB support boundary and original acceptance date.
+
 ## Context
 
 Self-hosted LiveSync derives normal-file Metadata document IDs from Vault paths.

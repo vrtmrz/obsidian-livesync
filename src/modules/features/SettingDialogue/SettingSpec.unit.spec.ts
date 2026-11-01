@@ -17,7 +17,7 @@ const rangeMessages = {
 };
 
 describe("Advanced setting specifications", () => {
-    it("lists only the eleven controls currently exposed by the Advanced page", () => {
+    it("lists only the ten controls currently exposed by the Advanced page", () => {
         const groups = createAdvancedSettingSpecGroups({ isCouchDB: () => true });
 
         expect(groups.map(({ heading }) => heading)).toEqual([
@@ -31,7 +31,6 @@ describe("Advanced setting specifications", () => {
             "chunkSplitterVersion",
             "customChunkSize",
             "strictContentCheckOnStartup",
-            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",
@@ -52,13 +51,12 @@ describe("Advanced setting specifications", () => {
         expect(spec.disabled).toBeUndefined();
     });
 
-    it("keeps path identity and the four remote chunk controls CouchDB-only", () => {
+    it("keeps the four remote chunk controls CouchDB-only", () => {
         let couchDB = false;
         const groups = createAdvancedSettingSpecGroups({ isCouchDB: () => couchDB });
         const conditional = groups.flatMap(({ items }) => items).filter(({ visible }) => visible !== undefined);
 
         expect(conditional.map(({ key }) => key)).toEqual([
-            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",
@@ -70,18 +68,67 @@ describe("Advanced setting specifications", () => {
         expect(conditional.every(({ visible }) => visible?.() === true)).toBe(true);
     });
 
-    it("exposes CouchDB path identity as a two-choice numeric dropdown", () => {
-        let couchDB = false;
-        const spec = createAdvancedSettingSpecGroups({ isCouchDB: () => couchDB })
+    it("excludes transient settings-dialogue keys from the persisted key type", () => {
+        type OnDialogOverlap = Extract<keyof OnDialogSettings, PersistedSettingKey>;
+        expectTypeOf<OnDialogOverlap>().toEqualTypeOf<never>();
+    });
+
+    it("resolves translated Commonlib metadata for every explicitly exposed key", () => {
+        const specs = [
+            ...createAdvancedSettingSpecGroups({ isCouchDB: () => true }),
+            ...createGeneralSettingSpecGroups({
+                showEditorStatusDetails: () => true,
+                showVerboseLog: () => true,
+            }),
+        ].flatMap(({ items }) => items);
+
+        for (const spec of specs) {
+            const metadata = getConfig(spec.key);
+            expect(metadata, spec.key).not.toBe(false);
+            if (!metadata) {
+                throw new Error(`Missing setting metadata for ${spec.key}`);
+            }
+            const definition = toObsidianSettingDefinition(spec, metadata, rangeMessages);
+            expect(definition.name).toBe(`${metadata.name}${statusDisplay(metadata.status)}`);
+        }
+    });
+});
+
+describe("General setting specifications", () => {
+    it("shares every General, Logging, and File identity control between the imperative and declarative renderers", () => {
+        const groups = createGeneralSettingSpecGroups({
+            showEditorStatusDetails: () => true,
+            showVerboseLog: () => true,
+        });
+
+        expect(groups.map(({ heading }) => heading)).toEqual(["Appearance", "Logging", "File identity"]);
+        expect(groups.flatMap(({ items }) => items.map(({ key }) => key))).toEqual([
+            "displayLanguage",
+            "showStatusOnEditor",
+            "showOnlyIconsOnEditor",
+            "showStatusOnStatusbar",
+            "hideFileWarningNotice",
+            "syncGuardEnabled",
+            "syncGuardMinimumFiles",
+            "networkWarningStyle",
+            "lessInformationInLog",
+            "showVerboseLog",
+            "pathNormalizationVersion",
+        ]);
+    });
+
+    it("exposes path identity for every remote type as a reconstruction-required dropdown", () => {
+        const spec = createGeneralSettingSpecGroups({
+            showEditorStatusDetails: () => false,
+            showVerboseLog: () => false,
+        })
             .flatMap(({ items }) => items)
             .find(({ key }) => key === "pathNormalizationVersion");
-        if (!spec) throw new Error("Path identity mode is not exposed on the Advanced page");
+        if (!spec) throw new Error("Path identity mode is not exposed in General settings");
         if (spec.control.type !== "numeric-dropdown") throw new Error("Expected a numeric dropdown");
 
-        expect(spec.control).toMatchObject({ type: "numeric-dropdown", options: expect.any(Function) });
-        expect(spec.visible?.()).toBe(false);
-        couchDB = true;
-        expect(spec.visible?.()).toBe(true);
+        expect(spec).toMatchObject({ key: "pathNormalizationVersion", holdValue: true });
+        expect(spec.visible).toBeUndefined();
         expect(spec.control.options()).toEqual({
             "0": "Legacy path identity",
             "1": "Unicode NFC path identity",
@@ -102,52 +149,9 @@ describe("Advanced setting specifications", () => {
             key: "pathNormalizationVersion",
             options: {
                 holdValue: true,
-                onUpdate: expect.any(Function),
                 options: { "0": "Legacy path identity", "1": "Unicode NFC path identity" },
             },
         });
-    });
-
-    it("excludes transient settings-dialogue keys from the persisted key type", () => {
-        type OnDialogOverlap = Extract<keyof OnDialogSettings, PersistedSettingKey>;
-        expectTypeOf<OnDialogOverlap>().toEqualTypeOf<never>();
-    });
-
-    it("resolves translated Commonlib metadata for every explicitly exposed key", () => {
-        const specs = createAdvancedSettingSpecGroups({ isCouchDB: () => true }).flatMap(({ items }) => items);
-
-        for (const spec of specs) {
-            const metadata = getConfig(spec.key);
-            expect(metadata, spec.key).not.toBe(false);
-            if (!metadata) {
-                throw new Error(`Missing setting metadata for ${spec.key}`);
-            }
-            const definition = toObsidianSettingDefinition(spec, metadata, rangeMessages);
-            expect(definition.name).toBe(`${metadata.name}${statusDisplay(metadata.status)}`);
-        }
-    });
-});
-
-describe("General setting specifications", () => {
-    it("shares every General and Logging control between the imperative and declarative renderers", () => {
-        const groups = createGeneralSettingSpecGroups({
-            showEditorStatusDetails: () => true,
-            showVerboseLog: () => true,
-        });
-
-        expect(groups.map(({ heading }) => heading)).toEqual(["Appearance", "Logging"]);
-        expect(groups.flatMap(({ items }) => items.map(({ key }) => key))).toEqual([
-            "displayLanguage",
-            "showStatusOnEditor",
-            "showOnlyIconsOnEditor",
-            "showStatusOnStatusbar",
-            "hideFileWarningNotice",
-            "syncGuardEnabled",
-            "syncGuardMinimumFiles",
-            "networkWarningStyle",
-            "lessInformationInLog",
-            "showVerboseLog",
-        ]);
     });
 
     it("keeps the three feature-level controls together under Extra menus", () => {

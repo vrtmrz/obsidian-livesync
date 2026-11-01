@@ -22,14 +22,18 @@ and is included in current Commonlib `0.2.2`, used by Self-hosted LiveSync
 `1.0.42`. This later handling is distinct from the initial NFC identity
 release.
 
+An unreleased extension adds Journal and P2P for the same maintained CLI and
+Obsidian hosts, and moves the setting to General Settings. The original dates
+and reviewed versions above remain the historical baseline.
+
 ## Scope
 
 | Area | Contract |
 | --- | --- |
 | Logical identity | Version `1` uses NFC for Metadata ID and path comparison keys. Existing case handling remains a separate rule. Missing and `0` retain legacy behaviour. |
 | Stored paths and content | Keep the spelling in `Metadata.path` and existing physical Vault names. NFC does not change Chunk IDs or content. |
-| Initial hosts and remote | Support CLI and Obsidian with CouchDB. |
-| Other transports | Journal and P2P reject version `1`; Direct file access refuses a remote declaring the NFC feature. Other host adapters remain outside the support matrix. |
+| Maintained hosts and transports | CLI and Obsidian with CouchDB; Journal and P2P are added by the unreleased extension. |
+| Other consumers | Direct file access refuses a remote declaring the NFC feature. Other host adapters remain outside the support matrix. |
 | Migration | Rebuild both databases from one complete authoritative Vault, then Fetch each remaining client. Do not rewrite IDs or merge histories in place. |
 
 ## Path identity contract
@@ -133,8 +137,8 @@ check until a remote deletion has been replicated.
 ## Reconstruction and client operations
 
 Mode changes are never applied by an ordinary Metadata write. In Obsidian, the
-Advanced page offers **Legacy path identity** (`0`) and **Unicode NFC path
-identity** (`1`) for CouchDB. A changed `pathNormalizationVersion` remains
+General Settings → **File identity** offers **Legacy path identity** (`0`)
+and **Unicode NFC path identity** (`1`) independently of the selected transport. A changed `pathNormalizationVersion` remains
 pending through ordinary settings saves, the settings-only Apply fallback, and
 reload. It becomes active only after the existing Rebuild or Fetch operation
 has been successfully reserved; cancellation or failed reservation leaves it
@@ -144,7 +148,8 @@ the settings-only fallback is not offered.
 The [user migration procedure](../recovery.md#migrate-to-unicode-nfc-path-identity)
 owns the operational sequence: updated and stopped clients, a complete backed-up
 authoritative Vault, source Rebuild, then Fetch on each remaining client. The
-source operation reconstructs both databases; a receiving client's Fetch
+source operation reconstructs both databases for CouchDB and Journal. With
+P2P, it reconstructs only the source database. A receiving client's Fetch
 replaces only its local database. The [CLI guide](../../src/apps/cli/README.md)
 provides the equivalent `rebuild` and `fetch` commands.
 
@@ -190,10 +195,47 @@ updates and deletions.
 | --- | --- | --- |
 | CLI with CouchDB | Supported with legacy identity. | Supported with NFC path resolution. |
 | Obsidian with CouchDB | Supported with legacy identity. | Supported with NFC path resolution. |
-| Journal or P2P | Existing behaviour. | Rejected. |
+| CLI or Obsidian with Journal | Existing behaviour. | Added by the unreleased extension; Rebuild remote journals and Fetch other devices. |
+| CLI or Obsidian with P2P | Existing behaviour. | Added by the unreleased extension; update and migrate every peer. |
 | Direct file access | Existing behaviour. | Refuses a remote requiring `nfc-path-identity-v1`. |
 | Other host adapters, including WebApp | Existing behaviour, subject to their existing support. | Outside the initial support matrix until physical-path handling is verified. |
 | Older client without this feature | Can use a legacy database. | Cannot join a database declaring `nfc-path-identity-v1`. |
+
+## Journal and P2P extension
+
+The transport moves the Metadata IDs already generated in the local database;
+it does not derive a second remote ID. Journal uses its existing compatibility
+range with NFC value `4`, plus a required path-version comparison. A legacy
+client with ordinary version checking cannot join the rebuilt Journal. The
+explicit version override in older clients remains outside this guarantee.
+Journal refuses to initialise NFC compatibility when journal objects exist
+without their milestone.
+
+Journal shares one read-only identity assessment across ordinary admission,
+Fetch before local reset, and ordinary milestone updates. It checks stored
+node ranges even when a Rebuild lock has retired the previous accepted nodes.
+Rebuild locks the existing milestone for its source node while retaining an
+existing compatibility range, and declares the replacement identity only after
+the remote journals have
+been deleted. If the milestone is missing, the pre-reset lock does not create
+one over the existing journals. A failed or interrupted reset therefore keeps
+the old identity or the missing declaration.
+
+P2P compares the effective path version through its existing Tweak exchange,
+checks local database identity, and reads the peer version document before
+replication. Fresh control-only databases can declare the existing NFC feature.
+Every participating peer must be updated and migrated; this is not a new
+authentication protocol for already deployed clients.
+
+The existing Rebuild and Fetch paths own migration and state reset. Journal
+reconstructs the local database and remote objects; P2P Rebuild reconstructs
+only the source database. Other devices Fetch the source. Local reset clears
+Journal KV checkpoints, while P2P uses its existing source mark and target
+checkpoint. No new migration store, checkpoint format, or persistent admission
+state is added. An explicit Journal bucket reset also clears the existing
+transfer checkpoint when the bucket is already empty, so a remote-only Rebuild
+resends the complete local database. P2P retains its existing peer selection
+during Fetch.
 
 ## Verification contract and limits
 
@@ -211,8 +253,9 @@ The implementation acceptance matrix covers:
 - refusal to write when an existing legacy database has Metadata, refusal of
   version-`0` clients against an NFC database, and enforcement when ordinary
   mismatch warnings are disabled;
-- URI round trips, checkpoint invalidation across path versions, and transport
-  rejection for Journal, P2P, and Direct file access;
+- URI round trips, checkpoint invalidation across path versions, and
+  rejection for Direct file access; Journal and P2P acceptance and identity
+  mismatch checks belong to the unreleased extension;
 - refusal for ambiguous file or parent-directory candidates before local or
   remote reset, preserving both databases on rejection, within the paths
   returned by each host's supported listing; and
@@ -251,6 +294,38 @@ Streaming Fast Fetch. Fast Fetch removed the obsolete Metadata and retained
 the current NFC document, its active state, and its stored path. The existing
 content, creation-time, physical-name, update, and deletion checks also passed.
 
+
+### Unreleased Journal and P2P validation
+
+The extension was checked on Linux with a locally packed Commonlib `0.2.3`
+candidate and real Obsidian `1.12.7`. Publication remains pending. The checks
+covered:
+
+- real S3-compatible Journal transfer with and without E2EE and Path
+  Obfuscation, including restart, logical rename and deletion, both conflict
+  leaves and their revision ancestry, and a full resend after bucket reset;
+- real Obsidian and CLI Journal round trips with plain IDs and independent
+  encrypted IDs: Standard Fetch, identical Metadata IDs and Chunk content,
+  retention of a pre-existing NFD physical name, edits after CLI process
+  restart, and deletion reflected back into Obsidian; and
+- real CLI P2P peers in legacy mode and NFC mode, with and without encryption
+  in NFC mode: canonical path reads, incompatible-peer refusal, reverse edits
+  after restart, retained original revision content, logical rename, and
+  deletion. Existing automatic-host, adapter-replacement, and explicit
+  disconnect scenarios also passed.
+
+The Journal migration scenarios also start with existing legacy CLI databases.
+The source Rebuild changes its Metadata ID and declares compatibility range
+`4`. A receiving client's legacy Fetch is refused while preserving its local
+Metadata ID and revision and the remote milestone. After selecting NFC, its
+Fetch converges to the source ID and content while preserving the NFD physical
+path. Both plain and independently encrypted ID scenarios passed.
+
+P2P runtime evidence is limited to CLI peers; a real Obsidian P2P peer remains
+unverified. The settings and reconstruction paths are covered by unit tests.
+These checks do not extend NFC support to other hosts or establish native iOS
+or macOS filesystem behaviour.
+
 ## Non-goals
 
 This design does not:
@@ -262,7 +337,7 @@ This design does not:
 - choose among ambiguous NFC-equivalent files or parents, or merge their
   content;
 - change the default away from legacy path identity;
-- enable version `1` for Journal, P2P, Direct file access, WebApp, or an
+- enable version `1` for Direct file access, WebApp, or an
   unverified host adapter; or
 - claim native iOS or macOS filesystem compatibility.
 

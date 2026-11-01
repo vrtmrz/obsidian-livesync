@@ -8,7 +8,7 @@ export type GeneralSettingSpecContext = {
     showVerboseLog: () => boolean;
 };
 
-/** Build the shared Appearance and Logging controls. */
+/** Build the shared General Settings controls. */
 export function createGeneralSettingSpecGroups({
     showEditorStatusDetails,
     showVerboseLog,
@@ -58,6 +58,22 @@ export function createGeneralSettingSpecGroups({
                     key: "showVerboseLog",
                     control: { type: "toggle" },
                     visible: showVerboseLog,
+                },
+            ],
+        },
+        {
+            heading: "File identity",
+            items: [
+                {
+                    key: "pathNormalizationVersion",
+                    holdValue: true,
+                    control: {
+                        type: "numeric-dropdown",
+                        options: () => ({
+                            "0": $msg("Legacy path identity"),
+                            "1": $msg("Unicode NFC path identity"),
+                        }),
+                    },
                 },
             ],
         },

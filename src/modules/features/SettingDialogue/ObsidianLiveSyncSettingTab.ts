@@ -892,9 +892,9 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
             showEditorStatusDetails: () => this.isConfiguredAs("showStatusOnEditor", true),
             showVerboseLog: () => this.isConfiguredAs("lessInformationInLog", false),
         });
-        const [appearance, logging] = groups;
-        if (!appearance || !logging) {
-            throw new Error("General settings must define Appearance and Logging groups");
+        const [appearance, logging, fileIdentity] = groups;
+        if (!appearance || !logging || !fileIdentity) {
+            throw new Error("General settings must define Appearance, Logging, and File identity groups");
         }
         return this.createRootGroup("general-settings", [
             {
@@ -906,6 +906,11 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
                 type: "page",
                 name: `📝 ${logging.heading}`,
                 items: logging.items,
+            },
+            {
+                type: "page",
+                name: `🗂️ ${fileIdentity.heading}`,
+                items: [this.createRebuildRequiredAction(), ...(fileIdentity.items ?? [])],
             },
             this.createExtraMenusPage(),
         ]);
@@ -1128,7 +1133,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
         if (method === "remoteOnly" && this.isDirty("pathNormalizationVersion")) {
             Logger(
                 $msg(
-                    "CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1."
+                    "Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild from a complete authoritative Vault and Fetch on the other devices. With P2P, Rebuild prepares only the source device's local database. Resolve colliding file names first."
                 ),
                 LOG_LEVEL_NOTICE
             );

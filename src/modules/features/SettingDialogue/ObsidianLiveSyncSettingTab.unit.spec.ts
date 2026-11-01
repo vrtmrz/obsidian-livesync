@@ -581,11 +581,11 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
         expect(Reflect.get(tab.editingSettings, "pathNormalizationVersion")).toBe(1);
         expect(tab.isDirty("pathNormalizationVersion")).toBe(true);
         expect(vi.mocked($msg)).toHaveBeenCalledWith(
-            "CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1."
+            "Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild from a complete authoritative Vault and Fetch on the other devices. With P2P, Rebuild prepares only the source device's local database. Resolve colliding file names first."
         );
         expect(loggerMocks.Logger).toHaveBeenCalledWith(
             expect.stringContaining(
-                "Rebuild both databases from a complete authoritative Vault and Fetch on the other devices."
+                "Rebuild from a complete authoritative Vault and Fetch on the other devices."
             ),
             LOG_LEVEL_NOTICE
         );
@@ -691,6 +691,30 @@ describe("ObsidianLiveSyncSettingTab declarative settings boundary", () => {
         });
         return { tab, saveSettingData };
     }
+
+    it("includes path identity once in the declarative General settings group", () => {
+        const { tab } = createSettingsTab();
+        const group = (
+            tab as unknown as {
+                createGeneralSettingsGroup: () => {
+                    items: Array<{
+                        name: string;
+                        items?: Array<{ control?: { key: string }; action?: () => void; visible?: () => boolean }>;
+                    }>;
+                };
+            }
+        ).createGeneralSettingsGroup();
+        const fileIdentity = group.items.find(({ name }) => name === "🗂️ File identity");
+
+        expect(fileIdentity).toBeDefined();
+        const apply = fileIdentity?.items?.find(({ action }) => typeof action === "function");
+        expect(apply).toBeDefined();
+        Reflect.set(tab.editingSettings, "pathNormalizationVersion", 1);
+        expect(apply?.visible?.()).toBe(true);
+        expect(fileIdentity?.items?.flatMap(({ control }) => (control ? [control.key] : []))).toEqual([
+            "pathNormalizationVersion",
+        ]);
+    });
 
     it("awaits the stored passphrase before initialising the editing buffer", async () => {
         const { tab } = createSettingsTab();

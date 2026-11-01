@@ -12,6 +12,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- Unicode NFC path identity can be used with Object Storage and P2P on CLI and Obsidian clients. The setting is available under General Settings → File identity. Existing databases require a coordinated Rebuild and Fetch; physical file names and Chunk IDs stay unchanged. All P2P participants must be updated and migrated.
+    - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
+
 - The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
 
 ## 1.0.43
