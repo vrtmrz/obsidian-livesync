@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { test } from "node:test";
+import { after, before, test } from "node:test";
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { CLI_DIR, CLI_DIST } from "./helpers/cli.ts";
+import { startIsolatedMinio, type IsolatedMinioFixture } from "./helpers/docker.ts";
 import { applyRemoteSyncSettings, generateSetupUriFromSettings, initSettingsFile } from "./helpers/settings.ts";
 import { TempDir } from "./helpers/temp.ts";
 import { spawnProcess, type RunningProcess } from "./helpers/process.ts";
@@ -24,20 +27,89 @@ const RESOLUTION_MARKER = "Resolving [same]: Conflicted revision has been delete
 const INITIAL_REPLICATION_COMPLETE = "[Daemon] Initial replication complete";
 const INITIAL_REPLICATION_FAILED = "[Daemon] Initial replication failed";
 const VERIFY_LEGACY_FAILURE = process.env["LIVESYNC_ISSUE1304_VERIFY_LEGACY_FAILURE"] === "1";
+const EXPLICIT_FIXTURE_VARIABLES = [
+    "LIVESYNC_ISSUE1304_MINIO_ENDPOINT",
+    "LIVESYNC_ISSUE1304_MINIO_ACCESS_KEY",
+    "LIVESYNC_ISSUE1304_MINIO_SECRET_KEY",
+    "LIVESYNC_ISSUE1304_MINIO_BUCKET",
+];
+const EXPLICIT_FIXTURE = EXPLICIT_FIXTURE_VARIABLES.some((name) => process.env[name]?.trim());
 
-function requiredEnv(name: string): string {
-    const value = process.env[name]?.trim();
-    if (!value) throw new Error(`Required environment variable is missing: ${name}`);
-    return value;
+if (EXPLICIT_FIXTURE && EXPLICIT_FIXTURE_VARIABLES.some((name) => !process.env[name]?.trim())) {
+    throw new Error(`External fixture mode requires all of: ${EXPLICIT_FIXTURE_VARIABLES.join(", ")}`);
 }
 
-function remoteSettings(bucketOverride?: string): RemoteSettings {
+let managedFixture: IsolatedMinioFixture | undefined;
+if (!EXPLICIT_FIXTURE) {
+    before(async () => {
+        managedFixture = await startIsolatedMinio(
+            process.env["accessKey"]?.trim() ?? "minioadmin",
+            process.env["secretKey"]?.trim() ?? "minioadmin"
+        );
+    });
+    after(async () => {
+        await managedFixture?.stop();
+    });
+}
+
+function requiredEnv(...names: string[]): string {
+    for (const name of names) {
+        const value = process.env[name]?.trim();
+        if (value) return value;
+    }
+    throw new Error(`Required environment variable is missing: ${names.join(" or ")}`);
+}
+
+function evidenceDirectory(): string {
+    return resolve(
+        process.env["LIVESYNC_ISSUE1304_EVIDENCE_DIR"]?.trim() || join(tmpdir(), "livesync-cli-issue1304-evidence")
+    );
+}
+
+function remoteSettings(): RemoteSettings {
     return {
         endpoint: requiredEnv("LIVESYNC_ISSUE1304_MINIO_ENDPOINT").replace(/\/$/, ""),
         accessKey: requiredEnv("LIVESYNC_ISSUE1304_MINIO_ACCESS_KEY"),
         secretKey: requiredEnv("LIVESYNC_ISSUE1304_MINIO_SECRET_KEY"),
-        bucket: bucketOverride ?? requiredEnv("LIVESYNC_ISSUE1304_MINIO_BUCKET"),
-        evidenceDir: resolve(requiredEnv("LIVESYNC_ISSUE1304_EVIDENCE_DIR")),
+        bucket: requiredEnv("LIVESYNC_ISSUE1304_MINIO_BUCKET"),
+        evidenceDir: evidenceDirectory(),
+    };
+}
+
+async function createManagedBucket(remote: Pick<RemoteSettings, "endpoint" | "accessKey" | "secretKey">, mode: ScenarioMode): Promise<string> {
+    const shortMode = mode === "reproduction" ? "repro" : "control";
+    const bucket = `livesync-ci-1304-${shortMode}-${randomUUID().replaceAll("-", "")}`;
+    const client = new S3Client({
+        endpoint: remote.endpoint,
+        region: "us-east-1",
+        forcePathStyle: true,
+        credentials: { accessKeyId: remote.accessKey, secretAccessKey: remote.secretKey },
+    });
+    try {
+        await client.send(new CreateBucketCommand({ Bucket: bucket }));
+    } finally {
+        client.destroy();
+    }
+    return bucket;
+}
+
+async function scenarioRemoteSettings(mode: ScenarioMode): Promise<RemoteSettings> {
+    if (EXPLICIT_FIXTURE) {
+        const remote = remoteSettings();
+        if (mode === "write-settings-control") remote.bucket = requiredEnv("LIVESYNC_ISSUE1304_POSITIVE_CONTROL_BUCKET");
+        return remote;
+    }
+
+    if (!managedFixture) throw new Error("The managed S3 fixture was not started");
+    const remote = {
+        endpoint: managedFixture.endpoint,
+        accessKey: managedFixture.accessKey,
+        secretKey: managedFixture.secretKey,
+    };
+    return {
+        ...remote,
+        bucket: await createManagedBucket(remote, mode),
+        evidenceDir: evidenceDirectory(),
     };
 }
 
@@ -265,8 +337,7 @@ async function settingsSummary(settingsPath: string): Promise<Record<string, unk
     }
 }
 
-async function runScenario(mode: ScenarioMode, bucket: string): Promise<void> {
-    const remote = remoteSettings(bucket);
+async function runScenario(mode: ScenarioMode, remote: RemoteSettings): Promise<void> {
     const evidenceRoot = remote.evidenceDir;
     const evidenceName = `${mode}-${Date.now()}-${process.pid}`;
     const evidenceDir = join(evidenceRoot, evidenceName);
@@ -556,13 +627,11 @@ async function runScenario(mode: ScenarioMode, bucket: string): Promise<void> {
 }
 
 test("CLI fetch: files remain after same-content duplicate root resolution", async () => {
-    const remote = remoteSettings();
-    await runScenario("reproduction", remote.bucket);
+    await runScenario("reproduction", await scenarioRemoteSettings("reproduction"));
 });
 
-if (process.env["LIVESYNC_ISSUE1304_POSITIVE_CONTROL"] === "1") {
+if (!EXPLICIT_FIXTURE || process.env["LIVESYNC_ISSUE1304_POSITIVE_CONTROL"] === "1") {
     test("CLI fetch: --write-settings keeps the selected database across daemon startup", async () => {
-        const controlBucket = requiredEnv("LIVESYNC_ISSUE1304_POSITIVE_CONTROL_BUCKET");
-        await runScenario("write-settings-control", controlBucket);
+        await runScenario("write-settings-control", await scenarioRemoteSettings("write-settings-control"));
     });
 }
