@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- Files containing a raw unit separator (`U+001F`) retain their complete contents when received through S3-compatible Object Storage. (#1303)
+    - The Journal receiver preserves the complete Chunk payload, including batches written by earlier versions, without changing the stored format.
+    - Updating prevents further truncation during reception but does not repair existing damaged copies. Update every participating client, preserve an intact recovery source, and follow the [recovery procedure](docs/recovery.md#recover-files-truncated-during-object-storage-reception). Rebuild and Fetch leave Hidden File Sync and Customisation Sync disabled until they are deliberately initialised again.
+
 - The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
 
 - Hidden File Sync now stores newer local files during `Merge` initialisation by comparing local and database modification times in the correct direction.

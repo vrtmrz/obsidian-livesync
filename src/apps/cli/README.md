@@ -86,6 +86,8 @@ livesync-cli [database-path] [command] [args...]
 - `rebuild`: Rebuild the local and remote databases from the selected Vault. This replaces existing local and remote database state and requires `--force`.
     - This command may select a new local database suffix. Add `--write-settings` if later CLI commands should use the resulting database selection; otherwise the existing settings file remains unchanged.
 - `fetch`: Replace the local database with the configured remote state, then reflect fetched files to the selected Vault. Existing local database state is discarded, so this command requires `--force`.
+    - Differing local files can remain and be preserved as conflict branches alongside the fetched content. For recovery from an intact remote, preserve the existing Vault separately and Fetch into an empty Vault; `--force` does not force file overwriting.
+    - This command may select a new local database suffix. Add `--write-settings` if later CLI commands should use the resulting database selection; otherwise the existing settings file remains unchanged.
 - `ls [prefix]`: List files currently stored in the local database.
 - `push <src> <dst>`: Push a local file `<src>` into the database at path `<dst>`.
 - `pull <src> <dst>`: Pull a file `<src>` from the database into local file `<dst>`.
