@@ -242,7 +242,11 @@ describe("HiddenFileSync conflict queue", () => {
                 expect(hiddenFileSync.showJSONMergeDialogAndMerge).toHaveBeenCalledOnce();
 
                 resolved = target === "same";
-                const incoming = { _id: incomingPath, path: incomingPath, _rev: "3-received" } as LoadedEntry;
+                const incoming = {
+                    _id: String(incomingPath) as DocumentID,
+                    path: incomingPath,
+                    _rev: "3-received",
+                } as LoadedEntry;
                 expect(await hiddenFileSync._anyProcessOptionalSyncFiles(incoming)).toBe(true);
                 await vi.advanceTimersByTimeAsync(100);
 
