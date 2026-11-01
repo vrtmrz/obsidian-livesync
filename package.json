@@ -209,14 +209,14 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "file:_testdata/nfc/vrtmrz-livesync-commonlib-0.2.3-nfc-21c639f65430.tgz",
+        "@vrtmrz/livesync-commonlib": "file:_testdata/nfc/vrtmrz-livesync-commonlib-0.2.3-nfc-41c8317ec737.tgz",
         "@vrtmrz/obsidian-plugin-kit": "0.1.7",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",
         "diff-match-patch": "^1.0.5",
         "idb": "^8.0.3",
         "markdown-it": "^14.3.3",
-        "minimatch": "^10.2.5",
+        "minimatch": "^11.0.3",
         "obsidian": "^1.13.1",
         "octagonal-wheels": "0.1.56",
         "qrcode-generator": "^1.4.4",
@@ -234,6 +234,25 @@
         },
         "pouchdb-utils": {
             "uuid": "11.1.1"
+        },
+        "@typescript-eslint/typescript-estree": {
+            "minimatch": "$minimatch"
+        },
+        "eslint-plugin-n": {
+            "minimatch": "$minimatch"
+        },
+        "test-exclude": {
+            "glob": "14.0.3",
+            "minimatch": "$minimatch"
+        },
+        "eslint": {
+            "minimatch": "$minimatch"
+        },
+        "@eslint/config-array": {
+            "minimatch": "$minimatch"
+        },
+        "@eslint/eslintrc": {
+            "minimatch": "$minimatch"
         }
     },
     "workspaces": [
