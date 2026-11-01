@@ -12,6 +12,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- We can continue CouchDB synchronisation after rebuilding an encrypted remote when **Use Internal API** is enabled. (#1234)
+    - CouchDB read requests now carry cache-control headers to avoid reusing responses encrypted with the previous Security Seed.
 - The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
 
 ## 1.0.43

@@ -182,6 +182,17 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         delete transformedHeaders["Host"];
         delete transformedHeaders["content-length"];
         delete transformedHeaders["Content-Length"];
+        const cacheMode = opts?.cache ?? (req instanceof Request ? req.cache : undefined);
+        if (cacheMode === "no-store" && ["GET", "HEAD"].includes(method.toUpperCase())) {
+            // requestUrl has no cache option; no-store alone can reuse an existing cached response.
+            for (const key of Object.keys(transformedHeaders)) {
+                if (["cache-control", "pragma"].includes(key.toLowerCase())) {
+                    delete transformedHeaders[key];
+                }
+            }
+            transformedHeaders["cache-control"] = "no-cache, no-store";
+            transformedHeaders["pragma"] = "no-cache";
+        }
         const contentType =
             transformedHeaders["content-type"] ?? transformedHeaders["Content-Type"] ?? "application/json";
         const requestParam: RequestUrlParam = {
