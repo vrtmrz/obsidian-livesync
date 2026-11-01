@@ -15,6 +15,13 @@ function requireEnv(...keys: string[]): string {
     throw new Error(`Required env var is missing: ${keys.join(" or ")}`);
 }
 
+function createJournalRecoveryBucketName(baseBucket: string, suffix: string): string {
+    const bucketSuffix = `journal-recovery-${suffix}`;
+    const maxBaseLength = 63 - bucketSuffix.length - 1;
+    const truncatedBase = baseBucket.slice(0, maxBaseLength).replace(/-+$/, "");
+    return truncatedBase ? `${truncatedBase}-${bucketSuffix}` : bucketSuffix;
+}
+
 function createJournalFixture(): string {
     return [
         "Journal chunk recovery fixture: UTF-8, newlines, and backslashes.\n",
@@ -32,7 +39,7 @@ async function runScenario(encrypt: boolean): Promise<void> {
     const minioEndpoint = requireEnv("MINIO_ENDPOINT", "minioEndpoint").replace(/\/$/, "");
     const minioAccessKey = requireEnv("MINIO_ACCESS_KEY", "accessKey");
     const minioSecretKey = requireEnv("MINIO_SECRET_KEY", "secretKey");
-    const minioBucket = `${requireEnv("MINIO_BUCKET_NAME", "bucketName")}-journal-recovery-${suffix}`;
+    const minioBucket = createJournalRecoveryBucketName(requireEnv("MINIO_BUCKET_NAME", "bucketName"), suffix);
     const passphrase = "e2e-passphrase";
     const fileContent = createJournalFixture();
     const expectedBytes = Buffer.from(fileContent, "utf8");
@@ -183,6 +190,21 @@ async function runScenario(encrypt: boolean): Promise<void> {
         }
     }
 }
+
+test("journal recovery bucket name construction stays within S3 limits", () => {
+    const ciBucket = createJournalRecoveryBucketName("livesync-test-bucket-ci", "enc0-1793522628122-62377");
+    assert.ok(ciBucket.length <= 63, "The CI fixture must stay within the S3 bucket-name length limit");
+    assert.match(ciBucket, /^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+
+    const longBase = "a".repeat(63);
+    const unencryptedBucket = createJournalRecoveryBucketName(longBase, "enc0-1793522628122-62377");
+    const encryptedBucket = createJournalRecoveryBucketName(longBase, "enc1-1793522628122-62377");
+    assert.ok(unencryptedBucket.length <= 63);
+    assert.ok(encryptedBucket.length <= 63);
+    assert.match(unencryptedBucket, /^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+    assert.match(encryptedBucket, /^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+    assert.notEqual(unencryptedBucket, encryptedBucket, "Encryption scenarios should have distinct buckets");
+});
 
 test("journal chunk recovery through MINIO", async (t) => {
     await t.test("without encryption", async () => runScenario(false));
