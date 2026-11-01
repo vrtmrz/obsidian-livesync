@@ -94,11 +94,32 @@ describe("ObsidianAPIService.nativeFetch cache control", () => {
 
         await createService({}).nativeFetch(url, { method, cache: "no-store", headers });
 
-        expect(sentHeaders().get("cache-control")).toBe("no-cache, no-store");
-        expect(sentHeaders().get("pragma")).toBe("no-cache");
+        expect(sentHeaders().get("cache-control")).toBe("public, no-cache, no-store");
+        expect(sentHeaders().get("pragma")).toBe("cache, no-cache");
         expect(sentHeaders().get("authorization")).toBe("Basic fixture");
         expect(headers["Cache-Control"]).toBe("public, max-age=3600");
         expect(mocks.requestUrl.mock.calls[0][0]).toMatchObject({ url, method });
+    });
+
+    it("preserves non-conflicting cache directives when enforcing no-store", async () => {
+        const headers = {
+            "Cache-Control": 'max-age=3600, no-transform, custom="a,b"',
+            "cAcHe-CoNtRoL": 'max-stale=30, min-fresh=5, only-if-cached, custom-two="max-age=1, only-if-cached"',
+            Pragma: 'legacy="a,b", no-cache',
+            "X-Custom-Header": "preserved",
+        };
+        const originalHeaders = { ...headers };
+
+        await createService({}).nativeFetch(url, { cache: "no-store", headers });
+
+        const sent = mocks.requestUrl.mock.calls[0][0].headers ?? {};
+        expect(sent["Cache-Control"]).toBe(
+            'no-transform, custom="a,b", custom-two="max-age=1, only-if-cached", no-cache, no-store'
+        );
+        expect(sent["cAcHe-CoNtRoL"]).toBeUndefined();
+        expect(sent.Pragma).toBe('legacy="a,b", no-cache');
+        expect(sent["X-Custom-Header"]).toBe("preserved");
+        expect(headers).toEqual(originalHeaders);
     });
 
     it("uses the Request cache mode when the options do not override it", async () => {
