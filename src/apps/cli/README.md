@@ -70,6 +70,7 @@ livesync-cli [database-path] [command] [args...]
 - `--force` / `-f`: Required by `rebuild` and `fetch` because they replace a database. It also retains its existing `init-settings` overwrite behaviour.
 - `--write-settings`: Write setting migrations and other lasting changes after the command succeeds.
     - `init-settings` writes its target file. `setup`, `remote-add`, `remote-rm`, `remote-set`, and `remote-activate` write their settings changes without this option.
+    - `fetch` and `rebuild` always retain the selected local database suffix after success. Other lasting changes from these commands still require this option.
     - All remaining commands leave the settings file unchanged by default.
     - Temporary values used to suspend synchronisation or select a remote for one command are never written.
 - `--compat-remote-admin-exit-zero`: Preserve the former zero exit code when `mark-resolved`, `lock-remote`, or `unlock-remote` returns a provider verification failure.
@@ -84,8 +85,10 @@ livesync-cli [database-path] [command] [args...]
     - If `vault-path` is omitted, it defaults to `database-path` (compatibility mode).
     - Use this command to keep your local `.md` files in sync with the database.
 - `rebuild`: Rebuild the local and remote databases from the selected Vault. This replaces existing local and remote database state and requires `--force`.
-    - This command may select a new local database suffix. Add `--write-settings` if later CLI commands should use the resulting database selection; otherwise the existing settings file remains unchanged.
+    - The selected local database suffix is saved automatically, so later commands use the reconstructed database.
 - `fetch`: Replace the local database with the configured remote state, then reflect fetched files to the selected Vault. Existing local database state is discarded, so this command requires `--force`.
+    - The selected local database suffix is saved automatically, including when `--write-settings` is omitted.
+    - Differing local files can remain and be preserved as conflict branches alongside the fetched content. For recovery from an intact remote, preserve the existing Vault separately and Fetch into an empty Vault; `--force` does not force file overwriting.
 - `ls [prefix]`: List files currently stored in the local database.
 - `push <src> <dst>`: Push a local file `<src>` into the database at path `<dst>`.
 - `pull <src> <dst>`: Pull a file `<src>` from the database into local file `<dst>`.
@@ -104,6 +107,39 @@ livesync-cli [database-path] [command] [args...]
 - `init-settings [file]`: Create a default settings file.
 
 Remote-administration commands verify the resulting milestone state through the selected provider. The existing `[Verification]` lines remain suitable for scripts which inspect command output, while the default exit code now reflects whether that verification succeeded.
+
+### Interrupted reconstruction and older runtime state
+
+An interrupted `fetch` or `rebuild` leaves a record in
+`<database-path>/.livesync/reconstruction.json`. Ordinary synchronisation and
+mutating commands stop while reconstruction is incomplete. Preserve the Vault,
+database directory, and settings, check the reported failure, then retry the
+same command with `--force` and the same database, Vault, and settings paths.
+`rebuild` replaces remote state as well: confirm that the Vault remains the
+authoritative copy before retrying it. Do not remove the record merely to
+restart `daemon`.
+
+If reconstruction finished but its settings update was interrupted, the next
+invocation completes that update before starting the core. If the settings
+file was independently edited, the CLI stops for review. The pending record
+can contain settings and credentials; protect it like the settings file.
+
+Older CLI versions stored runtime state without recording its database and
+Vault owner. If unowned state is present, the CLI preserves it and stops
+ordinary mutating commands. Read commands remain available for inspection.
+Back up unique edits and establish the authoritative copy before explicitly
+using `fetch --force` or `rebuild --force`. The old runtime files remain
+available for diagnosis; they are not automatically imported into a new scope.
+
+This check runs before scanning, event replay, and synchronisation. Its message
+identifies each affected file and distinguishes an unknown owner from a file
+which cannot be read or parsed. Read commands display the warning and continue
+inspection. After successful reconstruction for the selected database and Vault,
+retained legacy files are no longer inspected, even if they are malformed.
+Corruption in the currently selected runtime KV remains an initialisation error.
+
+Use one CLI process at a time for each database directory. Separate runtime
+scopes do not make concurrent writers to shared device settings supported.
 
 ### Examples
 
