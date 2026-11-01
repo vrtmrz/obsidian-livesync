@@ -210,7 +210,7 @@
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
         "@vrtmrz/livesync-commonlib": "0.2.2",
-        "@vrtmrz/obsidian-plugin-kit": "0.1.6",
+        "@vrtmrz/obsidian-plugin-kit": "0.1.7",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",
         "diff-match-patch": "^1.0.5",
@@ -218,7 +218,7 @@
         "markdown-it": "^14.3.3",
         "minimatch": "^10.2.5",
         "obsidian": "^1.13.1",
-        "octagonal-wheels": "^0.1.55",
+        "octagonal-wheels": "0.1.56",
         "qrcode-generator": "^1.4.4",
         "xxhash-wasm-102": "npm:xxhash-wasm@^1.0.2"
     },
