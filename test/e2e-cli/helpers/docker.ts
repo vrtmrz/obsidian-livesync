@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { writeSync } from "node:fs";
 import { spawnProcess } from "./process.ts";
 /**
@@ -575,6 +576,59 @@ export async function startMinio(
     }
 
     await waitForMinioBucket(minioEndpoint, accessKey, secretKey, bucket);
+}
+
+export type IsolatedMinioFixture = {
+    endpoint: string;
+    accessKey: string;
+    secretKey: string;
+    stop: () => Promise<void>;
+};
+
+/** Start an S3 fixture owned by this caller without touching the shared test container. */
+export async function startIsolatedMinio(accessKey: string, secretKey: string): Promise<IsolatedMinioFixture> {
+    const container = `livesync-cli-continuity-${randomUUID()}`;
+    console.log(`[INFO] starting isolated S3 test container: ${container}`);
+    let tracked = false;
+    const stop = async () => {
+        await stopAndRemoveContainer(container);
+        if (tracked) untrackContainer(container);
+    };
+
+    try {
+        await dockerOrFail(
+            "run",
+            "-d",
+            "--name",
+            container,
+            "-p",
+            "127.0.0.1::9000",
+            "-e",
+            `RUSTFS_ACCESS_KEY=${accessKey}`,
+            "-e",
+            `RUSTFS_SECRET_KEY=${secretKey}`,
+            "-e",
+            "RUSTFS_CONSOLE_ENABLE=true",
+            "-e",
+            "RUSTFS_CORS_ALLOWED_ORIGINS=*",
+            S3_IMAGE,
+            "/data"
+        );
+        trackContainer(container);
+        tracked = true;
+
+        const mapping = await dockerOrFail("port", container, "9000/tcp");
+        const port = Number(mapping.trim().match(/:(\d+)$/)?.[1]);
+        if (!Number.isInteger(port) || port < 1 || port > 65535) {
+            throw new Error(`Could not determine the isolated S3 fixture port from: ${mapping.trim()}`);
+        }
+        const endpoint = `http://127.0.0.1:${port}`;
+        await fetchRetry(endpoint, { method: "GET" }, 30, 1000, [403, 404]);
+        return { endpoint, accessKey, secretKey, stop };
+    } catch (error) {
+        await stop();
+        throw error;
+    }
 }
 
 // ---------------------------------------------------------------------------

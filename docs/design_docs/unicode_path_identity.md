@@ -155,10 +155,11 @@ preflight failure. If a required setup decision cannot be made in a headless
 CLI invocation, the command must fail with a clear remediation message rather
 than report success after cancellation.
 
-`--write-settings` retains the Rebuilder's selected local database name and
-lasting settings changes for subsequent invocations. Without this option, the
-existing CLI policy leaves the settings file unchanged, so a later command can
-reopen the previously selected database.
+The unreleased CLI correction for #1304 always retains the Rebuilder's selected
+local database suffix after successful `fetch` or `rebuild`. `--write-settings`
+still controls other lasting settings changes. Earlier versions required that
+option to retain the database selection; omitting it could reopen the previous
+database on the next invocation. The examples retain the option for compatibility.
 
 ## State which follows the selected identity
 

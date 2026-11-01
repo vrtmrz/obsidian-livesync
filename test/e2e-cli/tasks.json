@@ -1,7 +1,8 @@
 {
   "test:helpers": {
     "test": [
-      "helpers/process.test.ts"
+      "helpers/process.test.ts",
+      "test-ci-task-contract.ts"
     ]
   },
   "test": {
@@ -45,6 +46,11 @@
   "test:settings-writeback": {
     "test": [
       "test-settings-writeback.ts"
+    ]
+  },
+  "test:fetch-database-continuity": {
+    "test": [
+      "test-fetch-database-continuity.ts"
     ]
   },
   "test:remote-administration-exit-codes": {

@@ -24,11 +24,14 @@ import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { createNodeLocalStorage } from "./NodeLocalStorage";
 import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { path as nodePath } from "@vrtmrz/livesync-commonlib/node";
+import { fs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
 import type { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
 import { PouchDB } from "@/apps/cli/lib/pouchdb-node";
 import { NodeServiceContext } from "./NodeServiceContext";
 import { setLang } from "@/common/translation";
+import { runtimeDatabaseDirectory, runtimeScopeDirectory } from "@/apps/cli/runtimeState";
+import { createDeletableValueStore } from "@vrtmrz/value-store";
+import type { SettingServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 
 export { NodeServiceContext } from "./NodeServiceContext";
 
@@ -86,17 +89,31 @@ class NodeUIService<T extends ServiceContext> extends UIService<T> {
     }
 }
 
+class NodeSettingService<T extends NodeServiceContext> extends InjectableSettingService<T> {
+    declare readonly config: InjectableSettingService<T>["config"];
+
+    constructor(context: T, dependencies: SettingServiceDependencies) {
+        super(context, dependencies);
+        const databaseConfig = this.config;
+        const vaultScope = nodePath.basename(runtimeScopeDirectory(context.databasePath, "", context.runtimeVaultPath));
+        this.config = createDeletableValueStore({
+            get: (key) => databaseConfig.getValue(`${key}-${vaultScope}`),
+            set: (key, value) => databaseConfig.setValue(`${key}-${vaultScope}`, value),
+            delete: (key) => databaseConfig.delete(`${key}-${vaultScope}`),
+        });
+    }
+}
+
 export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServiceHub<T> {
     constructor(basePath: string, context: T) {
         const runtimeDir = nodePath.join(basePath, ".livesync", "runtime");
         const localStoragePath = nodePath.join(runtimeDir, "local-storage.json");
-        const keyValueDBPath = nodePath.join(runtimeDir, "keyvalue-db.json");
 
         const API = new HeadlessAPIService<T>(context);
         const conflict = new InjectableConflictService(context);
         const fileProcessing = new InjectableFileProcessingService(context);
 
-        const setting = new InjectableSettingService<T>(context, {
+        const setting = new NodeSettingService<T>(context, {
             APIService: API,
             onDisplayLanguageChanged: setLang,
             deviceValues: createNodeLocalStorage(localStoragePath),
@@ -118,8 +135,13 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             settingService: setting,
             APIService: API,
         });
+        const scopeDirectory = () => runtimeScopeDirectory(basePath, vault.getVaultName(), context.runtimeVaultPath);
         const test = new InjectableTestService(context);
         const databaseEvents = new InjectableDatabaseEventService(context);
+        databaseEvents.onResetDatabase.addHandler(async () => {
+            fs.rmSync(runtimeDatabaseDirectory(basePath, vault.getVaultName()), { force: true, recursive: true });
+            return true;
+        });
         const path = new PathServiceCompat(context, {
             settingService: setting,
         });
@@ -156,7 +178,7 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
                 databaseEvents,
                 vault,
             },
-            keyValueDBPath
+            () => nodePath.join(scopeDirectory(), "keyvalue-db.json")
         );
 
         const control = new ControlService(context, {
