@@ -2,7 +2,6 @@ import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/l
 import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type {
-    IStorageEventTypeGuardAdapter,
     IStorageEventPersistenceAdapter,
     IStorageEventWatchAdapter,
     IStorageEventStatusAdapter,
@@ -15,31 +14,8 @@ import { watch as chokidarWatch, type FSWatcher } from "chokidar";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { fsPromises as fs, getNodeFileCreationTime, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
+import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
 import { writeFileAtomically } from "@/apps/cli/runtimeState";
-
-/**
- * CLI-specific type guard adapter
- */
-class CLITypeGuardAdapter implements IStorageEventTypeGuardAdapter<NodeFile, NodeFolder> {
-    isFile(file: unknown): file is NodeFile {
-        return !!(
-            file &&
-            typeof file === "object" &&
-            "path" in file &&
-            "stat" in file &&
-            !(file as { isFolder?: boolean }).isFolder
-        );
-    }
-
-    isFolder(item: unknown): item is NodeFolder {
-        return !!(
-            item &&
-            typeof item === "object" &&
-            "path" in item &&
-            (item as { isFolder?: boolean }).isFolder === true
-        );
-    }
-}
 
 /**
  * CLI-specific persistence adapter (file-based snapshot)
@@ -213,7 +189,7 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
  * Composite adapter for CLI StorageEventManager
  */
 export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapter<NodeFile, NodeFolder> {
-    readonly typeGuard: CLITypeGuardAdapter;
+    readonly typeGuard: NodeTypeGuardAdapter;
     readonly persistence: CLIPersistenceAdapter;
     readonly watch: CLIWatchAdapter;
     readonly status: CLIStatusAdapter;
@@ -226,7 +202,7 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
         reportDiagnostic: CliDiagnosticReporter = () => undefined,
         snapshotPath?: () => string
     ) {
-        this.typeGuard = new CLITypeGuardAdapter();
+        this.typeGuard = new NodeTypeGuardAdapter();
         this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic, snapshotPath);
         this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic);
         this.status = new CLIStatusAdapter();

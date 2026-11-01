@@ -224,3 +224,27 @@ describe("CLIStorageEventManagerAdapter", () => {
         processExitSpy.mockRestore();
     });
 });
+
+describe("CLIStorageEventManagerAdapter type guard", () => {
+    const typeGuard = new CLIStorageEventManagerAdapter("/base").typeGuard;
+
+    it.each([
+        { label: "null", value: null, expected: false },
+        { label: "an object without a path", value: { stat: {} }, expected: false },
+        { label: "an object without a stat", value: { path: "note.md" }, expected: false },
+        { label: "a file-shaped object", value: { path: "note.md", stat: {} }, expected: true },
+        { label: "a folder-shaped object", value: { path: "folder", isFolder: true }, expected: false },
+    ])("classifies $label as a file", ({ value, expected }) => {
+        expect(typeGuard.isFile(value)).toBe(expected);
+    });
+
+    it.each([
+        { label: "null", value: null, expected: false },
+        { label: "an object without a path", value: { isFolder: true }, expected: false },
+        { label: "an object without the folder marker", value: { path: "folder" }, expected: false },
+        { label: "a folder-shaped object", value: { path: "folder", isFolder: true }, expected: true },
+        { label: "a file-shaped object", value: { path: "note.md", stat: {} }, expected: false },
+    ])("classifies $label as a folder", ({ value, expected }) => {
+        expect(typeGuard.isFolder(value)).toBe(expected);
+    });
+});

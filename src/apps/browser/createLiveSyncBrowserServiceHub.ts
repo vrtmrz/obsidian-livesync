@@ -22,6 +22,7 @@ import { InjectableVaultServiceCompat } from "@vrtmrz/livesync-commonlib/compat/
 
 import { setLang, translateLiveSyncMessage } from "@/common/translation";
 import { BrowserConfirm } from "./BrowserConfirm";
+import { createBrowserUiScope, type BrowserUiOptions, type BrowserUiScope } from "./BrowserUiScope";
 import { createBrowserKeyValueDatabaseFactory } from "./BrowserKeyValueDatabase";
 import { LiveSyncBrowserAPIService, type LiveSyncBrowserAPIServiceOptions } from "./LiveSyncBrowserAPIService";
 import { LiveSyncBrowserUIService } from "./LiveSyncBrowserUIService";
@@ -41,6 +42,7 @@ export interface LiveSyncBrowserRestartPolicy {
 export interface LiveSyncBrowserServiceHubOptions<T extends ServiceContext> {
     deviceValues: ValueStore & ValueDeleter;
     context?: T;
+    ui?: BrowserUiOptions;
     getSystemVaultName?: () => string;
     settings?: LiveSyncBrowserSettingsPersistence;
     restart?: LiveSyncBrowserRestartPolicy;
@@ -56,15 +58,18 @@ class LiveSyncBrowserKeyValueDBService<T extends ServiceContext> extends KeyValu
 
 /** LiveSync-owned service composition shared by WebApp and WebPeer. */
 export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends InjectableServiceHub<T> {
+    readonly browserUi: BrowserUiScope;
+
     constructor(options: LiveSyncBrowserServiceHubOptions<T>) {
         const context =
             options.context ??
             (new ServiceContext({
                 translate: translateLiveSyncMessage,
             }) as T);
+        const browserUi = createBrowserUiScope(context, options.ui);
         const API = new LiveSyncBrowserAPIService(context, {
             ...options.API,
-            confirm: new BrowserConfirm(context),
+            confirm: new BrowserConfirm(context, browserUi),
             getSystemVaultName: options.getSystemVaultName ?? (() => "livesync-browser"),
         });
         const conflict = new InjectableConflictService(context);
@@ -147,13 +152,17 @@ export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends Injecta
             APIService: API,
             replicatorService: replicator,
         });
-        const ui = new LiveSyncBrowserUIService(context, {
-            API,
-            appLifecycle,
-            config,
-            control,
-            replicator,
-        });
+        const ui = new LiveSyncBrowserUIService(
+            context,
+            {
+                API,
+                appLifecycle,
+                config,
+                control,
+                replicator,
+            },
+            browserUi
+        );
 
         super(context, {
             API,
@@ -175,6 +184,7 @@ export class LiveSyncBrowserServiceHub<T extends ServiceContext> extends Injecta
             ui,
             vault,
         });
+        this.browserUi = browserUi;
     }
 }
 

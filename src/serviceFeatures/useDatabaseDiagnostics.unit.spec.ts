@@ -82,6 +82,26 @@ describe("database diagnostics serviceFeature", () => {
         expect(data.openDialog).not.toHaveBeenCalled();
     });
 
+    it.each(["analyse-database", "inspect-database-integrity"])(
+        "rechecks database availability before executing %s",
+        async (id) => {
+            const data = fixture();
+            data.settings.useAdvancedMode = true;
+            for (const initialise of data.initialise) await initialise();
+            const command = data.commands.find((candidate) => candidate.id === id)!;
+            expect(command.checkCallback(true)).toBe(true);
+            expect(data.openDialog).not.toHaveBeenCalled();
+            data.setReady(false);
+            expect(command.checkCallback(false)).toBe(false);
+            expect(data.openDialog).not.toHaveBeenCalled();
+            data.setReady(true);
+            expect(command.checkCallback(false)).toBe(true);
+            expect(data.openDialog).toHaveBeenCalledOnce();
+            expect(data.openDialog.mock.calls[0][1].kind).toBe(id === "analyse-database" ? "usage" : "integrity");
+            data.close();
+        }
+    );
+
     it("uses the existing dialogue manager and performs no analysis until the run choice is submitted", async () => {
         vi.mocked(runDatabaseDiagnostic).mockClear();
         const data = fixture();

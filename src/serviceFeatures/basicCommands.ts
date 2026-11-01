@@ -1,3 +1,4 @@
+import { createCommandCheck } from "@vrtmrz/obsidian-plugin-kit/command";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { fireAndForget } from "octagonal-wheels/promises";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
@@ -69,14 +70,12 @@ export function useBasicCommandsFeature(host: BasicCommandsHost): void {
         services.API.addCommand({
             id: "livesync-dump",
             name: $msg("Copy database information for the active file"),
-            checkCallback: (checking) => {
-                const file = services.vault.getActiveFilePath();
-                if (!file) return false;
-                if (!checking) {
+            checkCallback: createCommandCheck(
+                () => services.vault.getActiveFilePath(),
+                (file) => {
                     fireAndForget(() => copyFileDatabaseInfo(createFileDatabaseInfoCore(host), file));
                 }
-                return true;
-            },
+            ),
         });
 
         services.API.addCommand({
@@ -115,13 +114,12 @@ export function useBasicCommandsFeature(host: BasicCommandsHost): void {
         services.API.addCommand({
             id: "livesync-scan-files",
             name: "Scan storage and database again",
-            checkCallback: (checking) => {
-                if (!services.setting.currentSettings().useAdvancedMode) return false;
-                if (!checking) {
+            checkCallback: createCommandCheck(
+                () => services.setting.currentSettings().useAdvancedMode,
+                () => {
                     fireAndForget(() => services.vault.scanVault(true));
                 }
-                return true;
-            },
+            ),
         });
 
         services.API.addCommand({
@@ -135,13 +133,12 @@ export function useBasicCommandsFeature(host: BasicCommandsHost): void {
         services.API.addCommand({
             id: "livesync-abortsync",
             name: "Abort synchronization immediately",
-            checkCallback: (checking) => {
-                if (!services.setting.currentSettings().useAdvancedMode) return false;
-                if (!checking) {
+            checkCallback: createCommandCheck(
+                () => services.setting.currentSettings().useAdvancedMode,
+                () => {
                     fireAndForget(() => services.replication.stopActiveTransfer());
                 }
-                return true;
-            },
+            ),
         });
 
         return Promise.resolve(true);

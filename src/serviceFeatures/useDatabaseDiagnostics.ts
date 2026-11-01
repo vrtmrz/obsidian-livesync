@@ -1,3 +1,4 @@
+import { createCommandCheck } from "@vrtmrz/obsidian-plugin-kit/command";
 import {
     createServiceFeature,
     type NecessaryServices,
@@ -46,22 +47,23 @@ export const useDatabaseDiagnosticsFeature = createServiceFeature((host: Databas
             id: "analyse-database",
             name: "Analyse Database Usage (advanced)",
             icon: "database-search",
-            checkCallback: (checking) => {
-                if (!services.setting.currentSettings().useAdvancedMode || !services.database.isDatabaseReady())
-                    return false;
-                if (!checking) void open("usage");
-                return true;
-            },
+            checkCallback: createCommandCheck(
+                () => services.setting.currentSettings().useAdvancedMode && services.database.isDatabaseReady(),
+                () => {
+                    void open("usage");
+                }
+            ),
         });
         services.API.addCommand({
             id: "inspect-database-integrity",
             name: $msg("Inspect database integrity"),
             icon: "database-search",
-            checkCallback: (checking) => {
-                if (!services.database.isDatabaseReady()) return false;
-                if (!checking) void open("integrity");
-                return true;
-            },
+            checkCallback: createCommandCheck(
+                () => services.database.isDatabaseReady(),
+                () => {
+                    void open("integrity");
+                }
+            ),
         });
         return Promise.resolve(true);
     });

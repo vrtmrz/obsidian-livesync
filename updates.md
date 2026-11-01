@@ -28,6 +28,37 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
 
+- Hidden File Sync now stores newer local files during `Merge` initialisation by comparing local and database modification times in the correct direction.
+
+- Hidden File Sync refreshes an open manual JSON comparison when a later conflict check arrives for the same file.
+    - The earlier dialogue closes, and the latest revisions are checked again before another comparison opens. A replicated resolution also closes the affected comparison. Dialogues for other files keep their order.
+    - An `Apply` operation already in progress finishes before its replacement proceeds.
+
+- Reloading the Customisation Sync catalogue no longer allows an earlier legacy-format scan to put outdated items back into the list.
+    - Reloading or disabling Customisation Sync discards unstarted scans and ignores stale read results. Migrations to per-file storage which have already started are allowed to finish.
+
+### Synchronisation
+
+- Devices using the legacy IndexedDB adapter now use the standard recovery dialogue when a remote retains an old cleanup lock.
+    - The obsolete in-place `Cleanup` option has been removed. We can fetch the remote again, explicitly unlock the device, or dismiss the dialogue; dismissal remains the default.
+    - Fetch replaces the local database, so preserve unsynchronised work and any required local history first. Unlock only when the local and remote databases are already aligned. Garbage Collection V3 is unchanged.
+
+
+### Maintenance
+
+- The plug-in bundle is smaller, reducing the download for installation and updates.
+    - Builds remove unused code and shorten local identifiers while retaining class and function names for diagnostics.
+
+### Diagnostics
+
+- Service log calls stay with the plug-in instance that registered them. Its log connection is released after the full shutdown, so stale instances cannot receive later service messages.
+
+### Browser applications
+
+- WebApp and WebPeer dialogues and menus remain with their owning application
+  and close on shutdown; closing or replacing a menu releases its component.
+
+
 ## 1.0.43
 
 30th October, 2026

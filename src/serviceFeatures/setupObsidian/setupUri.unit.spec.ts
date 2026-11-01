@@ -221,7 +221,7 @@ describe("setupObsidian/setupUri", () => {
                 },
                 UI: {
                     confirm: {
-                        askString: vi.fn(() => "pass"),
+                        askString: vi.fn(async () => false),
                     },
                     promptCopyToClipboard: vi.fn(() => true),
                 },
@@ -269,7 +269,7 @@ describe("setupObsidian/setupUri", () => {
                 },
                 UI: {
                     confirm: {
-                        askString: vi.fn(() => "pass"),
+                        askString: vi.fn(async () => false),
                     },
                     promptCopyToClipboard: vi.fn(() => true),
                 },
@@ -292,5 +292,12 @@ describe("setupObsidian/setupUri", () => {
         settings.useAdvancedMode = true;
         expect(command("livesync-copysetupuri-short").checkCallback?.(true)).toBe(true);
         expect(command("livesync-copysetupurifull").checkCallback?.(true)).toBe(true);
+        expect(host.services.UI.confirm.askString).not.toHaveBeenCalled();
+        settings.isConfigured = false;
+        for (const registered of commands) expect(registered.checkCallback?.(false)).toBe(false);
+        expect(host.services.UI.confirm.askString).not.toHaveBeenCalled();
+        settings.isConfigured = true;
+        for (const registered of commands) expect(registered.checkCallback?.(false)).toBe(true);
+        expect(host.services.UI.confirm.askString).toHaveBeenCalledTimes(3);
     });
 });

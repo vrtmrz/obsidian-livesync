@@ -110,6 +110,67 @@ describe("joined devices service feature", () => {
         expect(await pending).toEqual({ status: "handled", value: "closed" });
         await expect(options.refresh()).rejects.toThrow();
     });
+    it("propagates a failed refresh after releasing its resource", async () => {
+        const data = fixture();
+        const failure = new Error("joined devices read failed");
+        data.read.mockRejectedValueOnce(failure);
+        const { options, pending } = await open(data);
+
+        await expect(options.refresh()).rejects.toBe(failure);
+        expect(data.dispose).toHaveBeenCalledOnce();
+        data.close();
+        await pending;
+    });
+    it.each(["refresh", "forget"] as const)(
+        "waits for resource disposal after %s",
+        async (operationName) => {
+            const data = fixture();
+            let finishDisposal!: () => void;
+            data.dispose.mockImplementationOnce(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishDisposal = resolve;
+                    })
+            );
+            const { options, pending } = await open(data);
+            const operation = operationName === "refresh" ? options.refresh() : options.forget("other");
+            let settled = false;
+            void operation.then(
+                () => {
+                    settled = true;
+                },
+                () => {
+                    settled = true;
+                }
+            );
+
+            await vi.waitFor(() => expect(data.dispose).toHaveBeenCalledOnce());
+            expect(settled).toBe(false);
+            finishDisposal();
+            await expect(operation).resolves.toBeDefined();
+            expect(settled).toBe(true);
+            data.close();
+            await pending;
+        }
+    );
+    it.each(["refresh", "forget"] as const)(
+        "uses disposal failure precedence when %s also fails",
+        async (operationName) => {
+            const data = fixture();
+            const operationFailure = new Error("joined devices operation failed");
+            const disposalFailure = new Error("joined devices disposal failed");
+            if (operationName === "refresh") data.read.mockRejectedValueOnce(operationFailure);
+            else data.forget.mockRejectedValueOnce(operationFailure);
+            data.dispose.mockRejectedValueOnce(disposalFailure);
+            const { options, pending } = await open(data);
+            const operation = operationName === "refresh" ? options.refresh() : options.forget("other");
+
+            await expect(operation).rejects.toBe(disposalFailure);
+            expect(data.dispose).toHaveBeenCalledOnce();
+            data.close();
+            await pending;
+        }
+    );
     it("prevents self removal and fences an old dialogue after a remote switch", async () => {
         const data = fixture();
         const { options, pending } = await open(data);

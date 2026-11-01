@@ -1,5 +1,6 @@
 import {
     LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
     type FilePath,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
@@ -7,7 +8,7 @@ import {
 import type { IConflictService, IVaultService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
+import { createConflictCheckQueue } from "@vrtmrz/livesync-commonlib/conflicts";
 
 export type ConflictCheckingSettings = Pick<ObsidianLiveSyncSettings, "checkConflictOnlyOnOpen">;
 
@@ -17,6 +18,7 @@ export interface ConflictCheckingDependencies {
         "getOptionalConflictCheckMethod" | "queueCheckFor" | "resolve" | "resolveByNewest"
     >;
     readonly conflictProcessQueueCount: ReactiveSource<number>;
+    readonly cancelActiveResolution: (filename: FilePathWithPrefix) => void;
     readonly currentSettings: () => ConflictCheckingSettings;
     readonly vault: Pick<IVaultService, "getActiveFilePath">;
     readonly log: LogFunction;
@@ -30,25 +32,21 @@ export interface ConflictCheckingHandlers {
 
 /** Create conflict-checking handlers while retaining scheduling state privately. */
 export function createConflictCheckingHandlers(dependencies: ConflictCheckingDependencies): ConflictCheckingHandlers {
-    const conflictQueue = new QueueProcessor<FilePathWithPrefix, void>(
-        async (filenames: FilePathWithPrefix[]) => {
-            const filename = filenames[0];
-            return await dependencies.conflict.resolve(filename);
+    const conflictQueue = createConflictCheckQueue({
+        async process(filename) {
+            try {
+                await dependencies.conflict.resolve(filename);
+            } catch (error) {
+                dependencies.log(`Conflict check failed: ${filename}`);
+                dependencies.log(error, LOG_LEVEL_VERBOSE);
+            }
         },
-        {
-            suspended: false,
-            batchSize: 1,
-            // No need to limit concurrency to `1` here, subsequent process will handle it,
-            // and some cases do not need to be synchronised (for example, auto-merge).
-            // Global concurrency is limited by the resolver with the UI.
-            concurrentLimit: 10,
-            delay: 0,
-            keepResultUntilDownstreamConnected: false,
-            totalRemainingReactiveSource: dependencies.conflictProcessQueueCount,
-        }
-    ).replaceEnqueueProcessor((queue, newEntity) => {
-        const newQueue = [...queue].filter((entry) => entry != newEntity);
-        return [...newQueue, newEntity];
+        // The resolver serialises shared user interactions; independent checks
+        // and automatic merges can use the remaining execution slots.
+        concurrency: 10,
+        onProgress(remaining) {
+            dependencies.conflictProcessQueueCount.value = remaining;
+        },
     });
 
     const queueCheckForIfOpen = async (file: FilePathWithPrefix): Promise<void> => {
@@ -72,11 +70,15 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
             // The conflict should be resolved by the newer entry.
             await dependencies.conflict.resolveByNewest(file);
         } else {
+            // The next batch waits for active checks to settle. Cancel the
+            // older same-file resolution now so its dialogue cannot hold the
+            // replacement behind that wait.
+            dependencies.cancelActiveResolution(file);
             conflictQueue.enqueue(file);
         }
     };
 
-    const ensureAllProcessed = (): Promise<boolean> => conflictQueue.waitForAllProcessed();
+    const ensureAllProcessed = (): Promise<boolean> => conflictQueue.waitForIdle();
 
     return {
         queueCheckForIfOpen,

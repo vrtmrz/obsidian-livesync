@@ -34,6 +34,7 @@ export interface SvelteDialogSessionOptions<TResult, TInitial, TContext extends 
     component: ComponentHasResult<TResult, TInitial>;
     initialData?: TInitial;
     renderer?: SvelteDialogRenderer;
+    signal?: AbortSignal;
 }
 
 const svelteDialogRenderer: SvelteDialogRenderer = {
@@ -46,11 +47,7 @@ const svelteDialogRenderer: SvelteDialogRenderer = {
 };
 
 /** Owns one Svelte dialogue result and mount lifecycle for a concrete host surface. */
-export class SvelteDialogSession<
-    TResult,
-    TInitial,
-    TContext extends ServiceContext = ServiceContext,
-> {
+export class SvelteDialogSession<TResult, TInitial, TContext extends ServiceContext = ServiceContext> {
     private readonly surface: SvelteDialogSurface;
     private readonly context: TContext;
     private readonly dependencies: SvelteDialogManagerDependencies<TContext>;
@@ -58,11 +55,13 @@ export class SvelteDialogSession<
     private readonly component: ComponentHasResult<TResult, TInitial>;
     private readonly initialData?: TInitial;
     private readonly renderer: SvelteDialogRenderer;
+    private readonly signal?: AbortSignal;
 
     private result?: TResult;
     private pendingResult?: PromiseWithResolvers<TResult | undefined>;
     private mountedDialog?: MountedDialog;
     private unregisterUnload?: () => void;
+    private unregisterAbort?: () => void;
 
     constructor(options: SvelteDialogSessionOptions<TResult, TInitial, TContext>) {
         this.surface = options.surface;
@@ -72,10 +71,14 @@ export class SvelteDialogSession<
         this.component = options.component;
         this.initialData = options.initialData;
         this.renderer = options.renderer ?? svelteDialogRenderer;
+        this.signal = options.signal;
     }
 
     onOpen(): void {
+        if (this.signal?.aborted) throw this.signal.reason ?? new Error("Plug-in unloaded");
         this.surface.contentEl.replaceChildren();
+        this.unregisterAbort?.();
+        this.unregisterAbort = undefined;
         this.unregisterUnload?.();
         this.unregisterUnload = undefined;
         if (this.pendingResult) {
@@ -85,14 +88,23 @@ export class SvelteDialogSession<
         this.result = undefined;
         const pendingResult = promiseWithResolvers<TResult | undefined>();
         this.pendingResult = pendingResult;
-        this.unregisterUnload = this.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, () => {
+        const cancel = (reason: unknown) => {
             if (this.pendingResult !== pendingResult) {
                 return;
             }
             this.pendingResult = undefined;
-            pendingResult.reject(new Error("Plug-in unloaded"));
+            pendingResult.reject(reason);
             this.surface.close();
+        };
+        this.unregisterUnload = this.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, () => {
+            cancel(new Error("Plug-in unloaded"));
         });
+        const signal = this.signal;
+        if (signal) {
+            const onAbort = () => cancel(signal.reason ?? new Error("Plug-in unloaded"));
+            signal.addEventListener("abort", onAbort, { once: true });
+            this.unregisterAbort = () => signal.removeEventListener("abort", onAbort);
+        }
 
         this.mountedDialog = this.renderer.mount(this.dialogHost, this.surface.contentEl, {
             onSetupContext: (props: DialogSvelteComponentBaseProps<TResult, TInitial>) => {
@@ -124,6 +136,8 @@ export class SvelteDialogSession<
     }
 
     onClose(): void {
+        this.unregisterAbort?.();
+        this.unregisterAbort = undefined;
         this.unregisterUnload?.();
         this.unregisterUnload = undefined;
         this.pendingResult?.resolve(this.result);

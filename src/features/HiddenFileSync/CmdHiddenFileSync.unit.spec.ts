@@ -98,6 +98,85 @@ function createHiddenRevisionOperation() {
     };
 }
 
+describe("HiddenFileSync storage loading", () => {
+    function createStorageReader(content: string | ArrayBuffer) {
+        const path = ".obsidian/plugins/example/data.json" as FilePath;
+        const stat = {
+            ctime: 123,
+            mtime: 456,
+            size: typeof content === "string" ? new TextEncoder().encode(content).byteLength : content.byteLength,
+            type: "file" as const,
+        };
+        const storageAccess = {
+            statHidden: vi.fn(async (): Promise<typeof stat | null> => stat),
+            readHiddenFileAuto: vi.fn(async () => content),
+        };
+        const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(hiddenFileSync, { core: { storageAccess } });
+        return { hiddenFileSync, storageAccess, path, stat };
+    }
+
+    it.each([
+        {
+            kind: "text",
+            content: "first\r\n日本語 🐙",
+            expected: new TextEncoder().encode("first\r\n日本語 🐙"),
+            mime: "text/plain",
+        },
+        {
+            kind: "binary",
+            content: new Uint8Array([0, 128, 255]).buffer,
+            expected: new Uint8Array([0, 128, 255]),
+            mime: "application/octet-stream",
+        },
+        { kind: "empty text", content: "", expected: new Uint8Array(0), mime: "text/plain" },
+        {
+            kind: "empty binary",
+            content: new ArrayBuffer(0),
+            expected: new Uint8Array(0),
+            mime: "application/octet-stream",
+        },
+    ])("preserves $kind content and its file metadata", async ({ content, expected, mime }) => {
+        const { hiddenFileSync, storageAccess, path, stat } = createStorageReader(content);
+
+        const file = await hiddenFileSync.loadFileWithInfo(path);
+
+        expect(storageAccess.statHidden).toHaveBeenCalledWith(path);
+        expect(storageAccess.readHiddenFileAuto).toHaveBeenCalledWith(path);
+        expect(file).toMatchObject({ name: "data.json", path, stat, isInternal: true, deleted: false });
+        expect(file.body).toBeInstanceOf(Blob);
+        expect(file.body.type).toBe(mime);
+        expect(new Uint8Array(await file.body.arrayBuffer())).toEqual(expected);
+    });
+
+    it("represents a missing file as a deletion without reading storage content", async () => {
+        const { hiddenFileSync, storageAccess, path } = createStorageReader("unavailable");
+        storageAccess.statHidden.mockResolvedValue(null);
+
+        const file = await hiddenFileSync.loadFileWithInfo(path);
+
+        expect(storageAccess.readHiddenFileAuto).not.toHaveBeenCalled();
+        expect(file).toMatchObject({
+            name: "data.json",
+            path,
+            stat: { ctime: 0, mtime: 0, size: 0, type: "file" },
+            isInternal: true,
+            deleted: true,
+        });
+        expect(file.body.type).toBe("application/octet-stream");
+        expect(file.body.size).toBe(0);
+    });
+
+    it("propagates a read failure for an existing file", async () => {
+        const { hiddenFileSync, storageAccess, path } = createStorageReader("unavailable");
+        const error = new Error("Storage read failed");
+        storageAccess.readHiddenFileAuto.mockRejectedValue(error);
+
+        await expect(hiddenFileSync.loadFileWithInfo(path)).rejects.toBe(error);
+        expect(storageAccess.readHiddenFileAuto).toHaveBeenCalledWith(path);
+    });
+});
+
 describe("HiddenFileSync configuration-change notices", () => {
     it.each(["pushForce", "pullForce", "safe"] as const)(
         "refuses %s initialisation before processing files while Hidden File Sync is disabled",

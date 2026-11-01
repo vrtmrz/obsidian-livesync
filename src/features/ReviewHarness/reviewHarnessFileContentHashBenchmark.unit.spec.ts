@@ -74,6 +74,7 @@ describe("Review Harness file content hash measurements", () => {
 
         expect(result.status).toBe("passed");
         expect(result.detail).toBe("File content hash measurements completed.");
+        expect(report).toContain("JavaScript heap: unavailable on this device.");
         expect([...f.inputs().contentBySize.keys()]).toEqual(
             REVIEW_HARNESS_FILE_CONTENT_HASH_INPUTS.map(({ bytes }) => bytes)
         );
@@ -106,6 +107,49 @@ describe("Review Harness file content hash measurements", () => {
         expect(report).not.toContain("sha256:4096");
         expect(report).not.toContain("4096n");
     });
+
+    it("tracks the sampled maximum and reports a lower final heap sample", async () => {
+        const f = fixture();
+        let reads = 0;
+        const clock = {
+            now: f.now,
+            get memory() {
+                const sample = reads++;
+                const mebibytes =
+                    sample === 0 ? 2 : sample === 1 ? 5 : sample === 31 ? 1 : 3;
+                return { usedJSHeapSize: mebibytes * 1048576 };
+            },
+        };
+        const result = await runReviewHarnessFileContentHashBenchmark(f.operations, clock, f.yieldControl);
+
+        expect(result.observations).toContain(
+            "JavaScript heap: before=2.00 MiB; highest sampled=5.00 MiB; after=1.00 MiB."
+        );
+        expect(result.observations.join("\n")).toContain("neither total app RAM nor a true peak");
+        expect(reads).toBe(32);
+    });
+
+    it.each([Number.NaN, Number.POSITIVE_INFINITY, -1, "throws"] as const)(
+        "keeps timings usable when the heap API returns %s",
+        async (value) => {
+            const f = fixture();
+            const result = await runReviewHarnessFileContentHashBenchmark(
+                f.operations,
+                {
+                    now: f.now,
+                    get memory() {
+                        if (value === "throws") throw new Error("Heap API unavailable");
+                        return { usedJSHeapSize: value as number };
+                    },
+                },
+                f.yieldControl
+            );
+
+            expect(result.status).toBe("passed");
+            expect(result.observations).toContain("JavaScript heap: unavailable on this device.");
+            expect(result.observations.join("\n")).not.toMatch(/NaN|Infinity/u);
+        }
+    );
 
     it("uses the same deterministic byte sequence for short and long inputs", async () => {
         const shortInput = createFixedFileContentHashInput(4 * 1024);

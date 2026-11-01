@@ -86,3 +86,64 @@ describe("SvelteDialogSession", () => {
         expect(close).toHaveBeenCalledOnce();
     });
 });
+
+describe("SvelteDialogSession owner signal", () => {
+    it("rejects and releases the mounted dialogue when its owner aborts", async () => {
+        const context = createServiceContext();
+        const controller = new AbortController();
+        const lifecycle = { signal: controller.signal };
+        const unmount = vi.fn().mockResolvedValue(undefined);
+        let session: SvelteDialogSession<string, string, typeof context>;
+        const close = vi.fn(() => session.onClose());
+        session = new SvelteDialogSession({
+            ...lifecycle,
+            surface: {
+                contentEl: { replaceChildren: vi.fn() } as unknown as HTMLElement,
+                close,
+                setTitle: vi.fn(),
+            },
+            context,
+            dependencies: {} as SvelteDialogManagerDependencies<typeof context>,
+            dialogHost: (() => {}) as unknown as Component<DialogHostProps>,
+            component: (() => {}) as unknown as ComponentHasResult<string, string>,
+            renderer: { mount: () => ({}) as never, unmount },
+        });
+        session.onOpen();
+        let observed: unknown = "pending";
+        void session.waitForClose().catch((error) => {
+            observed = error;
+        });
+        const reason = new Error("fixture owner ended");
+        controller.abort(reason);
+        await vi.waitFor(() => expect(observed).toBe(reason), { timeout: 1000, interval: 20 });
+        expect(close).toHaveBeenCalledOnce();
+        expect(unmount).toHaveBeenCalledOnce();
+        context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
+        expect(close).toHaveBeenCalledOnce();
+    });
+
+    it("detaches an owner signal when normal close has already settled the result", async () => {
+        const context = createServiceContext();
+        const controller = new AbortController();
+        const remove = vi.spyOn(controller.signal, "removeEventListener");
+        const lifecycle = { signal: controller.signal };
+        const close = vi.fn();
+        const session = new SvelteDialogSession({
+            ...lifecycle,
+            surface: { contentEl: { replaceChildren: vi.fn() } as unknown as HTMLElement, close, setTitle: vi.fn() },
+            context,
+            dependencies: {} as SvelteDialogManagerDependencies<typeof context>,
+            dialogHost: (() => {}) as unknown as Component<DialogHostProps>,
+            component: (() => {}) as unknown as ComponentHasResult<string, string>,
+            renderer: { mount: () => ({}) as never, unmount: vi.fn().mockResolvedValue(undefined) },
+        });
+        session.onOpen();
+        const result = session.waitForClose();
+        session.onClose();
+        await expect(result).resolves.toBeUndefined();
+        expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+        controller.abort();
+        context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
+        expect(close).not.toHaveBeenCalled();
+    });
+});

@@ -16,55 +16,86 @@ const chunkMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/chunks", () => chunkMocks);
-vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
-    LiveSyncCouchDBReplicator: class {},
-}));
 
-import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 
 describe("central compatibility recovery", () => {
-    it("does not count chunks for cleanup when local feature requirements are unknown", async () => {
-        chunkMocks.purgeUnreferencedChunks.mockClear();
-        const confirmWithMessage = vi.fn(async () => "Dismiss");
-        const recovery = createCentralCompatibilityRecovery({
-            confirm: { confirmWithMessage },
-            getLocalDatabase: () => ({
-                localDatabase: {
-                    get: vi.fn(async (id: string) => ({
-                        _id: id,
-                        type: "versioninfo",
-                        version: 13,
-                        used_features: ["future-format-v7"],
-                    })),
-                },
-            }),
-            services: { replicator: {} },
-        } as never);
+    describe.each([
+        { name: "unknown local features", version: 13, used_features: ["future-format-v7"] },
+        { name: "a legacy local version", version: 11 },
+        { name: "the current local version", version: 12 },
+    ])("compatibility: cleaned IndexedDB remote with $name", (localVersion) => {
+        it.each(["fetch", "unlock", "dismiss"] as const)(
+            "uses standard recovery for an explicit %s choice without legacy cleanup",
+            async (choice) => {
+                chunkMocks.purgeUnreferencedChunks.mockClear();
+                chunkMocks.balanceChunkPurgedDBs.mockClear();
+                const markRemoteResolved = vi.fn(async (_setting: unknown) => undefined);
+                const failedContext = {
+                    provider: {},
+                    replicator: { markRemoteResolved },
+                    configurationIdentity: "cleaned-remote-test",
+                };
+                const setting = { useIndexedDBAdapter: true } as ObsidianLiveSyncSettings;
+                const scheduleFetch = vi.fn(async () => undefined);
+                const scheduleRestart = vi.fn();
+                const getLocalDatabase = vi.fn(() => ({
+                    localDatabase: {
+                        get: vi.fn(async () => ({ _id: VERSIONING_DOCID, type: "versioninfo", ...localVersion })),
+                    },
+                }));
+                const confirmWithMessage = vi.fn(async () => "Dismiss");
+                const askSelectStringDialogue = vi.fn(
+                    async (_message: string, choices: string[]) =>
+                        choices[choice === "fetch" ? 0 : choice === "unlock" ? 1 : 2]
+                );
+                const recovery = createCentralCompatibilityRecovery({
+                    confirm: { askSelectStringDialogue, confirmWithMessage },
+                    getLocalDatabase,
+                    rebuilder: { scheduleFetch },
+                    services: {
+                        appLifecycle: { scheduleRestart },
+                        replicator: {
+                            runWithActiveReplicatorContext: async (task: (context: unknown) => unknown) =>
+                                await task(failedContext),
+                        },
+                    },
+                } as never);
 
-        await recovery.reconcileCleanedRemote(true, {} as ObsidianLiveSyncSettings, {} as never);
+                const result = await recovery.handleReplicationFailure({
+                    context: failedContext,
+                    setting,
+                    outcome: replicationFailed(new Error("cleaned"), {
+                        reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED,
+                    }),
+                    progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+                    interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+                } as never);
 
-        expect(chunkMocks.purgeUnreferencedChunks).not.toHaveBeenCalled();
-        expect(confirmWithMessage).not.toHaveBeenCalled();
-    });
-
-    it("allows cleanup counting for a legacy local version document", async () => {
-        chunkMocks.purgeUnreferencedChunks.mockClear();
-        const confirmWithMessage = vi.fn(async () => "Dismiss");
-        const recovery = createCentralCompatibilityRecovery({
-            confirm: { confirmWithMessage },
-            getLocalDatabase: () => ({
-                localDatabase: {
-                    get: vi.fn(async (id: string) => ({ _id: id, type: "versioninfo", version: 11 })),
-                },
-            }),
-            services: { replicator: {} },
-        } as never);
-
-        await recovery.reconcileCleanedRemote(true, {} as ObsidianLiveSyncSettings, {} as never);
-
-        expect(chunkMocks.purgeUnreferencedChunks).toHaveBeenCalledWith(expect.anything(), true);
-        expect(confirmWithMessage).toHaveBeenCalledOnce();
+                expect(result).toBe(false);
+                expect(askSelectStringDialogue).toHaveBeenCalledOnce();
+                const choices = askSelectStringDialogue.mock.calls[0][1];
+                expect(choices).toHaveLength(3);
+                expect(askSelectStringDialogue).toHaveBeenCalledWith(expect.any(String), choices, {
+                    title: expect.any(String),
+                    defaultAction: choices[2],
+                    timeout: 60,
+                });
+                expect(confirmWithMessage).not.toHaveBeenCalled();
+                expect(getLocalDatabase).not.toHaveBeenCalled();
+                expect(chunkMocks.purgeUnreferencedChunks).not.toHaveBeenCalled();
+                expect(chunkMocks.balanceChunkPurgedDBs).not.toHaveBeenCalled();
+                expect(scheduleFetch).toHaveBeenCalledTimes(choice === "fetch" ? 1 : 0);
+                expect(scheduleRestart).toHaveBeenCalledTimes(choice === "fetch" ? 1 : 0);
+                expect(markRemoteResolved).toHaveBeenCalledTimes(choice === "unlock" ? 1 : 0);
+                if (choice === "fetch") {
+                    expect(scheduleFetch.mock.invocationCallOrder[0]).toBeLessThan(
+                        scheduleRestart.mock.invocationCallOrder[0]
+                    );
+                }
+                if (choice === "unlock") expect(markRemoteResolved).toHaveBeenCalledWith(setting);
+            }
+        );
     });
 
     it("passes the failed attempt's exact tweak assessment to mismatch resolution", async () => {
@@ -139,7 +170,6 @@ describe("central compatibility recovery", () => {
         try {
             const recovery = createCentralCompatibilityRecovery({
                 confirm: {},
-                getLocalDatabase: () => ({}),
                 rebuilder: {},
                 services: {
                     appLifecycle: {},
@@ -187,7 +217,6 @@ describe("central compatibility recovery", () => {
         });
         const recovery = createCentralCompatibilityRecovery({
             confirm: {},
-            getLocalDatabase: () => ({}),
             rebuilder: {},
             services: {
                 appLifecycle: {},
@@ -255,7 +284,6 @@ describe("central compatibility recovery", () => {
         );
         const recovery = createCentralCompatibilityRecovery({
             confirm: {},
-            getLocalDatabase: () => ({}),
             rebuilder: {},
             services: {
                 appLifecycle: {},
@@ -287,7 +315,10 @@ describe("central compatibility recovery", () => {
         expect(setPreferredRemoteTweakSettings.mock.calls[0][0]).not.toBe(effectiveSetting);
     });
 
-    it("does not apply an unlock selected for a replaced failed publication", async () => {
+    it.each([
+        CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED,
+        CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED,
+    ])("does not apply an unlock for a replaced failed publication: %s", async (reason) => {
         const failedMarkResolved = vi.fn(async () => undefined);
         const replacementMarkResolved = vi.fn(async () => undefined);
         const failedContext = { provider: {}, replicator: { markRemoteResolved: failedMarkResolved } };
@@ -299,7 +330,6 @@ describe("central compatibility recovery", () => {
             confirm: {
                 askSelectStringDialogue: vi.fn(async (_message: string, choices: string[]) => choices[1]),
             },
-            getLocalDatabase: () => ({}),
             rebuilder: {},
             services: {
                 appLifecycle: { scheduleRestart: vi.fn() },
@@ -311,9 +341,9 @@ describe("central compatibility recovery", () => {
 
         await recovery.handleReplicationFailure({
             context: failedContext,
-            setting: {},
+            setting: { useIndexedDBAdapter: true },
             outcome: replicationFailed(new Error("locked"), {
-                reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_LOCKED,
+                reason,
             }),
             progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
             interaction: USER_INITIATED_REPLICATION_AUTHORITY,
@@ -324,69 +354,55 @@ describe("central compatibility recovery", () => {
         expect(replacementMarkResolved).not.toHaveBeenCalled();
     });
 
-    it("keeps cleaned-remote replication and balancing inside the shared activity boundary", async () => {
-        const activityFinished = vi.fn();
-        const runBoundedRemoteActivity = vi.fn(async (task: () => unknown) => {
-            try {
-                return await task();
-            } finally {
-                activityFinished();
-            }
-        });
-        const runFiniteReplicationActivity = vi.fn(async (task: () => unknown) => await task());
-        const openOneShotReplication = vi.fn(async () => true);
-        const remoteDatabase = {
-            close: vi.fn(async () => undefined),
+    it.each([
+        NO_INTERACTION,
+        {
+            kind: "permitted" as const,
+            permissions: { ...USER_INITIATED_REPLICATION_AUTHORITY.permissions, failureRecovery: false },
+        },
+    ])("does not recover a cleaned remote without recovery authority: %j", async (interaction) => {
+        const askSelectStringDialogue = vi.fn();
+        const confirmWithMessage = vi.fn();
+        const getLocalDatabase = vi.fn();
+        const scheduleFetch = vi.fn();
+        const scheduleRestart = vi.fn();
+        const markRemoteResolved = vi.fn();
+        const failedContext = {
+            provider: {},
+            replicator: { markRemoteResolved },
+            configurationIdentity: "cleaned-remote-test",
         };
-        const close = vi.fn(async () => undefined);
-        const activeReplicator = Object.assign(new LiveSyncCouchDBReplicator({} as never), {
-            connectRemoteCouchDBWithSetting: vi.fn(async () => ({ db: remoteDatabase, close })),
-            openOneShotReplication,
-            markRemoteResolved: vi.fn(async () => undefined),
-        });
-        const expectedContext = { provider: {}, replicator: activeReplicator };
         const runWithActiveReplicatorContext = vi.fn(async (task: (context: unknown) => unknown) =>
-            task(expectedContext)
+            task(failedContext)
         );
-        const localDatabase = {
-            localDatabase: {
-                get: vi.fn(async () => ({ _id: VERSIONING_DOCID, type: "versioninfo", version: 12 })),
-            },
-            clearCaches: vi.fn(),
-        };
-        const getLocalDatabase = vi.fn(() => localDatabase);
         const recovery = createCentralCompatibilityRecovery({
-            confirm: { confirmWithMessage: vi.fn(async () => "Cleanup") },
+            confirm: { askSelectStringDialogue, confirmWithMessage },
             getLocalDatabase,
-            rebuilder: {},
+            rebuilder: { scheduleFetch },
             services: {
-                appLifecycle: {},
-                API: { isMobile: vi.fn(() => false) },
-                replicator: {
-                    runBoundedRemoteActivity,
-                    runFiniteReplicationActivity,
-                    runWithActiveReplicatorContext,
-                },
-                tweakValue: {},
+                appLifecycle: { scheduleRestart },
+                replicator: { runWithActiveReplicatorContext },
             },
         } as never);
 
-        await recovery.reconcileCleanedRemote(true, {} as ObsidianLiveSyncSettings, expectedContext as never);
+        await expect(
+            recovery.handleReplicationFailure({
+                context: failedContext,
+                setting: { useIndexedDBAdapter: true },
+                outcome: replicationFailed(new Error("cleaned"), {
+                    reason: CENTRAL_COMPATIBILITY_REJECTION_REASONS.NODE_CLEANED,
+                }),
+                progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+                interaction,
+            } as never)
+        ).resolves.toBe(false);
 
-        expect(runBoundedRemoteActivity).toHaveBeenCalledWith(expect.any(Function), {
-            label: "database-cleanup",
-        });
-        expect(runFiniteReplicationActivity).toHaveBeenCalledWith(expect.any(Function), {
-            label: "replication",
-        });
-        expect(runWithActiveReplicatorContext).toHaveBeenCalledOnce();
-        expect(openOneShotReplication).toHaveBeenCalledOnce();
-        expect(openOneShotReplication.mock.invocationCallOrder[0]).toBeLessThan(
-            activityFinished.mock.invocationCallOrder[0]
-        );
-        expect(chunkMocks.balanceChunkPurgedDBs).toHaveBeenCalledOnce();
-        expect(getLocalDatabase).toHaveBeenCalled();
-        expect(close).toHaveBeenCalledOnce();
-        expect(close.mock.invocationCallOrder[0]).toBeLessThan(activityFinished.mock.invocationCallOrder[0]);
+        expect(askSelectStringDialogue).not.toHaveBeenCalled();
+        expect(confirmWithMessage).not.toHaveBeenCalled();
+        expect(getLocalDatabase).not.toHaveBeenCalled();
+        expect(scheduleFetch).not.toHaveBeenCalled();
+        expect(scheduleRestart).not.toHaveBeenCalled();
+        expect(runWithActiveReplicatorContext).not.toHaveBeenCalled();
+        expect(markRemoteResolved).not.toHaveBeenCalled();
     });
 });

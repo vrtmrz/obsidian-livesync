@@ -13,6 +13,7 @@ import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/repl
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
+import { isCouchDBVersionAtLeast, normaliseResponseHeaderKeys } from "@/modules/features/couchDBDiagnosticValues";
 
 export const checkConfig = async (
     checkResultDiv: HTMLDivElement | undefined,
@@ -89,19 +90,6 @@ export const checkConfig = async (
         addResult($msg("obsidianLiveSyncSettingTab.serverVersion", { info: serverBanner }));
         const versionMatch = serverBanner.match(/CouchDB(\/([0-9.]+))?/);
         const versionStr = versionMatch ? versionMatch[2] : "0.0.0";
-        const versionParts = `${versionStr}.0.0.0`.split(".");
-        // Compare version string with the target version.
-        // version must be a string like "3.2.1" or "3.10.2", and must be two or three parts.
-        function isGreaterThanOrEqual(version: string) {
-            const targetParts = version.split(".");
-            for (let i = 0; i < targetParts.length; i++) {
-                // compare as number if possible (so 3.10 > 3.2, 3.10.1b > 3.10.1a)
-                const result = versionParts[i].localeCompare(targetParts[i], undefined, { numeric: true });
-                if (result > 0) return true;
-                if (result < 0) return false;
-            }
-            return true;
-        }
         // Admin check
         //  for database creation and deletion
         if (!(editingSettings.couchDB_USER in responseConfig.admins)) {
@@ -109,7 +97,7 @@ export const checkConfig = async (
         } else {
             addResult($msg("obsidianLiveSyncSettingTab.okAdminPrivileges"));
         }
-        if (isGreaterThanOrEqual("3.2.0")) {
+        if (isCouchDBVersionAtLeast(versionStr, "3.2.0")) {
             // HTTP user-authorization check
             if (responseConfig?.chttpd?.require_valid_user != "true") {
                 isSuccessful = false;
@@ -148,7 +136,7 @@ export const checkConfig = async (
         } else {
             addResult($msg("obsidianLiveSyncSettingTab.okWwwAuth"));
         }
-        if (isGreaterThanOrEqual("3.2.0")) {
+        if (isCouchDBVersionAtLeast(versionStr, "3.2.0")) {
             if (responseConfig?.chttpd?.enable_cors != "true") {
                 isSuccessful = false;
                 addResult($msg("obsidianLiveSyncSettingTab.errEnableCorsChttpd"));
@@ -240,12 +228,7 @@ export const checkConfig = async (
                 undefined,
                 customHeaders
             );
-            const responseHeaders = Object.fromEntries(
-                Object.entries(rr.headers).map((e) => {
-                    e[0] = `${e[0]}`.toLowerCase();
-                    return e;
-                })
-            );
+            const responseHeaders = normaliseResponseHeaderKeys(rr.headers);
             addResult($msg("obsidianLiveSyncSettingTab.msgOriginCheck", { org }));
             if (responseHeaders["access-control-allow-credentials"] != "true") {
                 addResult($msg("obsidianLiveSyncSettingTab.errCorsNotAllowingCredentials"));
