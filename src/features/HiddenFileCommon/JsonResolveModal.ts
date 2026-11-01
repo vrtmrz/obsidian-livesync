@@ -43,11 +43,12 @@ export class JsonResolveModal extends Modal {
     }
 
     async UICallback(keepRev?: string, mergedStr?: string) {
-        if (this.callback) {
-            await this.callback(keepRev, mergedStr);
+        const callback = this.callback;
+        this.callback = undefined;
+        if (callback) {
+            await callback(keepRev, mergedStr);
         }
         this.close();
-        this.callback = undefined;
     }
 
     override onOpen() {
@@ -78,8 +79,10 @@ export class JsonResolveModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         // contentEl.empty();
-        if (this.callback != undefined) {
-            void this.callback(undefined);
+        const callback = this.callback;
+        this.callback = undefined;
+        if (callback) {
+            void callback(undefined);
         }
         if (this.component != undefined) {
             void unmount(this.component);

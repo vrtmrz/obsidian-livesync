@@ -741,21 +741,33 @@ Offline Changed files: ${processFiles.length}`;
 
     // --> Conflict processing
 
-    // Keep one in-flight conflict check per path so repeated sync events do not close the active merge dialogue.
-    pendingConflictChecks = new Set<FilePathWithPrefix>();
+    // Coalesce unstarted checks; retain a replacement once processing has begun.
+    pendingConflictChecks = new Map<FilePathWithPrefix, { started: boolean; recheck: boolean }>();
 
     queueConflictCheck(path: FilePathWithPrefix) {
-        if (this.pendingConflictChecks.has(path)) return;
-        this.pendingConflictChecks.add(path);
+        path = addPrefix(path, ICHeader);
+        const pending = this.pendingConflictChecks.get(path);
+        if (pending) {
+            if (pending.started) {
+                pending.recheck = true;
+                sendSignal(`cancel-internal-conflict:${stripAllPrefixes(path)}`);
+            }
+            return;
+        }
+        this.pendingConflictChecks.set(path, { started: false, recheck: false });
         if (!this.conflictResolutionProcessor.enqueue(path)) this.pendingConflictChecks.delete(path);
     }
 
     finishConflictCheck(path: FilePathWithPrefix) {
+        path = addPrefix(path, ICHeader);
+        const pending = this.pendingConflictChecks.get(path);
         this.pendingConflictChecks.delete(path);
+        if (pending?.recheck) this.queueConflictCheck(path);
     }
 
     requeueConflictCheck(path: FilePathWithPrefix) {
-        this.finishConflictCheck(path);
+        path = addPrefix(path, ICHeader);
+        this.pendingConflictChecks.delete(path);
         this.queueConflictCheck(path);
     }
 
@@ -806,10 +818,16 @@ Offline Changed files: ${processFiles.length}`;
     }
     conflictResolutionProcessor = new HiddenFileConflictQueue(
         async (path: FilePathWithPrefix) => {
+            const check = this.pendingConflictChecks.get(path);
+            if (check) check.started = true;
             try {
                 // Retrieve data
                 const id = await this.path2id(path, ICHeader);
                 const doc = await this.localDatabase.getRaw<MetaEntry>(id, { conflicts: true });
+                if (check?.recheck) {
+                    this.requeueConflictCheck(path);
+                    return [];
+                }
                 if (doc._conflicts === undefined) {
                     this.finishConflictCheck(path);
                     return [];
@@ -838,6 +856,10 @@ Offline Changed files: ${processFiles.length}`;
                         doc._rev,
                         conflictedRev
                     );
+                    if (check?.recheck) {
+                        this.requeueConflictCheck(path);
+                        return [];
+                    }
                     if (result) {
                         this._log(`Object merge:${path}`, LOG_LEVEL_INFO);
                         const filename = stripAllPrefixes(path);
@@ -861,7 +883,7 @@ Offline Changed files: ${processFiles.length}`;
                         await this.resolveByNewerEntry(id, path, doc, revA, revB);
                         return [];
                     }
-                    return [{ path, revA, revB, id, doc }];
+                    return [{ path, revA, revB, id, doc, check }];
                 }
                 // When not JSON file, resolve conflicts by choosing a newer one.
                 await this.resolveByNewerEntry(id, path, doc, revA, revB);
@@ -874,10 +896,18 @@ Offline Changed files: ${processFiles.length}`;
             }
         },
         async (result) => {
-            const { id, doc, path, revA, revB } = result;
+            const { id, doc, path, revA, revB, check } = result;
+            if (check?.recheck) {
+                this.requeueConflictCheck(path);
+                return;
+            }
             const prefixedPath = addPrefix(path, ICHeader);
             const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
             const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
+            if (check?.recheck) {
+                this.requeueConflictCheck(path);
+                return;
+            }
             try {
                 if (docAMerge != false && docBMerge != false) {
                     if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
@@ -912,7 +942,7 @@ Offline Changed files: ${processFiles.length}`;
             const displayFilename = `${storeFilePath}`;
             // const path = this.prefixedConfigDir2configDir(stripAllPrefixes(docA.path)) || docA.path;
             // Cancel only when replacing an existing dialogue for the same path, not on every queue pass.
-            sendSignal(`cancel-internal-conflict:${docA.path}`);
+            sendSignal(`cancel-internal-conflict:${storageFilePath}`);
             const modal = new JsonResolveModal(this.app, storageFilePath, [docA, docB], async (keep, result) => {
                 // modal.close();
                 try {
@@ -998,6 +1028,9 @@ Offline Changed files: ${processFiles.length}`;
     async processReplicationResult(doc: LoadedEntry): Promise<boolean> {
         const info = this.getDocProps(doc);
         const path = info.path;
+        if (this.pendingConflictChecks.has(addPrefix(path, ICHeader))) {
+            this.queueConflictCheck(info.prefixedPath);
+        }
         const headerLine = `Tracking DB ${info.path} (${info.revDisplay}) :`;
         const ret = await this.trackDatabaseFileModification(path, headerLine);
         this._log(`${headerLine} Done: ${info.shortenedId})`, LOG_LEVEL_VERBOSE);

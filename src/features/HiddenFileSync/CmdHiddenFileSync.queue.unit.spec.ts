@@ -18,6 +18,7 @@ import {
     type MetaEntry,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { HiddenFileSync } from "./CmdHiddenFileSync";
+import { sendSignal, waitForSignal } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 
 const queueOwners: HiddenFileSync[] = [];
 
@@ -133,6 +134,132 @@ describe("HiddenFileSync conflict queue", () => {
         }
     });
 
+    it.each(["prefixed", "unprefixed"])(
+        "cancels the older same-file dialogue and presents the latest revisions for a %s request",
+        async (form) => {
+            vi.useFakeTimers();
+            const filename = `.obsidian/replacement-${form}.json`;
+            const path = `i:${filename}` as FilePathWithPrefix;
+            const id = String(path) as DocumentID;
+            let generation = 2;
+            const localDatabase = {
+                getRaw: vi.fn(async (_id: DocumentID, options?: { revs_info?: boolean }) =>
+                    options?.revs_info
+                        ? {}
+                        : { _id: id, path, _rev: `${generation}-current`, _conflicts: [`${generation}-other`] }
+                ),
+                getDBEntry: vi.fn(
+                    async (_path: FilePathWithPrefix, options: { rev: string }) =>
+                        ({ _id: id, path, _rev: options.rev }) as LoadedEntry
+                ),
+                managers: { conflictManager: { mergeObject: vi.fn(async () => false) } },
+            };
+            const { hiddenFileSync } = createHiddenFileSync(localDatabase);
+            hiddenFileSync.path2id = async () => id;
+            const finishFirst = deferred<boolean>();
+            let cancelled = false;
+            const opened: string[][] = [];
+            hiddenFileSync.showJSONMergeDialogAndMerge = vi.fn(async (left, right) => {
+                opened.push([left._rev!, right._rev!]);
+                if (opened.length > 1) return false;
+                return await Promise.race([
+                    finishFirst.promise,
+                    waitForSignal(`cancel-internal-conflict:${filename}`).then(() => {
+                        cancelled = true;
+                        return false;
+                    }),
+                ]);
+            });
+
+            try {
+                hiddenFileSync.queueConflictCheck(path);
+                await vi.advanceTimersByTimeAsync(100);
+                expect(opened).toEqual([["2-current", "2-other"]]);
+
+                generation = 3;
+                hiddenFileSync.queueConflictCheck((form === "prefixed" ? path : filename) as FilePathWithPrefix);
+                await vi.advanceTimersByTimeAsync(100);
+
+                expect(cancelled).toBe(true);
+                expect(opened).toEqual([
+                    ["2-current", "2-other"],
+                    ["3-current", "3-other"],
+                ]);
+                expect(await hiddenFileSync.conflictResolutionProcessor.waitForAllProcessed()).toBe(true);
+                expect(hiddenFileSync.pendingConflictChecks.size).toBe(0);
+            } finally {
+                finishFirst.resolve(false);
+                sendSignal(`cancel-internal-conflict:${filename}`);
+                await vi.advanceTimersByTimeAsync(100);
+            }
+        }
+    );
+
+    it.each(["same", "different"])(
+        "closes only a dialogue for the %s file when a replicated resolution arrives",
+        async (target) => {
+            vi.useFakeTimers();
+            const filename = `.obsidian/received-${target}.json`;
+            const path = `i:${filename}` as FilePathWithPrefix;
+            const incomingPath = (target === "same" ? path : "i:.obsidian/other-resolved.json") as FilePathWithPrefix;
+            const id = String(path) as DocumentID;
+            let resolved = false;
+            const localDatabase = {
+                getRaw: vi.fn(async (_id: DocumentID, options?: { revs_info?: boolean }) =>
+                    options?.revs_info
+                        ? {}
+                        : {
+                              _id: id,
+                              path,
+                              _rev: resolved ? "3-resolved" : "2-current",
+                              _conflicts: resolved ? [] : ["2-other"],
+                          }
+                ),
+                getDBEntry: vi.fn(async () => ({ _id: id, path }) as LoadedEntry),
+                managers: { conflictManager: { mergeObject: vi.fn(async () => false) } },
+            };
+            const { hiddenFileSync } = createHiddenFileSync(localDatabase);
+            hiddenFileSync.path2id = async () => id;
+            hiddenFileSync.getPath = () => incomingPath;
+            hiddenFileSync.isTargetFile = vi.fn(async () => true);
+            hiddenFileSync.trackDatabaseFileModification = vi.fn(async () => true);
+            const finishFirst = deferred<boolean>();
+            let cancelled = false;
+            hiddenFileSync.showJSONMergeDialogAndMerge = vi.fn(
+                async () =>
+                    await Promise.race([
+                        finishFirst.promise,
+                        waitForSignal(`cancel-internal-conflict:${filename}`).then(() => {
+                            cancelled = true;
+                            return false;
+                        }),
+                    ])
+            );
+
+            try {
+                hiddenFileSync.queueConflictCheck(path);
+                await vi.advanceTimersByTimeAsync(100);
+                expect(hiddenFileSync.showJSONMergeDialogAndMerge).toHaveBeenCalledOnce();
+
+                resolved = target === "same";
+                const incoming = { _id: incomingPath, path: incomingPath, _rev: "3-received" } as LoadedEntry;
+                expect(await hiddenFileSync._anyProcessOptionalSyncFiles(incoming)).toBe(true);
+                await vi.advanceTimersByTimeAsync(100);
+
+                expect(cancelled).toBe(target === "same");
+                expect(hiddenFileSync.showJSONMergeDialogAndMerge).toHaveBeenCalledOnce();
+                expect(hiddenFileSync.pendingConflictChecks.size).toBe(target === "same" ? 0 : 1);
+                if (target === "same") {
+                    expect(await hiddenFileSync.conflictResolutionProcessor.waitForAllProcessed()).toBe(true);
+                }
+            } finally {
+                finishFirst.resolve(false);
+                sendSignal(`cancel-internal-conflict:${filename}`);
+                await vi.advanceTimersByTimeAsync(100);
+            }
+        }
+    );
+
     it("waits for a cancelled manual merge dialogue and then finishes without requeueing", async () => {
         vi.useFakeTimers();
         const path = "i:.obsidian/plugins/example/data.json" as FilePathWithPrefix;
@@ -225,7 +352,7 @@ describe("HiddenFileSync pipeline contracts", () => {
         gates.forEach((gate, index) => gate.resolve({ path: paths[index] } as MetaEntry));
         await vi.advanceTimersByTimeAsync(100);
         expect(await hiddenFileSync.conflictResolutionProcessor.waitForAllProcessed()).toBe(true);
-        expect(reads).toEqual(paths);
+        expect(reads).toEqual([...paths, paths[0]]);
         expect(hiddenFileSync.pendingConflictChecks.size).toBe(0);
     });
 
@@ -233,6 +360,8 @@ describe("HiddenFileSync pipeline contracts", () => {
         vi.useFakeTimers();
         const paths = Array.from({ length: 12 }, (_, index) => `i:.obsidian/${index}.json` as FilePathWithPrefix);
         const gates = paths.map(() => deferred<boolean>());
+        const firstDialogue = deferred<boolean>();
+        let firstCancelled = false;
         const localDatabase = {
             getRaw: vi.fn(async (id: DocumentID, options?: { revs_info?: boolean }) =>
                 options?.revs_info
@@ -252,6 +381,15 @@ describe("HiddenFileSync pipeline contracts", () => {
         const opened: FilePathWithPrefix[] = [];
         hiddenFileSync.showJSONMergeDialogAndMerge = vi.fn((doc) => {
             opened.push(doc.path);
+            if (opened.length === 1) {
+                return Promise.race([
+                    firstDialogue.promise,
+                    waitForSignal(`cancel-internal-conflict:${doc.path.slice(2)}`).then(() => {
+                        firstCancelled = true;
+                        return false;
+                    }),
+                ]);
+            }
             return gates[paths.indexOf(doc.path)].promise;
         });
         paths.forEach((path) => hiddenFileSync.queueConflictCheck(path));
@@ -260,12 +398,16 @@ describe("HiddenFileSync pipeline contracts", () => {
         expect(opened).toEqual([paths[0]]);
         paths.forEach((path) => hiddenFileSync.queueConflictCheck(path));
         expect(hiddenFileSync.pendingConflictChecks.size).toBe(12);
+        await vi.advanceTimersByTimeAsync(100);
+        expect(firstCancelled).toBe(true);
+        expect(opened).toEqual([paths[0], paths[0]]);
+        expect(localDatabase.managers.conflictManager.mergeObject).toHaveBeenCalledTimes(24);
         let completed = false;
         void hiddenFileSync.conflictResolutionProcessor.waitForAllProcessed().then(() => {
             completed = true;
         });
         for (let index = 0; index < paths.length; index++) {
-            expect(opened).toEqual(paths.slice(0, index + 1));
+            expect(opened).toEqual([paths[0], ...paths.slice(0, index + 1)]);
             expect(completed).toBe(false);
             gates[index].resolve(false);
             await vi.advanceTimersByTimeAsync(100);

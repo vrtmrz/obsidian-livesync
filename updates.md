@@ -24,6 +24,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Hidden File Sync now stores newer local files during `Merge` initialisation by comparing local and database modification times in the correct direction.
 
+- Hidden File Sync refreshes an open manual JSON comparison when a later conflict check arrives for the same file.
+    - The earlier dialogue closes, and the latest revisions are checked again before another comparison opens. A replicated resolution also closes the affected comparison. Dialogues for other files keep their order.
+    - An `Apply` operation already in progress finishes before its replacement proceeds.
+
 - Reloading the Customisation Sync catalogue no longer allows an earlier legacy-format scan to put outdated items back into the list.
     - Reloading or disabling Customisation Sync discards unstarted scans and ignores stale read results. Migrations to per-file storage which have already started are allowed to finish.
 
