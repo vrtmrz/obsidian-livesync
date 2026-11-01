@@ -22,7 +22,7 @@ import type {
 import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import type { LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import { fireAndForget } from "octagonal-wheels/promises";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
 import { displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { EVENT_CONFLICT_CANCELLED, EVENT_ON_UNRESOLVED_ERROR } from "@/common/events.ts";
@@ -160,7 +160,7 @@ export function createInteractiveConflictResolutionOperations(
         // UI for resolving different files should proceed one-by-one. A newer
         // request for the active file replaces its dialogue instead of waiting
         // behind a comparison which is already stale.
-        return await serialized(dialogueSerialisationKey, async () => {
+        return await withLock(dialogueSerialisationKey, async () => {
             if (disposed || latestRequestByFilename.get(filename) !== requestId) {
                 return false;
             }
