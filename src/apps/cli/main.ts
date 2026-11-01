@@ -41,6 +41,14 @@ import {
     reconcileDurableSettings,
     settingsEqual,
 } from "./settingsPersistence";
+import {
+    inspectLegacyState,
+    isMutatingCommand,
+    isReconstructionCommand,
+    readOptionalFile,
+    ReconstructionState,
+    writeFileAtomically,
+} from "./runtimeState";
 
 const SETTINGS_FILE = ".livesync/settings.json";
 
@@ -381,7 +389,7 @@ export async function main(
     }
 
     // Resolve database path
-    const databasePath = path.resolve(options.databasePath!);
+    let databasePath = path.resolve(options.databasePath!);
     // Check if database directory exists
     try {
         const stat = await fs.stat(databasePath);
@@ -389,18 +397,19 @@ export async function main(
             writeStderrLine(standardIo, `Error: ${databasePath} is not a directory`);
             process.exit(1);
         }
+        databasePath = await fs.realpath(databasePath);
     } catch {
         writeStderrLine(standardIo, `Error: Database directory ${databasePath} does not exist`);
         process.exit(1);
     }
 
     // Resolve settings path
-    const settingsPath = options.settingsPath
+    let settingsPath = options.settingsPath
         ? path.resolve(options.settingsPath)
         : path.join(databasePath, SETTINGS_FILE);
     // Resolve vault path: mirror positional argument takes priority,
     // then --vault flag, otherwise fall back to databasePath.
-    const vaultPath =
+    let vaultPath =
         options.command === "mirror" && options.commandArgs[0]
             ? path.resolve(options.commandArgs[0])
             : options.vaultPath
@@ -414,9 +423,20 @@ export async function main(
             writeStderrLine(standardIo, `Error: Vault path ${vaultPath} is not a directory`);
             process.exit(1);
         }
+        vaultPath = await fs.realpath(vaultPath);
     } catch {
         writeStderrLine(standardIo, `Error: Vault directory ${vaultPath} does not exist`);
         process.exit(1);
+    }
+
+    settingsPath = await fs.realpath(settingsPath).catch(() => settingsPath);
+    const reconstruction = new ReconstructionState(databasePath, vaultPath, settingsPath);
+    try {
+        reconstruction.prepare(options.command, options.force ?? false, options.writeSettings ?? false);
+    } catch (error) {
+        writeStderrLine(standardIo, "[Error] Reconstruction recovery is required:", error);
+        process.exit(1);
+        return;
     }
 
     infoLog(`Self-hosted LiveSync CLI`);
@@ -437,7 +457,7 @@ export async function main(
     }
 
     // Create service context and hub
-    const context = new NodeServiceContext(databasePath, standardIo);
+    const context = new NodeServiceContext(databasePath, standardIo, vaultPath);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
     serviceHubInstance.API.addLog.setHandler((message: unknown, level: LOG_LEVEL) => {
         let levelStr = "";
@@ -479,7 +499,7 @@ export async function main(
 
     // Setup settings handlers
     const settingService = serviceHubInstance.setting;
-    const originalSettingsText = await fs.readFile(settingsPath, "utf-8").catch(() => undefined);
+    const originalSettingsText = readOptionalFile(settingsPath);
     let latestPreparedSettingsText: string | undefined;
     let preparedSettingsRevision = 0;
     let commandIsRunning = false;
@@ -600,21 +620,19 @@ export async function main(
 
     const writeSettingsAtomically = async (content: string | undefined): Promise<void> => {
         if (content === undefined || content === originalSettingsText) return;
-        const temporaryPath = `${settingsPath}.${process.pid}.tmp`;
-        await fs.mkdir(path.dirname(settingsPath), { recursive: true });
-        try {
-            await fs.writeFile(temporaryPath, content, "utf-8");
-            await fs.rename(temporaryPath, settingsPath);
-            if (options.verbose) {
-                writeStderrLine(standardIo, `[Settings] Saved to ${settingsPath}`);
-            }
-        } catch (error) {
-            await fs.unlink(temporaryPath).catch(() => {});
-            throw error;
+        writeFileAtomically(settingsPath, content);
+        if (options.verbose) {
+            writeStderrLine(standardIo, `[Settings] Saved to ${settingsPath}`);
         }
     };
 
     // Start the core
+    let unloaded = false;
+    const unload = async () => {
+        if (unloaded) return;
+        unloaded = true;
+        await core.services.control.onUnload();
+    };
     try {
         infoLog(`[Starting] Initializing LiveSync...`);
 
@@ -622,6 +640,31 @@ export async function main(
         if (!loadResult) {
             writeStderrLine(standardIo, `[Error] Failed to initialize LiveSync`);
             process.exit(1);
+        }
+        if ((await core.services.keyValueDB.kvDB.get("cli-legacy-state-reviewed")) !== true) {
+            const legacyIssues = inspectLegacyState(databasePath, vaultPath);
+            if (legacyIssues.length > 0) {
+                const reasons = {
+                    unowned: "database and Vault owner is unknown",
+                    invalid: "state cannot be parsed in its expected format; owner and contents cannot be established",
+                    unreadable: "state cannot be read; owner and contents cannot be established",
+                };
+                const details = legacyIssues.map((issue) => `${issue.path}: ${reasons[issue.reason]}`).join("; ");
+                const advice =
+                    "Preserve these files, back up unique edits, and verify the authoritative source before choosing fetch --force or rebuild --force.";
+                const blocked =
+                    !isReconstructionCommand(options.command) &&
+                    (isMutatingCommand(options.command) || options.writeSettings);
+                if (blocked) {
+                    throw new Error(
+                        `[Legacy state] ${details}. Command '${options.command}' stopped before scanning, event replay, or synchronisation. ${advice}`
+                    );
+                }
+                const action = isReconstructionCommand(options.command)
+                    ? "Explicit reconstruction will proceed; the legacy files will be retained."
+                    : "Read-only inspection may continue; the legacy files will be retained.";
+                writeStderrLine(standardIo, `[Legacy state] ${details}. ${action} ${advice}`);
+            }
         }
         const settingsAfterLoadText = latestPreparedSettingsText
             ? preserveStoredSetting(latestPreparedSettingsText, originalSettingsText, "useIndexedDBAdapter")
@@ -655,7 +698,7 @@ export async function main(
         try {
             readyResult = await core.services.control.onReady();
         } finally {
-            if (!readyResult) await core.services.control.onUnload();
+            if (!readyResult) await unload();
         }
         if (!readyResult) {
             throw new Error("Failed to initialise LiveSync.");
@@ -751,6 +794,21 @@ export async function main(
                 settingsTextToCommit = settingsAfterLoadText;
             }
         }
+        if (result && isReconstructionCommand(options.command)) {
+            if (!options.writeSettings) {
+                const durable =
+                    originalSettingsText === undefined
+                        ? cloneSettings(durableSettingsBeforeSuspend)
+                        : (JSON.parse(originalSettingsText) as ObsidianLiveSyncSettings);
+                durable.additionalSuffixOfDatabaseName =
+                    core.services.setting.currentSettings().additionalSuffixOfDatabaseName;
+                settingsTextToCommit = JSON.stringify(durable, null, 2);
+            }
+            settingsTextToCommit ??= originalSettingsText;
+            if (settingsTextToCommit === undefined)
+                throw new Error("Reconstruction completed without database selection settings.");
+            await core.services.keyValueDB.kvDB.set("cli-legacy-state-reviewed", true);
+        }
 
         if (!result) {
             writeStderrLine(standardIo, `[Error] Command '${options.command}' failed`);
@@ -764,10 +822,16 @@ export async function main(
             // Keep the process running
             await new Promise(() => {});
         } else {
-            await core.services.control.onUnload();
-            await writeSettingsAtomically(settingsTextToCommit);
+            await unload();
+            if (result && isReconstructionCommand(options.command)) {
+                reconstruction.complete(settingsTextToCommit!);
+                reconstruction.commit();
+            } else {
+                await writeSettingsAtomically(settingsTextToCommit);
+            }
         }
     } catch (error) {
+        await unload().catch(() => {});
         writeStderrLine(standardIo, `[Error] Failed to start:`, error);
         process.exit(1);
     }

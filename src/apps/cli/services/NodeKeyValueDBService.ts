@@ -9,6 +9,7 @@ import type { IVaultService } from "@vrtmrz/livesync-commonlib/compat/services/b
 import type { SimpleStore } from "octagonal-wheels/databases/SimpleStoreBase";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { fs as nodeFs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
+import { readOptionalFile, writeFileAtomically } from "@/apps/cli/runtimeState";
 
 const NODE_KV_TYPED_KEY = "__nodeKvType";
 const NODE_KV_VALUES_KEY = "values";
@@ -103,12 +104,11 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     }
 
     private load() {
-        try {
-            const loaded = JSON.parse(nodeFs.readFileSync(this.filePath, "utf-8")) as Record<string, unknown>;
-            this.data = new Map(Object.entries(loaded).map(([key, value]) => [key, deserializeFromNodeKV(value)]));
-        } catch {
-            this.data = new Map();
-        }
+        const contents = readOptionalFile(this.filePath);
+        if (contents === undefined) return;
+        const loaded: unknown = JSON.parse(contents);
+        if (!isRecord(loaded) || Array.isArray(loaded)) throw new Error("Invalid Node key-value database");
+        this.data = new Map(Object.entries(loaded).map(([key, value]) => [key, deserializeFromNodeKV(value)]));
     }
 
     private flush() {
@@ -116,7 +116,7 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         const serializable = Object.fromEntries(
             [...this.data.entries()].map(([key, value]) => [key, serializeForNodeKV(value)])
         );
-        nodeFs.writeFileSync(this.filePath, JSON.stringify(serializable, null, 2), "utf-8");
+        writeFileAtomically(this.filePath, JSON.stringify(serializable, null, 2));
     }
 
     async get<T>(key: IDBValidKey): Promise<T> {
@@ -163,9 +163,7 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         return filtered;
     }
 
-    async close(): Promise<void> {
-        this.flush();
-    }
+    async close(): Promise<void> {}
 
     async destroy(): Promise<void> {
         this.data.clear();
@@ -185,7 +183,8 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
 {
     private _kvDB: KeyValueDatabase | undefined;
     private _simpleStore: SimpleStore<unknown> | undefined;
-    private filePath: string;
+    private filePath: string | (() => string);
+    private openedFilePath: string | undefined;
     private _log = createInstanceLogFunction("NodeKeyValueDBService");
 
     get simpleStore() {
@@ -202,7 +201,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
         return this._kvDB;
     }
 
-    constructor(context: T, dependencies: NodeKeyValueDBDependencies<T>, filePath: string) {
+    constructor(context: T, dependencies: NodeKeyValueDBDependencies<T>, filePath: string | (() => string)) {
         super(context);
         this.filePath = filePath;
 
@@ -215,7 +214,13 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
 
     private async openKeyValueDB(): Promise<boolean> {
         try {
-            this._kvDB = new NodeFileKeyValueDatabase(this.filePath);
+            const filePath = typeof this.filePath === "string" ? this.filePath : this.filePath();
+            if (this._kvDB && this.openedFilePath === filePath) return true;
+            await this._kvDB?.close();
+            this._kvDB = undefined;
+            this.openedFilePath = undefined;
+            this._kvDB = new NodeFileKeyValueDatabase(filePath);
+            this.openedFilePath = filePath;
             return true;
         } catch (ex) {
             this._log("Failed to open Node key-value database", LOG_LEVEL_NOTICE);
@@ -226,8 +231,10 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
 
     private async _everyOnResetDatabase(): Promise<boolean> {
         try {
-            await this._kvDB?.del("queued-files");
+            if (!(await this.openKeyValueDB())) return false;
             await this._kvDB?.destroy();
+            this._kvDB = undefined;
+            this.openedFilePath = undefined;
             return await this.openKeyValueDB();
         } catch (ex) {
             this._log("Failed to reset Node key-value database", LOG_LEVEL_NOTICE);

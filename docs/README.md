@@ -38,6 +38,7 @@ Use these references for the area being changed, together with its relevant ADR.
 | Encryption and sharing | [Metadata encryption](design_docs/internal_metadata_encryption.md) and [time-bound Setup URIs](design_docs/time_bound_setup_uri.md) |
 | P2P connection preparation | [TURN connection settings](design_docs/renewable_turn_credentials.md) |
 | Journal storage internals | [Journal Replicator 2nd Edition](design_docs_of_journalsync_2nd.md) |
+| CLI database selection and interrupted reconstruction | [CLI database continuity](design_docs/cli_database_continuity.md) |
 
 The installed `@vrtmrz/livesync-commonlib` package is authoritative for shared runtime contracts. Use the exact dependency selected by [package.json](../package.json) and its lockfile when checking behaviour. The [Commonlib documentation](https://github.com/vrtmrz/livesync-commonlib/tree/main/docs) is maintained in that repository; this index does not replace its package contracts.
 

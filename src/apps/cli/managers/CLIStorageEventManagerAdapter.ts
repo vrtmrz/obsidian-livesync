@@ -15,23 +15,25 @@ import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { fsPromises as fs, getNodeFileCreationTime, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
+import { writeFileAtomically } from "@/apps/cli/runtimeState";
 
 /**
  * CLI-specific persistence adapter (file-based snapshot)
  */
 class CLIPersistenceAdapter implements IStorageEventPersistenceAdapter {
-    private snapshotPath: string;
+    private snapshotPath: () => string;
 
     constructor(
         basePath: string,
-        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined,
+        snapshotPath?: () => string
     ) {
-        this.snapshotPath = path.join(basePath, ".livesync-snapshot.json");
+        this.snapshotPath = snapshotPath ?? (() => path.join(basePath, ".livesync-snapshot.json"));
     }
 
     async saveSnapshot(snapshot: (FileEventItem | FileEventItemSentinel)[]): Promise<void> {
         try {
-            await fs.writeFile(this.snapshotPath, JSON.stringify(snapshot, null, 2), "utf-8");
+            writeFileAtomically(this.snapshotPath(), JSON.stringify(snapshot, null, 2));
         } catch (error) {
             this.reportDiagnostic("Failed to save snapshot:", error);
         }
@@ -39,7 +41,7 @@ class CLIPersistenceAdapter implements IStorageEventPersistenceAdapter {
 
     async loadSnapshot(): Promise<(FileEventItem | FileEventItemSentinel)[] | null> {
         try {
-            const content = await fs.readFile(this.snapshotPath, "utf-8");
+            const content = await fs.readFile(this.snapshotPath(), "utf-8");
             return JSON.parse(content) as (FileEventItem | FileEventItemSentinel)[];
         } catch {
             return null;
@@ -197,10 +199,11 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
         basePath: string,
         ignoreRules?: IgnoreRules,
         watchEnabled: boolean = false,
-        reportDiagnostic: CliDiagnosticReporter = () => undefined
+        reportDiagnostic: CliDiagnosticReporter = () => undefined,
+        snapshotPath?: () => string
     ) {
         this.typeGuard = new NodeTypeGuardAdapter();
-        this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic);
+        this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic, snapshotPath);
         this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic);
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();

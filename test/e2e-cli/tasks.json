@@ -47,6 +47,11 @@
       "test-settings-writeback.ts"
     ]
   },
+  "test:fetch-database-continuity": {
+    "test": [
+      "test-fetch-database-continuity.ts"
+    ]
+  },
   "test:remote-administration-exit-codes": {
     "test": [
       "test-remote-administration-exit-codes.ts"

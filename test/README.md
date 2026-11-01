@@ -88,9 +88,35 @@ NODE_OPTIONS=--max-old-space-size=3072 MINIO_ENDPOINT=http://127.0.0.1:9000 MINI
 
 The test manages the disposable `minio-test` RustFS container on ports 9000 and 9001. Run it separately from other tests using that container or those ports. It creates a distinct bucket and temporary Vaults for each case and removes its test container afterwards.
 
-Both the unencrypted and encrypted cases rebuild from a complete file containing raw unit separators (`U+001F`), Fetch into another Vault, and compare the exact bytes. A fresh CLI process reads the persisted content. The test then damages the receiving Vault file and verifies that Fetch retains that newer local file and preserves both contents as independent conflict branches. Each revision is read explicitly so the assertions do not depend on which branch PouchDB selects as the winner. After moving the damaged file to a separate backup, another Fetch into the empty Vault restores the remote contents. It uses `--write-settings` so later commands retain the database selection made during recovery. This test is included in the standard CLI CI task list.
+Both the unencrypted and encrypted cases rebuild from a complete file containing raw unit separators (`U+001F`), Fetch into another Vault, and compare the exact bytes. A fresh CLI process reads the persisted content. The test then damages the receiving Vault file and verifies that Fetch retains that newer local file and preserves both contents as independent conflict branches. Each revision is read explicitly so the assertions do not depend on which branch PouchDB selects as the winner. After moving the damaged file to a separate backup, another Fetch into the empty Vault restores the remote contents. It retains `--write-settings` to exercise explicit settings writeback; database selection is now saved automatically, and the continuity test below covers omission of that option. This test is included in the standard CLI CI task list.
 
 This establishes the CLI and shared Rebuild/Fetch behaviour. It does not exercise Obsidian's Hidden File Sync or Customisation Sync initialisation, nor inject a damaged Chunk under an existing content-addressed ID.
+
+## CLI Fetch database continuity
+
+After building the CLI, run `node test/e2e-cli/run-task.ts test:fetch-database-continuity`
+with Node.js 26 and a disposable S3-compatible service. Set
+`LIVESYNC_ISSUE1304_MINIO_ENDPOINT`, `LIVESYNC_ISSUE1304_MINIO_ACCESS_KEY`,
+`LIVESYNC_ISSUE1304_MINIO_SECRET_KEY`, and `LIVESYNC_ISSUE1304_MINIO_BUCKET`.
+The bucket must be fresh and empty for every run. Set
+`LIVESYNC_ISSUE1304_EVIDENCE_DIR` to an evidence directory outside the worktree.
+This test writes remote data; never point it at a production bucket.
+
+The test seeds an encrypted, path-obfuscated file with a second-generation
+revision, imports one Setup URI on two clients, fetches on A without
+`--write-settings`, and restarts A while B remains online. It checks the saved
+database suffix, file bytes, original revision, and absence of a duplicate root.
+Set `LIVESYNC_ISSUE1304_POSITIVE_CONTROL=1` and
+`LIVESYNC_ISSUE1304_POSITIVE_CONTROL_BUCKET` to a second fresh bucket to exercise
+the explicit `--write-settings` variant as well.
+
+For historical reproduction against the unmodified implementation, set
+`LIVESYNC_ISSUE1304_VERIFY_LEGACY_FAILURE=1`. This preserves the original
+same-content conflict-resolution sequence and its file-preservation assertion;
+the affected implementation fails because A's file disappears. Leave this
+variable unset when validating the correction. The test saves redacted process
+logs, file hashes, and database evidence. It does not cover Obsidian runtime or
+CouchDB behaviour.
 
 ## Multiple-device conflict regression tests
 
