@@ -28,6 +28,8 @@ import { createTemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "60000";
 
+const useRequestAPI = process.argv.includes("--request-api");
+
 const customPath = ".obsidian/snippets/http-cache.css";
 const nextCustomPath = ".obsidian/snippets/http-cache-new.css";
 const settings = {
@@ -45,7 +47,7 @@ const settings = {
     syncInternalFilesInterval: 0,
     syncInternalFilesTargetPatterns: "^\\.http-cache(?:/|$)",
     watchInternalFileChanges: false,
-    useRequestAPI: false,
+    useRequestAPI,
     autoAcceptCompatibleTweak: false,
     doctorProcessedVersion: DoctorRegulation.version,
     deviceAndVaultName: "http-cache-source",
@@ -74,10 +76,11 @@ async function main(): Promise<void> {
                 .storeCustomizationFiles(path,core.services.setting.getDeviceAndVaultName());
             return JSON.stringify(true);`);
     };
-    const browserRead = async (id: string, cache: RequestCache): Promise<CouchDbDocument> => {
+    const readCachedDocument = async (id: string, cache: RequestCache): Promise<CouchDbDocument> => {
         const url = `${couchDb.uri}/${encodeURIComponent(dbName)}/${encodeURIComponent(id)}`;
         const authorization = `Basic ${Buffer.from(`${couchDb.username}:${couchDb.password}`).toString("base64")}`;
-        return await evaluate(`const response=await fetch(${JSON.stringify(url)},{
+        const fetchFunction = useRequestAPI ? "core.services.API.nativeFetch.bind(core.services.API)" : "fetch";
+        return await evaluate(`const response=await ${fetchFunction}(${JSON.stringify(url)},{
             headers:{authorization:${JSON.stringify(authorization)}},credentials:'include',cache:${JSON.stringify(cache)}});
             if(!response.ok)throw new Error('Fixture read failed: '+response.status);
             return JSON.stringify(await response.json());`);
@@ -110,7 +113,7 @@ async function main(): Promise<void> {
         assert.ok(original?.path, "The encrypted ordinary Metadata fixture is missing.");
         const initialParameters = await fetchCouchDbDocument(couchDb, dbName, DOCID_SYNC_PARAMETERS);
         // Populate the HTTP cache as an earlier plug-in version would have done.
-        assert.deepEqual(await browserRead(original._id, "reload"), original);
+        assert.deepEqual(await readCachedDocument(original._id, "reload"), original);
 
         await evaluate(`await core.services.setting.applyPartial({encryptInternalMetadata:true},true);
             await core.services.control.applySettings();
@@ -128,11 +131,13 @@ async function main(): Promise<void> {
         assert.notEqual(rebuiltParameters.pbkdf2salt, initialParameters.pbkdf2salt, "The Seed did not change.");
         assert.equal(rebuilt._rev, original._rev, "The document revision was not retained.");
         assert.notEqual(rebuilt.path, original.path, "The remote ciphertext did not change.");
-        assert.equal(
-            (await browserRead(original._id, "default")).path,
-            original.path,
-            "The stale browser HTTP cache fixture is no longer present."
-        );
+        if (!useRequestAPI) {
+            assert.equal(
+                (await readCachedDocument(original._id, "default")).path,
+                original.path,
+                "The stale browser HTTP cache fixture is no longer present."
+            );
+        }
 
         await evaluate(`await core.services.setting.applyPartial({usePluginSync:true,syncInternalFiles:true},true);
             await core.services.control.applySettings();return JSON.stringify(true);`);
@@ -143,9 +148,12 @@ async function main(): Promise<void> {
             if(opened)await opened.close();return JSON.stringify({admitted:!!opened});
             }catch(error){return JSON.stringify({admitted:false,error:error.name});}`);
         assert.ok(admission.admitted, `Replication admission failed: ${JSON.stringify(admission)}`);
+        assert.equal((await readCachedDocument(original._id, "no-store")).path, rebuilt.path);
         await pushLocalChanges(cliBinary, session.cliEnv);
         await pushLocalChanges(cliBinary, session.cliEnv);
-        console.log("Rebuild and subsequent replication succeeded with stale ciphertext still in the HTTP cache.");
+        console.log(
+            `Rebuild and subsequent replication succeeded after warming the ${useRequestAPI ? "Internal API" : "browser"} HTTP cache.`
+        );
     } finally {
         await session?.app.stop();
         await vault.dispose();
