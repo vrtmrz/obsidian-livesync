@@ -18,6 +18,7 @@ export interface ConflictCheckingDependencies {
         "getOptionalConflictCheckMethod" | "queueCheckFor" | "resolve" | "resolveByNewest"
     >;
     readonly conflictProcessQueueCount: ReactiveSource<number>;
+    readonly cancelActiveResolution: (filename: FilePathWithPrefix) => void;
     readonly currentSettings: () => ConflictCheckingSettings;
     readonly vault: Pick<IVaultService, "getActiveFilePath">;
     readonly log: LogFunction;
@@ -69,6 +70,10 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
             // The conflict should be resolved by the newer entry.
             await dependencies.conflict.resolveByNewest(file);
         } else {
+            // The next batch waits for active checks to settle. Cancel the
+            // older same-file resolution now so its dialogue cannot hold the
+            // replacement behind that wait.
+            dependencies.cancelActiveResolution(file);
             conflictQueue.enqueue(file);
         }
     };

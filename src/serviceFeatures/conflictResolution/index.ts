@@ -34,6 +34,7 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
     const checking = createConflictCheckingHandlers({
         conflict: services.conflict,
         conflictProcessQueueCount: services.conflict.conflictProcessQueueCount,
+        cancelActiveResolution: operations.cancelActiveResolution,
         currentSettings: () => services.setting.currentSettings(),
         vault: services.vault,
         log,

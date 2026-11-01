@@ -695,6 +695,86 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.tryAutoMerge).toHaveBeenCalledWith(path, true);
     });
 
+    it("replaces an active same-file dialogue when a later check enters the queue", async () => {
+        const path = "queued-dialogue-replacement.md" as FilePathWithPrefix;
+        const harness = createHarness({ settings: { syncAfterMerge: false } });
+        harness.tryAutoMerge.mockResolvedValue({
+            rightRev: "2-conflict",
+            leftLeaf: leaf("2-current", "Current\n", 2),
+            rightLeaf: leaf("2-conflict", "Conflict\n", 3),
+        });
+        let finishFirst: (() => void) | undefined;
+        const resolveByUserInteraction = vi
+            .fn()
+            .mockImplementationOnce(
+                () =>
+                    new Promise<boolean>((resolve) => {
+                        finishFirst = () => resolve(false);
+                    })
+            )
+            .mockResolvedValue(false);
+        harness.conflict.resolveByUserInteraction.addHandler(resolveByUserInteraction);
+        const subscription = new AbortController();
+        harness.context.events.onEvent(
+            EVENT_CONFLICT_CANCELLED,
+            (filename) => {
+                if (filename === path) finishFirst?.();
+            },
+            { signal: subscription.signal }
+        );
+
+        try {
+            await harness.conflict.queueCheckFor(path);
+            await vi.waitFor(() => expect(resolveByUserInteraction).toHaveBeenCalledOnce());
+
+            await harness.conflict.queueCheckFor(path);
+
+            await vi.waitFor(() => expect(resolveByUserInteraction).toHaveBeenCalledTimes(2));
+            await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(true);
+            expect(harness.conflict.conflictProcessQueueCount.value).toBe(0);
+        } finally {
+            subscription.abort();
+            finishFirst?.();
+            await harness.conflict.ensureAllProcessed();
+        }
+    });
+
+    it("does not open an outdated dialogue when a later check is queued during inspection", async () => {
+        const path = "queued-during-inspection.md" as FilePathWithPrefix;
+        const harness = createHarness();
+        const manualConflict = {
+            rightRev: "2-conflict",
+            leftLeaf: leaf("2-current", "Current\n", 2),
+            rightLeaf: leaf("2-conflict", "Conflict\n", 3),
+        };
+        let finishInspection!: (result: typeof manualConflict) => void;
+        harness.tryAutoMerge
+            .mockImplementationOnce(
+                () =>
+                    new Promise<typeof manualConflict>((resolve) => {
+                        finishInspection = resolve;
+                    })
+            )
+            .mockResolvedValueOnce({ ok: NOT_CONFLICTED });
+        const resolveByUserInteraction = vi.fn(async () => false);
+        harness.conflict.resolveByUserInteraction.addHandler(resolveByUserInteraction);
+
+        try {
+            await harness.conflict.queueCheckFor(path);
+            await vi.waitFor(() => expect(harness.tryAutoMerge).toHaveBeenCalledOnce());
+
+            await harness.conflict.queueCheckFor(path);
+            finishInspection(manualConflict);
+            await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(true);
+
+            expect(resolveByUserInteraction).not.toHaveBeenCalled();
+            expect(harness.tryAutoMerge).toHaveBeenCalledTimes(2);
+        } finally {
+            finishInspection?.(manualConflict);
+            await harness.conflict.ensureAllProcessed();
+        }
+    });
+
     it("limits concurrent conflict checks and reports queued and active work", async () => {
         const paths = Array.from({ length: 11 }, (_, index) => `concurrent-${index}.md` as FilePathWithPrefix);
         const harness = createHarness();
@@ -929,8 +1009,10 @@ describe("conflict resolution serviceFeature", () => {
     it("resolves an identical pair, emits cancellation, and rechecks after merging", async () => {
         const path = "independently-created.md" as FilePathWithPrefix;
         const harness = createHarness({ settings: { syncAfterMerge: false } });
-        const cancelled: FilePathWithPrefix[] = [];
-        harness.context.events.onEvent(EVENT_CONFLICT_CANCELLED, (filename) => cancelled.push(filename));
+        const cancelled: Array<{ filename: FilePathWithPrefix; checks: number }> = [];
+        harness.context.events.onEvent(EVENT_CONFLICT_CANCELLED, (filename) => {
+            cancelled.push({ filename, checks: harness.tryAutoMerge.mock.calls.length });
+        });
         const leftLeaf = leaf("1-left", "Same content\n", 1000);
         const rightLeaf = leaf("1-right", "Same content\n", 2000);
         harness.tryAutoMerge
@@ -947,7 +1029,15 @@ describe("conflict resolution serviceFeature", () => {
 
         expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledWith(path, "1-left");
         expect(harness.fileHandler.dbToStorage).toHaveBeenCalledWith(path, path, true);
-        expect(cancelled).toEqual([path, path]);
+        // A queued recheck may also cancel its finishing resolver. Keep both
+        // merge and final-inspection notifications covered without fixing the count.
+        expect(cancelled).toEqual(
+            expect.arrayContaining([
+                { filename: path, checks: 1 },
+                { filename: path, checks: 2 },
+            ])
+        );
+        expect(cancelled.every(({ filename }) => filename === path)).toBe(true);
         expect(harness.tryAutoMerge).toHaveBeenCalledTimes(2);
         expect(AUTO_MERGED).toBeDefined();
     });
