@@ -166,6 +166,11 @@
       "test-e2e-two-vaults-couchdb.ts"
     ]
   },
+  "test:journal-chunk-recovery": {
+    "test": [
+      "test-journal-chunk-recovery.ts"
+    ]
+  },
   "test:e2e-matrix": {
     "test": [
       "test-e2e-two-vaults-matrix.ts"
