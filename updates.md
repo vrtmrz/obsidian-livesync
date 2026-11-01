@@ -12,52 +12,71 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.44
+
+1st November, 2026
+
+Recently, I have been concentrating on maintenance and improvements to individual features. I began to wonder whether I had been focusing a little too closely on the details and could give more attention to the overall picture. That led me to a somewhat broader round of changes, including reworking parts of the architecture. Along the way, I was able to bring several implementations of the same concepts together, introduce shared abstractions, and tidy up the codebase a little.
+
+Please let me know if any problems arise from these changes.
+
+### Fixed
+
+#### Synchronisation
+
+- Files containing a raw unit separator (`U+001F`) are no longer truncated when received through S3-compatible Object Storage. (#1303)
+    - Update every participating client to prevent further truncation. Updating alone does not repair copies already damaged.
+    - Before recovery, preserve verified intact copies, unique unsynchronised edits, and any required history, then follow the [recovery procedure](docs/recovery.md#recover-files-truncated-during-object-storage-reception).
+    - Rebuild and Fetch leave Hidden File Sync and Customisation Sync disabled. Initialise them deliberately after ordinary file recovery is complete.
+
 - We can continue CouchDB synchronisation after rebuilding an encrypted remote when **Use Internal API** is enabled. (#1234)
-    - CouchDB read requests now carry cache-control headers to avoid reusing responses encrypted with the previous Security Seed.
+    - Cached responses encrypted with the previous Security Seed no longer interfere with subsequent reads.
 
-- CLI `fetch` and `rebuild` retain their selected local database for subsequent commands even without `--write-settings`, preventing the empty-database restart and file deletion reported in #1304.
-    - Runtime state is separated by database and Vault. Interrupted reconstruction blocks ordinary synchronisation until recovery, and a pending settings commit can be completed on restart.
-    - Older runtime state with no recorded owner is preserved and requires explicit reconstruction from a verified source before ordinary writes resume. Back up unique edits before choosing Fetch or Rebuild.
+#### Conflict resolution
 
-- Files containing a raw unit separator (`U+001F`) retain their complete contents when received through S3-compatible Object Storage. (#1303)
-    - The Journal receiver in Commonlib 0.2.3 preserves the complete Chunk payload, including batches written by earlier versions, without changing the stored format.
-    - Updating prevents further truncation during reception but does not repair existing damaged copies. Update every participating client, preserve an intact recovery source, and follow the [recovery procedure](docs/recovery.md#recover-files-truncated-during-object-storage-reception). Rebuild and Fetch leave Hidden File Sync and Customisation Sync disabled until they are deliberately initialised again.
+- A queued conflict check no longer gets stuck waiting for a response to an outdated comparison of the same file.
 
-- Files waiting for encrypted Chunks which arrive after their Metadata receive the decrypted contents once the local database is ready.
-    - Commonlib 0.2.3 restarts the database change feed after initialisation installs the decryption transforms. This corrects delivery of later Chunks; it does not replay earlier events. ([Commonlib #191](https://github.com/vrtmrz/livesync-commonlib/pull/191))
+#### Hidden File Sync and Customisation Sync
 
-- The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
+- Newer local hidden files are no longer omitted when initialising Hidden File Sync with `Merge`.
+- Refreshing the Customisation Sync catalogue no longer brings back outdated items from an earlier scan.
 
-- Hidden File Sync now stores newer local files during `Merge` initialisation by comparing local and database modification times in the correct direction.
+### Improved
 
-- Hidden File Sync refreshes an open manual JSON comparison when a later conflict check arrives for the same file.
-    - The earlier dialogue closes, and the latest revisions are checked again before another comparison opens. A replicated resolution also closes the affected comparison. Dialogues for other files keep their order.
-    - An `Apply` operation already in progress finishes before its replacement proceeds.
+#### Hidden File Sync
 
-- Reloading the Customisation Sync catalogue no longer allows an earlier legacy-format scan to put outdated items back into the list.
-    - Reloading or disabling Customisation Sync discards unstarted scans and ignores stale read results. Migrations to per-file storage which have already started are allowed to finish.
+- We can review the latest hidden-file revisions when changes arrive during a manual JSON comparison.
+    - The earlier comparison closes, and the latest revisions are checked again. If another device has resolved the conflict, the comparison closes without asking for another selection.
 
-### Synchronisation
+### Sunset
 
-- Devices using the legacy IndexedDB adapter now use the standard recovery dialogue when a remote retains an old cleanup lock.
-    - The obsolete in-place `Cleanup` option has been removed. We can fetch the remote again, explicitly unlock the device, or dismiss the dialogue; dismissal remains the default.
-    - Fetch replaces the local database, so preserve unsynchronised work and any required local history first. Unlock only when the local and remote databases are already aligned. Garbage Collection V3 is unchanged.
+#### Recovery
 
+- Recovery from old cleanup locks is now unified around the standard recovery dialogue, including on devices using the legacy IndexedDB adapter.
+    - Use Fetch to reconstruct the local database from the remote, unlock the device when both databases are already aligned, or dismiss the dialogue.
+    - These choices replace the legacy in-place `Cleanup` operation. Garbage Collection V3 remains available.
+    - Before Fetch, preserve unsynchronised work and any required local history, as it replaces the local database.
 
-### Maintenance
+### CLI
 
-- The plug-in bundle is smaller, reducing the download for installation and updates.
-    - Builds remove unused code and shorten local identifiers while retaining class and function names for diagnostics.
+#### Fixed
 
-### Diagnostics
+- We can continue using the reconstructed database after CLI `fetch` or `rebuild`, avoiding the empty-database restart and file deletion reported in #1304.
+    - Subsequent commands retain the selected database even without `--write-settings`. Interrupted reconstruction blocks ordinary synchronisation until recovery.
+    - Older runtime state with no recorded owner requires explicit reconstruction from a verified source. Back up unique edits before choosing Fetch or Rebuild.
 
-- Service log calls stay with the plug-in instance that registered them. Its log connection is released after the full shutdown, so stale instances cannot receive later service messages.
+- The CLI mirror starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault.
 
-### Browser applications
+### Miscellaneous
 
-- WebApp and WebPeer dialogues and menus remain with their owning application
-  and close on shutdown; closing or replacing a menu releases its component.
+- Installation and update downloads are smaller.
+- Database initialisation handles encrypted change notifications more reliably. (Commonlib #191)
 
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @AdrianNicu, for improving decryption handling during database initialisation (Commonlib #191).
 
 ## 1.0.43
 
@@ -254,28 +273,3 @@ I have been finding troubleshooting difficult, so I decided to go back to basics
     - The five reporting tools are grouped separately from checks, recovery, and reset operations. Name and format choices remain visible, and the report preview resizes around the controls.
 - We can request and provide targeted troubleshooting evidence through the issue-reporting guide.
     - Direct links cover Integrity, Usage, pseudonym lookup, and follow-up reports, with request examples for issue discussions.
-
-## 1.0.38
-
-17th October, 2026
-
-### Synchronisation
-
-#### Added
-
-- We can opt into NFC path identity for CouchDB synchronisation between the CLI and Obsidian. This prevents decomposed or mixed Unicode file names from becoming inaccessible through a receiving device's normalised path. (#1259)
-    - Existing Vaults retain their current identity rules. Migration requires updated clients, a Rebuild from a complete authoritative Vault, and a Fetch on the other devices.
-    - Reconstruction stops when the supported host file listing or local Metadata exposes ambiguous files or parent folders under NFC and the configured case handling. The CLI retains existing physical file names. P2P and Object Storage do not support the new mode.
-
-#### Fixed
-
-- We can synchronise file deletions and renames when **Do not keep metadata of deleted files.** is enabled.
-    - A file restored during the final deletion check remains in the receiving Vault.
-- We can resolve configuration mismatches when **Encrypt internal file Properties** is enabled but its encryption prerequisites are inactive. (#1180)
-    - Compatible chunk settings can be aligned automatically, or reviewed through `Sync now`. Applying those settings preserves our inactive encryption preference.
-- We can receive synchronised updates to unchanged files even after the local database has discarded their recorded revision, avoiding unnecessary conflicts. (#1207)
-    - Saved content evidence survives revision-history pruning. Genuine local edits remain protected, and older records are upgraded only after their content is verified.
-
-### Maintenance
-
-- The Review Harness can compare SHA-256 and xxHash64 file-content hashing on the current device, with fixed inputs from 4 KiB to 50 MiB and separate initialisation and warm-up measurements.
