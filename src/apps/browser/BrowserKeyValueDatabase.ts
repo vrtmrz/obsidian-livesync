@@ -3,14 +3,14 @@ import type {
     KeyValueDatabaseFactory,
 } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import { deleteDB, openDB, type IDBPDatabase } from "idb";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 
 /** Creates an application-owned IndexedDB key-value factory for browser runtimes. */
 export function createBrowserKeyValueDatabaseFactory(): KeyValueDatabaseFactory {
     const cache = new Map<string, BrowserKeyValueDatabase>();
 
     return async (databaseKey) =>
-        await serialized(`OpenBrowserKeyValueDatabase-${databaseKey}`, async () => {
+        await withLock(`OpenBrowserKeyValueDatabase-${databaseKey}`, async () => {
             const cached = cache.get(databaseKey);
             if (cached && !cached.isDestroyed) {
                 return cached;

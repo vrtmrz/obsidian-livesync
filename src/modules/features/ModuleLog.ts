@@ -34,7 +34,7 @@ import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@/common/translation";
 import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
 import { REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS, getTrackedRequestCount } from "./RemoteActivityStatus.ts";
@@ -524,7 +524,7 @@ ${stringifyYaml(info)}
 
     writeLogToTheFile(now: Date, vaultName: string, newMessage: string) {
         fireAndForget(() =>
-            serialized("writeLog", async () => {
+            withLock("writeLog", async () => {
                 const time = now.toISOString().split("T")[0];
                 const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
                 const file = await this.core.storageAccess.isExists(normalizePath(logDate));

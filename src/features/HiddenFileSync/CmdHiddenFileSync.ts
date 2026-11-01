@@ -40,7 +40,7 @@ import {
     displayRev,
 } from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
-import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
+import { withLock, skipIfDuplicated } from "octagonal-wheels/concurrency/lock";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
@@ -547,7 +547,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         hiddenFilesEventCount.value++;
         const rel = await this.semaphore.acquire();
         try {
-            return await serialized(`hidden-file-event:${file}`, async () => {
+            return await withLock(`hidden-file-event:${file}`, async () => {
                 hiddenFilesProcessingCount.value++;
                 try {
                     return await fn();
@@ -1182,7 +1182,7 @@ Offline Changed files: ${processFiles.length}`;
 
     async applyOfflineChanges(showNotice: boolean) {
         const logLevel = getLogLevel(showNotice);
-        return await serialized("applyOfflineChanges", async () => {
+        return await withLock("applyOfflineChanges", async () => {
             const p = this._progress("[⚙ Apply untracked changes ]\n", logLevel);
             this._log(`Track changes.`, logLevel);
             p.log("Enumerating local files...");
@@ -1703,7 +1703,7 @@ Offline Changed files: ${files.length}`;
         }
         const prefixedFileName = addPrefix(storeFilePath, ICHeader);
 
-        return await serialized("file-" + prefixedFileName, async () => {
+        return await withLock("file-" + prefixedFileName, async () => {
             try {
                 const fileInfo = "stat" in file && "body" in file ? file : await this.loadFileWithInfo(storeFilePath);
                 if (fileInfo.deleted) {
@@ -1764,7 +1764,7 @@ Offline Changed files: ${files.length}`;
         }
         const prefixedFileName = addPrefix(storeFilePath, ICHeader);
 
-        return await serialized("file-" + prefixedFileName, async () => {
+        return await withLock("file-" + prefixedFileName, async () => {
             try {
                 const baseData = await this.getLiveInternalRevision(prefixedFileName, baseRevision);
                 if (baseData === false) {
@@ -1842,7 +1842,7 @@ Offline Changed files: ${files.length}`;
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;
         }
-        return await serialized("file-" + prefixedFileName, async () => {
+        return await withLock("file-" + prefixedFileName, async () => {
             try {
                 const baseData = strict
                     ? await this.loadBaseSaveDataStrict(storeFilePath, false)
@@ -1913,7 +1913,7 @@ Offline Changed files: ${files.length}`;
         if (await this.services.vault.isIgnoredByIgnoreFile(storageFilePath)) {
             return undefined;
         }
-        return await serialized("file-" + prefixedFileName, async () => {
+        return await withLock("file-" + prefixedFileName, async () => {
             try {
                 // Check conflicted status
                 const metaOnDB = requiredLiveRevision
