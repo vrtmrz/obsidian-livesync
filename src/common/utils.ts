@@ -389,13 +389,4 @@ export async function autosaveCache<K, V>(db: KeyValueDatabase, mapKey: string):
     };
 }
 
-export function onlyInNTimes(n: number, proc: (progress: number) => unknown) {
-    let counter = 0;
-    return function () {
-        if (counter++ % n == 0) {
-            proc(counter);
-        }
-    };
-}
-
 export { displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";

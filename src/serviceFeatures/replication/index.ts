@@ -83,10 +83,8 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
     const securitySeedPreflight = createSecuritySeedPreflight(unresolvedErrorManager, preflightContext);
     const centralCompatibilityRecovery = createCentralCompatibilityRecovery({
         confirm: core.confirm,
-        getLocalDatabase: () => core.localDatabase,
         rebuilder: core.rebuilder,
         services: {
-            API: services.API,
             appLifecycle: services.appLifecycle,
             replicator: services.replicator,
             setting: services.setting,

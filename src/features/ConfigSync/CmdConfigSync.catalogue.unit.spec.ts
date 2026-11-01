@@ -84,7 +84,7 @@ async function catalogue() {
         pluginListGeneration: 0,
         loadedManifest_mTime: new Map(),
         updatingV2Count: 0,
-        pluginScanProcessor: { clearQueue: vi.fn(), enqueue: vi.fn() },
+        pluginScanProcessor: { clearPending: vi.fn(), enqueue: vi.fn() },
         _log: vi.fn(),
         storeCustomisationFileV2: vi.fn(async () => true),
     });

@@ -6,7 +6,8 @@ import { ServiceContext, type StandardIo } from "@vrtmrz/livesync-commonlib/cont
 export class NodeServiceContext extends ServiceContext {
     constructor(
         readonly databasePath: string,
-        readonly standardIo: StandardIo
+        readonly standardIo: StandardIo,
+        readonly runtimeVaultPath: string = databasePath
     ) {
         super({ events: eventHub, translate: translateLiveSyncMessage });
     }

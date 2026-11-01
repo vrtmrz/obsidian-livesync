@@ -194,7 +194,7 @@ const context = await esbuild.context({
     platform: "browser",
     metafile: true,
     sourcemap: prod ? false : "inline",
-    treeShaking: false,
+    treeShaking: true,
     outfile: "main_org.js",
     mainFields: ["browser", "module", "main"],
     minifyWhitespace: false,

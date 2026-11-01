@@ -1,8 +1,11 @@
 import { getLanguage, Notice, requireApiVersion } from "@/deps";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { createServiceFeature } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { SUPPORTED_I18N_LANGS, type I18N_LANGS } from "@/common/rosetta";
 import { $msg, __onMissingTranslation, setLang } from "@/common/translation";
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
+
+type EnableI18nHost = NecessaryServices<"setting" | "API" | "appLifecycle", never>;
 
 function tryGetLanguage(onError: (error: unknown) => void) {
     if (requireApiVersion("1.8.7")) {
@@ -48,7 +51,8 @@ class ObsidianLanguageAppliedNotice {
     }
 }
 
-export const enableI18nFeature = createServiceFeature(async ({ services: { setting, API, appLifecycle } }) => {
+export const enableI18nFeature = createServiceFeature(async (host: EnableI18nHost) => {
+    const { setting, API, appLifecycle } = host.services;
     // Clear missing translation handler to avoid unnecessary warnings.
     __onMissingTranslation(() => {});
     let isChanged = false;

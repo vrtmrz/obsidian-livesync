@@ -91,7 +91,7 @@ describe("ConfigSync commands", () => {
         expect(showPluginSyncModal).toHaveBeenCalledOnce();
     });
 
-    it("cancels the pending configuration Notice before releasing its owned UI", () => {
+    it("cancels the pending configuration Notice before releasing its owned UI", async () => {
         const notices = { hide: vi.fn() };
         const periodicPluginSweepProcessor = { disable: vi.fn() };
         const configSync = Object.create(ConfigSync.prototype) as ConfigSync;
@@ -102,9 +102,13 @@ describe("ConfigSync commands", () => {
                 },
             },
             periodicPluginSweepProcessor,
+            pluginList: [],
+            pluginListGeneration: 0,
+            loadedManifest_mTime: new Map(),
+            pluginScanProcessor: { clearPending: vi.fn(), stop: vi.fn(async () => {}) },
         });
 
-        configSync.onunload();
+        await configSync.onunload();
 
         expect(cancelTask).toHaveBeenCalledWith("config-sync:updated-configuration");
         expect(notices.hide).toHaveBeenCalledWith("config-sync:updated-configuration");

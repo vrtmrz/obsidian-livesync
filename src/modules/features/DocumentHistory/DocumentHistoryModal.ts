@@ -15,6 +15,8 @@ import { isErrorOfMissingDoc } from "@vrtmrz/livesync-commonlib/compat/pouchdb/u
 import { fireAndForget, getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { isPlainText, stripPrefix } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { scheduleOnceIfDuplicated } from "octagonal-wheels/concurrency/lock";
+import { stepCyclicIndex } from "octagonal-wheels/collection";
+import { navigateDiffNodes } from "@/common/diffNavigation.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import {
@@ -375,26 +377,7 @@ export class DocumentHistoryModal extends Modal {
      * Only effective when diff highlighting is enabled.
      */
     navigateDiff(direction: "prev" | "next") {
-        const diffElements = this.contentView.querySelectorAll(".history-added, .history-deleted");
-        if (diffElements.length === 0) return;
-
-        // Remove previous focus highlight
-        const prevFocused = this.contentView.querySelector(".diff-focused");
-        if (prevFocused) {
-            prevFocused.classList.remove("diff-focused");
-        }
-
-        if (direction === "next") {
-            this.currentDiffIndex = (this.currentDiffIndex + 1) % diffElements.length;
-        } else {
-            this.currentDiffIndex = this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
-        }
-
-        const target = diffElements[this.currentDiffIndex];
-        target.classList.add("diff-focused");
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-
-        this.diffNavIndicator.setText(`${this.currentDiffIndex + 1}/${diffElements.length}`);
+        navigateDiffNodes(this.contentView, ".history-added, .history-deleted", this, direction);
     }
 
     /**
@@ -519,12 +502,7 @@ export class DocumentHistoryModal extends Modal {
     navigateSearch(direction: "prev" | "next") {
         if (this.searchResults.length === 0) return;
 
-        if (direction === "next") {
-            this.currentSearchIndex = (this.currentSearchIndex + 1) % this.searchResults.length;
-        } else {
-            this.currentSearchIndex =
-                this.currentSearchIndex <= 0 ? this.searchResults.length - 1 : this.currentSearchIndex - 1;
-        }
+        this.currentSearchIndex = stepCyclicIndex(this.currentSearchIndex, this.searchResults.length, direction);
 
         const match = this.searchResults[this.currentSearchIndex];
         this.range.value = `${this.revs_info.length - 1 - match.index}`;

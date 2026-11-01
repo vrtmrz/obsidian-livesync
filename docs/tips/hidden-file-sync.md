@@ -72,6 +72,12 @@ Hidden File Sync must be enabled independently after ordinary setup on each devi
 
 If you later run Rebuild or Fetch as a recovery operation, expect optional features to be disabled again. Complete ordinary recovery first, then repeat this guide deliberately.
 
+## Resolve a JSON conflict
+
+When automatic merging cannot combine conflicting JSON changes and no overwrite pattern applies, the **Conflicted Setting** dialogue compares two revisions. Review the proposed contents before choosing **Apply**. Closing the dialogue leaves the conflict unresolved.
+
+A later conflict check for the same file cancels the earlier comparison and checks the latest revisions again. If manual resolution is still needed, a replacement dialogue opens. A cancelled dialogue cannot apply a later selection. A resolution received through replication closes the comparison for that file; a remaining conflict is checked again. Dialogues for other files wait their turn. An **Apply** operation which has already started finishes before the replacement proceeds.
+
 ## Automatic in Customisation Sync
 
 **Automatic** delegates an item's files to Hidden File Sync. Enable Hidden File Sync on this device through the steps above before choosing Automatic. If Hidden File Sync is disabled, the choice displays a Notice without changing the item's mode or starting initialisation. Previously saved Automatic assignments remain saved, so this prerequisite also applies after importing settings from another device.

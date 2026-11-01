@@ -1,4 +1,5 @@
 import type { ReviewHarnessScenarioResult } from "./reviewHarnessTypes";
+import { createReviewHarnessHeapSampler } from "./reviewHarnessHeapSampling";
 
 export const REVIEW_HARNESS_FILE_CONTENT_HASH_INPUTS = [
     { label: "4 KiB", bytes: 4 * 1024 },
@@ -22,15 +23,6 @@ type BenchmarkPerformance = Pick<Performance, "now"> & {
 };
 
 type HashAlgorithm = "SHA-256" | "xxHash64";
-
-function readHeap(clock: BenchmarkPerformance): number | undefined {
-    try {
-        const bytes = clock.memory?.usedJSHeapSize;
-        return typeof bytes === "number" && Number.isFinite(bytes) && bytes >= 0 ? bytes : undefined;
-    } catch {
-        return undefined;
-    }
-}
 
 function summary(samples: readonly number[]): string {
     const sorted = [...samples].sort((a, b) => a - b);
@@ -63,19 +55,13 @@ export async function runReviewHarnessFileContentHashBenchmark(
         throw new Error("The xxHash64 initialisation time is invalid.");
     }
 
-    const before = readHeap(clock);
-    let highest = before;
-    const sampleHeap = () => {
-        const value = readHeap(clock);
-        if (value !== undefined) highest = Math.max(highest ?? value, value);
-        return value;
-    };
+    const heap = createReviewHarnessHeapSampler(clock);
 
     const inputs: { readonly label: string; readonly bytes: number; readonly content: Blob }[] = [];
     for (const { label, bytes } of REVIEW_HARNESS_FILE_CONTENT_HASH_INPUTS) {
         await yieldControl();
         inputs.push({ label, bytes, content: operations.createInput(bytes) });
-        sampleHeap();
+        heap.sample();
     }
 
     const hash = (algorithm: HashAlgorithm, content: Blob) =>
@@ -99,7 +85,7 @@ export async function runReviewHarnessFileContentHashBenchmark(
         const elapsed = clock.now() - started;
         checkHash(algorithm, inputs[0].label, result);
         warmupTimes.set(algorithm, elapsed);
-        sampleHeap();
+        heap.sample();
     }
 
     const observations = [
@@ -124,7 +110,7 @@ export async function runReviewHarnessFileContentHashBenchmark(
                     throw new Error(`The ${algorithm} measurement returned an invalid duration.`);
                 }
                 samples[algorithm].push(elapsed);
-                sampleHeap();
+                heap.sample();
             }
         }
         for (const algorithm of ["SHA-256", "xxHash64"] as const) {
@@ -132,16 +118,7 @@ export async function runReviewHarnessFileContentHashBenchmark(
         }
     }
 
-    const after = sampleHeap();
-    if (highest === undefined) {
-        observations.push("JavaScript heap: unavailable on this device.");
-    } else {
-        const mib = (bytes: number | undefined) =>
-            bytes === undefined ? "unavailable" : `${(bytes / 1048576).toFixed(2)} MiB`;
-        observations.push(
-            `JavaScript heap: before=${mib(before)}; highest sampled=${mib(highest)}; after=${mib(after)}.`
-        );
-    }
+    observations.push(heap.finish());
     observations.push(
         "Heap samples are approximate, may include other Obsidian work, and are affected by garbage collection. They are neither total app RAM nor a true peak."
     );

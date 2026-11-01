@@ -265,7 +265,51 @@ async function main(): Promise<void> {
             );
             screenshotPaths.push(await captureStep(page, "06-after-search-next-match"));
 
+            const highlightDiff = modal.locator('.history-highlight-diff-label input[type="checkbox"]');
+            await highlightDiff.check();
+            const diffBlocks = modal.locator(".history-added, .history-deleted");
+            await diffBlocks.first().waitFor({ state: "visible", timeout: 10000 });
+            const diffIndicator = modal.locator(".diff-nav-indicator");
+            const diffCount = await diffBlocks.count();
+            const assertDiffSelection = async (index: number, count: number) => {
+                assertEqual(
+                    (await diffIndicator.innerText()).trim(),
+                    `${index + 1}/${count}`,
+                    "Unexpected diff indicator."
+                );
+                const focused = await diffBlocks.evaluateAll((elements) =>
+                    elements.flatMap((element, index) => (element.classList.contains("diff-focused") ? [index] : []))
+                );
+                assertEqual(
+                    JSON.stringify(focused),
+                    JSON.stringify([index]),
+                    "Diff focus did not move to exactly one block."
+                );
+            };
+            await assertDiffSelection(0, diffCount);
+            const diffPrev = modal.locator(".diff-nav-btn").first();
+            const diffNext = modal.locator(".diff-nav-btn").last();
+            await diffPrev.click();
+            await assertDiffSelection(diffCount - 1, diffCount);
+            await diffNext.click();
+            await assertDiffSelection(0, diffCount);
+            for (let index = 0; index < diffCount; index++) await diffNext.click();
+            await assertDiffSelection(0, diffCount);
+
+            const oldBlock = await diffBlocks.first().elementHandle();
+            if (oldBlock === null) throw new Error("Could not retain the previous revision's diff block");
+            const changeRevision = (await nextBtn.isDisabled()) ? prevBtn : nextBtn;
+            await changeRevision.click();
+            await page.waitForFunction((element) => !element.isConnected, oldBlock, { timeout: 10000 });
+            await diffBlocks.first().waitFor({ state: "visible", timeout: 10000 });
+            const replacementDiffCount = await diffBlocks.count();
+            await assertDiffSelection(0, replacementDiffCount);
+            await diffPrev.click();
+            await assertDiffSelection(replacementDiffCount - 1, replacementDiffCount);
+            screenshotPaths.push(await captureStep(page, "07-diff-navigation-after-revision-change"));
+
             return [
+                `diffNavigation: ${diffCount} blocks; replacement revision: ${replacementDiffCount} blocks`,
                 `initialIndicator: ${initialIndicator}`,
                 `afterPrevIndicator: ${afterPrevIndicator}`,
                 `afterNextIndicator: ${afterNextIndicator}`,

@@ -15,7 +15,52 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - Unicode NFC path identity can be used with Object Storage and P2P on CLI and Obsidian clients. The setting is available under General Settings → File identity. Existing databases require a coordinated Rebuild and Fetch; physical file names and Chunk IDs stay unchanged. All P2P participants must be updated and migrated.
     - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
 
+- We can continue CouchDB synchronisation after rebuilding an encrypted remote when **Use Internal API** is enabled. (#1234)
+    - CouchDB read requests now carry cache-control headers to avoid reusing responses encrypted with the previous Security Seed.
+
+- CLI `fetch` and `rebuild` retain their selected local database for subsequent commands even without `--write-settings`, preventing the empty-database restart and file deletion reported in #1304.
+    - Runtime state is separated by database and Vault. Interrupted reconstruction blocks ordinary synchronisation until recovery, and a pending settings commit can be completed on restart.
+    - Older runtime state with no recorded owner is preserved and requires explicit reconstruction from a verified source before ordinary writes resume. Back up unique edits before choosing Fetch or Rebuild.
+
+- Files containing a raw unit separator (`U+001F`) retain their complete contents when received through S3-compatible Object Storage. (#1303)
+    - The Journal receiver in Commonlib 0.2.3 preserves the complete Chunk payload, including batches written by earlier versions, without changing the stored format.
+    - Updating prevents further truncation during reception but does not repair existing damaged copies. Update every participating client, preserve an intact recovery source, and follow the [recovery procedure](docs/recovery.md#recover-files-truncated-during-object-storage-reception). Rebuild and Fetch leave Hidden File Sync and Customisation Sync disabled until they are deliberately initialised again.
+
+- Files waiting for encrypted Chunks which arrive after their Metadata receive the decrypted contents once the local database is ready.
+    - Commonlib 0.2.3 restarts the database change feed after initialisation installs the decryption transforms. This corrects delivery of later Chunks; it does not replay earlier events. ([Commonlib #191](https://github.com/vrtmrz/livesync-commonlib/pull/191))
+
 - The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
+
+- Hidden File Sync now stores newer local files during `Merge` initialisation by comparing local and database modification times in the correct direction.
+
+- Hidden File Sync refreshes an open manual JSON comparison when a later conflict check arrives for the same file.
+    - The earlier dialogue closes, and the latest revisions are checked again before another comparison opens. A replicated resolution also closes the affected comparison. Dialogues for other files keep their order.
+    - An `Apply` operation already in progress finishes before its replacement proceeds.
+
+- Reloading the Customisation Sync catalogue no longer allows an earlier legacy-format scan to put outdated items back into the list.
+    - Reloading or disabling Customisation Sync discards unstarted scans and ignores stale read results. Migrations to per-file storage which have already started are allowed to finish.
+
+### Synchronisation
+
+- Devices using the legacy IndexedDB adapter now use the standard recovery dialogue when a remote retains an old cleanup lock.
+    - The obsolete in-place `Cleanup` option has been removed. We can fetch the remote again, explicitly unlock the device, or dismiss the dialogue; dismissal remains the default.
+    - Fetch replaces the local database, so preserve unsynchronised work and any required local history first. Unlock only when the local and remote databases are already aligned. Garbage Collection V3 is unchanged.
+
+
+### Maintenance
+
+- The plug-in bundle is smaller, reducing the download for installation and updates.
+    - Builds remove unused code and shorten local identifiers while retaining class and function names for diagnostics.
+
+### Diagnostics
+
+- Service log calls stay with the plug-in instance that registered them. Its log connection is released after the full shutdown, so stale instances cannot receive later service messages.
+
+### Browser applications
+
+- WebApp and WebPeer dialogues and menus remain with their owning application
+  and close on shutdown; closing or replacing a menu releases its component.
+
 
 ## 1.0.43
 

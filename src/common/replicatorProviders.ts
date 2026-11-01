@@ -73,7 +73,7 @@ async function runOneShotWithOutcome(
 
 // Manual and unattended wrappers share the provider transfer operation, but
 // keep interaction authority and result presentation explicit at this boundary.
-const couchDBUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {
+const userInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {
     return await runOneShotWithOutcome(
         instance,
         setting,
@@ -81,20 +81,7 @@ const couchDBUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance,
     );
 };
 
-const couchDBUnattendedOneShot: UnattendedOneShotRunner = async (instance, setting, request) => {
-    if (request.interaction.kind !== NO_INTERACTION.kind) return replicationBlocked("interaction-required");
-    return await runOneShotWithOutcome(instance, setting, false);
-};
-
-const objectStorageUserInitiatedOneShot: UserInitiatedOneShotRunner = async (instance, setting, request) => {
-    return await runOneShotWithOutcome(
-        instance,
-        setting,
-        request.progressPresentation === REPLICATION_PROGRESS_PRESENTATIONS.NOTICE
-    );
-};
-
-const objectStorageUnattendedOneShot: UnattendedOneShotRunner = async (instance, setting, request) => {
+const unattendedOneShot: UnattendedOneShotRunner = async (instance, setting, request) => {
     if (request.interaction.kind !== NO_INTERACTION.kind) return replicationBlocked("interaction-required");
     return await runOneShotWithOutcome(instance, setting, false);
 };
@@ -136,8 +123,8 @@ export function createCentralReplicatorProviderDefinitions(
                 ),
             },
             centralRemoteAdministration: COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
-            userInitiatedOneShot: supportedCapability(couchDBUserInitiatedOneShot),
-            unattendedOneShot: supportedCapability(couchDBUnattendedOneShot),
+            userInitiatedOneShot: supportedCapability(userInitiatedOneShot),
+            unattendedOneShot: supportedCapability(unattendedOneShot),
             continuous: supportedOpenReplicationContinuous(),
             stopActiveTransfer: supportedStopActiveTransfer(),
         },
@@ -166,8 +153,8 @@ export function createCentralReplicatorProviderDefinitions(
                 [REMOTE_RESOURCE_KINDS.INITIAL_FETCH_FAST_FORWARD]: CAPABILITY_NOT_APPLICABLE,
             },
             centralRemoteAdministration: OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
-            userInitiatedOneShot: supportedCapability(objectStorageUserInitiatedOneShot),
-            unattendedOneShot: supportedCapability(objectStorageUnattendedOneShot),
+            userInitiatedOneShot: supportedCapability(userInitiatedOneShot),
+            unattendedOneShot: supportedCapability(unattendedOneShot),
             continuous: CAPABILITY_NOT_APPLICABLE,
             stopActiveTransfer: supportedStopActiveTransfer(),
         },

@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import type {
+    NecessaryServices,
+    NecessaryServicesInterfaces,
+} from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import {
     COMPATIBILITY_PAUSE_SETTING_MESSAGE,
     DATABASE_COMPATIBILITY_VERSION_KEY,
@@ -101,6 +105,32 @@ function createFixture(
 }
 
 describe("compatibility review controller", () => {
+    it("accepts operation services without retaining an application-core contract", () => {
+        type Dependencies = NecessaryServicesInterfaces<"setting" | "config" | "vault" | "control", never>;
+        type ControllerHost = ConstructorParameters<typeof CompatibilityReviewController>[0];
+
+        expectTypeOf<Dependencies>().toExtend<ControllerHost>();
+        expectTypeOf<keyof ControllerHost>().toEqualTypeOf<"services" | "serviceModules">();
+        expectTypeOf<keyof ControllerHost["services"]>().toEqualTypeOf<"setting" | "config" | "vault" | "control">();
+        expectTypeOf<keyof ControllerHost["serviceModules"]>().toBeNever();
+    });
+
+    it("composes the review from its operation services and lifecycle and command ports", () => {
+        type Dependencies = NecessaryServices<
+            "setting" | "config" | "vault" | "control" | "appLifecycle" | "API",
+            never
+        >;
+        type FeatureHost = Parameters<typeof useCompatibilityReview>[0];
+
+        expectTypeOf<Dependencies>().toExtend<FeatureHost>();
+        expectTypeOf<keyof FeatureHost>().toEqualTypeOf<"services" | "serviceModules">();
+        expectTypeOf<keyof FeatureHost["services"]>().toEqualTypeOf<
+            "context" | "setting" | "config" | "vault" | "control" | "appLifecycle" | "API"
+        >();
+        expectTypeOf<keyof FeatureHost["serviceModules"]>().toBeNever();
+        expectTypeOf<ReturnType<typeof useCompatibilityReview>>().toEqualTypeOf<CompatibilityReviewController>();
+    });
+
     beforeEach(() => {
         vi.restoreAllMocks();
     });

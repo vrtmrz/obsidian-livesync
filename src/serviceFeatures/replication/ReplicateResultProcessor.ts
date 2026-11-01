@@ -25,6 +25,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { fireAndForget, isAnyNote, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
+import { withCounting } from "octagonal-wheels/concurrency/counting";
 import { serialized } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
@@ -223,12 +224,7 @@ export class ReplicateResultProcessor {
      * @returns result of the procedure
      */
     async withCounting<T>(proc: () => Promise<T>, countValue: ReactiveSource<number>) {
-        countValue.value++;
-        try {
-            return await proc();
-        } finally {
-            countValue.value--;
-        }
+        return withCounting(countValue, proc);
     }
 
     /**

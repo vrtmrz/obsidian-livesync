@@ -1,3 +1,4 @@
+import { createOwnedResource } from "octagonal-wheels/resource";
 import type { RemoteDBSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
 /**
@@ -13,13 +14,8 @@ export interface ResourceReplicator {
 
 /** Create one idempotent asynchronous disposer for a private Replicator. */
 export function createReplicatorDisposer(replicator: ResourceReplicator): () => Promise<void> {
-    let disposal: Promise<void> | undefined;
-    return () => {
-        if (disposal === undefined) {
-            disposal = Promise.resolve().then(() => replicator.closeReplication());
-        }
-        return disposal;
-    };
+    const resource = createOwnedResource(replicator, (owned) => Promise.resolve().then(() => owned.closeReplication()));
+    return () => Promise.resolve(resource.dispose());
 }
 
 /** Fence a finite resource from later edits to its source settings object. */

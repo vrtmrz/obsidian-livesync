@@ -9,6 +9,7 @@ import {
 import { REMOTE_RESOURCE_KINDS, type JoinedDevicesSnapshot } from "@vrtmrz/livesync-commonlib/replication";
 import type { ObsidianNoticeGroups } from "@/modules/services/ObsidianNoticeGroups";
 import JoinedDevicesDialog from "@/modules/services/LiveSyncUI/dialogues/JoinedDevicesDialog.svelte";
+import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
 import {
     getCouchDBReplicatorConfigurationIdentity,
     getObjectStorageReplicatorConfigurationIdentity,
@@ -119,9 +120,9 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
                     settings
                 );
                 if (!resource) throw new Error("Joined devices are unavailable");
-                try {
+                return withOwnedRemoteResource(resource, async (ownedResource) => {
                     assertCurrent();
-                    const snapshot = await resource.read();
+                    const snapshot = await ownedResource.read();
                     assertCurrent();
                     notify(snapshot, id, identity!);
                     return joinedDevicesView(snapshot, {
@@ -130,9 +131,7 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
                         pluginVersion: services.API.getPluginVersion(),
                         appVersion: services.API.getAppVersion(),
                     });
-                } finally {
-                    await resource.dispose();
-                }
+                });
             },
             forget: async (id) => {
                 if (id === (await ownId())) throw new Error("This device cannot be forgotten");
@@ -141,14 +140,12 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
                     settings
                 );
                 if (!resource) throw new Error("Joined devices are unavailable");
-                try {
+                return withOwnedRemoteResource(resource, async (ownedResource) => {
                     assertCurrent();
-                    const result = await resource.forget(id);
+                    const result = await ownedResource.forget(id);
                     assertCurrent();
                     return result;
-                } finally {
-                    await resource.dispose();
-                }
+                });
             },
             cancel: () => controller.abort(),
         };

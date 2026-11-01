@@ -54,6 +54,7 @@ export interface ConflictResolutionOperationsDependencies {
 }
 
 export interface ConflictResolutionOperations {
+    readonly cancelActiveResolution: (filename: FilePathWithPrefix) => void;
     readonly resolveByDeletingRevision: (
         path: FilePathWithPrefix,
         deleteRevision: string,
@@ -71,6 +72,13 @@ export function createConflictResolutionOperations(
 ): ConflictResolutionOperations {
     const latestResolveRequestByFilename = new Map<FilePathWithPrefix, number>();
     let nextResolveRequestId = 0;
+
+    const cancelActiveResolution = (filename: FilePathWithPrefix): void => {
+        latestResolveRequestByFilename.delete(filename);
+        if (isLockAcquired(`conflict-resolve:${filename}`)) {
+            dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+        }
+    };
 
     const resolveByDeletingRevision = async (
         path: FilePathWithPrefix,
@@ -299,6 +307,7 @@ export function createConflictResolutionOperations(
     };
 
     return {
+        cancelActiveResolution,
         resolveByDeletingRevision,
         checkConflictAndPerformAutoMerge,
         resolve,
