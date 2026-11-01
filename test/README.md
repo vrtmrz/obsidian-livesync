@@ -77,21 +77,6 @@ npm run test:e2e:docker:mirror --workspace self-hosted-livesync-cli
 
 The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Node.js and Bash suites.
 
-## Object Storage Chunk recovery regression tests
-
-After building the CLI, run the focused recovery test with Node.js 26 or later:
-
-```bash
-NODE_OPTIONS=--max-old-space-size=3072 npm run build --workspace self-hosted-livesync-cli
-NODE_OPTIONS=--max-old-space-size=3072 MINIO_ENDPOINT=http://127.0.0.1:9000 MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin MINIO_BUCKET_NAME=livesync-test npm run test:e2e:task --workspace self-hosted-livesync-cli -- test:journal-chunk-recovery
-```
-
-The test manages the disposable `minio-test` RustFS container on ports 9000 and 9001. Run it separately from other tests using that container or those ports. It creates a distinct bucket and temporary Vaults for each case and removes its test container afterwards.
-
-Both the unencrypted and encrypted cases rebuild from a complete file containing raw unit separators (`U+001F`), Fetch into another Vault, and compare the exact bytes. A fresh CLI process reads the persisted content. The test then damages the receiving Vault file and verifies that Fetch retains that newer local file and preserves both contents as independent conflict branches. Each revision is read explicitly so the assertions do not depend on which branch PouchDB selects as the winner. After moving the damaged file to a separate backup, another Fetch into the empty Vault restores the remote contents. It retains `--write-settings` to exercise explicit settings writeback; database selection is now saved automatically, and the continuity test below covers omission of that option. This test is included in the standard CLI CI task list.
-
-This establishes the CLI and shared Rebuild/Fetch behaviour. It does not exercise Obsidian's Hidden File Sync or Customisation Sync initialisation, nor inject a damaged Chunk under an existing content-addressed ID.
-
 ## CLI Fetch database continuity
 
 The standard CLI CI suite and direct task runner execute
@@ -133,6 +118,21 @@ the affected implementation fails because A's file disappears. Leave this
 variable unset when validating the correction. The test saves redacted process
 logs, file hashes, and database evidence. It does not cover Obsidian runtime or
 CouchDB behaviour.
+
+## Object Storage Chunk recovery regression tests
+
+After building the CLI, run the focused recovery test with Node.js 26 or later:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=3072 npm run build --workspace self-hosted-livesync-cli
+NODE_OPTIONS=--max-old-space-size=3072 MINIO_ENDPOINT=http://127.0.0.1:9000 MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin MINIO_BUCKET_NAME=livesync-test npm run test:e2e:task --workspace self-hosted-livesync-cli -- test:journal-chunk-recovery
+```
+
+The test manages the disposable `minio-test` RustFS container on ports 9000 and 9001. Run it separately from other tests using that container or those ports. It creates a distinct bucket and temporary Vaults for each case and removes its test container afterwards.
+
+Both the unencrypted and encrypted cases rebuild from a complete file containing raw unit separators (`U+001F`), Fetch into another Vault, and compare the exact bytes. A fresh CLI process reads the persisted content. The test then damages the receiving Vault file and verifies that Fetch retains that newer local file and preserves both contents as independent conflict branches. Each revision is read explicitly so the assertions do not depend on which branch PouchDB selects as the winner. After moving the damaged file to a separate backup, another Fetch into the empty Vault restores the remote contents. It retains `--write-settings` to exercise explicit settings writeback; database selection is now saved automatically, and the continuity test below covers omission of that option. This test is included in the standard CLI CI task list.
+
+This establishes the CLI and shared Rebuild/Fetch behaviour. It does not exercise Obsidian's Hidden File Sync or Customisation Sync initialisation, nor inject a damaged Chunk under an existing content-addressed ID.
 
 ## Multiple-device conflict regression tests
 
