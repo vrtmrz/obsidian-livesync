@@ -12,6 +12,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- CLI `fetch` and `rebuild` retain their selected local database for subsequent commands even without `--write-settings`, preventing the empty-database restart and file deletion reported in #1304.
+    - Runtime state is separated by database and Vault. Interrupted reconstruction blocks ordinary synchronisation until recovery, and a pending settings commit can be completed on restart.
+    - Older runtime state with no recorded owner is preserved and requires explicit reconstruction from a verified source before ordinary writes resume. Back up unique edits before choosing Fetch or Rebuild.
 - The CLI mirror now starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault. It checks logical Vault paths using `/` separators, correctly excluding internal database files and nested hidden directories even when the host uses Windows path separators.
 
 ## 1.0.43

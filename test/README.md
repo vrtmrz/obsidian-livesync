@@ -77,6 +77,32 @@ npm run test:e2e:docker:mirror --workspace self-hosted-livesync-cli
 
 The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Node.js and Bash suites.
 
+## CLI Fetch database continuity
+
+After building the CLI, run `node test/e2e-cli/run-task.ts test:fetch-database-continuity`
+with Node.js 26 and a disposable S3-compatible service. Set
+`LIVESYNC_ISSUE1304_MINIO_ENDPOINT`, `LIVESYNC_ISSUE1304_MINIO_ACCESS_KEY`,
+`LIVESYNC_ISSUE1304_MINIO_SECRET_KEY`, and `LIVESYNC_ISSUE1304_MINIO_BUCKET`.
+The bucket must be fresh and empty for every run. Set
+`LIVESYNC_ISSUE1304_EVIDENCE_DIR` to an evidence directory outside the worktree.
+This test writes remote data; never point it at a production bucket.
+
+The test seeds an encrypted, path-obfuscated file with a second-generation
+revision, imports one Setup URI on two clients, fetches on A without
+`--write-settings`, and restarts A while B remains online. It checks the saved
+database suffix, file bytes, original revision, and absence of a duplicate root.
+Set `LIVESYNC_ISSUE1304_POSITIVE_CONTROL=1` and
+`LIVESYNC_ISSUE1304_POSITIVE_CONTROL_BUCKET` to a second fresh bucket to exercise
+the explicit `--write-settings` variant as well.
+
+For historical reproduction against the unmodified implementation, set
+`LIVESYNC_ISSUE1304_VERIFY_LEGACY_FAILURE=1`. This preserves the original
+same-content conflict-resolution sequence and its file-preservation assertion;
+the affected implementation fails because A's file disappears. Leave this
+variable unset when validating the correction. The test saves redacted process
+logs, file hashes, and database evidence. It does not cover Obsidian runtime or
+CouchDB behaviour.
+
 ## Multiple-device conflict regression tests
 
 ### Preparation and execution
