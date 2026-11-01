@@ -79,21 +79,37 @@ The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local 
 
 ## CLI Fetch database continuity
 
-After building the CLI, run `node test/e2e-cli/run-task.ts test:fetch-database-continuity`
-with Node.js 26 and a disposable S3-compatible service. Set
+The standard CLI CI suite and direct task runner execute
+`test:fetch-database-continuity` against a dedicated RustFS container. Each
+scenario creates its own bucket. The test binds a uniquely named container to a
+dynamic loopback port, then stops only that container. Redacted evidence is
+written under the operating system's temporary directory and is not uploaded as
+an artefact.
+
+For a local run, build the CLI and run
+`node test/e2e-cli/run-task.ts test:fetch-database-continuity` with Node.js 26
+and Docker available. The managed container uses `accessKey` and `secretKey`
+from the CLI `.test.env` file when present, and defaults to `minioadmin` for
+both. No endpoint, bucket, or evidence-directory variables are needed. Set
+`LIVESYNC_ISSUE1304_EVIDENCE_DIR` to choose another evidence directory outside
+the worktree.
+
+To use an external S3-compatible fixture without Docker, set all four
 `LIVESYNC_ISSUE1304_MINIO_ENDPOINT`, `LIVESYNC_ISSUE1304_MINIO_ACCESS_KEY`,
 `LIVESYNC_ISSUE1304_MINIO_SECRET_KEY`, and `LIVESYNC_ISSUE1304_MINIO_BUCKET`.
-The bucket must be fresh and empty for every run. Set
-`LIVESYNC_ISSUE1304_EVIDENCE_DIR` to an evidence directory outside the worktree.
-This test writes remote data; never point it at a production bucket.
+The bucket must be fresh and empty for every run. Partial external fixture
+configuration is rejected. This test writes remote data; never point it at a
+production bucket.
 
 The test seeds an encrypted, path-obfuscated file with a second-generation
 revision, imports one Setup URI on two clients, fetches on A without
 `--write-settings`, and restarts A while B remains online. It checks the saved
 database suffix, file bytes, original revision, and absence of a duplicate root.
-Set `LIVESYNC_ISSUE1304_POSITIVE_CONTROL=1` and
-`LIVESYNC_ISSUE1304_POSITIVE_CONTROL_BUCKET` to a second fresh bucket to exercise
-the explicit `--write-settings` variant as well.
+Managed runs execute the explicit `--write-settings` control automatically in
+a separate scenario bucket. For an external fixture, set
+`LIVESYNC_ISSUE1304_POSITIVE_CONTROL=1` and
+`LIVESYNC_ISSUE1304_POSITIVE_CONTROL_BUCKET` to a second fresh bucket to run
+that control.
 
 For historical reproduction against the unmodified implementation, set
 `LIVESYNC_ISSUE1304_VERIFY_LEGACY_FAILURE=1`. This preserves the original
