@@ -8,6 +8,7 @@ import type { SvelteDialogManagerDependencies } from "@vrtmrz/livesync-commonlib
 import { _activeDocument } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import DialogHost from "@/modules/services/LiveSyncUI/DialogHost.svelte";
 import { SvelteDialogSession } from "@/modules/services/SvelteDialogSession";
+import { createBrowserUiScope, type BrowserUiScope } from "./BrowserUiScope";
 
 export class BrowserModal {
     contentEl: HTMLElement;
@@ -15,14 +16,14 @@ export class BrowserModal {
     modalEl: HTMLElement;
     isOpen: boolean = false;
     baseEl: HTMLElement;
-    constructor() {
-        const baseEl = createNativeElement(_activeDocument, "popup");
+    constructor(document: Document = _activeDocument) {
+        const baseEl = createNativeElement(document, "popup");
         this.baseEl = baseEl;
-        this.contentEl = createNativeElement(_activeDocument, "div");
+        this.contentEl = createNativeElement(document, "div");
         this.contentEl.className = "modal-content";
-        this.titleEl = createNativeElement(_activeDocument, "div");
+        this.titleEl = createNativeElement(document, "div");
         this.titleEl.className = "modal-title";
-        this.modalEl = createNativeElement(_activeDocument, "div");
+        this.modalEl = createNativeElement(document, "div");
         this.modalEl.className = "modal";
         this.modalEl.hidden = true;
         this.modalEl.appendChild(this.titleEl);
@@ -33,7 +34,7 @@ export class BrowserModal {
         this.isOpen = true;
         this.modalEl.hidden = false;
         if (!this.baseEl.parentElement) {
-            _activeDocument.body.appendChild(this.baseEl);
+            this.baseEl.ownerDocument.body.appendChild(this.baseEl);
         }
         this.onOpen();
     }
@@ -57,9 +58,10 @@ export class LiveSyncBrowserDialog<T, U, C extends ServiceContext = ServiceConte
         context: C,
         dependents: SvelteDialogManagerDependencies<C>,
         component: ComponentHasResult<T, U>,
-        initialData?: U
+        initialData?: U,
+        private readonly ui?: BrowserUiScope
     ) {
-        super();
+        super(ui?.document ?? _activeDocument);
         this.session = new SvelteDialogSession({
             surface: this,
             context,
@@ -67,7 +69,13 @@ export class LiveSyncBrowserDialog<T, U, C extends ServiceContext = ServiceConte
             dialogHost: DialogHost,
             component,
             initialData,
+            signal: ui?.signal,
         });
+    }
+
+    override open(): void {
+        if (this.ui?.signal.aborted) throw this.ui.signal.reason ?? new Error("Plug-in unloaded");
+        super.open();
     }
 
     override onOpen(): void {
@@ -83,11 +91,26 @@ export class LiveSyncBrowserDialog<T, U, C extends ServiceContext = ServiceConte
     }
 }
 export class BrowserSvelteDialogManager<T extends ServiceContext> extends SvelteDialogManagerBase<T> {
+    constructor(
+        context: T,
+        dependencies: SvelteDialogManagerDependencies<T>,
+        private readonly ui: BrowserUiScope = createBrowserUiScope(context)
+    ) {
+        super(context, dependencies);
+    }
+
     override async openSvelteDialog<TT, TU>(
         component: ComponentHasResult<TT, TU>,
         initialData?: TU
     ): Promise<TT | undefined> {
-        const dialog = new LiveSyncBrowserDialog<TT, TU, T>(this.context, this.dependents, component, initialData);
+        if (this.ui.signal.aborted) throw this.ui.signal.reason ?? new Error("Plug-in unloaded");
+        const dialog = new LiveSyncBrowserDialog<TT, TU, T>(
+            this.context,
+            this.dependents,
+            component,
+            initialData,
+            this.ui
+        );
         dialog.open();
         return await dialog.waitForClose();
     }

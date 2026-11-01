@@ -8,6 +8,7 @@ import { FSAPIVaultAdapter } from "./FSAPIVaultAdapter";
 import type { FSAPIFile, FSAPIFolder, FSAPIStat } from "./FSAPITypes";
 import { shareRunningResult } from "octagonal-wheels/concurrency/lock_v2";
 import type { WebAppLog } from "@/apps/webapp/WebAppLog";
+import { findCaseInsensitiveFile } from "@/apps/caseInsensitiveFileLookup";
 
 /**
  * Complete file system adapter implementation for FileSystem API
@@ -85,28 +86,12 @@ export class FSAPIFileSystemAdapter implements IFileSystemAdapter<FSAPIFile, FSA
      */
     async getAbstractFileByPathInsensitive(p: FilePath | string): Promise<FSAPIFile | null> {
         const pathStr = this.normalisePath(p);
-        const exact = await this.getAbstractFileByPath(pathStr);
-        if (exact) {
-            return exact;
-        }
-        // TODO: Refactor: Very, Very heavy.
-
-        const lowerPath = pathStr.toLowerCase();
-        for (const [cachedPath, cachedFile] of this.fileCache.entries()) {
-            if (cachedPath.toLowerCase() === lowerPath) {
-                return cachedFile;
-            }
-        }
-
-        await this.scanDirectory();
-
-        for (const [cachedPath, cachedFile] of this.fileCache.entries()) {
-            if (cachedPath.toLowerCase() === lowerPath) {
-                return cachedFile;
-            }
-        }
-
-        return null;
+        return await findCaseInsensitiveFile(
+            pathStr,
+            () => this.getAbstractFileByPath(pathStr),
+            this.fileCache,
+            () => this.scanDirectory()
+        );
     }
 
     async getFiles(): Promise<FSAPIFile[]> {

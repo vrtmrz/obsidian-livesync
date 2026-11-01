@@ -7,6 +7,7 @@ import {
     type FilePathWithPrefix,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { EVENT_CONFLICT_CANCELLED, EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
+import { navigateDiffNodes } from "@/common/diffNavigation.ts";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { POSTPONED, type MergeDialogResult } from "@/serviceFeatures/interactiveConflictResolution/types";
 
@@ -83,24 +84,7 @@ export class ConflictResolveModal extends Modal {
     }
 
     navigateDiff(direction: "prev" | "next") {
-        const diffElements = this.diffView.querySelectorAll(".added, .deleted");
-        if (diffElements.length === 0) return;
-
-        const prevFocused = this.diffView.querySelector(".diff-focused");
-        if (prevFocused) {
-            prevFocused.classList.remove("diff-focused");
-        }
-
-        if (direction === "next") {
-            this.currentDiffIndex = (this.currentDiffIndex + 1) % diffElements.length;
-        } else {
-            this.currentDiffIndex = this.currentDiffIndex <= 0 ? diffElements.length - 1 : this.currentDiffIndex - 1;
-        }
-
-        const target = diffElements[this.currentDiffIndex];
-        target.classList.add("diff-focused");
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        this.diffNavIndicator.setText(`${this.currentDiffIndex + 1}/${diffElements.length}`);
+        navigateDiffNodes(this.diffView, ".added, .deleted", this, direction);
     }
 
     resetDiffNavigation() {

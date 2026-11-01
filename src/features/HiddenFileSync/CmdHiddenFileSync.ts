@@ -35,7 +35,6 @@ import {
     getLogLevel,
     autosaveCache,
     type MapLike,
-    onlyInNTimes,
     BASE_IS_NEW,
     EVEN,
     displayRev,
@@ -45,7 +44,8 @@ import { serialized, skipIfDuplicated } from "octagonal-wheels/concurrency/lock"
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
+import { createCoalescingNotifier } from "octagonal-wheels/concurrency/coalescingNotifier";
+import { HiddenFileConflictQueue } from "./HiddenFileConflictQueue.ts";
 import {
     hiddenFilesEventCount,
     hiddenFilesProcessingCount,
@@ -57,6 +57,7 @@ import { tryGetFilePath } from "@vrtmrz/livesync-commonlib/compat/common/utils.d
 import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
+import { performBatchWithProgress } from "./performBatchWithProgress.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
 import { $msg } from "@/common/translation";
@@ -107,6 +108,8 @@ export class HiddenFileSync extends LiveSyncCommands {
     }
     onunload() {
         this.periodicInternalFileScanProcessor?.disable();
+        this.conflictResolutionProcessor.dispose();
+        this.pendingConflictChecks.clear();
     }
     onload() {
         this.services.API.addCommand({
@@ -571,18 +574,15 @@ export class HiddenFileSync extends LiveSyncCommands {
     ) {
         const logLevel = getLogLevel(showNotice);
         const p = this._progress(`[⚙ Storage -> DB ]\n`, logLevel);
-        const notifyProgress = onlyInNTimes(100, (progress) => p.log(`${progress}/${processFiles.length}`));
-        const processes = processFiles.map(async (file, i) => {
-            try {
-                await this.trackStorageFileModification(file, onlyNew, forceWriteAll, includeDeleted);
-                notifyProgress();
-            } catch (ex) {
+        await performBatchWithProgress(processFiles, 100, {
+            processItem: (file) => this.trackStorageFileModification(file, onlyNew, forceWriteAll, includeDeleted),
+            onProgress: (progress) => p.log(`${progress}/${processFiles.length}`),
+            onItemError: (ex, file) => {
                 p.once(`Failed to process storage change file:${file}`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
-            }
+            },
+            onDone: () => p.done(),
         });
-        await Promise.all(processes);
-        p.done();
     }
     async scanAllStorageChanges(
         showNotice: boolean = false,
@@ -688,7 +688,7 @@ Offline Changed files: ${processFiles.length}`;
                     const dbMTime = getComparingMTime(filesOnDB, includeDeleted);
                     const diff = compareMTime(storageMTime, dbMTime);
 
-                    if (diff != TARGET_IS_NEW) {
+                    if (diff != BASE_IS_NEW) {
                         this._log(`Hidden file:${path} is not new.`, LOG_LEVEL_VERBOSE);
                         if (filesOnDB && stat) {
                             // OnlyNew not handles the deletion.
@@ -747,7 +747,7 @@ Offline Changed files: ${processFiles.length}`;
     queueConflictCheck(path: FilePathWithPrefix) {
         if (this.pendingConflictChecks.has(path)) return;
         this.pendingConflictChecks.add(path);
-        this.conflictResolutionProcessor.enqueue(path);
+        if (!this.conflictResolutionProcessor.enqueue(path)) this.pendingConflictChecks.delete(path);
     }
 
     finishConflictCheck(path: FilePathWithPrefix) {
@@ -804,9 +804,8 @@ Offline Changed files: ${processFiles.length}`;
         }
         // check the file again
     }
-    conflictResolutionProcessor = new QueueProcessor(
-        async (paths: FilePathWithPrefix[]) => {
-            const path = paths[0];
+    conflictResolutionProcessor = new HiddenFileConflictQueue(
+        async (path: FilePathWithPrefix) => {
             try {
                 // Retrieve data
                 const id = await this.path2id(path, ICHeader);
@@ -874,46 +873,32 @@ Offline Changed files: ${processFiles.length}`;
                 return [];
             }
         },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 5,
-            delay: 10,
-            keepResultUntilDownstreamConnected: true,
-            yieldThreshold: 10,
-            pipeTo: new QueueProcessor(
-                async (results) => {
-                    const { id, doc, path, revA, revB } = results[0];
-                    const prefixedPath = addPrefix(path, ICHeader);
-                    const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
-                    const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
-                    try {
-                        if (docAMerge != false && docBMerge != false) {
-                            if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
-                                // Again for other conflicted revisions.
-                                this.requeueConflictCheck(path);
-                            } else {
-                                this.finishConflictCheck(path);
-                            }
-                            return;
-                        } else {
-                            // If either revision could not read, force resolving by the newer one.
-                            await this.resolveByNewerEntry(id, path, doc, revA, revB);
-                        }
-                    } catch (ex) {
+        async (result) => {
+            const { id, doc, path, revA, revB } = result;
+            const prefixedPath = addPrefix(path, ICHeader);
+            const docAMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revA });
+            const docBMerge = await this.localDatabase.getDBEntry(prefixedPath, { rev: revB });
+            try {
+                if (docAMerge != false && docBMerge != false) {
+                    if (await this.showJSONMergeDialogAndMerge(docAMerge, docBMerge)) {
+                        // Again for other conflicted revisions.
+                        this.requeueConflictCheck(path);
+                    } else {
                         this.finishConflictCheck(path);
-                        throw ex;
                     }
-                },
-                {
-                    suspended: false,
-                    batchSize: 1,
-                    concurrentLimit: 1,
-                    delay: 10,
-                    keepResultUntilDownstreamConnected: false,
-                    yieldThreshold: 10,
+                    return;
+                } else {
+                    // If either revision could not read, force resolving by the newer one.
+                    await this.resolveByNewerEntry(id, path, doc, revA, revB);
                 }
-            ),
+            } catch (ex) {
+                this.finishConflictCheck(path);
+                throw ex;
+            }
+        },
+        (error) => {
+            this._log("Processor error!");
+            this._log(error, LOG_LEVEL_VERBOSE);
         }
     );
 
@@ -1134,9 +1119,8 @@ Offline Changed files: ${processFiles.length}`;
     ) {
         const logLevel = getLogLevel(showNotice);
         const p = this._progress(`[⚙ DB -> Storage ]\n`, logLevel);
-        const notifyProgress = onlyInNTimes(100, (progress) => p.log(`${progress}/${processFiles.length}`));
-        const processes = processFiles.map(async (file) => {
-            try {
+        await performBatchWithProgress(processFiles, 100, {
+            processItem: async (file) => {
                 const path = stripAllPrefixes(this.getPath(file));
                 if (!(await this.isTargetFile(path))) {
                     this._log(
@@ -1153,14 +1137,14 @@ Offline Changed files: ${processFiles.length}`;
                         includeDeletion
                     );
                 }
-                notifyProgress();
-            } catch (ex) {
+            },
+            onProgress: (progress) => p.log(`${progress}/${processFiles.length}`),
+            onItemError: (ex, file) => {
                 this._log(`Failed to process storage change file:${tryGetFilePath(file)}`, logLevel);
                 this._log(ex, LOG_LEVEL_VERBOSE);
-            }
+            },
+            onDone: () => p.done(),
         });
-        await Promise.all(processes);
-        p.done();
     }
 
     async applyOfflineChanges(showNotice: boolean) {
@@ -1188,9 +1172,14 @@ Untracked database files: ${untrackedDatabase.length}
 Common untracked files: ${bothUntracked.length}`;
             p.once(stat);
             const semaphores = Semaphore(10);
-            const notifyProgress = onlyInNTimes(25, (progress) => p.log(`${progress}/${bothUntracked.length}`));
+            const notifyProgress = createCoalescingNotifier<number>({
+                everyCount: 25,
+                leading: true,
+                onNotify: (progress) => p.log(`${progress}/${bothUntracked.length}`),
+            });
+            let attempted = 0;
             const allProcesses = bothUntracked.map(async (file) => {
-                notifyProgress();
+                notifyProgress.update(++attempted);
                 const rel = await semaphores.acquire();
                 try {
                     const fileStat = await this.core.storageAccess.statHidden(file);
@@ -1260,20 +1249,18 @@ Offline Changed files: ${files.length}`;
         const logLevel = getLogLevel(showNotice);
         const p = this._progress(`[⚙ Scanning DB -> Storage ]\n`, logLevel);
         p.log("Scanning database files...");
-        const notifyProgress = onlyInNTimes(25, (progress) => p.log(`${progress}/${files.length}`));
-        const processFiles = files.map(async (file) => {
-            try {
+        await performBatchWithProgress(files, 25, {
+            processItem: async (file) => {
                 const path = stripAllPrefixes(this.getPath(file));
                 await this.trackDatabaseFileModification(path, "[Scanning]", true, onlyNew, file);
-                notifyProgress();
-            } catch (ex) {
+            },
+            onProgress: (progress) => p.log(`${progress}/${files.length}`),
+            onItemError: (ex, file) => {
                 this._log(`Failed to process database changes:${tryGetFilePath(file)}`);
                 this._log(ex, LOG_LEVEL_VERBOSE);
-            }
-            return;
+            },
+            onDone: () => p.done(),
         });
-        await Promise.all(processFiles);
-        p.done();
         return true;
     }
 
@@ -1435,9 +1422,14 @@ Offline Changed files: ${files.length}`;
         const storageToDatabase = [] as FilePath[];
         const databaseToStorage = [] as MetaEntry[];
 
-        const eachProgress = onlyInNTimes(100, (progress) => p.log(`Checking ${progress}/${allFileNames.size}`));
+        const eachProgress = createCoalescingNotifier<number>({
+            everyCount: 100,
+            leading: true,
+            onNotify: (progress) => p.log(`Checking ${progress}/${allFileNames.size}`),
+        });
+        let attempted = 0;
         for (const file of allFileNames) {
-            eachProgress();
+            eachProgress.update(++attempted);
             const storageMTime = await this.core.storageAccess.statHidden(file);
             const mtimeStorage = getComparingMTime(storageMTime);
             const dbEntry = allDatabaseMap.get(file)!;

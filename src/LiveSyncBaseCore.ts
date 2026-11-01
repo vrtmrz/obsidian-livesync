@@ -31,6 +31,7 @@ import { useReplicationScheduling, type ReplicationSchedulingControl } from "./s
 import { createCentralReplicatorProviderDefinitions } from "./common/replicatorProviders";
 import { useReplicationFeature } from "./serviceFeatures/replication";
 import { useConflictResolutionFeature } from "./serviceFeatures/conflictResolution";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { useBasicCommandsFeature } from "./serviceFeatures/basicCommands";
 
 /** Focused views returned by serviceFeatures which the host may consume during composition. */
@@ -290,7 +291,11 @@ export class LiveSyncBaseCore<
      * (Please refer `serviceFeatures` for more details)
      */
     initialiseServiceFeatures(): LiveSyncCoreFeatureViews {
-        useConflictResolutionFeature(this);
+        useConflictResolutionFeature({
+            services: this.services,
+            serviceModules: this.serviceModules,
+            log: createInstanceLogFunction("SF:ConflictResolution", this.services.API),
+        });
         useTargetFilters(this);
         // enable target filter feature.
         usePrepareDatabaseForUse(this);
@@ -303,7 +308,7 @@ export class LiveSyncBaseCore<
 }
 
 export interface IMinimumLiveSyncCommands {
-    onunload(): void;
+    onunload(): void | Promise<void>;
     onload(): void | Promise<void>;
     constructor: { name: string };
 }

@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
 
@@ -16,6 +18,19 @@ import { useP2PReplicatorUI } from "./useP2PReplicatorUI";
 const noopOpenInteractiveReplication = () => Promise.resolve(false);
 
 describe("useP2PReplicatorUI commands", () => {
+    it("accepts only the UI services and focused P2P views", () => {
+        type Dependencies = NecessaryServices<"API" | "appLifecycle" | "setting" | "replicator", never>;
+        type Arguments = Parameters<typeof useP2PReplicatorUI>;
+
+        expectTypeOf<Dependencies>().toExtend<Arguments[0]>();
+        expectTypeOf<keyof Arguments[0]["services"]>().toEqualTypeOf<
+            "context" | "API" | "appLifecycle" | "setting" | "replicator"
+        >();
+        expectTypeOf<keyof Arguments[0]["serviceModules"]>().toBeNever();
+        expectTypeOf<P2PServiceViews>().toExtend<Arguments[2]>();
+        expectTypeOf<Arguments[2]>().toEqualTypeOf<P2PServiceViews>();
+    });
+
     it("waits for settings to load before deciding whether to show the P2P ribbon", async () => {
         let initialise: (() => Promise<unknown>) | undefined;
         let settingLoaded: (() => Promise<unknown>) | undefined;

@@ -1,17 +1,10 @@
 import { defaultServerConditions, defaultServerMainFields, defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { fileURLToPath, fs, isBuiltin, path } from "@vrtmrz/livesync-commonlib/node";
+import { fileURLToPath, isBuiltin, path } from "@vrtmrz/livesync-commonlib/node";
+import { readVersion } from "../readVersion";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
 const repoRoot = path.resolve(__dirname, "../../..");
-
-function readVersion(filePath: string): string | undefined {
-    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    if (typeof parsed !== "object" || parsed === null || !("version" in parsed)) {
-        return undefined;
-    }
-    return typeof parsed.version === "string" ? parsed.version : undefined;
-}
 
 const packageVersion = readVersion(path.resolve(repoRoot, "package.json"));
 const manifestVersion = readVersion(path.resolve(repoRoot, "manifest.json"));

@@ -43,7 +43,7 @@ export abstract class LiveSyncCommands {
         this._log = createInstanceLogFunction(this.constructor.name, this.services.API);
         // __$checkInstanceBinding(this);
     }
-    abstract onunload(): void;
+    abstract onunload(): void | Promise<void>;
     abstract onload(): void | Promise<void>;
 
     _isMainReady() {

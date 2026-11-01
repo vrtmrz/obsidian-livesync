@@ -2,7 +2,6 @@ import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/l
 import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type {
-    IStorageEventTypeGuardAdapter,
     IStorageEventPersistenceAdapter,
     IStorageEventWatchAdapter,
     IStorageEventStatusAdapter,
@@ -14,6 +13,7 @@ import type { FSAPIFile, FSAPIFolder } from "@/apps/webapp/adapters/FSAPITypes";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { WebAppLog } from "@/apps/webapp/WebAppLog";
+import { FSAPITypeGuardAdapter } from "@/apps/webapp/adapters/FSAPITypeGuardAdapter";
 
 type FileSystemObserverRecord = {
     changedHandle?: FileSystemFileHandle | FileSystemDirectoryHandle;
@@ -33,32 +33,6 @@ type FileSystemObserverConstructor = new (
 type GlobalWithFileSystemObserver = typeof compatGlobal & {
     FileSystemObserver?: FileSystemObserverConstructor;
 };
-
-/**
- * FileSystem API-specific type guard adapter
- */
-class FSAPITypeGuardAdapter implements IStorageEventTypeGuardAdapter<FSAPIFile, FSAPIFolder> {
-    isFile(file: unknown): file is FSAPIFile {
-        return !!(
-            file &&
-            typeof file === "object" &&
-            "path" in file &&
-            "stat" in file &&
-            "handle" in file &&
-            !(file as { isFolder?: boolean }).isFolder
-        );
-    }
-
-    isFolder(item: unknown): item is FSAPIFolder {
-        return !!(
-            item &&
-            typeof item === "object" &&
-            "path" in item &&
-            (item as { isFolder?: boolean }).isFolder === true &&
-            "handle" in item
-        );
-    }
-}
 
 /**
  * FileSystem API-specific persistence adapter (IndexedDB-based snapshot)

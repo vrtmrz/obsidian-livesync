@@ -90,6 +90,39 @@ afterEach(async () => {
     for (const fixture of fixtureOwners.splice(0)) await fixture.dispose();
 });
 
+describe("Hidden File Sync initial modification times", () => {
+    it.each([
+        { label: "newer", localMtime: 30_000, expected: "local content" },
+        { label: "older", localMtime: 10_000, expected: "database content" },
+        { label: "equal", localMtime: 20_000, expected: "database content" },
+    ])("stores only a newer local file when the local timestamp is $label", async ({ localMtime, expected }) => {
+        const { fixture, hiddenFileSync, storageAccess } = await createHiddenFileSync();
+        const entry = optionalFileEntry(`i:${path}`, "database content");
+        entry.mtime = 20_000;
+        await fixture.localDatabase.putDBEntry(entry);
+        storageAccess.setFile("local content", localMtime);
+
+        await hiddenFileSync.trackStorageFileModification(path, true);
+
+        const saved = await fixture.localDatabase.getDBEntry(`i:${path}` as FilePath);
+        expect(saved).not.toBe(false);
+        if (saved) {
+            expect(await getText(saved)).toBe(expected);
+            expect(saved.mtime).toBe(expected === "local content" ? localMtime : 20_000);
+        }
+    });
+
+    it("stores a local-only file when only newer changes are requested", async () => {
+        const { fixture, hiddenFileSync } = await createHiddenFileSync();
+
+        await hiddenFileSync.trackStorageFileModification(path, true);
+
+        const saved = await fixture.localDatabase.getDBEntry(`i:${path}` as FilePath);
+        expect(saved).not.toBe(false);
+        if (saved) expect(await getText(saved)).toBe(content);
+    });
+});
+
 describe("Hidden File Sync optional save outcomes", () => {
     it("retries a failed database write when the storage fingerprint is unchanged", async () => {
         const { fixture, hiddenFileSync } = await createHiddenFileSync();

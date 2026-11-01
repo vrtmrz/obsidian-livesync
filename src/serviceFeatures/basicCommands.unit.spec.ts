@@ -228,6 +228,49 @@ describe("useBasicCommandsFeature", () => {
         expect(adapter).not.toBe(fixture.host);
     });
 
+    it("rechecks availability on execution and captures the current file only once", async () => {
+        const fixture = createFixture();
+        await initialise(fixture);
+        vi.mocked(copyFileDatabaseInfo).mockClear();
+        const dump = fixture.getCommand("livesync-dump");
+        expect(dump.checkCallback?.(true)).toBe(true);
+        fixture.services.vault.getActiveFilePath.mockReturnValue(undefined);
+        expect(dump.checkCallback?.(false)).toBe(false);
+        expect(copyFileDatabaseInfo).not.toHaveBeenCalled();
+
+        fixture.services.vault.getActiveFilePath
+            .mockReset()
+            .mockReturnValueOnce("selected.md")
+            .mockReturnValue("later.md");
+        expect(dump.checkCallback?.(false)).toBe(true);
+        await vi.waitFor(() => expect(copyFileDatabaseInfo).toHaveBeenCalledOnce());
+        expect(fixture.services.vault.getActiveFilePath).toHaveBeenCalledOnce();
+        expect(vi.mocked(copyFileDatabaseInfo).mock.calls[0][1]).toBe("selected.md");
+
+        fixture.settings.useAdvancedMode = true;
+        for (const id of ["livesync-scan-files", "livesync-abortsync"]) {
+            expect(fixture.getCommand(id).checkCallback?.(true)).toBe(true);
+        }
+        fixture.settings.useAdvancedMode = false;
+        for (const id of ["livesync-scan-files", "livesync-abortsync"]) {
+            expect(fixture.getCommand(id).checkCallback?.(false)).toBe(false);
+        }
+        expect(fixture.services.vault.scanVault).not.toHaveBeenCalled();
+        expect(fixture.services.replication.stopActiveTransfer).not.toHaveBeenCalled();
+    });
+
+    it("propagates an availability failure without running the command", async () => {
+        const fixture = createFixture();
+        await initialise(fixture);
+        vi.mocked(copyFileDatabaseInfo).mockClear();
+        const failure = new Error("Vault unavailable");
+        fixture.services.vault.getActiveFilePath.mockImplementation(() => {
+            throw failure;
+        });
+        expect(() => fixture.getCommand("livesync-dump").checkCallback?.(false)).toThrow(failure);
+        expect(copyFileDatabaseInfo).not.toHaveBeenCalled();
+    });
+
     it("commits pending file events from the batch command", async () => {
         const fixture = createFixture();
         await initialise(fixture);

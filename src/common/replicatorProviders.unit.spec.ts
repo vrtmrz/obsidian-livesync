@@ -209,6 +209,37 @@ describe("central Replicator provider definitions", () => {
         expect(openOneShotReplicationWithOutcome).toHaveBeenNthCalledWith(2, setting, true);
     });
 
+    it.each([REMOTE_COUCHDB, REMOTE_MINIO] as const)(
+        "keeps unattended %s work quiet and rejects interaction before opening replication",
+        async (remoteType) => {
+            const definition = createCentralReplicatorProviderDefinitions({} as never).get(remoteType)!;
+            if (definition.unattendedOneShot.kind !== CAPABILITY_SUPPORT_KINDS.SUPPORTED) {
+                throw new Error("Unattended OneShot is unavailable");
+            }
+            const setting = Object.assign(createNewVaultSettings(), { remoteType });
+            const instance = {
+                initializeDatabaseForReplication: vi.fn(async () => true),
+                openReplication: vi.fn(async () => true),
+                terminateSync: vi.fn(),
+                closeReplication: vi.fn(),
+                openOneShotReplicationWithOutcome: vi.fn(async () => REPLICATION_COMPLETED),
+            };
+            const blocked = await definition.unattendedOneShot.run(instance, setting, {
+                trigger: "resume",
+                interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+            } as never);
+            expect(blocked).toEqual({ status: "blocked", reason: "interaction-required" });
+            expect(instance.openOneShotReplicationWithOutcome).not.toHaveBeenCalled();
+            await expect(
+                definition.unattendedOneShot.run(instance, setting, {
+                    trigger: "resume",
+                    interaction: NO_INTERACTION,
+                })
+            ).resolves.toBe(REPLICATION_COMPLETED);
+            expect(instance.openOneShotReplicationWithOutcome).toHaveBeenCalledExactlyOnceWith(setting, false);
+        }
+    );
+
     it("dispatches central finite work through the declared operation rather than constructor identity", async () => {
         const definitions = createCentralReplicatorProviderDefinitions({} as never);
         const couchDB = definitions.get(REMOTE_COUCHDB)!;

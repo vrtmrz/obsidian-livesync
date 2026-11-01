@@ -73,6 +73,21 @@ test("CLI file operations: push / cat / ls / info / rm / resolve / cat-rev / pul
         console.log("[PASS] push/cat roundtrip matched");
     });
 
+    await t.step("push/pull binary roundtrip", async () => {
+        const source = workDir.join("binary-source.bin");
+        const restored = workDir.join("binary-restored.bin");
+        const remotePath = "test/blob-roundtrip.bin";
+        const content = Uint8Array.from({ length: 1025 }, (_, index) => index % 256);
+        await Deno.writeFile(source, content);
+
+        await run("push", source, remotePath);
+        await run("pull", remotePath, restored);
+
+        assertEquals(await Deno.readFile(restored), content, "Binary push/pull must preserve every byte");
+        const info = JSON.parse(await run("info", remotePath));
+        assertEquals(info.size, content.byteLength, "Binary Metadata must retain the original byte length");
+    });
+
     // ------------------------------------------------------------------
     // ls: single file
     // ------------------------------------------------------------------

@@ -1,7 +1,7 @@
 ---
-date: 2026-09-04
-commonlib-version: "0.1.21"
-self-hosted-livesync-version: "1.0.24"
+date: 2026-10-25
+commonlib-version: "0.2.0"
+self-hosted-livesync-version: "1.0.40"
 status: accepted
 ---
 
@@ -104,13 +104,21 @@ For new behaviour, keep Obsidian-specific presentation or registration in an Obs
 
 ### A small serviceFeature: language initialisation
 
-`src/serviceFeatures/onLayoutReady/enablei18n.ts` declares only `setting`, `API`, and `appLifecycle`:
+`src/serviceFeatures/onLayoutReady/enablei18n.ts` declares only `setting`, `API`, and `appLifecycle`, with an explicit dependency type:
 
 ```typescript
-export const enableI18nFeature = createServiceFeature(async ({ services: { setting, API, appLifecycle } }) => {
-    // Apply the language, persist a change, and register unload clean-up.
-});
+type EnableI18nHost = NecessaryServices<"setting" | "API" | "appLifecycle", never>;
+
+export const enableI18nFeature = createServiceFeature(
+    async (host: EnableI18nHost): Promise<boolean> => {
+        const { setting, API, appLifecycle } = host.services;
+        // Apply the language, persist a change, and register unload clean-up.
+        return true;
+    }
+);
 ```
+
+The host annotation keeps the dependency contract visible because `createServiceFeature()` does not infer dependency keys from the callback body. This feature retains its `Promise<boolean>` result.
 
 The local `ObsidianLanguageAppliedNotice` class is still appropriate. It owns one replaceable Obsidian `Notice` and has an explicit `clear()` lifetime operation. The class is not used as a service locator, and the serviceFeature owns its construction and host binding.
 
@@ -130,6 +138,22 @@ The operation does not need an application Module identity.
 
 ### Ordered start-up composition and registration-only features
 
+Compatibility review uses distinct controller and composer dependencies:
+
+```typescript
+type CompatibilityReviewDependencies = NecessaryServicesInterfaces<
+    "setting" | "config" | "vault" | "control",
+    never
+>;
+
+type CompatibilityReviewHost = NecessaryServices<
+    "setting" | "config" | "vault" | "control" | "appLifecycle" | "API",
+    never
+>;
+```
+
+The controller receives the four interface-only Services it uses. The composer adds `appLifecycle` and `API` for ordered lifecycle handlers and command registration; the priority-30 compatibility review remains after flag-file recovery.
+
 Configured Vault admission and the checks which follow database preparation are composed by `src/serviceFeatures/startupLifecycle/`. The directory keeps onboarding admission, compromised-chunk inspection, incomplete-document repair, Config Doctor, and the obsolete bulk-send setting migration as separate operations. One feature composer owns their order and receives the compatibility-review wait operation explicitly; an individual operation does not call the composer.
 
 The layout-ready admission handler uses priority 1. This preserves ordinary priority-0 host integration before admission, while keeping an unconfigured Vault outside the flag-file recovery handlers at priorities 5, 10, and 20, and the compatibility review at priority 30. Admission belongs to one plug-in process: an initially unconfigured process remains inert until setup restarts it, and declining the requested restart does not trigger an in-process reconfiguration. Changing an admitted process back to unconfigured retires its Config Doctor and incomplete-document repair request handlers. The handlers also recheck the current configured state and database readiness when invoked, so a pending restart cannot expose partially initialised or retired state. The first-initialise handler rechecks admission before retaining the established order after the file watcher has been started: database readiness, compromised chunks, incomplete documents, compatibility review, Config Doctor, and the bulk-send setting migration.
@@ -144,7 +168,19 @@ The state remains private to the composed feature. It does not become a `LiveSyn
 
 ### Implemented composition: conflict resolution
 
-Conflict checking and resolution are composed for every host by `useConflictResolutionFeature`. The feature owns its `QueueProcessor` privately and registers the conflict Service handlers directly. Its operations receive explicit collaborators for settings, active-file state, database and storage access, replication, logging, and host events. No consumer locates a conflict Module or retains the queue.
+Conflict checking and resolution are composed for every host by `useConflictResolutionFeature`. The feature owns its `QueueProcessor` privately and registers the conflict Service handlers directly. Its host type selects the required service and module contracts and adds the borrowed logger explicitly:
+
+```typescript
+type ConflictResolutionHost = NecessaryServices<
+    "appLifecycle" | "conflict" | "database" | "replication" | "setting" | "vault",
+    "databaseFileAccess" | "fileHandler" | "storageAccess",
+    InjectableServiceHub
+> & {
+    readonly log: LogFunction;
+};
+```
+
+The operations receive explicit collaborators for settings, active-file state, database and storage access, replication, a borrowed `LogFunction`, and host events. `LiveSyncBaseCore` supplies `log` using `createInstanceLogFunction("SF:ConflictResolution", this.services.API)`. Because feature composition precedes legacy Module binding, the host supplies the existing lazy service logger and does not read `logResource.value` before binding. `ModuleLog` and the host retain resource ownership. No consumer locates a conflict Module or retains the queue.
 
 The scheduling queue remains one state owner. It publishes `conflictProcessQueueCount`, coalesces pending checks for the same path, and makes `ensureAllProcessed()` wait for conflict resolution to finish. Repeated resolver invocations for one path retain only the newest waiting request and close an active comparison for that path before waiting for the per-file resolver, while comparisons for other paths remain open. Resolution remains host-neutral and communicates dialogue cancellation through `services.context.events`, so CLI, WebApp, and Obsidian compositions use their own selected event channel.
 
