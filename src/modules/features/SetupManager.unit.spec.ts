@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
+    REMOTE_MINIO,
     REMOTE_P2P,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { createNewVaultSettings } from "@/common/newVaultSettings";
 import type {
     P2PConnectionProbeAdmission,
     P2PConnectionProbeAdmissionResult,
@@ -98,6 +99,12 @@ function createSetupManager() {
             dialogManager,
         },
         setting,
+        replicator: {
+            createRemoteResource: vi.fn(async () => ({
+                inspectPathIdentity: vi.fn(async () => ({ status: "configured", pathNormalizationVersion: 0 })),
+                dispose: vi.fn(async () => undefined),
+            })),
+        },
     } as any;
     const core: any = {
         _services: services,
@@ -165,6 +172,99 @@ describe("SetupManager", () => {
         );
     });
 
+    it.each([REMOTE_COUCHDB, REMOTE_MINIO])(
+        "uses an existing remote declaration during first manual setup for %s",
+        async (remoteType) => {
+            const { manager, core, dialogManager } = createSetupManager();
+            const dispose = vi.fn(async () => undefined);
+            core.services.replicator.createRemoteResource.mockResolvedValue({
+                inspectPathIdentity: vi.fn(async () => ({ status: "configured", pathNormalizationVersion: 0 })),
+                dispose,
+            });
+            const confirm = vi.spyOn(manager, "onConfirmApplySettingsFromWizard").mockResolvedValue(true);
+            dialogManager.openWithExplicitCancel.mockResolvedValue({
+                couchDB_URI: "https://example.test",
+                couchDB_DBNAME: "vault",
+                couchDB_USER: "user",
+                couchDB_PASSWORD: "pass",
+                endpoint: "https://objects.test",
+                bucket: "vault",
+                accessKey: "key",
+                secretKey: "secret",
+                region: "auto",
+                bucketPrefix: "",
+            });
+            const initial = { ...createLegacyRemoteSetting(), pathNormalizationVersion: 1 } as ObsidianLiveSyncSettings;
+            if (remoteType === REMOTE_COUCHDB) await manager.onCouchDBManualSetup(UserMode.NewUser, initial);
+            else await manager.onBucketManualSetup(UserMode.NewUser, initial);
+            expect(confirm).toHaveBeenCalledWith(
+                expect.objectContaining({ pathNormalizationVersion: 0 }),
+                UserMode.NewUser,
+                true
+            );
+            expect(dispose).toHaveBeenCalledOnce();
+            expect(initial.pathNormalizationVersion).toBe(1);
+        }
+    );
+
+    it.each([
+        [{ status: "empty" }, 1],
+        [{ status: "configured", pathNormalizationVersion: 1 }, 1],
+    ] as const)("uses inspected setup identity %s", async (inspection, expected) => {
+        const { manager, core, dialogManager } = createSetupManager();
+        core.services.replicator.createRemoteResource.mockResolvedValue({
+            inspectPathIdentity: vi.fn(async () => inspection),
+            dispose: vi.fn(async () => undefined),
+        });
+        const confirm = vi.spyOn(manager, "onConfirmApplySettingsFromWizard").mockResolvedValue(true);
+        dialogManager.openWithExplicitCancel.mockResolvedValue({
+            couchDB_URI: "https://example.test",
+            couchDB_DBNAME: "vault",
+        });
+        await manager.onCouchDBManualSetup(UserMode.NewUser, createNewVaultSettings());
+        expect(confirm).toHaveBeenCalledWith(
+            expect.objectContaining({ pathNormalizationVersion: expected }),
+            UserMode.NewUser,
+            true
+        );
+    });
+
+    it("does not apply setup settings when identity inspection fails", async () => {
+        const { manager, core, dialogManager, setting } = createSetupManager();
+        const failure = new Error("remote unavailable");
+        const dispose = vi.fn(async () => undefined);
+        core.services.replicator.createRemoteResource.mockResolvedValue({
+            inspectPathIdentity: vi.fn(async () => {
+                throw failure;
+            }),
+            dispose,
+        });
+        const confirm = vi.spyOn(manager, "onConfirmApplySettingsFromWizard").mockResolvedValue(true);
+        dialogManager.openWithExplicitCancel.mockResolvedValue({
+            couchDB_URI: "https://example.test",
+            couchDB_DBNAME: "vault",
+        });
+        await expect(manager.onCouchDBManualSetup(UserMode.NewUser, createNewVaultSettings())).resolves.toBe(false);
+        expect(confirm).not.toHaveBeenCalled();
+        expect(setting.saveSettingData).not.toHaveBeenCalled();
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        [UserMode.Update, true],
+        [UserMode.NewUser, false],
+    ] as const)("keeps identity during profile edits in mode %s with activation %s", async (mode, activate) => {
+        const { manager, core, dialogManager } = createSetupManager();
+        const confirm = vi.spyOn(manager, "onConfirmApplySettingsFromWizard").mockResolvedValue(true);
+        dialogManager.openWithExplicitCancel.mockResolvedValue({
+            couchDB_URI: "https://example.test",
+            couchDB_DBNAME: "vault",
+        });
+        await manager.onCouchDBManualSetup(mode, createLegacyRemoteSetting(), activate);
+        expect(core.services.replicator.createRemoteResource).not.toHaveBeenCalled();
+        expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ pathNormalizationVersion: 0 }), mode, activate);
+    });
+
     it("starts manual new-user setup from the recommended new-Vault settings", async () => {
         const { manager, dialogManager } = createSetupManager();
         dialogManager.openWithExplicitCancel.mockResolvedValueOnce("configure-manually");
@@ -192,12 +292,13 @@ describe("SetupManager", () => {
         expect(setting.currentSettings().activeConfigurationId).toBe("legacy-couchdb");
     });
 
-    it("compatibility: treats omitted ID derivation fields in a Setup URI as legacy defaults", async () => {
+    it("compatibility: treats omitted identity fields in a Setup URI as legacy defaults", async () => {
         const { manager, setting, dialogManager } = createSetupManager();
         const savedKey = "12".repeat(32);
         setting.settings = {
             ...createLegacyRemoteSetting(),
             isConfigured: true,
+            pathNormalizationVersion: 1,
             idDerivationVersion: 1,
             idDerivationKey: savedKey,
         };
@@ -205,6 +306,7 @@ describe("SetupManager", () => {
             ...createLegacyRemoteSetting(),
             isConfigured: true,
         } as Partial<ObsidianLiveSyncSettings>;
+        delete imported.pathNormalizationVersion;
         delete imported.idDerivationVersion;
         delete imported.idDerivationKey;
         vi.spyOn(setting, "adjustSettings").mockImplementation((settings) => Promise.resolve(settings));
@@ -213,6 +315,7 @@ describe("SetupManager", () => {
         await manager.onUseSetupURI(UserMode.Unknown, "mock-config://legacy-settings");
 
         const mergedSettings = vi.mocked(setting.adjustSettings).mock.calls[0][0];
+        expect(mergedSettings.pathNormalizationVersion).toBe(0);
         expect(mergedSettings.idDerivationVersion).toBe(0);
         expect(mergedSettings.idDerivationKey).toBe("");
         expect(setting.currentSettings().idDerivationKey).toBe(savedKey);
@@ -489,44 +592,47 @@ describe("SetupManager", () => {
     it.each([
         { importedSize: 0, expectedSize: 0 },
         { importedSize: undefined, expectedSize: 60 },
-    ])("preserves modern Setup URI profiles and adopts the supplied chunk size $importedSize", async ({ importedSize, expectedSize }) => {
-        const { manager, setting, dialogManager } = createSetupManager();
-        setting.settings = {
-            ...setting.currentSettings(),
-            customChunkSize: 60,
-        };
-        const imported = {
-            ...DEFAULT_SETTINGS,
-            remoteConfigurations: {
-                couch: {
-                    id: "couch",
-                    name: "Office CouchDB",
-                    uri: "sls+https://alice:secret@couch.example/?db=notes",
-                    isEncrypted: false,
+    ])(
+        "preserves modern Setup URI profiles and adopts the supplied chunk size $importedSize",
+        async ({ importedSize, expectedSize }) => {
+            const { manager, setting, dialogManager } = createSetupManager();
+            setting.settings = {
+                ...setting.currentSettings(),
+                customChunkSize: 60,
+            };
+            const imported = {
+                ...DEFAULT_SETTINGS,
+                remoteConfigurations: {
+                    couch: {
+                        id: "couch",
+                        name: "Office CouchDB",
+                        uri: "sls+https://alice:secret@couch.example/?db=notes",
+                        isEncrypted: false,
+                    },
+                    archive: {
+                        id: "archive",
+                        name: "Archive bucket",
+                        uri: "sls+s3://key:secret@storage.example/?endpoint=https%3A%2F%2Fstorage.example&bucket=archive&region=auto",
+                        isEncrypted: false,
+                    },
                 },
-                archive: {
-                    id: "archive",
-                    name: "Archive bucket",
-                    uri: "sls+s3://key:secret@storage.example/?endpoint=https%3A%2F%2Fstorage.example&bucket=archive&region=auto",
-                    isEncrypted: false,
-                },
-            },
-            activeConfigurationId: "archive",
-        } as ObsidianLiveSyncSettings;
-        if (importedSize === undefined) delete (imported as Partial<ObsidianLiveSyncSettings>).customChunkSize;
-        else imported.customChunkSize = importedSize;
-        dialogManager.openWithExplicitCancel
-            .mockResolvedValueOnce(imported)
-            .mockResolvedValueOnce("compatible-existing-user");
+                activeConfigurationId: "archive",
+            } as ObsidianLiveSyncSettings;
+            if (importedSize === undefined) delete (imported as Partial<ObsidianLiveSyncSettings>).customChunkSize;
+            else imported.customChunkSize = importedSize;
+            dialogManager.openWithExplicitCancel
+                .mockResolvedValueOnce(imported)
+                .mockResolvedValueOnce("compatible-existing-user");
 
-        await manager.onUseSetupURI(UserMode.Unknown, "mock-config://modern-settings");
+            await manager.onUseSetupURI(UserMode.Unknown, "mock-config://modern-settings");
 
-        const current = setting.currentSettings();
-        expect(current.customChunkSize).toBe(expectedSize);
-        expect(current.remoteConfigurations).toEqual(imported.remoteConfigurations);
-        expect(current.activeConfigurationId).toBe("archive");
-        expect(Object.keys(current.remoteConfigurations).some((id) => id.startsWith("legacy-"))).toBe(false);
-    });
+            const current = setting.currentSettings();
+            expect(current.customChunkSize).toBe(expectedSize);
+            expect(current.remoteConfigurations).toEqual(imported.remoteConfigurations);
+            expect(current.activeConfigurationId).toBe("archive");
+            expect(Object.keys(current.remoteConfigurations).some((id) => id.startsWith("legacy-"))).toBe(false);
+        }
+    );
 
     it("adds and activates a manually configured CouchDB without replacing existing profiles", async () => {
         const { manager, setting, dialogManager } = createSetupManager();

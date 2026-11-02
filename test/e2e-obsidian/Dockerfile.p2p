@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1
+
+FROM node:26-slim AS node26
+
+FROM mcr.microsoft.com/playwright:v1.62.0-noble
+
+COPY --from=node26 /usr/local/bin/node /usr/local/bin/node
+
+ENV NODE_OPTIONS=--max-old-space-size=3072
+
+WORKDIR /workspace
+
+ENTRYPOINT ["node", "--import", "tsx", "test/e2e-obsidian/scripts/p2p-nfc-sync.ts"]

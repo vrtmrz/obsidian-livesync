@@ -51,7 +51,7 @@ Compare the recovered files with the preserved originals, including the affected
 
 ## Migrate to Unicode NFC path identity
 
-Use this coordinated migration when CLI and Obsidian clients should identify composed and decomposed Unicode spellings as the same path. Version `0` remains the default and preserves legacy identity. CouchDB support is released; Object Storage and P2P support belong to the unreleased extension described in the [Unicode path identity design](design_docs/unicode_path_identity.md).
+Use this coordinated migration when CLI and Obsidian clients should identify composed and decomposed Unicode spellings as the same path. Existing settings and old Setup URIs retain version `0`, which preserves legacy identity. The unreleased extension defaults new CLI settings and Obsidian manual onboarding to version `1`; this does not migrate an existing database. CouchDB support is released; Object Storage and P2P support belong to the unreleased extension described in the [Unicode path identity design](design_docs/unicode_path_identity.md).
 
 This migration reconstructs the databases from one authoritative Vault. It does not rewrite document IDs in place or rename files.
 

@@ -23,7 +23,8 @@ and is included in current Commonlib `0.2.2`, used by Self-hosted LiveSync
 release.
 
 An unreleased extension adds Journal and P2P for the same maintained CLI and
-Obsidian hosts, and moves the setting to General Settings. The original dates
+Obsidian hosts, moves the setting to General Settings, and defaults new
+synchronisation environments to NFC. The original dates
 and reviewed versions above remain the historical baseline.
 
 ## Scope
@@ -66,6 +67,31 @@ Fast Fetch checkpoints include the path identity version. A checkpoint created
 under legacy identity cannot be resumed under version `1`, or vice versa. This
 reuses the existing checkpoint identity and does not add a separate recovery
 store.
+
+## Initial settings and existing environments
+
+The unreleased extension uses version `1` for newly generated CLI settings and
+Obsidian manual onboarding. Stored settings and old Setup URIs with no path
+version retain `0`. Commonlib's shared settings defaults remain `0`, so this
+host policy does not extend to WebApp or WebPeer. An absent settings file alone
+does not establish that an existing local database is new.
+
+Before saving initial manual CouchDB or Object Storage setup, the host reads
+the remote declaration through its owned connection resource. A configured
+remote supplies `0` or `1`; only a confirmed empty remote retains the new
+settings' selected version. Read failures and unsupported or contradictory
+declarations stop setup without saving a guessed value. The CLI makes the same
+read before opening the local database for an unconfigured client's first
+explicit Fetch. Ordinary configured startup and source Rebuild do not adopt a
+remote's mode automatically.
+
+CouchDB inspection reads the version document without preparing encryption or
+creating a database. Without a version document, a non-empty database remains
+legacy. Journal inspection reads its existing milestone ranges and preferred
+Tweaks without registering a node, preparing a Security Seed, or resetting a
+checkpoint. P2P Setup URIs carry the selected version. Manual P2P configuration
+requires the owner to match the source; the signalling probe does not establish
+the remote database's identity, and replication still rejects a mismatch.
 
 ## Admission and database compatibility
 
@@ -337,7 +363,7 @@ This design does not:
 - migrate remote document IDs or revision histories in place;
 - choose among ambiguous NFC-equivalent files or parents, or merge their
   content;
-- change the default away from legacy path identity;
+- automatically change existing settings or database identity;
 - enable version `1` for Direct file access, WebApp, or an
   unverified host adapter; or
 - claim native iOS or macOS filesystem compatibility.
