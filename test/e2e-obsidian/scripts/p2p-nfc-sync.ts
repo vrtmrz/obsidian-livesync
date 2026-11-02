@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { dirname, join } from "node:path";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { encodeTimeBoundSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import { createNewVaultSettings, P2P_DEFAULT_SETTINGS, PREFERRED_BASE } from "@vrtmrz/livesync-commonlib/settings";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
+import { path2id_base } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
@@ -73,9 +74,10 @@ function selectedCases(arguments_: readonly string[]): CaseDefinition[] {
     for (let index = 0; index < arguments_.length; index += 1) {
         const argument = arguments_[index];
         if (argument === "--help" || argument === "-h") {
-            console.log("Usage: p2p-nfc-sync.ts [--case all|plain|encrypted]");
+            console.log("Usage: p2p-nfc-sync.ts [--case all|plain|encrypted] [--migration]");
             process.exit(0);
         }
+        if (argument === "--migration") continue;
         if (argument === "--case") {
             const value = arguments_[index + 1];
             if (!value) throw new Error("--case requires all, plain, or encrypted.");
@@ -242,16 +244,20 @@ async function assertSourceNameIsNfd(vaultPath: string, expectedContent: string)
 }
 
 async function readVaultFileState(vaultPath: string, requestedPath: string): Promise<VaultFileState> {
-    const candidates = [...new Set([requestedPath, requestedPath.normalize("NFD")])];
-    for (const candidate of candidates) {
-        try {
-            const content = await readFile(join(vaultPath, candidate), "utf8");
-            return { found: true, path: candidate, content };
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    try {
+        let physicalPath = "";
+        for (const component of requestedPath.split("/")) {
+            const names = await readdir(join(vaultPath, physicalPath));
+            const matches = names.filter((name) => name.normalize("NFC") === component.normalize("NFC"));
+            if (matches.length > 1) throw new Error("Ambiguous physical names at " + join(physicalPath, component));
+            if (matches.length === 0) return { found: false, path: null, content: null };
+            physicalPath = join(physicalPath, matches[0]);
         }
+        return { found: true, path: physicalPath, content: await readFile(join(vaultPath, physicalPath), "utf8") };
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        return { found: false, path: null, content: null };
     }
-    return { found: false, path: null, content: null };
 }
 
 async function waitForVaultContent(
@@ -297,7 +303,8 @@ async function readEntryState(
     cliBinary: string,
     environment: NodeJS.ProcessEnv,
     path: string,
-    revision?: string
+    revision?: string,
+    documentId?: string
 ): Promise<EntryState> {
     return await evalObsidianJson<EntryState>(
         cliBinary,
@@ -305,8 +312,9 @@ async function readEntryState(
             "(async()=>{",
             "const path=" + JSON.stringify(path) + ";",
             "const revision=" + JSON.stringify(revision ?? null) + ";",
+            "const documentId=" + JSON.stringify(documentId ?? null) + ";",
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const entry=await core.localDatabase.getDBEntry(path,revision?{rev:revision}:undefined,false,true,true);",
+            "const entry=documentId?await core.localDatabase.getDBEntryFromMeta(await core.localDatabase.getRaw(documentId,revision?{rev:revision}:undefined),false,true):await core.localDatabase.getDBEntry(path,revision?{rev:revision}:undefined,false,true,true);",
             "if(!entry||!entry._id||!entry._rev) throw new Error('Metadata was not available at '+path);",
             "const children=Array.isArray(entry.children)?entry.children:[];",
             "const chunkRows=children.length?await core.localDatabase.allDocsRaw({keys:children,include_docs:true}):{rows:[]};",
@@ -577,7 +585,150 @@ async function readMetadataIds(
     );
 }
 
-async function runCase(definition: CaseDefinition): Promise<void> {
+async function seedLegacyNfdMetadata(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    shared: SharedSettings,
+    currentId: string
+): Promise<EntryState> {
+    // Obsidian's file cache normalises names even in legacy mode. Seed the
+    // legacy ID of an NFD-writing host while retaining real Chunk documents.
+    const legacyId = await path2id_base(
+        pathNfd,
+        shared.encrypted ? shared.e2eePassphrase : false,
+        true,
+        shared.encrypted ? shared.idKey : undefined
+    );
+    if (legacyId === currentId) throw new Error("The legacy NFD fixture did not change the Metadata ID.");
+    await evalObsidianJson<boolean>(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            "const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase.localDatabase;",
+            "const original=await db.get(" + JSON.stringify(currentId) + ");",
+            "const legacy={...original,_id:" + JSON.stringify(legacyId) + ",path:" + JSON.stringify(pathNfd) + "};",
+            "delete legacy._rev;delete legacy._revisions;delete legacy._conflicts;",
+            "await db.put(legacy);await db.remove(original);",
+            "return JSON.stringify(true);",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    const legacy = await readEntryState(context.cliBinary, session.cliEnv, pathNfd, undefined, legacyId);
+    assertEqual(legacy.content, sourceContent, "The legacy NFD fixture lost its Chunk-backed body.");
+    assertEqual(legacy.chunksPresent, true, "The legacy NFD fixture lost its Chunk documents.");
+    return legacy;
+}
+
+async function startReconstruction(
+    cliBinary: string,
+    environment: NodeJS.ProcessEnv,
+    operation: "rebuild" | "fetch",
+    pathNormalizationVersion: 0 | 1 = 1
+): Promise<void> {
+    await evalObsidianJson<boolean>(
+        cliBinary,
+        [
+            "(()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "globalThis.__p2pNfcReconstruction={done:false,error:null};",
+            "void(async()=>{",
+            "await core.services.setting.applyPartial({pathNormalizationVersion:" + pathNormalizationVersion + "});",
+            "await core.services.setting.saveSettingData();",
+            "if(core.settings.pathNormalizationVersion!==" +
+                pathNormalizationVersion +
+                ")throw new Error('The test did not apply the selected identity: '+core.settings.pathNormalizationVersion);",
+            operation === "rebuild"
+                ? "await core.rebuilder.$rebuildEverything();"
+                : "await core.rebuilder.$fetchLocal(false,true);",
+            "})().then(()=>{globalThis.__p2pNfcReconstruction.done=true;},error=>{globalThis.__p2pNfcReconstruction.error=String(error?.stack??error);});",
+            "return JSON.stringify(true);",
+            "})()",
+        ].join(""),
+        environment
+    );
+}
+
+async function waitForReconstruction(cliBinary: string, environment: NodeJS.ProcessEnv): Promise<void> {
+    const deadline = Date.now() + syncTimeoutMs;
+    while (Date.now() < deadline) {
+        const state = await evalObsidianJson<{ done: boolean; error: string | null }>(
+            cliBinary,
+            "JSON.stringify(globalThis.__p2pNfcReconstruction)",
+            environment
+        );
+        if (state.error) throw new Error(state.error);
+        if (state.done) return;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error("The P2P reconstruction did not finish.");
+}
+
+async function waitForVaultAbsence(vaultPath: string, path: string): Promise<void> {
+    const deadline = Date.now() + syncTimeoutMs;
+    while (Date.now() < deadline) {
+        if (!(await readVaultFileState(vaultPath, path)).found) return;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error("The retired path is still present: " + path);
+}
+
+async function verifyRenameAndDeletion(
+    context: RunnerContext,
+    sessionA: ObsidianLiveSyncSession,
+    sessionB: ObsidianLiveSyncSession,
+    vaultA: TemporaryVault,
+    vaultB: TemporaryVault,
+    portA: number,
+    portB: number
+): Promise<void> {
+    const oldPath = pathNfc.replace(/[^/]+$/, "a\u0301rbol.md").normalize("NFC");
+    const newPath = pathNfc.replace(/[^/]+$/, "renamed-e\u0301.md").normalize("NFC");
+    const content = "# Rename and deletion\n\nPreserve these exact bytes through the P2P rename.\n";
+    await evalObsidianJson<boolean>(
+        context.cliBinary,
+        `(async()=>{const source=app.vault.getFiles().find(file=>file.path.normalize('NFC')===${JSON.stringify(pathNfc)});if(!source)throw new Error('Missing source note');await app.vault.create(source.path.replace(/[^/]+$/,'a\\u0301rbol.md'),${JSON.stringify(content)});return JSON.stringify(true);})()`,
+        sessionA.cliEnv
+    );
+    const before = await writeEntryStateWhenReady(context.cliBinary, sessionA.cliEnv, oldPath, content);
+    await replicateAndWait(portA, portB, vaultB.path, oldPath, content);
+    const received = await writeEntryStateWhenReady(context.cliBinary, sessionB.cliEnv, oldPath, content);
+    assertEqual(received.id, before.id, "The new Unicode note has different peer IDs.");
+    await evalObsidianJson<boolean>(
+        context.cliBinary,
+        `(async()=>{const file=app.vault.getFiles().find(file=>file.path.normalize('NFC')===${JSON.stringify(oldPath)});if(!file)throw new Error('Missing rename source');await app.fileManager.renameFile(file,file.path.replace(/[^/]+$/,'renamed-e\\u0301.md'));return JSON.stringify(true);})()`,
+        sessionB.cliEnv
+    );
+    const renamed = await writeEntryStateWhenReady(context.cliBinary, sessionB.cliEnv, newPath, content);
+    if (renamed.id === before.id) throw new Error("The cross-path rename retained the old Metadata ID.");
+    await replicateAndWait(portB, portA, vaultA.path, newPath, content);
+    const renamedAtSource = await writeEntryStateWhenReady(context.cliBinary, sessionA.cliEnv, newPath, content);
+    assertEqual(renamedAtSource.id, renamed.id, "The renamed note has different peer IDs.");
+    await waitForVaultAbsence(vaultA.path, oldPath);
+    await waitForVaultAbsence(vaultB.path, oldPath);
+    await evalObsidianJson<boolean>(
+        context.cliBinary,
+        `(async()=>{const file=app.vault.getFiles().find(file=>file.path.normalize('NFC')===${JSON.stringify(newPath)});if(!file)throw new Error('Missing deletion source');await app.vault.delete(file);return JSON.stringify(true);})()`,
+        sessionA.cliEnv
+    );
+    let finished = false;
+    const acceptor = acceptConnectionRequests([portA, portB], () => finished);
+    try {
+        const deadline = Date.now() + syncTimeoutMs;
+        while ((await readVaultFileState(vaultB.path, newPath)).found && Date.now() < deadline) {
+            await replicateFromStatusPane(portB);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        await waitForVaultAbsence(vaultA.path, newPath);
+        await waitForVaultAbsence(vaultB.path, newPath);
+    } finally {
+        finished = true;
+        await acceptor;
+    }
+    console.log("P2P NFC rename and deletion: canonical IDs, exact content, and both physical removals verified.");
+}
+
+async function runCase(definition: CaseDefinition, migration: boolean): Promise<void> {
     if (pathNfd === pathNfc) throw new Error("The test fixture path did not produce distinct NFC and NFD spellings.");
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -593,7 +744,9 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         relay,
         roomId: "real-obsidian-p2p-nfc-" + randomBytes(12).toString("hex"),
     };
-    const artifact = await createSetupArtifact(shared, 1);
+    const initialVersion = migration ? 0 : 1;
+    const initialPath = migration ? pathNfd : pathNfc;
+    const artifact = await createSetupArtifact(shared, initialVersion);
     const incompatibleArtifact = await createSetupArtifact(shared, 0);
     const captures: SetupCaptureNames = {
         scenario: "p2p-nfc-" + definition.name,
@@ -610,6 +763,7 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         const vaultB = await createTemporaryVault("obsidian-livesync-p2p-nfc-receiver-");
         vaults.push(vaultB);
         await writeVaultFile(vaultA.path, pathNfd, sourceContent);
+        if (migration) await writeVaultFile(vaultB.path, pathNfd, sourceContent);
 
         console.log("P2P NFC case: " + definition.name);
         console.log("Temporary source and receiving Vaults: " + vaultA.name + ", " + vaultB.name);
@@ -623,9 +777,14 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         const firstState = await finishInitialisation(portA, context.cliBinary, sessionA.cliEnv);
         await resumeCompatibilityReviewIfShown(portA);
         assertEqual(firstState.p2pEnabled, true, "The first device did not enable P2P.");
-        await assertCaseSettings(context.cliBinary, sessionA.cliEnv, definition, shared.idKey, 1);
+        await assertCaseSettings(context.cliBinary, sessionA.cliEnv, definition, shared.idKey, initialVersion);
         await waitForVaultContent(vaultA.path, pathNfc, sourceContent);
-        const sourceEntry = await writeEntryStateWhenReady(context.cliBinary, sessionA.cliEnv, pathNfc, sourceContent);
+        let sourceEntry = await writeEntryStateWhenReady(
+            context.cliBinary,
+            sessionA.cliEnv,
+            initialPath,
+            sourceContent
+        );
         assertEqual(sourceEntry.path.normalize("NFC"), pathNfc, "The source Metadata path is not NFC-equivalent.");
         await assertSourceNameIsNfd(vaultA.path, sourceContent);
 
@@ -635,16 +794,16 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         await captureAndStartInitialisation(portB, "existing", captures);
         await confirmFastFetch(portB, captures);
         await fetchFromFirstPeer(portA, portB);
-        await waitForLocalDatabaseEntry(context.cliBinary, sessionB.cliEnv, pathNfc, { timeoutMs: syncTimeoutMs });
+        await waitForLocalDatabaseEntry(context.cliBinary, sessionB.cliEnv, initialPath, { timeoutMs: syncTimeoutMs });
         const secondState = await finishInitialisation(portB, context.cliBinary, sessionB.cliEnv);
         await resumeCompatibilityReviewIfShown(portB);
         assertEqual(secondState.p2pEnabled, true, "The second device did not enable P2P.");
-        await assertCaseSettings(context.cliBinary, sessionB.cliEnv, definition, shared.idKey, 1);
+        await assertCaseSettings(context.cliBinary, sessionB.cliEnv, definition, shared.idKey, initialVersion);
         await waitForVaultContent(vaultB.path, pathNfc, sourceContent);
-        const receiverEntry = await writeEntryStateWhenReady(
+        let receiverEntry = await writeEntryStateWhenReady(
             context.cliBinary,
             sessionB.cliEnv,
-            pathNfc,
+            initialPath,
             sourceContent
         );
         assertEqual(
@@ -653,6 +812,129 @@ async function runCase(definition: CaseDefinition): Promise<void> {
             "The NFD source and NFC peer paths produced different Metadata IDs."
         );
         assertEqual(receiverEntry.content, sourceContent, "The NFC peer did not receive the exact source body.");
+
+        if (migration) {
+            sourceEntry = await seedLegacyNfdMetadata(context, sessionA, shared, sourceEntry.id);
+            receiverEntry = await seedLegacyNfdMetadata(context, sessionB, shared, receiverEntry.id);
+            assertEqual(receiverEntry.id, sourceEntry.id, "The legacy NFD peers have different IDs.");
+            const legacyId = sourceEntry.id;
+            await assertSourceNameIsNfd(vaultB.path, sourceContent);
+            await stopSession(context, sessionB);
+            await startReconstruction(context.cliBinary, sessionA.cliEnv, "rebuild");
+            await acknowledgeDisabledOptionalFeatures(portA, captures);
+            await waitForReconstruction(context.cliBinary, sessionA.cliEnv);
+            sourceEntry = await writeEntryStateWhenReady(context.cliBinary, sessionA.cliEnv, pathNfc, sourceContent);
+            if (sourceEntry.id === legacyId)
+                throw new Error(
+                    "P2P Rebuild did not replace the legacy Metadata ID: " +
+                        JSON.stringify({
+                            legacyId,
+                            sourceEntry,
+                            settings: await readCurrentSettings(context.cliBinary, sessionA.cliEnv, shared.idKey),
+                        })
+                );
+            assertEqual(
+                (await readMetadataIds(context.cliBinary, sessionA.cliEnv)).ids.includes(legacyId),
+                false,
+                "The rebuilt source retained active legacy Metadata."
+            );
+            await assertSourceNameIsNfd(vaultA.path, sourceContent);
+            await stopSession(context, sessionA);
+            sessionA = await startSession(context, vaultA, portA);
+            await waitForLiveSyncCoreReady(context.cliBinary, sessionA.cliEnv);
+            await assertCaseSettings(context.cliBinary, sessionA.cliEnv, definition, shared.idKey, 1);
+            sessionB = await startSession(context, vaultB, portB);
+            await waitForLiveSyncCoreReady(context.cliBinary, sessionB.cliEnv);
+            await assertCaseSettings(context.cliBinary, sessionB.cliEnv, definition, shared.idKey, 0);
+            await openP2PStatus(portA);
+            await openP2PStatus(portB);
+            await waitForDetectedPeer(portB);
+            let finished = false;
+            const acceptor = acceptConnectionRequests([portA, portB], () => finished);
+            try {
+                await replicateFromStatusPane(portB);
+                await waitForTweakMismatchNotice(portB, sessionB);
+            } finally {
+                finished = true;
+                await acceptor;
+            }
+            const refused = await readEntryState(context.cliBinary, sessionB.cliEnv, pathNfd, undefined, legacyId);
+            assertEqual(refused.id, receiverEntry.id, "The refused legacy receiver changed its Metadata ID.");
+            assertEqual(refused.rev, receiverEntry.rev, "The refused legacy receiver changed its revision.");
+            assertEqual(refused.content, sourceContent, "The refused legacy receiver changed its content.");
+
+            await withObsidianPage(portB, async (page) => {
+                await page.locator(".notice").evaluateAll((notices) => notices.forEach((notice) => notice.remove()));
+            });
+            await startReconstruction(context.cliBinary, sessionB.cliEnv, "fetch", 0);
+            await withObsidianPage(portB, async (page) => {
+                await modalByTitle(page, "P2P Rebuild").locator(".peer-item").first().waitFor({
+                    state: "visible",
+                    timeout: uiTimeoutMs,
+                });
+            });
+            finished = false;
+            const fetchAcceptor = acceptConnectionRequests([portA, portB], () => finished);
+            try {
+                await withObsidianPage(portB, async (page) => {
+                    await modalByTitle(page, "P2P Rebuild")
+                        .locator(".peer-item")
+                        .first()
+                        .getByRole("button", { name: "Sync", exact: true })
+                        .click({ timeout: uiTimeoutMs });
+                });
+                await waitForTweakMismatchNotice(portB, sessionB);
+                await withObsidianPage(portB, async (page) => {
+                    const modal = modalByTitle(page, "P2P Rebuild");
+                    if (await modal.isVisible()) {
+                        await modal.getByRole("button", { name: "Skip and close" }).click({ timeout: uiTimeoutMs });
+                    }
+                });
+            } finally {
+                finished = true;
+                await fetchAcceptor;
+            }
+            let fetchFailure = "";
+            try {
+                await waitForReconstruction(context.cliBinary, sessionB.cliEnv);
+            } catch (error) {
+                fetchFailure = error instanceof Error ? error.message : String(error);
+            }
+            if (!fetchFailure.includes("The first Standard Fetch pass did not complete.")) {
+                throw new Error("The incompatible P2P Fetch did not report its expected failure: " + fetchFailure);
+            }
+            const refusedFetchMetadata = await readMetadataIds(context.cliBinary, sessionB.cliEnv);
+            assertEqual(
+                refusedFetchMetadata.ids.includes(legacyId),
+                false,
+                "P2P Fetch did not replace the old local database before peer selection."
+            );
+            assertEqual(
+                refusedFetchMetadata.ids.includes(sourceEntry.id),
+                false,
+                "The incompatible Fetch imported source Metadata."
+            );
+            await assertSourceNameIsNfd(vaultB.path, sourceContent);
+            console.log(
+                "P2P incompatible Fetch: local database reset preceded refusal; physical NFD note and exact bytes retained for retry."
+            );
+
+            await startReconstruction(context.cliBinary, sessionB.cliEnv, "fetch");
+            await fetchFromFirstPeer(portA, portB);
+            await waitForReconstruction(context.cliBinary, sessionB.cliEnv);
+            await waitForLiveSyncCoreReady(context.cliBinary, sessionB.cliEnv);
+            const migrated = await writeEntryStateWhenReady(context.cliBinary, sessionB.cliEnv, pathNfc, sourceContent);
+            assertEqual(migrated.id, sourceEntry.id, "P2P Fetch did not converge to the rebuilt source ID.");
+            assertEqual(
+                (await readMetadataIds(context.cliBinary, sessionB.cliEnv)).ids.includes(legacyId),
+                false,
+                "The migrated receiver retained active legacy Metadata."
+            );
+            await assertSourceNameIsNfd(vaultB.path, sourceContent);
+            console.log(
+                "P2P legacy-to-NFC migration: source Rebuild and restart, legacy refusal, receiver Fetch, matching IDs, exact content, and NFD physical names verified."
+            );
+        }
 
         console.log("P2P NFC initial Fetch: matching IDs and exact content verified.");
         await reconnectP2PStatus(portA);
@@ -712,6 +994,7 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         await assertSourceNameIsNfd(vaultA.path, restartedContent);
 
         console.log("P2P NFC full restart: persisted data and another transfer verified.");
+        await verifyRenameAndDeletion(context, sessionA, sessionB, vaultA, vaultB, portA, portB);
         await stopSession(context, sessionB);
         sessionB = undefined;
         const vaultMode0 = await createTemporaryVault("obsidian-livesync-p2p-nfc-mode0-");
@@ -798,7 +1081,8 @@ async function runCase(definition: CaseDefinition): Promise<void> {
 
 async function main(): Promise<void> {
     const cases = selectedCases(process.argv.slice(2));
-    for (const definition of cases) await runCase(definition);
+    const migration = process.argv.includes("--migration");
+    for (const definition of cases) await runCase(definition, migration);
 }
 
 main().catch((error: unknown) => {

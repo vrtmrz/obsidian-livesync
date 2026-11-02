@@ -365,13 +365,34 @@ physical NFD names and verifying edits after restart and deletion propagation.
 The CLI Compose P2P suite also passed with the published package, including
 legacy and NFC identity, plain and encrypted NFC transfer, logical rename and
 deletion, automatic hosting, adapter replacement, and relay disconnection.
-The earlier Journal resend and conflict-ancestry checks were not repeated with
-the published package.
+Additional real Obsidian cases with the published package passed legacy-to-NFC
+P2P migration with plain IDs and independently encrypted IDs. They seed legacy
+NFD Metadata IDs using real Chunks, since Obsidian's file cache normalises
+names. The checks covered source Rebuild and restart, Standard Fetch on the
+receiving device, removal of obsolete active IDs, exact content, and retention
+of physical NFD names. Both cases also passed transfer of a Unicode note,
+logical rename with matching new IDs, and deletion after restart. An
+incompatible P2P Fetch reset the local database before a peer was selected.
+Its physical note retained its exact bytes, and a Fetch with matching settings
+completed recovery. This check does not establish preservation of the old
+database's revision history.
+
+Real Obsidian Journal cases also passed remote-only Rebuild after deleting
+their isolated Object Storage prefix while leaving the source database and
+populated transfer checkpoint intact. With both plain IDs and independently
+encrypted IDs, a fresh receiving database and its subsequent restart retained
+the exact bodies of both conflict leaves, Chunk references, revision IDs, and
+each leaf's `_revisions`. The source retained the readable body of its common
+ancestor. Fresh receivers retained the ancestor ID without its historical
+body; ancestry IDs alone do not establish that an older body is readable. The
+[conflict policy](../specs_conflict_resolution.md#file-saving-and-reflection-guarantees)
+continues to require an available shared base for conservative automatic merge.
 
 The settings, first-join identity inspection, legacy Setup URI defaults, and
-initial CLI Fetch persistence are also covered by unit tests. Logical rename
-and deletion in the P2P extension have CLI runtime coverage; the real Obsidian
-P2P cases above do not separately exercise those operations.
+initial CLI Fetch persistence are also covered by unit tests. The additional
+migration cases call the running plug-in's production Rebuild and Fetch
+methods with real peer selection; reservation through the settings dialogue
+has separate coverage.
 These checks do not extend NFC support to other hosts or establish native iOS
 or macOS filesystem behaviour.
 

@@ -79,6 +79,7 @@
         "test:e2e:obsidian:couchdb-manual-setup-workflow": "tsx test/e2e-obsidian/scripts/couchdb-manual-setup-workflow.ts",
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
+        "test:e2e:obsidian:journal-nfc-resend": "tsx test/e2e-obsidian/scripts/journal-nfc-resend.ts",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",
         "test:e2e:obsidian:object-storage-compatible-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --compatible",
         "test:e2e:obsidian:object-storage-qr-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --qr",
