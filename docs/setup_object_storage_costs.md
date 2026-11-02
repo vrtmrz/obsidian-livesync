@@ -1,6 +1,6 @@
 # Object Storage transfers, request scaling, and service costs
 
-This guide explains how Self-hosted LiveSync transfers data when using S3-compatible Object Storage, why API requests do not scale with the total number of files in your Vault, and how to estimate monthly costs before selecting a storage provider.
+This guide explains how Self-hosted LiveSync transfers data when using S3-compatible Object Storage, why API requests do not scale with the total number of files in your Vault, and how to calculate example costs from request counts before selecting a storage provider.
 
 For setting up the plug-in with an existing bucket, see [Object Storage Setup](setup_object_storage.md).
 
@@ -17,10 +17,11 @@ Traditional file-synchronisation tools often inspect every file in the remote st
 Self-hosted LiveSync works fundamentally differently:
 
 - **Incremental journal tracking**: Each device tracks its synchronisation progress using sequence markers.
-- **Single listing check**: To check for incoming changes, a device performs a single `ListObjectsV2` operation to inspect new journal packages created since its last recorded sequence.
-- **Delta transfer**: Only newly created journal packages and newly generated Chunks are uploaded (`PutObject`) or downloaded (`GetObject`). Unmodified files require zero API requests.
+- **Journal listing**: The journal listing step uses `ListObjectsV2` to inspect journal packages after the last received journal.
+- **Journal transfer**: Metadata and Chunks are packed together in journals. Each new journal package is uploaded with `PutObject`, and each missing package is downloaded with `GetObject`; individual Chunks are not separate remote objects.
+- **Control requests**: Synchronisation also checks bucket availability (`HeadBucket`), reads synchronisation parameters and device participation data (`GetObject`), and can update device participation data (`PutObject`), even when no Vault files have changed.
 
-Consequently, **whether your Vault contains 100 notes or 50,000 notes, an idle synchronisation check uses exactly one listing request**. The number of API requests depends on your synchronisation schedule and edit activity, not on your Vault's overall file count.
+Consequently, **whether your Vault contains 100 notes or 50,000 notes, the journal listing step of an idle check uses one LIST request**. The full request count also includes control requests, journal transfers, and any retries. Routine checks do not need a separate request for each unchanged Vault file.
 
 ---
 
@@ -29,10 +30,10 @@ Consequently, **whether your Vault contains 100 notes or 50,000 notes, an idle s
 | Activity | Primary S3 API operation | Provider pricing category | What affects the request count |
 | --- | --- | --- | --- |
 | **Check for changes** | `ListObjectsV2` | Class A / Write-equivalent | Frequency of periodic sync checks and event triggers across active devices. |
-| **Send changes** | `PutObject` | Class A / Write | Number of journal packs and new Chunks produced by local edits. |
-| **Receive changes** | `GetObject` | Class B / Read | Number of missing journal packs and Chunks downloaded from other devices. |
-| **Device & settings sync** | `GetObject`, `PutObject` | Class A & Class B | Reading or updating remote configuration and device participation records. |
-| **First-device initialisation** | `ListObjectsV2`, `PutObject` | Class A / Write | Uploading the initial Vault data and setting files. |
+| **Send changes** | `PutObject` | Class A / Write | Number of journal packages uploaded, each containing Metadata and/or Chunks. |
+| **Receive changes** | `GetObject` | Class B / Read | Number of journal packages downloaded from other devices. |
+| **Connection, compatibility, and device checks** | `HeadBucket`, `GetObject`, `PutObject` | Provider-specific read/write categories | Bucket availability checks and reads or updates of synchronisation parameters and device participation records, including during idle cycles. |
+| **First-device initialisation** | `ListObjectsV2`, `PutObject` | Class A / Write | Listing and uploading journal packages containing the initial Metadata and Chunks, in addition to control requests. |
 
 > [!NOTE]
 > In most S3-compatible pricing models (including Amazon S3 and Cloudflare R2), `ListObjectsV2` is classified as a write-equivalent (Class A) operation, even though it reads metadata. Keeping periodic synchronisation intervals reasonable is the most effective way to manage request volume.
@@ -50,58 +51,75 @@ To estimate your monthly request volume, consider three factors:
 
 $$\text{Monthly listing requests} = \text{Devices} \times \text{Hours active/day} \times \left(\frac{60}{\text{Interval in minutes}}\right) \times 30\text{ days}$$
 
-### Realistic scenario
+### Worked example
+
+This example counts journal listing, uploads, and downloads. Bucket checks, synchronisation parameters, device participation records, and retries add further requests and are excluded from this subtotal.
 
 Suppose you use two devices (for example, a desktop and a laptop):
+
 - Both devices run Obsidian for 8 hours per day.
-- Periodic synchronisation is set to the default of once every **5 minutes** (12 checks per hour).
-- You create or edit approximately 50 notes per day.
+- Periodic synchronisation is set to once every **5 minutes** (12 checks per hour).
+- For the journal transfer calculation, assume a combined 50 PUT requests and 100 GET requests per day across both devices. These are illustrative request counts; actual transfers depend on edit activity and journal packing.
 
 ```text
 Routine listing checks:
 2 devices × 8 hours/day × 12 checks/hour × 30 days = 5,760 LIST requests/month
 
-Upload and download transfers (estimated):
-50 edits/day × 30 days × ~2–3 transfer requests = ~3,000–4,500 GET/PUT requests/month
+Uploads:   50 PUT requests/day × 30 days = 1,500 PUT requests/month
+Downloads: 100 GET requests/day × 30 days = 3,000 GET requests/month
 
-Total monthly request volume: ~9,000–10,500 requests
+Counted journal requests: 7,260 LIST/PUT and 3,000 GET requests/month
 ```
+
+At the paid Amazon S3 Standard rates for US East (N. Virginia) below:[^s3-pricing]
+
+```text
+LIST: 5,760 ÷ 1,000 × USD 0.005  = USD 0.0288
+PUT:  1,500 ÷ 1,000 × USD 0.005  = USD 0.0075
+GET:  3,000 ÷ 1,000 × USD 0.0004 = USD 0.0012
+
+Journal request subtotal in this example: USD 0.0375/month (about USD 0.04)
+```
+
+Add control requests, retries, storage, and data transfer when estimating the full cost. On Cloudflare R2 Standard, the counted journal requests fit the monthly free allowances if the account's other usage leaves enough allowance available.[^r2-pricing]
 
 ---
 
 ## Initial upload and first-time device download
 
-While day-to-day incremental synchronisation produces very few requests, initial setup and adding subsequent devices require a one-off transfer of all existing Vault data:
+Initial setup transfers journal packages containing the existing Metadata and Chunks. A joining device downloads the existing packages which it has not yet processed:
 
 1. **Initial Vault upload (first device)**:
-   - When the first device initialises the remote bucket, it splits all files into Metadata documents and content Chunks.
-   - Each Chunk and initial journal package is uploaded via `PutObject`. For a Vault containing 3,000 files, this typically generates several thousand `PutObject` operations (Class A).
+   - The first device splits files into Metadata documents and content Chunks, then groups those records into compressed journal packages.
+   - Each package is uploaded with one `PutObject` request. The number of requests depends on journal packing and the size of the records, rather than a one-to-one mapping to Vault files or Chunks.
 2. **Initial Vault download (adding a second device)**:
-   - When another device joins and fetches the Vault for the first time, it downloads all existing Chunks and Metadata from the bucket.
-   - This results in a temporary burst of `GetObject` operations (Class B) and internet data egress proportional to your Vault's total data size.
+   - The joining device downloads journal packages with `GetObject` and applies the Metadata and Chunks they contain to its local database.
+   - The GET request count follows the number of downloaded packages; outbound data transfer depends on their total size. Control requests and retries add further operations.
 
 ### Financial impact of initial transfers
 
-Even during this initial population phase, costs remain negligible under standard pricing models:
+Calculate initial request charges from the number of API operations:
 
-- **Class B operations (`GetObject`) are exceptionally inexpensive**: Amazon S3 charges approximately USD 0.0004 per 1,000 GET requests (downloading 5,000 chunks costs approximately USD 0.002). Cloudflare R2 includes 10,000,000 free Class B operations every month.
-- **Egress bandwidth**: Cloudflare R2 charges zero egress fees. Amazon S3 includes 100 GB of free outbound internet data transfer per month under the AWS Free Tier.
-- **One-off activity**: This transfer burst occurs only once per newly connected device. Subsequent synchronisations immediately return to the minimal incremental pattern calculated above.
+- **GET requests**: At the paid Amazon S3 rate used below, 5,000 GET requests cost USD 0.002, excluding storage and data transfer.[^s3-pricing] Cloudflare R2 Standard includes 10,000,000 free Class B operations every month.[^r2-pricing]
+- **Egress bandwidth**: Cloudflare R2 charges zero egress fees.[^r2-pricing] For paid Amazon S3 usage, calculate outbound data transfer separately using the current rates for your region.[^s3-pricing]
+- **Later synchronisation**: Once caught up, the device checks for new journal packages and downloads those it has not yet processed.
 
 ---
 
 ## Comparing provider allowances and costs
 
-The rates below reflect published pricing as of late 2026. Please verify current rates on the provider's pricing page before opening an account.
+The table applies published rates checked in November 2026 to the journal requests counted in the worked example above. Prices and free allowances may change. Before choosing a provider or configuring synchronisation, check the linked official pricing pages and recalculate costs for your region, storage usage, request volume, and data transfer.
 
-| Provider | Included free allowances | Paid rates beyond allowance | Practical outcome for typical use |
+| Provider | Included monthly free allowances | Paid rates | Calculated journal request subtotal |
 | --- | --- | --- | --- |
-| **[Cloudflare R2](https://developers.cloudflare.com/r2/pricing/)** (Standard) | • **1,000,000 Class A** (LIST, PUT) / mo<br>• **10,000,000 Class B** (GET) / mo<br>• **10 GB storage** / mo<br>• **Zero egress fees** | • Class A: USD 4.50 / million<br>• Class B: USD 0.36 / million<br>• Storage: USD 0.015 / GB-month | **USD 0.00 / month (Free)**.<br>The scenario above consumes less than 1% of the monthly free Class A allowance. |
-| **[Amazon S3](https://aws.amazon.com/s3/pricing/)** (Standard) | • Free tier for first 12 months (2,000 PUT/LIST, 20,000 GET, 5 GB storage) | • PUT/LIST: ~USD 0.005 / 1,000<br>• GET: ~USD 0.0004 / 1,000<br>• Storage: ~USD 0.023 / GB-month<br>• Standard internet egress applies | **Under USD 0.10 / month** after the free tier expires. |
-| **[Backblaze B2](https://www.backblaze.com/cloud-storage/pricing)** | • 10 GB free storage<br>• 2,500 Class A calls / day free | • Calls: USD 0.005 / 10,000<br>• Storage: USD 0.006 / GB-month | **Under USD 0.10 / month**. |
+| **Cloudflare R2 Standard**[^r2-pricing] | • **1,000,000 Class A** (LIST, PUT)<br>• **10,000,000 Class B** (GET)<br>• **10 GB-month storage**<br>• **Zero egress fees** | • Class A: USD 4.50 / million<br>• Class B: USD 0.36 / million<br>• Storage: USD 0.015 / GB-month | **USD 0.00 for the counted journal requests**, assuming sufficient free allowance remains. The calculation uses 7,260 Class A and 3,000 Class B operations. |
+| **Amazon S3 Standard (paid usage)**<br>US East (N. Virginia)[^s3-pricing] | — | • PUT/LIST: USD 0.005 / 1,000<br>• GET: USD 0.0004 / 1,000<br>• Storage: USD 0.023 / GB-month (first 50 TB)<br>• Internet data transfer charged separately | **About USD 0.04** for the counted journal requests. Other requests, storage, and data transfer are additional. |
 
 ### Practical recommendations
 
-- **Cloudflare R2 is generally recommended** for individual users seeking a zero-maintenance, zero-cost cloud backend, as its generous free tier and free egress ensure typical Vaults incur no charges.
+- **Cloudflare R2 may suit individual users** seeking a backend without server maintenance. The counted journal requests fit its monthly free allowances; include control requests, storage, and other account usage when comparing with the published limits.[^r2-pricing]
 - **Avoid excessively short polling intervals** (such as polling every 10–15 seconds) unless necessary. A 1–5 minute interval provides timely synchronisation while preserving low request counts.
 - **Batch saves and event triggers**: Enabling 'On Events' (sync on save or startup) allows you to lengthen the periodic interval without delaying synchronisation when active edits occur.
+
+[^r2-pricing]: November 2026 ([Cloudflare R2 pricing](https://developers.cloudflare.com/r2/pricing/)); Standard storage.
+[^s3-pricing]: November 2026 ([Amazon S3 pricing](https://aws.amazon.com/s3/pricing/)); S3 Standard paid usage in US East (N. Virginia).

@@ -11,15 +11,17 @@ This guide prepares hosted CouchDB, then leads to [first-device setup](quick_set
 
 Fly.io provides cloud infrastructure on which you run your own CouchDB container. A valid credit or debit card is required upon registration. A time-limited trial or sign-up credit does not provide ongoing free hosting.
 
-As a general cost illustration, based on [Fly.io pricing](https://fly.io/pricing/) (reviewed late 2026), a minimal configuration typically costs around **USD 2.00–3.00 per month**:
+For an example calculation, assume one Machine and a 1 GB persistent volume in Ashburn (`iad`), running continuously for 30 days. Applying the rates below gives a subtotal of approximately **USD 2.34**, with outbound data transfer and optional resources charged separately:[^fly-pricing]
 
-| Resource | Basis of calculation | Approximate monthly cost |
+| Resource | Basis of calculation | Monthly cost in this example |
 | --- | --- | --- |
-| One `shared-cpu-1x` Machine (256 MB RAM) | Running continuously (~730 hours @ ~USD 0.0030/hr) | ~USD 2.19 |
+| One `shared-cpu-1x` Machine (256 MB RAM) | Running continuously for 30 days (720 hours) | ~USD 2.19 |
 | One 1 GB persistent volume | Provisioned storage (~USD 0.15/GB-month) | ~USD 0.15 |
-| **Estimated subtotal** | Compute and persistent storage | **~USD 2.34 / month** |
+| **Calculated subtotal** | Compute and persistent storage | **~USD 2.34 / month** |
 
-*Note: Rates vary depending on the chosen Fly.io region, outbound network bandwidth, and optional dedicated IP addresses. The template configuration enables automatic machine suspension (`auto_stop_machines = true`), which may reduce running hours and compute costs when synchronisation is idle, though provisioned storage volumes continue to be billed.*
+*Note: Rates vary depending on the chosen Fly.io region, outbound network bandwidth, and optional dedicated IP addresses. The template configuration enables automatic machine suspension (`auto_stop_machines = true`), which may reduce running hours and compute costs when synchronisation is idle, though provisioned storage volumes continue to be billed. Check the current official pricing and recalculate costs for your chosen configuration before deploying.*
+
+[^fly-pricing]: November 2026 ([Fly.io resource pricing](https://docs.fly.io/about/pricing)); Ashburn (`iad`), with 30 days of continuous Machine operation.
 
 > [!WARNING]
 > Before replacing or deleting an existing CouchDB instance, back up every available Vault and the remote database, then [choose the authoritative copy](recovery.md#first-choose-the-authoritative-copy). Stop or suspend synchronisation on other devices while reviewing recovery options. Local files alone do not establish that every needed edit or revision has been preserved.
