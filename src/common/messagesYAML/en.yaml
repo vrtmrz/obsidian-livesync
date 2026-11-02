@@ -221,7 +221,7 @@ dialog:
     yourLanguageAvailable:
         _value: >-
             Self-hosted LiveSync had translations for your language, so the %{Display
-            language} setting was enabled.
+            Language} setting was enabled.
 
 
             Note: Not all messages are translated. We are waiting for your

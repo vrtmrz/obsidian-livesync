@@ -34,7 +34,7 @@
     "Delay merge conflict prompt for inactive files.": "עכב הצגת בקשת מיזוג לקבצים לא פעילים.",
     "Delete old metadata of deleted files on start-up": "מחק מטה-נתונים ישנים של קבצים שנמחקו בעת הפעלה",
     "Device name": "שם מכשיר",
-    "dialog.yourLanguageAvailable": "ל-Self-hosted LiveSync יש תרגום לשפתך, ולכן הגדרת %{Display language} הופעלה.\n\nהערה: לא כל ההודעות מתורגמות. אנחנו ממתינים לתרומותיך!\nהערה 2: אם אתה פותח Issue, **אנא חזור ל-%{lang-def}** ואז צלם צילומי מסך, הודעות ויומנים. ניתן לעשות זאת בדיאלוג ההגדרות.\nנקווה שתמצא/י את הפלאגין נוח לשימוש!",
+    "dialog.yourLanguageAvailable": "ל-Self-hosted LiveSync יש תרגום לשפתך, ולכן הגדרת %{Display Language} הופעלה.\n\nהערה: לא כל ההודעות מתורגמות. אנחנו ממתינים לתרומותיך!\nהערה 2: אם אתה פותח Issue, **אנא חזור ל-%{lang-def}** ואז צלם צילומי מסך, הודעות ויומנים. ניתן לעשות זאת בדיאלוג ההגדרות.\nנקווה שתמצא/י את הפלאגין נוח לשימוש!",
     "dialog.yourLanguageAvailable.btnRevertToDefault": "השאר %{lang-def}",
     "dialog.yourLanguageAvailable.Title": " תרגום זמין!",
     "Disables logging, only shows notifications. Please disable if you report an issue.": "מכבה רישום יומן, מציג התראות בלבד. אנא כבה אם אתה מדווח על בעיה.",

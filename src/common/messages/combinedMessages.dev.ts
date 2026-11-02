@@ -39,6 +39,7 @@ const expandedMessage = {
     ...expandKeywords(_allMessages, "def"),
     ...expandKeywords(_allMessages, "es"),
     ...expandKeywords(_allMessages, "fr"),
+    ...expandKeywords(_allMessages, "he"),
     ...expandKeywords(_allMessages, "ja"),
     ...expandKeywords(_allMessages, "ko"),
     ...expandKeywords(_allMessages, "ru"),

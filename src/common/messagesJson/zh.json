@@ -203,7 +203,7 @@
     "Device Setup Method": "设备设置方式",
     "Devices:": "设备：",
     "Diagnostic RTCPeerConnection is enabled": "已启用诊断用 RTCPeerConnection",
-    "dialog.yourLanguageAvailable": "Self-hosted LiveSync已提供您语言的翻译,因此启用了%{Display language}\n\n注意：并非所有消息都已翻译。我们期待您的贡献！\n注意 2：若您创建问题报告， **请切换回%{lang-def}** ，然后截取屏幕截图、消息和日志，此操作可在设置对话框中完成\n愿您使用顺心！",
+    "dialog.yourLanguageAvailable": "Self-hosted LiveSync已提供您语言的翻译,因此启用了%{Display Language}\n\n注意：并非所有消息都已翻译。我们期待您的贡献！\n注意 2：若您创建问题报告， **请切换回%{lang-def}** ，然后截取屏幕截图、消息和日志，此操作可在设置对话框中完成\n愿您使用顺心！",
     "dialog.yourLanguageAvailable.btnRevertToDefault": "保持%{lang-def}",
     "dialog.yourLanguageAvailable.Title": " 翻译可用!",
     "Diff": "差异",
