@@ -16,6 +16,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - New CLI settings and Obsidian manual onboarding use NFC. Existing settings and old Setup URIs retain legacy identity; initial central-remote setup follows the remote declaration. Existing databases still require the migration above.
     - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
 
+### Fixed
+
+#### Translations
+
+- The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
+    - Hebrew interface messages also display their referenced labels correctly.
+
 ## 1.0.44
 
 1st November, 2026

@@ -257,7 +257,7 @@ dialog:
   yourLanguageAvailable:
     _value: >-
       Self-hosted LiveSync имеет переводы для вашего языка, поэтому была
-      включена настройка языка Display language.
+      включена настройка «%{Display Language}».
 
 
       Примечание: Не все сообщения переведены. Мы ждём ваших предложений!

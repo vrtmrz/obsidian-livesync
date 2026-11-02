@@ -203,7 +203,7 @@
     "Device Setup Method": "Device Setup Method",
     "Devices:": "Devices:",
     "Diagnostic RTCPeerConnection is enabled": "Diagnostic RTCPeerConnection is enabled",
-    "dialog.yourLanguageAvailable": "Self-hosted LiveSync had translations for your language, so the %{Display language} setting was enabled.\n\nNote: Not all messages are translated. We are waiting for your contributions!\nNote 2: If you create an Issue, **please revert to %{lang-def}** and then take screenshots, messages and logs. This can be done in the setting dialogue.\nMay you find it easy to use!",
+    "dialog.yourLanguageAvailable": "Self-hosted LiveSync had translations for your language, so the %{Display Language} setting was enabled.\n\nNote: Not all messages are translated. We are waiting for your contributions!\nNote 2: If you create an Issue, **please revert to %{lang-def}** and then take screenshots, messages and logs. This can be done in the setting dialogue.\nMay you find it easy to use!",
     "dialog.yourLanguageAvailable.btnRevertToDefault": "Keep %{lang-def}",
     "dialog.yourLanguageAvailable.Title": " Translation is available!",
     "Diff": "Diff",
