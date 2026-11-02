@@ -324,9 +324,9 @@ content, creation-time, physical-name, update, and deletion checks also passed.
 
 ### Unreleased Journal and P2P validation
 
-The extension was checked on Linux with a locally packed Commonlib `0.2.3`
-candidate and real Obsidian `1.12.7`. Publication remains pending. The checks
-covered:
+The extension was initially checked on Linux with a locally packed Commonlib
+`0.2.3` candidate and real Obsidian `1.12.7`. The Self-hosted LiveSync extension
+remains unreleased. The initial checks covered:
 
 - real S3-compatible Journal transfer with and without E2EE and Path
   Obfuscation, including restart, logical rename and deletion, both conflict
@@ -355,6 +355,18 @@ The source Rebuild changes its Metadata ID and declares compatibility range
 Metadata ID and revision and the remote milestone. After selecting NFC, its
 Fetch converges to the source ID and content while preserving the NFD physical
 path. Both plain and independently encrypted ID scenarios passed.
+
+On 2026-11-02, the exact published Commonlib `0.3.0` package passed the
+consumer source checks, unit tests, and plug-in, CLI, WebApp, and WebPeer builds.
+The real Obsidian P2P cases above were repeated successfully with that package.
+Real Obsidian and CLI Journal round trips and the legacy-to-NFC migration were
+also repeated with plain IDs and independently encrypted IDs, retaining the
+physical NFD names and verifying edits after restart and deletion propagation.
+The CLI Compose P2P suite also passed with the published package, including
+legacy and NFC identity, plain and encrypted NFC transfer, logical rename and
+deletion, automatic hosting, adapter replacement, and relay disconnection.
+The earlier Journal resend and conflict-ancestry checks were not repeated with
+the published package.
 
 The settings, first-join identity inspection, legacy Setup URI defaults, and
 initial CLI Fetch persistence are also covered by unit tests. Logical rename

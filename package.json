@@ -210,7 +210,7 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "file:_testdata/nfc/vrtmrz-livesync-commonlib-0.2.3-nfc-a86e217a7ae4.tgz",
+        "@vrtmrz/livesync-commonlib": "0.3.0",
         "@vrtmrz/obsidian-plugin-kit": "0.1.7",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",
