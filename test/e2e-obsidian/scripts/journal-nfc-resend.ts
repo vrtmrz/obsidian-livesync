@@ -178,8 +178,8 @@ async function assertSinglePhysicalUnicodeFile(
 ): Promise<void> {
     const segments = relativePath.split("/");
     const stableParent = join(vaultPath, ...segments.slice(0, -2));
-    const expectedFolder = segments.at(-2)!.normalize("NFC");
-    const expectedFilename = segments.at(-1)!.normalize("NFC");
+    const expectedFolder = segments[segments.length - 2].normalize("NFC");
+    const expectedFilename = segments[segments.length - 1].normalize("NFC");
     const physicalFolders = (await readdir(stableParent, { withFileTypes: true })).filter(
         (entry) => entry.isDirectory() && entry.name.normalize("NFC") === expectedFolder
     );

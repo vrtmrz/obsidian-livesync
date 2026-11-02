@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { dirname, join } from "node:path";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePathWithPrefix, ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { encodeTimeBoundSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import { createNewVaultSettings, P2P_DEFAULT_SETTINGS, PREFERRED_BASE } from "@vrtmrz/livesync-commonlib/settings";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
@@ -594,7 +594,7 @@ async function seedLegacyNfdMetadata(
     // Obsidian's file cache normalises names even in legacy mode. Seed the
     // legacy ID of an NFD-writing host while retaining real Chunk documents.
     const legacyId = await path2id_base(
-        pathNfd,
+        pathNfd as FilePathWithPrefix,
         shared.encrypted ? shared.e2eePassphrase : false,
         true,
         shared.encrypted ? shared.idKey : undefined
