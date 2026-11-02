@@ -11,7 +11,9 @@ Before starting:
 - prepare the remote service and a Setup URI; and
 - keep the Setup URI and its passphrase separate from each other.
 
-This walkthrough covers the recommended provisioned CouchDB path. Follow [Set up a CouchDB server](./setup_own_server.md) to prepare the server and Setup URI.
+This walkthrough covers the CouchDB synchronisation path (using [your own server](./setup_own_server.md), the [Docker stack](../docker/README.md), or [Fly.io](./setup_flyio.md)).
+- For S3-compatible cloud storage (such as Cloudflare R2 or Amazon S3), follow [Object Storage Setup](./setup_object_storage.md).
+- For direct device-to-device synchronisation without a storage server, follow [Peer-to-Peer Setup](./setup_p2p.md).
 
 ## What a Setup URI contains
 
