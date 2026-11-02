@@ -29,6 +29,9 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Translations
 
+- The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
+    - Hebrew interface messages also display their referenced labels correctly.
+
 - Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
 
 ## 1.0.42

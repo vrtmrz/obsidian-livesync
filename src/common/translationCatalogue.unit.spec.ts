@@ -1,10 +1,30 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { allMessages } from "./messages/combinedMessages.prod";
+import { allMessages as expandedMessages } from "./messages/combinedMessages.dev";
 import { $msg, setLang } from "./translation";
 
 function interpolationNames(message: string): string[] {
     return [...message.matchAll(/\$\{([^}]+)\}/g)].map((match) => match[1]).sort();
 }
+
+describe("Display Language keyword expansion", () => {
+    it.each(["def", "fr", "he", "ru", "zh"] as const)("renders the translated setting label in %s", (lang) => {
+        const message = $msg("dialog.yourLanguageAvailable", {}, lang);
+
+        expect(message).toContain($msg("Display Language", {}, lang));
+        expect(message).not.toMatch(/%\{Display [Ll]anguage\}/);
+        expect(expandedMessages["dialog.yourLanguageAvailable"][lang]).toBe(message);
+    });
+
+    it("expands nested Hebrew references in the default-language action", () => {
+        const defaultLabel = $msg("lang_def", {}, "he");
+        const action = $msg("dialog.yourLanguageAvailable.btnRevertToDefault", {}, "he");
+
+        expect($msg("lang-def", {}, "he")).toBe(defaultLabel);
+        expect(action).toContain(defaultLabel);
+        expect(expandedMessages["dialog.yourLanguageAvailable.btnRevertToDefault"].he).toBe(action);
+    });
+});
 
 describe("Russian catalogue interpolation", () => {
     afterEach(() => setLang("def"));
