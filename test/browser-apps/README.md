@@ -18,6 +18,8 @@ npm run test:browser-apps
 
 `test/browser-apps/interop.test.ts` is the only cross-application scenario. It configures the real WebApp and WebPeer interfaces, transfers a file from WebApp to WebPeer, then starts the built CLI as the final peer and verifies the file through the production CLI. The CLI is a test fixture in this scenario; the PoC test and its support code are not owned by the CLI package.
 
+The interoperability scenario uses legacy path identity on all three peers. WebApp and WebPeer remain outside the NFC support matrix, so the CLI fixture explicitly selects legacy identity instead of inheriting the NFC default for new CLI settings. The scenario still verifies the transferred file through the production CLI.
+
 Run the isolated relay and TURN scenario in Compose with:
 
 ```bash
