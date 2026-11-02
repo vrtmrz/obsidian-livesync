@@ -334,12 +334,20 @@ covered:
 - real Obsidian and CLI Journal round trips with plain IDs and independent
   encrypted IDs: Standard Fetch, identical Metadata IDs and Chunk content,
   retention of a pre-existing NFD physical name, edits after CLI process
-  restart, and deletion reflected back into Obsidian; and
+  restart, and deletion reflected back into Obsidian;
 - real CLI P2P peers in legacy mode and NFC mode, with and without encryption
   in NFC mode: canonical path reads, incompatible-peer refusal, reverse edits
   after restart, retained original revision content, logical rename, and
   deletion. Existing automatic-host, adapter-replacement, and explicit
-  disconnect scenarios also passed.
+  disconnect scenarios also passed; and
+- two real Obsidian `1.12.7` processes in an isolated Compose project, with NFC
+  identity in plain and E2EE/Path Obfuscation modes using an independent ID key:
+  initial Fetch, identical Metadata IDs and Chunk-backed content, reverse edits,
+  retained original revision bodies, a full application restart and subsequent
+  transfer, and explicit path-version refusal after ordinary peer permission.
+  The refused peer retained its sentinel ID, revision, and content and imported
+  no source Metadata or file. These cases passed on 2026-11-02 with the updated
+  locally packed candidate after integrating the current main branches.
 
 The Journal migration scenarios also start with existing legacy CLI databases.
 The source Rebuild changes its Metadata ID and declares compatibility range
@@ -348,8 +356,10 @@ Metadata ID and revision and the remote milestone. After selecting NFC, its
 Fetch converges to the source ID and content while preserving the NFD physical
 path. Both plain and independently encrypted ID scenarios passed.
 
-P2P runtime evidence is limited to CLI peers; a real Obsidian P2P peer remains
-unverified. The settings and reconstruction paths are covered by unit tests.
+The settings, first-join identity inspection, legacy Setup URI defaults, and
+initial CLI Fetch persistence are also covered by unit tests. Logical rename
+and deletion in the P2P extension have CLI runtime coverage; the real Obsidian
+P2P cases above do not separately exercise those operations.
 These checks do not extend NFC support to other hosts or establish native iOS
 or macOS filesystem behaviour.
 

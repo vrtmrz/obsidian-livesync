@@ -85,10 +85,10 @@ async function main(): Promise<void> {
                 exitCode = 1;
             }
         }
-        if (exitCode === 0) {
+        if (exitCode === 0 && process.env.E2E_P2P_NFC_KEEP_ARTIFACTS !== "1") {
             await rm(artifactsDirectory, { recursive: true, force: true });
         } else {
-            console.error("P2P NFC diagnostics were retained at " + artifactsDirectory);
+            console.log("P2P NFC diagnostics were retained at " + artifactsDirectory);
         }
     }
 

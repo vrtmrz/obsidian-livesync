@@ -350,7 +350,7 @@ describe("CLI database preparation", () => {
         const inspect = vi.spyOn(ReplicatorService.prototype, "createRemoteResource").mockResolvedValue({
             check: vi.fn(),
             getStatus: vi.fn(),
-            inspectPathIdentity: vi.fn(async () => ({ status: "configured", pathNormalizationVersion: 0 })),
+            inspectPathIdentity: vi.fn(async () => ({ status: "configured", pathNormalizationVersion: 0 }) as const),
             dispose,
         });
         await start(

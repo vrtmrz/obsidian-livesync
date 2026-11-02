@@ -27,7 +27,7 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
+import { captureObsidianPage, obsidianRemoteDebuggingPort, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "90000";
@@ -445,6 +445,10 @@ async function waitForDetectedPeer(port: number): Promise<void> {
             "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' workspace-leaf-content ')][1]"
         );
         await pane.getByRole("button", { name: "Refresh", exact: true }).click({ timeout: uiTimeoutMs });
+        const peer = pane.locator(".peer-item").first();
+        await peer.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const allow = peer.getByRole("button", { name: "Allow in session", exact: true });
+        if (await allow.isVisible()) await allow.click({ timeout: uiTimeoutMs });
         await pane.getByRole("button", { name: "Replicate now" }).first().waitFor({
             state: "visible",
             timeout: uiTimeoutMs,
@@ -522,7 +526,7 @@ async function replicateAndWait(
     let finished = false;
     const acceptor = acceptConnectionRequests([sourcePort, receiverPort], () => finished);
     try {
-        await replicateFromStatusPane(sourcePort);
+        await replicateFromStatusPane(receiverPort);
         await waitForVaultContent(receiverVaultPath, expectedPath, expectedContent);
     } finally {
         finished = true;
@@ -593,7 +597,7 @@ async function runCase(definition: CaseDefinition): Promise<void> {
     const incompatibleArtifact = await createSetupArtifact(shared, 0);
     const captures: SetupCaptureNames = {
         scenario: "p2p-nfc-" + definition.name,
-        guide: "p2p-nfc-" + definition.name,
+        guide: "p2p-setup",
     };
     const vaults: TemporaryVault[] = [];
     let sessionA: ObsidianLiveSyncSession | undefined;
@@ -650,9 +654,10 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         );
         assertEqual(receiverEntry.content, sourceContent, "The NFC peer did not receive the exact source body.");
 
+        console.log("P2P NFC initial Fetch: matching IDs and exact content verified.");
         await reconnectP2PStatus(portA);
         await reconnectP2PStatus(portB);
-        await waitForDetectedPeer(portB);
+        await waitForDetectedPeer(portA);
         await modifyVaultNote(context.cliBinary, sessionB.cliEnv, pathNfc, editedContent);
         const locallyEditedEntry = await writeEntryStateWhenReady(
             context.cliBinary,
@@ -676,6 +681,7 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         assertEqual(originalRevision.content, sourceContent, "P2P discarded the original revision body.");
         await assertSourceNameIsNfd(vaultA.path, editedContent);
 
+        console.log("P2P NFC reverse transfer: stable ID and original revision verified.");
         await stopSession(context, sessionB);
         sessionB = await startSession(context, vaultB, portB);
         await waitForLiveSyncCoreReady(context.cliBinary, sessionB.cliEnv);
@@ -692,7 +698,7 @@ async function runCase(definition: CaseDefinition): Promise<void> {
 
         await reconnectP2PStatus(portA);
         await openP2PStatus(portB);
-        await waitForDetectedPeer(portB);
+        await waitForDetectedPeer(portA);
         await modifyVaultNote(context.cliBinary, sessionB.cliEnv, pathNfc, restartedContent);
         await writeEntryStateWhenReady(context.cliBinary, sessionB.cliEnv, pathNfc, restartedContent);
         await replicateAndWait(portB, portA, vaultA.path, pathNfc, restartedContent);
@@ -705,6 +711,7 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         assertEqual(afterRestartTransfer.id, sourceEntry.id, "A post-restart transfer changed the Metadata ID.");
         await assertSourceNameIsNfd(vaultA.path, restartedContent);
 
+        console.log("P2P NFC full restart: persisted data and another transfer verified.");
         await stopSession(context, sessionB);
         sessionB = undefined;
         const vaultMode0 = await createTemporaryVault("obsidian-livesync-p2p-nfc-mode0-");
@@ -768,6 +775,19 @@ async function runCase(definition: CaseDefinition): Promise<void> {
         console.log(
             "P2P NFC case passed: NFD source identity, NFC lookup, exact Chunk-backed transfer, reverse edit, revision retention, full restart, mode 0 refusal, and sentinel preservation."
         );
+    } catch (error) {
+        for (const session of context.activeSessions) {
+            const port = session.remoteDebuggingPort;
+            await captureObsidianPage(port, `p2p-nfc-${definition.name}-${port}-failure.png`, (page) =>
+                page.locator("body").waitFor({ state: "visible" })
+            ).catch(() => undefined);
+            const state = await withObsidianPage(
+                port,
+                async (page) => await page.locator(".workspace-leaf-content").allTextContents()
+            ).catch(() => []);
+            console.error(`P2P NFC failure UI on ${port}: ${JSON.stringify(state).slice(-6000)}`);
+        }
+        throw error;
     } finally {
         await stopSessions(context).catch((error: unknown) => {
             console.warn(error instanceof Error ? error.message : error);
