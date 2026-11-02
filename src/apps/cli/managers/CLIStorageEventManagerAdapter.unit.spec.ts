@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type { NodeFile } from "@/apps/cli/adapters/NodeTypes";
+import { fs, os, path } from "@vrtmrz/livesync-commonlib/node";
+import { runtimeScopeDirectory } from "../runtimeState";
 
 // ── chokidar mock ──────────────────────────────────────────────────────────────
 // Must be hoisted before imports that pull in chokidar.
@@ -42,6 +44,27 @@ describe("CLIStorageEventManagerAdapter", () => {
             if (event === "ready") cb();
             return mockWatcher;
         });
+    });
+
+    it("keeps pending snapshots with the selected database and Vault pair", async () => {
+        const directory = fs.mkdtempSync(path.join(os.tmpdir(), "livesync-snapshot-"));
+        let database = "first";
+        let vault = "vault-a";
+        const adapter = new CLIStorageEventManagerAdapter(directory, undefined, false, undefined, () =>
+            path.join(runtimeScopeDirectory(directory, database, vault), "storage-events.json")
+        );
+        try {
+            await adapter.persistence.saveSnapshot([{ type: "SENTINEL_FLUSH" }]);
+            database = "second";
+            expect(await adapter.persistence.loadSnapshot()).toBeNull();
+            database = "first";
+            vault = "vault-b";
+            expect(await adapter.persistence.loadSnapshot()).toBeNull();
+            vault = "vault-a";
+            expect(await adapter.persistence.loadSnapshot()).toEqual([{ type: "SENTINEL_FLUSH" }]);
+        } finally {
+            fs.rmSync(directory, { recursive: true, force: true });
+        }
     });
 
     it("beginWatch is no-op when watchEnabled=false", async () => {
@@ -199,5 +222,29 @@ describe("CLIStorageEventManagerAdapter", () => {
         expect(reportDiagnostic).toHaveBeenCalledWith("[CLIWatchAdapter] Exiting for systemd restart.");
 
         processExitSpy.mockRestore();
+    });
+});
+
+describe("CLIStorageEventManagerAdapter type guard", () => {
+    const typeGuard = new CLIStorageEventManagerAdapter("/base").typeGuard;
+
+    it.each([
+        { label: "null", value: null, expected: false },
+        { label: "an object without a path", value: { stat: {} }, expected: false },
+        { label: "an object without a stat", value: { path: "note.md" }, expected: false },
+        { label: "a file-shaped object", value: { path: "note.md", stat: {} }, expected: true },
+        { label: "a folder-shaped object", value: { path: "folder", isFolder: true }, expected: false },
+    ])("classifies $label as a file", ({ value, expected }) => {
+        expect(typeGuard.isFile(value)).toBe(expected);
+    });
+
+    it.each([
+        { label: "null", value: null, expected: false },
+        { label: "an object without a path", value: { isFolder: true }, expected: false },
+        { label: "an object without the folder marker", value: { path: "folder" }, expected: false },
+        { label: "a folder-shaped object", value: { path: "folder", isFolder: true }, expected: true },
+        { label: "a file-shaped object", value: { path: "note.md", stat: {} }, expected: false },
+    ])("classifies $label as a folder", ({ value, expected }) => {
+        expect(typeGuard.isFolder(value)).toBe(expected);
     });
 });

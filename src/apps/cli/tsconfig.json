@@ -27,5 +27,5 @@
         }
     },
     "include": ["*.ts", "**/*.ts", "**/*.tsx"],
-    "exclude": ["node_modules", "dist", "test", "testdeno"]
+    "exclude": ["node_modules", "dist", "test"]
 }

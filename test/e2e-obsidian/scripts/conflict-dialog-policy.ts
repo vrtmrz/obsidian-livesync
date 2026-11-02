@@ -38,7 +38,10 @@ type ObsidianTestApp = {
             | {
                   core?: {
                       services?: {
-                          conflict?: { ensureAllProcessed(): Promise<boolean> };
+                          conflict?: {
+                              ensureAllProcessed(): Promise<boolean>;
+                              conflictProcessQueueCount: { value: number };
+                          };
                       };
                   };
               }
@@ -607,11 +610,40 @@ async function main(): Promise<void> {
             await requestRepeatedConflictChecks(cliBinary, repeatedSession.cliEnv, repeatedPath, 3);
             await page.waitForFunction((element) => !element.isConnected, original, { timeout: uiTimeoutMs });
             await modal.waitFor({ state: "visible", timeout: uiTimeoutMs });
-            await page.waitForTimeout(250);
+            // All enqueue calls have settled. Only the final resolver may remain
+            // while its dialogue waits for a response; earlier checks also count.
+            await page.waitForFunction(
+                (targetPath) => {
+                    const conflict = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins?.["obsidian-livesync"]
+                        ?.core?.services?.conflict;
+                    const visible = Array.from(document.querySelectorAll(".modal-container")).filter(
+                        (element) =>
+                            element.getClientRects().length > 0 &&
+                            element.querySelector(".modal-title")?.textContent?.includes("Conflicting changes") &&
+                            element.textContent?.includes(targetPath)
+                    );
+                    return conflict?.conflictProcessQueueCount.value === 1 && visible.length === 1;
+                },
+                repeatedPath,
+                { timeout: uiTimeoutMs }
+            );
             const visibleCount = await conflictDialogue(page, repeatedPath).evaluateAll(
                 (elements) => elements.filter((element) => element.getClientRects().length > 0).length
             );
             if (visibleCount !== 1) {
+                const dialogues = await page.locator(".modal-container").evaluateAll((elements) =>
+                    elements.map((element) => ({
+                        visible: element.getClientRects().length > 0,
+                        text: element.textContent?.slice(0, 1200),
+                    }))
+                );
+                const fixture = await readConflictFixture(cliBinary, repeatedSession.cliEnv, repeatedPath);
+                console.error(JSON.stringify({ sameFileReplacementFailure: { visibleCount, dialogues, fixture } }));
+                await captureObsidianPage(
+                    repeatedSession.remoteDebuggingPort,
+                    "conflict-dialog-same-file-replacement.failure.png",
+                    async () => {}
+                );
                 throw new Error(`Expected one newest same-file dialogue, but found ${visibleCount}`);
             }
         });

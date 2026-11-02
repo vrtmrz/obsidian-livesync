@@ -19,7 +19,7 @@ export default mergeConfig(
             logHeapUsage: true,
             name: "integration-tests",
             include: ["**/*.integration.spec.ts", "**/*.integration.test.ts"],
-            exclude: ["test/**", "src/apps/**/testdeno/**"],
+            exclude: ["test/**"],
         },
     })
 );

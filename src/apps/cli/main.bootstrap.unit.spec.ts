@@ -3,6 +3,7 @@ import { appendFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
+import { path } from "@vrtmrz/livesync-commonlib/node";
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import {
@@ -19,6 +20,11 @@ import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import { main, type CliCommandRunner } from "./main";
 import { cloneSettings } from "./settingsPersistence";
 import type { CLICommand } from "./commands/types";
+
+vi.mock("@vrtmrz/livesync-commonlib/node", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/node")>();
+    return { ...actual, path: { ...actual.path } };
+});
 
 vi.mock("chokidar", { spy: true });
 vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", { spy: true });
@@ -72,12 +78,20 @@ describe("CLI database preparation", () => {
         await rm(directory, { recursive: true, force: true });
     });
 
-    async function start(command: CLICommand, runner: CliCommandRunner, exitCode = 1, force = false) {
+    async function start(
+        command: CLICommand,
+        runner: CliCommandRunner,
+        exitCode = 1,
+        force = false,
+        writeSettings = false
+    ) {
+        process.exitCode = undefined;
         process.argv = [
             "node",
             "livesync-cli",
             directory,
             ...(force ? ["--force"] : []),
+            ...(writeSettings ? ["--write-settings"] : []),
             "--vault",
             vaultPath,
             "--settings",
@@ -87,6 +101,36 @@ describe("CLI database preparation", () => {
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
+
+    it.each([
+        { separator: "/", platform: "POSIX" },
+        { separator: "\\", platform: "Windows" },
+    ])("excludes internal Vault paths with the $platform host separator", async ({ separator }) => {
+        const targets = [
+            "headless-vault-livesync-v2/LOCK",
+            ".livesync/settings.json",
+            "notes/.private/secret.md",
+            "notes/local.md",
+        ];
+        const observed: boolean[] = [];
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            const originalSeparator = path.sep;
+            try {
+                Object.defineProperty(path, "sep", { value: separator });
+                for (const target of targets) {
+                    observed.push(await core.services.vault.isTargetFile(target as FilePathWithPrefix));
+                }
+            } finally {
+                Object.defineProperty(path, "sep", { value: originalSeparator });
+            }
+            return false;
+        });
+
+        await start("ls", runner);
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(observed).toEqual([false, false, false, true]);
+    });
 
     it("loads legacy device values and persists configuration through the service-owned store", async () => {
         const localStoragePath = join(directory, ".livesync", "runtime", "local-storage.json");
@@ -348,6 +392,194 @@ describe("CLI database preparation", () => {
         expect(runner).toHaveBeenCalledTimes(commandRuns ? 1 : 0);
         expect(unload).toHaveBeenCalledOnce();
         expect(await readFile(join(vaultPath, "notes/local.md"), "utf-8")).toBe("local content");
+    });
+
+    it.each(["fetch", "rebuild"] as const)(
+        "persists the selected database after %s without other command settings",
+        async (command) => {
+            const before = JSON.parse(await readFile(settingsPath, "utf-8"));
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                await core.services.setting.applyPartial({
+                    additionalSuffixOfDatabaseName: "headless-app",
+                    customChunkSize: before.customChunkSize + 10,
+                });
+                return true;
+            });
+
+            await start(command, runner, 0, true);
+
+            const after = JSON.parse(await readFile(settingsPath, "utf-8"));
+            expect(after.additionalSuffixOfDatabaseName).toBe("headless-app");
+            expect(after.customChunkSize).toBe(before.customChunkSize);
+        }
+    );
+
+    it.each(["suffix", "vault"] as const)("isolates persistent state by selected %s", async (selection) => {
+        await start("ls", async (_options, { core }) => {
+            await core.services.keyValueDB.kvDB.set("scope-probe", "original");
+            await core.services.config.setValue("scope-probe", "original");
+            return false;
+        });
+        if (selection === "suffix") {
+            const settings = JSON.parse(await readFile(settingsPath, "utf-8"));
+            settings.additionalSuffixOfDatabaseName = "other";
+            await writeFile(settingsPath, JSON.stringify(settings));
+        } else {
+            vaultPath = join(directory, "other-vault");
+            await mkdir(vaultPath);
+        }
+        const observed: unknown[] = [];
+        await start("ls", async (_options, { core }) => {
+            observed.push(await core.services.keyValueDB.kvDB.get("scope-probe"));
+            observed.push(await core.services.config.getValue("scope-probe"));
+            return false;
+        });
+        expect(observed).toEqual([undefined, null]);
+    });
+
+    it.each(["sync", "daemon", "mirror", "put"] as const)(
+        "blocks %s after failed reconstruction before command preparation",
+        async (command) => {
+            await start("fetch", async () => false, 1, true);
+            const runner = vi.fn<CliCommandRunner>(async () => false);
+            const ready = vi.spyOn(ControlService.prototype, "onReady");
+
+            await start(command, runner);
+
+            expect(runner).not.toHaveBeenCalled();
+            expect(ready).not.toHaveBeenCalled();
+        }
+    );
+
+    it("retains legacy queued work and blocks a scanner until explicit reconstruction succeeds", async () => {
+        const legacy = join(directory, ".livesync/runtime/keyvalue-db.json");
+        const legacyContents = JSON.stringify({
+            "queued-files": ["notes/unique.md"],
+            fileStatusMap: { "notes/local.md": 1 },
+        });
+        await mkdir(join(directory, ".livesync/runtime"), { recursive: true });
+        await writeFile(legacy, legacyContents);
+        const runner = vi.fn<CliCommandRunner>(async () => false);
+        const scan = vi.spyOn(ServiceFileAccessCLI.prototype, "getFiles");
+
+        await start("mirror", runner);
+        expect(runner).not.toHaveBeenCalled();
+        expect(scan).not.toHaveBeenCalled();
+        expect(await readFile(legacy, "utf-8")).toBe(legacyContents);
+
+        await start("fetch", async () => true, 0, true);
+        const later = vi.fn<CliCommandRunner>(async () => false);
+        await start("sync", later);
+        expect(later).toHaveBeenCalledOnce();
+        expect(await readFile(legacy, "utf-8")).toBe(legacyContents);
+    });
+
+    it("permits normal commands after reconstruction while preserving malformed legacy JSON", async () => {
+        const legacy = join(directory, ".livesync/runtime/keyvalue-db.json");
+        await mkdir(join(directory, ".livesync/runtime"), { recursive: true });
+        await writeFile(legacy, '{"unfinished":');
+        await start("fetch", async () => true, 0, true);
+        const runner = vi.fn<CliCommandRunner>(async () => false);
+        await start("sync", runner);
+        expect(runner).toHaveBeenCalledOnce();
+        expect(await readFile(legacy, "utf-8")).toBe('{"unfinished":');
+    });
+
+    it.each([
+        ["kv", '{"unfinished":', "cannot be parsed"],
+        ["snapshot", "[", "cannot be parsed"],
+        ["kv", '{"queued-files":["unique.md"]}', "owner is unknown"],
+        ["snapshot", '[{"path":"unique.md"}]', "owner is unknown"],
+    ])("diagnoses unowned %s (%s) before readiness and ignores it after recovery", async (kind, contents, reason) => {
+        const legacy =
+            kind === "kv"
+                ? join(directory, ".livesync/runtime/keyvalue-db.json")
+                : join(vaultPath, ".livesync-snapshot.json");
+        await mkdir(join(directory, ".livesync/runtime"), { recursive: true });
+        await writeFile(legacy, contents);
+        const messages = () => standardIo.writeStderr.mock.calls.flat().join("");
+        const reader = vi.fn<CliCommandRunner>(async () => false);
+        await start("ls", reader);
+        expect(reader).toHaveBeenCalledOnce();
+        expect(messages()).toContain(reason);
+        expect(messages()).toContain(legacy);
+        expect(messages()).toContain("inspection may continue");
+        expect(messages().split("[Legacy state]")).toHaveLength(2);
+        expect(standardIo.writeStdout.mock.calls.flat().join("")).not.toContain("[Legacy state]");
+
+        standardIo.writeStderr.mockClear();
+        const writer = vi.fn<CliCommandRunner>(async () => false);
+        const ready = vi.spyOn(ControlService.prototype, "onReady");
+        await start("mirror", writer);
+        expect(writer).not.toHaveBeenCalled();
+        expect(ready).not.toHaveBeenCalled();
+        expect(messages()).toContain("stopped before scanning");
+        expect(messages()).toContain(reason);
+        expect(messages().split("[Legacy state]")).toHaveLength(2);
+        ready.mockRestore();
+
+        await start("fetch", async () => true, 0, true);
+        standardIo.writeStderr.mockClear();
+        const later = vi.fn<CliCommandRunner>(async () => false);
+        await start("sync", later);
+        expect(later).toHaveBeenCalledOnce();
+        expect(messages()).not.toContain("[Legacy state]");
+        expect(await readFile(legacy, "utf-8")).toBe(contents);
+    });
+
+    it("blocks read commands which request settings writes while reconstruction is interrupted", async () => {
+        await start("fetch", async () => false, 1, true);
+        const runner = vi.fn<CliCommandRunner>(async () => false);
+        const load = vi.spyOn(ControlService.prototype, "onLoad");
+
+        await start("ls", runner, 1, false, true);
+
+        expect(runner).not.toHaveBeenCalled();
+        expect(load).not.toHaveBeenCalled();
+    });
+
+    it("invalidates every Vault scope for the reset database and retains other database state", async () => {
+        const originalVault = vaultPath;
+        const otherVault = join(directory, "other-vault");
+        await mkdir(otherVault);
+        const select = async (suffix: string, selectedVault: string) => {
+            vaultPath = selectedVault;
+            const settings = JSON.parse(await readFile(settingsPath, "utf-8"));
+            settings.additionalSuffixOfDatabaseName = suffix;
+            await writeFile(settingsPath, JSON.stringify(settings));
+        };
+        for (const [suffix, selectedVault] of [
+            ["", originalVault],
+            ["", otherVault],
+            ["other", originalVault],
+        ]) {
+            await select(suffix, selectedVault);
+            await start("ls", async (_options, { core }) => {
+                await core.services.keyValueDB.kvDB.set("scope-probe", "stored");
+                return false;
+            });
+        }
+        await select("", originalVault);
+        let reset: boolean | undefined;
+        await start("ls", async (_options, { core }) => {
+            reset = await core.services.database.resetDatabase();
+            return false;
+        });
+        expect(reset).toBe(true);
+
+        const observed: unknown[] = [];
+        for (const [suffix, selectedVault] of [
+            ["", originalVault],
+            ["", otherVault],
+            ["other", originalVault],
+        ]) {
+            await select(suffix, selectedVault);
+            await start("ls", async (_options, { core }) => {
+                observed.push(await core.services.keyValueDB.kvDB.get("scope-probe"));
+                return false;
+            });
+        }
+        expect(observed).toEqual([undefined, undefined, "stored"]);
     });
 
     it("does not import vault files for standalone database commands", async () => {

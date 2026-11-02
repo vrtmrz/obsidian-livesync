@@ -1,17 +1,10 @@
 import { defaultServerConditions, defaultServerMainFields, defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { fileURLToPath, fs, isBuiltin, path } from "@vrtmrz/livesync-commonlib/node";
+import { fileURLToPath, isBuiltin, path } from "@vrtmrz/livesync-commonlib/node";
+import { readVersion } from "../readVersion";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolve = (...args: string[]) => path.resolve(...args).replace(/\\/g, "/");
 const repoRoot = path.resolve(__dirname, "../../..");
-
-function readVersion(filePath: string): string | undefined {
-    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    if (typeof parsed !== "object" || parsed === null || !("version" in parsed)) {
-        return undefined;
-    }
-    return typeof parsed.version === "string" ? parsed.version : undefined;
-}
 
 const packageVersion = readVersion(path.resolve(repoRoot, "package.json"));
 const manifestVersion = readVersion(path.resolve(repoRoot, "manifest.json"));
@@ -49,26 +42,6 @@ if (typeof globalThis.FileReader === "undefined") {
 }
 `;
 
-function injectBanner(): import("vite").Plugin {
-    return {
-        name: "inject-banner",
-        generateBundle(_options, bundle) {
-            for (const chunk of Object.values(bundle)) {
-                if (chunk.type === "chunk" && chunk.isEntry) {
-                    // Insert after the shebang line if present, otherwise at the top.
-                    if (chunk.code.startsWith("#!")) {
-                        const newline = chunk.code.indexOf("\n");
-                        chunk.code =
-                            chunk.code.slice(0, newline + 1) + fileReaderPolyfillBanner + chunk.code.slice(newline + 1);
-                    } else {
-                        chunk.code = fileReaderPolyfillBanner + chunk.code;
-                    }
-                }
-            }
-        },
-    };
-}
-
 const buildInputs: Record<string, string> = {
     index: resolve(__dirname, "entrypoint.ts"),
 };
@@ -77,7 +50,7 @@ if (process.env.LIVESYNC_CLI_TEST_SUPPORT === "1") {
 }
 
 export default defineConfig({
-    plugins: [svelte(), injectBanner()],
+    plugins: [svelte()],
     resolve: {
         // This bundle runs in Node. Vite's client defaults include the `browser`
         // export condition, which would select Commonlib's inline Web Worker.
@@ -98,7 +71,16 @@ export default defineConfig({
         outDir: "dist",
         emptyOutDir: true,
         minify: false,
+        sourcemap: process.env.LIVESYNC_CLI_COVERAGE === "1",
         rollupOptions: {
+            output: {
+                banner: (chunk) => (chunk.isEntry ? fileReaderPolyfillBanner : ""),
+                // c8 filters mapped ranges before resolving relative source paths.
+                sourcemapPathTransform:
+                    process.env.LIVESYNC_CLI_COVERAGE === "1"
+                        ? (source: string, mapPath: string) => path.resolve(path.dirname(mapPath), source)
+                        : undefined,
+            },
             input: buildInputs,
             external: (id) => {
                 if (isBuiltin(id)) return true;

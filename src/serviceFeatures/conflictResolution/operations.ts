@@ -27,7 +27,7 @@ import type { LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
 import { EVENT_CONFLICT_CANCELLED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
-import { isLockAcquired, serialized } from "octagonal-wheels/concurrency/lock";
+import { isLockAcquired, withLock } from "octagonal-wheels/concurrency/lock";
 import diff_match_patch from "diff-match-patch";
 import { stripAllPrefixes, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 
@@ -54,6 +54,7 @@ export interface ConflictResolutionOperationsDependencies {
 }
 
 export interface ConflictResolutionOperations {
+    readonly cancelActiveResolution: (filename: FilePathWithPrefix) => void;
     readonly resolveByDeletingRevision: (
         path: FilePathWithPrefix,
         deleteRevision: string,
@@ -71,6 +72,13 @@ export function createConflictResolutionOperations(
 ): ConflictResolutionOperations {
     const latestResolveRequestByFilename = new Map<FilePathWithPrefix, number>();
     let nextResolveRequestId = 0;
+
+    const cancelActiveResolution = (filename: FilePathWithPrefix): void => {
+        latestResolveRequestByFilename.delete(filename);
+        if (isLockAcquired(`conflict-resolve:${filename}`)) {
+            dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+        }
+    };
 
     const resolveByDeletingRevision = async (
         path: FilePathWithPrefix,
@@ -184,7 +192,7 @@ export function createConflictResolutionOperations(
             // per-file lock. Dialogues for other paths remain untouched.
             dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
         }
-        return await serialized(serialisationKey, async () => {
+        return await withLock(serialisationKey, async () => {
             if (latestResolveRequestByFilename.get(filename) !== requestId) {
                 return;
             }
@@ -299,6 +307,7 @@ export function createConflictResolutionOperations(
     };
 
     return {
+        cancelActiveResolution,
         resolveByDeletingRevision,
         checkConflictAndPerformAutoMerge,
         resolve,

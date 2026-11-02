@@ -49,17 +49,17 @@ import {
     decodeBinary,
     readString,
 } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
-import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
+import { withLock, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { cancelTask, EVEN, isCustomisationSyncMetadata, isPluginMetadata, scheduleTask } from "@/common/utils.ts";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor.ts";
 import { JsonResolveModal } from "@/features/HiddenFileCommon/JsonResolveModal.ts";
-import { QueueProcessor } from "octagonal-wheels/concurrency/processor";
 import { pluginScanningCount } from "@vrtmrz/livesync-commonlib/compat/mock_and_interop/stores";
 import { base64ToArrayBuffer, base64ToString } from "octagonal-wheels/binary/base64";
 import { ConflictResolveModal } from "@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts";
-import { Semaphore } from "octagonal-wheels/concurrency/semaphore";
+import { forEachInScope } from "octagonal-wheels/concurrency/scoped.iteration";
+import { withScope } from "octagonal-wheels/resource/scope";
 import { EVENT_REQUEST_OPEN_PLUGIN_SYNC_DIALOG, eventHub } from "@/common/events.ts";
 import { PluginDialogModal } from "./PluginDialogModal.ts";
 import { $msg } from "@/common/translation";
@@ -68,10 +68,12 @@ import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
 import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
+import { createModificationHandler } from "octagonal-wheels/modification";
 
 import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import { PendingConfigSaves } from "./PendingConfigSaves";
+import { ConfigScanQueue } from "./ConfigScanQueue";
 
 const d = "\u200b";
 const d2 = "\n";
@@ -285,6 +287,10 @@ export type PluginDataExDisplay = {
     mtime: number;
 };
 type LoadedEntryPluginDataExFile = LoadedEntry & PluginDataExFile;
+type ConfigFileApplicationTarget = {
+    readonly path: FilePath;
+    readonly stat: { readonly mtime: number; readonly ctime: number };
+};
 
 function categoryToFolder(category: string, configDir: string = ""): string {
     switch (category) {
@@ -388,13 +394,6 @@ export type PluginDataEx = {
 };
 
 export class ConfigSync extends LiveSyncCommands {
-    constructor(core: LiveSyncCore) {
-        super(core);
-        pluginScanningCount.onChanged((e) => {
-            const total = e.value;
-            pluginIsEnumerating.set(total != 0);
-        });
-    }
     get configDir() {
         return this.core.services.API.getSystemConfigDir();
     }
@@ -417,6 +416,7 @@ export class ConfigSync extends LiveSyncCommands {
 
     pluginList: IPluginDataExDisplay[] = [];
     private pluginListGeneration = 0;
+    private unloaded = false;
     showPluginSyncModal() {
         if (!this.isThisModuleEnabled()) {
             return;
@@ -435,11 +435,18 @@ export class ConfigSync extends LiveSyncCommands {
             this.pluginDialog = undefined;
         }
     }
-    onunload() {
+    onunload(): Promise<void> {
+        this.unloaded = true;
+        this.resetPluginList();
+        const stopped = this.pluginScanProcessor.stop();
+        pluginScanningCount.value = 0;
+        pluginIsEnumerating.set(false);
+        cancelTask("updatePluginListV2");
         cancelTask(UPDATED_CONFIGURATION_NOTICE_KEY);
         this.hidePluginSyncModal();
         this.periodicPluginSweepProcessor?.disable();
         this.services.context.notices.hide(UPDATED_CONFIGURATION_NOTICE_KEY);
+        return stopped;
     }
     addRibbonIcon = this.services.API.addRibbonIcon.bind(this.services.API);
     onload() {
@@ -536,11 +543,21 @@ export class ConfigSync extends LiveSyncCommands {
         q?.toggleClass("sls-hidden", !this.isThisModuleEnabled());
         return Promise.resolve(true);
     }
-    async reloadPluginList(showMessage: boolean) {
+    private isCurrentPluginList(generation: number): boolean {
+        return !this.unloaded && generation === this.pluginListGeneration && this.isThisModuleEnabled();
+    }
+
+    private resetPluginList(): void {
         this.pluginListGeneration++;
+        this.pluginScanProcessor.clearPending();
         this.pluginList = [];
         this.loadedManifest_mTime.clear();
         pluginList.set(this.pluginList);
+    }
+
+    async reloadPluginList(showMessage: boolean) {
+        if (this.unloaded) return;
+        this.resetPluginList();
         await this.updatePluginList(showMessage);
     }
     async loadPluginData(path: FilePathWithPrefix): Promise<PluginDataExDisplay | false> {
@@ -575,77 +592,37 @@ export class ConfigSync extends LiveSyncCommands {
         return false;
     }
 
-    pluginScanProcessor = new QueueProcessor(
-        async (v: AnyEntry[]) => {
-            const plugin = v[0];
-            if (this.useV2) {
-                await this.migrateV1ToV2(false, plugin);
-                return [];
-            }
-            const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
-            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
+    pluginScanProcessor = new ConfigScanQueue<{ entry: AnyEntry; generation: number }>({
+        process: async ({ entry: plugin, generation }) => {
+            if (!this.isCurrentPluginList(generation)) return;
             try {
+                if (this.useV2) {
+                    // Once started, migration owns its writes through completion.
+                    await this.migrateV1ToV2(false, plugin);
+                    return;
+                }
+                const path = plugin.path || this.getPath(plugin);
+                const oldEntry = this.pluginList.find((entry) => entry.documentPath == path);
+                if (oldEntry && oldEntry.mtime == plugin.mtime) return;
                 const pluginData = await this.loadPluginData(path);
+                if (!this.isCurrentPluginList(generation)) return;
                 if (pluginData) {
-                    let newList = [...this.pluginList];
-                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
+                    const newList = this.pluginList.filter((entry) => entry.documentPath != pluginData.documentPath);
                     newList.push(pluginData);
                     this.pluginList = newList;
                     pluginList.set(newList);
                 }
-                // Failed to load
-                return [];
             } catch (ex) {
-                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
+                this._log(`Something happened at enumerating customization :${plugin.path}`, LOG_LEVEL_NOTICE);
                 this._log(ex, LOG_LEVEL_VERBOSE);
             }
-            return [];
         },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 100,
-            yieldThreshold: 10,
-            maintainDelay: false,
-            totalRemainingReactiveSource: pluginScanningCount,
-        }
-    ).startPipeline();
-
-    pluginScanProcessorV2 = new QueueProcessor(
-        async (v: AnyEntry[]) => {
-            const plugin = v[0];
-            const path = plugin.path || this.getPath(plugin);
-            const oldEntry = this.pluginList.find((e) => e.documentPath == path);
-            if (oldEntry && oldEntry.mtime == plugin.mtime) return [];
-            try {
-                const pluginData = await this.loadPluginData(path);
-                if (pluginData) {
-                    let newList = [...this.pluginList];
-                    newList = newList.filter((x) => x.documentPath != pluginData.documentPath);
-                    newList.push(pluginData);
-                    this.pluginList = newList;
-                    pluginList.set(newList);
-                }
-                // Failed to load
-                return [];
-            } catch (ex) {
-                this._log(`Something happened at enumerating customization :${path}`, LOG_LEVEL_NOTICE);
-                this._log(ex, LOG_LEVEL_VERBOSE);
-            }
-            return [];
+        onProgress: (remaining) => {
+            if (this.unloaded) return;
+            pluginScanningCount.value = remaining;
+            pluginIsEnumerating.set(remaining !== 0);
         },
-        {
-            suspended: false,
-            batchSize: 1,
-            concurrentLimit: 10,
-            delay: 100,
-            yieldThreshold: 10,
-            maintainDelay: false,
-            totalRemainingReactiveSource: pluginScanningCount,
-        }
-    ).startPipeline();
+    });
 
     filenameToUnifiedKey(path: string, termOverRide?: string) {
         const term = termOverRide || this.services.setting.getDeviceAndVaultName();
@@ -768,14 +745,14 @@ export class ConfigSync extends LiveSyncCommands {
 
     async updatePluginListV2(showMessage: boolean, unifiedFilenameWithKey: FilePathWithPrefix): Promise<void> {
         const generation = this.pluginListGeneration;
-        const isCurrent = () => generation === this.pluginListGeneration && this.isThisModuleEnabled();
+        const isCurrent = () => this.isCurrentPluginList(generation);
         try {
             this.updatingV2Count++;
             pluginV2Progress.set(this.updatingV2Count);
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
 
-            await serialized(`config:catalogue:${pathV1}`, async () => {
+            await withLock(`config:catalogue:${pathV1}`, async () => {
                 if (!isCurrent()) return;
                 const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
                 let entry: PluginDataExDisplayV2 | undefined = undefined;
@@ -883,11 +860,9 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     async updatePluginList(showMessage: boolean, updatedDocumentPath?: FilePathWithPrefix): Promise<void> {
+        if (this.unloaded) return;
         if (!this.isThisModuleEnabled()) {
-            this.pluginListGeneration++;
-            this.pluginScanProcessor.clearQueue();
-            this.pluginList = [];
-            pluginList.set(this.pluginList);
+            this.resetPluginList();
             return;
         }
         const generation = this.pluginListGeneration;
@@ -903,7 +878,7 @@ export class ConfigSync extends LiveSyncCommands {
                   })
                 : this.localDatabase.findEntries(ICXHeader + "", `${ICXHeader}\u{10ffff}`, { include_docs: true });
             for await (const v of plugins) {
-                if (generation !== this.pluginListGeneration || !this.isThisModuleEnabled()) return;
+                if (!this.isCurrentPluginList(generation)) return;
                 if (v.deleted || v._deleted) continue;
                 if (v.path.indexOf("%") !== -1) {
                     fireAndForget(() => this.updatePluginListV2(showMessage, v.path));
@@ -912,7 +887,7 @@ export class ConfigSync extends LiveSyncCommands {
 
                 const path = v.path || this.getPath(v);
                 if (updatedDocumentPath && updatedDocumentPath != path) continue;
-                this.pluginScanProcessor.enqueue(v);
+                this.pluginScanProcessor.enqueue({ entry: v, generation });
             }
         } finally {
             pluginIsEnumerating.set(false);
@@ -950,7 +925,7 @@ export class ConfigSync extends LiveSyncCommands {
             path = path.split("%")[1] as FilePath;
         }
         if (fileA.path.endsWith(".json")) {
-            return serialized(
+            return withLock(
                 "config:merge-data",
                 () =>
                     new Promise<boolean>((res) => {
@@ -1027,44 +1002,63 @@ export class ConfigSync extends LiveSyncCommands {
                 await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
             } else {
                 const files = data.files;
+                const applyBinaryContent = createModificationHandler<
+                    ConfigFileApplicationTarget,
+                    LoadedEntryPluginDataExFile,
+                    ArrayBuffer,
+                    ArrayBuffer
+                >({
+                    read: (target) => this.core.storageAccess.readHiddenFileBinary(target.path),
+                    onReadError: (ex, _path, file) => {
+                        this._log(`Could not read the file ${file.filename}`, LOG_LEVEL_VERBOSE);
+                        this._log(ex, LOG_LEVEL_VERBOSE);
+                        return new ArrayBuffer(0);
+                    },
+                    decode: (file) => base64ToArrayBuffer(file.data),
+                    isSame: (oldData, content) => isDocContentSame(oldData, content),
+                    write: (target, content) =>
+                        this.core.storageAccess.writeHiddenFileAuto(target.path, content, target.stat),
+                });
+                const applyTextContent = createModificationHandler<
+                    ConfigFileApplicationTarget,
+                    LoadedEntryPluginDataExFile,
+                    string,
+                    string
+                >({
+                    read: (target) => this.core.storageAccess.readHiddenFileText(target.path),
+                    onReadError: (ex, _path, file) => {
+                        this._log(`Could not read the file ${file.filename}`, LOG_LEVEL_VERBOSE);
+                        this._log(ex, LOG_LEVEL_VERBOSE);
+                        return "";
+                    },
+                    decode: (file) => getDocData(file.data),
+                    isSame: (oldData, content) => isDocContentSame(oldData, content),
+                    write: (target, content) =>
+                        this.core.storageAccess.writeHiddenFileAuto(target.path, content, target.stat),
+                });
                 for (const f of files) {
                     // If files have applied, modified time will be updated to the current time.
-                    const stat = { mtime: f.mtime, ctime: f.ctime };
                     const path = `${baseDir}/${f.filename}` as FilePath;
+                    const target: ConfigFileApplicationTarget = {
+                        path,
+                        stat: { mtime: f.mtime, ctime: f.ctime },
+                    };
                     this._log(`Applying ${f.filename} of ${data.displayName || data.name}..`);
                     // const contentEach = createBlob(f.data);
                     await this.core.storageAccess.ensureDir(path);
 
                     if (f.datatype == "newnote") {
-                        let oldData;
-                        try {
-                            oldData = await this.core.storageAccess.readHiddenFileBinary(path);
-                        } catch (ex) {
-                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                            oldData = new ArrayBuffer(0);
-                        }
-                        const content = base64ToArrayBuffer(f.data);
-                        if (await isDocContentSame(oldData, content)) {
+                        const result = await applyBinaryContent(target, f);
+                        if (result == "unchanged") {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
                     } else {
-                        let oldData;
-                        try {
-                            oldData = await this.core.storageAccess.readHiddenFileText(path);
-                        } catch (ex) {
-                            this._log(`Could not read the file ${f.filename}`, LOG_LEVEL_VERBOSE);
-                            this._log(ex, LOG_LEVEL_VERBOSE);
-                            oldData = "";
-                        }
-                        const content = getDocData(f.data);
-                        if (await isDocContentSame(oldData, content)) {
+                        const result = await applyTextContent(target, f);
+                        if (result == "unchanged") {
                             this._log(`The file ${f.filename} is already up-to-date`, LOG_LEVEL_VERBOSE);
                             continue;
                         }
-                        await this.core.storageAccess.writeHiddenFileAuto(path, content, stat);
                     }
                     this._log(`Applied ${f.filename} of ${data.displayName || data.name}..`);
                     await this.storeCustomisationFileV2(path, this.services.setting.getDeviceAndVaultName());
@@ -1215,6 +1209,7 @@ export class ConfigSync extends LiveSyncCommands {
         return true;
     }
     _everyRealizeSettingSyncMode(): Promise<boolean> {
+        if (!this.isThisModuleEnabled()) this.resetPluginList();
         // applySettings calls onResuming after this handler when synchronisation is active.
         // That handler scans and restarts the sweep; doing so here would scan twice.
         this.periodicPluginSweepProcessor?.disable();
@@ -1281,7 +1276,7 @@ export class ConfigSync extends LiveSyncCommands {
         requireCompletion: boolean
     ) {
         const vf = this.filenameWithUnifiedKey(path, term);
-        return await serialized(`plugin-${vf}`, async () => {
+        return await withLock(`plugin-${vf}`, async () => {
             const prefixedFileName = vf;
 
             const id = await this.path2id(prefixedFileName);
@@ -1384,7 +1379,7 @@ export class ConfigSync extends LiveSyncCommands {
         const vf = this.filenameToUnifiedKey(path, term);
         // console.warn(`Storing ${path} to ${bareVF} :--> ${keyedVF}`);
 
-        return await serialized(`plugin-${vf}`, async () => {
+        return await withLock(`plugin-${vf}`, async () => {
             const category = this.getFileCategory(path);
             let mtime = 0;
             let fileTargets = [] as FilePath[];
@@ -1613,49 +1608,35 @@ export class ConfigSync extends LiveSyncCommands {
                 const entries = this.localDatabase.findEntries(prefix + "", `${prefix}\u{10ffff}`, {
                     include_docs: true,
                 });
-                const tasks = [] as (() => Promise<void>)[];
-                const concurrency = 10;
-                const semaphore = Semaphore(concurrency);
+                const databaseEntries: { _id: string; path: FilePathWithPrefix }[] = [];
                 for await (const item of entries) {
-                    if (item.path.indexOf("%") !== -1) {
-                        continue;
-                    }
-                    tasks.push(async () => {
-                        const releaser = await semaphore.acquire();
+                    if (item.path.indexOf("%") === -1) databaseEntries.push(item);
+                }
+                await withScope({ term, localFileMap }, async (scope) => {
+                    await forEachInScope(scope, databaseEntries, { concurrency: 10 }, async (item, ctx) => {
                         try {
                             const unifiedFilenameWithKey = `${item._id}` as FilePathWithPrefix;
-                            const localPath = localFileMap.get(unifiedFilenameWithKey);
+                            const localPath = ctx.value.localFileMap.get(unifiedFilenameWithKey);
                             if (localPath) {
-                                await this.storeCustomisationFileV2(localPath, term);
-                                localFileMap.delete(unifiedFilenameWithKey);
+                                await this.storeCustomisationFileV2(localPath, ctx.value.term);
+                                ctx.value.localFileMap.delete(unifiedFilenameWithKey);
                             } else {
                                 await this.deleteConfigOnDatabase(unifiedFilenameWithKey);
                             }
                         } catch (ex) {
                             this._log(`scanAllConfigFiles - Error: ${item._id}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
-                        } finally {
-                            releaser();
                         }
                     });
-                }
-                await Promise.all(tasks.map((e) => e()));
-                // Extra files
-                const taskExtra = [] as (() => Promise<void>)[];
-                for (const [, filePath] of localFileMap) {
-                    taskExtra.push(async () => {
-                        const releaser = await semaphore.acquire();
+                    await forEachInScope(scope, localFileMap.values(), { concurrency: 10 }, async (filePath, ctx) => {
                         try {
-                            await this.storeCustomisationFileV2(filePath, term);
+                            await this.storeCustomisationFileV2(filePath, ctx.value.term);
                         } catch (ex) {
                             this._log(`scanAllConfigFiles - Error: ${filePath}`, LOG_LEVEL_VERBOSE);
                             this._log(ex, LOG_LEVEL_VERBOSE);
-                        } finally {
-                            releaser();
                         }
                     });
-                }
-                await Promise.all(taskExtra.map((e) => e()));
+                });
                 fireAndForget(() => this.updatePluginList(false));
             } else {
                 const files = filesAll
@@ -1702,7 +1683,7 @@ export class ConfigSync extends LiveSyncCommands {
     ) {
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
-        return await serialized("file-x-" + prefixedFileName, async () => {
+        return await withLock("file-x-" + prefixedFileName, async () => {
             try {
                 const old = (await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false)) as
                     | InternalFileEntry
@@ -1765,6 +1746,7 @@ export class ConfigSync extends LiveSyncCommands {
             this.core.settings.usePluginSync = false;
             this.core.settings.autoSweepPlugins = false;
         }
+        this.resetPluginList();
         return Promise.resolve(true);
     }
 

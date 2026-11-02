@@ -12,27 +12,135 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### Fixes
+### Fixed
 
-- A new Join or scheduled Fetch asks for data-handling choices again, even after a previous Fetch changed the local database suffix.
-    - Fast Setup retains interrupted choices in an editable Markdown code block in the fetch flag. On restart, we confirm the current remote and saved choices, choose again, or cancel; a remaining flag never reapplies choices silently.
-    - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
-    - After updating during an interrupted Fetch, confirm the choices once more. Older separately stored choices are ignored; downloaded data and the existing checkpoint are not removed by this change.
-
-### Synchronisation
-
-- Added an optional, device-local editing guard for substantial CouchDB LiveSync catch-up transfers. When enough incoming notes are detected, it covers the workspace until the transfer and local application queues have settled. The overlay can always be bypassed, and ordinary small transfers remain uninterrupted.
-
-- We can see CouchDB change-feed comparison progress separately for push and pull.
-    - The `⏩↑` and `⏩↓` counts show entries compared in each direction; the upload and download totals remain separate.
-    - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. See the [status display guide](docs/tips/status-display.md).
-
-### Translations
+#### Translations
 
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
     - Hebrew interface messages also display their referenced labels correctly.
 
-- Simplified Chinese translations have been expanded across settings, setup, recovery, and configuration messages. (#1258) Thank you to @kannazuki-c for the contribution!
+## 1.0.44
+
+1st November, 2026
+
+Recently, I have been concentrating on maintenance and improvements to individual features. I began to wonder whether I had been focusing a little too closely on the details and could give more attention to the overall picture. That led me to a somewhat broader round of changes, including reworking parts of the architecture. Along the way, I was able to bring several implementations of the same concepts together, introduce shared abstractions, and tidy up the codebase a little.
+
+Please let me know if any problems arise from these changes.
+
+### Fixed
+
+#### Synchronisation
+
+- Files containing a raw unit separator (`U+001F`) are no longer truncated when received through S3-compatible Object Storage. (#1303)
+    - Update every participating client to prevent further truncation. Updating alone does not repair copies already damaged.
+    - Before recovery, preserve verified intact copies, unique unsynchronised edits, and any required history, then follow the [recovery procedure](docs/recovery.md#recover-files-truncated-during-object-storage-reception).
+    - Rebuild and Fetch leave Hidden File Sync and Customisation Sync disabled. Initialise them deliberately after ordinary file recovery is complete.
+
+- We can continue CouchDB synchronisation after rebuilding an encrypted remote when **Use Internal API** is enabled. (#1234)
+    - Cached responses encrypted with the previous Security Seed no longer interfere with subsequent reads.
+
+#### Conflict resolution
+
+- A queued conflict check no longer gets stuck waiting for a response to an outdated comparison of the same file.
+
+#### Hidden File Sync and Customisation Sync
+
+- Newer local hidden files are no longer omitted when initialising Hidden File Sync with `Merge`.
+- Refreshing the Customisation Sync catalogue no longer brings back outdated items from an earlier scan.
+
+### Improved
+
+#### Hidden File Sync
+
+- We can review the latest hidden-file revisions when changes arrive during a manual JSON comparison.
+    - The earlier comparison closes, and the latest revisions are checked again. If another device has resolved the conflict, the comparison closes without asking for another selection.
+
+### Sunset
+
+#### Recovery
+
+- Recovery from old cleanup locks is now unified around the standard recovery dialogue, including on devices using the legacy IndexedDB adapter.
+    - Use Fetch to reconstruct the local database from the remote, unlock the device when both databases are already aligned, or dismiss the dialogue.
+    - These choices replace the legacy in-place `Cleanup` operation. Garbage Collection V3 remains available.
+    - Before Fetch, preserve unsynchronised work and any required local history, as it replaces the local database.
+
+### CLI
+
+#### Fixed
+
+- We can continue using the reconstructed database after CLI `fetch` or `rebuild`, avoiding the empty-database restart and file deletion reported in #1304.
+    - Subsequent commands retain the selected database even without `--write-settings`. Interrupted reconstruction blocks ordinary synchronisation until recovery.
+    - Older runtime state with no recorded owner requires explicit reconstruction from a verified source. Back up unique edits before choosing Fetch or Rebuild.
+
+- The CLI mirror starts correctly on Windows when the Vault path is omitted and the database directory is also used as the Vault.
+
+### Miscellaneous
+
+- Installation and update downloads are smaller.
+- Database initialisation handles encrypted change notifications more reliably. (Commonlib #191)
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @AdrianNicu, for improving decryption handling during database initialisation (Commonlib #191).
+
+## 1.0.43
+
+30th October, 2026
+
+### Synchronisation
+
+#### New Feature
+
+- We can avoid accidentally editing out-of-date notes while a large CouchDB catch-up is in progress. (#1241, #1275)
+    - Turn on **Enable SyncGuard** under **General Settings** → **Appearance** to cover the workspace until incoming changes have been received and applied to the Vault.
+    - Disabled by default. During CouchDB LiveSync mode start-up or resume, protection begins after a configurable number of distinct incoming notes is detected (default: 20).
+    - **Continue without waiting** releases the workspace, including after a failed or interrupted transfer. Synchronisation can continue, and some notes may still be out of date.
+    - The settings apply only to this device.
+    - Small catch-up transfers and ordinary live changes remain uninterrupted. Some changes can arrive before the guard activates; it does not prevent other plug-ins or external tools from editing files.
+
+#### Improved
+
+- We can tell that CouchDB synchronisation is progressing while it compares existing revisions, even before any files are uploaded. (#1293, #1294)
+    - Separate `⏩↑` and `⏩↓` counts show the change-feed entries compared for push and pull. These are comparison counts; the upload and download totals remain separate.
+    - Existing CSS snippets which target `livesync-stat-ff` to hide comparison progress need to target both `livesync-stat-ff-push` and `livesync-stat-ff-pull`. The status display guide includes updated examples.
+
+### Setup and recovery
+
+#### Fixed
+
+- We can choose how a new Join or scheduled Fetch handles our existing files, without silently reusing choices from an earlier Fetch. (#1244, #1296)
+    - Each new operation asks again, including after a previous Fetch changed the local database suffix. Fast Setup retains interrupted choices in an editable code block in the fetch flag.
+    - On restart, we confirm the current remote and saved choices, choose again, or cancel; a remaining flag never reapplies choices silently.
+    - If the saved selection cannot be read, we can choose new options for that attempt without repairing or rewriting the flag. Completing or cancelling the operation removes the whole flag.
+    - After updating during an interrupted Fetch, confirm the choices once more. Older separately stored choices are ignored; downloaded data and the existing checkpoint are not removed by this change.
+
+### Dialogues
+
+#### Fixed
+
+- Confirmation and setup actions are easier to follow, and keyboard focus remains visible. (#1297)
+    - Buttons align with the content above them, with room for confirmation buttons' focus outlines.
+- Mobile dialogues retain Obsidian's standard spacing and leave more usable space above the software keyboard. (#1297)
+
+### Translations
+
+- More settings, setup, recovery, and configuration messages are available in Simplified Chinese. (#1258)
+    - Expanded the translation catalogue to include previously untranslated messages and shared-library labels.
+
+### Miscellaneous
+
+- Docker setup now handles shell-sensitive characters in health-check credentials correctly, avoiding false authentication failures which could prevent CouchDB initialisation. (#1295)
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @Akilaydin, for adding the optional SyncGuard workspace protection (#1275).
+- @ARCJ137442, for adding separate push and pull comparison progress displays (#1294).
+- @Jovlang, for correcting Docker health-check credential quoting and authenticated readiness checks (#1295).
+- @kannazuki-c, for expanding the Simplified Chinese translations (#1258).
 
 ## 1.0.42
 
@@ -172,87 +280,3 @@ I have been finding troubleshooting difficult, so I decided to go back to basics
     - The five reporting tools are grouped separately from checks, recovery, and reset operations. Name and format choices remain visible, and the report preview resizes around the controls.
 - We can request and provide targeted troubleshooting evidence through the issue-reporting guide.
     - Direct links cover Integrity, Usage, pseudonym lookup, and follow-up reports, with request examples for issue discussions.
-
-## 1.0.38
-
-17th October, 2026
-
-### Synchronisation
-
-#### Added
-
-- We can opt into NFC path identity for CouchDB synchronisation between the CLI and Obsidian. This prevents decomposed or mixed Unicode file names from becoming inaccessible through a receiving device's normalised path. (#1259)
-    - Existing Vaults retain their current identity rules. Migration requires updated clients, a Rebuild from a complete authoritative Vault, and a Fetch on the other devices.
-    - Reconstruction stops when the supported host file listing or local Metadata exposes ambiguous files or parent folders under NFC and the configured case handling. The CLI retains existing physical file names. P2P and Object Storage do not support the new mode.
-
-#### Fixed
-
-- We can synchronise file deletions and renames when **Do not keep metadata of deleted files.** is enabled.
-    - A file restored during the final deletion check remains in the receiving Vault.
-- We can resolve configuration mismatches when **Encrypt internal file Properties** is enabled but its encryption prerequisites are inactive. (#1180)
-    - Compatible chunk settings can be aligned automatically, or reviewed through `Sync now`. Applying those settings preserves our inactive encryption preference.
-- We can receive synchronised updates to unchanged files even after the local database has discarded their recorded revision, avoiding unnecessary conflicts. (#1207)
-    - Saved content evidence survives revision-history pruning. Genuine local edits remain protected, and older records are upgraded only after their content is verified.
-
-### Maintenance
-
-- The Review Harness can compare SHA-256 and xxHash64 file-content hashing on the current device, with fixed inputs from 4 KiB to 50 MiB and separate initialisation and warm-up measurements.
-
-## 1.0.37
-
-16th October, 2026
-
-### Security
-
-- Fixed an issue where synchronised changes could reach files outside the intended synchronisation scope under certain conditions. Updating is recommended.
-
-### CLI
-
-#### Fixed
-
-- We can edit files through the CLI without resetting their creation time where the filesystem supplies it. (#1243)
-    - Filesystems without birth-time support retain the existing change-time fallback. File replacement and restoration of a synchronised creation time remain subject to filesystem limitations.
-- `p2p-host` restores configured P2P automatic synchronisation, following, and change announcements after initialisation. (#1247)
-    - Headless peer acceptance follows the configured policy. Single-operation commands retain their automatic synchronisation suspension.
-- We can select CLI-only Docker patches by their full release tag, such as `1.0.36-patch1-cli`, while keeping the Obsidian plug-in version.
-    - Patch and RC images receive version and SHA-qualified tags. The `latest` and major-minor tags remain reserved for ordinary stable releases.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @kimjansheden, for reporting the issue and contributing the fix and regression tests.
-
-## 1.0.36
-
-13th October, 2026
-
-### Configuration Encryption
-
-#### Fixed
-
-- We can change the protection of sensitive configuration with Apply and keep our saved settings readable after a restart. (#1238, #1245)
-    - The selected protection mode and passphrase are saved together. If Apply fails, our edits remain available to retry.
-- We can enter a missing or unusable custom configuration passphrase at start-up to unlock our protected settings. (#1239, #1245)
-    - Cancelling the recovery dialogue preserves the encrypted configuration and stops that start-up attempt. Headless command-line start-up cannot complete the dialogue when recovery input is required.
-
-### Localisation
-
-#### Fixed
-
-- We can read more settings, maintenance controls, and Fast Setup instructions in Spanish. (#1213, #1214)
-    - Remote database lock warnings now use the existing translations consistently.
-    - Fast Setup follows the selected display language while preserving saved choices across restarts and language changes.
-- We can read more settings, setup instructions, and messages in Simplified Chinese. (#1242)
-
-### Maintenance
-
-- Development tooling now uses compatible dependency versions with available security fixes. (#1245)
-    - Repository-owned build and import alias helpers remove the vulnerable `braces` dependency.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @zeedif (#1213, #1214)
-- @lingting0 (#1242)

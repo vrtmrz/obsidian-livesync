@@ -1,4 +1,10 @@
-import { computed, reactive, reactiveSource, type ReactiveValue } from "octagonal-wheels/dataobject/reactive";
+import {
+    computed,
+    reactive,
+    reactiveSource,
+    type ReactiveSource,
+    type ReactiveValue,
+} from "octagonal-wheels/dataobject/reactive";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -7,6 +13,7 @@ import {
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
+import { createOwnedResource, type OwnedResource } from "octagonal-wheels/resource";
 import { fireAndForget, isDirty, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     chunkFetchCounts,
@@ -27,7 +34,7 @@ import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { addIcon, debounce, normalizePath, Notice, stringifyYaml, type WorkspaceLeaf } from "@/deps.ts";
 import { LOG_LEVEL_NOTICE, setGlobalLogFunction } from "octagonal-wheels/common/logger";
 import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@/common/translation";
 import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
 import { REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS, getTrackedRequestCount } from "./RemoteActivityStatus.ts";
@@ -46,7 +53,11 @@ import {
     isValidFilenameInDarwin,
     isValidFilenameInWidows,
 } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import { MARK_LOG_NETWORK_ERROR, MARK_LOG_SEPARATOR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import {
+    MARK_LOG_NETWORK_ERROR,
+    MARK_LOG_SEPARATOR,
+    type LogFunction,
+} from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { generateReport } from "@/common/reportTool.ts";
@@ -57,20 +68,22 @@ import {
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 
-// DI the log again.
-const recentLogEntries = reactiveSource<LogEntry[]>([]);
-const globalLogFunction = (message: unknown, level?: number, key?: string) => {
-    const messageX =
-        message instanceof Error
-            ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
-            : typeof message === "string"
-              ? message
-              : JSON.stringify(message);
-    const entry = { message: messageX, level, key } as LogEntry;
-    recentLogEntries.value = [...recentLogEntries.value, entry];
-};
+function createBufferedLog(entries: ReactiveSource<LogEntry[]>) {
+    return (message: unknown, level?: number, key?: string) => {
+        const messageX =
+            message instanceof Error
+                ? new LiveSyncError("[Error Logged]: " + message.message, { cause: message })
+                : typeof message === "string"
+                  ? message
+                  : JSON.stringify(message);
+        const entry = { message: messageX, level, key } as LogEntry;
+        entries.value = [...entries.value, entry];
+    };
+}
 
-setGlobalLogFunction(globalLogFunction);
+// Legacy Logger calls use this shared buffer; service logs use their owner's buffer.
+const recentGlobalLogEntries = reactiveSource<LogEntry[]>([]);
+setGlobalLogFunction(createBufferedLog(recentGlobalLogEntries));
 // Keep the recent logs in memory for display, but also keep a longer history in logForDump for when the user wants to see more logs.
 // logForDump is not reactive and is only used for dumping logs when requested, while recentLogs is reactive and is used for displaying logs in the UI.
 const logForDump = [] as string[];
@@ -113,6 +126,16 @@ function redactLog(log: string) {
 const showDebugLog = false;
 export const MARK_DONE = "\u{2009}\u{2009}";
 export class ModuleLog extends AbstractObsidianModule {
+    /** The host releases this connection after the complete asynchronous unload. */
+    logResource!: OwnedResource<LogFunction>;
+    private readonly recentLogEntries = reactiveSource<LogEntry[]>([]);
+    private readonly displayLogEntries = () => {
+        if (this.recentLogEntries.value.length === 0) return;
+        const entries = [...this.recentLogEntries.value];
+        this.recentLogEntries.value = [];
+        entries.forEach((entry) => this.__addLog(entry.message, entry.level, entry.key));
+    };
+
     statusBar?: HTMLElement;
 
     statusDiv?: HTMLElement;
@@ -460,12 +483,7 @@ ${stringifyYaml(info)}
         return Promise.resolve(true);
     }
     private _everyOnloadAfterLoadSettings(): Promise<boolean> {
-        recentLogEntries.onChanged((entries) => {
-            if (entries.value.length === 0) return;
-            const newEntries = [...entries.value];
-            recentLogEntries.value = [];
-            newEntries.forEach((e) => this.__addLog(e.message, e.level, e.key));
-        });
+        this.recentLogEntries.onChanged(this.displayLogEntries);
         eventHub.onEvent(EVENT_FILE_RENAMED, (data) => {
             void this.setFileStatus();
         });
@@ -506,7 +524,7 @@ ${stringifyYaml(info)}
 
     writeLogToTheFile(now: Date, vaultName: string, newMessage: string) {
         fireAndForget(() =>
-            serialized("writeLog", async () => {
+            withLock("writeLog", async () => {
                 const time = now.toISOString().split("T")[0];
                 const logDate = `${PREFIXMD_LOGFILE}${time}.md`;
                 const file = await this.core.storageAccess.isExists(normalizePath(logDate));
@@ -597,7 +615,22 @@ ${stringifyYaml(info)}
         }
     }
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        services.API.addLog.setHandler(globalLogFunction);
+        const log = createBufferedLog(this.recentLogEntries);
+        const unregisterLog = services.API.addLog.setHandler(log);
+        const collectGlobalLogs = () => {
+            const entries = recentGlobalLogEntries.value;
+            if (entries.length === 0) return;
+            recentGlobalLogEntries.value = [];
+            this.recentLogEntries.value = [...this.recentLogEntries.value, ...entries];
+        };
+        this.logResource = createOwnedResource(log, () => {
+            unregisterLog();
+            recentGlobalLogEntries.offChanged(collectGlobalLogs);
+            this.recentLogEntries.offChanged(this.displayLogEntries);
+            this.recentLogEntries.value = [];
+        });
+        recentGlobalLogEntries.onChanged(collectGlobalLogs);
+        collectGlobalLogs();
         services.appLifecycle.onInitialise.addHandler(this._everyOnloadStart.bind(this));
         services.appLifecycle.onSettingLoaded.addHandler(this._everyOnloadAfterLoadSettings.bind(this));
         services.appLifecycle.onLoaded.addHandler(this._everyOnload.bind(this));

@@ -1,12 +1,12 @@
 import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
 import { deleteDB, openDB, type IDBPDatabase } from "idb";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 
 const databaseCache = new Map<string, IDBKeyValueDatabase>();
 
 export async function OpenKeyValueDatabase(dbKey: string): Promise<KeyValueDatabase> {
-    return await serialized(`OpenKeyValueDatabase-${dbKey}`, async () => {
+    return await withLock(`OpenKeyValueDatabase-${dbKey}`, async () => {
         const cachedDB = databaseCache.get(dbKey);
         if (cachedDB) {
             if (!cachedDB.isDestroyed) {

@@ -18,6 +18,37 @@ Use the least destructive operation which matches the evidence:
 
 Do not switch transport, enable P2P, or run Garbage Collection as a substitute for diagnosing a stopped CouchDB or Object Storage setup.
 
+## Recover files truncated during Object Storage reception
+
+This procedure addresses [issue #1303](https://github.com/vrtmrz/obsidian-livesync/issues/1303): an older Journal receiver can truncate a Chunk at a raw unit separator (`U+001F`) within its data. This can damage a received text file, including a plug-in's `main.js`, while the original batch remains intact in the bucket.
+
+The receiver correction is available in Commonlib 0.2.3 and is included in Self-hosted LiveSync 1.0.44. Use a build containing that correction on every participating client before recovery; versions 1.0.42 and 1.0.43 still contain the defect. Updating alone does not repair Chunks already stored locally. Resetting only the Journal received history is also insufficient because ordinary reception skips existing Chunk IDs.
+
+### Preserve the intact source
+
+1. Stop editing and synchronisation on every device. If necessary, use the [emergency suspension flag](#suspend-before-diagnosis).
+2. Back up every Vault, including hidden files such as `.obsidian`, and the complete remote bucket before resetting anything.
+3. Verify the actual contents of the proposed recovery source. A file's existence, recorded size, or successful synchronisation status does not prove that its content is intact. Preserve unique unsynchronised edits and any needed content which exists only in database history separately.
+4. Update all participating clients to a build containing the correction, keeping the other devices stopped while recovering one source and then one receiving device at a time.
+
+### Rebuild from a complete, intact Vault
+
+When one Vault contains all the intended current files, a deliberate Rebuild avoids relying on potentially damaged local databases. Use [Overwrite Server Data with This Device's Files](#overwrite-server-data-with-this-devices-files) on that authoritative device, then prepare an empty recovery Vault on each other device and [Reset Synchronisation on This Device](#reset-synchronisation-on-this-device) from the rebuilt remote. Keep the previous Vaults as backups until verification is complete.
+
+Rebuild reconstructs the local and remote databases from the current Vault files. It does not retain revisions available only in the previous local database, remote history, or another device. Keep the backups and preserve any required historical content before proceeding. An intact copy of one affected file does not establish that the whole Vault is a complete recovery source.
+
+### Reuse a verified intact remote
+
+If the selected remote file contents are verified intact, the remote need not be overwritten. Prepare a new empty recovery Vault with the same remote configuration and use [Reset Synchronisation on This Device](#reset-synchronisation-on-this-device). Keep the previous Vault, including its hidden files and unsynchronised work, as a separate backup. This reconstructs the local database and its receive checkpoints, allowing the corrected receiver to read the original batches again.
+
+Fetch does not unconditionally overwrite existing Vault files. A differing local file can remain and be preserved as a separate conflict branch alongside the intact remote content. An empty recovery Vault avoids retaining damaged local files during this process. In the CLI, use the empty Vault with `fetch --force --write-settings`; `--force` confirms database replacement, not forced file overwriting.
+
+### Restore optional files and verify the result
+
+Rebuild and Fetch disable Hidden File Sync and Customisation Sync. Complete ordinary note recovery first, then initialise the optional feature deliberately. For Hidden File Sync, follow its [initial source selection](tips/hidden-file-sync.md#choose-the-initial-source): after a full Rebuild, use `Overwrite` on the device with the intact hidden files, then `Fetch` on additional devices. When retaining an intact remote hidden-file state, use `Fetch` on the recovering device. Restore the intended Customisation Sync selections separately; do not enable both features for the same files.
+
+Compare the recovered files with the preserved originals, including the affected hidden files, then restart Obsidian and synchronise again. Confirm that the contents remain intact and that any affected plug-in loads before resuming ordinary work on the remaining devices. Keep the backups until this verification is complete.
+
 ## Migrate to Unicode NFC path identity
 
 Use this coordinated migration when CLI and Obsidian clients share a CouchDB database and composed and decomposed Unicode spellings should identify the same path. Version `0` remains the default and preserves legacy identity. Version `1` is supported with CouchDB only; it is unsupported with Object Storage and P2P.

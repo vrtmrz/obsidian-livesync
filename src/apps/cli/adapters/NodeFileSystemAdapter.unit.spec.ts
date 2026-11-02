@@ -124,6 +124,83 @@ describe("NodeFileSystemAdapter file enumeration", () => {
     });
 });
 
+describe("NodeFileSystemAdapter case-insensitive path lookup", () => {
+    const tempDirs: string[] = [];
+
+    async function createVault(files: string[] = []) {
+        const directory = await fs.mkdtemp(path.join(os.tmpdir(), "livesync-cli-insensitive-"));
+        tempDirs.push(directory);
+        for (const file of files) {
+            await fs.mkdir(path.dirname(path.join(directory, file)), { recursive: true });
+            await fs.writeFile(path.join(directory, file), `content of ${file}`);
+        }
+        return { directory, adapter: new NodeFileSystemAdapter(directory) };
+    }
+
+    afterEach(async () => {
+        await Promise.all(tempDirs.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true })));
+    });
+
+    it("returns an exact path without scanning the directory", async () => {
+        const { adapter } = await createVault(["Calculus.md"]);
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+        await expect(adapter.getAbstractFileByPathInsensitive("Calculus.md")).resolves.toMatchObject({
+            path: "Calculus.md",
+        });
+
+        expect(scanDirectory).not.toHaveBeenCalled();
+    });
+
+    it("returns a cached case-insensitive match without rescanning", async () => {
+        const { adapter } = await createVault(["Calculus.md"]);
+        await adapter.scanDirectory();
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+        await expect(adapter.getAbstractFileByPathInsensitive("calculus.md")).resolves.toMatchObject({
+            path: "Calculus.md",
+        });
+
+        expect(scanDirectory).not.toHaveBeenCalled();
+    });
+
+    it("rescans once and returns a newly cached case-insensitive match", async () => {
+        const { adapter } = await createVault(["Calculus.md"]);
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+        await expect(adapter.getAbstractFileByPathInsensitive("calculus.md")).resolves.toMatchObject({
+            path: "Calculus.md",
+        });
+
+        expect(scanDirectory).toHaveBeenCalledOnce();
+        await expect(adapter.getAbstractFileByPath("Calculus.md")).resolves.toMatchObject({ path: "Calculus.md" });
+    });
+
+    it("returns null after one scan when no cached path matches", async () => {
+        const { adapter } = await createVault(["other.md"]);
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+        await expect(adapter.getAbstractFileByPathInsensitive("missing.md")).resolves.toBeNull();
+
+        expect(scanDirectory).toHaveBeenCalledOnce();
+    });
+
+    it("returns null and reports a directory scan failure", async () => {
+        const missingDirectory = path.join(os.tmpdir(), `livesync-cli-insensitive-missing-${Date.now()}`);
+        const reportDiagnostic = vi.fn();
+        const adapter = new NodeFileSystemAdapter(missingDirectory, reportDiagnostic);
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+        await expect(adapter.getAbstractFileByPathInsensitive("missing.md")).resolves.toBeNull();
+
+        expect(scanDirectory).toHaveBeenCalledOnce();
+        expect(reportDiagnostic).toHaveBeenCalledWith(
+            expect.stringContaining("Error scanning directory"),
+            expect.any(Error)
+        );
+    });
+});
+
 describe("NodeFileSystemAdapter Unicode path resolution", () => {
     const tempDirs: string[] = [];
 

@@ -12,7 +12,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getNoFromRev } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands";
-import { serialized } from "octagonal-wheels/concurrency/lock_v2";
+import { withLock } from "octagonal-wheels/concurrency/lock_v2";
 import { arrayToChunkedArray } from "octagonal-wheels/collection";
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events";
 import type { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
@@ -435,7 +435,7 @@ Note: **Make sure to synchronise all devices before deletion.**
                 chunkSet.add(doc._id);
             } else if ("children" in doc) {
                 await processDoc(doc, isDeleted);
-                await serialized("x-process-doc", async () => await processDocRevisions(doc));
+                await withLock("x-process-doc", async () => await processDocRevisions(doc));
             }
         };
         // Track changes

@@ -49,6 +49,12 @@ npm run test:e2e:browser-apps:interop    # Run WebApp → WebPeer → CLI in Com
 npm run test:e2e:obsidian:local-suite    # Run the real Obsidian local suite
 ```
 
+### Production minification
+
+Production builds remove unused declarations and shorten local identifiers while retaining class and function names used by module discovery and diagnostic stacks. `terser.config.mjs` also preserves property names, top-level bindings, and identifiers visible to direct `eval` calls. Keep these boundaries when changing compression settings; `test/build/terserConfig.unit.spec.ts` checks the generated code against host properties, persisted keys, reflective names, and exception stacks.
+
+Compare bundle bytes and gzip bytes from the same source, dependency artefacts, and build inputs. Validate import-time registration and the resulting plug-in in the affected real-runtime workflows. The iOS syntax check is one part of compatibility verification; it does not measure performance or replace physical-device testing.
+
 ### Tips
 
 Select the narrowest unit, integration, CLI E2E, or real Obsidian E2E command that owns the behaviour being changed. The obsolete mocked browser Harness has been retired.
@@ -78,7 +84,7 @@ See the [test procedures](test/README.md) for clean-installation checks, local v
 
 Regression tests remain in the suite owned by the implementation under test. Plug-in tests may be co-located with their source, while independent application tests remain under `test/apps/` or `test/browser-apps/` so that they stay outside the Community Review source boundary. Prefix a case or group with `compatibility:` when it protects a persisted input or state which current releases still accept, and with `retirement guard:` when it prevents a removed setting, control, or notification from returning. Remove or replace a compatibility case only when the corresponding input is no longer accepted or an equivalent maintained case preserves the contract. Remove a retirement guard only when another current contract makes the old behaviour unreachable. Do not preserve a disconnected historical test as an executable specification when no maintained runner invokes it; Git history is the reference for retired test infrastructure.
 
-- **CLI E2E** (`src/apps/cli/testdeno/`): Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current Replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
+- **CLI E2E** (`test/e2e-cli/`): Node.js 26 native TypeScript and `node:test` subprocess workflows. Host-independent consumer workflows. The canonical Compose P2P suite covers ordinary two-peer synchronisation, replacement of the current Replicator followed by transfer with the same peer, and explicit relay disconnection followed by paused and resumed reconnection. Its lifecycle entry point is included only in the Docker test build and does not add a public CLI command. Run `npm run test:e2e:cli` for the ordinary suite or `npm run test:e2e:cli:p2p` for P2P validation.
 - **Self-hosted setup tools** (`utils/couchdb/`, `utils/setup/`, and `utils/flyio/`): Deno contract tests consume the exact locked Commonlib registry package, verify current CouchDB, Object Storage, and random-room P2P Setup URI defaults and remote profiles, and keep CouchDB administration separate from package-owned LiveSync database-version negotiation. `unit-ci` also provisions a real temporary CouchDB database and verifies its version document against the installed Commonlib package. Run `npm run test:setup-tools` for the local contract gate.
 - **Real Obsidian E2E** (`test/e2e-obsidian/`): Local-first scripts that launch real Obsidian with temporary vaults and the built Self-hosted LiveSync plug-in. Use these for boot-up sequence, vault reflection, RedFlag flows, Fast Setup (Simple Fetch), settings dialogues, restart-sensitive workflows, Object Storage regressions, and other behaviour that depends on Obsidian itself. After source changes, run the build-owning wrapper, for example `npm run test:e2e:obsidian:focused -- two-vault-sync`, with the required fixture already running. Direct scenario scripts reuse the existing bundle and are suitable for reruns only while that build remains unchanged. Use `npm run test:e2e:obsidian:local-suite:services` to run the broader local suite with CouchDB and RustFS fixtures managed by the wrapper.
 
@@ -146,6 +152,8 @@ The application is composed from Services, ServiceModules, serviceFeatures, add-
 
 The normal composition order is the Service Hub, Replicator provider registration, ServiceModules, serviceFeatures, add-ons, and finally legacy Module binding. A serviceFeature may therefore consume an already constructed ServiceModule. Preferring a serviceFeature for new composition is a dependency-boundary rule, not an initialisation-order rule.
 
+Declare the feature host type explicitly when a narrow dependency contract is intended. `NecessaryServices<T, U, THub>` selects service keys from `THub` and module keys from `ServiceModules`; it retains `context` only when the selected source provides it, and defaults to `ServiceHub`. `createServiceFeature()` returns the supplied function with its complete signature and result type, but it does not infer dependency keys from the callback body. Unannotated legacy callbacks retain the full default `ServiceHub` contract for compatibility. Put feature-only collaborators, such as a borrowed `LogFunction`, in the feature's own dependency type.
+
 Mutable state is permitted in a serviceFeature. State alone is not a reason to create a class, a ServiceModule, or retain an AbstractModule. Prefer one private context, with module-level functions which receive that context, when identity and polymorphism are not part of the contract. Separate the state, transitions, and invariants from the surrounding function which registers lifecycle handlers and connects downstream effects. Give the stateful boundary narrow collaborators rather than `LiveSyncBaseCore`.
 
 Use a class when stable object identity, replaceable implementations, or an explicit external-resource lifecycle such as serialised ownership, `dispose()`, or `abort()` is part of the contract. Use a ServiceModule when that operational capability or resource lifecycle must also be shared explicitly by several consumers. Do not introduce a class merely to group dependencies or make private functions callable.
@@ -158,7 +166,7 @@ Commonlib's `targetFilter.ts` and `prepareDatabaseForUse.ts` demonstrate the int
 
 Use interaction-based, London School unit tests for the composition boundary. Verify collaborator calls, ordering, failure short-circuiting, and handler registration, then test the focused state owner for its transitions and invariants. If a test needs a broad core fixture, a large class mock, deep mock chains, or unrelated Services, treat that friction as a design-review signal and consider a private context with narrower functions before adding more test machinery.
 
-See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary.
+See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary. Fancy Kit's [shared runtime composition guide](https://github.com/vrtmrz/fancy-kit/blob/main/docs/runtime-composition.md) maps content application, cleanup, progress, and host adapters to their owning APIs, with their publication status and consumer responsibilities.
 
 Legacy Modules remain grouped by directory:
 
@@ -176,6 +184,18 @@ Declare shared UI requests with `declareUICommand<Request, Result>` from `@vrtmr
 
 The registry belongs to one UIService instance. Reuse the same declaration object at each call site, and keep active UI cleanup in the feature and dialogue owner. `UIService` disposes the registry when the host's context emits the plug-in-unloaded event.
 
+Each browser service hub creates a local `BrowserUiScope` with a `document` and
+`signal`, exposed as readonly `hub.browserUi`. Pass overrides through
+the service-hub option `ui: { document, signal }`; when `document` is omitted,
+the scope snapshots legacy `_activeDocument`. The scope is bound to
+its root `ServiceContext` unload event and optional parent `AbortSignal`, and is
+shared by browser confirmation and the Svelte dialogue manager. A dialogue
+resolves with its result or `undefined` on ordinary close; cancellation rejects
+with the abort reason, including `Error('Plug-in unloaded')` on root-context
+unload. A `Menu` can receive `hub.browserUi`; closing, replacing, or aborting it
+unmounts its Svelte component, and callbacks from a closed session cannot close
+the replacement.
+
 ### Key Architectural Components
 
 - **LiveSyncLocalDB** (`@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB`): Local PouchDB database wrapper
@@ -189,6 +209,8 @@ session fences, P2P ownership exception, compatibility boundaries, and the
 steps required to add a built-in provider.
 
 Commonlib owns one stable `LiveSyncP2PService`, its `P2PRoomSessionOwner`, and the replaceable Trystero room session. Host commands, event handlers, and views consume the focused transport, connection-probe admission, directory, peer-admission, transfer, change-relay, configuration, and diagnostic views returned by the service feature. They must not retain the deprecated compatibility Replicator as an ordinary service locator, close Trystero-owned raw peers, or install another Trystero transport generation at the application root. The exact implemented ownership and shutdown boundaries are recorded in Commonlib's [P2P transport lifecycle](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/p2p-transport-lifecycle.md) design document.
+
+The Obsidian `useP2PReplicatorUI` feature declares only `API`, `appLifecycle`, `setting`, and `replicator`, and consumes the public `P2PServiceViews` type instead of the broader `UseP2PReplicatorResult`. Its separate `LiveSyncCore` argument and global `eventHub` remain the legacy pane bridge; this type narrowing leaves the existing presentation and lifecycle wiring intact.
 
 The [TURN connection settings design](docs/design_docs/renewable_turn_credentials.md) describes how the host prepares temporary ICE credentials in a connection-only settings copy. It covers room reuse and expiry, replication continuation, profile persistence and sharing, and report redaction.
 
@@ -278,6 +300,8 @@ The scenario uses only fixed in-memory inputs. It does not read or write the Vau
     - LOG_LEVEL_DEBUG is for debug only and not shown in default builds
 - Dev mode creates `ls-debug/` folder in `.obsidian/` for debug outputs (e.g., missing translations)
     - This causes pretty significant performance overhead.
+
+`ModuleLog` owns an `OwnedResource<LogFunction>` for its `API.addLog.setHandler` registration and keeps service log input in a per-instance buffer. The host wraps the complete asynchronous `control.onUnload()` in `withOwnedResource`. On successful shutdown, the handler and its global and per-instance observers remain registered through the final database close and final unload log. If `control.onUnload()` rejects, `withOwnedResource` releases them when the operation settles. Do not release it from an `onBeforeUnload` or module `onUnload` handler; both run before the host's complete unload finishes. The import-time global `Logger` bridge and display and report histories remain shared, while service log calls stay with their owning instance.
 
 #### Diagnostic and notice ownership
 

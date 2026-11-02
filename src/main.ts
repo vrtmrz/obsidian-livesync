@@ -9,6 +9,7 @@ import { ConfigSync } from "./features/ConfigSync/CmdConfigSync.ts";
 // import { ModuleDev } from "./modules/extras/ModuleDev.ts";
 
 import { ModuleLog } from "./modules/features/ModuleLog.ts";
+import { withOwnedResource } from "octagonal-wheels/resource";
 import { ModuleObsidianEvents } from "./modules/essentialObsidian/ModuleObsidianEvents.ts";
 import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidianSettingTab.ts";
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
@@ -237,12 +238,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
         void this._startUp();
     }
     override onunload(): void {
-        void this.core.services.control.onUnload().catch((error) => {
-            this.core.services.API.addLog(
-                "Failed to unload Self-hosted LiveSync: " + String(error),
-                LOG_LEVEL_URGENT,
-                "shutdown"
-            );
-        });
+        void withOwnedResource(this.core.getModule(ModuleLog).logResource, () =>
+            this.core.services.control.onUnload().catch((error) => {
+                this.core.services.API.addLog(
+                    "Failed to unload Self-hosted LiveSync: " + String(error),
+                    LOG_LEVEL_URGENT,
+                    "shutdown"
+                );
+            })
+        );
     }
 }

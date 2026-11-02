@@ -1,6 +1,4 @@
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
-import { ServiceRebuilder } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
-import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { StorageAccessManager } from "@vrtmrz/livesync-commonlib/compat/managers/StorageProcessingManager";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
@@ -10,7 +8,7 @@ import { ServiceDatabaseFileAccessCLI } from "./DatabaseFileAccess";
 import { StorageEventManagerCLI } from "@/apps/cli/managers/StorageEventManagerCLI";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import type { IgnoreRules } from "./IgnoreRules";
-import { createFileReflectionProvenance } from "@/serviceModules/FileReflectionProvenance";
+import { composeSharedServiceModules } from "@/apps/serviceModules/composeSharedServiceModules";
 
 /**
  * Initialize service modules for CLI version
@@ -82,40 +80,7 @@ export function initialiseServiceModulesCLI(
         vault: services.vault,
     });
 
-    // File handler (platform-independent)
-    const fileHandler = new ServiceFileHandler({
-        events: services.context.events,
-        API: services.API,
-        databaseFileAccess: databaseFileAccess,
-        conflict: services.conflict,
-        setting: services.setting,
-        fileProcessing: services.fileProcessing,
-        vault: services.vault,
-        path: services.path,
-        replication: services.replication,
-        storageAccess: storageAccess,
-        fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
-    });
-
-    // Rebuilder (platform-independent)
-    const rebuilder = new ServiceRebuilder({
-        path: services.path,
-        events: services.context.events,
-        API: services.API,
-        database: services.database,
-        appLifecycle: services.appLifecycle,
-        setting: services.setting,
-        remote: services.remote,
-        databaseEvents: services.databaseEvents,
-        replication: services.replication,
-        replicator: services.replicator,
-        UI: services.UI,
-        vault: services.vault,
-        fileHandler: fileHandler,
-        fileProcessing: services.fileProcessing,
-        storageAccess: storageAccess,
-        control: services.control,
-    });
+    const { fileHandler, rebuilder } = composeSharedServiceModules(services, databaseFileAccess, storageAccess);
 
     return {
         rebuilder,

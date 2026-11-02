@@ -82,7 +82,7 @@ export async function runP2PAutomaticHostFixture(options: CLIOptions, context: C
     }
     const commandOutcome = runCommand(options, context).then(
         (result) => ({ type: "result" as const, result }),
-        (error) => ({ type: "error" as const, error })
+        (error: unknown) => ({ type: "error" as const, error })
     );
     const connectedWaitStarted = Date.now();
     while (!service.transportLifecycle.isConnected) {

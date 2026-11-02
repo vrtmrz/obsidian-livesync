@@ -1,3 +1,4 @@
+import { createCommandCheck } from "@vrtmrz/obsidian-plugin-kit/command";
 import { LOG_LEVEL_NOTICE, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
@@ -112,33 +113,40 @@ export function useSetupURIFeature(host: NecessaryServices<"API" | "UI" | "setti
         host.services.API.addCommand({
             id: "livesync-copysetupuri",
             name: "Copy settings as a new setup URI",
-            checkCallback: (checking) => {
-                if (!host.services.setting.currentSettings().isConfigured) return false;
-                if (!checking) fireAndForget(copySetupURI(host, log));
-                return true;
-            },
+            checkCallback: createCommandCheck(
+                () => host.services.setting.currentSettings().isConfigured,
+                () => {
+                    fireAndForget(copySetupURI(host, log));
+                }
+            ),
         });
 
         host.services.API.addCommand({
             id: "livesync-copysetupuri-short",
             name: "Copy settings as a new setup URI (With customization sync)",
-            checkCallback: (checking) => {
-                const settings = host.services.setting.currentSettings();
-                if (!settings.isConfigured || !settings.usePluginSync) return false;
-                if (!checking) fireAndForget(copySetupURI(host, log, false));
-                return true;
-            },
+            checkCallback: createCommandCheck(
+                () => {
+                    const settings = host.services.setting.currentSettings();
+                    return settings.isConfigured && settings.usePluginSync;
+                },
+                () => {
+                    fireAndForget(copySetupURI(host, log, false));
+                }
+            ),
         });
 
         host.services.API.addCommand({
             id: "livesync-copysetupurifull",
             name: "Copy settings as a new setup URI (Full)",
-            checkCallback: (checking) => {
-                const settings = host.services.setting.currentSettings();
-                if (!settings.isConfigured || !settings.useAdvancedMode) return false;
-                if (!checking) fireAndForget(copySetupURIFull(host, log));
-                return true;
-            },
+            checkCallback: createCommandCheck(
+                () => {
+                    const settings = host.services.setting.currentSettings();
+                    return settings.isConfigured && settings.useAdvancedMode;
+                },
+                () => {
+                    fireAndForget(copySetupURIFull(host, log));
+                }
+            ),
         });
 
         host.services.context.events.onEvent(EVENT_REQUEST_COPY_SETUP_URI, () =>

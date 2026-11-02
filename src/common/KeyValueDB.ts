@@ -1,6 +1,6 @@
 import { deleteDB, type IDBPDatabase, openDB } from "idb";
 import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 import { Logger } from "octagonal-wheels/common/logger";
 const databaseCache: { [key: string]: IDBPDatabase<unknown> } = {};
 export { OpenKeyValueDatabase } from "./KeyValueDBv2.ts";
@@ -13,7 +13,7 @@ export const _OpenKeyValueDatabase = async (dbKey: string): Promise<KeyValueData
     const storeKey = dbKey;
     let db: IDBPDatabase<unknown> | null = null;
     const _openDB = () => {
-        return serialized("keyvaluedb-" + dbKey, async () => {
+        return withLock("keyvaluedb-" + dbKey, async () => {
             const dbInstance = await openDB(dbKey, 1, {
                 upgrade(db, _oldVersion, _newVersion, _transaction, _event) {
                     return db.createObjectStore(storeKey);

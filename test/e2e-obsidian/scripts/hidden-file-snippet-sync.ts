@@ -1,5 +1,6 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { decodeBinary } from "octagonal-wheels/binary";
 import { VERSIONING_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import {
@@ -38,6 +39,7 @@ import {
     captureJsonResolveDialogue,
     clickJsonResolveOption,
     obsidianRemoteDebuggingPort,
+    openLiveSyncSettings,
     withObsidianPage,
 } from "../runner/ui.ts";
 import { iPhoneSafeArea, setObsidianMobileTestMode } from "../runner/mobileUi.ts";
@@ -60,6 +62,12 @@ const snippetContent = [
 
 const mergeJsonPath = ".obsidian/livesync-e2e-merge.json";
 const manualMergeJsonPath = ".obsidian/livesync-e2e-manual-merge.json";
+const replacementMergeJsonPath = ".obsidian/livesync-e2e-manual-replacement.json";
+const externalResolutionTargetPath = ".obsidian/livesync-e2e-external-resolution.json";
+const externalResolutionUnrelatedPath = ".obsidian/livesync-e2e-external-unrelated.json";
+const hiddenConflictStateKey = "__livesyncE2EHiddenConflictResolution";
+const hiddenConflictComparisonStateKey = "__livesyncE2EHiddenConflictComparison";
+const hiddenConflictModalStateKey = "__livesyncE2EHiddenConflictModal";
 const targetPath = ".obsidian/livesync-targeted/only-a.json";
 const hiddenFileCliTimeoutMs = Number(process.env.E2E_OBSIDIAN_HIDDEN_FILE_CLI_TIMEOUT_MS ?? 90000);
 const hiddenFileInitialisationStateKey = "__livesyncE2EHiddenFileInitialisation";
@@ -85,6 +93,8 @@ type RunnerContext = {
     couchDb: CouchDbConfig;
     dbName: string;
     activeSessions: Set<ObsidianLiveSyncSession>;
+    temporaryVaults: Set<TemporaryVault>;
+    diagnosticPaths: string[];
 };
 
 async function writeVaultFile(vaultPath: string, path: string, content: string): Promise<void> {
@@ -313,72 +323,184 @@ async function resolveHiddenConflicts(cliBinary: string, env: NodeJS.ProcessEnv)
     );
 }
 
-async function autoMergeHiddenJsonConflict(cliBinary: string, env: NodeJS.ProcessEnv, path: string): Promise<void> {
-    await evalObsidianJson<unknown>(
+async function startHiddenConflictResolution(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await evalObsidianJson(
         cliBinary,
         [
-            "(async()=>{",
-            `const path=${JSON.stringify(path)};`,
-            "const prefixedPath=`i:${path}`;",
-            "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "let doc=false;",
-            "for await (const entry of core.localDatabase.findEntries('i:','i;',{conflicts:true})){",
-            "  if(entry.path===prefixedPath){ doc=entry; break; }",
-            "}",
-            "if(!doc) throw new Error(`Could not find hidden conflict candidate: ${path}`);",
-            "if(!doc._conflicts?.length) throw new Error(`Hidden file has no conflicts: ${path}`);",
-            "const conflicts=doc._conflicts.sort((a,b)=>Number(a.split('-')[0])-Number(b.split('-')[0]));",
-            "const conflictedRev=conflicts[0];",
-            "const conflictedRevNo=Number(conflictedRev.split('-')[0]);",
-            "const revFrom=await core.localDatabase.getRaw(doc._id,{revs_info:true});",
-            "const commonBase=(revFrom._revs_info||[])",
-            "  .filter((rev)=>rev.status==='available'&&Number(rev.rev.split('-')[0])<conflictedRevNo)",
-            "  .map((rev)=>rev.rev)[0]||'';",
-            "const result=await core.localDatabase.managers.conflictManager.mergeObject(",
-            "  doc.path, commonBase, doc._rev, conflictedRev",
+            "(()=>{",
+            `const key=${JSON.stringify(hiddenConflictStateKey)};`,
+            "const state={done:false,error:null};",
+            "globalThis[key]=state;",
+            `const comparison=globalThis[${JSON.stringify(hiddenConflictComparisonStateKey)}];`,
+            "if(comparison)comparison.operation=state;",
+            "const addOn=app.plugins.plugins['obsidian-livesync'].core.getAddOn('HiddenFileSync');",
+            "void addOn.resolveConflictOnInternalFiles().then(",
+            "()=>{state.done=true;},",
+            "error=>{state.error=String(error);state.done=true;}",
             ");",
-            "if(!result){",
-            "  throw new Error(`Hidden JSON conflict was not auto-mergeable: ${path}; base=${commonBase}; current=${doc._rev}; conflict=${conflictedRev}`);",
-            "}",
-            "await addOn.ensureDir(path);",
-            "const stat=await addOn.writeFile(path,result);",
-            "if(!stat) throw new Error(`Could not write merged hidden file: ${path}`);",
-            "await addOn.storeInternalFileToDatabase({path,mtime:stat.mtime,ctime:stat.ctime,size:stat.size},true);",
-            "await core.localDatabase.removeRevision(doc._id,conflictedRev);",
-            "await addOn.extractInternalFileFromDatabase(path);",
-            "await addOn.scanAllDatabaseChanges(true);",
-            "return JSON.stringify({ok:true,merged:JSON.parse(result)});",
+            "return JSON.stringify({started:true});",
             "})()",
         ].join(""),
         env
     );
 }
 
-async function openHiddenJsonResolveModal(cliBinary: string, env: NodeJS.ProcessEnv, path: string): Promise<void> {
+type HiddenJsonComparisonCall = {
+    leftRev: string | null;
+    rightRev: string | null;
+    done: boolean;
+    result: unknown;
+    error: string | null;
+};
+
+type HiddenJsonComparisonObservation = {
+    pipelineDone: boolean;
+    calls: HiddenJsonComparisonCall[];
+};
+
+async function installHiddenJsonComparisonObserver(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
     await evalObsidianJson<unknown>(
         cliBinary,
         [
-            "(async()=>{",
-            `const path=${JSON.stringify(path)};`,
-            "const prefixedPath=`i:${path}`;",
-            "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "const addOn=core.getAddOn('HiddenFileSync');",
-            "let doc=false;",
-            "for await (const entry of core.localDatabase.findEntries('i:','i;',{conflicts:true})){",
-            "  if(entry.path===prefixedPath){ doc=entry; break; }",
-            "}",
-            "if(!doc?._conflicts?.length) throw new Error(`Could not find hidden JSON conflict: ${path}`);",
-            "const conflicts=doc._conflicts.sort((a,b)=>Number(a.split('-')[0])-Number(b.split('-')[0]));",
-            "const docA=await core.localDatabase.getDBEntry(prefixedPath,{rev:doc._rev});",
-            "const docB=await core.localDatabase.getDBEntry(prefixedPath,{rev:conflicts[0]});",
-            "if(docA===false||docB===false) throw new Error(`Could not load conflicted hidden JSON entries: ${path}`);",
-            "void addOn.showJSONMergeDialogAndMerge(docA,docB);",
-            "return JSON.stringify({ok:true});",
+            "(()=>{",
+            `const key=${JSON.stringify(hiddenConflictComparisonStateKey)};`,
+            "const addOn=app.plugins.plugins['obsidian-livesync'].core.getAddOn('HiddenFileSync');",
+            "const original=addOn.showJSONMergeDialogAndMerge;",
+            "if(typeof original!=='function')throw new Error('Hidden File Sync JSON comparison method is unavailable');",
+            "const state={calls:[],original,operation:null};",
+            "state.wrapper=function(left,right){",
+            "const call={leftRev:left?._rev??null,rightRev:right?._rev??null,done:false,result:null,error:null};",
+            "state.calls.push(call);",
+            "const result=state.original.call(this,left,right);",
+            "Promise.resolve(result).then(value=>{call.done=true;call.result=typeof value==='boolean'||value===null?value:String(value);},error=>{call.done=true;call.error=String(error);});",
+            "return result;};",
+            "addOn.showJSONMergeDialogAndMerge=state.wrapper;",
+            "globalThis[key]=state;return JSON.stringify({installed:true});",
             "})()",
         ].join(""),
         env
     );
+}
+
+async function readHiddenJsonComparisonObservation(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv
+): Promise<HiddenJsonComparisonObservation> {
+    return await evalObsidianJson<HiddenJsonComparisonObservation>(
+        cliBinary,
+        [
+            "(()=>{",
+            `const state=globalThis[${JSON.stringify(hiddenConflictComparisonStateKey)}];`,
+            "const operation=state?.operation;",
+            "if(!state||!operation)throw new Error('Hidden JSON comparison observation is unavailable');",
+            "return JSON.stringify({pipelineDone:operation.done,calls:state.calls});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function waitForHiddenConflictResolution(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
+    await evalObsidianJson(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const key=${JSON.stringify(hiddenConflictStateKey)};`,
+            "const state=globalThis[key];",
+            "if(!state)throw new Error('Hidden conflict resolution was not started');",
+            "const deadline=Date.now()+60000;",
+            "while(!state.done&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));",
+            "if(!state.done)throw new Error('Hidden conflict pipeline did not complete');",
+            "if(state.error)throw new Error(state.error);",
+            "delete globalThis[key];",
+            "return JSON.stringify({done:true});",
+            "})()",
+        ].join(""),
+        env,
+        hiddenFileCliTimeoutMs
+    );
+}
+
+async function assertResolvedHiddenContent(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string,
+    expectedContent: string
+): Promise<void> {
+    const stored = await evalObsidianJson<{
+        rev: string;
+        currentRev: string;
+        conflicts: string[];
+        datatype: string;
+        data: string | string[];
+    }>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            "const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase;",
+            "const entry=await db.getDBEntry(`i:${path}`);",
+            "if(!entry)throw new Error(`Resolved hidden file is missing: ${path}`);",
+            "const current=await db.getRaw(entry._id,{conflicts:true});",
+            "return JSON.stringify({rev:entry._rev,currentRev:current._rev,conflicts:current._conflicts||[],datatype:entry.datatype,data:entry.data});",
+            "})()",
+        ].join(""),
+        env
+    );
+    assertEqual(stored.rev, stored.currentRev, `Hidden result changed while reading ${path}.`);
+    assertEqual(stored.conflicts.length, 0, `Hidden conflict remains for ${path}.`);
+    const content =
+        stored.datatype === "plain"
+            ? typeof stored.data === "string"
+                ? stored.data
+                : stored.data.join("")
+            : new TextDecoder().decode(decodeBinary(stored.data));
+    assertEqual(content, expectedContent, `Stored hidden content differs from the Vault file: ${path}.`);
+}
+
+type HiddenConflictLeaf = {
+    rev: string;
+    datatype: string;
+    data: string | string[];
+};
+
+async function readHiddenConflictLeaves(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    path: string
+): Promise<{ currentRev: string; conflictRevs: string[]; leaves: HiddenConflictLeaf[] }> {
+    return await evalObsidianJson<{
+        currentRev: string;
+        conflictRevs: string[];
+        leaves: HiddenConflictLeaf[];
+    }>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(path)};`,
+            "const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase;",
+            "const entry=await db.getDBEntry(`i:${path}`);",
+            "if(!entry)throw new Error(`Hidden conflict entry is missing: ${path}`);",
+            "const current=await db.getRaw(entry._id,{conflicts:true});",
+            "const conflictRevs=current._conflicts||[];",
+            "const leaves=await Promise.all([current._rev,...conflictRevs].map(async rev=>{",
+            "const doc=await db.getDBEntry(`i:${path}`,{rev},false,true,true);",
+            "if(!doc)throw new Error(`Could not load hidden conflict revision ${rev}: ${path}`);",
+            "return {rev:doc._rev,datatype:doc.datatype,data:doc.data};}));",
+            "if(leaves.some(leaf=>!leaf.datatype||leaf.data===undefined))throw new Error(`Could not read every hidden conflict leaf: ${path}`);",
+            "return JSON.stringify({currentRev:current._rev,conflictRevs,leaves});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+function decodeHiddenConflictLeaf(leaf: HiddenConflictLeaf): string {
+    return leaf.datatype === "plain"
+        ? typeof leaf.data === "string"
+            ? leaf.data
+            : leaf.data.join("")
+        : new TextDecoder().decode(decodeBinary(leaf.data));
 }
 
 async function storeHiddenFileAsConflict(
@@ -437,6 +559,15 @@ async function createHiddenJsonConflict(
 
     await writeVaultFile(vault.path, path, right);
     await storeHiddenFileAsConflict(context.cliBinary, session.cliEnv, path, baseEntry.rev);
+    const conflicts = await evalObsidianJson<number>(
+        context.cliBinary,
+        `(async()=>{
+        const entry=await app.plugins.plugins['obsidian-livesync'].core.localDatabase.getDBEntryMeta(${JSON.stringify(`i:${path}`)},{conflicts:true});
+        return JSON.stringify(entry?entry._conflicts?.length||0:0);
+    })()`,
+        session.cliEnv
+    );
+    assertEqual(conflicts, 1, "The hidden conflict fixture did not retain two live revisions.");
 }
 
 async function startConfiguredSession(
@@ -601,11 +732,12 @@ async function runJsonConflictRoundTrip(
 
     let session = await startConfiguredSession(context, vaultB);
     await createHiddenJsonConflict(context, session, vaultB, mergeJsonPath, base, left, right);
-    await autoMergeHiddenJsonConflict(context.cliBinary, session.cliEnv, mergeJsonPath);
+    await resolveHiddenConflicts(context.cliBinary, session.cliEnv);
     await pushLocalChanges(context.cliBinary, session.cliEnv);
     const mergedOnB = await waitForPathContent(vaultB.path, mergeJsonPath, (content) =>
         hasJsonValues(content, { fromA: true, fromB: true })
     );
+    await assertResolvedHiddenContent(context.cliBinary, session.cliEnv, mergeJsonPath, mergedOnB);
     await stopSession(context, session);
 
     session = await startConfiguredSession(context, vaultA);
@@ -613,6 +745,7 @@ async function runJsonConflictRoundTrip(
     const mergedOnA = await waitForPathContent(vaultA.path, mergeJsonPath, (content) =>
         hasJsonValues(content, { fromA: true, fromB: true })
     );
+    await assertResolvedHiddenContent(context.cliBinary, session.cliEnv, mergeJsonPath, mergedOnA);
     await stopSession(context, session);
 
     assertEqual(mergedOnA, mergedOnB, "Merged hidden JSON content was not consistent across both vaults.");
@@ -626,13 +759,21 @@ async function runJsonManualConflictResolution(context: RunnerContext, vault: Te
 
     const session = await startConfiguredSession(context, vault);
     await createHiddenJsonConflict(context, session, vault, manualMergeJsonPath, base, left, right);
-    await openHiddenJsonResolveModal(context.cliBinary, session.cliEnv, manualMergeJsonPath);
+    await startHiddenConflictResolution(context.cliBinary, session.cliEnv);
     const screenshotPath = await captureJsonResolveDialogue(obsidianRemoteDebuggingPort());
+    const completedBeforeSelection = await evalObsidianJson<boolean>(
+        context.cliBinary,
+        `JSON.stringify(globalThis[${JSON.stringify(hiddenConflictStateKey)}].done)`,
+        session.cliEnv
+    );
+    assertEqual(completedBeforeSelection, false, "The hidden conflict pipeline completed before selection.");
     await clickJsonResolveOption(obsidianRemoteDebuggingPort(), "AB");
+    await waitForHiddenConflictResolution(context.cliBinary, session.cliEnv);
 
     const merged = await waitForPathContent(vault.path, manualMergeJsonPath, (content) =>
         hasJsonValues(content, { shared: "right", fromA: true, fromB: true })
     );
+    await assertResolvedHiddenContent(context.cliBinary, session.cliEnv, manualMergeJsonPath, merged);
     await stopSession(context, session);
 
     const parsed = JSON.parse(merged);
@@ -640,6 +781,493 @@ async function runJsonManualConflictResolution(context: RunnerContext, vault: Te
     assertEqual(parsed.fromA, true, "Manual JSON conflict resolution lost the first-side value.");
     assertEqual(parsed.fromB, true, "Manual JSON conflict resolution lost the second-side value.");
     console.log(`Hidden JSON conflict modal applied the selected merged result. Screenshot: ${screenshotPath}`);
+}
+
+async function runJsonManualConflictReplacement(context: RunnerContext, vault: TemporaryVault): Promise<void> {
+    const base = JSON.stringify({ shared: "base" }, null, 4) + "\n";
+    const left = JSON.stringify({ shared: "left", fromA: true }, null, 4) + "\n";
+    const right = JSON.stringify({ shared: "right", fromB: true }, null, 4) + "\n";
+    const latestMarker = `hidden-json-replacement-${context.dbName}`;
+    const latest = JSON.stringify({ shared: "latest", fromA: true, fromB: true, latestMarker }, null, 4) + "\n";
+    const session = await startConfiguredSession(context, vault);
+
+    await createHiddenJsonConflict(context, session, vault, replacementMergeJsonPath, base, left, right);
+    await installHiddenJsonComparisonObserver(context.cliBinary, session.cliEnv);
+
+    await startHiddenConflictResolution(context.cliBinary, session.cliEnv);
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const firstOption = page.locator('label:has(input[name="disp"][value="AB"])').last();
+        await firstOption.waitFor({ state: "visible", timeout: 10000 });
+        await firstOption.evaluate((element, key) => {
+            const firstModal = element.closest(".modal-container");
+            if (!(firstModal instanceof HTMLElement))
+                throw new Error("The first JSON conflict dialogue has no modal container");
+            (globalThis as unknown as Record<string, { firstModal: HTMLElement }>)[key] = { firstModal };
+        }, hiddenConflictModalStateKey);
+    });
+
+    const firstDialogueState = await readHiddenJsonComparisonObservation(context.cliBinary, session.cliEnv);
+    assertEqual(
+        firstDialogueState.pipelineDone,
+        false,
+        "The hidden conflict pipeline completed before replacing its first dialogue."
+    );
+    assertEqual(firstDialogueState.calls.length, 1, "The first hidden JSON comparison was not observed exactly once.");
+    assertEqual(
+        firstDialogueState.calls[0].done,
+        false,
+        "The first hidden JSON comparison completed before the replacement request."
+    );
+
+    await writeVaultFile(vault.path, replacementMergeJsonPath, latest);
+    const updatedWinner = await evalObsidianJson<{ rev: string }>(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(replacementMergeJsonPath)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const addOn=core.getAddOn('HiddenFileSync');",
+            "const db=core.localDatabase;",
+            "const entry=await db.getDBEntry(`i:${path}`);",
+            "if(!entry)throw new Error(`Hidden conflict winner is missing: ${path}`);",
+            "const current=await db.getRaw(entry._id,{conflicts:true});",
+            "const conflictRevs=current._conflicts||[];",
+            "if(conflictRevs.length!==1)throw new Error(`Expected one competing hidden leaf before replacement: ${path}`);",
+            "const conflicts=await Promise.all(conflictRevs.map(rev=>db.getDBEntry(`i:${path}`,{rev},false,true,true)));",
+            "if(conflicts.some(doc=>!doc))throw new Error(`Could not read the competing hidden revision: ${path}`);",
+            "const mtime=Math.max(Number(entry.mtime)||0,...conflicts.map(doc=>Number(doc.mtime)||0))+10;",
+            "const fileInfo=await addOn.loadFileWithInfo(path);",
+            "if(fileInfo.deleted)throw new Error(`Hidden replacement file was unexpectedly deleted: ${path}`);",
+            "const baseData=await addOn.__loadBaseSaveData(path,true);",
+            "if(baseData===false)throw new Error(`Could not load hidden replacement save data: ${path}`);",
+            "const saveData={...baseData,data:fileInfo.body,mtime,ctime:fileInfo.stat.ctime,size:fileInfo.stat.size,children:[],deleted:false,type:baseData.datatype};",
+            "const result=await db.putDBEntry(saveData,false,entry._rev);",
+            "if(!result?.ok)throw new Error(`Could not advance the current hidden conflict winner: ${path}`);",
+            "return JSON.stringify({rev:result.rev});",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+    const beforeQueue = await readHiddenConflictLeaves(context.cliBinary, session.cliEnv, replacementMergeJsonPath);
+    assertEqual(
+        beforeQueue.currentRev,
+        updatedWinner.rev,
+        "The latest hidden conflict revision is not the current winner."
+    );
+    assertEqual(
+        beforeQueue.conflictRevs.length,
+        1,
+        "Advancing the current winner changed the competing hidden leaf count."
+    );
+    assertEqual(
+        beforeQueue.leaves.length,
+        2,
+        "Advancing the current winner did not retain both hidden conflict leaves."
+    );
+    const beforeQueueContents = beforeQueue.leaves.map(decodeHiddenConflictLeaf);
+    assertEqual(
+        beforeQueueContents.includes(latest),
+        true,
+        "The current hidden winner does not contain the latest JSON content."
+    );
+    assertEqual(
+        beforeQueueContents.some((content) => content === left || content === right),
+        true,
+        "The competing hidden leaf content is not readable after advancing the current winner."
+    );
+
+    await evalObsidianJson<unknown>(
+        context.cliBinary,
+        [
+            "(()=>{",
+            `const path=${JSON.stringify(replacementMergeJsonPath)};`,
+            "const addOn=app.plugins.plugins['obsidian-livesync'].core.getAddOn('HiddenFileSync');",
+            "addOn.queueConflictCheck(path);",
+            "return JSON.stringify({queued:true});",
+            "})()",
+        ].join(""),
+        session.cliEnv
+    );
+
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        await page.waitForFunction(
+            (key) => {
+                const state = (globalThis as unknown as Record<string, { firstModal: HTMLElement } | undefined>)[key];
+                if (!state || state.firstModal.isConnected) return false;
+                const visibleLabels = Array.from(
+                    document.querySelectorAll<HTMLLabelElement>('label:has(input[name="disp"])')
+                ).filter(
+                    (label) => label.getClientRects().length > 0 && getComputedStyle(label).visibility !== "hidden"
+                );
+                const roots = new Set(visibleLabels.map((label) => label.closest(".modal-container")));
+                return visibleLabels.length >= 2 && roots.size === 1;
+            },
+            hiddenConflictModalStateKey,
+            { timeout: 10000 }
+        );
+        const visibleDialogueCount = await page.evaluate(() => {
+            const visibleLabels = Array.from(
+                document.querySelectorAll<HTMLLabelElement>('label:has(input[name="disp"])')
+            ).filter((label) => label.getClientRects().length > 0 && getComputedStyle(label).visibility !== "hidden");
+            return new Set(visibleLabels.map((label) => label.closest(".modal-container"))).size;
+        });
+        assertEqual(
+            visibleDialogueCount,
+            1,
+            "Replacing a hidden comparison left more than one JSON conflict dialogue visible."
+        );
+    });
+
+    const replacementDialogueState = await readHiddenJsonComparisonObservation(context.cliBinary, session.cliEnv);
+    assertEqual(
+        replacementDialogueState.pipelineDone,
+        false,
+        "The hidden conflict pipeline completed before the replacement dialogue was applied."
+    );
+    assertEqual(
+        replacementDialogueState.calls.length,
+        2,
+        "The latest hidden conflict request did not open a second comparison."
+    );
+    assertEqual(
+        replacementDialogueState.calls[0].done,
+        true,
+        "The first hidden JSON comparison did not complete when replaced."
+    );
+    assertEqual(replacementDialogueState.calls[0].result, false, "The first hidden JSON comparison was not cancelled.");
+    assertEqual(
+        [replacementDialogueState.calls[1].leftRev, replacementDialogueState.calls[1].rightRev].includes(
+            updatedWinner.rev
+        ),
+        true,
+        "The replacement JSON comparison did not include the latest current revision."
+    );
+    assertEqual(
+        replacementDialogueState.calls[1].done,
+        false,
+        "The replacement JSON comparison completed before the user selected it."
+    );
+
+    const afterCancellation = await readHiddenConflictLeaves(
+        context.cliBinary,
+        session.cliEnv,
+        replacementMergeJsonPath
+    );
+    assertEqual(
+        afterCancellation.currentRev,
+        updatedWinner.rev,
+        "Cancelling the first dialogue changed the latest current revision."
+    );
+    assertEqual(
+        afterCancellation.conflictRevs.length,
+        1,
+        "Cancelling the first dialogue removed the competing hidden leaf."
+    );
+    assertEqual(
+        afterCancellation.leaves.length,
+        2,
+        "Cancelling the first dialogue did not preserve both hidden conflict leaves."
+    );
+    const afterCancellationContents = afterCancellation.leaves.map(decodeHiddenConflictLeaf);
+    assertEqual(
+        afterCancellationContents.includes(latest),
+        true,
+        "The latest hidden content became unreadable after cancelling the first dialogue."
+    );
+    assertEqual(
+        afterCancellationContents.some((content) => content === left || content === right),
+        true,
+        "The competing hidden content became unreadable after cancelling the first dialogue."
+    );
+
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const optionAB = page.locator('label:has(input[name="disp"][value="AB"])').last();
+        await optionAB.waitFor({ state: "visible", timeout: 10000 });
+        await optionAB.click();
+        const selected = await page.locator('input[name="disp"][value="AB"]').last().isChecked();
+        assertEqual(selected, true, "The replacement JSON dialogue did not select AB.");
+        await page.waitForFunction(
+            (marker) => {
+                const options = Array.from(
+                    document.querySelectorAll<HTMLInputElement>('input[name="disp"][value="AB"]')
+                );
+                const option = options
+                    .reverse()
+                    .find((candidate) => (candidate.closest("label")?.getClientRects().length ?? 0) > 0);
+                const modal = option?.closest(".modal-container");
+                if (!(modal instanceof HTMLElement)) return false;
+                const values = Array.from(
+                    modal.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input,textarea")
+                ).map((element) => element.value);
+                return `${modal.innerText}\n${values.join("\n")}`.includes(marker);
+            },
+            latestMarker,
+            { timeout: 10000 }
+        );
+        await page.getByRole("button", { name: "Apply" }).last().click();
+    });
+    await waitForHiddenConflictResolution(context.cliBinary, session.cliEnv);
+
+    const resolved = await waitForPathContent(vault.path, replacementMergeJsonPath, (content) =>
+        hasJsonValues(content, { shared: "latest", fromA: true, fromB: true, latestMarker })
+    );
+    await assertResolvedHiddenContent(context.cliBinary, session.cliEnv, replacementMergeJsonPath, resolved);
+    const parsed = JSON.parse(resolved) as Record<string, unknown>;
+    assertEqual(parsed.latestMarker, latestMarker, "The applied JSON result lost the latest replacement marker.");
+
+    const finalDialogueState = await readHiddenJsonComparisonObservation(context.cliBinary, session.cliEnv);
+    assertEqual(finalDialogueState.pipelineDone, true, "The replacement hidden conflict pipeline did not finish.");
+    assertEqual(
+        finalDialogueState.calls[0].result,
+        false,
+        "The replaced hidden JSON comparison did not remain cancelled."
+    );
+    assertEqual(finalDialogueState.calls[1].done, true, "The replacement hidden JSON comparison did not complete.");
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const finalState = await page.evaluate((key) => {
+            const state = (globalThis as unknown as Record<string, { firstModal: HTMLElement } | undefined>)[key];
+            const visibleLabels = Array.from(
+                document.querySelectorAll<HTMLLabelElement>('label:has(input[name="disp"])')
+            ).filter((label) => label.getClientRects().length > 0 && getComputedStyle(label).visibility !== "hidden");
+            return {
+                firstConnected: state?.firstModal.isConnected ?? false,
+                visibleDialogueCount: new Set(visibleLabels.map((label) => label.closest(".modal-container"))).size,
+            };
+        }, hiddenConflictModalStateKey);
+        assertEqual(
+            finalState.firstConnected,
+            false,
+            "The replaced JSON conflict dialogue remained connected after resolution."
+        );
+        assertEqual(
+            finalState.visibleDialogueCount,
+            0,
+            "A stale JSON conflict dialogue remained open after resolution."
+        );
+    });
+
+    await stopSession(context, session);
+    console.log(
+        "Hidden JSON conflict replacement cancelled the stale dialogue and applied the latest revision and contents."
+    );
+}
+
+async function runJsonManualExternalResolution(context: RunnerContext, vault: TemporaryVault): Promise<void> {
+    const base = JSON.stringify({ shared: "base" }, null, 4) + "\n";
+    const left = JSON.stringify({ shared: "left", fromA: true }, null, 4) + "\n";
+    const right = JSON.stringify({ shared: "right", fromB: true }, null, 4) + "\n";
+    const unrelatedContent = JSON.stringify({ externalResolution: "unrelated" }, null, 4) + "\n";
+    const session = await startConfiguredSession(context, vault);
+
+    await writeVaultFile(vault.path, externalResolutionUnrelatedPath, unrelatedContent);
+    await scanHiddenStorage(context.cliBinary, session.cliEnv);
+    const unrelatedEntry = await waitForLocalDatabaseEntry(
+        context.cliBinary,
+        session.cliEnv,
+        externalResolutionUnrelatedPath,
+        {
+            hidden: true,
+        }
+    );
+    await createHiddenJsonConflict(context, session, vault, externalResolutionTargetPath, base, left, right);
+    const initialLeaves = await readHiddenConflictLeaves(
+        context.cliBinary,
+        session.cliEnv,
+        externalResolutionTargetPath
+    );
+    assertEqual(
+        initialLeaves.conflictRevs.length,
+        1,
+        "The external-resolution target did not have one competing leaf."
+    );
+    assertEqual(initialLeaves.leaves.length, 2, "The external-resolution target did not retain two live leaves.");
+    const winnerContent = decodeHiddenConflictLeaf(
+        initialLeaves.leaves.find((leaf) => leaf.rev === initialLeaves.currentRev) ?? initialLeaves.leaves[0]
+    );
+    assertEqual(
+        [left, right].includes(winnerContent),
+        true,
+        "The initial hidden conflict winner content is not readable."
+    );
+    await writeVaultFile(vault.path, externalResolutionTargetPath, winnerContent);
+
+    await installHiddenJsonComparisonObserver(context.cliBinary, session.cliEnv);
+    await startHiddenConflictResolution(context.cliBinary, session.cliEnv);
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const firstOption = page.locator('label:has(input[name="disp"][value="AB"])').last();
+        await firstOption.waitFor({ state: "visible", timeout: 10000 });
+        await firstOption.evaluate((element, key) => {
+            const firstModal = element.closest(".modal-container");
+            if (!(firstModal instanceof HTMLElement))
+                throw new Error("The external-resolution JSON dialogue has no modal container");
+            (globalThis as unknown as Record<string, { firstModal: HTMLElement }>)[key] = { firstModal };
+        }, hiddenConflictModalStateKey);
+    });
+
+    const initialObservation = await readHiddenJsonComparisonObservation(context.cliBinary, session.cliEnv);
+    assertEqual(
+        initialObservation.pipelineDone,
+        false,
+        "The external-resolution conflict pipeline completed before a result arrived."
+    );
+    assertEqual(
+        initialObservation.calls.length,
+        1,
+        "The external-resolution target did not open exactly one comparison."
+    );
+    assertEqual(
+        initialObservation.calls[0].done,
+        false,
+        "The external-resolution dialogue completed before a result arrived."
+    );
+
+    const unrelatedResolution = await evalObsidianJson<{ rev: string }>(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(externalResolutionUnrelatedPath)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const meta=await core.localDatabase.getDBEntryMeta(`i:${path}`,{conflicts:true},true);",
+            "if(!meta)throw new Error(`Unrelated hidden metadata is missing: ${path}`);",
+            "if((meta._conflicts||[]).length!==0)throw new Error(`Unrelated hidden metadata unexpectedly has conflicts: ${path}`);",
+            "await core.services.replication.processOptionalSynchroniseResult(meta);",
+            "return JSON.stringify({rev:meta._rev});",
+            "})()",
+        ].join(""),
+        session.cliEnv,
+        hiddenFileCliTimeoutMs
+    );
+    assertEqual(
+        unrelatedResolution.rev,
+        unrelatedEntry.rev,
+        "The unrelated hidden fixture did not have the expected single revision."
+    );
+    const afterUnrelatedResult = await readHiddenJsonComparisonObservation(context.cliBinary, session.cliEnv);
+    assertEqual(
+        afterUnrelatedResult.pipelineDone,
+        false,
+        "A result for another hidden path completed the target conflict pipeline."
+    );
+    assertEqual(afterUnrelatedResult.calls.length, 1, "A result for another path opened another target comparison.");
+    assertEqual(
+        afterUnrelatedResult.calls[0].done,
+        false,
+        "A result for another path closed the target JSON comparison."
+    );
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modalState = await page.evaluate((key) => {
+            const state = (globalThis as unknown as Record<string, { firstModal: HTMLElement } | undefined>)[key];
+            const visibleLabels = Array.from(
+                document.querySelectorAll<HTMLLabelElement>('label:has(input[name="disp"])')
+            ).filter((label) => label.getClientRects().length > 0 && getComputedStyle(label).visibility !== "hidden");
+            return {
+                firstConnected: state?.firstModal.isConnected ?? false,
+                visibleDialogueCount: new Set(visibleLabels.map((label) => label.closest(".modal-container"))).size,
+            };
+        }, hiddenConflictModalStateKey);
+        assertEqual(modalState.firstConnected, true, "An unrelated hidden result detached the target JSON dialogue.");
+        assertEqual(
+            modalState.visibleDialogueCount,
+            1,
+            "An unrelated hidden result changed the visible target dialogue count."
+        );
+    });
+
+    const targetResolution = await evalObsidianJson<{ winnerRev: string; removedRev: string }>(
+        context.cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(externalResolutionTargetPath)};`,
+            "const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase;",
+            "const entry=await db.getDBEntry(`i:${path}`);",
+            "if(!entry)throw new Error(`Hidden conflict entry is missing: ${path}`);",
+            "const current=await db.getRaw(entry._id,{conflicts:true});",
+            "const conflictRevs=current._conflicts||[];",
+            "if(conflictRevs.length!==1)throw new Error(`Expected one hidden conflict leaf before external resolution: ${path}`);",
+            "const removedRev=conflictRevs[0];",
+            "await db.removeRevision(entry._id,removedRev);",
+            "const meta=await db.getDBEntryMeta(`i:${path}`,{conflicts:true},true);",
+            "if(!meta)throw new Error(`Resolved hidden metadata is missing: ${path}`);",
+            "if((meta._conflicts||[]).length!==0)throw new Error(`External hidden resolution still has conflicts: ${path}`);",
+            "await app.plugins.plugins['obsidian-livesync'].core.services.replication.processOptionalSynchroniseResult(meta);",
+            "return JSON.stringify({winnerRev:meta._rev,removedRev});",
+            "})()",
+        ].join(""),
+        session.cliEnv,
+        hiddenFileCliTimeoutMs
+    );
+    await waitForHiddenConflictResolution(context.cliBinary, session.cliEnv);
+
+    const resolvedLeaves = await readHiddenConflictLeaves(
+        context.cliBinary,
+        session.cliEnv,
+        externalResolutionTargetPath
+    );
+    assertEqual(
+        resolvedLeaves.currentRev,
+        targetResolution.winnerRev,
+        "External hidden resolution changed the selected winner revision."
+    );
+    assertEqual(
+        resolvedLeaves.currentRev,
+        initialLeaves.currentRev,
+        "External hidden resolution changed the current winner revision."
+    );
+    assertEqual(
+        targetResolution.removedRev,
+        initialLeaves.conflictRevs[0],
+        "External hidden resolution removed a different leaf than the competing revision."
+    );
+    assertEqual(
+        resolvedLeaves.conflictRevs.length,
+        0,
+        "The externally resolved hidden conflict remains in the database."
+    );
+    assertEqual(
+        resolvedLeaves.leaves.length,
+        1,
+        "External hidden resolution did not leave exactly one readable revision."
+    );
+    assertEqual(
+        decodeHiddenConflictLeaf(resolvedLeaves.leaves[0]),
+        winnerContent,
+        "External hidden resolution changed the current winner bytes."
+    );
+    const vaultWinner = await waitForPathContent(
+        vault.path,
+        externalResolutionTargetPath,
+        (content) => content === winnerContent
+    );
+    await assertResolvedHiddenContent(context.cliBinary, session.cliEnv, externalResolutionTargetPath, vaultWinner);
+
+    const finalObservation = await readHiddenJsonComparisonObservation(context.cliBinary, session.cliEnv);
+    assertEqual(finalObservation.pipelineDone, true, "The externally resolved hidden conflict pipeline did not drain.");
+    assertEqual(finalObservation.calls.length, 1, "External resolution opened a second JSON comparison.");
+    assertEqual(finalObservation.calls[0].done, true, "The external-resolution JSON comparison did not complete.");
+    assertEqual(finalObservation.calls[0].result, false, "The external-resolution JSON dialogue was not cancelled.");
+    await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+        const modalState = await page.evaluate((key) => {
+            const state = (globalThis as unknown as Record<string, { firstModal: HTMLElement } | undefined>)[key];
+            const visibleLabels = Array.from(
+                document.querySelectorAll<HTMLLabelElement>('label:has(input[name="disp"])')
+            ).filter((label) => label.getClientRects().length > 0 && getComputedStyle(label).visibility !== "hidden");
+            return {
+                firstConnected: state?.firstModal.isConnected ?? false,
+                visibleDialogueCount: new Set(visibleLabels.map((label) => label.closest(".modal-container"))).size,
+            };
+        }, hiddenConflictModalStateKey);
+        assertEqual(modalState.firstConnected, false, "The externally resolved JSON dialogue remained connected.");
+        assertEqual(
+            modalState.visibleDialogueCount,
+            0,
+            "The old hidden conflict dialogue reopened after external resolution."
+        );
+    });
+
+    await stopSession(context, session);
+    console.log(
+        "Hidden JSON conflict dialogue closed for an external same-path resolution and preserved the selected bytes."
+    );
 }
 
 async function runTargetMismatch(
@@ -1033,7 +1661,220 @@ async function runConfigurationNoticeGrouping(context: RunnerContext, vault: Tem
     }
 }
 
+type HiddenEnablementMode = "Merge" | "Fetch" | "Overwrite";
+
+async function enableHiddenSyncThroughSettings(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault,
+    mode: HiddenEnablementMode
+): Promise<void> {
+    const stateKey = "__livesyncE2EHiddenEnablement";
+    await evalObsidianJson(
+        context.cliBinary,
+        `(()=>{
+        const core=app.plugins.plugins['obsidian-livesync'].core;
+        if(core.settings.syncInternalFiles)throw new Error('Hidden File Sync must start disabled');
+        const setting=core.services.setting;
+        const original=setting.enableOptionalFeature;
+        const state={done:false,error:null,mode:null,restore:()=>{setting.enableOptionalFeature=original;}};
+        globalThis[${JSON.stringify(stateKey)}]=state;
+        setting.enableOptionalFeature=async function(mode){
+            state.mode=mode;
+            try{return await original.call(this,mode);}
+            catch(error){state.error=String(error);throw error;}
+            finally{state.done=true;state.restore();}
+        };
+        return JSON.stringify(true);
+    })()`,
+        session.cliEnv
+    );
+    try {
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const navigator = await openLiveSyncSettings(page);
+            const settingsPage = await navigator.openPage("Sync Settings");
+            const row = settingsPage.locator(".setting-item").filter({
+                has: navigator.page.getByRole("button", { name: "Merge", exact: true }),
+            });
+            await row.getByRole("button", { name: mode, exact: true }).click();
+        });
+        const result = await evalObsidianJson<{ mode: string; enabled: boolean }>(
+            context.cliBinary,
+            `
+            (async()=>{
+                const state=globalThis[${JSON.stringify(stateKey)}];
+                const deadline=Date.now()+60000;
+                while(!state.done&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
+                if(!state.done)throw new Error('Hidden File Sync enablement did not complete');
+                if(state.error)throw new Error(state.error);
+                const core=app.plugins.plugins['obsidian-livesync'].core;
+                return JSON.stringify({mode:state.mode,enabled:core.settings.syncInternalFiles});
+            })()
+        `,
+            session.cliEnv,
+            hiddenFileCliTimeoutMs
+        );
+        assertEqual(result.mode, mode.toUpperCase(), "The settings action invoked a different enablement mode.");
+        assertEqual(result.enabled, true, "Hidden File Sync was not enabled by its settings action.");
+        const saved = JSON.parse(await readVaultFile(vault.path, ".obsidian/plugins/obsidian-livesync/data.json"));
+        assertEqual(saved.syncInternalFiles, true, "Hidden File Sync enablement was not persisted.");
+    } finally {
+        await evalObsidianJson(
+            context.cliBinary,
+            `(()=>{
+            globalThis[${JSON.stringify(stateKey)}]?.restore();
+            delete globalThis[${JSON.stringify(stateKey)}];
+            return JSON.stringify(true);
+        })()`,
+            session.cliEnv
+        );
+    }
+}
+
+async function startPersistedSession(context: RunnerContext, vault: TemporaryVault): Promise<ObsidianLiveSyncSession> {
+    const session = await startObsidianLiveSyncSession({ binary: context.binary, cliBinary: context.cliBinary, vault });
+    context.activeSessions.add(session);
+    await waitForLiveSyncCoreReady(context.cliBinary, session.cliEnv);
+    const enabled = await evalObsidianJson<boolean>(
+        context.cliBinary,
+        "JSON.stringify(app.plugins.plugins['obsidian-livesync'].core.settings.syncInternalFiles)",
+        session.cliEnv
+    );
+    assertEqual(enabled, true, "Hidden File Sync enablement did not survive restart.");
+    return session;
+}
+
+async function verifyHiddenFiles(
+    context: RunnerContext,
+    session: ObsidianLiveSyncSession,
+    vault: TemporaryVault,
+    expected: Record<string, string>
+): Promise<void> {
+    for (const [path, content] of Object.entries(expected)) {
+        await waitForPathContent(vault.path, path, (actual) => actual === content);
+        await assertResolvedHiddenContent(context.cliBinary, session.cliEnv, path, content);
+    }
+}
+
+async function runHiddenEnablement(context: RunnerContext, mode: HiddenEnablementMode): Promise<void> {
+    const source = await createTemporaryVault();
+    context.temporaryVaults.add(source);
+    const target = await createTemporaryVault();
+    context.temporaryVaults.add(target);
+    const root = `.obsidian/livesync-enable-${mode.toLowerCase()}`;
+    const localNewer = `${root}/local-newer.json`;
+    const remoteNewer = `${root}/remote-newer.json`;
+    const remoteOnly = `${root}/remote-only.json`;
+    const localOnly = `${root}/local-only.json`;
+    context.diagnosticPaths = [localNewer, remoteNewer, remoteOnly, localOnly];
+    const remoteContent = JSON.stringify({ source: "remote", mode }) + "\n";
+    const localContent = JSON.stringify({ source: "local", mode }) + "\n";
+    const timestamp = Math.floor(Date.now() / 1000) - 120;
+    for (const path of [localNewer, remoteNewer, remoteOnly]) {
+        await writeVaultFile(source.path, path, remoteContent);
+        await utimes(join(source.path, path), timestamp + 10, timestamp + 10);
+    }
+    const settings = {
+        syncInternalFiles: false,
+        useAdvancedMode: true,
+        syncInternalFilesTargetPatterns: `^\\.obsidian(?:$|/livesync-enable-${mode.toLowerCase()}(?:/|$))`,
+    };
+    let session = await startConfiguredSession(context, source, settings);
+    await enableHiddenSyncThroughSettings(context, session, source, "Overwrite");
+    await verifyHiddenFiles(context, session, source, {
+        [localNewer]: remoteContent,
+        [remoteNewer]: remoteContent,
+        [remoteOnly]: remoteContent,
+    });
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    const uploaded: LocalDatabaseEntry[] = [];
+    for (const path of [localNewer, remoteNewer, remoteOnly]) {
+        uploaded.push(await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, path, { hidden: true }));
+    }
+    await waitForCouchDbDocs(context.couchDb, context.dbName, (docs) =>
+        uploaded.every((entry) => docs.some((doc) => doc._id === entry.id && doc._rev === entry.rev))
+    );
+    await stopSession(context, session);
+
+    for (const [path, time] of [
+        [localNewer, timestamp + 30],
+        [remoteNewer, timestamp],
+        [localOnly, timestamp + 30],
+    ] as const) {
+        await writeVaultFile(target.path, path, localContent);
+        await utimes(join(target.path, path), time, time);
+    }
+    session = await startConfiguredSession(context, target, settings);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    for (const path of [localNewer, remoteNewer]) {
+        assertEqual(await readVaultFile(target.path, path), localContent, "Disabled sync replaced a local fixture.");
+    }
+    const receivedRevisions = await evalObsidianJson<string[]>(
+        context.cliBinary,
+        `(async()=>{
+        const db=app.plugins.plugins['obsidian-livesync'].core.localDatabase;
+        const revisions=[];
+        for(const id of ${JSON.stringify(uploaded.map((entry) => entry.id))}) {
+            const doc=await db.getRaw(id);
+            revisions.push(doc._rev);
+        }
+        return JSON.stringify(revisions);
+    })()`,
+        session.cliEnv
+    );
+    assertEqual(
+        JSON.stringify(receivedRevisions),
+        JSON.stringify(uploaded.map((entry) => entry.rev)),
+        "Disabled Hidden File Sync did not retain the uploaded revisions in its database."
+    );
+    assertEqual(await pathExists(target.path, remoteOnly), false, "Disabled sync reflected a remote-only file.");
+
+    await enableHiddenSyncThroughSettings(context, session, target, mode);
+    const expected = {
+        [localNewer]: mode === "Fetch" ? remoteContent : localContent,
+        [remoteNewer]: mode === "Overwrite" ? localContent : remoteContent,
+        [remoteOnly]: remoteContent,
+        [localOnly]: localContent,
+    };
+    await verifyHiddenFiles(context, session, target, expected);
+    await pushLocalChanges(context.cliBinary, session.cliEnv);
+    await stopSession(context, session);
+
+    session = await startPersistedSession(context, target);
+    await verifyHiddenFiles(context, session, target, expected);
+    await stopSession(context, session);
+
+    session = await startPersistedSession(context, source);
+    await pullAndApplyHiddenFiles(context, session);
+    await verifyHiddenFiles(context, session, source, expected);
+    await stopSession(context, session);
+    console.log(
+        `Hidden File Sync ${mode} preserved the selected contents in files and the database, after restart, and on the other device.`
+    );
+}
+
 async function main(): Promise<void> {
+    const selectedCase = process.argv.find((argument) => argument.startsWith("--case="))?.slice(7);
+    if (
+        selectedCase &&
+        selectedCase !== "conflicts" &&
+        selectedCase !== "replacement" &&
+        selectedCase !== "external-resolution" &&
+        selectedCase !== "enablement"
+    ) {
+        throw new Error("Use --case=conflicts, --case=replacement, --case=external-resolution, or --case=enablement.");
+    }
+    const conflictsOnly = selectedCase === "conflicts";
+    const replacementOnly = selectedCase === "replacement";
+    const externalResolutionOnly = selectedCase === "external-resolution";
+    const enablementOnly = selectedCase === "enablement";
+    const selectedMode = process.argv.find((argument) => argument.startsWith("--mode="))?.slice(7);
+    const enablementModes = (["Merge", "Fetch", "Overwrite"] as const).filter(
+        (mode) => !selectedMode || selectedMode === mode
+    );
+    if (selectedMode && (!enablementOnly || enablementModes.length !== 1)) {
+        throw new Error("Use --case=enablement with --mode=Merge, --mode=Fetch, or --mode=Overwrite.");
+    }
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
     if (!cli.binary) {
@@ -1044,7 +1885,22 @@ async function main(): Promise<void> {
     const dbName = makeUniqueDatabaseName(couchDb.dbPrefix, "hidden-roundtrip");
     const vaultA = await createTemporaryVault();
     const vaultB = await createTemporaryVault();
-    const context: RunnerContext = { binary, cliBinary: cli.binary, couchDb, dbName, activeSessions: new Set() };
+    const context: RunnerContext = {
+        binary,
+        cliBinary: cli.binary,
+        couchDb,
+        dbName,
+        activeSessions: new Set(),
+        temporaryVaults: new Set([vaultA, vaultB]),
+        diagnosticPaths: [
+            mergeJsonPath,
+            manualMergeJsonPath,
+            replacementMergeJsonPath,
+            externalResolutionTargetPath,
+            externalResolutionUnrelatedPath,
+            snippetPath,
+        ],
+    };
 
     try {
         await assertCouchDbReachable(couchDb);
@@ -1055,17 +1911,62 @@ async function main(): Promise<void> {
         console.log(`Temporary vault B: ${vaultB.path}`);
         console.log(`Temporary CouchDB database: ${dbName}`);
 
-        await runCreateRoundTrip(context, vaultA, vaultB);
-        await runDeleteRoundTrip(context, vaultA, vaultB);
-        await runJsonConflictRoundTrip(context, vaultA, vaultB);
-        await runJsonManualConflictResolution(context, vaultB);
-        await runTargetMismatch(context, vaultA, vaultB);
-        await runInitialisationNoticeGrouping(context, vaultB);
-        await runConfigurationNoticeGrouping(context, vaultB);
+        if (!conflictsOnly && !replacementOnly && !externalResolutionOnly && !enablementOnly) {
+            await runCreateRoundTrip(context, vaultA, vaultB);
+            await runDeleteRoundTrip(context, vaultA, vaultB);
+        }
+        if (!enablementOnly && !replacementOnly && !externalResolutionOnly) {
+            await runJsonConflictRoundTrip(context, vaultA, vaultB);
+            await runJsonManualConflictResolution(context, vaultB);
+        }
+        if (!enablementOnly && !externalResolutionOnly) {
+            await runJsonManualConflictReplacement(context, vaultB);
+        }
+        if (!enablementOnly && !replacementOnly) {
+            await runJsonManualExternalResolution(context, vaultB);
+        }
+        if (!conflictsOnly && !replacementOnly && !externalResolutionOnly && !enablementOnly) {
+            await runTargetMismatch(context, vaultA, vaultB);
+            await runInitialisationNoticeGrouping(context, vaultB);
+            await runConfigurationNoticeGrouping(context, vaultB);
+        }
+        if (!conflictsOnly && !replacementOnly && !externalResolutionOnly) {
+            for (const mode of enablementModes) await runHiddenEnablement(context, mode);
+        }
+    } catch (error) {
+        for (const session of context.activeSessions) {
+            await captureObsidianPage(
+                session.remoteDebuggingPort,
+                "hidden-file-workflow-failure.png",
+                async () => {}
+            ).catch((captureError: unknown) => console.error(String(captureError)));
+            await evalObsidianJson(
+                cli.binary,
+                [
+                    "(async()=>{",
+                    "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                    "const addOn=core.getAddOn('HiddenFileSync');",
+                    `const paths=${JSON.stringify(context.diagnosticPaths)};`,
+                    "const files=await addOn.scanInternalFileNames();",
+                    "const observations=[];",
+                    "for(const path of paths){",
+                    "const stat=await core.storageAccess.statHidden(path);",
+                    "const entry=await core.localDatabase.getDBEntryMeta(`i:${path}`,{conflicts:true});",
+                    "observations.push({path,selected:files.includes(path),target:await addOn.isTargetFile(path),stat,processed:addOn.getLastProcessedFileKey(path),entry:entry?{rev:entry._rev,conflicts:entry._conflicts||[]}:false});",
+                    "}",
+                    `const operation=globalThis[${JSON.stringify(hiddenConflictStateKey)}];`,
+                    "return JSON.stringify({enabled:core.settings.syncInternalFiles,ready:core.localDatabase.isReady,remaining:addOn.conflictResolutionProcessor.totalRemaining,operation,observations});",
+                    "})()",
+                ].join(""),
+                session.cliEnv
+            )
+                .then((snapshot) => console.error("Hidden-file failure state:", JSON.stringify(snapshot)))
+                .catch((snapshotError: unknown) => console.error(String(snapshotError)));
+        }
+        throw error;
     } finally {
         for (const session of context.activeSessions) await stopSession(context, session);
-        await vaultA.dispose();
-        await vaultB.dispose();
+        for (const vault of context.temporaryVaults) await vault.dispose();
         if (process.env.E2E_OBSIDIAN_KEEP_COUCHDB !== "true") {
             await deleteCouchDbDatabase(couchDb, dbName).catch((error: unknown) => {
                 console.warn(error instanceof Error ? error.message : error);

@@ -1,25 +1,23 @@
-import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import type { InjectableConflictService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableConflictService";
-import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import {
+    createServiceFeature,
+    type NecessaryServices,
+} from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { createConflictCheckingHandlers } from "./checker";
 import { createConflictResolutionOperations } from "./operations";
 
-type ConflictResolutionServices = NecessaryServices<
-    "API" | "appLifecycle" | "conflict" | "database" | "replication" | "setting" | "vault",
-    "databaseFileAccess" | "fileHandler" | "storageAccess"
->;
-
-export type ConflictResolutionHost = ConflictResolutionServices & {
-    readonly services: ConflictResolutionServices["services"] & {
-        readonly conflict: InjectableConflictService<ServiceContext>;
-    };
+export type ConflictResolutionHost = NecessaryServices<
+    "appLifecycle" | "conflict" | "database" | "replication" | "setting" | "vault",
+    "databaseFileAccess" | "fileHandler" | "storageAccess",
+    InjectableServiceHub
+> & {
+    readonly log: LogFunction;
 };
 
-/** Compose the host-neutral conflict checker and resolver handlers. */
-export function useConflictResolutionFeature(host: ConflictResolutionHost): void {
-    const { services, serviceModules } = host;
-    const log = createInstanceLogFunction("SF:ConflictResolution", services.API);
+/** Compose the host-neutral conflict handlers with the host's borrowed logger. */
+export const useConflictResolutionFeature = createServiceFeature((host: ConflictResolutionHost): void => {
+    const { services, serviceModules, log } = host;
     const operations = createConflictResolutionOperations({
         events: services.context.events,
         databaseFileAccess: serviceModules.databaseFileAccess,
@@ -36,6 +34,7 @@ export function useConflictResolutionFeature(host: ConflictResolutionHost): void
     const checking = createConflictCheckingHandlers({
         conflict: services.conflict,
         conflictProcessQueueCount: services.conflict.conflictProcessQueueCount,
+        cancelActiveResolution: operations.cancelActiveResolution,
         currentSettings: () => services.setting.currentSettings(),
         vault: services.vault,
         log,
@@ -48,7 +47,7 @@ export function useConflictResolutionFeature(host: ConflictResolutionHost): void
     services.conflict.resolve.setHandler(operations.resolve);
     services.conflict.resolveByNewest.setHandler(operations.resolveByNewest);
     services.conflict.resolveAllConflictedFilesByNewerOnes.setHandler(operations.resolveAllConflictedFilesByNewerOnes);
-}
+});
 
 export { createConflictCheckingHandlers } from "./checker";
 export type { ConflictCheckingDependencies, ConflictCheckingHandlers } from "./checker";

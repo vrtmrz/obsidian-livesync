@@ -36,37 +36,14 @@ export class FSAPIVaultAdapter implements IVaultAdapter<FSAPIFile> {
     }
 
     async create(p: string, data: string, options?: UXDataWriteOptions): Promise<FSAPIFile> {
-        const parts = p.split("/").filter((part) => part !== "");
-        const fileName = parts[parts.length - 1];
-
-        // Navigate to parent directory, creating as needed
-        let currentHandle = this.rootHandle;
-        for (let i = 0; i < parts.length - 1; i++) {
-            currentHandle = await currentHandle.getDirectoryHandle(parts[i], { create: true });
-        }
-
-        // Create the file
-        const fileHandle = await currentHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(data);
-        await writable.close();
-
-        // Get file metadata
-        const fileObject = await fileHandle.getFile();
-
-        return {
-            path: p as FilePath,
-            stat: {
-                size: fileObject.size,
-                mtime: fileObject.lastModified,
-                ctime: fileObject.lastModified,
-                type: "file",
-            },
-            handle: fileHandle,
-        };
+        return await this.createFile(p, data);
     }
 
     async createBinary(p: string, data: ArrayBuffer, options?: UXDataWriteOptions): Promise<FSAPIFile> {
+        return await this.createFile(p, data);
+    }
+
+    private async createFile(p: string, data: string | ArrayBuffer): Promise<FSAPIFile> {
         const parts = p.split("/").filter((part) => part !== "");
         const fileName = parts[parts.length - 1];
 

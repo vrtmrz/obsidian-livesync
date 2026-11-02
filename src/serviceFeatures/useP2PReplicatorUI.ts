@@ -1,6 +1,6 @@
 import { eventHub, EVENT_REQUEST_OPEN_P2P } from "@/common/events";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/UseP2PReplicatorResult";
+import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import {
     P2PServerStatusPaneView,
     VIEW_TYPE_P2P_SERVER_STATUS,
@@ -47,22 +47,9 @@ export function hasP2PConfiguration(settings: Partial<ObsidianLiveSyncSettings>)
  */
 
 export function useP2PReplicatorUI(
-    host: NecessaryServices<
-        | "API"
-        | "appLifecycle"
-        | "setting"
-        | "vault"
-        | "database"
-        | "databaseEvents"
-        | "keyValueDB"
-        | "replication"
-        | "config"
-        | "UI"
-        | "replicator",
-        never
-    >,
+    host: NecessaryServices<"API" | "appLifecycle" | "setting" | "replicator", never>,
     core: LiveSyncCore,
-    replicator: UseP2PReplicatorResult,
+    replicator: P2PServiceViews,
     openInteractiveReplication: OpenInteractiveP2PReplication
 ) {
     const api = host.services.API as {

@@ -48,7 +48,7 @@ export default defineConfig([
         "test/**",
         "**/test/**",
         "src/apps/_test/**",
-        "src/apps/cli/testdeno/**",
+        "test/e2e-cli/**",
         "**/*.test.ts",
         "**/*.unit.spec.ts",
         "**/test.ts",
@@ -118,6 +118,13 @@ export default defineConfig([
             "@typescript-eslint/no-base-to-string": "warn",
             "@typescript-eslint/no-unnecessary-type-assertion": "warn",
             "@typescript-eslint/restrict-template-expressions": "warn",
+        },
+    },
+    {
+        files: ["src/apps/cli/vite.config.ts", "src/apps/webapp/vite.config.ts"],
+        rules: {
+            // Vite loads these configurations before the application source alias is available.
+            "livesync-imports/prefer-source-alias": "off",
         },
     },
     {
