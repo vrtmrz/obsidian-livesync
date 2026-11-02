@@ -49,7 +49,7 @@ import {
     decodeBinary,
     readString,
 } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
-import { serialized, shareRunningResult } from "octagonal-wheels/concurrency/lock";
+import { withLock, shareRunningResult } from "octagonal-wheels/concurrency/lock";
 import { LiveSyncCommands } from "@/features/LiveSyncCommands.ts";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { cancelTask, EVEN, isCustomisationSyncMetadata, isPluginMetadata, scheduleTask } from "@/common/utils.ts";
@@ -752,7 +752,7 @@ export class ConfigSync extends LiveSyncCommands {
             // const unifiedFilenameWithKey = this.filenameWithUnifiedKey(updatedDocumentPath);
             const { pathV1 } = this.parseUnifiedPath(unifiedFilenameWithKey);
 
-            await serialized(`config:catalogue:${pathV1}`, async () => {
+            await withLock(`config:catalogue:${pathV1}`, async () => {
                 if (!isCurrent()) return;
                 const oldEntry = this.pluginList.find((e) => e.documentPath == pathV1);
                 let entry: PluginDataExDisplayV2 | undefined = undefined;
@@ -925,7 +925,7 @@ export class ConfigSync extends LiveSyncCommands {
             path = path.split("%")[1] as FilePath;
         }
         if (fileA.path.endsWith(".json")) {
-            return serialized(
+            return withLock(
                 "config:merge-data",
                 () =>
                     new Promise<boolean>((res) => {
@@ -1276,7 +1276,7 @@ export class ConfigSync extends LiveSyncCommands {
         requireCompletion: boolean
     ) {
         const vf = this.filenameWithUnifiedKey(path, term);
-        return await serialized(`plugin-${vf}`, async () => {
+        return await withLock(`plugin-${vf}`, async () => {
             const prefixedFileName = vf;
 
             const id = await this.path2id(prefixedFileName);
@@ -1379,7 +1379,7 @@ export class ConfigSync extends LiveSyncCommands {
         const vf = this.filenameToUnifiedKey(path, term);
         // console.warn(`Storing ${path} to ${bareVF} :--> ${keyedVF}`);
 
-        return await serialized(`plugin-${vf}`, async () => {
+        return await withLock(`plugin-${vf}`, async () => {
             const category = this.getFileCategory(path);
             let mtime = 0;
             let fileTargets = [] as FilePath[];
@@ -1683,7 +1683,7 @@ export class ConfigSync extends LiveSyncCommands {
     ) {
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
-        return await serialized("file-x-" + prefixedFileName, async () => {
+        return await withLock("file-x-" + prefixedFileName, async () => {
             try {
                 const old = (await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false)) as
                     | InternalFileEntry

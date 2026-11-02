@@ -26,7 +26,7 @@ import {
 import { fireAndForget, isAnyNote, throttle } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { Semaphore } from "octagonal-wheels/concurrency/semaphore_v2";
 import { withCounting } from "octagonal-wheels/concurrency/counting";
-import { serialized } from "octagonal-wheels/concurrency/lock";
+import { withLock } from "octagonal-wheels/concurrency/lock";
 import type { ReactiveSource } from "octagonal-wheels/dataobject/reactive_v2";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
@@ -534,7 +534,7 @@ export class ReplicateResultProcessor {
     private _applyToDatabase(doc_: PouchDB.Core.ExistingDocument<AnyEntry>) {
         const dbDoc = doc_ as LoadedEntry; // It has no `data`
         const path = this.getPath(dbDoc);
-        return serialized(`replication-process:${dbDoc._id}`, async () => {
+        return withLock(`replication-process:${dbDoc._id}`, async () => {
             const docNote = `${path} (${shortenId(dbDoc._id)}, ${shortenRev(dbDoc._rev)})`;
             const isRequired = await this.checkIsChangeRequiredForDatabaseProcessing(dbDoc);
             if (!isRequired) {

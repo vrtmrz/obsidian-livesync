@@ -4,7 +4,7 @@ vi.mock("octagonal-wheels/number", () => ({
     sizeToHumanReadable: vi.fn((value: number) => `${value} B`),
 }));
 vi.mock("octagonal-wheels/concurrency/lock_v2", () => ({
-    serialized: vi.fn((_key: string, task: () => unknown) => task()),
+    withLock: vi.fn((_key: string, task: () => unknown) => task()),
 }));
 vi.mock("octagonal-wheels/collection", () => ({
     arrayToChunkedArray: vi.fn((values: unknown[]) => [values]),
