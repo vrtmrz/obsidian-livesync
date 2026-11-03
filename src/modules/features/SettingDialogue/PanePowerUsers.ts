@@ -28,6 +28,7 @@ export function panePowerUsers(
             onUpdate: this.onlyOnCouchDB,
         });
         new Setting(paneEl).autoWireToggle("useTimeouts", { onUpdate: this.onlyOnCouchDB });
+        new Setting(paneEl).autoWireToggle("useCouchDBCacheControlHeadersOnly", { onUpdate: this.onlyOnCouchDB });
     });
     void addPanel(paneEl, $msg("Configuration Encryption")).then((paneEl) => {
         const passphrase_options: Record<ConfigPassphraseStore, string> = {

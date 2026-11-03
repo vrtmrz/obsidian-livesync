@@ -82,6 +82,7 @@ export function getCouchDBReplicatorConfigurationIdentity(settings: RemoteDBSett
         authentication,
         projectHeaders(settings.couchDB_CustomHeaders),
         settings.useRequestAPI,
+        settings.useCouchDBCacheControlHeadersOnly === true,
         settings.disableRequestURI,
         projectRemoteSecurity(settings),
         usesEncryptedInternalMetadata(settings),

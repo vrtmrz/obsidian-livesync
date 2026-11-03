@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { DoctorRegulation } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { DOCID_SYNC_PARAMETERS } from "@vrtmrz/livesync-commonlib/compat/common/types";
@@ -25,13 +25,17 @@ import {
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
+import { obsidianRemoteDebuggingPort, openLiveSyncSettings, withObsidianPage } from "../runner/ui.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "60000";
 
 const useRequestAPI = process.argv.includes("--request-api");
+type ObservedRequest = { transport: string; method: string; url: string; cache?: RequestCache };
 
 const customPath = ".obsidian/snippets/http-cache.css";
 const nextCustomPath = ".obsidian/snippets/http-cache-new.css";
+const ordinaryPath = "example.md";
+const ordinaryContents = "/* HTTP cache fixture */\n";
 const settings = {
     encrypt: true,
     passphrase: "couchdb-http-cache-fixture-secret",
@@ -48,6 +52,7 @@ const settings = {
     syncInternalFilesTargetPatterns: "^\\.http-cache(?:/|$)",
     watchInternalFileChanges: false,
     useRequestAPI,
+    usePowerUserMode: true,
     autoAcceptCompatibleTweak: false,
     doctorProcessedVersion: DoctorRegulation.version,
     deviceAndVaultName: "http-cache-source",
@@ -62,6 +67,7 @@ async function main(): Promise<void> {
     const connection = { ...couchDb, dbName };
     const vault = await createTemporaryVault();
     let session: ObsidianLiveSyncSession | undefined;
+    let observingRequests = false;
     const evaluate = async <T>(body: string): Promise<T> => {
         if (!session) throw new Error("No active Obsidian session.");
         return await evalObsidianJson<T>(
@@ -85,12 +91,102 @@ async function main(): Promise<void> {
             if(!response.ok)throw new Error('Fixture read failed: '+response.status);
             return JSON.stringify(await response.json());`);
     };
+    const observeCommonlibRequests = async (): Promise<void> => {
+        await evaluate(`return (() => {
+            const api=core.services.API;
+            const state={requests:[],originals:{},restore:undefined};
+            for(const name of ['webCompatFetch','nativeFetch']) {
+                state.originals[name]=api[name];
+                api[name]=function(request,options) {
+                    const url=typeof request==='string'?request:request.url;
+                    const method=options?.method??(typeof request==='string'?'GET':request.method);
+                    state.requests.push({transport:name,method,url,cache:options?.cache});
+                    return state.originals[name].call(this,request,options);
+                };
+            }
+            state.restore=()=>{for(const name of Object.keys(state.originals)) api[name]=state.originals[name];};
+            globalThis.couchDBHttpCacheObservations=state;
+            return JSON.stringify(true);
+        })()`);
+        observingRequests = true;
+    };
+    const restoreCommonlibRequests = async (): Promise<void> => {
+        await evaluate(`return (() => {
+            const state=globalThis.couchDBHttpCacheObservations;
+            if(state)state.restore();
+            delete globalThis.couchDBHttpCacheObservations;
+            return JSON.stringify(true);
+        })()`);
+        observingRequests = false;
+    };
+    const readCommonlibDocument = async (id: string) =>
+        await evaluate<{
+            document: CouchDbDocument;
+            requests: ObservedRequest[];
+        }>(`const state=globalThis.couchDBHttpCacheObservations;
+            if(!state)throw new Error('HTTP request observation is not active');
+            const firstRequest=state.requests.length;
+            const replicator=core.services.replicator.getActiveReplicator();
+            const connection=await replicator.connectRemoteCouchDBWithSetting(
+                core.services.setting.currentSettings(),false,false,true);
+            if(typeof connection==='string')throw new Error('Could not open the owned Commonlib connection: '+connection);
+            try {
+                const document=await connection.db.get(${JSON.stringify(id)});
+                return JSON.stringify({document,requests:state.requests.slice(firstRequest)});
+            } finally {
+                await connection.close();
+            }`);
+
+    const metadataRequest = (
+        read: Awaited<ReturnType<typeof readCommonlibDocument>>,
+        id: string
+    ): ObservedRequest => {
+        const request = read.requests
+            .filter((candidate) => {
+                const path = new URL(candidate.url).pathname;
+                return decodeURIComponent(path.slice(path.lastIndexOf("/") + 1)) === id;
+            })
+            .slice(-1)[0];
+        assert.ok(request, `The owned Commonlib read did not request Metadata ${id}.`);
+        assert.equal(request.transport, useRequestAPI ? "nativeFetch" : "webCompatFetch");
+        assert.equal(request.method.toUpperCase(), "GET");
+        return request;
+    };
+    const setHeadersOnlyThroughUI = async (enabled: boolean, expectedBefore: boolean): Promise<void> => {
+        await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+            const navigator = await openLiveSyncSettings(page);
+            try {
+                const pane = await navigator.openPage("Power users");
+                const row = pane.locator(".setting-item").filter({
+                    hasText: "Use headers only for HTTP cache control (compatibility)",
+                });
+                await row.waitFor({ state: "visible" });
+                assert.equal(await row.locator(".checkbox-container.is-enabled").count(), Number(expectedBefore));
+                await row.locator(".checkbox-container").click();
+                await page.waitForFunction(
+                    `app.plugins.plugins['obsidian-livesync'].core.services.setting.currentSettings().useCouchDBCacheControlHeadersOnly === ${enabled}`
+                );
+            } finally {
+                await navigator.close();
+            }
+        });
+        const saved = JSON.parse(await readFile(join(vault.path, ".obsidian/plugins/obsidian-livesync/data.json"), "utf8"));
+        assert.equal(saved.useCouchDBCacheControlHeadersOnly, enabled, "The compatibility switch was not saved.");
+    };
+    const assertLogicalDocument = (document: CouchDbDocument, original: CouchDbDocument): void => {
+        assert.equal(document._id, original._id);
+        assert.equal(document._rev, original._rev, "The logical Metadata revision changed.");
+        assert.equal(document.path, ordinaryPath, "The owned connection did not return the logical file path.");
+        assert.equal(document.type, original.type);
+        assert.equal(document.size, Buffer.byteLength(ordinaryContents));
+        assert.ok(Array.isArray(document.children) && document.children.length > 0);
+    };
 
     try {
         await createCouchDbDatabase(couchDb, dbName);
-        for (const path of ["example.md", ".http-cache/example.json", customPath]) {
+        for (const path of [ordinaryPath, ".http-cache/example.json", customPath]) {
             await mkdir(dirname(join(vault.path, path)), { recursive: true });
-            await writeFile(join(vault.path, path), "/* HTTP cache fixture */\n");
+            await writeFile(join(vault.path, path), ordinaryContents);
         }
         session = await startObsidianLiveSyncSession({
             binary,
@@ -114,6 +210,27 @@ async function main(): Promise<void> {
         const initialParameters = await fetchCouchDbDocument(couchDb, dbName, DOCID_SYNC_PARAMETERS);
         // Populate the HTTP cache as an earlier plug-in version would have done.
         assert.deepEqual(await readCachedDocument(original._id, "reload"), original);
+        await observeCommonlibRequests();
+        const initialRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(initialRead.document, original);
+        const initialMetadataRequest = metadataRequest(initialRead, original._id);
+        const initialEpoch = new URL(initialMetadataRequest.url).searchParams.get("_livesync_epoch");
+        assert.ok(initialEpoch, "The ordinary Metadata read did not include a Seed cache namespace.");
+        assert.match(initialEpoch, /^[0-9a-f]{64}$/, "The URL must contain only the combined hash.");
+
+        await setHeadersOnlyThroughUI(true, false);
+        const compatibilityRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(compatibilityRead.document, original);
+        const compatibilityRequest = metadataRequest(compatibilityRead, original._id);
+        assert.equal(new URL(compatibilityRequest.url).searchParams.has("_livesync_epoch"), false);
+        assert.equal(compatibilityRequest.cache, "no-store");
+
+        await setHeadersOnlyThroughUI(false, true);
+        const restoredRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(restoredRead.document, original);
+        const restoredRequest = metadataRequest(restoredRead, original._id);
+        assert.equal(new URL(restoredRequest.url).searchParams.get("_livesync_epoch"), initialEpoch);
+        assert.equal(restoredRequest.cache, "no-cache");
 
         await evaluate(`await core.services.setting.applyPartial({encryptInternalMetadata:true},true);
             await core.services.control.applySettings();
@@ -138,6 +255,17 @@ async function main(): Promise<void> {
                 "The stale browser HTTP cache fixture is no longer present."
             );
         }
+        const rebuiltRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(rebuiltRead.document, original);
+        assert.deepEqual(
+            rebuiltRead.document.children,
+            initialRead.document.children,
+            "The logical file content references changed during Rebuild."
+        );
+        const rebuiltMetadataRequest = metadataRequest(rebuiltRead, original._id);
+        const rebuiltEpoch = new URL(rebuiltMetadataRequest.url).searchParams.get("_livesync_epoch");
+        assert.ok(rebuiltEpoch, "The post-Rebuild Metadata read did not include a Seed cache namespace.");
+        assert.notEqual(rebuiltEpoch, initialEpoch, "The cache namespace did not change with the Security Seed.");
 
         await evaluate(`await core.services.setting.applyPartial({usePluginSync:true,syncInternalFiles:true},true);
             await core.services.control.applySettings();return JSON.stringify(true);`);
@@ -148,13 +276,59 @@ async function main(): Promise<void> {
             if(opened)await opened.close();return JSON.stringify({admitted:!!opened});
             }catch(error){return JSON.stringify({admitted:false,error:error.name});}`);
         assert.ok(admission.admitted, `Replication admission failed: ${JSON.stringify(admission)}`);
-        assert.equal((await readCachedDocument(original._id, "no-store")).path, rebuilt.path);
+        const repeatedRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(repeatedRead.document, original);
+        assert.deepEqual(
+            repeatedRead.document.children,
+            initialRead.document.children,
+            "The logical file content references changed after replication admission."
+        );
+        const repeatedMetadataRequest = metadataRequest(repeatedRead, original._id);
+        const repeatedEpoch = new URL(repeatedMetadataRequest.url).searchParams.get("_livesync_epoch");
+        assert.equal(
+            repeatedEpoch,
+            rebuiltEpoch,
+            "A new connection at the same Seed did not reuse its cache namespace."
+        );
         await pushLocalChanges(cliBinary, session.cliEnv);
         await pushLocalChanges(cliBinary, session.cliEnv);
+        // Include Chunk bodies for strict reconciliation after replacing the local database.
+        await evaluate(
+            `await core.services.setting.applyPartial({readChunksOnline:false},true);return JSON.stringify(true);`
+        );
+        const fetchAttempt = await evaluate<{ succeeded: boolean; error?: string; diagnostics?: unknown }>(`try {
+            await core.rebuilder.fetchLocal(false,true);return JSON.stringify({succeeded:true});
+            } catch(error) {
+                await core.services.API.showWindow('log-log');
+                await new Promise(resolve=>setTimeout(resolve,100));
+                const log=Array.from(document.querySelectorAll('.logpane .log pre')).map(e=>e.textContent??'').join('\\n').slice(-16000);
+                return JSON.stringify({succeeded:false,error:String(error),diagnostics:{
+                    databaseReady:core.services.database.isDatabaseReady(),appReady:core.services.appLifecycle.isReady(),
+                    unresolvedMessages:(await core.services.appLifecycle.getUnresolvedMessages()).flat(),log}});
+            }`);
+        assert.ok(fetchAttempt.succeeded, `Standard Fetch failed: ${JSON.stringify(fetchAttempt)}`);
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        const fetchedRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(fetchedRead.document, original);
+        assert.deepEqual(fetchedRead.document.children, initialRead.document.children);
+        assert.equal(
+            new URL(metadataRequest(fetchedRead, original._id).url).searchParams.get("_livesync_epoch"),
+            rebuiltEpoch
+        );
+        assert.equal(await readFile(join(vault.path, ordinaryPath), "utf8"), ordinaryContents);
+        await pushLocalChanges(cliBinary, session.cliEnv);
+        await restoreCommonlibRequests();
         console.log(
-            `Rebuild and subsequent replication succeeded after warming the ${useRequestAPI ? "Internal API" : "browser"} HTTP cache.`
+            `Cache compatibility switch persistence, Rebuild, Standard Fetch, and subsequent replication succeeded with the ${useRequestAPI ? "Internal API" : "browser"} HTTP cache.`
         );
     } finally {
+        if (observingRequests && session) {
+            try {
+                await restoreCommonlibRequests();
+            } catch {
+                // The isolated Obsidian process is stopped immediately below.
+            }
+        }
         await session?.app.stop();
         await vault.dispose();
         await deleteCouchDbDatabase(couchDb, dbName);

@@ -220,8 +220,9 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         delete transformedHeaders["content-length"];
         delete transformedHeaders["Content-Length"];
         const cacheMode = opts?.cache ?? (req instanceof Request ? req.cache : undefined);
-        if (cacheMode === "no-store" && ["GET", "HEAD"].includes(method.toUpperCase())) {
+        if (["no-cache", "no-store"].includes(cacheMode ?? "") && ["GET", "HEAD"].includes(method.toUpperCase())) {
             // requestUrl has no cache option; no-store alone can reuse an existing cached response.
+            const enforceNoStore = cacheMode === "no-store";
             const cacheControlKeys = Object.keys(transformedHeaders).filter(
                 (key) => key.toLowerCase() === "cache-control"
             );
@@ -229,11 +230,19 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
                 .flatMap((key) => splitHeaderDirectives(transformedHeaders[key]))
                 .filter((directive) => {
                     const name = getDirectiveName(directive);
-                    return !cacheReuseDirectives.has(name) && name !== "no-cache" && name !== "no-store";
+                    return (
+                        !cacheReuseDirectives.has(name) &&
+                        name !== "no-cache" &&
+                        (!enforceNoStore || name !== "no-store")
+                    );
                 });
             const cacheControlKey = cacheControlKeys[0] ?? "cache-control";
             for (const key of cacheControlKeys) delete transformedHeaders[key];
-            transformedHeaders[cacheControlKey] = [...cacheControlDirectives, "no-cache", "no-store"].join(", ");
+            transformedHeaders[cacheControlKey] = [
+                ...cacheControlDirectives,
+                "no-cache",
+                ...(enforceNoStore ? ["no-store"] : []),
+            ].join(", ");
 
             const pragmaKeys = Object.keys(transformedHeaders).filter((key) => key.toLowerCase() === "pragma");
             const pragmaDirectives = pragmaKeys

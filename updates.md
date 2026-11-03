@@ -14,6 +14,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+#### Synchronisation
+
+- We can synchronise and Fetch an encrypted CouchDB remote when the Internal API retains responses from before a Rebuild. (#1234)
+    - Metadata and Chunk reads use a cache URL derived from the startup time and Security Seed together. The URL remains stable within the same startup and Seed.
+    - The advanced CouchDB setting **Use headers only for HTTP cache control (compatibility)** is disabled by default. Enable it only if your server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
+
 #### Translations
 
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
