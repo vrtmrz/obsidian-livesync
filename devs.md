@@ -264,9 +264,10 @@ Commonlib owns the typed English fallback for messages requested by its services
 
 ### File Path Handling
 
-- Use tagged types from `types.ts`: `FilePath`, `FilePathWithPrefix`, `DocumentID`
-- Prefix constants: `CHeader` (chunks), `ICHeader`/`ICHeaderEnd` (internal data)
-- Path utilities are supplied by the focused Commonlib compatibility path `@vrtmrz/livesync-commonlib/compat/string_and_binary/path`
+- New path boundaries use `FilePath`, `DocumentPath`, `StoragePath`, and domain-specific `PathComparisonKey` from `@vrtmrz/livesync-commonlib/storage`. Original paths retain spelling; comparison keys are never converted back into filenames.
+- Parse original document input and route its namespace before storage access. `splitDocumentPath` and `joinDocumentPath` retain one recognised namespace; `DocumentPath` excludes legacy comparison keys. Existing `FilePathWithPrefix`, `FilePathWithPrefixLC`, and `DocumentID` remain at compatibility boundaries.
+- The CLI uses Commonlib's `UnicodeResolvingNodeStorageAdapter` and one strict resolver per NFC directory scan. Only absence becomes a missing file; permission and enumeration failures propagate. Obsidian keeps its own Vault APIs and alias guard, whose fixed case-insensitive NFC policy is independent of the selected database identity mode.
+- The [Commonlib storage-path design](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/design_docs/storage_path_resolution.md) and [ADR](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/adr/2026_11_shared_storage_path_resolution.md) define this unreleased boundary. WebApp and Bridge NFC enablement remains separate work.
 
 ### Logging & Debugging
 

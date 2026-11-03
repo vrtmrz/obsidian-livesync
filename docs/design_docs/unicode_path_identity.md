@@ -27,6 +27,16 @@ Obsidian hosts, moves the setting to General Settings, and defaults new
 synchronisation environments to NFC. The original dates
 and reviewed versions above remain the historical baseline.
 
+## Unreleased shared storage boundary
+
+The CLI adopts Commonlib's shared Unicode resolver and typed physical-I/O
+ports. Each NFC scan retains one comparison-policy snapshot; directory and
+permission errors propagate instead of producing a successful partial scan.
+Obsidian uses the shared namespace and comparison helpers while retaining its
+Vault APIs and existing alias-guard policy. The [developer guide](../../devs.md#file-path-handling)
+links the Commonlib design and ADR. This extraction does not change Metadata
+IDs, defaults, database migration, or the host support matrix below.
+
 ## Scope
 
 | Area | Contract |

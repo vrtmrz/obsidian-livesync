@@ -21,7 +21,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { copyFile, mkdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, stat, utimes, writeFile } from "node:fs/promises";
 
 import { TempDir } from "./helpers/temp.ts";
 import { runCliOrFail, runCliWithInputOrFail } from "./helpers/cli.ts";
@@ -136,7 +136,10 @@ test("mirror: storage <-> DB synchronisation", async (t) => {
 
         // Reflect the shared base into the actual Vault before editing it.
         await runMirror();
-        assert.deepStrictEqual(await readFile(workDir.join("vault", "test", "sync-storage-newer.md"), "utf8"), "old content\n");
+        assert.deepStrictEqual(
+            await readFile(workDir.join("vault", "test", "sync-storage-newer.md"), "utf8"),
+            "old content\n"
+        );
 
         // Write new content to storage with a timestamp 1 hour in the future
         const storageFile = workDir.join("vault", "test", "sync-storage-newer.md");
@@ -249,3 +252,37 @@ async function exists(path: string): Promise<boolean> {
         return false;
     }
 }
+
+test("mirror: NFC identity retains physical Unicode spelling", async () => {
+    await using workDir = await TempDir.create("livesync-cli-nfc-paths");
+    const vault = workDir.join("vault");
+    const database = workDir.join("db");
+    const settings = workDir.join("settings.json");
+    const parent = "Café".normalize("NFD");
+    const leaf = "Résumé.md".normalize("NFD");
+    const logical = "Café/Résumé.md";
+    const physical = workDir.join("vault", parent, leaf);
+    await mkdir(workDir.join("vault", parent), { recursive: true });
+    await mkdir(database);
+    await initSettingsFile(settings);
+    await markSettingsConfigured(settings);
+    const data = JSON.parse(await readFile(settings, "utf8"));
+    data.pathNormalizationVersion = 1;
+    await writeFile(settings, JSON.stringify(data));
+    await writeFile(physical, "original Unicode content\n");
+    await utimes(physical, new Date(), new Date(Date.now() - 3600_000));
+
+    const run = (...args: string[]) => runCliOrFail(database, "--settings", settings, ...args);
+    await run("mirror", vault);
+    const received = workDir.join("received.md");
+    await run("pull", logical, received);
+    assert.equal(await readFile(received, "utf8"), "original Unicode content\n");
+
+    const replacement = workDir.join("replacement.md");
+    await writeFile(replacement, "updated Unicode content\n");
+    await run("push", replacement, logical);
+    await run("mirror", vault);
+    assert.equal(await readFile(physical, "utf8"), "updated Unicode content\n");
+    assert.deepEqual(await readdir(vault), [parent]);
+    assert.deepEqual(await readdir(workDir.join("vault", parent)), [leaf]);
+});

@@ -2,7 +2,7 @@ import type { FilePath, FilePathWithPrefix, UXFileInfo } from "@vrtmrz/livesync-
 import { readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type { DatabaseFileAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseFileAccess";
 import type { IFileHandler } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
-import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { parseDocumentPath, splitDocumentPath } from "@vrtmrz/livesync-commonlib/storage";
 
 export type DocumentHistoryRestorationCore = {
     databaseFileAccess: Pick<
@@ -54,8 +54,8 @@ export async function restoreDocumentHistoryRevision(
     }
 
     const body = readAsBlob(source);
-    const storagePath = stripAllPrefixes(current.path);
-    if (storagePath !== current.path || !isPathValid(storagePath)) {
+    const { prefix, path: storagePath } = splitDocumentPath(parseDocumentPath(current.path));
+    if (prefix !== "" || !isPathValid(storagePath)) {
         return { status: "unsupported-path" };
     }
     const file: UXFileInfo = {
