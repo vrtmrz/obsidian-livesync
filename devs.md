@@ -126,6 +126,16 @@ Shared synchronisation code is compiled and typed by the `@vrtmrz/livesync-commo
 
 Changes spanning both repositories must first produce a packed Commonlib artefact which passes its standalone package checks. Install that exact artefact in LiveSync, then run the LiveSync type checks, unit tests, application builds, CLI E2E, and any focused real-Obsidian E2E required by the changed boundary. Replace the temporary artefact reference with the reviewed immutable package version before release.
 
+When a change requires a new Commonlib entry point or behaviour, publish and
+validate that immutable Commonlib version before releasing a dependent
+application. Follow the [Commonlib release sequence](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/releasing.md#coordinating-package-and-application-releases),
+then update this repository's exact `package.json` dependency and lockfile
+integrity from the registry. The plug-in, CLI, WebApp, and WebPeer use that root
+dependency; validate their affected builds and runtime boundaries against the
+same artefact. Bridge has its own import map and lockfile and must be pinned
+separately. Local tarball overlays are preparation evidence, not clean registry
+installation evidence.
+
 ## Architecture
 
 The [Project glossary](docs/glossary.md#developer-and-design-terms) defines the

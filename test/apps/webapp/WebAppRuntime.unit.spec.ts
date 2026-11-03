@@ -167,6 +167,76 @@ describe("WebAppRuntime lifecycle", () => {
         runtimeMocks.updateToDatabase.mockResolvedValue(undefined);
     });
 
+    function settingsRoot(settings: Partial<ObsidianLiveSyncSettings>): FileSystemDirectoryHandle {
+        return {
+            name: "identity-test-vault",
+            getDirectoryHandle: async () => ({
+                getFileHandle: async () => ({
+                    getFile: async () => new File([JSON.stringify(settings)], "settings.json"),
+                }),
+            }),
+        } as unknown as FileSystemDirectoryHandle;
+    }
+
+    it.each([undefined, 0] as const)("starts with supported legacy identity %s", async (version) => {
+        const runtime = new WebAppRuntime(settingsRoot({ pathNormalizationVersion: version }), {
+            deviceValues: new MemoryValueStore(),
+        });
+        await runtime.start();
+        expect(runtimeMocks.onLoad).toHaveBeenCalledOnce();
+        expect(runtimeMocks.scanDirectory).toHaveBeenCalledOnce();
+        await runtime.shutdown();
+    });
+
+    it.each([1, 2] as const)(
+        "rejects unsupported identity %s before constructing services or starting file work",
+        async (version) => {
+            const reportStatus = vi.fn();
+            const runtime = new WebAppRuntime(settingsRoot({ pathNormalizationVersion: version as 1 }), {
+                reportStatus,
+                deviceValues: new MemoryValueStore(),
+            });
+            await expect(runtime.start()).rejects.toThrow(/path identity|path normalisation/i);
+            expect(runtimeMocks.options).toBeUndefined();
+            expect(runtimeMocks.onLoad).not.toHaveBeenCalled();
+            expect(runtimeMocks.onReady).not.toHaveBeenCalled();
+            expect(runtimeMocks.scanDirectory).not.toHaveBeenCalled();
+            expect(runtimeMocks.collectFilesOnStorage).not.toHaveBeenCalled();
+            expect(runtimeMocks.updateToDatabase).not.toHaveBeenCalled();
+            expect(reportStatus).toHaveBeenCalledWith(
+                "error",
+                expect.stringMatching(/path identity|path normalisation/i)
+            );
+        }
+    );
+
+    it("rejects NFC during settings reload instead of substituting defaults", async () => {
+        const runtime = new WebAppRuntime(settingsRoot({ pathNormalizationVersion: 1 }), {
+            deviceValues: new MemoryValueStore(),
+        });
+        const options = (
+            runtime as unknown as { createServiceOptions(): LiveSyncBrowserServiceHubOptions<never> }
+        ).createServiceOptions();
+        if (!options.settings) throw new Error("The runtime must provide settings callbacks");
+        await expect(options.settings.load()).rejects.toThrow(/WebApp supports Legacy path identity/);
+    });
+
+    it("rejects saving unsupported NFC settings before opening the settings directory", async () => {
+        const getDirectoryHandle = vi.fn();
+        const runtime = new WebAppRuntime(
+            { name: "identity-test-vault", getDirectoryHandle } as unknown as FileSystemDirectoryHandle,
+            { deviceValues: new MemoryValueStore() }
+        );
+        const options = (
+            runtime as unknown as { createServiceOptions(): LiveSyncBrowserServiceHubOptions<never> }
+        ).createServiceOptions();
+        if (!options.settings) throw new Error("The runtime must provide settings callbacks");
+        await expect(
+            options.settings.save({ pathNormalizationVersion: 1 } as ObsidianLiveSyncSettings)
+        ).rejects.toThrow(/WebApp supports Legacy path identity/);
+        expect(getDirectoryHandle).not.toHaveBeenCalled();
+    });
+
     it("owns core start, directory scan, status reporting, and shutdown", async () => {
         const reportStatus = vi.fn();
         const runtime = new WebAppRuntime(createRootHandle(), { reportStatus, deviceValues: new MemoryValueStore() });

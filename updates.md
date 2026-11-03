@@ -22,6 +22,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - Pending conflict dialogues and their resolution steps stop using the released logger after the plug-in is disabled. Waiting continuations check for shutdown before logging or starting further resolution work.
 
+#### WebApp
+
+- The experimental WebApp stops before opening its database or processing files when its settings select unsupported NFC path identity. It reports the Legacy-only requirement and preserves the selected Vault files and settings. This does not migrate an NFC database to Legacy identity.
+
 #### Translations
 
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!

@@ -6,7 +6,7 @@ Application unit tests are stored in `test/apps/webapp/` and `test/apps/webpeer/
 
 Each application has its own production-bundle smoke-test directory outside `src`:
 
-- `test/browser-apps/webapp/` covers Vault selection, OPFS start-up, and isolation between optional P2P settings and the main remote.
+- `test/browser-apps/webapp/` covers Vault selection, Legacy OPFS start-up, isolation between optional P2P settings and the main remote, and explicit NFC refusal before database, scan, file-write, or remote activity. The refusal case retains the settings and native filename content.
 - `test/browser-apps/webpeer/` covers start-up, settings persistence, and reload.
 - `test/browser-apps/pages/` covers the final GitHub Pages layout, application subpaths, and relative assets.
 
