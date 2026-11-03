@@ -1,5 +1,6 @@
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
-import type { AnyEntry, FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { DocumentPathRef } from "@vrtmrz/livesync-commonlib/documents";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
@@ -34,11 +35,11 @@ export abstract class AbstractModule<
         this.core.settings = value;
     }
 
-    getPath(entry: AnyEntry): FilePathWithPrefix {
+    getPath(entry: DocumentPathRef): FilePathWithPrefix {
         return this.services.path.getPath(entry);
     }
 
-    getPathWithoutPrefix(entry: AnyEntry): FilePathWithPrefix {
+    getPathWithoutPrefix(entry: DocumentPathRef): FilePathWithPrefix {
         return stripAllPrefixes(this.services.path.getPath(entry));
     }
 

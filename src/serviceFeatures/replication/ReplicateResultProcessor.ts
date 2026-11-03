@@ -10,10 +10,9 @@ import {
     type AnyEntry,
     type EntryDoc,
     type EntryLeaf,
-    type LoadedEntry,
-    type MetaEntry,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { DocumentPathRef, FileChangeRef, FileMetadataNotification } from "@vrtmrz/livesync-commonlib/documents";
 import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
@@ -88,7 +87,7 @@ export class ReplicateResultProcessor {
     private logError(e: unknown) {
         Logger(e, LOG_LEVEL_VERBOSE);
     }
-    private reportVaultReflectionFailure(entry: MetaEntry, cause?: unknown) {
+    private reportVaultReflectionFailure(entry: DocumentPathRef, cause?: unknown) {
         this.context.onVaultReflectionFailure?.();
         this.log(
             `Live replication could not reflect ${this.getPath(entry)} from the local database to the Vault; this path remains eligible for a later Vault scan.`,
@@ -106,7 +105,7 @@ export class ReplicateResultProcessor {
         return this.context.services;
     }
 
-    getPath(entry: AnyEntry): string {
+    getPath(entry: DocumentPathRef): string {
         return this.services.path.getPath(entry);
     }
 
@@ -531,8 +530,7 @@ export class ReplicateResultProcessor {
     }
     // Phase 2.1: process the document and apply to storage
     // This function is serialized per document to avoid race-condition for the same document.
-    private _applyToDatabase(doc_: PouchDB.Core.ExistingDocument<AnyEntry>) {
-        const dbDoc = doc_ as LoadedEntry; // It has no `data`
+    private _applyToDatabase(dbDoc: PouchDB.Core.ExistingDocument<AnyEntry>) {
         const path = this.getPath(dbDoc);
         return withLock(`replication-process:${dbDoc._id}`, async () => {
             const docNote = `${path} (${shortenId(dbDoc._id)}, ${shortenRev(dbDoc._rev)})`;
@@ -547,9 +545,7 @@ export class ReplicateResultProcessor {
 
             const isDeleted = dbDoc._deleted === true || ("deleted" in dbDoc && dbDoc.deleted === true);
             // Gather full document if not deleted
-            const doc = isDeleted
-                ? { ...dbDoc, data: "" }
-                : await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, false, true);
+            const doc = isDeleted ? dbDoc : await this.localDatabase.getDBEntryFromMeta({ ...dbDoc }, false, true);
             if (!doc) {
                 // Failed to gather content
                 this.context.onVaultReflectionFailure?.();
@@ -563,14 +559,14 @@ export class ReplicateResultProcessor {
             } else if (this.services.vault.isValidPath(this.getPath(doc))) {
                 // Apply to storage if the path is valid
                 try {
-                    const reflected = await this.applyToStorage(doc as MetaEntry);
+                    const reflected = await this.applyToStorage(doc);
                     if (!reflected) {
-                        this.reportVaultReflectionFailure(doc as MetaEntry);
+                        this.reportVaultReflectionFailure(doc);
                         return;
                     }
                     this.log(`Processed: ${docNote}`, LOG_LEVEL_DEBUG);
                 } catch (error) {
-                    this.reportVaultReflectionFailure(doc as MetaEntry, error);
+                    this.reportVaultReflectionFailure(doc, error);
                 }
             } else {
                 // Should process, but have an invalid path
@@ -584,7 +580,7 @@ export class ReplicateResultProcessor {
      * @param entry
      * @returns
      */
-    protected applyToStorage(entry: MetaEntry) {
+    protected applyToStorage(entry: FileMetadataNotification) {
         return this.withCounting(
             () => this.services.replication.processSynchroniseResult(entry),
             this.services.replication.storageApplyingCount
@@ -596,10 +592,10 @@ export class ReplicateResultProcessor {
      * @param dbDoc Document to check
      * @returns True if processing is required; false otherwise
      */
-    protected async checkIsChangeRequiredForDatabaseProcessing(dbDoc: LoadedEntry): Promise<boolean> {
+    protected async checkIsChangeRequiredForDatabaseProcessing(dbDoc: FileChangeRef): Promise<boolean> {
         const path = this.getPath(dbDoc);
         try {
-            const savedDoc = await this.localDatabase.getRaw<LoadedEntry>(dbDoc._id, {
+            const savedDoc = await this.localDatabase.getRaw<AnyEntry>(dbDoc._id, {
                 conflicts: true,
                 revs_info: true,
             });

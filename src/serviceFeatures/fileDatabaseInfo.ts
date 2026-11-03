@@ -4,6 +4,7 @@ import type {
     FilePath,
     FilePathWithPrefix,
     LoadedEntry,
+    MetaEntry,
     ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getFileRegExp } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -14,7 +15,7 @@ import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/
 import type { IPathService, IUIService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import { addPrefix, stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 
-type DatabaseMeta = LoadedEntry & {
+type DatabaseMeta = MetaEntry & {
     _rawStorageType: string | null;
     _legacyBodyPresent: boolean;
     _revs_info?: Array<{
@@ -182,12 +183,11 @@ async function getLocalDatabaseMeta(
         _conflicts: raw._conflicts,
         _revs_info: raw._revs_info,
         path: target ? (raw.path ?? path) : path,
-        data: legacyBodyPresent ? raw.data : "",
+        ...(legacy ? { data: legacyBodyPresent ? raw.data : "" } : {}),
         ctime: raw.ctime ?? 0,
         mtime: raw.mtime ?? 0,
         size: raw.size ?? 0,
         children: type === "newnote" || type === "plain" ? (raw.children ?? []) : [],
-        datatype: type === "newnote" ? "newnote" : "plain",
         deleted: raw.deleted ?? raw._deleted,
         type,
         eden: raw.eden ?? {},

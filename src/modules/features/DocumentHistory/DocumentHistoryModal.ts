@@ -10,6 +10,7 @@ import {
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FileContentView } from "@vrtmrz/livesync-commonlib/documents";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { isErrorOfMissingDoc } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
 import { fireAndForget, getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
@@ -42,7 +43,7 @@ function isComparableTextDecode(path: string) {
     const ext = path.split(".").splice(-1)[0].toLowerCase();
     return ["json"].includes(ext);
 }
-function readDocument(w: LoadedEntry) {
+function readDocument(w: FileContentView) {
     if (w.data.length == 0) return "";
     if (isImage(w.path)) {
         return new Uint8Array(decodeBinary(w.data));

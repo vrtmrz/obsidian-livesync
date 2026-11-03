@@ -1,14 +1,15 @@
 import { App, Modal } from "@/deps.ts";
-import { type FilePath, type LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import JsonResolvePane from "./JsonResolvePane.svelte";
 import { waitForSignal } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { mount, unmount } from "svelte";
+import type { JsonComparisonDocument } from "./jsonComparison.ts";
 
 export class JsonResolveModal extends Modal {
     // result: Array<[number, string]>;
     filename: FilePath;
     callback?: (keepRev?: string, mergedStr?: string) => Promise<void>;
-    docs: LoadedEntry[];
+    docs: JsonComparisonDocument[];
     component?: ReturnType<typeof mount>;
     nameA: string;
     nameB: string;
@@ -20,7 +21,7 @@ export class JsonResolveModal extends Modal {
     constructor(
         app: App,
         filename: FilePath,
-        docs: LoadedEntry[],
+        docs: JsonComparisonDocument[],
         callback: (keepRev?: string, mergedStr?: string) => Promise<void>,
         nameA?: string,
         nameB?: string,

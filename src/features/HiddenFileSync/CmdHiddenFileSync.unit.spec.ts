@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import PouchDB from "pouchdb-core";
+import MemoryAdapter from "pouchdb-adapter-memory";
+import { readAsBlob } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import {
     type DocumentID,
     LOG_LEVEL_NOTICE,
@@ -33,6 +36,155 @@ vi.mock("./configureHiddenFileSyncMode.ts", () => ({
 
 import { HiddenFileSync } from "./CmdHiddenFileSync.ts";
 import { configureHiddenFileSyncMode } from "./configureHiddenFileSyncMode.ts";
+import type { FileContentView, RevisionRef } from "@vrtmrz/livesync-commonlib/documents";
+import type { JsonComparisonDocument } from "@/features/HiddenFileCommon/jsonComparison";
+
+async function checkInputContracts(sync: HiddenFileSync, path: FilePath, id: DocumentID) {
+    sync.docToKey({ mtime: 1, size: 2, _rev: "2-current", deleted: false });
+    sync.updateLastProcessed(path, { mtime: 1, size: 2 }, { mtime: 1, size: 2 });
+    await sync.__writeFile(path, { path, type: "plain", data: ["body"], ctime: 1, mtime: 2 }, false);
+    const metadata = await sync.__loadBaseSaveData(path, false);
+    if (metadata !== false && metadata.type !== "notes") {
+        // @ts-expect-error Current Metadata does not supply reconstructed content.
+        metadata.data;
+    }
+    const base = await sync.__loadBaseSaveData(path, true);
+    if (base !== false) {
+        const content: FileContentView = base;
+        // @ts-expect-error A new save base does not promise a database revision.
+        const revision: RevisionRef = base;
+        void [content, revision];
+    }
+    const comparison: JsonComparisonDocument = { _id: id, mtime: 1, datatype: "plain", data: ["{}"] };
+    // @ts-expect-error JSON comparison requires its existing decoding discriminator.
+    const missingDatatype: JsonComparisonDocument = { _id: id, mtime: 1, data: ["{}"] };
+    void [comparison, missingDatatype];
+}
+void checkInputContracts;
+
+describe("HiddenFileSync save-base contracts", () => {
+    function createSaveBase(type: "plain" | "notes" = "plain") {
+        const path = ".obsidian/example.bin" as FilePath;
+        const stored = {
+            _id: "i:example" as DocumentID,
+            _rev: "2-existing",
+            path: `i:${path}` as FilePathWithPrefix,
+            ctime: 7,
+            mtime: 11,
+            size: 3,
+            type,
+            datatype: type === "plain" ? "plain" : "newnote",
+            data: type === "plain" ? "" : "AP8B",
+            children: [],
+            eden: {},
+            deleted: false,
+        };
+        const written: unknown[] = [];
+        const localDatabase = {
+            getDBEntryMeta: vi.fn(async () => stored as unknown),
+            getDBEntry: vi.fn(async () => ({ ...stored, data: ["AP8B"] })),
+            putRaw: vi.fn(async (document: unknown) => {
+                written.push(structuredClone(document));
+                return { ok: true, rev: "3-deleted" };
+            }),
+            removeRevision: vi.fn(),
+        };
+        const sync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
+        Object.assign(sync, {
+            core: { services: { vault: { isIgnoredByIgnoreFile: vi.fn(async () => false) } } },
+            localDatabase,
+            path2id: vi.fn(async () => stored._id),
+            updateLastProcessedDeletion: vi.fn(),
+            _log: vi.fn(),
+        });
+        return { sync, localDatabase, path, stored, written };
+    }
+
+    it("returns current Metadata without placeholder content in metadata mode", async () => {
+        const { sync, localDatabase, path, stored } = createSaveBase();
+        const metadata = await sync.__loadBaseSaveData(path, false);
+        expect(metadata).toMatchObject({ _id: stored._id, _rev: stored._rev, type: "plain" });
+        expect(metadata).not.toHaveProperty("data");
+        expect(metadata).not.toHaveProperty("datatype");
+        expect(localDatabase.getDBEntry).not.toHaveBeenCalled();
+    });
+
+    it("keeps the inline body in legacy Metadata for the existing decoder", async () => {
+        const { sync, path } = createSaveBase("notes");
+        expect(await sync.__loadBaseSaveData(path, false)).toMatchObject({ type: "notes", data: "AP8B" });
+    });
+
+    it("retains content and revision in content mode without a Metadata read", async () => {
+        const { sync, localDatabase, path, stored } = createSaveBase("notes");
+        expect(await sync.__loadBaseSaveData(path)).toMatchObject({
+            _rev: stored._rev,
+            data: ["AP8B"],
+            datatype: "newnote",
+        });
+        expect(localDatabase.getDBEntryMeta).not.toHaveBeenCalled();
+    });
+
+    it("represents a new save base without claiming database content in metadata mode", async () => {
+        const { sync, localDatabase, path } = createSaveBase();
+        localDatabase.getDBEntryMeta.mockResolvedValue(false);
+        const metadata = await sync.__loadBaseSaveData(path, false);
+        expect(metadata).toMatchObject({ mtime: 0, size: 0, type: "newnote" });
+        expect(metadata).not.toHaveProperty("_rev");
+        expect(metadata).not.toHaveProperty("data");
+        expect(metadata).not.toHaveProperty("datatype");
+    });
+
+    it.each(["plain", "notes"] as const)("stores a %s logical deletion without content fields", async (type) => {
+        const { sync, localDatabase, path, stored, written } = createSaveBase(type);
+        await expect(sync.deleteInternalFileOnDatabase(path)).resolves.toBe(true);
+        const deletion = written[0];
+        expect(deletion).toMatchObject({
+            _id: stored._id,
+            _rev: stored._rev,
+            path: stored.path,
+            ctime: stored.ctime,
+            type: type === "plain" ? "plain" : "newnote",
+            deleted: true,
+            size: 0,
+            children: [],
+        });
+        expect(deletion).not.toHaveProperty("data");
+        expect(deletion).not.toHaveProperty("datatype");
+        expect(localDatabase.getDBEntry).not.toHaveBeenCalled();
+        expect(localDatabase.removeRevision).not.toHaveBeenCalled();
+    });
+
+    it("retains legacy bytes in the parent revision after a Metadata-only logical deletion", async () => {
+        const { sync, localDatabase, path, stored } = createSaveBase("notes");
+        const MemoryPouchDB = PouchDB.plugin(MemoryAdapter);
+        const database = new MemoryPouchDB<Record<string, unknown>>(`hidden-contract-${crypto.randomUUID()}`, {
+            adapter: "memory",
+        });
+        try {
+            const { _rev: _revision, ...initial } = stored;
+            const original = await database.put(initial);
+            localDatabase.getDBEntryMeta.mockResolvedValue({ ...stored, _rev: original.rev });
+            localDatabase.putRaw.mockImplementation(async (document: unknown) => {
+                const result = await database.put(document as PouchDB.Core.PutDocument<Record<string, unknown>>);
+                return { ok: true, rev: result.rev };
+            });
+
+            await expect(sync.deleteInternalFileOnDatabase(path)).resolves.toBe(true);
+
+            const deleted = await database.get(stored._id, { revs: true });
+            expect(deleted).toMatchObject({ type: "newnote", deleted: true, children: [] });
+            expect(deleted).not.toHaveProperty("data");
+            expect(deleted).not.toHaveProperty("datatype");
+            expect(deleted._revisions?.ids[1]).toBe(original.rev.split("-")[1]);
+            const previous = await database.get(stored._id, { rev: original.rev });
+            expect(previous.data).toBe("AP8B");
+            const restored = readAsBlob({ path: stored.path, datatype: "newnote", data: previous.data as string });
+            expect(new Uint8Array(await restored.arrayBuffer())).toEqual(new Uint8Array([0, 255, 1]));
+        } finally {
+            await database.destroy();
+        }
+    });
+});
 
 function createHiddenRevisionOperation() {
     const path = ".obsidian/plugins/example/data.json" as FilePath;
@@ -40,7 +192,7 @@ function createHiddenRevisionOperation() {
         path,
         name: "data.json",
         isInternal: true,
-        body: new Blob(["{\"value\":\"vault\"}"]),
+        body: new Blob(['{"value":"vault"}']),
         stat: {
             ctime: 1,
             mtime: 2,
@@ -66,12 +218,11 @@ function createHiddenRevisionOperation() {
         _rev: "3-winner",
     } as MetaEntry;
     const databaseFileAccess = {
-        fetchEntryMeta: vi.fn(
-            async (_path: unknown, revision?: string) =>
-                revision === selected._rev ? selected : winner
+        fetchEntryMeta: vi.fn(async (_path: unknown, revision?: string) =>
+            revision === selected._rev ? selected : winner
         ),
         getConflictedRevs: vi.fn(async () => [selected._rev]),
-        fetchEntryFromMeta: vi.fn(async () => ({ ...selected, data: "{\"value\":\"database\"}" })),
+        fetchEntryFromMeta: vi.fn(async () => ({ ...selected, data: '{"value":"database"}' })),
         storeWithBaseRevision: vi.fn(async () => "3-vault-child"),
     };
     const hiddenFileSync = Object.create(HiddenFileSync.prototype) as HiddenFileSync;
@@ -609,16 +760,11 @@ describe("HiddenFileSync configuration-change notices", () => {
 
 describe("HiddenFileSync exact revision repair operations", () => {
     it("stores the current hidden Vault file as a child of the selected live revision", async () => {
-        const {
-            hiddenFileSync,
-            file,
-            selected,
-            databaseFileAccess,
-        } = createHiddenRevisionOperation();
+        const { hiddenFileSync, file, selected, databaseFileAccess } = createHiddenRevisionOperation();
 
-        await expect(
-            hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(file, selected._rev!)
-        ).resolves.toBe(true);
+        await expect(hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(file, selected._rev!)).resolves.toBe(
+            true
+        );
 
         expect(databaseFileAccess.storeWithBaseRevision).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -637,36 +783,22 @@ describe("HiddenFileSync exact revision repair operations", () => {
     });
 
     it("refuses to extend a hidden-file revision which is no longer live", async () => {
-        const {
-            hiddenFileSync,
-            file,
-            selected,
-            databaseFileAccess,
-        } = createHiddenRevisionOperation();
+        const { hiddenFileSync, file, selected, databaseFileAccess } = createHiddenRevisionOperation();
         databaseFileAccess.getConflictedRevs.mockResolvedValue([]);
 
-        await expect(
-            hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(file, selected._rev!)
-        ).resolves.toBe(false);
+        await expect(hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(file, selected._rev!)).resolves.toBe(
+            false
+        );
 
         expect(databaseFileAccess.storeWithBaseRevision).not.toHaveBeenCalled();
         expect(hiddenFileSync.updateLastProcessed).not.toHaveBeenCalled();
     });
 
     it("does not create a hidden-file child when asked only to mark a revision which differs from the Vault", async () => {
-        const {
-            hiddenFileSync,
-            file,
-            selected,
-            databaseFileAccess,
-        } = createHiddenRevisionOperation();
+        const { hiddenFileSync, file, selected, databaseFileAccess } = createHiddenRevisionOperation();
 
         await expect(
-            hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(
-                file,
-                selected._rev!,
-                false
-            )
+            hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(file, selected._rev!, false)
         ).resolves.toBe(false);
 
         expect(databaseFileAccess.storeWithBaseRevision).not.toHaveBeenCalled();
@@ -674,61 +806,39 @@ describe("HiddenFileSync exact revision repair operations", () => {
     });
 
     it("marks a matching hidden-file revision without creating a child", async () => {
-        const {
-            hiddenFileSync,
-            file,
-            selected,
-            databaseFileAccess,
-        } = createHiddenRevisionOperation();
+        const { hiddenFileSync, file, selected, databaseFileAccess } = createHiddenRevisionOperation();
         databaseFileAccess.fetchEntryFromMeta.mockResolvedValue({
             ...selected,
-            data: "{\"value\":\"vault\"}",
+            data: '{"value":"vault"}',
         });
 
         await expect(
-            hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(
-                file,
-                selected._rev!,
-                false
-            )
+            hiddenFileSync.storeInternalFileToDatabaseWithBaseRevision(file, selected._rev!, false)
         ).resolves.toBe(true);
 
         expect(databaseFileAccess.storeWithBaseRevision).not.toHaveBeenCalled();
-        expect(hiddenFileSync.updateLastProcessed).toHaveBeenCalledWith(
-            file.path,
-            selected,
-            file.stat
-        );
+        expect(hiddenFileSync.updateLastProcessed).toHaveBeenCalledWith(file.path, selected, file.stat);
     });
 
     it("applies the selected live hidden-file revision through the existing extraction path", async () => {
-        const {
-            hiddenFileSync,
-            path,
-            selected,
-        } = createHiddenRevisionOperation();
+        const { hiddenFileSync, path, selected } = createHiddenRevisionOperation();
         const extract = vi.fn(async () => true);
         hiddenFileSync.extractInternalFileFromDatabase = extract;
 
-        await expect(
-            hiddenFileSync.extractInternalFileRevisionFromDatabase(path, selected._rev!, true)
-        ).resolves.toBe(true);
+        await expect(hiddenFileSync.extractInternalFileRevisionFromDatabase(path, selected._rev!, true)).resolves.toBe(
+            true
+        );
 
         expect(extract).toHaveBeenCalledWith(path, true, undefined, true, false, true, selected._rev);
     });
 
     it("does not apply a hidden-file revision which ceased to be live", async () => {
-        const {
-            hiddenFileSync,
-            path,
-            selected,
-            databaseFileAccess,
-        } = createHiddenRevisionOperation();
+        const { hiddenFileSync, path, selected, databaseFileAccess } = createHiddenRevisionOperation();
         databaseFileAccess.getConflictedRevs.mockResolvedValue([]);
 
-        await expect(
-            hiddenFileSync.extractInternalFileRevisionFromDatabase(path, selected._rev!, true)
-        ).resolves.toBe(false);
+        await expect(hiddenFileSync.extractInternalFileRevisionFromDatabase(path, selected._rev!, true)).resolves.toBe(
+            false
+        );
 
         expect(databaseFileAccess.fetchEntryFromMeta).not.toHaveBeenCalled();
     });

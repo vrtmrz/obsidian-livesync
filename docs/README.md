@@ -49,6 +49,7 @@ Read the decisions relevant to the change, rather than treating the whole ADR di
 | Decision area | Records |
 |---|---|
 | Shared package boundary | [Common library package boundary](adr/2026_07_common_library_package_boundary.md) |
+| Document and Chunk type contracts | [Representation and operation boundaries](adr/2026_11_document_and_chunk_type_contracts.md) (accepted; unreleased implementation) |
 | Replicator capabilities and migration | [Core contract](adr/2026_08_replicator_capabilities_01_core_contract.md), [P2P service lifecycle](adr/2026_08_replicator_capabilities_02_p2p_service_lifecycle.md), and [migration plan](adr/2026_08_replicator_capabilities_03_migration_plan.md) |
 | Remote resources and Fast Setup | [CouchDB connection ownership](adr/2026_08_couchdb_remote_connection_ownership.md), [Fast Fetch eligibility](adr/2026_08_fast_fetch_transport_eligibility.md), and [persistence and completion](adr/2026_08_fast_fetch_persistence_and_completion.md) |
 | P2P lifecycle and setup | [Transport lifecycle](adr/2026_07_p2p_transport_lifecycle.md), [connection check](adr/2026_07_p2p_connection_check.md), [profile-aware onboarding](adr/2026_07_multiple_remote_onboarding.md), and [compatibility controls](adr/2026_08_p2p_transport_compatibility.md) |
@@ -63,6 +64,7 @@ These records are useful for design work. Their proposed representation or behav
 
 | Document | Recorded state |
 |---|---|
+| [Document and Chunk type contracts](design_docs/document_and_chunk_type_contracts.md) | Accepted design and unreleased implementation: information views, explicit Metadata and content reads, DFM contracts, raw validation, and the oldest inline path-read correction |
 | [Tiered Chunk Storage with Live Compaction](design_docs/tired_chunk_pack.md) | In design |
 | [Tiered Chunk Storage for Bucket Sync](design_docs/tired_chunk_pack_bucket.md) | In design |
 | [Design intent for Metadata and Chunks](design_docs/intention_of_chunks.md) | Incomplete explanation; use the data-structure reference for current representations |

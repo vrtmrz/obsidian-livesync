@@ -1,7 +1,8 @@
 import { type TFile } from "@/deps.ts";
 import { eventHub } from "@/common/events.ts";
 import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
-import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { FilePathWithPrefix, DocumentID } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { DocumentIdentity } from "@vrtmrz/livesync-commonlib/documents";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { DocumentHistoryModal } from "./DocumentHistory/DocumentHistoryModal.ts";
 import { fireAndForget } from "octagonal-wheels/promises";
@@ -26,7 +27,7 @@ export class ModuleObsidianDocumentHistory extends AbstractObsidianModule {
         });
         eventHub.onEvent(
             EVENT_REQUEST_SHOW_HISTORY,
-            ({ file, fileOnDB }: { file: TFile | FilePathWithPrefix; fileOnDB: LoadedEntry }) => {
+            ({ file, fileOnDB }: { file: TFile | FilePathWithPrefix; fileOnDB: DocumentIdentity }) => {
                 this.showHistory(file, fileOnDB._id);
             }
         );

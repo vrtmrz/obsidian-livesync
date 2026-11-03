@@ -1,6 +1,16 @@
 import { type ListedFiles } from "@/deps.ts";
+import type {
+    DeletionState,
+    CompatibleFileToSave,
+    CurrentFileDocument,
+    FileChangeRef,
+    FileContentView,
+    FileMetadata,
+    FileProperties,
+} from "@vrtmrz/livesync-commonlib/documents";
+import type { JsonComparisonDocument } from "@/features/HiddenFileCommon/jsonComparison";
 import {
-    type LoadedEntry,
+    type AnyEntry,
     type FilePathWithPrefix,
     type FilePath,
     LOG_LEVEL_INFO,
@@ -8,7 +18,7 @@ import {
     LOG_LEVEL_VERBOSE,
     MODE_SELECTIVE,
     MODE_PAUSED,
-    type SavingEntry,
+    type EntryTypeNotes,
     type DocumentID,
     type UXFileInfo,
     type UXStat,
@@ -63,6 +73,30 @@ import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlu
 import { $msg } from "@/common/translation";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 
+interface FileProcessingStamp extends DeletionState {
+    readonly mtime: number;
+    readonly size: number;
+    readonly _rev?: string;
+}
+
+interface ModificationTime extends DeletionState {
+    readonly mtime?: number;
+}
+
+interface FileModificationTime extends DeletionState {
+    readonly stat?: ModificationTime;
+}
+
+interface FileContent extends FileContentView, Pick<FileProperties, "ctime" | "mtime"> {}
+
+interface ComparisonFile extends JsonComparisonDocument {
+    readonly path: FilePathWithPrefix;
+}
+
+interface SaveBase extends FileContentView, FileProperties, FileChangeRef {
+    readonly datatype: EntryTypeNotes;
+}
+
 type HiddenFileInitialisationProgress = {
     log(message: string): void;
     once(message: string): void;
@@ -76,7 +110,7 @@ export const HIDDEN_FILE_SYNC_DISABLED_NOTICE =
     "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.";
 
 function getComparingMTime(
-    doc: (MetaEntry | LoadedEntry | false) | UXFileInfo | UXStat | null | undefined,
+    doc: ModificationTime | FileModificationTime | false | null | undefined,
     includeDeleted = false
 ) {
     if (doc === null) return 0;
@@ -87,7 +121,7 @@ function getComparingMTime(
         if ("_deleted" in doc && doc._deleted) return 0;
     }
     if ("stat" in doc) return doc.stat?.mtime ?? 0;
-    return doc.mtime ?? 0;
+    return "mtime" in doc ? (doc.mtime ?? 0) : 0;
 }
 
 export class HiddenFileSync extends LiveSyncCommands {
@@ -283,7 +317,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         return Promise.resolve(false);
     }
 
-    async _anyProcessOptionalSyncFiles(doc: LoadedEntry): Promise<boolean> {
+    async _anyProcessOptionalSyncFiles(doc: FileChangeRef): Promise<boolean> {
         if (isInternalMetadata(doc._id)) {
             if (this.isThisModuleEnabled()) {
                 //system file
@@ -388,10 +422,10 @@ export class HiddenFileSync extends LiveSyncCommands {
         }
     }
 
-    statToKey(stat: UXStat | null) {
+    statToKey(stat: Pick<UXStat, "mtime" | "size"> | null) {
         return `${stat?.mtime ?? 0}-${stat?.size ?? 0}`;
     }
-    docToKey(doc: LoadedEntry | MetaEntry) {
+    docToKey(doc: FileProcessingStamp) {
         return `${doc.mtime}-${doc.size}-${doc._rev}-${doc._deleted || doc.deleted || false ? "-0" : "-1"}`;
     }
     async fileToStatKey(file: FilePath, stat: UXStat | null = null) {
@@ -399,7 +433,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         return this.statToKey(stat);
     }
 
-    updateLastProcessedFile(file: FilePath, keySrc: string | UXStat) {
+    updateLastProcessedFile(file: FilePath, keySrc: string | Pick<UXStat, "mtime" | "size">) {
         const key = typeof keySrc == "string" ? keySrc : this.statToKey(keySrc);
         const splitted = key.split("-");
         if (splitted[0] != "0") {
@@ -441,11 +475,11 @@ export class HiddenFileSync extends LiveSyncCommands {
     getLastProcessedDatabaseKey(file: FilePath) {
         return this._databaseInfoLastProcessed.get(file);
     }
-    updateLastProcessedDatabase(file: FilePath, keySrc: string | MetaEntry | LoadedEntry) {
+    updateLastProcessedDatabase(file: FilePath, keySrc: string | FileProcessingStamp) {
         const key = typeof keySrc == "string" ? keySrc : this.docToKey(keySrc);
         this._databaseInfoLastProcessed.set(file, key);
     }
-    updateLastProcessed(path: FilePath, db: MetaEntry | LoadedEntry, stat: UXStat) {
+    updateLastProcessed(path: FilePath, db: FileProcessingStamp, stat: Pick<UXStat, "mtime" | "size">) {
         this.updateLastProcessedDatabase(path, db);
         this.updateLastProcessedFile(path, this.statToKey(stat));
         const dbMTime = getComparingMTime(db);
@@ -456,7 +490,7 @@ export class HiddenFileSync extends LiveSyncCommands {
             this.services.path.markChangesAreSame(path, getComparingMTime(db), getComparingMTime(stat));
         }
     }
-    updateLastProcessedDeletion(path: FilePath, db: MetaEntry | LoadedEntry | false) {
+    updateLastProcessedDeletion(path: FilePath, db: FileProcessingStamp | false) {
         this.services.path.unmarkChanges(path);
         if (db) this.updateLastProcessedDatabase(path, db);
         this.updateLastProcessedFile(path, this.statToKey(null));
@@ -502,7 +536,7 @@ export class HiddenFileSync extends LiveSyncCommands {
         }
     }
 
-    async updateLastProcessedAsActualDatabase(file: FilePath, doc?: MetaEntry | LoadedEntry | null | false) {
+    async updateLastProcessedAsActualDatabase(file: FilePath, doc?: FileProcessingStamp | null | false) {
         const dbPath = addPrefix(file, ICHeader);
         if (!doc) doc = await this.localDatabase.getDBEntryMeta(dbPath);
         if (!doc) return;
@@ -932,7 +966,7 @@ Offline Changed files: ${processFiles.length}`;
         }
     );
 
-    showJSONMergeDialogAndMerge(docA: LoadedEntry, docB: LoadedEntry): Promise<boolean> {
+    showJSONMergeDialogAndMerge(docA: ComparisonFile, docB: ComparisonFile): Promise<boolean> {
         return new Promise((res) => {
             this._log("Opening data-merging dialog", LOG_LEVEL_VERBOSE);
             const docs = [docA, docB];
@@ -1001,7 +1035,7 @@ Offline Changed files: ${processFiles.length}`;
     // <-- Conflict processing
 
     // --> Event Source Handler (Database)
-    getDocProps(doc: LoadedEntry) {
+    getDocProps(doc: FileChangeRef) {
         /*
             type DocumentProps = {
                 id: DocumentID;
@@ -1025,7 +1059,7 @@ Offline Changed files: ${processFiles.length}`;
         const isDeleted = doc._deleted || doc.deleted || false;
         return { id, rev, revDisplay, prefixedPath, path, isDeleted, shortenedId, shortenedPath };
     }
-    async processReplicationResult(doc: LoadedEntry): Promise<boolean> {
+    async processReplicationResult(doc: FileChangeRef): Promise<boolean> {
         const info = this.getDocProps(doc);
         const path = info.path;
         if (this.pendingConflictChecks.has(addPrefix(path, ICHeader))) {
@@ -1618,11 +1652,20 @@ Offline Changed files: ${files.length}`;
 
     // --> Storage To Database Functions
 
-    async __loadBaseSaveData(file: FilePath, includeContent = true): Promise<LoadedEntry | false> {
+    __loadBaseSaveData(file: FilePath, includeContent?: true): Promise<SaveBase | false>;
+    __loadBaseSaveData(file: FilePath, includeContent: false): Promise<FileMetadata | false>;
+    __loadBaseSaveData(file: FilePath, includeContent: boolean): Promise<SaveBase | FileMetadata | false>;
+    async __loadBaseSaveData(file: FilePath, includeContent = true): Promise<SaveBase | FileMetadata | false> {
         return await this.loadBaseSaveData(file, includeContent, false);
     }
 
-    private async loadBaseSaveDataStrict(file: FilePath, includeContent = true): Promise<LoadedEntry | false> {
+    private loadBaseSaveDataStrict(file: FilePath, includeContent?: true): Promise<SaveBase | false>;
+    private loadBaseSaveDataStrict(file: FilePath, includeContent: false): Promise<FileMetadata | false>;
+    private loadBaseSaveDataStrict(file: FilePath, includeContent: boolean): Promise<SaveBase | FileMetadata | false>;
+    private async loadBaseSaveDataStrict(
+        file: FilePath,
+        includeContent = true
+    ): Promise<SaveBase | FileMetadata | false> {
         return await this.loadBaseSaveData(file, includeContent, true);
     }
 
@@ -1630,15 +1673,15 @@ Offline Changed files: ${files.length}`;
         file: FilePath,
         includeContent: boolean,
         strict: boolean
-    ): Promise<LoadedEntry | false> {
+    ): Promise<SaveBase | FileMetadata | false> {
         const prefixedFileName = addPrefix(file, ICHeader);
         const id = await this.path2id(prefixedFileName, ICHeader);
         try {
-            const old = includeContent
+            let old = includeContent
                 ? await this.localDatabase.getDBEntry(prefixedFileName, undefined, false, true)
                 : await this.localDatabase.getDBEntryMeta(prefixedFileName, { conflicts: true }, true);
             if (old === false) {
-                const baseSaveData: LoadedEntry = {
+                old = {
                     _id: id,
                     data: [],
                     path: prefixedFileName,
@@ -1651,10 +1694,17 @@ Offline Changed files: ${files.length}`;
                     type: "newnote",
                     eden: {},
                 };
-                return baseSaveData;
-            } else {
-                return old;
             }
+            if (includeContent) return old;
+            if (old.type === "notes") {
+                const { datatype: _datatype, ...metadata } = old;
+                void _datatype;
+                return { ...metadata, children: [] };
+            }
+            const { data: _data, datatype: _datatype, ...metadata } = old;
+            void _data;
+            void _datatype;
+            return metadata;
         } catch (ex) {
             if (strict) throw ex;
             this._log(`Getting base save data failed`);
@@ -1723,12 +1773,11 @@ Offline Changed files: ${files.length}`;
                         return undefined;
                     }
                 }
-                const saveData: SavingEntry = {
+                const saveData: CompatibleFileToSave = {
                     ...baseData,
                     data: fileInfo.body,
                     mtime: fileInfo.stat.mtime,
                     size: fileInfo.stat.size,
-                    children: [],
                     deleted: false,
                     type: baseData.datatype,
                 };
@@ -1802,19 +1851,16 @@ Offline Changed files: ${files.length}`;
                 if (storedRevision === false) {
                     return false;
                 }
-                this.updateLastProcessed(
-                    storeFilePath,
-                    {
-                        ...baseData,
-                        _rev: storedRevision,
-                        path: prefixedFileName,
-                        ctime: fileInfo.stat.ctime,
-                        mtime: fileInfo.stat.mtime,
-                        size: fileInfo.stat.size,
-                        deleted: false,
-                    },
-                    fileInfo.stat
-                );
+                const savedMetadata = {
+                    ...baseData,
+                    _rev: storedRevision,
+                    path: prefixedFileName,
+                    ctime: fileInfo.stat.ctime,
+                    mtime: fileInfo.stat.mtime,
+                    size: fileInfo.stat.size,
+                    deleted: false,
+                };
+                this.updateLastProcessed(storeFilePath, savedMetadata, fileInfo.stat);
                 this._log(`STORAGE --> DB:${storageFilePath}: (hidden, selected branch) Done`);
                 return true;
             } catch (ex) {
@@ -1868,13 +1914,20 @@ Offline Changed files: ${files.length}`;
                     this.updateLastProcessedDeletion(storeFilePath, baseData);
                     return true;
                 }
-                const saveData: LoadedEntry = {
-                    ...baseData,
+                const {
+                    data: _data,
+                    datatype: _datatype,
+                    ...metadata
+                }: FileMetadata & { data?: string | string[]; datatype?: EntryTypeNotes } = baseData;
+                void _data;
+                void _datatype;
+                const saveData: CurrentFileDocument = {
+                    ...metadata,
                     mtime,
                     size: 0,
                     children: [],
                     deleted: true,
-                    type: baseData.datatype,
+                    type: baseData.type === "plain" ? "plain" : "newnote",
                 };
                 const ret = await this.localDatabase.putRaw(saveData);
                 if (ret && ret.ok) {
@@ -1903,7 +1956,7 @@ Offline Changed files: ${files.length}`;
     async extractInternalFileFromDatabase(
         storageFilePath: FilePath,
         force = false,
-        metaEntry?: MetaEntry | LoadedEntry,
+        metaEntry?: AnyEntry,
         preventDoubleProcess = true,
         onlyNew = false,
         includeDeletion = true,
@@ -2016,7 +2069,7 @@ Offline Changed files: ${files.length}`;
         }
     }
 
-    async __writeFile(storageFilePath: FilePath, fileOnDB: LoadedEntry, force: boolean): Promise<false | UXStat> {
+    async __writeFile(storageFilePath: FilePath, fileOnDB: FileContent, force: boolean): Promise<false | UXStat> {
         try {
             const statBefore = await this.core.storageAccess.statHidden(storageFilePath);
             const isExist = statBefore != null;

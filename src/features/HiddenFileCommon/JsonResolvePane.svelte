@@ -1,12 +1,13 @@
 <script lang="ts">
     import { type Diff, DIFF_DELETE, DIFF_INSERT, diff_match_patch } from "@/deps.ts";
-    import type { FilePath, LoadedEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
+    import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { decodeBinary, readString } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/convert";
     import { getDocData, isObjectDifferent, mergeObject } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { $msg as translateMessage } from "@/common/translation";
+    import type { JsonComparisonDocument } from "./jsonComparison.ts";
 
     interface Props {
-        docs?: LoadedEntry[];
+        docs?: JsonComparisonDocument[];
         callback?: (keepRev?: string, mergedStr?: string) => Promise<void>;
         filename?: FilePath;
         nameA?: string;
@@ -63,7 +64,7 @@
     type SelectModes = "" | "A" | "B" | "AB" | "BA";
     let mode: SelectModes = $state(defaultSelect as SelectModes);
 
-    function docToString(doc: LoadedEntry) {
+    function docToString(doc: JsonComparisonDocument) {
         return doc.datatype == "plain" ? getDocData(doc.data) : readString(new Uint8Array(decodeBinary(doc.data)));
     }
     function revStringToRevNumber(rev?: string) {

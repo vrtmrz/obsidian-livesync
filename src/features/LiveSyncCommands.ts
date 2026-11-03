@@ -2,12 +2,12 @@ import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
-    type AnyEntry,
     type DocumentID,
     type FilePath,
     type FilePathWithPrefix,
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { DocumentPathRef } from "@vrtmrz/livesync-commonlib/documents";
 import { MARK_DONE } from "@/modules/features/ModuleLog.ts";
 import type { LiveSyncCore } from "@/main.ts";
 // import { __$checkInstanceBinding } from "@vrtmrz/livesync-commonlib/compat/dev/checks";
@@ -33,7 +33,7 @@ export abstract class LiveSyncCommands {
         return await this.services.path.path2id(filename, prefix);
     }
 
-    getPath(entry: AnyEntry): FilePathWithPrefix {
+    getPath(entry: DocumentPathRef): FilePathWithPrefix {
         return this.services.path.getPath(entry);
     }
 

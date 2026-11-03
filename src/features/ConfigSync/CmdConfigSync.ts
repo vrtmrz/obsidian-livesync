@@ -12,7 +12,7 @@ import {
 
 import type {
     EntryDoc,
-    LoadedEntry,
+    EntryTypeNotes,
     InternalFileEntry,
     FilePathWithPrefix,
     FilePath,
@@ -20,6 +20,7 @@ import type {
     SavingEntry,
     diff_result,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { DocumentPathRef, FileContentView, FileProperties } from "@vrtmrz/livesync-commonlib/documents";
 import {
     CANCELLED,
     LEAVE_TO_SUBSEQUENT,
@@ -272,7 +273,7 @@ export interface IPluginDataExDisplay {
     name: string;
     term: string;
     displayName?: string;
-    files: (LoadedEntryPluginDataExFile | PluginDataExFile)[];
+    files: (CustomisationFileContent | PluginDataExFile)[];
     version?: string;
     mtime: number;
 }
@@ -286,7 +287,16 @@ export type PluginDataExDisplay = {
     version?: string;
     mtime: number;
 };
-type LoadedEntryPluginDataExFile = LoadedEntry & PluginDataExFile;
+interface CustomisationDocumentContent extends FileContentView, DocumentPathRef, FileProperties {
+    readonly _rev?: string;
+    readonly datatype: EntryTypeNotes;
+}
+
+interface CustomisationFileContent extends PluginDataExFile, DocumentPathRef {
+    readonly _rev?: string;
+    readonly ctime: number;
+    readonly datatype: EntryTypeNotes;
+}
 type ConfigFileApplicationTarget = {
     readonly path: FilePath;
     readonly stat: { readonly mtime: number; readonly ctime: number };
@@ -329,7 +339,7 @@ export class PluginDataExDisplayV2 {
 
     term: string;
 
-    files = [] as LoadedEntryPluginDataExFile[];
+    files = [] as CustomisationFileContent[];
 
     name: string;
     confKey: string;
@@ -338,11 +348,11 @@ export class PluginDataExDisplayV2 {
         this.category = `${data.category}`;
         this.name = `${data.name}`;
         this.term = `${data.term}`;
-        this.files = [...(data.files as LoadedEntryPluginDataExFile[])];
+        this.files = [...(data.files as CustomisationFileContent[])];
         this.confKey = `${categoryToFolder(this.category, this.term)}${this.name}`;
         this.applyLoadedManifest();
     }
-    async setFile(file: LoadedEntryPluginDataExFile) {
+    async setFile(file: CustomisationFileContent) {
         const old = this.files.find((e) => e.filename == file.filename);
         if (old) {
             if (old.mtime == file.mtime && (await isDocContentSame(old.data, file.data))) return;
@@ -668,8 +678,8 @@ export class ConfigSync extends LiveSyncCommands {
 
     async createPluginDataExFileV2(
         unifiedPathV2: FilePathWithPrefix,
-        loaded?: LoadedEntry
-    ): Promise<false | LoadedEntryPluginDataExFile> {
+        loaded?: CustomisationDocumentContent
+    ): Promise<false | CustomisationFileContent> {
         const { category, key, filename, device } = this.parseUnifiedPath(unifiedPathV2);
         if (!loaded) {
             const d = await this.localDatabase.getDBEntry(unifiedPathV2);
@@ -691,7 +701,7 @@ export class ConfigSync extends LiveSyncCommands {
         const dataSrc = getDocData(loaded.data);
         const dataStart = dataSrc.indexOf(DUMMY_END);
         const data = dataSrc.substring(dataStart + DUMMY_END.length);
-        const file: LoadedEntryPluginDataExFile = {
+        const file: CustomisationFileContent = {
             ...loaded,
             hash: "",
             data: [base64ToString(data)],
@@ -900,14 +910,14 @@ export class ConfigSync extends LiveSyncCommands {
     async compareUsingDisplayData(dataA: IPluginDataExDisplay, dataB: IPluginDataExDisplay, compareEach = false) {
         const loadFile = async (data: IPluginDataExDisplay) => {
             if (data instanceof PluginDataExDisplayV2 || compareEach) {
-                return data.files[0] as LoadedEntryPluginDataExFile;
+                return data.files[0] as CustomisationFileContent;
             }
             const loadDoc = await this.localDatabase.getDBEntry(data.documentPath);
             if (!loadDoc) return false;
             const pluginData = deserialize(getDocDataAsArray(loadDoc.data), {}) as PluginDataEx;
             pluginData.documentPath = data.documentPath;
             const file = pluginData.files[0];
-            const doc = { ...loadDoc, ...file, datatype: "newnote" } as LoadedEntryPluginDataExFile;
+            const doc = { ...loadDoc, ...file, datatype: "newnote" } as CustomisationFileContent;
             return doc;
         };
         const fileA = await loadFile(dataA);
@@ -1004,7 +1014,7 @@ export class ConfigSync extends LiveSyncCommands {
                 const files = data.files;
                 const applyBinaryContent = createModificationHandler<
                     ConfigFileApplicationTarget,
-                    LoadedEntryPluginDataExFile,
+                    CustomisationFileContent,
                     ArrayBuffer,
                     ArrayBuffer
                 >({
@@ -1021,7 +1031,7 @@ export class ConfigSync extends LiveSyncCommands {
                 });
                 const applyTextContent = createModificationHandler<
                     ConfigFileApplicationTarget,
-                    LoadedEntryPluginDataExFile,
+                    CustomisationFileContent,
                     string,
                     string
                 >({
