@@ -1224,7 +1224,7 @@ Enable this setting to process files with size mismatches, which can sometimes b
 #### Do not split chunks in the background
 
 Setting key: disableWorkerForGeneratingChunks
-If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).
+If enabled, chunks will be split on the UI thread (previous behaviour).
 
 #### Process small files in the foreground
 
