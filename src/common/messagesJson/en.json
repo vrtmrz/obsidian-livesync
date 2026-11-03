@@ -368,7 +368,7 @@
     "I understand the risks and will proceed without a backup.": "I understand the risks and will proceed without a backup.",
     "I Understand, Overwrite Server": "I Understand, Overwrite Server",
     "If \"Auto Start P2P Connection\" is enabled, the P2P connection will be started automatically when the plug-in launches.": "If \"Auto Start P2P Connection\" is enabled, the P2P connection will be started automatically when the plug-in launches.",
-    "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).": "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).",
+    "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).": "When enabled, chunks are split on the UI thread (the previous behaviour).",
     "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.": "If enabled per-filed efficient customization sync will be used. We need a small migration when enabling this. And all devices should be updated to v0.23.18. Once we enabled this, we lost a compatibility with old versions.",
     "If enabled, changes will be automatically broadcasted to all connected peers. Notified peers will start fetching the changes.": "If enabled, changes will be automatically broadcasted to all connected peers. Notified peers will start fetching the changes.",
     "If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.": "If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.",

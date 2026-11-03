@@ -3167,7 +3167,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             "zh-tw": "若啟用「自動啟動 P2P 連線」，外掛啟動時會自動建立 P2P 連線。",
         },
     "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).": {
-        def: "If disabled(toggled), chunks will be split on the UI thread (Previous behaviour).",
+        def: "When enabled, chunks are split on the UI thread (the previous behaviour).",
         es: "Si se desactiva, los chunks se dividen en el hilo de UI (comportamiento anterior)",
         fr: "Si désactivé, les fragments seront découpés sur le thread UI (comportement précédent).",
         he: "אם מכובה, נתחים יפוצלו בשרשור ממשק המשתמש (התנהגות קודמת).",
