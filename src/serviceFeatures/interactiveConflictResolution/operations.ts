@@ -100,10 +100,13 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     const getConflictVersionCount = async (filename: FilePathWithPrefix): Promise<number | undefined> => {
+        if (disposed) return undefined;
         try {
             const conflictCount = (await dependencies.databaseFileAccess.getConflictedRevs(filename)).length;
+            if (disposed) return undefined;
             return conflictCount === 0 ? 0 : conflictCount + 1;
         } catch (error) {
+            if (disposed) return undefined;
             dependencies.log(`Could not inspect the conflict state of ${filename}`, LOG_LEVEL_VERBOSE);
             dependencies.log(error, LOG_LEVEL_VERBOSE);
             return undefined;
@@ -111,9 +114,11 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     const getActiveConflictMessages = async (): Promise<string[]> => {
+        if (disposed) return [];
         const filename = dependencies.vault.getActiveFilePath();
         if (!filename) return [];
         const versionCount = await getConflictVersionCount(filename);
+        if (disposed) return [];
         if (versionCount === 0) {
             postponedConflictEpisodes.delete(filename);
             return [];
@@ -132,7 +137,10 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     const refreshConflictState = async (filename: FilePathWithPrefix): Promise<void> => {
-        if ((await getConflictVersionCount(filename)) === 0) {
+        if (disposed) return;
+        const versionCount = await getConflictVersionCount(filename);
+        if (disposed) return;
+        if (versionCount === 0) {
             postponedConflictEpisodes.delete(filename);
         }
         dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
@@ -182,6 +190,7 @@ export function createInteractiveConflictResolutionOperations(
                         activeDialogue = undefined;
                     }
                 }
+                if (disposed) return false;
                 if (selected === POSTPONED) {
                     postponedConflictEpisodes.add(filename);
                     dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
@@ -196,6 +205,7 @@ export function createInteractiveConflictResolutionOperations(
                 const testDoc = await dependencies
                     .localDatabase()
                     .getDBEntry(filename, { conflicts: true }, false, true, true);
+                if (disposed) return false;
                 if (testDoc === false) {
                     dependencies.log(`Merge: Could not read ${filename} from the local database`, LOG_LEVEL_VERBOSE);
                     return false;
@@ -203,6 +213,7 @@ export function createInteractiveConflictResolutionOperations(
                 if (!testDoc._conflicts || testDoc._conflicts.length === 0) {
                     dependencies.log(`Merge: Nothing to do ${filename}`, LOG_LEVEL_VERBOSE);
                     await refreshConflictState(filename);
+                    if (disposed) return false;
                     return false;
                 }
                 if (
@@ -214,6 +225,7 @@ export function createInteractiveConflictResolutionOperations(
                         LOG_LEVEL_INFO
                     );
                     await refreshConflictState(filename);
+                    if (disposed) return false;
                     await dependencies.conflict.queueCheckFor(filename);
                     return false;
                 }
@@ -224,15 +236,20 @@ export function createInteractiveConflictResolutionOperations(
                     // Create a new file by concatenating both conflicted revisions.
                     const p = conflictCheckResult.diff.map((e) => e[1]).join("");
                     const delRev = conflictCheckResult.right.rev;
-                    if (!(await dependencies.databaseFileAccess.storeContent(filename, p))) {
+                    const contentStored = await dependencies.databaseFileAccess.storeContent(filename, p);
+                    if (disposed) return false;
+                    if (!contentStored) {
                         dependencies.log(`Concatenated content cannot be stored:${filename}`, LOG_LEVEL_NOTICE);
                         return false;
                     }
                     // 2. As usual, delete the conflicted revision and if there are no conflicts, write the resolved content to the storage.
-                    if (
-                        (await dependencies.conflict.resolveByDeletingRevision(filename, delRev, "UI Concatenated")) ==
-                        MISSING_OR_ERROR
-                    ) {
+                    const deletionResult = await dependencies.conflict.resolveByDeletingRevision(
+                        filename,
+                        delRev,
+                        "UI Concatenated"
+                    );
+                    if (disposed) return false;
+                    if (deletionResult == MISSING_OR_ERROR) {
                         dependencies.log(
                             `Concatenated saved, but cannot delete conflicted revisions: ${filename}, (${displayRev(delRev)})`,
                             LOG_LEVEL_NOTICE
@@ -244,10 +261,13 @@ export function createInteractiveConflictResolutionOperations(
                     (toDelete === conflictCheckResult.left.rev || toDelete === conflictCheckResult.right.rev)
                 ) {
                     // Select one of the conflicted revision to delete.
-                    if (
-                        (await dependencies.conflict.resolveByDeletingRevision(filename, toDelete, "UI Selected")) ==
-                        MISSING_OR_ERROR
-                    ) {
+                    const deletionResult = await dependencies.conflict.resolveByDeletingRevision(
+                        filename,
+                        toDelete,
+                        "UI Selected"
+                    );
+                    if (disposed) return false;
+                    if (deletionResult == MISSING_OR_ERROR) {
                         dependencies.log(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
                         return false;
                     }
@@ -266,6 +286,7 @@ export function createInteractiveConflictResolutionOperations(
                         trigger: "merge",
                         interaction: NO_INTERACTION,
                     });
+                    if (disposed) return false;
                 }
                 // And, check it again.
                 await dependencies.conflict.queueCheckFor(filename);

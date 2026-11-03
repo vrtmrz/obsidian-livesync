@@ -18,6 +18,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+#### Conflict resolution
+
+- Pending conflict dialogues and their resolution steps stop using the released logger after the plug-in is disabled. Waiting continuations check for shutdown before logging or starting further resolution work.
+
 #### Translations
 
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
