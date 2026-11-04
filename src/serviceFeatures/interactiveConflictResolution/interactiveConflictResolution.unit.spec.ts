@@ -452,6 +452,109 @@ describe("interactive conflict resolution operations", () => {
         await expect(messages).resolves.toEqual([]);
     });
 
+    it("does not inspect or publish conflict state when called after disposal", async () => {
+        const fixture = createOperations();
+        const emit = vi.spyOn(fixture.context.events, "emitEvent");
+        fixture.operations.dispose();
+        emit.mockClear();
+
+        await expect(fixture.operations.getActiveConflictMessages()).resolves.toEqual([]);
+        await fixture.operations.refreshConflictState(path);
+
+        expect(fixture.getConflictedRevs).not.toHaveBeenCalled();
+        expect(fixture.getActiveFilePath).not.toHaveBeenCalled();
+        expect(fixture.log).not.toHaveBeenCalled();
+        expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("does not requeue a changed comparison when its conflict refresh finishes after disposal", async () => {
+        let finishInspection!: (revisions: string[]) => void;
+        const pendingInspection = new Promise<string[]>((resolve) => {
+            finishInspection = resolve;
+        });
+        const sink = vi.fn();
+        const addLog = bindableFunction<(message: unknown) => void>("addLog");
+        const unregisterLog = addLog.setHandler(sink);
+        const fixture = createOperations(undefined, {
+            log: createInstanceLogFunction("Conflict shutdown", { addLog } as never),
+        });
+        fixture.dialogueResult.value = "2-right";
+        fixture.getDBEntry.mockResolvedValue({ _rev: "3-new-left", _conflicts: ["2-right"] });
+        fixture.getConflictedRevs.mockReturnValue(pendingInspection);
+        const emit = vi.spyOn(fixture.context.events, "emitEvent");
+
+        const resolving = fixture.operations.resolveByUserInteraction(path, conflict);
+        await vi.waitFor(() => expect(fixture.getConflictedRevs).toHaveBeenCalledOnce());
+        const logsBeforeDisposal = sink.mock.calls.length;
+        fixture.operations.dispose();
+        unregisterLog();
+        emit.mockClear();
+        finishInspection(["2-right"]);
+
+        await expect(resolving).resolves.toBe(false);
+        expect(sink).toHaveBeenCalledTimes(logsBeforeDisposal);
+        expect(emit).not.toHaveBeenCalled();
+        expect(fixture.storeContent).not.toHaveBeenCalled();
+        expect(fixture.resolveByDeletingRevision).not.toHaveBeenCalled();
+        expect(fixture.queueCheckFor).not.toHaveBeenCalled();
+    });
+
+    it.each([AUTO_MERGED, MISSING_OR_ERROR] as const)(
+        "does not continue concatenated resolution after deletion settles following disposal (%s)",
+        async (result) => {
+            let finishDeletion!: (value: typeof AUTO_MERGED | typeof MISSING_OR_ERROR) => void;
+            const pendingDeletion = new Promise<typeof AUTO_MERGED | typeof MISSING_OR_ERROR>((resolve) => {
+                finishDeletion = resolve;
+            });
+            const sink = vi.fn();
+            const addLog = bindableFunction<(message: unknown) => void>("addLog");
+            const unregisterLog = addLog.setHandler(sink);
+            const fixture = createOperations(undefined, {
+                log: createInstanceLogFunction("Conflict shutdown", { addLog } as never),
+            });
+            fixture.dialogueResult.value = LEAVE_TO_SUBSEQUENT;
+            fixture.getDBEntry.mockResolvedValue({ _rev: "2-left", _conflicts: ["2-right"] });
+            fixture.resolveByDeletingRevision.mockReturnValue(pendingDeletion);
+            fixture.currentSettings.mockReturnValue({ syncAfterMerge: true });
+
+            const resolving = fixture.operations.resolveByUserInteraction(path, conflict);
+            await vi.waitFor(() => expect(fixture.resolveByDeletingRevision).toHaveBeenCalledOnce());
+            expect(fixture.storeContent).toHaveBeenCalledOnce();
+            const logsBeforeDisposal = sink.mock.calls.length;
+            fixture.operations.dispose();
+            unregisterLog();
+            finishDeletion(result);
+
+            await expect(resolving).resolves.toBe(false);
+            expect(sink).toHaveBeenCalledTimes(logsBeforeDisposal);
+            expect(fixture.resolveByDeletingRevision).toHaveBeenCalledTimes(1);
+            expect(fixture.replicateUnattendedByEvent).not.toHaveBeenCalled();
+            expect(fixture.queueCheckFor).not.toHaveBeenCalled();
+        }
+    );
+
+    it("does not requeue after in-flight replication completes following disposal", async () => {
+        let finishReplication!: (result: { status: "completed" }) => void;
+        const pendingReplication = new Promise<{ status: "completed" }>((resolve) => {
+            finishReplication = resolve;
+        });
+        const fixture = createOperations();
+        fixture.dialogueResult.value = "2-right";
+        fixture.getDBEntry.mockResolvedValue({ _rev: "2-left", _conflicts: ["2-right"] });
+        fixture.currentSettings.mockReturnValue({ syncAfterMerge: true });
+        fixture.replicateUnattendedByEvent.mockReturnValue(pendingReplication);
+
+        const resolving = fixture.operations.resolveByUserInteraction(path, conflict);
+        await vi.waitFor(() => expect(fixture.replicateUnattendedByEvent).toHaveBeenCalledOnce());
+        fixture.operations.dispose();
+        finishReplication({ status: "completed" });
+
+        await expect(resolving).resolves.toBe(false);
+        expect(fixture.resolveByDeletingRevision).toHaveBeenCalledOnce();
+        expect(fixture.replicateUnattendedByEvent).toHaveBeenCalledTimes(1);
+        expect(fixture.queueCheckFor).not.toHaveBeenCalled();
+    });
+
     it("replaces an active same-file dialogue with only the newest waiting request", async () => {
         const fixture = createDialogueConcurrencyHarness();
 

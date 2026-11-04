@@ -237,6 +237,70 @@ describe("WebAppRuntime lifecycle", () => {
         expect(getDirectoryHandle).not.toHaveBeenCalled();
     });
 
+    it.each([undefined, 0] as const)("saves supported Legacy settings without adopting NFC (%s)", async (version) => {
+        const write = vi.fn(async (_data: string) => undefined);
+        const close = vi.fn(async () => undefined);
+        const getFileHandle = vi.fn(async () => ({ createWritable: async () => ({ write, close }) }));
+        const getDirectoryHandle = vi.fn(async () => ({ getFileHandle }));
+        const runtime = new WebAppRuntime(
+            { name: "legacy-settings", getDirectoryHandle } as unknown as FileSystemDirectoryHandle,
+            { deviceValues: new MemoryValueStore() }
+        );
+        const options = (
+            runtime as unknown as { createServiceOptions(): LiveSyncBrowserServiceHubOptions<never> }
+        ).createServiceOptions();
+        if (!options.settings) throw new Error("The runtime must provide settings callbacks");
+        const settings = {
+            ...unconfiguredSettings,
+            ...(version === undefined ? {} : { pathNormalizationVersion: version }),
+        } as ObsidianLiveSyncSettings;
+
+        await options.settings.save(settings);
+
+        expect(getDirectoryHandle).toHaveBeenCalledWith(".livesync", { create: true });
+        expect(getFileHandle).toHaveBeenCalledWith("settings.json", { create: true });
+        expect(write).toHaveBeenCalledOnce();
+        expect(JSON.parse(write.mock.calls[0][0])).toEqual(settings);
+        expect(JSON.parse(write.mock.calls[0][0]).pathNormalizationVersion).toBe(version);
+        expect(close).toHaveBeenCalledOnce();
+    });
+
+    it("reports a Legacy settings write failure without logging a successful save", async () => {
+        const denied = new DOMException("Settings write denied", "NotAllowedError");
+        const write = vi.fn(async () => {
+            throw denied;
+        });
+        const close = vi.fn(async () => undefined);
+        const runtime = new WebAppRuntime(
+            {
+                name: "denied-settings",
+                getDirectoryHandle: async () => ({
+                    getFileHandle: async () => ({ createWritable: async () => ({ write, close }) }),
+                }),
+            } as unknown as FileSystemDirectoryHandle,
+            { deviceValues: new MemoryValueStore() }
+        );
+        const options = (
+            runtime as unknown as { createServiceOptions(): LiveSyncBrowserServiceHubOptions<never> }
+        ).createServiceOptions();
+        if (!options.settings) throw new Error("The runtime must provide settings callbacks");
+        const settings = { ...unconfiguredSettings, pathNormalizationVersion: 0 } as ObsidianLiveSyncSettings;
+        await runtime.start();
+        runtimeMocks.addLog.mockClear();
+
+        await expect(options.settings.save(settings)).resolves.toBeUndefined();
+
+        expect(write).toHaveBeenCalledOnce();
+        expect(close).not.toHaveBeenCalled();
+        expect(runtimeMocks.addLog).toHaveBeenCalledWith(
+            expect.stringContaining("Failed to save settings: NotAllowedError: Settings write denied"),
+            expect.any(Number),
+            "settings"
+        );
+        expect(runtimeMocks.addLog.mock.calls.some(([message]) => String(message).startsWith("Saved to "))).toBe(false);
+        expect(settings.pathNormalizationVersion).toBe(0);
+    });
+
     it("owns core start, directory scan, status reporting, and shutdown", async () => {
         const reportStatus = vi.fn();
         const runtime = new WebAppRuntime(createRootHandle(), { reportStatus, deviceValues: new MemoryValueStore() });
