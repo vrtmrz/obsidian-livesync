@@ -1,5 +1,6 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
 import { $msg } from "@/common/translation";
+import { Notice } from "@/deps.ts";
 import {
     createCoreSettingsAfterFullReset,
     createEditingSettingsAfterFullReset,
@@ -8,6 +9,8 @@ import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/comm
 import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import type { StoppedJournal } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
 import { visibleOnly, type PageFunctions } from "./SettingPane";
@@ -150,6 +153,73 @@ export function paneMaintenance(
                     })
             )
             .addOnUpdate(this.onlyOnCouchDB);
+
+        new Setting(paneEl)
+            .setName($msg("Skip stopped Journal and resume"))
+            .setDesc(
+                $msg(
+                    "Object Storage only. Confirm to skip the currently stopped Journal and resume replication. The confirmation names the exact Journal key and failure stage. Skipping may leave content or history missing; the next Journal failure still stops replication."
+                )
+            )
+            .addButton((button) =>
+                setButtonDestructiveState(button)
+                    .setButtonText($msg("Skip and resume"))
+                    .setDisabled(false)
+                    .onClick(async () => {
+                        const replicator = this.core.replicator;
+                        if (!(replicator instanceof LiveSyncJournalReplicator)) {
+                            new Notice(
+                                $msg(
+                                    "No stopped Journal is available. Retry replication to identify the stopped Journal."
+                                )
+                            );
+                            return;
+                        }
+                        const stoppedJournal: Readonly<StoppedJournal> | undefined = replicator.getStoppedJournal();
+                        if (!stoppedJournal) {
+                            new Notice(
+                                $msg(
+                                    "No stopped Journal is available. Retry replication to identify the stopped Journal."
+                                )
+                            );
+                            return;
+                        }
+                        const confirmed =
+                            (await this.core.confirm.askYesNoDialog(
+                                $msg(
+                                    "Skip stopped Journal '${KEY}' at failure stage '${STAGE}' and resume replication? This may leave content or history missing.",
+                                    { KEY: stoppedJournal.key, STAGE: stoppedJournal.stage }
+                                ),
+                                {
+                                    title: $msg("Skip stopped Journal and resume"),
+                                    defaultOption: "No",
+                                }
+                            )) === "yes";
+                        if (!confirmed) {
+                            return;
+                        }
+                        if (this.core.replicator !== replicator) {
+                            new Notice(
+                                $msg(
+                                    "The active replicator changed. Retry replication to identify the stopped Journal."
+                                )
+                            );
+                            return;
+                        }
+                        const resumed = await replicator.skipStoppedJournalAndResume(
+                            this.core.settings,
+                            stoppedJournal
+                        );
+                        if (!resumed) {
+                            new Notice(
+                                $msg(
+                                    "Journal receipt did not complete after this action. Check the current failure before retrying."
+                                )
+                            );
+                        }
+                    })
+            )
+            .addOnUpdate(this.onlyOnMinIO);
 
         new Setting(paneEl)
             .setName($msg("Reset journal received history"))

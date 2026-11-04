@@ -11,6 +11,7 @@ import {
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runCommand } from "./runCommand";
 import type { CLIOptions } from "./types";
+import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import {
     CENTRAL_REMOTE_ADMINISTRATION_ACTIONS,
     CENTRAL_REMOTE_ADMINISTRATION_FAILURE_REASONS,
@@ -20,6 +21,7 @@ import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     REPLICATION_COMPLETED,
     REPLICATION_PROGRESS_PRESENTATIONS,
+    USER_INITIATED_REPLICATION_AUTHORITY,
     replicationFailed,
 } from "@vrtmrz/livesync-commonlib/replication";
 
@@ -135,6 +137,17 @@ function makeOptions(command: CLIOptions["command"], commandArgs: string[]): CLI
         force: false,
         compatRemoteAdminExitZero: false,
     };
+}
+
+function makeJournalSkipOptions(journalKey: string): CLIOptions {
+    return makeOptions("journal-skip", [journalKey]);
+}
+
+function createJournalReplicatorMock(stoppedJournal: unknown) {
+    const replicator = Object.create(LiveSyncJournalReplicator.prototype) as any;
+    replicator.getStoppedJournal = vi.fn(() => stoppedJournal);
+    replicator.skipStoppedJournalAndResume = vi.fn(async () => true);
+    return replicator;
 }
 
 async function createSetupURI(passphrase: string): Promise<string> {
@@ -354,6 +367,108 @@ describe("runCommand abnormal cases", () => {
         );
     });
 
+    describe("journal-skip command", () => {
+        const snapshot = { key: "7-docs.jsonl.gz", stage: "parse" } as const;
+
+        it("skips only the exact stopped Journal after a normal user-initiated replication", async () => {
+            const core = createCoreMock();
+            const replicator = createJournalReplicatorMock(snapshot);
+            core.services.replicator.getActiveReplicator.mockReturnValue(replicator);
+            core.services.replication.replicateUserInitiated.mockResolvedValue(
+                replicationFailed(new Error("stopped Journal"))
+            );
+
+            await expect(runCommand(makeJournalSkipOptions(snapshot.key), { ...context, core })).resolves.toBe(true);
+
+            expect(core.services.replication.replicateUserInitiated).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    trigger: "manual",
+                    progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
+                    interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+                })
+            );
+            expect(replicator.getStoppedJournal).toHaveBeenCalledOnce();
+            expect(replicator.skipStoppedJournalAndResume).toHaveBeenCalledWith(
+                core.services.setting.currentSettings(),
+                snapshot,
+                true
+            );
+        });
+
+        it("refuses a key which does not match the stopped Journal", async () => {
+            const core = createCoreMock();
+            const replicator = createJournalReplicatorMock(snapshot);
+            core.services.replicator.getActiveReplicator.mockReturnValue(replicator);
+            core.services.replication.replicateUserInitiated.mockResolvedValue(
+                replicationFailed(new Error("stopped Journal"))
+            );
+
+            await expect(runCommand(makeJournalSkipOptions("8-docs.jsonl.gz"), { ...context, core })).resolves.toBe(
+                false
+            );
+
+            expect(replicator.skipStoppedJournalAndResume).not.toHaveBeenCalled();
+            expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+                expect.stringContaining("7-docs.jsonl.gz")
+            );
+        });
+
+        it("refuses when normal replication does not establish a stopped Journal", async () => {
+            const core = createCoreMock();
+            const replicator = createJournalReplicatorMock(undefined);
+            core.services.replicator.getActiveReplicator.mockReturnValue(replicator);
+
+            await expect(runCommand(makeJournalSkipOptions(snapshot.key), { ...context, core })).resolves.toBe(false);
+
+            expect(replicator.skipStoppedJournalAndResume).not.toHaveBeenCalled();
+        });
+
+        it("refuses when the active replicator is not a Journal replicator", async () => {
+            const core = createCoreMock();
+            core.services.replicator.getActiveReplicator.mockReturnValue({ getStoppedJournal: vi.fn(() => snapshot) });
+            core.services.replication.replicateUserInitiated.mockResolvedValue(
+                replicationFailed(new Error("stopped Journal"))
+            );
+
+            await expect(runCommand(makeJournalSkipOptions(snapshot.key), { ...context, core })).resolves.toBe(false);
+
+            expect(core.services.context.standardIo.writeStderr).toHaveBeenCalledWith(
+                expect.stringContaining("Journal replicator")
+            );
+        });
+
+        it("propagates a failure while resuming after the requested Journal was skipped", async () => {
+            const core = createCoreMock();
+            const replicator = createJournalReplicatorMock(snapshot);
+            replicator.skipStoppedJournalAndResume.mockResolvedValue(false);
+            core.services.replicator.getActiveReplicator.mockReturnValue(replicator);
+            core.services.replication.replicateUserInitiated.mockResolvedValue(
+                replicationFailed(new Error("stopped Journal"))
+            );
+
+            await expect(runCommand(makeJournalSkipOptions(snapshot.key), { ...context, core })).resolves.toBe(false);
+
+            expect(replicator.skipStoppedJournalAndResume).toHaveBeenCalledOnce();
+        });
+
+        it("refuses if the active replicator changes during the awaited replication", async () => {
+            const core = createCoreMock();
+            const replicator = createJournalReplicatorMock(snapshot);
+            const replacement = createJournalReplicatorMock(snapshot);
+            core.services.replicator.getActiveReplicator
+                .mockReturnValueOnce(replicator)
+                .mockReturnValueOnce(replacement);
+            core.services.replication.replicateUserInitiated.mockResolvedValue(
+                replicationFailed(new Error("stopped Journal"))
+            );
+
+            await expect(runCommand(makeJournalSkipOptions(snapshot.key), { ...context, core })).resolves.toBe(false);
+
+            expect(replicator.skipStoppedJournalAndResume).not.toHaveBeenCalled();
+            expect(replacement.skipStoppedJournalAndResume).not.toHaveBeenCalled();
+        });
+    });
+
     it("reports a lock from the exact sync outcome without inspecting a replacement Replicator", async () => {
         const core = createCoreMock();
         core.services.replication.replicateUserInitiated.mockResolvedValue(
@@ -546,9 +661,9 @@ describe("runCommand abnormal cases", () => {
             clock.mockReturnValue(end);
             const outOfWindow = createCoreMock();
             outOfWindow.services.context.standardIo.prompt.mockResolvedValue(passphrase);
-            await expect(runCommand(makeOptions("setup", [uri.trim()]), { ...context, core: outOfWindow })).rejects.toThrow(
-                "Cannot open Setup URI"
-            );
+            await expect(
+                runCommand(makeOptions("setup", [uri.trim()]), { ...context, core: outOfWindow })
+            ).rejects.toThrow("Cannot open Setup URI");
             expect(outOfWindow.services.setting.applyExternalSettings).not.toHaveBeenCalled();
             expect(outOfWindow.services.control.applySettings).not.toHaveBeenCalled();
         } finally {
@@ -559,8 +674,12 @@ describe("runCommand abnormal cases", () => {
     it("setup imports managed TURN through the existing encrypted URI", async () => {
         const core = createCoreMock();
         const profiles = {
-            turn: { id: "turn", name: "TURN", isEncrypted: false,
-                uri: "sls+p2p://room?managedType=CF&managedId=turn-key&token=private-token" },
+            turn: {
+                id: "turn",
+                name: "TURN",
+                isEncrypted: false,
+                uri: "sls+p2p://room?managedType=CF&managedId=turn-key&token=private-token",
+            },
         };
         const passphrase = "setup-passphrase";
         const setupURI = await processSetting.encodeSettingsToSetupURI(

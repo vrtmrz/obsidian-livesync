@@ -1273,9 +1273,27 @@ Disables all synchronisation and restart.
 
 Explicitly resend all locally available chunks to the remote. This is a recovery and maintenance operation; ordinary replication does not pre-send every chunk.
 
+#### Skip stopped Journal and resume
+
+Object Storage only. If a stopped Journal is not available, restart replication
+normally with the same local database so the receive failure identifies its key
+and stage. Confirming this action skips only that Journal and resumes receipt;
+it does not skip the rest of the remote history. The next Journal failure still
+stops replication.
+
+Skipping may leave content or history missing. Normal replication does not
+retry a Journal which has been explicitly skipped. After correcting the cause,
+use **Reset journal received history** to replay retained remote Journals,
+except those sent by this device. It cannot restore Journals which are no
+longer available remotely. This action does not add a persistent ignore setting.
+
 #### Reset journal received history
 
-Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.
+Clear this device's received Journal history and known-document transfer
+records. The next sync downloads the retained remote Journals again, except
+those sent by this device. The local database, Vault files, and sent history
+are retained. Recovery requires intact remote data and a working local
+database; resetting history does not recreate missing remote content.
 
 #### Reset journal sent history
 

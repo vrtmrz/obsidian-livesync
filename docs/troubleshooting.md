@@ -47,6 +47,29 @@ Do not switch to P2P or reset the database as the first response. Check:
 
 If the remote is healthy but one device's local database is not, use [Reset Synchronisation on This Device](recovery.md#reset-synchronisation-on-this-device) only after backing up unsynchronised local files.
 
+## Object Storage stops at a Journal receive failure
+
+The receiver stops when a Journal cannot be processed or its records cannot be
+saved. Correct the reported cause, then retry replication with the same local
+database; the failed Journal is retried. If the stopped Journal is no longer
+available to the active replicator, run normal replication again to identify
+the current failure.
+
+If the Journal cannot be recovered and missing content or history is
+acceptable, open **Maintenance → Syncing → Skip stopped Journal and resume**.
+The confirmation names the exact Journal key and failure stage. Confirming
+skips only that Journal and resumes receipt; the next Journal failure stops
+replication again. Use this only when the missing content or history is
+acceptable. See the [setting reference](settings.md#skip-stopped-journal-and-resume).
+
+**Reset journal received history** replays remote Journals that are still
+available, except those sent by this device. It retains local data and this
+device's sent history, and cannot restore remote Journals which are missing.
+Check the resulting file contents and retained history; a completed receive
+after skipping does not prove that every Vault file is readable. CLI Fetch
+replaces its local database and has separate [interrupted reconstruction
+rules](../src/apps/cli/README.md#interrupted-reconstruction-and-older-runtime-state).
+
 ## An unchanged file appears as a conflict after restart
 
 If the log says `Preserved unsynchronised local changes as a conflict`, keep both versions available until you have checked their contents. The message means that LiveSync could not prove that the Vault file was unchanged; it does not establish that you edited the file. Use **Inspect conflicts and file/database differences** in Hatch to review the current branches before selecting a version.

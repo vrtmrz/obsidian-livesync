@@ -18,6 +18,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+#### Object Storage
+
+- Failed Journal writes now stop replication instead of silently passing over missing records. After correcting the cause, the next replication with the same local database retries the failed Journal.
+    - If a Journal cannot be recovered and missing content or history is acceptable, **Maintenance → Syncing → Skip stopped Journal and resume** asks for confirmation of its exact key and failure stage, then skips only that Journal and resumes receipt. The next Journal failure still stops replication. The action does not add a persistent ignore setting.
+    - **Reset journal received history** replays Journals which remain available remotely, except those sent by this device. It cannot recreate missing remote Journals; earlier failures already silently acknowledged also require this explicit replay.
+
 #### Conflict resolution
 
 - Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
@@ -35,6 +41,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 ### CLI
 
 #### Fixed
+
+- Commonlib warnings now appear on stderr without `--debug`, so deliberately skipped Journals and other important notices remain visible during ordinary CLI use.
 
 - NFC file lookups and directory scans report permission and I/O failures instead of treating unreadable files as absent or returning a successful partial scan. A scan retains the comparison settings with which it began.
 

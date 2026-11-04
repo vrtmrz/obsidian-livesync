@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { deriveIdKey } from "@vrtmrz/livesync-commonlib/settings";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
@@ -17,6 +18,8 @@ import {
     type LocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import {
+    createObjectStorageClient,
+    readObjectStorageObject,
     deleteObjectStoragePrefix,
     ensureObjectStorageBucket,
     listObjectStorageObjects,
@@ -27,7 +30,7 @@ import {
 } from "../runner/objectStorage.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault, type TemporaryVault } from "../runner/vault.ts";
-import { withObsidianPage } from "../runner/ui.ts";
+import { openLiveSyncSettings, waitForVisibleObsidianDialogue, withObsidianPage } from "../runner/ui.ts";
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "60000";
 
@@ -557,6 +560,141 @@ async function waitForJournalObjects(
     );
 }
 
+async function verifySingleJournalRecovery(
+    cliBinary: string,
+    session: ObsidianLiveSyncSession,
+    vaultPath: string,
+    storage: ObjectStorageConfig,
+    prefix: string,
+    validJournalKey: string
+): Promise<void> {
+    const objects = await listObjectStorageObjects(storage, prefix);
+    const timestamp =
+        Math.max(Date.now(), ...objects.map(({ Key }) => Number(Key?.slice(prefix.length).split("-")[0]) || 0)) + 1;
+    const firstKey = `${timestamp}-docs.jsonl.gz`;
+    const secondKey = `${timestamp + 1}-docs.jsonl.gz`;
+    const laterKey = `${timestamp + 2}-docs.jsonl.gz`;
+    const validBytes = await readObjectStorageObject(storage, validJournalKey);
+    const client = createObjectStorageClient(storage);
+    try {
+        for (const [key, bytes] of [
+            [firstKey, new Uint8Array([1])],
+            [secondKey, new Uint8Array([1])],
+            [laterKey, validBytes],
+        ] as const) {
+            await client.send(new PutObjectCommand({ Bucket: storage.bucket, Key: prefix + key, Body: bytes }));
+        }
+    } finally {
+        client.destroy();
+    }
+
+    type RecoveryState = { key: string | null; stage: string | null; received: string[] };
+    const readState = async (): Promise<RecoveryState> =>
+        await evalObsidianJson<RecoveryState>(
+            cliBinary,
+            [
+                "(async()=>{",
+                "const core=app.plugins.plugins['obsidian-livesync'].core;",
+                "const replicator=core.services.replicator.getActiveReplicator();",
+                "const stopped=replicator.getStoppedJournal();",
+                "const checkpoint=await replicator.client.getCheckpointInfo();",
+                "return JSON.stringify({key:stopped?.key??null,stage:stopped?.stage??null,received:[...checkpoint.receivedFiles]});",
+                "})()",
+            ].join(""),
+            session.cliEnv,
+            timeoutMs
+        );
+    const waitForState = async (expectedKey: string | null, expectedReceived: string[]): Promise<void> => {
+        const deadline = Date.now() + timeoutMs;
+        let state: RecoveryState | undefined;
+        while (Date.now() < deadline) {
+            state = await readState();
+            if (state.key === expectedKey && expectedReceived.every((key) => state?.received.includes(key))) return;
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        throw new Error(`Journal recovery did not reach the expected state: ${JSON.stringify(state)}`);
+    };
+    const result = await evalObsidianJson<boolean>(
+        cliBinary,
+        [
+            "(async()=>{",
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const replicator=core.services.replicator.getActiveReplicator();",
+            "return JSON.stringify(await replicator.replicateAllFromServer(core.settings,true));",
+            "})()",
+        ].join(""),
+        session.cliEnv,
+        timeoutMs
+    );
+    assertEqual(result, false, "Receipt must stop at the first malformed Journal.");
+    const initial = await readState();
+    assertEqual(initial.key, firstKey, "The first failed Journal must be offered for recovery.");
+    for (const key of [firstKey, secondKey, laterKey]) {
+        assertEqual(initial.received.includes(key), false, "Failed and later Journals must remain unacknowledged.");
+    }
+
+    await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const navigator = await openLiveSyncSettings(page, uiTimeoutMs);
+        try {
+            const maintenance = await navigator.openPage("Maintenance");
+            assertEqual(
+                await maintenance.getByText("Ignore broken journals (risk of data loss)", { exact: true }).count(),
+                0,
+                "The persistent skip toggle must not be offered."
+            );
+            const setting = maintenance.locator(".setting-item").filter({
+                has: navigator.page.getByText("Skip stopped Journal and resume", { exact: true }),
+            });
+            await setting.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const choose = async (key: string, accept: boolean): Promise<void> => {
+                await setting
+                    .getByRole("button", { name: "Skip and resume", exact: true })
+                    .click({ timeout: uiTimeoutMs });
+                const dialogue = await waitForVisibleObsidianDialogue(page, key, uiTimeoutMs);
+                const text = await dialogue.innerText();
+                if (!text.includes(key) || !/missing/i.test(text)) {
+                    throw new Error(
+                        "The skip confirmation must identify the exact Journal and its missing-content risk."
+                    );
+                }
+                await dialogue
+                    .getByRole("button", { name: accept ? "Yes" : "No", exact: true })
+                    .click({ timeout: uiTimeoutMs });
+            };
+            await choose(firstKey, false);
+            assertEqual(
+                JSON.stringify(await readState()),
+                JSON.stringify(initial),
+                "Cancelling must preserve the failure and checkpoint."
+            );
+            await choose(firstKey, true);
+            await waitForState(secondKey, [firstKey]);
+            const afterFirst = await readState();
+            assertEqual(
+                afterFirst.received.includes(secondKey),
+                false,
+                "One action must not skip the next failed Journal."
+            );
+            assertEqual(
+                afterFirst.received.includes(laterKey),
+                false,
+                "Receipt must stop before the later valid Journal."
+            );
+            await choose(secondKey, true);
+            await waitForState(null, [firstKey, secondKey, laterKey]);
+        } finally {
+            await navigator.close();
+        }
+    });
+    const saved = JSON.parse(
+        await readFile(join(vaultPath, ".obsidian/plugins/obsidian-livesync/data.json"), "utf8")
+    ) as Record<string, unknown>;
+    assertEqual("ignoreBrokenJournals" in saved, false, "Recovery must not persist a skip toggle.");
+    console.log(
+        "Journal recovery UI: cancellation preserved the checkpoint, each action skipped one named Journal, and the next failure stopped receipt."
+    );
+}
+
 async function postponeConflictIfOpen(session: ObsidianLiveSyncSession): Promise<void> {
     await withObsidianPage(session.remoteDebuggingPort, async (page) => {
         const dialogue = page.locator(".modal-container:visible").filter({ hasText: "Conflicting changes" });
@@ -791,6 +929,24 @@ async function runCase(
             restartedTree.ancestorBodyAvailable,
             receivedTree.ancestorBodyAvailable,
             "Restart changed the common ancestor body's availability."
+        );
+        await waitForSinglePhysicalUnicodeFile(receiverVault.path, controlPathNfd, controlContent);
+
+        const validJournalKey = rebuiltKeys.find((key) => key.endsWith("-docs.jsonl.gz"));
+        if (!validJournalKey) throw new Error("A valid Journal fixture is required for recovery testing.");
+        await verifySingleJournalRecovery(
+            cliBinary,
+            receiverSession,
+            receiverVault.path,
+            objectStorage,
+            bucketPrefix,
+            validJournalKey
+        );
+        await postponeConflictIfOpen(receiverSession);
+        assertSameConflictTree(
+            await readConflictTree(cliBinary, receiverSession.cliEnv, conflictPathNfc, initialEntry.rev, false),
+            sourceTree,
+            "Receiver after explicit Journal skips"
         );
         await waitForSinglePhysicalUnicodeFile(receiverVault.path, controlPathNfd, controlContent);
 
