@@ -31,14 +31,15 @@ The original dates and reviewed versions above remain the historical baseline.
 
 ## Unreleased shared storage boundary
 
-The current LiveSync candidate adopts Commonlib's shared Unicode resolver and
-typed physical-I/O ports in the CLI, and shared namespace and comparison
-helpers in Obsidian while retaining its Vault APIs and existing alias-guard
-policy. Each NFC scan retains one comparison-policy snapshot; directory and
-permission errors propagate instead of producing a successful partial scan.
-These additions are unreleased and do not change the support status of a
-published host. The [developer guide](../../devs.md#file-path-handling) links
-the Commonlib design and ADR.
+Commonlib `0.3.1` publishes the shared storage-path contract, including
+its Unicode resolver and typed physical-I/O ports. The LiveSync candidate
+adopts the shared resolver and typed physical-I/O ports in the CLI. Obsidian
+adopts shared namespace and comparison helpers while retaining its Vault APIs
+and existing alias-guard policy. Each NFC scan retains one comparison-policy
+snapshot; directory and permission errors propagate instead of producing a
+successful partial scan. LiveSync's host adoption remains unreleased. The
+[developer guide](../../devs.md#file-path-handling) links the Commonlib design
+and ADR.
 
 ## Scope
 
@@ -233,11 +234,11 @@ updates and deletions.
 
 | Host or API | Published baseline | Unreleased or host-specific status |
 | --- | --- | --- |
-| CLI and Obsidian with CouchDB | NFC identity is supported from Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`. | The shared resolver and typed path ports are in the current LiveSync candidate; they are not part of a published Commonlib package yet. |
+| CLI and Obsidian with CouchDB | NFC identity is supported from Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`. | Commonlib `0.3.1` publishes the shared storage-path contract. LiveSync's CLI adoption of the shared resolver and typed physical-I/O ports, and its Obsidian adoption of shared namespace and comparison helpers, remain unreleased. |
 | CLI and Obsidian with Journal | Commonlib `0.3.0` publishes the NFC protocol support. | Matching LiveSync host adoption remains an unreleased candidate tracked by [pull request #1309](https://github.com/vrtmrz/obsidian-livesync/pull/1309). Update and migrate every client before using version `1`. |
 | CLI and Obsidian with P2P | Commonlib `0.3.0` publishes the NFC protocol support. | Matching LiveSync host adoption remains an unreleased candidate. All peers must use the same path version; P2P warns and continues for ordinary representation or case differences. |
 | Bridge | The published baseline uses Legacy version `0`. | The Bridge integration is an unreleased candidate with explicit per-peer opt-in to version `1`; every peer in a group must use the same version. Its ordinary case mismatch check remains enabled unless the Bridge-wide `disableCheckingConfigMismatch: true` override disables that case check. The override does not bypass a path-version mismatch. |
-| `DirectFileManipulator` | The published Commonlib baseline refuses a remote which declares `nfc-path-identity-v1`. | An unpublished addition accepts explicit `pathNormalizationVersion` values `0` or `1`, defaulting to `0`, and rejects a populated database in the opposite mode. This admission setting does not provide physical-path resolution. |
+| `DirectFileManipulator` | Commonlib `0.3.1` accepts explicit `pathNormalizationVersion` values `0` or `1`, defaults to Legacy (`0`), and rejects a populated database in the opposite mode. | This admission setting does not resolve physical paths; callers own physical path resolution and migration. |
 | WebApp | Legacy version `0` only. | WebApp remains Legacy-only and rejects an explicit version `1` at startup. The browser resolver primitive does not enable NFC in WebApp. |
 | WebPeer | A vaultless P2P utility, not a filesystem host. | No NFC filesystem support is implied by its P2P role. |
 | Older client without this feature | Can use a legacy database. | Cannot join a database declaring `nfc-path-identity-v1`. |
@@ -295,11 +296,10 @@ The implementation acceptance matrix covers:
   version-`0` clients against an NFC database, and enforcement when ordinary
   mismatch warnings are disabled;
 - URI round trips, checkpoint invalidation across path versions, and
-  rejection by the published Direct file access baseline; the unpublished
-  `DirectFileManipulator` addition covers explicit Legacy/NFC admission.
-  Journal and P2P protocol support is published in Commonlib `0.3.0`, while
-  matching CLI and Obsidian host adoption and end-to-end checks remain
-  unreleased;
+  explicit Legacy/NFC admission by `DirectFileManipulator` in Commonlib `0.3.1`,
+  including rejection of a populated database in the opposite mode. Journal and
+  P2P protocol support is published in Commonlib `0.3.0`, while matching CLI and
+  Obsidian host adoption and end-to-end checks remain unreleased;
 - refusal for ambiguous file or parent-directory candidates before local or
   remote reset, preserving both databases on rejection, within the paths
   returned by each host's supported listing; and
