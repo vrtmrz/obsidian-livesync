@@ -268,6 +268,49 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
         expect(report).not.toHaveBeenCalled();
     });
 
+    it("does not return or cache a partial NFC listing after a nested directory read fails", async () => {
+        const directory = await createVault();
+        const knownPath = "Known.md";
+        const initialContent = "initial content";
+        await fs.writeFile(path.join(directory, knownPath), initialContent);
+        let normalizationVersion = 1;
+        const adapter = new NodeFileSystemAdapter(directory, undefined, () => normalizationVersion, () => true);
+        await adapter.scanDirectory();
+
+        const changedContent = "changed content after cache";
+        await fs.writeFile(path.join(directory, knownPath), changedContent);
+        await fs.mkdir(path.join(directory, "late-directory"));
+        await fs.writeFile(path.join(directory, "late-directory", "later.md"), "later content");
+
+        const error = Object.assign(new Error("Storage permission denied"), { code: "EACCES" });
+        const readDirectory = adapter.storage.readDirectory.bind(adapter.storage);
+        const readDirectorySpy = vi.spyOn(adapter.storage, "readDirectory").mockImplementation(async (relativePath) => {
+            if (relativePath === "late-directory") throw error;
+            const entries = await readDirectory(relativePath);
+            return relativePath === "" && entries !== null
+                ? [...entries].sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
+                : entries;
+        });
+
+        try {
+            await expect(adapter.getFiles()).rejects.toBe(error);
+            await expect(adapter.scanDirectory()).rejects.toBe(error);
+        } finally {
+            readDirectorySpy.mockRestore();
+        }
+
+        // Compatibility-mode case-insensitive lookup exposes the cache without
+        // triggering another scan, so it can verify that the failed NFC scan did
+        // not publish its already-enumerated file metadata.
+        normalizationVersion = 0;
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+        await expect(adapter.getAbstractFileByPathInsensitive("known.md")).resolves.toMatchObject({
+            path: knownPath,
+            stat: { size: initialContent.length },
+        });
+        expect(scanDirectory).not.toHaveBeenCalled();
+    });
+
     it("uses one comparison policy snapshot for the whole NFC scan", async () => {
         const directory = await createVault();
         await fs.mkdir(path.join(directory, "Folder"));

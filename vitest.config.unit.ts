@@ -31,6 +31,7 @@ export default mergeConfig(
                     "**/*.test.ts",
                     "**/*unit.test.ts",
                     "**/*.unit.spec.ts",
+                    "**/*.integration.spec.ts",
                     "test/**",
                     "**/_*",
                     "**/*_obsolete.ts",
