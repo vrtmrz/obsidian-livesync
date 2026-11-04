@@ -22,6 +22,7 @@ import {
     prepareRemote,
     pushLocalChanges,
     waitForLiveSyncCoreReady,
+    waitForLocalDatabaseEntry,
 } from "../runner/liveSyncWorkflow.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
@@ -31,11 +32,37 @@ process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "60000";
 
 const useRequestAPI = process.argv.includes("--request-api");
 type ObservedRequest = { transport: string; method: string; url: string; cache?: RequestCache };
+type RestartState = {
+    settings: {
+        useCouchDBCacheControlHeadersOnly: boolean;
+        couchDB_DBNAME: string;
+        deviceAndVaultName: string;
+        encrypt: boolean;
+        encryptInternalMetadata: boolean;
+        usePathObfuscation: boolean;
+    };
+    localDatabaseName: string;
+    localMetadata: null | { id: string; revision: string; path: string; children: string[] };
+    nodeId: string;
+};
+
+async function waitForNextUnixSecond(previousUnixSecond: number): Promise<void> {
+    const timeoutMs = Number(process.env.E2E_OBSIDIAN_CORE_READY_TIMEOUT_MS ?? 20000);
+    const deadline = Date.now() + timeoutMs;
+    while (Math.floor(Date.now() / 1000) <= previousUnixSecond) {
+        if (Date.now() >= deadline) {
+            throw new Error("Timed out waiting for the next Unix second before restarting Obsidian.");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+}
 
 const customPath = ".obsidian/snippets/http-cache.css";
 const nextCustomPath = ".obsidian/snippets/http-cache-new.css";
 const ordinaryPath = "example.md";
 const ordinaryContents = "/* HTTP cache fixture */\n";
+const restartNotePath = "restart-after-http-cache.md";
+const restartNoteContents = "Synchronised after restarting Obsidian.\n";
 const settings = {
     encrypt: true,
     passphrase: "couchdb-http-cache-fixture-secret",
@@ -181,6 +208,22 @@ async function main(): Promise<void> {
         assert.equal(document.size, Buffer.byteLength(ordinaryContents));
         assert.ok(Array.isArray(document.children) && document.children.length > 0);
     };
+    const readRestartState = async (): Promise<RestartState> =>
+        await evaluate<RestartState>([
+            "const settings=core.services.setting.currentSettings();",
+            "const database=core.localDatabase.localDatabase;",
+            "const databaseInfo=await database.info();",
+            "const nodeInfo=await database.get('_local/obsydian_livesync_nodeinfo').catch(()=>null);",
+            "const localMetadata=await core.localDatabase.getDBEntry('example.md',undefined,false,true).catch(()=>null);",
+            "return JSON.stringify({settings:{",
+            "useCouchDBCacheControlHeadersOnly:settings.useCouchDBCacheControlHeadersOnly===true,",
+            "couchDB_DBNAME:settings.couchDB_DBNAME,deviceAndVaultName:core.services.setting.getDeviceAndVaultName(),",
+            "encrypt:settings.encrypt,encryptInternalMetadata:settings.encryptInternalMetadata,",
+            "usePathObfuscation:settings.usePathObfuscation},",
+            "localDatabaseName:databaseInfo.db_name,",
+            "localMetadata:localMetadata?{id:localMetadata._id,revision:localMetadata._rev,path:localMetadata.path,children:localMetadata.children??[]}:null,",
+            "nodeId:nodeInfo?.nodeid??''});",
+        ].join(""));
 
     try {
         await createCouchDbDatabase(couchDb, dbName);
@@ -317,9 +360,179 @@ async function main(): Promise<void> {
         );
         assert.equal(await readFile(join(vault.path, ordinaryPath), "utf8"), ordinaryContents);
         await pushLocalChanges(cliBinary, session.cliEnv);
+
+        const remoteBeforeRestart = await fetchCouchDbDocument(couchDb, dbName, original._id);
+        const seedBeforeRestart = await fetchCouchDbDocument(couchDb, dbName, DOCID_SYNC_PARAMETERS);
+        assert.equal(remoteBeforeRestart._rev, rebuilt._rev, "The Metadata revision changed before restart.");
+        assert.equal(remoteBeforeRestart.path, rebuilt.path, "The remote Metadata ciphertext changed before restart.");
+        assert.equal(
+            seedBeforeRestart.pbkdf2salt,
+            rebuiltParameters.pbkdf2salt,
+            "The Security Seed changed before restart."
+        );
+        const stateBeforeRestart = await readRestartState();
+        assert.equal(stateBeforeRestart.settings.useCouchDBCacheControlHeadersOnly, false);
+        assert.equal(stateBeforeRestart.settings.couchDB_DBNAME, dbName);
+        assert.equal(stateBeforeRestart.settings.deviceAndVaultName, "http-cache-source");
+        assert.equal(stateBeforeRestart.settings.encrypt, true);
+        assert.equal(stateBeforeRestart.settings.encryptInternalMetadata, true);
+        assert.equal(stateBeforeRestart.settings.usePathObfuscation, true);
+        assert.equal(stateBeforeRestart.localMetadata?.path, ordinaryPath);
+        assert.ok(stateBeforeRestart.nodeId, "The device identity was not persisted before restart.");
+
+        const previousUnixSecond = Math.floor(Date.now() / 1000);
+        await restoreCommonlibRequests();
+        if (!session) throw new Error("No active Obsidian session to stop.");
+        await session.app.stop();
+        session = undefined;
+        await waitForNextUnixSecond(previousUnixSecond);
+
+        // Reuse the same Vault and isolated profile. Do not reseed settings or local device state.
+        session = await startObsidianLiveSyncSession({
+            binary,
+            cliBinary,
+            vault,
+            artifactRoot: resolve(process.env.E2E_OBSIDIAN_ARTIFACT_ROOT ?? "."),
+            pluginStartup: "natural",
+        });
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        const stateAfterRestart = await readRestartState();
+        assert.deepEqual(stateAfterRestart.settings, stateBeforeRestart.settings);
+        assert.equal(stateAfterRestart.localDatabaseName, stateBeforeRestart.localDatabaseName);
+        assert.deepEqual(stateAfterRestart.localMetadata, stateBeforeRestart.localMetadata);
+        assert.equal(stateAfterRestart.nodeId, stateBeforeRestart.nodeId, "Restart changed the persisted device identity.");
+
+        const remoteAfterRestart = await fetchCouchDbDocument(couchDb, dbName, original._id);
+        const seedAfterRestart = await fetchCouchDbDocument(couchDb, dbName, DOCID_SYNC_PARAMETERS);
+        assert.equal(remoteAfterRestart._rev, remoteBeforeRestart._rev, "Restart changed the remote Metadata revision.");
+        assert.equal(
+            remoteAfterRestart.path,
+            remoteBeforeRestart.path,
+            "Restart changed the remote Metadata ciphertext."
+        );
+        assert.equal(seedAfterRestart.pbkdf2salt, seedBeforeRestart.pbkdf2salt, "Restart changed the Security Seed.");
+        assert.equal(await readFile(join(vault.path, ordinaryPath), "utf8"), ordinaryContents);
+        if (!useRequestAPI) {
+            assert.equal(
+                (await readCachedDocument(original._id, "default")).path,
+                original.path,
+                "The isolated browser HTTP cache did not survive the application restart."
+            );
+        }
+
+        await observeCommonlibRequests();
+        const restartedRead = await readCommonlibDocument(original._id);
+        assertLogicalDocument(restartedRead.document, original);
+        assert.deepEqual(restartedRead.document.children, initialRead.document.children);
+        const restartedMetadataRequest = metadataRequest(restartedRead, original._id);
+        const restartedEpoch = new URL(restartedMetadataRequest.url).searchParams.get("_livesync_epoch");
+        assert.ok(restartedEpoch, "The restarted Metadata read did not include a cache namespace.");
+        assert.match(restartedEpoch, /^[0-9a-f]{64}$/, "The restarted URL must contain only the combined hash.");
+        assert.notEqual(
+            restartedEpoch,
+            rebuiltEpoch,
+            "A full application restart reused its earlier non-compatibility cache namespace."
+        );
+        assert.equal(restartedMetadataRequest.cache, "no-cache");
+
+        await evaluate("await core.services.setting.applyPartial({readChunksOnline:false},true);return JSON.stringify(true);");
+        const restartedFetchAttempt = await evaluate<{ succeeded: boolean; error?: string }>([
+            "try{await core.rebuilder.fetchLocal(false,true);return JSON.stringify({succeeded:true});}",
+            "catch(error){return JSON.stringify({succeeded:false,error:String(error)});}",
+        ].join(""));
+        assert.ok(
+            restartedFetchAttempt.succeeded,
+            `Standard Fetch after restart failed: ${JSON.stringify(restartedFetchAttempt)}`
+        );
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        const afterRestartFetch = await readCommonlibDocument(original._id);
+        assertLogicalDocument(afterRestartFetch.document, original);
+        assert.deepEqual(afterRestartFetch.document.children, initialRead.document.children);
+        assert.equal(
+            new URL(metadataRequest(afterRestartFetch, original._id).url).searchParams.get("_livesync_epoch"),
+            restartedEpoch,
+            "Standard Fetch changed the restarted cache namespace."
+        );
+        assert.equal(await readFile(join(vault.path, ordinaryPath), "utf8"), ordinaryContents);
+        const remoteAfterRestartFetch = await fetchCouchDbDocument(couchDb, dbName, original._id);
+        const seedAfterRestartFetch = await fetchCouchDbDocument(couchDb, dbName, DOCID_SYNC_PARAMETERS);
+        assert.equal(remoteAfterRestartFetch._rev, remoteBeforeRestart._rev);
+        assert.equal(remoteAfterRestartFetch.path, remoteBeforeRestart.path);
+        assert.equal(seedAfterRestartFetch.pbkdf2salt, seedBeforeRestart.pbkdf2salt);
+
+        await writeFile(join(vault.path, restartNotePath), restartNoteContents);
+        const restartNoteEntry = await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, restartNotePath);
+        assert.equal(restartNoteEntry.path, restartNotePath);
+        await pushLocalChanges(cliBinary, session.cliEnv);
+        const uploadedRestartNote = await readCommonlibDocument(restartNoteEntry.id);
+        assert.equal(uploadedRestartNote.document.path, restartNotePath);
+        assert.equal(uploadedRestartNote.document.size, Buffer.byteLength(restartNoteContents));
+        assert.ok(
+            Array.isArray(uploadedRestartNote.document.children) && uploadedRestartNote.document.children.length > 0
+        );
+        assert.equal(
+            new URL(metadataRequest(uploadedRestartNote, restartNoteEntry.id).url).searchParams.get("_livesync_epoch"),
+            restartedEpoch,
+            "Subsequent synchronisation did not use the restarted cache namespace."
+        );
+        assert.equal(await readFile(join(vault.path, restartNotePath), "utf8"), restartNoteContents);
+        const originalAfterRestartSync = await fetchCouchDbDocument(couchDb, dbName, original._id);
+        assert.equal(originalAfterRestartSync._rev, remoteBeforeRestart._rev);
+        assert.equal(originalAfterRestartSync.path, remoteBeforeRestart.path);
+        const uploadedRestartNoteRemote = await fetchCouchDbDocument(couchDb, dbName, restartNoteEntry.id);
+
+        await evaluate("await core.services.setting.applyPartial({readChunksOnline:false},true);return JSON.stringify(true);");
+        const uploadVerificationFetch = await evaluate<{ succeeded: boolean; error?: string }>([
+            "try{await core.rebuilder.fetchLocal(false,true);return JSON.stringify({succeeded:true});}",
+            "catch(error){return JSON.stringify({succeeded:false,error:String(error)});}",
+        ].join(""));
+        assert.ok(
+            uploadVerificationFetch.succeeded,
+            `Standard Fetch after the upload failed: ${JSON.stringify(uploadVerificationFetch)}`
+        );
+        await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        const fetchedRestartNoteEntry = await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, restartNotePath);
+        assert.equal(fetchedRestartNoteEntry.id, restartNoteEntry.id);
+        assert.equal(fetchedRestartNoteEntry.rev, uploadedRestartNote.document._rev);
+        assert.deepEqual(fetchedRestartNoteEntry.children, uploadedRestartNote.document.children);
+        const fetchedRestartNoteBody = await evaluate<string>([
+            "const file=await core.serviceModules.databaseFileAccess.fetch(" + JSON.stringify(restartNotePath) + ");",
+            "if(!file||file.deleted||!file.body)throw new Error('The uploaded note was not readable from the replaced local database.');",
+            "return JSON.stringify(await file.body.text());",
+        ].join(""));
+        assert.equal(
+            fetchedRestartNoteBody,
+            restartNoteContents,
+            "The replaced local database did not return the exact uploaded Chunk content."
+        );
+        const fetchedRestartNote = await readCommonlibDocument(restartNoteEntry.id);
+        assert.equal(fetchedRestartNote.document.path, restartNotePath);
+        assert.equal(fetchedRestartNote.document.size, Buffer.byteLength(restartNoteContents));
+        assert.equal(fetchedRestartNote.document._rev, uploadedRestartNote.document._rev);
+        assert.deepEqual(fetchedRestartNote.document.children, uploadedRestartNote.document.children);
+        assert.equal(
+            new URL(metadataRequest(fetchedRestartNote, restartNoteEntry.id).url).searchParams.get("_livesync_epoch"),
+            restartedEpoch,
+            "Standard Fetch after the upload changed the restarted cache namespace."
+        );
+        assert.equal(await readFile(join(vault.path, restartNotePath), "utf8"), restartNoteContents);
+        assert.equal(await readFile(join(vault.path, ordinaryPath), "utf8"), ordinaryContents);
+        const restartNoteAfterFetch = await fetchCouchDbDocument(couchDb, dbName, restartNoteEntry.id);
+        assert.equal(restartNoteAfterFetch._rev, uploadedRestartNoteRemote._rev);
+        assert.equal(restartNoteAfterFetch.path, uploadedRestartNoteRemote.path);
+        const originalAfterUploadFetch = await fetchCouchDbDocument(couchDb, dbName, original._id);
+        const seedAfterUploadFetch = await fetchCouchDbDocument(couchDb, dbName, DOCID_SYNC_PARAMETERS);
+        assert.equal(originalAfterUploadFetch._rev, remoteBeforeRestart._rev);
+        assert.equal(originalAfterUploadFetch.path, remoteBeforeRestart.path);
+        assert.equal(seedAfterUploadFetch.pbkdf2salt, seedBeforeRestart.pbkdf2salt);
+
         await restoreCommonlibRequests();
         console.log(
             `Cache compatibility switch persistence, Rebuild, Standard Fetch, and subsequent replication succeeded with the ${useRequestAPI ? "Internal API" : "browser"} HTTP cache.`
+        );
+        console.log(
+            `Full application restart on the same Vault and profile retained device identity, ` +
+                `changed the cache namespace, and passed post-restart Fetch and upload (${useRequestAPI ? "Internal API" : "browser"}).`
         );
     } finally {
         if (observingRequests && session) {
