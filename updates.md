@@ -20,7 +20,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Conflict resolution
 
-- Pending conflict dialogues and their resolution steps stop using the released logger after the plug-in is disabled. Waiting continuations check for shutdown before logging or starting further resolution work.
+- Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
+    - Open conflict dialogues close immediately, and queued checks report cancellation. Operations already running retain their normal completion or failure path.
 
 #### WebApp
 

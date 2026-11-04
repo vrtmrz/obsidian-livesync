@@ -107,25 +107,92 @@ describe("ModuleLog service connection", () => {
         ]);
     });
 
-    it("detaches both service registration and legacy subscription on disposal", async () => {
+    it("keeps service logging callable after disposal and sends late logs to the console", async () => {
+        const { services, module, sink } = await createHarness();
+        await services.appLifecycle.onSettingLoaded();
+        sink.mockClear();
+        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+        await module.logResource.dispose();
+        try {
+            expect(() => services.API.addLog("late-service", 32, "late-key")).not.toThrow();
+            expect(consoleLog).toHaveBeenCalledExactlyOnceWith({
+                message: "late-service",
+                level: 32,
+                key: "late-key",
+            });
+            const cause = new Error("root cause");
+            const error = Object.assign(new Error("late failure"), { cause });
+            services.API.addLog(error, 128, "late-error");
+            const errorEntry = consoleLog.mock.calls[1][0] as {
+                message: Error & { cause?: unknown };
+                level?: number;
+                key?: string;
+            };
+            expect(errorEntry.message).toBe(error);
+            expect(errorEntry.message.cause).toBe(cause);
+            expect(errorEntry.level).toBe(128);
+            expect(errorEntry.key).toBe("late-error");
+            expect(sink).not.toHaveBeenCalled();
+        } finally {
+            consoleLog.mockRestore();
+        }
+    });
+
+    it("sends late circular service messages directly to the console", async () => {
+        const { services, module, sink } = await createHarness();
+        await services.appLifecycle.onSettingLoaded();
+        sink.mockClear();
+        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        const circular: { self?: unknown } = {};
+        circular.self = circular;
+
+        try {
+            await module.logResource.dispose();
+            expect(() => services.API.addLog(circular, 32, "circular")).not.toThrow();
+            const consoleEntry = consoleLog.mock.calls[0][0] as {
+                message: unknown;
+                level?: number;
+                key?: string;
+            };
+            expect(consoleEntry.message).toBe(circular);
+            expect(consoleEntry.level).toBe(32);
+            expect(consoleEntry.key).toBe("circular");
+            expect(sink).not.toHaveBeenCalled();
+        } finally {
+            consoleLog.mockRestore();
+        }
+    });
+
+    it("releases legacy and UI subscriptions while retaining late service console logging", async () => {
         const first = await createHarness();
         const second = await createHarness();
         await first.services.appLifecycle.onSettingLoaded();
         await second.services.appLifecycle.onSettingLoaded();
         first.sink.mockClear();
         second.sink.mockClear();
+        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
-        await first.module.logResource.dispose();
-        await first.module.logResource.dispose();
-        expect(() => first.services.API.addLog("retired")).toThrow("not assigned");
-        second.services.API.addLog("active", 32, "service");
-        first.Logger("legacy-after-retirement", 32, "legacy");
-        expect(first.sink).not.toHaveBeenCalled();
-        expect(second.sink.mock.calls).toEqual([
-            ["active", 32, "service"],
-            ["legacy-after-retirement", 32, "legacy"],
-        ]);
-        await second.module.logResource.dispose();
+        try {
+            await first.module.logResource.dispose();
+            await first.module.logResource.dispose();
+            expect(() => first.services.API.addLog("retired", 32, "retired-key")).not.toThrow();
+            expect(consoleLog).toHaveBeenCalledWith({
+                message: "retired",
+                level: 32,
+                key: "retired-key",
+            });
+            second.services.API.addLog("active", 32, "service");
+            first.Logger("legacy-after-retirement", 32, "legacy");
+            expect(first.sink).not.toHaveBeenCalled();
+            expect(second.sink.mock.calls).toEqual([
+                ["active", 32, "service"],
+                ["legacy-after-retirement", 32, "legacy"],
+            ]);
+            await second.module.logResource.dispose();
+        } finally {
+            consoleLog.mockRestore();
+        }
     });
 
     it("leaves a replacement service handler registered when the old owner is disposed", async () => {
@@ -143,20 +210,31 @@ describe("ModuleLog service connection", () => {
         expect(sink).not.toHaveBeenCalled();
     });
 
-    it("releases a connection which never reached the settings-loaded phase", async () => {
+    it("retires a connection which never reached the settings-loaded phase", async () => {
         const { services, module, sink, Logger } = await createHarness();
         services.API.addLog("pending");
-        await module.logResource.dispose();
-        Logger("after-disposal");
-        expect(sink).not.toHaveBeenCalled();
-        expect(() => services.API.addLog("retired")).toThrow("not assigned");
+        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        try {
+            await module.logResource.dispose();
+            Logger("after-disposal");
+            expect(() => services.API.addLog("retired", 32, "retired-key")).not.toThrow();
+            expect(consoleLog).toHaveBeenCalledWith({
+                message: "retired",
+                level: 32,
+                key: "retired-key",
+            });
+            expect(sink).not.toHaveBeenCalled();
 
-        const replacement = await createHarness();
-        await replacement.services.appLifecycle.onSettingLoaded();
-        const messages = replacement.sink.mock.calls.map(([message]) => message);
-        expect(messages).toContain("after-disposal");
-        expect(messages).not.toContain("pending");
-        await replacement.module.logResource.dispose();
+            const replacement = await createHarness();
+            await replacement.services.appLifecycle.onSettingLoaded();
+            const messages = replacement.sink.mock.calls.map(([message]) => message);
+            expect(messages).toContain("after-disposal");
+            expect(messages).not.toContain("pending");
+            expect(messages).not.toContain("retired");
+            await replacement.module.logResource.dispose();
+        } finally {
+            consoleLog.mockRestore();
+        }
     });
 
     it.each(["complete", "fail"] as const)(
@@ -219,10 +297,20 @@ describe("ModuleLog service connection", () => {
                     "moduleLiveSyncMain.logUnloadingPlugin"
                 );
             }
-            expect(() => services.API.addLog("retired")).toThrow("not assigned");
-            sink.mockClear();
-            Logger("after-unload");
-            expect(sink).not.toHaveBeenCalled();
+            const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+            try {
+                expect(() => services.API.addLog("late-after-close", 32, "late-after-close")).not.toThrow();
+                expect(consoleLog).toHaveBeenCalledWith({
+                    message: "late-after-close",
+                    level: 32,
+                    key: "late-after-close",
+                });
+                sink.mockClear();
+                Logger("after-unload");
+                expect(sink).not.toHaveBeenCalled();
+            } finally {
+                consoleLog.mockRestore();
+            }
         }
     );
 });

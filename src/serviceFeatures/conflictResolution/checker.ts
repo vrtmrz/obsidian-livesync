@@ -25,10 +25,11 @@ export interface ConflictCheckingDependencies {
 }
 
 export interface ConflictCheckingHandlers {
-    /** Stop new checks and logging from pending checks after shutdown. */
+    /** Stop admission and dispatch while allowing started checks to settle. */
     readonly dispose: () => void;
     readonly queueCheckForIfOpen: (file: FilePathWithPrefix) => Promise<void>;
     readonly queueCheckFor: (file: FilePathWithPrefix) => Promise<void>;
+    /** Wait for active checks; false means the queue was cancelled during shutdown. */
     readonly ensureAllProcessed: () => Promise<boolean>;
 }
 
@@ -37,11 +38,9 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
     let disposed = false;
     const conflictQueue = createConflictCheckQueue({
         async process(filename) {
-            if (disposed) return;
             try {
                 await dependencies.conflict.resolve(filename);
             } catch (error) {
-                if (disposed) return;
                 dependencies.log(`Conflict check failed: ${filename}`);
                 dependencies.log(error, LOG_LEVEL_VERBOSE);
             }
@@ -89,7 +88,11 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
 
     const ensureAllProcessed = (): Promise<boolean> => conflictQueue.waitForIdle();
     const dispose = (): void => {
+        if (disposed) return;
         disposed = true;
+        // Shutdown keeps its existing database-close order. Observe cleanup
+        // without making the lifecycle wait for an active resolver.
+        void conflictQueue.abort().catch((error) => dependencies.log(error, LOG_LEVEL_VERBOSE));
     };
 
     return {

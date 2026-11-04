@@ -56,7 +56,8 @@ export interface InteractiveConflictResolutionOperations {
     readonly invalidateWaitingResolution: (filename: FilePathWithPrefix) => void;
     readonly getActiveConflictMessages: () => Promise<string[]>;
     readonly refreshConflictState: (filename: FilePathWithPrefix) => Promise<void>;
-    readonly requestConflictResolution: (filename: FilePathWithPrefix) => Promise<void>;
+    /** Returns false if the requested conflict check was cancelled. */
+    readonly requestConflictResolution: (filename: FilePathWithPrefix) => Promise<boolean>;
     readonly resolveByUserInteraction: (
         filename: FilePathWithPrefix,
         conflictCheckResult: diff_result
@@ -106,7 +107,6 @@ export function createInteractiveConflictResolutionOperations(
             if (disposed) return undefined;
             return conflictCount === 0 ? 0 : conflictCount + 1;
         } catch (error) {
-            if (disposed) return undefined;
             dependencies.log(`Could not inspect the conflict state of ${filename}`, LOG_LEVEL_VERBOSE);
             dependencies.log(error, LOG_LEVEL_VERBOSE);
             return undefined;
@@ -146,11 +146,11 @@ export function createInteractiveConflictResolutionOperations(
         dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
     };
 
-    const requestConflictResolution = async (filename: FilePathWithPrefix): Promise<void> => {
+    const requestConflictResolution = async (filename: FilePathWithPrefix): Promise<boolean> => {
         postponedConflictEpisodes.delete(filename);
         dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
         await dependencies.conflict.queueCheckFor(filename);
-        await dependencies.conflict.ensureAllProcessed();
+        return await dependencies.conflict.ensureAllProcessed();
     };
 
     const resolveByUserInteraction = async (
@@ -205,7 +205,6 @@ export function createInteractiveConflictResolutionOperations(
                 const testDoc = await dependencies
                     .localDatabase()
                     .getDBEntry(filename, { conflicts: true }, false, true, true);
-                if (disposed) return false;
                 if (testDoc === false) {
                     dependencies.log(`Merge: Could not read ${filename} from the local database`, LOG_LEVEL_VERBOSE);
                     return false;
@@ -237,7 +236,6 @@ export function createInteractiveConflictResolutionOperations(
                     const p = conflictCheckResult.diff.map((e) => e[1]).join("");
                     const delRev = conflictCheckResult.right.rev;
                     const contentStored = await dependencies.databaseFileAccess.storeContent(filename, p);
-                    if (disposed) return false;
                     if (!contentStored) {
                         dependencies.log(`Concatenated content cannot be stored:${filename}`, LOG_LEVEL_NOTICE);
                         return false;
@@ -248,7 +246,6 @@ export function createInteractiveConflictResolutionOperations(
                         delRev,
                         "UI Concatenated"
                     );
-                    if (disposed) return false;
                     if (deletionResult == MISSING_OR_ERROR) {
                         dependencies.log(
                             `Concatenated saved, but cannot delete conflicted revisions: ${filename}, (${displayRev(delRev)})`,
@@ -266,7 +263,6 @@ export function createInteractiveConflictResolutionOperations(
                         toDelete,
                         "UI Selected"
                     );
-                    if (disposed) return false;
                     if (deletionResult == MISSING_OR_ERROR) {
                         dependencies.log(`Merge: Something went wrong: ${filename}, (${toDelete})`, LOG_LEVEL_NOTICE);
                         return false;
@@ -286,7 +282,6 @@ export function createInteractiveConflictResolutionOperations(
                         trigger: "merge",
                         interaction: NO_INTERACTION,
                     });
-                    if (disposed) return false;
                 }
                 // And, check it again.
                 await dependencies.conflict.queueCheckFor(filename);

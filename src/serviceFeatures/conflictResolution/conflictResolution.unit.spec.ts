@@ -940,7 +940,7 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.conflict.conflictProcessQueueCount.value).toBe(0);
     });
 
-    it("settles queued checks without logging a resolver rejection after unload", async () => {
+    it("reports queue cancellation and logs a resolver rejection after unload", async () => {
         const path = "queued-rejection-after-unload.md" as FilePathWithPrefix;
         const harness = createHarness();
         const started = deferred<void>();
@@ -959,17 +959,16 @@ describe("conflict resolution serviceFeature", () => {
         );
 
         await harness.unload();
-        harness.addLog.mockImplementation(() => {
-            throw new Error("Handler addLog not assigned");
-        });
-        pendingResolve.reject(new Error("Resolver rejected after unload"));
+        await harness.unload();
+        const failure = new Error("Resolver rejected after unload");
+        pendingResolve.reject(failure);
 
-        await expect(completion).resolves.toEqual({ status: "resolved", result: true });
+        await expect(completion).resolves.toEqual({ status: "resolved", result: false });
         expect(resolve).toHaveBeenCalledOnce();
-        expect(harness.addLog).not.toHaveBeenCalled();
+        expect(harness.addLog).toHaveBeenCalledWith(failure, LOG_LEVEL_VERBOSE, "");
     });
 
-    it("does not emit, log, or requeue a pending NOT_CONFLICTED result after the unload event", async () => {
+    it("allows an active inspection to complete normally after unload", async () => {
         const path = "not-conflicted-after-unload.md" as FilePathWithPrefix;
         const harness = createHarness();
         const queueCheckFor = vi.spyOn(harness.conflict, "queueCheckFor");
@@ -989,18 +988,15 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.tryAutoMerge).toHaveBeenCalledWith(path, true);
 
         harness.context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
-        harness.addLog.mockImplementation(() => {
-            throw new Error("Handler addLog not assigned");
-        });
         pendingMergeCheck.resolve({ ok: NOT_CONFLICTED });
 
         await expect(completion).resolves.toEqual({ status: "resolved" });
-        expect(emitEvent).not.toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
+        expect(emitEvent).toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
         expect(queueCheckFor).not.toHaveBeenCalled();
-        expect(harness.addLog).not.toHaveBeenCalled();
+        expect(harness.addLog).toHaveBeenCalled();
     });
 
-    it("does not delete a conflict or requeue when auto-merge storage completes after unload", async () => {
+    it("continues an accepted auto-merge when storage completes after unload", async () => {
         const path = "stored-merge-after-unload.md" as FilePathWithPrefix;
         const harness = createHarness({ settings: { syncAfterMerge: false } });
         const queueCheckFor = vi.spyOn(harness.conflict, "queueCheckFor");
@@ -1021,19 +1017,18 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.databaseFileAccess.storeContent).toHaveBeenCalledWith(path, "Merged content\n");
 
         await harness.unload();
-        harness.addLog.mockImplementation(() => {
-            throw new Error("Handler addLog not assigned");
-        });
         pendingStore.resolve(true);
 
         await expect(completion).resolves.toEqual({ status: "resolved" });
-        expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
-        expect(queueCheckFor).not.toHaveBeenCalled();
-        expect(emitEvent).not.toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
-        expect(harness.addLog).not.toHaveBeenCalled();
+        expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledWith(path, "2-conflict");
+        expect(harness.fileHandler.dbToStorage).toHaveBeenCalled();
+        expect(queueCheckFor).toHaveBeenCalledWith(path);
+        expect(emitEvent).toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
+        expect(harness.addLog).toHaveBeenCalled();
+        await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(false);
     });
 
-    it("does not continue revision deletion after the unload event", async () => {
+    it("reflects a revision deletion which succeeds after the unload event", async () => {
         const path = "deleted-after-unload.md" as FilePathWithPrefix;
         const harness = createHarness();
         const started = deferred<void>();
@@ -1052,19 +1047,16 @@ describe("conflict resolution serviceFeature", () => {
         expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledWith(path, "2-conflict");
 
         harness.context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
-        harness.addLog.mockImplementation(() => {
-            throw new Error("Handler addLog not assigned");
-        });
         pendingDelete.resolve(true);
 
-        await expect(completion).resolves.toMatchObject({ status: "resolved" });
-        expect(harness.databaseFileAccess.getConflictedRevs).not.toHaveBeenCalled();
-        expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
-        expect(emitEvent).not.toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
-        expect(harness.addLog).not.toHaveBeenCalled();
+        await expect(completion).resolves.toEqual({ status: "resolved", result: AUTO_MERGED });
+        expect(harness.databaseFileAccess.getConflictedRevs).toHaveBeenCalledWith(path);
+        expect(harness.fileHandler.dbToStorage).toHaveBeenCalledWith(path, path, true);
+        expect(emitEvent).toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
+        expect(harness.addLog).toHaveBeenCalled();
     });
 
-    it("does not requeue or log after pending replication completes during unload", async () => {
+    it("lets active replication finish while rejecting its next conflict check", async () => {
         const path = "replication-after-unload.md" as FilePathWithPrefix;
         const harness = createHarness({ settings: { syncAfterMerge: true } });
         const queueCheckFor = vi.spyOn(harness.conflict, "queueCheckFor");
@@ -1087,14 +1079,13 @@ describe("conflict resolution serviceFeature", () => {
         });
 
         await harness.unload();
-        harness.addLog.mockImplementation(() => {
-            throw new Error("Handler addLog not assigned");
-        });
         pendingReplication.resolve({ status: "completed" });
 
         await expect(completion).resolves.toEqual({ status: "resolved" });
-        expect(queueCheckFor).not.toHaveBeenCalled();
-        expect(harness.addLog).not.toHaveBeenCalled();
+        expect(queueCheckFor).toHaveBeenCalledWith(path);
+        expect(harness.tryAutoMerge).toHaveBeenCalledOnce();
+        await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(false);
+        expect(harness.addLog).toHaveBeenCalled();
     });
 
     it("does not start resolveByNewest when an optional conflict check returns newer after unload", async () => {
@@ -1133,7 +1124,7 @@ describe("conflict resolution serviceFeature", () => {
     });
 
     it.each(["lifecycle", "event"] as const)(
-        "settles conflict operations without side effects after %s disposal",
+        "stops admission and preserves ordinary database failures after %s disposal",
         async (trigger) => {
             const path = "operation-after-unload.md" as FilePathWithPrefix;
             const harness = createHarness();
@@ -1154,9 +1145,10 @@ describe("conflict resolution serviceFeature", () => {
             } else {
                 harness.context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
             }
-            harness.addLog.mockImplementation(() => {
-                throw new Error("Handler addLog not assigned");
-            });
+            const failure = new Error("database closed");
+            harness.tryAutoMerge.mockRejectedValue(failure);
+            harness.databaseFileAccess.fetchEntryMeta.mockResolvedValue(false);
+            harness.fileHandler.deleteRevisionFromDB.mockResolvedValue(false);
 
             try {
                 const results = await Promise.allSettled([
@@ -1168,26 +1160,34 @@ describe("conflict resolution serviceFeature", () => {
                     harness.conflict.resolveAllConflictedFilesByNewerOnes(),
                 ]);
 
-                expect(results.every(({ status }) => status === "fulfilled")).toBe(true);
+                expect(results).toEqual([
+                    { status: "fulfilled", value: undefined },
+                    { status: "fulfilled", value: undefined },
+                    { status: "rejected", reason: failure },
+                    { status: "fulfilled", value: MISSING_OR_ERROR },
+                    { status: "fulfilled", value: false },
+                    { status: "fulfilled", value: undefined },
+                ]);
+                await expect(harness.conflict.ensureAllProcessed()).resolves.toBe(false);
                 for (const operation of publicOperations) expect(operation).toHaveBeenCalledOnce();
                 expect(optionalCheck).not.toHaveBeenCalled();
-                expect(harness.tryAutoMerge).not.toHaveBeenCalled();
-                expect(harness.databaseFileAccess.fetchEntryMeta).not.toHaveBeenCalled();
+                expect(harness.tryAutoMerge).toHaveBeenCalledOnce();
+                expect(harness.databaseFileAccess.fetchEntryMeta).toHaveBeenCalledOnce();
                 expect(harness.databaseFileAccess.getConflictedRevs).not.toHaveBeenCalled();
                 expect(harness.databaseFileAccess.storeContent).not.toHaveBeenCalled();
-                expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
+                expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledOnce();
                 expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
-                expect(harness.storageAccess.getFileNames).not.toHaveBeenCalled();
+                expect(harness.storageAccess.getFileNames).toHaveBeenCalledOnce();
                 expect(harness.services.replication.replicateUnattendedByEvent).not.toHaveBeenCalled();
                 expect(emitEvent).not.toHaveBeenCalledWith(EVENT_CONFLICT_CANCELLED, path);
-                expect(harness.addLog).not.toHaveBeenCalled();
+                expect(harness.addLog).toHaveBeenCalled();
             } finally {
                 unregisterOptionalCheck();
             }
         }
     );
 
-    it("does not start a queued resolver after active checks settle during unload", async () => {
+    it("cancels unstarted checks after active checks settle during unload", async () => {
         const paths = Array.from({ length: 11 }, (_, index) => `unload-concurrent-${index}.md` as FilePathWithPrefix);
         const harness = createHarness();
         const tenStarted = deferred<void>();
@@ -1206,12 +1206,12 @@ describe("conflict resolution serviceFeature", () => {
         harness.context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
         releaseResolvers.resolve(undefined);
 
-        await expect(completion).resolves.toBe(true);
+        await expect(completion).resolves.toBe(false);
         expect(resolve).toHaveBeenCalledTimes(10);
-        expect(harness.conflict.conflictProcessQueueCount.value).toBe(0);
+        expect(harness.conflict.conflictProcessQueueCount.value).toBe(1);
     });
 
-    it("stops bulk conflict resolution when its storage scan completes after unload", async () => {
+    it("reports an unavailable database when an active bulk scan completes after unload", async () => {
         const path = "bulk-resolution-after-unload.md" as FilePathWithPrefix;
         const harness = createHarness();
         const namesStarted = deferred<void>();
@@ -1227,17 +1227,58 @@ describe("conflict resolution serviceFeature", () => {
         harness.addLog.mockClear();
 
         await harness.unload();
-        harness.addLog.mockImplementation(() => {
-            throw new Error("Handler addLog not assigned");
-        });
+        harness.databaseFileAccess.fetchEntryMeta.mockResolvedValue(false);
         pendingNames.resolve([path]);
 
         await expect(operation).resolves.toBeUndefined();
-        expect(harness.databaseFileAccess.fetchEntryMeta).not.toHaveBeenCalled();
+        expect(harness.databaseFileAccess.fetchEntryMeta).toHaveBeenCalledWith(path, undefined, true);
         expect(harness.databaseFileAccess.getConflictedRevs).not.toHaveBeenCalled();
         expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
         expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
-        expect(harness.addLog).not.toHaveBeenCalled();
+        expect(
+            harness.addLog.mock.calls.some(([message]) => String(message).includes("Could not get current revision"))
+        ).toBe(true);
+    });
+
+    it("keeps a replacement queue independent of repeated shutdown of the previous queue", async () => {
+        const first = createHarness();
+        const second = createHarness();
+        first.tryAutoMerge.mockResolvedValue({ ok: NOT_CONFLICTED });
+        second.tryAutoMerge.mockResolvedValue({ ok: NOT_CONFLICTED });
+
+        first.context.events.emitEvent(EVENT_PLUGIN_UNLOADED);
+        await first.unload();
+        await first.unload();
+        await first.conflict.queueCheckFor("retired.md" as FilePathWithPrefix);
+        await second.conflict.queueCheckFor("active.md" as FilePathWithPrefix);
+
+        await expect(first.conflict.ensureAllProcessed()).resolves.toBe(false);
+        await expect(second.conflict.ensureAllProcessed()).resolves.toBe(true);
+        expect(first.tryAutoMerge).not.toHaveBeenCalled();
+        expect(second.tryAutoMerge).toHaveBeenCalledExactlyOnceWith("active.md", true);
+    });
+
+    it("reports a storage failure after shutdown without treating the queue as completed", async () => {
+        const harness = createHarness();
+        const started = deferred<void>();
+        const pendingStore = deferred<boolean>();
+        const failure = new Error("database is closed");
+        harness.tryAutoMerge.mockResolvedValue({ result: "Merged content", conflictedRev: "2-conflict" });
+        harness.databaseFileAccess.storeContent.mockImplementation(() => {
+            started.resolve(undefined);
+            return pendingStore.promise;
+        });
+
+        await harness.conflict.queueCheckFor("closed-database.md" as FilePathWithPrefix);
+        await started.promise;
+        const completion = harness.conflict.ensureAllProcessed();
+        await harness.unload();
+        pendingStore.reject(failure);
+
+        await expect(completion).resolves.toBe(false);
+        expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
+        expect(harness.fileHandler.dbToStorage).not.toHaveBeenCalled();
+        expect(harness.addLog).toHaveBeenCalledWith(failure, LOG_LEVEL_VERBOSE, "");
     });
 
     it("drains requeued automatic checks when every resolver slot is occupied", async () => {

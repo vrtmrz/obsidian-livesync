@@ -52,7 +52,6 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
     const eventSubscriptions = new AbortController();
     const dispose = (): void => {
         checking.dispose();
-        operations.dispose();
         eventSubscriptions.abort();
     };
     services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, dispose, { signal: eventSubscriptions.signal });

@@ -55,8 +55,6 @@ export interface ConflictResolutionOperationsDependencies {
 }
 
 export interface ConflictResolutionOperations {
-    /** Stop continuations without cancelling file or database operations already started. */
-    readonly dispose: () => void;
     readonly cancelActiveResolution: (filename: FilePathWithPrefix) => void;
     readonly resolveByDeletingRevision: (
         path: FilePathWithPrefix,
@@ -70,21 +68,14 @@ export interface ConflictResolutionOperations {
     readonly resolveAllConflictedFilesByNewerOnes: () => Promise<void>;
 }
 
-/** Create conflict-resolution operations which stop their continuations when disposed. */
+/** Create conflict-resolution operations which retain their normal completion and failure paths. */
 export function createConflictResolutionOperations(
     dependencies: ConflictResolutionOperationsDependencies
 ): ConflictResolutionOperations {
-    let disposed = false;
     const latestResolveRequestByFilename = new Map<FilePathWithPrefix, number>();
     let nextResolveRequestId = 0;
 
-    const dispose = (): void => {
-        disposed = true;
-        latestResolveRequestByFilename.clear();
-    };
-
     const cancelActiveResolution = (filename: FilePathWithPrefix): void => {
-        if (disposed) return;
         latestResolveRequestByFilename.delete(filename);
         if (isLockAcquired(`conflict-resolve:${filename}`)) {
             dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
@@ -97,11 +88,8 @@ export function createConflictResolutionOperations(
         subTitle = "",
         showNotice = true
     ): Promise<typeof MISSING_OR_ERROR | typeof AUTO_MERGED> => {
-        if (disposed) return MISSING_OR_ERROR;
         const title = `Resolving ${subTitle ? `[${subTitle}]` : ""}:`;
-        const deleted = await dependencies.fileHandler.deleteRevisionFromDB(path, deleteRevision);
-        if (disposed) return MISSING_OR_ERROR;
-        if (!deleted) {
+        if (!(await dependencies.fileHandler.deleteRevisionFromDB(path, deleteRevision))) {
             dependencies.log(
                 `${title} Could not delete conflicted revision ${displayRev(deleteRevision)} of ${path}`,
                 LOG_LEVEL_NOTICE
@@ -113,9 +101,7 @@ export function createConflictResolutionOperations(
             `${title} Conflicted revision has been deleted ${displayRev(deleteRevision)} ${path}`,
             LOG_LEVEL_INFO
         );
-        const conflicts = await dependencies.databaseFileAccess.getConflictedRevs(path);
-        if (disposed) return MISSING_OR_ERROR;
-        if (conflicts.length != 0) {
+        if ((await dependencies.databaseFileAccess.getConflictedRevs(path)).length != 0) {
             dependencies.log(`${title} some conflicts are left in ${path}`, LOG_LEVEL_INFO);
             return AUTO_MERGED;
         }
@@ -126,9 +112,7 @@ export function createConflictResolutionOperations(
         // If no conflicts were found, write the resolved content to the storage.
         const documentPath = parseDocumentPath(path);
         const { path: filePath } = splitDocumentPath(documentPath);
-        const reflected = await dependencies.fileHandler.dbToStorage(documentPath, filePath, true);
-        if (disposed) return MISSING_OR_ERROR;
-        if (!reflected) {
+        if (!(await dependencies.fileHandler.dbToStorage(documentPath, filePath, true))) {
             dependencies.log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }
@@ -138,11 +122,9 @@ export function createConflictResolutionOperations(
     };
 
     const checkConflictAndPerformAutoMerge = async (path: FilePathWithPrefix): Promise<diff_check_result> => {
-        if (disposed) return CANCELLED;
         const ret = await dependencies
             .localDatabase()
             .tryAutoMerge(path, !dependencies.currentSettings().disableMarkdownAutoMerge);
-        if (disposed) return CANCELLED;
         if ("ok" in ret) {
             return ret.ok;
         }
@@ -150,9 +132,7 @@ export function createConflictResolutionOperations(
         if ("result" in ret) {
             const p = ret.result;
             // 1. Store the merged content to the storage.
-            const stored = await dependencies.databaseFileAccess.storeContent(path, p);
-            if (disposed) return CANCELLED;
-            if (!stored) {
+            if (!(await dependencies.databaseFileAccess.storeContent(path, p))) {
                 dependencies.log(`Merged content cannot be stored:${path}`, LOG_LEVEL_NOTICE);
                 return MISSING_OR_ERROR;
             }
@@ -207,7 +187,6 @@ export function createConflictResolutionOperations(
     };
 
     const resolve = async (filename: FilePathWithPrefix): Promise<void> => {
-        if (disposed) return;
         const requestId = ++nextResolveRequestId;
         latestResolveRequestByFilename.set(filename, requestId);
         const serialisationKey = `conflict-resolve:${filename}`;
@@ -218,12 +197,12 @@ export function createConflictResolutionOperations(
             dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
         }
         return await withLock(serialisationKey, async () => {
-            if (disposed || latestResolveRequestByFilename.get(filename) !== requestId) {
+            if (latestResolveRequestByFilename.get(filename) !== requestId) {
                 return;
             }
             try {
                 const conflictCheckResult = await checkConflictAndPerformAutoMerge(filename);
-                if (disposed || latestResolveRequestByFilename.get(filename) !== requestId) {
+                if (latestResolveRequestByFilename.get(filename) !== requestId) {
                     return;
                 }
                 if (conflictCheckResult === NOT_CONFLICTED) {
@@ -245,7 +224,6 @@ export function createConflictResolutionOperations(
                             interaction: NO_INTERACTION,
                         });
                     }
-                    if (disposed) return;
                     dependencies.log("[conflict] Automatically merged, but we have to check it again");
                     await dependencies.conflict.queueCheckFor(filename);
                     return;
@@ -272,15 +250,12 @@ export function createConflictResolutionOperations(
     };
 
     const resolveByNewest = async (filename: FilePathWithPrefix, showNotice = true): Promise<boolean> => {
-        if (disposed) return false;
         const currentRev = await dependencies.databaseFileAccess.fetchEntryMeta(filename, undefined, true);
-        if (disposed) return false;
         if (currentRev == false) {
             dependencies.log(`Could not get current revision of ${filename}`);
             return Promise.resolve(false);
         }
         const revs = await dependencies.databaseFileAccess.getConflictedRevs(filename);
-        if (disposed) return false;
         if (revs.length == 0) {
             return Promise.resolve(true);
         }
@@ -304,31 +279,25 @@ export function createConflictResolutionOperations(
             }
             return diff;
         });
-        if (disposed) return false;
         dependencies.log(
             `Resolving conflict by newest: ${filename} (Newest: ${new Date(mTimeAndRev[0][0]).toLocaleString()}) (${mTimeAndRev.length} revisions exists)`
         );
         for (let i = 1; i < mTimeAndRev.length; i++) {
-            if (disposed) return false;
             dependencies.log(
                 `conflict: Deleting the older revision ${mTimeAndRev[i][1]} (${new Date(mTimeAndRev[i][0]).toLocaleString()}) of ${filename}`
             );
             await resolveByDeletingRevision(filename, mTimeAndRev[i][1], "NEWEST", showNotice);
         }
-        if (disposed) return false;
         return true;
     };
 
     const resolveAllConflictedFilesByNewerOnes = async (): Promise<void> => {
-        if (disposed) return;
         dependencies.log(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
 
         const files = await dependencies.storageAccess.getFileNames();
-        if (disposed) return;
 
         let i = 0;
         for (const file of files) {
-            if (disposed) return;
             i++;
             if (i % 10 === 0)
                 dependencies.log(
@@ -338,12 +307,10 @@ export function createConflictResolutionOperations(
                 );
             await resolveByNewest(file, false);
         }
-        if (disposed) return;
         dependencies.log(`Done!`, LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
     };
 
     return {
-        dispose,
         cancelActiveResolution,
         resolveByDeletingRevision,
         checkConflictAndPerformAutoMerge,

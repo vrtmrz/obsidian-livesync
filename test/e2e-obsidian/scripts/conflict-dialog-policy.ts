@@ -58,6 +58,7 @@ type ObsidianTestApp = {
 type ObsidianTestGlobal = typeof globalThis & {
     app?: ObsidianTestApp;
     __livesyncConflictChecksCompleted?: boolean;
+    __livesyncConflictChecksResult?: boolean;
     __livesyncWaitingConflictCompleted?: boolean;
     __livesyncConflictChecksError?: string;
     __livesyncWaitingConflictError?: string;
@@ -76,6 +77,7 @@ async function recordConflictDiagnostics(port: number, label: string) {
                     pluginLoaded: plugin !== undefined,
                     queueCount: conflict?.conflictProcessQueueCount.value,
                     checksCompleted: host.__livesyncConflictChecksCompleted,
+                    checksResult: host.__livesyncConflictChecksResult,
                     waitingCompleted: host.__livesyncWaitingConflictCompleted,
                     checksError: host.__livesyncConflictChecksError,
                     waitingError: host.__livesyncWaitingConflictError,
@@ -376,9 +378,11 @@ async function disableLiveSyncAndWaitForConflictChecks(port: number): Promise<vo
             if (conflict === undefined) throw new Error("LiveSync conflict service is unavailable before unload");
             host.__livesyncObservedConflict = conflict;
             host.__livesyncConflictChecksCompleted = false;
+            host.__livesyncConflictChecksResult = undefined;
             host.__livesyncConflictChecksError = undefined;
             void conflict.ensureAllProcessed().then(
-                () => {
+                (result) => {
+                    host.__livesyncConflictChecksResult = result;
                     host.__livesyncConflictChecksCompleted = true;
                 },
                 (error) => {
@@ -403,6 +407,8 @@ async function disableLiveSyncAndWaitForConflictChecks(port: number): Promise<vo
             undefined,
             { timeout: uiTimeoutMs }
         );
+        const result = await page.evaluate(() => (globalThis as ObsidianTestGlobal).__livesyncConflictChecksResult);
+        if (result !== false) throw new Error("Unloading LiveSync did not report conflict-check cancellation");
     });
 }
 
@@ -938,7 +944,7 @@ async function main(): Promise<void> {
         await waitForConflictChecks(cliBinary, session.cliEnv);
 
         console.log(
-            "Real Obsidian preserved pairwise conflict resolution and dialogue presentation; replaced only stale same-file dialogues; serialised different files; discarded externally resolved waiting requests; and drained active and waiting requests across unload and reload."
+            "Real Obsidian preserved pairwise conflict resolution and dialogue presentation; replaced only stale same-file dialogues; serialised different files; discarded externally resolved waiting requests; and reported cancellation while closing active and waiting requests across unload and reload."
         );
         console.log(`Dialogue screenshot: ${firstDialogueScreenshot}`);
         console.log(`Postponed warning screenshot: ${warningScreenshot}`);
