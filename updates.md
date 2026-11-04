@@ -21,7 +21,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Conflict resolution
 
 - Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
-    - Open conflict dialogues close immediately, and queued checks report cancellation. Operations already running retain their normal completion or failure path.
+    - Open conflict dialogues for ordinary files close immediately, and queued checks report cancellation. Operations already running retain their normal completion or failure path.
 
 #### WebApp
 
