@@ -497,8 +497,7 @@ describe("Red Flag Feature", () => {
             expect(host.mocks.rebuilder.$fetchLocalDBFast).toHaveBeenCalled();
             expect(synchroniseAllFilesBetweenDBandStorage).toHaveBeenCalled();
             const firstPrompt = host.mocks.ui.confirm.confirmWithMessage.mock.calls[0]?.[1];
-            expect(firstPrompt).toContain("data retrieved from this remote source");
-            expect(firstPrompt).not.toContain("remote server");
+            expect(firstPrompt).toContain("We are about to retrieve the remote data.");
             // We can't easily check performFullScan call here because it's imported,
             // but we can verify rebuilder was called.
         });

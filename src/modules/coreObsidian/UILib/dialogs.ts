@@ -2,6 +2,7 @@ import { ButtonComponent } from "@/deps.ts";
 import { App, FuzzySuggestModal, MarkdownRenderer, Modal, Plugin, Setting, Component } from "@/deps.ts";
 import { EVENT_PLUGIN_UNLOADED, eventHub } from "@/common/events.ts";
 import { compatGlobal, type CompatIntervalHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { $msg } from "@/common/translation";
 
 class AutoClosableModal extends Modal {
     _closeByUnload = () => {
@@ -58,7 +59,7 @@ export class InputStringDialog extends AutoClosableModal {
         new Setting(formEl)
             .addButton((btn) =>
                 btn
-                    .setButtonText("Ok")
+                    .setButtonText($msg("Ok"))
                     .setCta()
                     .onClick(() => {
                         this.isManuallyClosed = true;
@@ -67,7 +68,7 @@ export class InputStringDialog extends AutoClosableModal {
             )
             .addButton((btn) =>
                 btn
-                    .setButtonText("Cancel")
+                    .setButtonText($msg("Cancel"))
                     .setCta()
                     .onClick(() => {
                         this.close();
@@ -199,7 +200,9 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         const buttonSetting = new Setting(contentEl);
         const labelWrapper = contentEl.createDiv();
         labelWrapper.addClass("sls-dialogue-note-wrapper");
-        const labelEl = labelWrapper.createEl("label", { text: "To stop the countdown, tap anywhere on the dialogue" });
+        const labelEl = labelWrapper.createEl("label", {
+            text: $msg("To stop the countdown, tap anywhere on the dialogue"),
+        });
         labelEl.addClass("sls-dialogue-note-countdown");
         if (!this.timeout || !this.timer) {
             labelWrapper.empty();

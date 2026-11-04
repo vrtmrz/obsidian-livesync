@@ -13,7 +13,8 @@ import {
     type AllBooleanItemKey as CommonlibAllBooleanItemKey,
 } from "@vrtmrz/livesync-commonlib/compat/common/settingConstants";
 import type { ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { MessageTranslator } from "@vrtmrz/livesync-commonlib/context";
+import type { AllMessageKeys } from "@/common/rosetta";
+import type { LiveSyncMessageTranslator } from "@/common/translation";
 import { translateLiveSyncMessage } from "@/common/translation";
 import {
     DEFAULT_SYNC_GUARD_SETTINGS,
@@ -52,13 +53,19 @@ export const SettingInformation: Partial<Record<AllSettingItemKey, Configuration
 // site has to remember the second argument.
 
 /** `getConfig` with the LiveSync catalogue applied by default. */
-export function getConfig(key: AllSettingItemKey, translate: MessageTranslator = translateLiveSyncMessage) {
-    if (isSyncGuardSettingKey(key)) return syncGuardSettingInformation[key];
+export function getConfig(key: AllSettingItemKey, translate: LiveSyncMessageTranslator = translateLiveSyncMessage) {
+    if (isSyncGuardSettingKey(key)) {
+        const info = syncGuardSettingInformation[key];
+        return {
+            name: translate(info.name as AllMessageKeys),
+            desc: info.desc ? translate(info.desc as AllMessageKeys) : undefined,
+        };
+    }
     return getCommonlibConfig(key, translate);
 }
 
 /** `getConfName` with the LiveSync catalogue applied by default. See `getConfig`. */
-export function getConfName(key: AllSettingItemKey, translate: MessageTranslator = translateLiveSyncMessage) {
-    if (isSyncGuardSettingKey(key)) return syncGuardSettingInformation[key].name;
+export function getConfName(key: AllSettingItemKey, translate: LiveSyncMessageTranslator = translateLiveSyncMessage) {
+    if (isSyncGuardSettingKey(key)) return translate(syncGuardSettingInformation[key].name as AllMessageKeys);
     return getCommonlibConfName(key, translate);
 }

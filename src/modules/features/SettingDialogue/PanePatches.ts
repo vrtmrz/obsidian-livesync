@@ -98,7 +98,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
             el.setText(`Current adapter: ${useIndexedDBAdapter ? "IndexedDB" : "IDB"}`);
             if (!useIndexedDBAdapter) {
                 setting.addButton((button) => {
-                    button.setButtonText("Switch to IndexedDB").onClick(async () => {
+                    button.setButtonText($msg("Switch to IndexedDB")).onClick(async () => {
                         Logger("Migrating all data to IndexedDB...", LOG_LEVEL_NOTICE);
                         await migrateAllToIndexedDB();
                         Logger(
@@ -109,7 +109,7 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
                 });
             } else {
                 setting.addButton((button) => {
-                    button.setButtonText("Switch to IDB").onClick(async () => {
+                    button.setButtonText($msg("Switch to IDB")).onClick(async () => {
                         Logger("Migrating all data to IDB...", LOG_LEVEL_NOTICE);
                         await migrateAllToIDB();
                         Logger(

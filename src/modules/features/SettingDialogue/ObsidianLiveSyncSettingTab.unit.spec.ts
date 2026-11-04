@@ -585,7 +585,7 @@ describe("ObsidianLiveSyncSettingTab pending-setting initialisation", () => {
         );
         expect(loggerMocks.Logger).toHaveBeenCalledWith(
             expect.stringContaining(
-                "Rebuild both databases from a complete authoritative Vault and Fetch on the other devices."
+                "then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices."
             ),
             LOG_LEVEL_NOTICE
         );

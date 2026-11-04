@@ -26,7 +26,7 @@
         "check": "npm run tsc-check && npm run tsc-check:apps && npm run lint && npm run lint:community && npm run lint:community:tools && npm run svelte-check && npm run check:compatibility",
         "i18n:bake": "npm run i18n:yaml2json && npm run i18n:bakejson && npm run i18n:format",
         "i18n:bakejson": "tsx _tools/bakei18n.ts",
-        "i18n:format": "prettier --config .prettierrc.mjs --write --log-level error 'src/common/messagesJson/*.json' 'src/common/messages/*.ts'",
+        "i18n:format": "prettier --config .prettierrc.mjs --write --log-level error \"src/common/messagesJson/*.json\" \"src/common/messages/*.ts\"",
         "i18n:json2yaml": "tsx _tools/json2yaml.ts",
         "i18n:yaml2json": "tsx _tools/yaml2json.ts",
         "test:unit": "vitest run --config vitest.config.unit.ts",

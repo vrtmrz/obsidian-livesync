@@ -25,6 +25,13 @@ describe("setting manifest labels", () => {
         });
     });
 
+    it("renders LiveSync provisional settings in Japanese", () => {
+        setLang("ja");
+
+        expect(getConfName("batchSaveInLiveSync")).toBe("LiveSync モードでデータベース更新をバッチ処理");
+        expect(getConfName("syncGuardEnabled")).toBe("SyncGuard を有効化");
+    });
+
     it("passes through labels which Commonlib owns but the catalogue does not carry", () => {
         setLang("zh-tw");
 

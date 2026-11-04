@@ -189,9 +189,9 @@
 
     <div class="buttons">
         {#if hideLocal}
-            <button onclick={cancel}>Cancel</button>
+            <button onclick={cancel}>{translateMessage("Cancel")}</button>
         {/if}
-        <button onclick={apply}>Apply</button>
+        <button onclick={apply}>{translateMessage("Apply")}</button>
     </div>
 {/if}
 

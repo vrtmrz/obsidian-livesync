@@ -12,6 +12,7 @@ import type { AllMessageKeys, I18N_LANGS, LiveSyncCatalogueMessageKey } from "./
 import { allMessages } from "./messages/combinedMessages.prod.ts";
 import {
     liveSyncProvisionalEnglishMessages,
+    liveSyncProvisionalJapaneseMessages,
     type LiveSyncProvisionalMessageKey,
 } from "./messages/LiveSyncProvisionalMessages.ts";
 
@@ -72,7 +73,11 @@ function _getMessage(key: string, lang: I18N_LANGS) {
         allMessages[key] ?? (provisionalEnglish === undefined ? undefined : ({ def: provisionalEnglish } as const));
     if (msgs === undefined && isCommonlibMessageKey(key)) return englishMessageTranslator(key);
     const resolvedLang = resolveLanguage(lang);
-    let msg = msgs?.[resolvedLang];
+    let msg =
+        msgs?.[resolvedLang] ??
+        (resolvedLang === "ja"
+            ? liveSyncProvisionalJapaneseMessages[key as LiveSyncProvisionalMessageKey]
+            : undefined);
 
     if (!msg) {
         if (missingTranslations.indexOf(key) === -1) {
