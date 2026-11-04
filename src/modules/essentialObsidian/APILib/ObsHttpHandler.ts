@@ -39,14 +39,6 @@ function normaliseRequestBody(body: unknown): string | ArrayBuffer | undefined {
     throw new TypeError(`Obsidian requestUrl does not support the request body type ${bodyType}`);
 }
 
-function stripWeakEtag(value: string): string {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("W/")) {
-        return trimmed.slice(2).trim();
-    }
-    return trimmed;
-}
-
 /**
  * This is close to origin implementation of FetchHttpHandler
  * https://github.com/aws/aws-sdk-js-v3/blob/main/packages/fetch-http-handler/src/fetch-http-handler.ts
@@ -94,11 +86,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
             if (keyLower === "host" || keyLower === "content-length") {
                 continue;
             }
-            let value = request.headers[key];
-            if (keyLower === "if-match" && typeof value === "string") {
-                value = stripWeakEtag(value);
-            }
-            transformedHeaders[keyLower] = value;
+            transformedHeaders[keyLower] = request.headers[key];
         }
 
         let contentType: string | undefined = undefined;
@@ -122,12 +110,7 @@ export class ObsHttpHandler extends FetchHttpHandler {
                 const headers = rsp.headers;
                 const headersLower: Record<string, string> = {};
                 for (const key of Object.keys(headers)) {
-                    let value = headers[key];
-                    const lowerKey = key.toLowerCase();
-                    if (lowerKey === "etag" && typeof value === "string") {
-                        value = stripWeakEtag(value);
-                    }
-                    headersLower[lowerKey] = value;
+                    headersLower[key.toLowerCase()] = headers[key];
                 }
                 const stream = new ReadableStream<Uint8Array>({
                     start(controller) {

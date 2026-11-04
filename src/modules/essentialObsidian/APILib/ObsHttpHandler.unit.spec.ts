@@ -147,48 +147,4 @@ describe("ObsHttpHandler response handling", () => {
 
         await expect(new ObsHttpHandler().handle(requestWithBody(new ArrayBuffer(0)))).rejects.toBe(failure);
     });
-
-    it("strips weak ETag prefix from incoming etag response headers", async () => {
-        requestUrlMock.mockResolvedValue({
-            headers: { etag: 'W/"weak-revision-123"' },
-            status: 200,
-            arrayBuffer: new ArrayBuffer(0),
-        });
-        const request = new HttpRequest({
-            protocol: "https:",
-            hostname: "objects.example.com",
-            method: "GET",
-            path: "/bucket/milestone.json",
-            headers: {},
-        });
-
-        const result = await new ObsHttpHandler().handle(request);
-        expect(result.response.headers.etag).toBe('"weak-revision-123"');
-    });
-
-    it("strips weak ETag prefix from outgoing if-match request headers", async () => {
-        requestUrlMock.mockResolvedValue({
-            headers: {},
-            status: 200,
-            arrayBuffer: new ArrayBuffer(0),
-        });
-        const request = new HttpRequest({
-            protocol: "https:",
-            hostname: "objects.example.com",
-            method: "PUT",
-            path: "/bucket/milestone.json",
-            headers: {
-                "if-match": 'W/"weak-revision-123"',
-            },
-        });
-
-        await new ObsHttpHandler().handle(request);
-        expect(requestUrlMock).toHaveBeenCalledWith(
-            expect.objectContaining({
-                headers: expect.objectContaining({
-                    "if-match": '"weak-revision-123"',
-                }),
-            })
-        );
-    });
 });
