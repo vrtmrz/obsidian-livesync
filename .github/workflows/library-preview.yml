@@ -1,0 +1,142 @@
+name: Consumer CI with library previews
+
+on:
+  workflow_call:
+    inputs:
+      commonlib_sha:
+        description: Full source SHA of the livesync-commonlib commit to preview, or blank to use the locked registry package.
+        required: false
+        type: string
+        default: ''
+      kit_sha:
+        description: Full source SHA of the fancy-kit commit to preview, or blank to use the locked registry packages.
+        required: false
+        type: string
+        default: ''
+      consumer_sha:
+        description: Full Self-hosted LiveSync commit SHA to validate. Blank is allowed only when called from vrtmrz/obsidian-livesync.
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      commonlib_sha:
+        description: Full source SHA of the livesync-commonlib commit to preview, or blank to use the locked registry package.
+        required: false
+        type: string
+        default: ''
+      kit_sha:
+        description: Full source SHA of the fancy-kit commit to preview, or blank to use the locked registry packages.
+        required: false
+        type: string
+        default: ''
+      consumer_sha:
+        description: Full Self-hosted LiveSync commit SHA to validate. Blank is allowed only when called from vrtmrz/obsidian-livesync.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  consumer-ci:
+    name: Validate Self-hosted LiveSync
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --max-old-space-size=3072
+    steps:
+      - name: Validate preview SHAs and resolve the consumer commit
+        id: inputs
+        shell: bash
+        env:
+          INPUT_COMMONLIB_SHA: ${{ inputs.commonlib_sha }}
+          INPUT_KIT_SHA: ${{ inputs.kit_sha }}
+          INPUT_CONSUMER_SHA: ${{ inputs.consumer_sha }}
+          CALLER_REPOSITORY: ${{ github.repository }}
+          CALLER_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+
+          const fullSha = /^[0-9a-f]{40}$/;
+
+          function getSha(name) {
+            const value = process.env[name] ?? '';
+            if (value !== '' && !fullSha.test(value)) {
+              throw new Error(`${name} must be blank or a full 40-character lowercase SHA`);
+            }
+            return value;
+          }
+
+          const commonlibSha = getSha('INPUT_COMMONLIB_SHA');
+          const kitSha = getSha('INPUT_KIT_SHA');
+          let consumerSha = getSha('INPUT_CONSUMER_SHA');
+
+          if (consumerSha === '') {
+            if (process.env.CALLER_REPOSITORY !== 'vrtmrz/obsidian-livesync') {
+              throw new Error('consumer_sha is required when the caller is not vrtmrz/obsidian-livesync');
+            }
+            consumerSha = getSha('CALLER_SHA');
+          }
+
+          if (!fullSha.test(consumerSha)) {
+            throw new Error('consumer_sha must resolve to a full 40-character lowercase SHA');
+          }
+
+          appendFileSync(process.env.GITHUB_OUTPUT, `commonlib_sha=${commonlibSha}\n`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `kit_sha=${kitSha}\n`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `consumer_sha=${consumerSha}\n`);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Validated consumer commit: \`${consumerSha}\`\n`);
+          NODE
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24.x'
+
+      - name: Check out Self-hosted LiveSync
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          repository: vrtmrz/obsidian-livesync
+          ref: ${{ steps.inputs.outputs.consumer_sha }}
+          token: ${{ github.token }}
+          persist-credentials: false
+
+      - name: Install library commit previews
+        uses: vrtmrz/fancy-kit/.github/actions/install-library-preview@b428f23887e4c0ad33515beb625ef490ec38945b
+        with:
+          commonlib-sha: ${{ steps.inputs.outputs.commonlib_sha }}
+          kit-sha: ${{ steps.inputs.outputs.kit_sha }}
+          github-token: ${{ github.token }}
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript types
+        run: npm run tsc-check
+
+      - name: Run unit tests
+        run: npm run test:unit -- --maxWorkers=1
+
+      - name: Build plug-in
+        run: npm run build
+
+      - name: Build CLI workspace
+        run: npm run build --workspace self-hosted-livesync-cli
+
+      - name: Build WebApp workspace
+        run: npm run build --workspace livesync-webapp
+
+      - name: Build WebPeer workspace
+        run: npm run build --workspace webpeer
+
+      - name: Run CLI setup-put-cat contract test
+        run: deno task --cwd src/apps/cli/testdeno test:setup-put-cat
