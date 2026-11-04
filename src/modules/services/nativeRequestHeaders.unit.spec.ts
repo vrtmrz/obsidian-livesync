@@ -77,6 +77,20 @@ describe("native request header creation", () => {
         });
     });
 
+    it.each([
+        ["", "no-cache"],
+        [", ,  ,", "no-cache"],
+        [" , no-transform , ,  ", "no-transform, no-cache"],
+    ])("ignores empty header-list members in %j", (value, expected) => {
+        const headers = Object.freeze({ "Cache-Control": value, Pragma: " , , " });
+
+        expect(createNativeRequestHeaders(headers, "GET", "no-cache")).toEqual({
+            "Cache-Control": expected,
+            Pragma: "no-cache",
+        });
+        expect(headers["Cache-Control"]).toBe(value);
+    });
+
     it("retains cache headers on a non-revalidated method", () => {
         const headers = { "cache-control": "max-age=99", Pragma: "legacy" };
         expect(createNativeRequestHeaders(headers, "POST", "no-store")).toEqual(headers);
