@@ -243,6 +243,8 @@ async function configureCliSettings(
     encrypt: false,
     isConfigured: true,
     passphrase: "",
+    // WebApp and WebPeer retain legacy identity; new CLI settings default to NFC.
+    pathNormalizationVersion: 0,
     remoteType: "ONLY_P2P",
     usePathObfuscation: false,
   });

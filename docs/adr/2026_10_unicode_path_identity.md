@@ -13,6 +13,10 @@ Accepted on 2026-10-17. Unicode NFC path identity was released in Self-hosted
 LiveSync 1.0.38 with Commonlib 0.1.42. Local validation evidence and platform
 limits are recorded in the design document.
 
+The maintained design now also describes an unreleased Journal and P2P
+extension and the move to General Settings. The decision below retains the
+initial CouchDB support boundary and original acceptance date.
+
 ## Context
 
 Self-hosted LiveSync derives normal-file Metadata document IDs from Vault paths.
@@ -102,9 +106,19 @@ preflight uses the supported host listing and local Metadata. It refuses
 ambiguous file or parent-directory candidates before database reconstruction;
 it does not claim to detect physical aliases which a host does not expose.
 
+## Unreleased extension: defaults for new environments
+
+The later Journal and P2P extension uses NFC for newly generated CLI settings
+and Obsidian manual onboarding. It retains legacy defaults for stored settings
+and old Setup URIs, and reads an existing central remote's declaration before
+first participation. This refines the original default decision without
+implicitly changing existing document IDs. Shared Commonlib defaults and other
+hosts remain unchanged. See the maintained [design](../design_docs/unicode_path_identity.md#initial-settings-and-existing-environments)
+for the initial-setup and failure rules.
+
 ## Alternatives considered
 
-- **Use NFC by default:** rejected because existing clients and databases must
+- **Use NFC by default for all settings:** rejected because existing clients and databases must
   retain their current IDs until their owners deliberately migrate them.
 - **Normalise only lookups:** rejected because new Metadata writes and deletes
   could continue using legacy IDs and create duplicate documents.

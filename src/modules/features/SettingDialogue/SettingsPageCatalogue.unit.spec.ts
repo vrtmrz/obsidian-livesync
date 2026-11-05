@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/common/translation", () => ({
     $msg: (key: string) => key,
+    $t: (key: string) => key,
     translateLiveSyncMessage: (key: string) => key,
 }));
 vi.mock("./PaneChangeLog.ts", () => ({ paneChangeLog: vi.fn() }));
@@ -20,6 +21,7 @@ vi.mock("./PaneMaintenance.ts", () => ({ paneMaintenance: vi.fn() }));
 
 import {
     createAdvancedSettingDefinitionGroups,
+    createGeneralSettingDefinitionGroups,
     createSettingsPageCatalogue,
     getSettingsRootGroupEntry,
     type SettingsRootGroupId,
@@ -87,7 +89,6 @@ describe("settings page catalogue", () => {
             "chunkSplitterVersion",
             "customChunkSize",
             "strictContentCheckOnStartup",
-            "pathNormalizationVersion",
             "readChunksOnline",
             "useOnlyLocalChunk",
             "concurrencyOfReadChunksOnline",
@@ -96,5 +97,23 @@ describe("settings page catalogue", () => {
             "enableCompression",
         ]);
         expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it("registers path identity once in General settings and leaves it out of Advanced", () => {
+        const generalGroups = createGeneralSettingDefinitionGroups({
+            showEditorStatusDetails: () => true,
+            showVerboseLog: () => true,
+        });
+        const generalKeys = generalGroups.flatMap(({ items = [] }) =>
+            items.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
+        );
+        const advancedKeys = createAdvancedSettingDefinitionGroups({ isCouchDB: () => true }).flatMap(
+            ({ items = [] }) =>
+                items.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
+        );
+
+        expect(generalGroups.map(({ heading }) => heading)).toContain("File identity");
+        expect(generalKeys.filter((key) => key === "pathNormalizationVersion")).toHaveLength(1);
+        expect(advancedKeys).not.toContain("pathNormalizationVersion");
     });
 });

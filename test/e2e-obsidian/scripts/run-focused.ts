@@ -30,6 +30,7 @@ const focusedScenarios = new Set([
     "couchdb-manual-setup-workflow",
     "cli-to-obsidian-sync",
     "minio-upload",
+    "journal-nfc-resend",
     "object-storage-setup-uri-workflow",
     "object-storage-compatible-setup-uri-workflow",
     "object-storage-qr-workflow",

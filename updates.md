@@ -12,12 +12,45 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- Unicode NFC path identity can be used with Object Storage and P2P on CLI and Obsidian clients. The setting is available under General Settings → File identity. Existing databases require a coordinated Rebuild and Fetch; physical file names and Chunk IDs stay unchanged. All P2P participants must be updated and migrated.
+    - New CLI settings and Obsidian manual onboarding use NFC. Existing settings and old Setup URIs retain legacy identity; initial central-remote setup follows the remote declaration. Existing databases still require the migration above.
+    - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
+
 ### Fixed
+
+#### Object Storage
+
+- Failed Journal writes now stop replication instead of silently passing over missing records. After correcting the cause, the next replication with the same local database retries the failed Journal.
+    - If a Journal cannot be recovered and missing content or history is acceptable, **Maintenance → Syncing → Skip stopped Journal and resume** asks for confirmation of its exact key and failure stage, then skips only that Journal and resumes receipt. The next Journal failure still stops replication. The action does not add a persistent ignore setting.
+    - **Reset journal received history** replays Journals which remain available remotely, except those sent by this device. It cannot recreate missing remote Journals; earlier failures already silently acknowledged also require this explicit replay.
+
+#### Synchronisation
+
+- We can synchronise and Fetch an encrypted CouchDB remote when the Internal API retains responses from before a Rebuild. (#1234)
+    - Metadata and Chunk reads use a cache URL derived from the startup time and Security Seed together. The URL remains stable within the same startup and Seed.
+    - The advanced CouchDB setting **Use headers only for HTTP cache control (compatibility)** is disabled by default. Enable it only if your server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
+
+#### Conflict resolution
+
+- Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
+    - Open conflict dialogues for ordinary files close immediately, and queued checks report cancellation. Operations already running retain their normal completion or failure path.
+
+#### WebApp
+
+- The experimental WebApp stops before opening its database or processing files when its settings select unsupported NFC path identity. It reports the Legacy-only requirement and preserves the selected Vault files and settings. This does not migrate an NFC database to Legacy identity.
 
 #### Translations
 
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
     - Hebrew interface messages also display their referenced labels correctly.
+
+### CLI
+
+#### Fixed
+
+- Commonlib warnings now appear on stderr without `--debug`, so deliberately skipped Journals and other important notices remain visible during ordinary CLI use.
+
+- NFC file lookups and directory scans report permission and I/O failures instead of treating unreadable files as absent or returning a successful partial scan. A scan retains the comparison settings with which it began.
 
 ## 1.0.44
 

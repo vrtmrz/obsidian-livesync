@@ -1,6 +1,6 @@
 import { fsPromises, os, path } from "@vrtmrz/livesync-commonlib/node";
 import { describe, expect, it, vi } from "vitest";
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { parseFilePath } from "@vrtmrz/livesync-commonlib/storage";
 import { NodeFileSystemAdapter } from "./NodeFileSystemAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 
@@ -11,7 +11,7 @@ describe("NodeVaultAdapter.rename", () => {
             await fsPromises.writeFile(path.join(directory, "Calculus.md"), "content", "utf8");
             const adapter = new NodeVaultAdapter(directory);
             const file = {
-                path: "Calculus.md" as FilePath,
+                path: parseFilePath("Calculus.md"),
                 stat: { ctime: 1, mtime: 2, size: 7, type: "file" as const },
             };
 
@@ -37,7 +37,7 @@ describe("NodeVaultAdapter.rename", () => {
             );
             const adapter = new NodeVaultAdapter(directory);
             const file = {
-                path: "source.md" as FilePath,
+                path: parseFilePath("source.md"),
                 stat: { ctime: 1, mtime: 2, size: 7, type: "file" as const },
             };
 
@@ -65,7 +65,7 @@ describe("NodeVaultAdapter.rename", () => {
             );
             const adapter = new NodeVaultAdapter(directory);
             const file = {
-                path: "linked/victim.md" as FilePath,
+                path: parseFilePath("linked/victim.md"),
                 stat: { ctime: 1, mtime: 2, size: 6, type: "file" as const },
             };
 

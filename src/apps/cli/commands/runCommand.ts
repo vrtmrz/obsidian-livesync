@@ -28,6 +28,7 @@ import {
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { runJournalSkipCommand } from "./journalSkip";
 import {
     isCentralRemoteAdministrationCommand,
     runCentralRemoteAdministrationCommand,
@@ -45,10 +46,7 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
         writeStderrLine(standardIo, `[Error] ${forceRequirementError}`);
         return false;
     }
-    if (
-        options.command === "fetch" &&
-        isRemediationModeActive(core.services.setting.currentSettings())
-    ) {
+    if (options.command === "fetch" && isRemediationModeActive(core.services.setting.currentSettings())) {
         writeStderrLine(
             standardIo,
             `[Error] The fetch command cannot run while remediation mode is active. Clear the modification-time limit before fetching.`
@@ -200,6 +198,16 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             }
         }
         return isReplicationCompleted(result);
+    }
+
+    if (options.command === "journal-skip") {
+        return await runJournalSkipCommand(options, {
+            standardIo,
+            getActiveReplicator: () => core.services.replicator.getActiveReplicator(),
+            replicateUserInitiated: (replicationOptions) =>
+                core.services.replication.replicateUserInitiated(replicationOptions),
+            currentSettings: () => core.services.setting.currentSettings(),
+        });
     }
 
     if (options.command === "p2p-peers") {

@@ -7,6 +7,17 @@ import {
 } from "./replicatorConfigurationIdentity";
 
 describe("active Replicator configuration identity", () => {
+    it("treats an absent headers-only CouchDB cache switch as off and leaves Object Storage unaffected", () => {
+        const absent = configuredSettings();
+        Reflect.deleteProperty(absent, "useCouchDBCacheControlHeadersOnly");
+        expect(getCouchDBReplicatorConfigurationIdentity({ ...absent, useCouchDBCacheControlHeadersOnly: false })).toBe(
+            getCouchDBReplicatorConfigurationIdentity(absent)
+        );
+        expect(getObjectStorageReplicatorConfigurationIdentity({ ...absent, useCouchDBCacheControlHeadersOnly: true })).toBe(
+            getObjectStorageReplicatorConfigurationIdentity(absent)
+        );
+    });
+
     it("replaces a connection when the path identity mode changes", () => {
         const previous = configuredSettings({ pathNormalizationVersion: 0 });
         const next = { ...previous, pathNormalizationVersion: 1 as const };
@@ -73,6 +84,7 @@ describe("active Replicator configuration identity", () => {
         ["couchDB_PASSWORD", "secret-b"],
         ["couchDB_CustomHeaders", "X-First: changed"],
         ["useRequestAPI", true],
+        ["useCouchDBCacheControlHeadersOnly", true],
         ["disableRequestURI", true],
         ["encrypt", false],
         ["passphrase", "encryption-b"],

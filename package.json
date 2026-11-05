@@ -79,6 +79,7 @@
         "test:e2e:obsidian:couchdb-manual-setup-workflow": "tsx test/e2e-obsidian/scripts/couchdb-manual-setup-workflow.ts",
         "test:e2e:obsidian:cli-to-obsidian-sync": "tsx test/e2e-obsidian/scripts/cli-to-obsidian-sync.ts",
         "test:e2e:obsidian:minio-upload": "tsx test/e2e-obsidian/scripts/minio-upload.ts",
+        "test:e2e:obsidian:journal-nfc-resend": "tsx test/e2e-obsidian/scripts/journal-nfc-resend.ts",
         "test:e2e:obsidian:object-storage-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts",
         "test:e2e:obsidian:object-storage-compatible-setup-uri-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --compatible",
         "test:e2e:obsidian:object-storage-qr-workflow": "tsx test/e2e-obsidian/scripts/object-storage-setup-uri-workflow.ts --qr",
@@ -135,7 +136,8 @@
         "test:e2e:obsidian:third-party-chunks": "tsx test/e2e-obsidian/scripts/third-party-chunks.ts",
         "test:e2e:obsidian:upgrade-livesync-batching": "tsx test/e2e-obsidian/scripts/upgrade-livesync-batching.ts",
         "pretest:browser-ui-lifecycle": "svelte-check --tsconfig test/browser-apps/ui-lifecycle/tsconfig.json --fail-on-warnings && vite build --config test/browser-apps/ui-lifecycle/vite.config.ts",
-        "test:browser-ui-lifecycle": "deno test -A --no-check --frozen --config test/browser-apps/deno.json --lock test/browser-apps/deno.lock test/browser-apps/ui-lifecycle/browser-ui-lifecycle.test.ts"
+        "test:browser-ui-lifecycle": "deno test -A --no-check --frozen --config test/browser-apps/deno.json --lock test/browser-apps/deno.lock test/browser-apps/ui-lifecycle/browser-ui-lifecycle.test.ts",
+        "test:e2e:obsidian:p2p-nfc": "tsx test/e2e-obsidian/scripts/run-compose-p2p-nfc.ts"
     },
     "keywords": [],
     "author": "vorotamoroz",
@@ -209,14 +211,14 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "0.2.3",
+        "@vrtmrz/livesync-commonlib": "0.3.2",
         "@vrtmrz/obsidian-plugin-kit": "0.1.7",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",
         "diff-match-patch": "^1.0.5",
         "idb": "^8.0.3",
         "markdown-it": "^14.3.3",
-        "minimatch": "^10.2.5",
+        "minimatch": "^11.0.3",
         "obsidian": "^1.13.1",
         "octagonal-wheels": "0.1.56",
         "qrcode-generator": "^1.4.4",
@@ -234,6 +236,25 @@
         },
         "pouchdb-utils": {
             "uuid": "11.1.1"
+        },
+        "@typescript-eslint/typescript-estree": {
+            "minimatch": "$minimatch"
+        },
+        "eslint-plugin-n": {
+            "minimatch": "$minimatch"
+        },
+        "test-exclude": {
+            "glob": "14.0.3",
+            "minimatch": "$minimatch"
+        },
+        "eslint": {
+            "minimatch": "$minimatch"
+        },
+        "@eslint/config-array": {
+            "minimatch": "$minimatch"
+        },
+        "@eslint/eslintrc": {
+            "minimatch": "$minimatch"
         }
     },
     "workspaces": [

@@ -126,6 +126,16 @@ Shared synchronisation code is compiled and typed by the `@vrtmrz/livesync-commo
 
 Changes spanning both repositories must first produce a packed Commonlib artefact which passes its standalone package checks. Install that exact artefact in LiveSync, then run the LiveSync type checks, unit tests, application builds, CLI E2E, and any focused real-Obsidian E2E required by the changed boundary. Replace the temporary artefact reference with the reviewed immutable package version before release.
 
+When a change requires a new Commonlib entry point or behaviour, publish and
+validate that immutable Commonlib version before releasing a dependent
+application. Follow the [Commonlib release sequence](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/releasing.md#coordinating-package-and-application-releases),
+then update this repository's exact `package.json` dependency and lockfile
+integrity from the registry. The plug-in, CLI, WebApp, and WebPeer use that root
+dependency; validate their affected builds and runtime boundaries against the
+same artefact. Bridge has its own import map and lockfile and must be pinned
+separately. Local tarball overlays are preparation evidence, not clean registry
+installation evidence.
+
 ## Architecture
 
 The [Project glossary](docs/glossary.md#developer-and-design-terms) defines the
@@ -264,9 +274,10 @@ Commonlib owns the typed English fallback for messages requested by its services
 
 ### File Path Handling
 
-- Use tagged types from `types.ts`: `FilePath`, `FilePathWithPrefix`, `DocumentID`
-- Prefix constants: `CHeader` (chunks), `ICHeader`/`ICHeaderEnd` (internal data)
-- Path utilities are supplied by the focused Commonlib compatibility path `@vrtmrz/livesync-commonlib/compat/string_and_binary/path`
+- New path boundaries use `FilePath`, `DocumentPath`, `StoragePath`, and domain-specific `PathComparisonKey` from `@vrtmrz/livesync-commonlib/storage`. Original paths retain spelling; comparison keys are never converted back into filenames.
+- Parse original document input and route its namespace before storage access. `splitDocumentPath` and `joinDocumentPath` retain one recognised namespace; `DocumentPath` excludes legacy comparison keys. Existing `FilePathWithPrefix`, `FilePathWithPrefixLC`, and `DocumentID` remain at compatibility boundaries.
+- The CLI uses Commonlib's `UnicodeResolvingNodeStorageAdapter` and one strict resolver per NFC directory scan. Only absence becomes a missing file; permission and enumeration failures propagate. Obsidian keeps its own Vault APIs and alias guard, whose fixed case-insensitive NFC policy is independent of the selected database identity mode.
+- The [Commonlib storage-path design](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/design_docs/storage_path_resolution.md) and [ADR](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/adr/2026_11_shared_storage_path_resolution.md) define the contract published in Commonlib `0.3.1`. LiveSync's CLI resolver and Obsidian comparison-helper adoption remain unreleased. WebApp and Bridge NFC enablement remain separate work.
 
 ### Logging & Debugging
 

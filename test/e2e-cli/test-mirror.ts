@@ -21,10 +21,10 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { copyFile, mkdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
 
 import { TempDir } from "./helpers/temp.ts";
-import { runCliOrFail, runCliWithInputOrFail } from "./helpers/cli.ts";
+import { runCli, runCliOrFail, runCliWithInputOrFail } from "./helpers/cli.ts";
 import { initSettingsFile, markSettingsConfigured } from "./helpers/settings.ts";
 
 test("mirror: storage <-> DB synchronisation", async (t) => {
@@ -136,7 +136,10 @@ test("mirror: storage <-> DB synchronisation", async (t) => {
 
         // Reflect the shared base into the actual Vault before editing it.
         await runMirror();
-        assert.deepStrictEqual(await readFile(workDir.join("vault", "test", "sync-storage-newer.md"), "utf8"), "old content\n");
+        assert.deepStrictEqual(
+            await readFile(workDir.join("vault", "test", "sync-storage-newer.md"), "utf8"),
+            "old content\n"
+        );
 
         // Write new content to storage with a timestamp 1 hour in the future
         const storageFile = workDir.join("vault", "test", "sync-storage-newer.md");
@@ -249,3 +252,96 @@ async function exists(path: string): Promise<boolean> {
         return false;
     }
 }
+
+test("mirror: NFC identity retains physical Unicode spelling", async () => {
+    await using workDir = await TempDir.create("livesync-cli-nfc-paths");
+    const vault = workDir.join("vault");
+    const database = workDir.join("db");
+    const settings = workDir.join("settings.json");
+    const parent = "Café".normalize("NFD");
+    const leaf = "Résumé.md".normalize("NFD");
+    const logical = "Café/Résumé.md";
+    const physical = workDir.join("vault", parent, leaf);
+    await mkdir(workDir.join("vault", parent), { recursive: true });
+    await mkdir(database);
+    await initSettingsFile(settings);
+    await markSettingsConfigured(settings);
+    const data = JSON.parse(await readFile(settings, "utf8"));
+    data.pathNormalizationVersion = 1;
+    await writeFile(settings, JSON.stringify(data));
+    await writeFile(physical, "original Unicode content\n");
+    await utimes(physical, new Date(), new Date(Date.now() - 3600_000));
+
+    const run = (...args: string[]) => runCliOrFail(database, "--settings", settings, ...args);
+    await run("mirror", vault);
+    const received = workDir.join("received.md");
+    await run("pull", logical, received);
+    assert.equal(await readFile(received, "utf8"), "original Unicode content\n");
+
+    const replacement = workDir.join("replacement.md");
+    await writeFile(replacement, "updated Unicode content\n");
+    await run("push", replacement, logical);
+    await run("mirror", vault);
+    assert.equal(await readFile(physical, "utf8"), "updated Unicode content\n");
+    assert.deepEqual(await readdir(vault), [parent]);
+    assert.deepEqual(await readdir(workDir.join("vault", parent)), [leaf]);
+});
+
+test("mirror: rejects an ambiguous NFC inventory without changing prior data and recovers", async (t) => {
+    await using workDir = await TempDir.create("livesync-cli-nfc-scan-failure");
+    const vault = workDir.join("vault");
+    const database = workDir.join("db");
+    const settings = workDir.join("settings.json");
+    const existingContent = "retained before failed scan\n";
+    const existingFile = workDir.join("vault", "known.md");
+    const nfcParent = "Café";
+    const nfdParent = nfcParent.normalize("NFD");
+    const nfcFile = workDir.join("vault", nfcParent, "from-nfc.md");
+    const nfdFile = workDir.join("vault", nfdParent, "from-nfd.md");
+
+    await mkdir(vault, { recursive: true });
+    await mkdir(database);
+    await initSettingsFile(settings);
+    await markSettingsConfigured(settings);
+    const data = JSON.parse(await readFile(settings, "utf8"));
+    data.pathNormalizationVersion = 1;
+    await writeFile(settings, JSON.stringify(data));
+    await writeFile(existingFile, existingContent);
+
+    const runMirror = () => runCliOrFail(database, "--settings", settings, "mirror", vault);
+    const runDatabase = (...args: string[]) => runCliOrFail(database, "--settings", settings, ...args);
+
+    await runMirror();
+    const before = JSON.parse(await runDatabase("info", "known.md"));
+    assert.equal(await runDatabase("cat-rev", "known.md", before.revision), existingContent);
+
+    await mkdir(workDir.join("vault", nfcParent), { recursive: true });
+    await mkdir(workDir.join("vault", nfdParent), { recursive: true });
+    await writeFile(nfcFile, "NFC spelling content\n");
+    await writeFile(nfdFile, "NFD spelling content\n");
+    const inventoryNames = await readdir(vault);
+    if (!inventoryNames.includes(nfcParent) || !inventoryNames.includes(nfdParent)) {
+        t.skip("This filesystem cannot represent both NFC and NFD directory entries separately");
+        return;
+    }
+
+    const failedMirror = await runCli(database, "--settings", settings, "mirror", vault);
+    assert.notEqual(failedMirror.code, 0, "An ambiguous inventory must fail the mirror command");
+    assert(
+        !failedMirror.combined.includes("[Done] Command 'mirror' completed"),
+        "A failed inventory must not claim successful mirror completion"
+    );
+    assert.equal(await readFile(existingFile, "utf8"), existingContent);
+    assert.equal(await readFile(nfcFile, "utf8"), "NFC spelling content\n");
+    assert.equal(await readFile(nfdFile, "utf8"), "NFD spelling content\n");
+    assert.deepEqual(JSON.parse(await runDatabase("info", "known.md")), before);
+    assert.equal(await runDatabase("cat-rev", "known.md", before.revision), existingContent);
+
+    await rm(workDir.join("vault", nfdParent), { recursive: true });
+    const recoveredMirror = await runMirror();
+    assert(recoveredMirror.includes("[Done] Command 'mirror' completed"));
+    const recovered = JSON.parse(await runDatabase("info", `${nfcParent}/from-nfc.md`));
+    assert.equal(await runDatabase("cat-rev", `${nfcParent}/from-nfc.md`, recovered.revision), "NFC spelling content\n");
+    assert.equal(await readFile(existingFile, "utf8"), existingContent);
+    assert.deepEqual(JSON.parse(await runDatabase("info", "known.md")), before);
+});

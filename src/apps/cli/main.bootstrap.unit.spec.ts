@@ -5,6 +5,7 @@ import { join } from "node:path";
 import * as chokidar from "chokidar";
 import { path } from "@vrtmrz/livesync-commonlib/node";
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import {
     AutoAccepting,
@@ -331,6 +332,45 @@ describe("CLI database preparation", () => {
         expect(runner).toHaveBeenCalledOnce();
         expect(enumerate).toHaveBeenCalledOnce();
         expect(watch).not.toHaveBeenCalled();
+    });
+
+    it("retains the adopted initial Fetch identity without --write-settings", async () => {
+        await writeFile(
+            settingsPath,
+            JSON.stringify({
+                ...createDefaultCliSettings(),
+                isConfigured: false,
+                couchDB_URI: "https://example.test",
+                couchDB_DBNAME: "vault",
+                couchDB_USER: "user",
+                couchDB_PASSWORD: "pass",
+            })
+        );
+        const dispose = vi.fn(async () => undefined);
+        const inspect = vi.spyOn(ReplicatorService.prototype, "createRemoteResource").mockResolvedValue({
+            check: vi.fn(),
+            getStatus: vi.fn(),
+            inspectPathIdentity: vi.fn(async () => ({ status: "configured", pathNormalizationVersion: 0 }) as const),
+            dispose,
+        });
+        await start(
+            "fetch",
+            async (_options, { core }) => {
+                expect(core.services.setting.currentSettings().pathNormalizationVersion).toBe(0);
+                return true;
+            },
+            0,
+            true
+        );
+        const persisted = JSON.parse(await readFile(settingsPath, "utf-8"));
+        expect(persisted.pathNormalizationVersion).toBe(0);
+        expect(dispose).toHaveBeenCalledOnce();
+        expect(inspect).toHaveBeenCalledOnce();
+        await start("ls", async (_options, { core }) => {
+            expect(core.services.setting.currentSettings().pathNormalizationVersion).toBe(0);
+            return false;
+        });
+        expect(inspect).toHaveBeenCalledOnce();
     });
 
     it.each(["rebuild", "fetch"] as const)("does not scan or mirror legacy Vault files before %s", async (command) => {

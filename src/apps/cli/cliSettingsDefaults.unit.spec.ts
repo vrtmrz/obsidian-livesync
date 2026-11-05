@@ -7,10 +7,14 @@ describe("createDefaultCliSettings", () => {
         const settings = createDefaultCliSettings();
         const recommended = createNewVaultSettings();
 
+        expect(settings.pathNormalizationVersion).toBe(1);
         expect(settings).toEqual({
             ...recommended,
+            pathNormalizationVersion: 1,
             useIndexedDBAdapter: false,
             isConfigured: false,
         });
+        expect(recommended.pathNormalizationVersion).toBe(0);
+        expect(settings.remoteConfigurations).not.toBe(recommended.remoteConfigurations);
     });
 });

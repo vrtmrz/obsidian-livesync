@@ -236,6 +236,21 @@ Setting key: showVerboseLog
 
 Show verbose log. Please enable when you report the logs
 
+### 3. File identity
+
+#### Unicode path identity
+
+Setting key: pathNormalizationVersion
+
+Version `0` preserves legacy file identity. Existing settings and Setup URIs which omit this field retain version `0`. New CLI settings and Obsidian manual onboarding use version `1` in the unreleased extension. On first manual setup or an unconfigured CLI's initial Fetch, an existing CouchDB or Object Storage declaration takes precedence; an unavailable or unsupported declaration stops setup. P2P Setup URIs carry the selected version; manual P2P setup requires matching settings on every peer. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. CouchDB support is released. The unreleased extension also supports Object Storage and P2P for the maintained CLI and Obsidian hosts. This is a common local database setting, independently of the active transport.
+
+Version `1` requires a coordinated migration: set it on the source client before Rebuild, then set it on each remaining client before Fetch. Changing the setting alone does not migrate existing Metadata. Follow [Migrate to Unicode NFC path identity](recovery.md#migrate-to-unicode-nfc-path-identity) for the complete procedure. Do not resume a version `0` client against the migrated remote.
+
+The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
+
+Distinct files or retained Metadata documents which derive the same identity stop reconstruction before either database is reset. When replacing the local database, Rebuild and Fetch exclude logical deletions without unresolved conflicts; a deleted winner with unresolved conflicts still participates in the check. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
+
+
 ## 3. Remote Configuration
 
 ### 1. Connection settings
@@ -1096,6 +1111,16 @@ the separate P2P or Object Storage transfer units.
 Setting key: useTimeouts
 If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.
 
+#### Use headers only for HTTP cache control (compatibility)
+
+Setting key: useCouchDBCacheControlHeadersOnly
+
+Remove the query parameter used to invalidate cached responses (the same URL behaviour as in 1.0.44 and earlier).
+
+Disabled by default. Encrypted CouchDB reads normally use a cache query parameter derived from the plug-in startup time and current Security Seed, and revalidate cached responses. This separates responses from before a remote Rebuild even when document revisions remain unchanged.
+
+Enable this only if your server or proxy rejects that additional query parameter. Requests then retain their original URLs and use `no-store` with revalidation headers. Some native caches can still reuse older encrypted responses in this mode, so decryption failures after a remote Rebuild may recur. Seed refresh before replication remains active in both modes. Changing this setting does not require a database rebuild.
+
 ### 3. Configuration Encryption
 
 #### Encrypting sensitive configuration items
@@ -1166,17 +1191,6 @@ When this setting is disabled, changing only the letter case of a file name with
 
 New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. Earlier releases also followed the case-insensitive branch when this value was absent, so 1.0 saves a missing legacy value as `false` without requiring a compatibility review or database rebuild.
 
-#### Unicode path identity
-
-Setting key: pathNormalizationVersion
-
-Version `0` preserves legacy file identity and is the default for existing and new settings. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. This mode currently supports CouchDB only.
-
-Version `1` requires a coordinated migration: set it on the source client before Rebuild, then set it on each remaining client before Fetch. Changing the setting alone does not migrate existing Metadata. Follow [Migrate to Unicode NFC path identity](recovery.md#migrate-to-unicode-nfc-path-identity) for the complete procedure. Do not resume a version `0` client against the migrated remote.
-
-The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
-
-Distinct files or retained Metadata documents which derive the same identity stop reconstruction before either database is reset. When replacing the local database, Rebuild and Fetch exclude logical deletions without unresolved conflicts; a deleted winner with unresolved conflicts still participates in the check. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
 
 ### 4. Compatibility (Internal API Usage)
 
@@ -1269,9 +1283,27 @@ Disables all synchronisation and restart.
 
 Explicitly resend all locally available chunks to the remote. This is a recovery and maintenance operation; ordinary replication does not pre-send every chunk.
 
+#### Skip stopped Journal and resume
+
+Object Storage only. If a stopped Journal is not available, restart replication
+normally with the same local database so the receive failure identifies its key
+and stage. Confirming this action skips only that Journal and resumes receipt;
+it does not skip the rest of the remote history. The next Journal failure still
+stops replication.
+
+Skipping may leave content or history missing. Normal replication does not
+retry a Journal which has been explicitly skipped. After correcting the cause,
+use **Reset journal received history** to replay retained remote Journals,
+except those sent by this device. It cannot restore Journals which are no
+longer available remotely. This action does not add a persistent ignore setting.
+
 #### Reset journal received history
 
-Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.
+Clear this device's received Journal history and known-document transfer
+records. The next sync downloads the retained remote Journals again, except
+those sent by this device. The local database, Vault files, and sent history
+are retained. Recovery requires intact remote data and a working local
+database; resetting history does not recreate missing remote content.
 
 #### Reset journal sent history
 

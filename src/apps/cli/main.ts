@@ -30,6 +30,8 @@ import type { ReplicationSchedulingControl } from "@/serviceFeatures/replication
 import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
+import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import { resolveInitialFetchPathIdentity } from "./initialFetchPathIdentity";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import {
     applyStoredSetting,
@@ -106,6 +108,8 @@ Arguments:
 Commands:
     daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
     sync                    Run one replication cycle and exit
+    journal-skip <journal-key>
+                            Retry replication, skip only the matching stopped Journal, and resume
     p2p-peers <timeout>     Show discovered peers as [peer]\t<peer-id>\t<peer-name>
     p2p-sync <peer> <timeout>
                             Sync with the specified peer-id or peer-name
@@ -601,6 +605,22 @@ export async function main(
         throw new Error("Replication scheduling was not provided during core feature composition.");
     }
 
+    let initialFetchPathIdentity: 0 | 1 | undefined;
+    if (options.command === "fetch") {
+        core.services.appLifecycle.onSettingLoaded.addHandler(async () => {
+            const settings = core.services.setting.currentSettings();
+            const version = await resolveInitialFetchPathIdentity(settings, () =>
+                core.services.replicator.createRemoteResource(REMOTE_RESOURCE_KINDS.CONNECTION, settings)
+            );
+            if (version !== undefined) {
+                initialFetchPathIdentity = version;
+                await core.services.setting.applyPartial({ pathNormalizationVersion: version });
+                await core.services.setting.saveSettingData();
+            }
+            return true;
+        });
+    }
+
     // Setup signal handlers for graceful shutdown
     const shutdown = async (signal: string) => {
         writeStdoutLine(standardIo);
@@ -802,6 +822,7 @@ export async function main(
                         : (JSON.parse(originalSettingsText) as ObsidianLiveSyncSettings);
                 durable.additionalSuffixOfDatabaseName =
                     core.services.setting.currentSettings().additionalSuffixOfDatabaseName;
+                if (initialFetchPathIdentity !== undefined) durable.pathNormalizationVersion = initialFetchPathIdentity;
                 settingsTextToCommit = JSON.stringify(durable, null, 2);
             }
             settingsTextToCommit ??= originalSettingsText;

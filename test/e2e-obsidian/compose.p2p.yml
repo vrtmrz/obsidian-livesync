@@ -1,0 +1,36 @@
+name: livesync-p2p-nfc
+
+services:
+    p2p-relay:
+        image: ghcr.io/hoytech/strfry:latest
+        entrypoint: ["/app/strfry"]
+        command: ["--config", "/etc/strfry/strfry.conf", "relay"]
+        volumes:
+            - ../../test/fixtures/p2p-relay/strfry.conf:/etc/strfry/strfry.conf:ro
+        tmpfs:
+            - /app/strfry-db:rw,size=256m,mode=1777
+
+    p2p-nfc:
+        build:
+            context: ../..
+            dockerfile: test/e2e-obsidian/Dockerfile.p2p
+        depends_on:
+            p2p-relay:
+                condition: service_started
+        environment:
+            OBSIDIAN_BINARY: ${E2E_P2P_NFC_OBSIDIAN_BINARY:?Run this scenario through run-compose-p2p-nfc.ts}
+            OBSIDIAN_CLI: ${E2E_P2P_NFC_OBSIDIAN_CLI:?Run this scenario through run-compose-p2p-nfc.ts}
+            E2E_P2P_RELAY_URL: ws://p2p-relay:7777/
+            E2E_P2P_NFC_CASE: ${E2E_P2P_NFC_CASE:-all}
+            E2E_OBSIDIAN_REMOTE_DEBUGGING_PORT: "9222"
+            E2E_OBSIDIAN_SECONDARY_REMOTE_DEBUGGING_PORT: "9223"
+            E2E_OBSIDIAN_DIAGNOSTICS_DIR: /artifacts
+        volumes:
+            - ../..:/workspace:ro
+            - ${E2E_P2P_NFC_OBSIDIAN_DIR:?Run this scenario through run-compose-p2p-nfc.ts}:/opt/obsidian:ro
+            - ${E2E_P2P_NFC_ARTIFACT_DIR:?Run this scenario through run-compose-p2p-nfc.ts}:/artifacts
+        working_dir: /workspace
+        mem_limit: 6g
+        cpus: 2
+        init: true
+        ipc: host

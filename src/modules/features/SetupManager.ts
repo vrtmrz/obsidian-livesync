@@ -7,7 +7,7 @@ import {
     REMOTE_COUCHDB,
     REMOTE_MINIO,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
+import { createNewVaultSettings } from "@/common/newVaultSettings";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
@@ -49,6 +49,8 @@ import {
     type SetupInitialisationMode,
 } from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
 import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
+import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import { resolveInitialPathIdentity } from "@/common/initialPathIdentity";
 import type { P2PConnectionProbeAdmission } from "@vrtmrz/livesync-commonlib/p2p";
 
 function copySettingsForRemoteProfileUpdate(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
@@ -58,11 +60,14 @@ function copySettingsForRemoteProfileUpdate(settings: ObsidianLiveSyncSettings):
     };
 }
 
-function normaliseImportedIdDerivationSettings(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
+function normaliseImportedIdentitySettings(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {
     // Setup URIs are complete imports even when their encoder omitted default-valued fields.
     // Fill each missing half so a receiving device cannot supply the unrelated saved key.
     return {
         ...settings,
+        pathNormalizationVersion: Object.prototype.hasOwnProperty.call(settings, "pathNormalizationVersion")
+            ? settings.pathNormalizationVersion
+            : 0,
         idDerivationVersion: Object.prototype.hasOwnProperty.call(settings, "idDerivationVersion")
             ? settings.idDerivationVersion
             : 0,
@@ -233,7 +238,7 @@ export class SetupManager extends AbstractModule {
             return false;
         }
         this._log("Setup URI dialog closed.", LOG_LEVEL_VERBOSE);
-        return await this.onConfirmApplySettingsFromWizard(normaliseImportedIdDerivationSettings(newSetting), userMode);
+        return await this.onConfirmApplySettingsFromWizard(normaliseImportedIdentitySettings(newSetting), userMode);
     }
 
     /**
@@ -271,6 +276,7 @@ export class SetupManager extends AbstractModule {
         if (activate) {
             newSetting.remoteType = REMOTE_COUCHDB;
         }
+        if (!(await this.selectInitialPathIdentity(newSetting, userMode, activate))) return false;
         upsertRemoteConfigurationInPlace(newSetting, "couchdb", { activate });
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
     }
@@ -302,8 +308,35 @@ export class SetupManager extends AbstractModule {
         if (activate) {
             newSetting.remoteType = REMOTE_MINIO;
         }
+        if (!(await this.selectInitialPathIdentity(newSetting, userMode, activate))) return false;
         upsertRemoteConfigurationInPlace(newSetting, "s3", { activate });
         return await this.onConfirmApplySettingsFromWizard(newSetting, userMode, activate);
+    }
+
+    private async selectInitialPathIdentity(
+        settings: ObsidianLiveSyncSettings,
+        userMode: UserMode,
+        activate: boolean
+    ): Promise<boolean> {
+        if (!activate || (userMode !== UserMode.NewUser && userMode !== UserMode.ExistingUser)) return true;
+        try {
+            const probe = await this.services.replicator.createRemoteResource(
+                REMOTE_RESOURCE_KINDS.CONNECTION,
+                settings
+            );
+            settings.pathNormalizationVersion = await resolveInitialPathIdentity(
+                probe,
+                settings.pathNormalizationVersion
+            );
+            return true;
+        } catch (error) {
+            this._log(
+                "The remote path identity could not be inspected. Settings have not been applied.",
+                LOG_LEVEL_NOTICE
+            );
+            this._log(error, LOG_LEVEL_VERBOSE);
+            return false;
+        }
     }
 
     /**
@@ -345,10 +378,7 @@ export class SetupManager extends AbstractModule {
         const e2eeConf = await this.dialogManager.openWithExplicitCancel<
             SetupRemoteE2EEResultType,
             SetupRemoteE2EEInitialData
-        >(
-            SetupRemoteE2EE,
-            { settings: currentSetting, newVault: userMode === UserMode.NewUser }
-        );
+        >(SetupRemoteE2EE, { settings: currentSetting, newVault: userMode === UserMode.NewUser });
         if (e2eeConf === "cancelled") {
             this._log("E2EE configuration cancelled.", LOG_LEVEL_NOTICE);
             return false;
@@ -397,10 +427,7 @@ export class SetupManager extends AbstractModule {
         const e2eeConf = await this.dialogManager.openWithExplicitCancel<
             SetupRemoteE2EEResultType,
             SetupRemoteE2EEInitialData
-        >(
-            SetupRemoteE2EE,
-            { settings: originalSetting, newVault: userMode === UserMode.NewUser }
-        );
+        >(SetupRemoteE2EE, { settings: originalSetting, newVault: userMode === UserMode.NewUser });
         if (e2eeConf === "cancelled") {
             this._log("Manual configuration cancelled.", LOG_LEVEL_NOTICE);
             return await this.onOnboard(userMode);
@@ -545,7 +572,7 @@ export class SetupManager extends AbstractModule {
     async decodeQR(qr: string) {
         let newSettings: ObsidianLiveSyncSettings;
         try {
-            newSettings = normaliseImportedIdDerivationSettings(decodeSettingsFromQRCodeData(qr));
+            newSettings = normaliseImportedIdentitySettings(decodeSettingsFromQRCodeData(qr));
         } catch {
             this._log("The QR configuration could not be decoded or contains unsupported settings.", LOG_LEVEL_NOTICE);
             return false;
