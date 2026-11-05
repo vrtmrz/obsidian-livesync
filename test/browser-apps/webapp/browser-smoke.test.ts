@@ -112,9 +112,7 @@ Deno.test({
                 "WebApp must not render a peer-menu action without a menu capability"
             );
             await runtimePage.locator(".p2p-control input[type='checkbox']").first().check();
-            await runtimePage
-                .getByPlaceholder("wss://exp-relay.vrtmrz.net, wss://xxxxx")
-                .fill("ws://127.0.0.1:4010/");
+            await runtimePage.getByPlaceholder("wss://exp-relay.vrtmrz.net, wss://xxxxx").fill("ws://127.0.0.1:4010/");
             await runtimePage.getByPlaceholder("anything-you-like").fill("browser-e2e-room");
             await runtimePage.getByPlaceholder("password").fill("browser-e2e-passphrase");
             await runtimePage.getByPlaceholder("iphone-16").fill("browser-e2e-webapp");
@@ -153,6 +151,121 @@ Deno.test({
             });
             await runtimePage.getByRole("button", { name: "Scan local files", exact: true }).waitFor();
             assertNoRuntimeFailures();
+        } finally {
+            await browser.close();
+            await server.close();
+        }
+    },
+});
+
+Deno.test({
+    name: "WebApp: rejects NFC settings before opening a database, scanning, writing, or synchronising",
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        const server = await startStaticServer(webAppDist);
+        const browser = await chromium.launch({ headless: true });
+        try {
+            const page = await browser.newPage();
+            const assertNoFailures = observePageFailures(page);
+            await page.addInitScript(`
+                Object.defineProperty(globalThis, "showDirectoryPicker", {
+                    configurable: true,
+                    value: async () => {
+                        const originRoot = await navigator.storage.getDirectory();
+                        const root = await originRoot.getDirectoryHandle("livesync-webapp-nfc-refusal", { create: true });
+                        const settingsDirectory = await root.getDirectoryHandle(".livesync", { create: true });
+                        const settingsText = JSON.stringify({
+                            pathNormalizationVersion: 1, isConfigured: true, liveSync: true,
+                            couchDB_URI: "https://couchdb.example.invalid", couchDB_DBNAME: "nfc-refusal-test"
+                        });
+                        const settingsWriter = await (await settingsDirectory.getFileHandle("settings.json", { create: true })).createWritable();
+                        await settingsWriter.write(settingsText);
+                        await settingsWriter.close();
+                        const sentinelWriter = await (await root.getFileHandle("Résumé.md".normalize("NFD"), { create: true })).createWritable();
+                        await sentinelWriter.write("retained native content");
+                        await sentinelWriter.close();
+                        const audit = globalThis.webAppIdentityAudit = {
+                            settingsText, writes: 0, scans: 0, opens: [], remoteRequests: [],
+                            databaseNamesBefore: (await indexedDB.databases()).map(item => item.name).sort()
+                        };
+                        const open = IDBFactory.prototype.open;
+                        IDBFactory.prototype.open = function(...args) {
+                            audit.opens.push(String(args[0]));
+                            return Reflect.apply(open, this, args);
+                        };
+                        const createWritable = FileSystemFileHandle.prototype.createWritable;
+                        FileSystemFileHandle.prototype.createWritable = function(...args) {
+                            audit.writes++;
+                            return Reflect.apply(createWritable, this, args);
+                        };
+                        for (const key of ["entries", "values", Symbol.asyncIterator]) {
+                            const original = FileSystemDirectoryHandle.prototype[key];
+                            if (typeof original !== "function") continue;
+                            FileSystemDirectoryHandle.prototype[key] = function(...args) {
+                                audit.scans++;
+                                return Reflect.apply(original, this, args);
+                            };
+                        }
+                        const fetch = globalThis.fetch;
+                        globalThis.fetch = function(input, ...args) {
+                            const url = String(input?.url ?? input);
+                            if (url.startsWith("https://couchdb.example.invalid")) {
+                                audit.remoteRequests.push(url);
+                                return Promise.resolve(new Response("{}", { status: 503 }));
+                            }
+                            return Reflect.apply(fetch, this, [input, ...args]);
+                        };
+                        return root;
+                    }
+                });
+            `);
+            await page.goto(new URL("webapp.html", server.baseUrl).href);
+            await page.locator("#status").filter({ hasText: "Select a vault folder" }).waitFor();
+            await page.getByRole("button", { name: "Choose new vault folder" }).click();
+            await page.locator("#status.error").filter({ hasText: "WebApp supports Legacy path identity" }).waitFor();
+            const state = await page.evaluate(async () => {
+                const globals = globalThis as typeof globalThis & {
+                    webAppIdentityAudit: {
+                        settingsText: string;
+                        writes: number;
+                        scans: number;
+                        opens: string[];
+                        remoteRequests: string[];
+                        databaseNamesBefore: Array<string | undefined>;
+                    };
+                    livesyncApp: { getRuntime(): unknown };
+                };
+                const audit = globals.webAppIdentityAudit;
+                const root = await (
+                    await navigator.storage.getDirectory()
+                ).getDirectoryHandle("livesync-webapp-nfc-refusal");
+                const settingsDirectory = await root.getDirectoryHandle(".livesync");
+                return {
+                    runtime: globals.livesyncApp.getRuntime(),
+                    writes: audit.writes,
+                    scans: audit.scans,
+                    appDatabaseOpens: audit.opens.filter((name) => name !== "livesync-webapp-handles"),
+                    remoteRequests: audit.remoteRequests,
+                    databaseNamesBefore: audit.databaseNamesBefore,
+                    databaseNamesAfter: (await indexedDB.databases()).map((item) => item.name).sort(),
+                    settingsUnchanged:
+                        (await (await (await settingsDirectory.getFileHandle("settings.json")).getFile()).text()) ===
+                        audit.settingsText,
+                    sentinel: await (await (await root.getFileHandle("Résumé.md".normalize("NFD"))).getFile()).text(),
+                };
+            });
+            assertEquals(state.runtime, null);
+            assertEquals(state.writes, 0);
+            assertEquals(state.scans, 0);
+            assertEquals(state.appDatabaseOpens, []);
+            assertEquals(state.remoteRequests, []);
+            assertEquals(state.databaseNamesAfter, state.databaseNamesBefore);
+            assertEquals(state.settingsUnchanged, true);
+            assertEquals(state.sentinel, "retained native content");
+            assertEquals(await page.locator("#vault-selector").isVisible(), true);
+            assertEquals(await page.getByRole("button", { name: "Scan local files", exact: true }).count(), 0);
+            assertNoFailures();
         } finally {
             await browser.close();
             await server.close();

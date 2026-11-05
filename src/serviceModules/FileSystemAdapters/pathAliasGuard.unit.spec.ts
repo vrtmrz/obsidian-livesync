@@ -15,7 +15,7 @@ import type { App, TFile } from "obsidian";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { ObsidianStorageAdapter } from "./ObsidianStorageAdapter";
 import { ObsidianVaultAdapter } from "./ObsidianVaultAdapter";
-import { createPathAliasGuard } from "./pathAliasGuard";
+import { createPathAliasGuard, PathAliasGuard } from "./pathAliasGuard";
 
 const REFUSAL = "Refusing a path which reaches an existing entry by a name its folder does not list.";
 const CONFIG_DIRECTORY = ".obsidian";
@@ -140,6 +140,30 @@ describe("paths which resolve to an existing entry under an unlisted name", () =
         expect(calls.rename).not.toHaveBeenCalled();
         expect(calls.trashFile).not.toHaveBeenCalled();
     });
+
+    it("allows NFC and case equivalents of names exposed by the host listing", async () => {
+        const folder = "Café".normalize("NFD");
+        const guard = new PathAliasGuard({
+            isIndexed: () => false,
+            exists: async () => true,
+            list: async (path) => (path === "" ? [folder] : [`${folder}/Note.md`]),
+        });
+
+        await expect(guard.assertNoAlias("CAFÉ/note.md")).resolves.toBeUndefined();
+    });
+
+    it.each(["x:cache", "host\\name"])(
+        "allows a listed target beside the unrelated host-listed name %s",
+        async (unrelatedName) => {
+            const guard = new PathAliasGuard({
+                isIndexed: () => false,
+                exists: async () => true,
+                list: async () => [unrelatedName, "note.md"],
+            });
+
+            await expect(guard.assertNoAlias("note.md")).resolves.toBeUndefined();
+        }
+    );
 
     it("allows listed names, case-only differences, indexed paths, and new files", async () => {
         const { app, calls } = fakeApp();

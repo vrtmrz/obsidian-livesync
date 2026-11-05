@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
-import { evalObsidianJson } from "../runner/cli.ts";
+import { withObsidianPage } from "../runner/ui.ts";
 import { requireObsidianBinary, requireObsidianCli } from "../runner/environment.ts";
 import {
     createE2eCouchDbPluginData,
@@ -25,25 +25,35 @@ type ShutdownObservation = {
     disposeCalls: number;
     disposeCompleted: boolean;
     fixtureLogs: FixtureLog[];
+    consoleLogs: {
+        marker: string;
+        messageType: string;
+        messageText: string;
+        level?: number;
+        key?: string;
+    }[];
     events: string[];
 };
 
-async function evaluate<T>(cliBinary: string, session: ObsidianLiveSyncSession, body: string): Promise<T> {
-    return await evalObsidianJson<T>(
-        cliBinary,
-        `(async()=>{
-            const require=(condition,message)=>{if(!condition)throw new Error(message);};
-            const waitFor=async(predicate,message)=>{
-                const until=Date.now()+15000;
-                while(!predicate()) {
-                    if(Date.now()>until)throw new Error(message);
-                    await new Promise(resolve=>setTimeout(resolve,20));
-                }
-            };
-            ${body}
-        })()`,
-        session.cliEnv
-    );
+async function evaluate<T>(session: ObsidianLiveSyncSession, body: string): Promise<T> {
+    // Observe the renderer console directly; CLI eval captures console output
+    // as part of its response and changes the logging surface under test.
+    return await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const result = await page.evaluate<string>(
+            `(async()=>{
+                const require=(condition,message)=>{if(!condition)throw new Error(message);};
+                const waitFor=async(predicate,message)=>{
+                    const until=Date.now()+15000;
+                    while(!predicate()) {
+                        if(Date.now()>until)throw new Error(message);
+                        await new Promise(resolve=>setTimeout(resolve,20));
+                    }
+                };
+                ${body}
+            })()`
+        );
+        return JSON.parse(result) as T;
+    });
 }
 
 function createPluginData(dbName: string): Record<string, unknown> {
@@ -95,7 +105,9 @@ async function startSession(
 function createShutdownScript(options: {
     duringMarker: string;
     failureMarker: string;
+    afterMarker: string;
     reloadMarker: string;
+    oldReloadMarker: string;
     injectFailure: boolean;
     urgentLevel: number;
 }): string {
@@ -118,6 +130,8 @@ function createShutdownScript(options: {
             api,
             module,
             fixtureLogs:[],
+            consoleLogs:[],
+            uiAddLogCalls:0,
             events:[],
             closeStarted:false,
             closeCalls:0,
@@ -129,7 +143,39 @@ function createShutdownScript(options: {
         app.__livesyncLogLifecycleState=state;
 
         const originalAddLog=module.__addLog;
+        const originalConsoleLog=console.log;
+        const consoleMarkers=[
+            fixtures.duringMarker,
+            fixtures.failureMarker,
+            fixtures.afterMarker,
+            fixtures.reloadMarker,
+            fixtures.oldReloadMarker
+        ].filter(Boolean);
+        console.log=function(...args) {
+            try {
+                const entry=args[0];
+                if(entry && typeof entry==="object" && "message" in entry) {
+                    const message=entry.message;
+                    const messageText=typeof message==="string"
+                        ? message
+                        : message instanceof Error ? message.message
+                        : message && typeof message==="object" &&
+                            typeof message.__e2eLogLifecycleMarker==="string"
+                            ? message.__e2eLogLifecycleMarker
+                            : "";
+                    const marker=consoleMarkers.find(candidate=>messageText.includes(candidate));
+                    if(marker) state.consoleLogs.push({
+                        marker,
+                        message,
+                        level:entry.level,
+                        key:entry.key
+                    });
+                }
+            } catch {}
+            return originalConsoleLog.apply(this,args);
+        };
         module.__addLog=function(message,level,key) {
+            state.uiAddLogCalls++;
             if(typeof message==="string" && [
                 fixtures.duringMarker,
                 fixtures.failureMarker,
@@ -179,6 +225,7 @@ function createShutdownScript(options: {
             module.__addLog=originalAddLog;
             resource.dispose=originalDispose;
             database.close=originalClose;
+            console.log=originalConsoleLog;
         };
 
         const run=async()=>{
@@ -203,6 +250,10 @@ function createShutdownScript(options: {
                 state.events.indexOf("close-finished")<state.events.indexOf("dispose-start"),
                 "The log resource was disposed before the local database close completed");
 
+            await originalDispose.call(resource);
+            require(state.disposeCompleted && state.disposeCalls===1,
+                "Repeated log resource disposal was not idempotent");
+
             const failedLog=fixtures.failureMarker
                 ? state.fixtureLogs.find(entry=>entry.message.includes(fixtures.failureMarker))
                 : undefined;
@@ -219,13 +270,41 @@ function createShutdownScript(options: {
                 require(!failedLog,"The normal shutdown unexpectedly reported the injected failure");
             }
 
-            let detached=false;
-            try {
-                api.addLog("e2e-log-lifecycle-after-disposal");
-            } catch(error) {
-                detached=String(error).includes("not assigned");
-            }
-            require(detached,"The old API log handler remained assigned after disposal");
+            const afterMessage=new Error(fixtures.afterMarker);
+            const afterKey="e2e-log-lifecycle-after-disposal";
+            const afterUnknownMessage={__e2eLogLifecycleMarker:fixtures.afterMarker};
+            const afterUnknownKey="e2e-log-lifecycle-after-disposal-unknown";
+            const uiCallsBeforeAfterLog=state.uiAddLogCalls;
+            api.addLog(afterMessage,fixtures.urgentLevel,afterKey);
+            api.addLog(afterUnknownMessage,fixtures.urgentLevel,afterUnknownKey);
+            await waitFor(
+                ()=>state.consoleLogs.some(entry=>entry.marker===fixtures.afterMarker &&
+                    entry.message===afterMessage) &&
+                    state.consoleLogs.some(entry=>entry.marker===fixtures.afterMarker &&
+                        entry.message===afterUnknownMessage),
+                "The old API did not forward its post-disposal messages to console.log"
+            );
+            const afterErrorLogs=state.consoleLogs.filter(entry=>entry.marker===fixtures.afterMarker &&
+                entry.message===afterMessage);
+            const afterUnknownLogs=state.consoleLogs.filter(entry=>entry.marker===fixtures.afterMarker &&
+                entry.message===afterUnknownMessage);
+            require(afterErrorLogs.length===1,"The post-disposal Error was not logged exactly once");
+            require(afterUnknownLogs.length===1,"The post-disposal unknown message was not logged exactly once");
+            require(
+                afterErrorLogs[0].message===afterMessage && afterErrorLogs[0].message instanceof Error &&
+                    afterErrorLogs[0].message.message===fixtures.afterMarker,
+                "The post-disposal Error was not preserved in the console log"
+            );
+            require(afterUnknownLogs[0].message===afterUnknownMessage,
+                "The post-disposal unknown message was not preserved in the console log");
+            require(
+                afterErrorLogs[0].level===fixtures.urgentLevel && afterErrorLogs[0].key===afterKey &&
+                    afterUnknownLogs[0].level===fixtures.urgentLevel &&
+                    afterUnknownLogs[0].key===afterUnknownKey,
+                "The post-disposal console logs changed their level or key"
+            );
+            require(state.uiAddLogCalls===uiCallsBeforeAfterLog,
+                "The disposed ModuleLog UI handler received a post-disposal log");
             await state.disablePromise;
             require(!state.disableError,"Disabling the plug-in failed: "+state.disableError);
             return JSON.stringify({
@@ -233,6 +312,19 @@ function createShutdownScript(options: {
                 disposeCalls:state.disposeCalls,
                 disposeCompleted:state.disposeCompleted,
                 fixtureLogs:state.fixtureLogs,
+                consoleLogs:state.consoleLogs.map(entry=>({
+                    marker:entry.marker,
+                    messageType:entry.message instanceof Error ? "Error" : typeof entry.message,
+                    messageText:entry.message instanceof Error
+                        ? entry.message.message
+                        : typeof entry.message==="string" ? entry.message
+                        : entry.message && typeof entry.message==="object" &&
+                            typeof entry.message.__e2eLogLifecycleMarker==="string"
+                            ? entry.message.__e2eLogLifecycleMarker
+                            : "",
+                    level:entry.level,
+                    key:entry.key
+                })),
                 events:state.events
             });
         };
@@ -260,10 +352,14 @@ async function runCase(options: {
     let session: ObsidianLiveSyncSession | undefined;
     const markers = {
         duringMarker: `log-lifecycle-${options.caseName}-during-${randomUUID()}`,
+        afterMarker: "log-lifecycle-" + options.caseName + "-after-disposal-" + randomUUID(),
         failureMarker: options.injectFailure
             ? `log-lifecycle-${options.caseName}-injected-close-failure-${randomUUID()}`
             : "",
         reloadMarker: options.injectFailure ? "" : `log-lifecycle-${options.caseName}-reload-${randomUUID()}`,
+        oldReloadMarker: options.injectFailure
+            ? ""
+            : "log-lifecycle-" + options.caseName + "-old-api-after-reload-" + randomUUID(),
         injectFailure: options.injectFailure,
         urgentLevel: LOG_LEVEL_URGENT,
     };
@@ -271,19 +367,17 @@ async function runCase(options: {
     try {
         session = await startSession(options.binary, options.cliBinary, vault);
         await waitForLiveSyncCoreReady(options.cliBinary, session.cliEnv);
-        const shutdown = await evaluate<ShutdownObservation>(options.cliBinary, session, createShutdownScript(markers));
+        const shutdown = await evaluate<ShutdownObservation>(session, createShutdownScript(markers));
         if (options.injectFailure) {
             return { caseName: options.caseName, shutdown };
         }
 
         await evaluate(
-            options.cliBinary,
             session,
             `await app.plugins.enablePlugin("obsidian-livesync"); return JSON.stringify({enabled:true});`
         );
         await waitForLiveSyncCoreReady(options.cliBinary, session.cliEnv);
         const reload = await evaluate<Record<string, unknown>>(
-            options.cliBinary,
             session,
             `
                 const state=app.__livesyncLogLifecycleState;
@@ -295,8 +389,12 @@ async function runCase(options: {
                 require(module,"The reloaded core did not contain ModuleLog");
                 const originalAddLog=module.__addLog;
                 const observed=[];
+                const oldApiKey="e2e-log-lifecycle-reloaded-old-api";
                 module.__addLog=function(message,level,key) {
-                    if(typeof message==="string" && message.includes(${JSON.stringify(markers.reloadMarker)})) {
+                    if(key===oldApiKey || (typeof message==="string" && [
+                        ${JSON.stringify(markers.reloadMarker)},
+                        ${JSON.stringify(markers.oldReloadMarker)}
+                    ].some(marker=>marker && message.includes(marker)))) {
                         observed.push({message,level,key});
                     }
                     return originalAddLog.apply(this,arguments);
@@ -309,16 +407,36 @@ async function runCase(options: {
                         !state.fixtureLogs.some(entry=>entry.message.includes(${JSON.stringify(markers.reloadMarker)})),
                         "The old ModuleLog observer received the reloaded core's fixture log"
                     );
-                    let oldHandlerDetached=false;
-                    try {
-                        state.api.addLog("e2e-log-lifecycle-reloaded-old-api");
-                    } catch(error) {
-                        oldHandlerDetached=String(error).includes("not assigned");
-                    }
-                    require(oldHandlerDetached,"The old API log handler was reassigned after reload");
+                    const oldApiMarker=${JSON.stringify(markers.oldReloadMarker)};
+                    const oldApiMessage=new Error(oldApiMarker);
+                    const uiCallsBeforeOldApi=state.uiAddLogCalls;
+                    const newModuleFixtureCallsBeforeOldApi=observed.length;
+                    state.api.addLog(oldApiMessage,${JSON.stringify(markers.urgentLevel)},oldApiKey);
+                    await waitFor(
+                        ()=>state.consoleLogs.some(entry=>entry.marker===oldApiMarker &&
+                            entry.message===oldApiMessage),
+                        "The old API did not forward its post-reload Error to console.log"
+                    );
+                    const oldApiLogs=state.consoleLogs.filter(entry=>entry.marker===oldApiMarker);
+                    require(oldApiLogs.length===1,"The old API post-reload Error was not logged exactly once");
+                    require(
+                        oldApiLogs[0].message===oldApiMessage && oldApiLogs[0].message instanceof Error &&
+                            oldApiLogs[0].message.message===oldApiMarker,
+                        "The old API post-reload Error was not preserved in the console log"
+                    );
+                    require(
+                        oldApiLogs[0].level===${JSON.stringify(markers.urgentLevel)} &&
+                            oldApiLogs[0].key===oldApiKey,
+                        "The old API post-reload console log changed its level or key"
+                    );
+                    require(state.uiAddLogCalls===uiCallsBeforeOldApi,
+                        "The old ModuleLog UI handler received the old API's post-reload log");
+                    require(observed.length===newModuleFixtureCallsBeforeOldApi,
+                        "The new ModuleLog received the old API's post-reload log");
                     return JSON.stringify({
                         coreChanged:core!==state.core,
                         observedByNewModule:observed.length,
+                        oldApiConsoleLogs:oldApiLogs.length,
                         observedByOldModule:state.fixtureLogs.filter(
                             entry=>entry.message.includes(${JSON.stringify(markers.reloadMarker)})
                         ).length
@@ -335,13 +453,15 @@ async function runCase(options: {
         if (session) {
             try {
                 await evaluate(
-                    options.cliBinary,
                     session,
                     `
                         const state=app.__livesyncLogLifecycleState;
-                        state?.restore?.();
-                        delete app.__livesyncLogLifecycleState;
-                        return JSON.stringify({cleaned:true});
+                        try {
+                            return JSON.stringify({cleaned:true});
+                        } finally {
+                            state?.restore?.();
+                            delete app.__livesyncLogLifecycleState;
+                        }
                     `
                 );
             } catch {}

@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fsPromises as fs, NodeStorageAdapter, os, path } from "@vrtmrz/livesync-commonlib/node";
-import { DEFAULT_SETTINGS, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { parseFilePath, type StoragePath } from "@vrtmrz/livesync-commonlib/storage";
 import {
     ServiceRebuilder,
     type ServiceRebuilderDependencies,
 } from "@vrtmrz/livesync-commonlib/compat/serviceModules/Rebuilder";
 import { PathServiceCompat } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectablePathService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
+import { AmbiguousNormalisedPathError } from "./UnicodeResolvingNodeStorageAdapter";
 import { NodeFileSystemAdapter } from "./NodeFileSystemAdapter";
 
 describe("NodeFileSystemAdapter file enumeration", () => {
@@ -48,6 +50,17 @@ describe("NodeFileSystemAdapter file enumeration", () => {
 
         expect((await adapter.getFiles()).map((file) => file.path).sort()).toEqual(paths);
     });
+
+    it.skipIf(process.platform === "win32")(
+        "compatibility: lists other files in Legacy mode when one root name is unsupported",
+        async () => {
+            const { directory, adapter } = await createVault();
+            await fs.writeFile(path.join(directory, "a:unrelated.md"), "unrelated local bytes");
+
+            expect((await adapter.getFiles()).map((file) => file.path).sort()).toEqual(paths);
+            expect(await fs.readFile(path.join(directory, "a:unrelated.md"), "utf8")).toBe("unrelated local bytes");
+        }
+    );
 
     it("excludes a deleted file after its cache entry is refreshed", async () => {
         const { directory, adapter } = await createVault();
@@ -219,6 +232,120 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
         );
     }
 
+    it("propagates path-resolution failures when refreshing a file", async () => {
+        const directory = await createVault();
+        const adapter = createNormalisingAdapter(directory);
+        const error = Object.assign(new Error("Storage permission denied"), { code: "EACCES" });
+        vi.spyOn(adapter.storage, "resolveLogicalPath").mockRejectedValue(error);
+
+        await expect(adapter.refreshFile("a.md")).rejects.toBe(error);
+    });
+
+    it("propagates strict metadata failures when refreshing a resolved file", async () => {
+        const directory = await createVault();
+        await fs.writeFile(path.join(directory, "a.md"), "content");
+        const adapter = createNormalisingAdapter(directory);
+        const error = Object.assign(new Error("Storage permission denied"), { code: "EACCES" });
+        vi.spyOn(adapter.storage, "statResolved").mockRejectedValue(error);
+
+        await expect(adapter.getAbstractFileByPath("a.md")).rejects.toBe(error);
+    });
+
+    it("keeps resolved metadata reads strict when the identity mode changes during lookup", async () => {
+        const directory = await createVault();
+        await fs.writeFile(path.join(directory, "a.md"), "content");
+        let version = 1;
+        const adapter = new NodeFileSystemAdapter(directory, undefined, () => version);
+        const error = Object.assign(new Error("Storage permission denied"), { code: "EACCES" });
+        const resolve = adapter.storage.resolveLogicalPath.bind(adapter.storage);
+        vi.spyOn(adapter.storage, "resolveLogicalPath").mockImplementation(async (...args) => {
+            const result = await resolve(...args);
+            version = 0;
+            return result;
+        });
+        vi.spyOn(adapter.storage, "statResolved").mockRejectedValue(error);
+
+        await expect(adapter.getAbstractFileByPath("a.md")).rejects.toBe(error);
+    });
+
+    it("propagates strict directory-read failures without reporting an incomplete scan", async () => {
+        const directory = await createVault();
+        const report = vi.fn();
+        const adapter = new NodeFileSystemAdapter(directory, report, () => 1);
+        const error = Object.assign(new Error("Storage permission denied"), { code: "EACCES" });
+        vi.spyOn(adapter.storage, "readDirectory").mockRejectedValue(error);
+
+        await expect(adapter.getFiles()).rejects.toBe(error);
+        expect(report).not.toHaveBeenCalled();
+    });
+
+    it("does not return or cache a partial NFC listing after a nested directory read fails", async () => {
+        const directory = await createVault();
+        const knownPath = "Known.md";
+        const initialContent = "initial content";
+        await fs.writeFile(path.join(directory, knownPath), initialContent);
+        let normalizationVersion = 1;
+        const adapter = new NodeFileSystemAdapter(directory, undefined, () => normalizationVersion, () => true);
+        await adapter.scanDirectory();
+
+        const changedContent = "changed content after cache";
+        await fs.writeFile(path.join(directory, knownPath), changedContent);
+        await fs.mkdir(path.join(directory, "late-directory"));
+        await fs.writeFile(path.join(directory, "late-directory", "later.md"), "later content");
+
+        const error = Object.assign(new Error("Storage permission denied"), { code: "EACCES" });
+        const readDirectory = adapter.storage.readDirectory.bind(adapter.storage);
+        const readDirectorySpy = vi.spyOn(adapter.storage, "readDirectory").mockImplementation(async (relativePath) => {
+            if (relativePath === "late-directory") throw error;
+            const entries = await readDirectory(relativePath);
+            return relativePath === "" && entries !== null
+                ? [...entries].sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
+                : entries;
+        });
+
+        try {
+            await expect(adapter.getFiles()).rejects.toBe(error);
+            await expect(adapter.scanDirectory()).rejects.toBe(error);
+        } finally {
+            readDirectorySpy.mockRestore();
+        }
+
+        // Compatibility-mode case-insensitive lookup exposes the cache without
+        // triggering another scan, so it can verify that the failed NFC scan did
+        // not publish its already-enumerated file metadata.
+        normalizationVersion = 0;
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+        await expect(adapter.getAbstractFileByPathInsensitive("known.md")).resolves.toMatchObject({
+            path: knownPath,
+            stat: { size: initialContent.length },
+        });
+        expect(scanDirectory).not.toHaveBeenCalled();
+    });
+
+    it("uses one comparison policy snapshot for the whole NFC scan", async () => {
+        const directory = await createVault();
+        await fs.mkdir(path.join(directory, "Folder"));
+        await fs.writeFile(path.join(directory, "Folder/Note.md"), "upper");
+        await fs.writeFile(path.join(directory, "Folder/note.md"), "lower");
+        let policyReads = 0;
+        let normalizationReads = 0;
+        const adapter = new NodeFileSystemAdapter(
+            directory,
+            undefined,
+            () => {
+                normalizationReads++;
+                return 1;
+            },
+            () => ++policyReads > 1
+        );
+
+        const files = await adapter.getFiles();
+
+        expect(files.map((file) => file.path).sort()).toEqual(["Folder/Note.md", "Folder/note.md"]);
+        expect(normalizationReads).toBe(1);
+        expect(policyReads).toBe(1);
+    });
+
     afterEach(async () => {
         await Promise.all(tempDirs.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true })));
     });
@@ -253,13 +380,13 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
             );
             for (const name of names) await fs.writeFile(path.join(directory, child, name), "content");
             const adapter = createNormalisingAdapter(directory, caseInsensitive);
-            const list = vi.spyOn(NodeStorageAdapter.prototype, "list");
+            const readDirectory = vi.spyOn(NodeStorageAdapter.prototype, "readDirectory");
             try {
                 const files = await adapter.getFiles();
                 expect(files.map((file) => file.path).sort()).toEqual(names.map((name) => `${child}/${name}`).sort());
-                expect(list).toHaveBeenCalledTimes(3);
+                expect(readDirectory).toHaveBeenCalledTimes(3);
             } finally {
-                list.mockRestore();
+                readDirectory.mockRestore();
             }
         }
     );
@@ -306,12 +433,12 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
                 await fs.writeFile(path.join(directory, `${index}.md`), "content");
             }
             const adapter = createNormalisingAdapter(directory, caseInsensitive);
-            const list = vi.spyOn(NodeStorageAdapter.prototype, "list");
+            const readDirectory = vi.spyOn(NodeStorageAdapter.prototype, "readDirectory");
             try {
                 expect(await adapter.getFiles()).toHaveLength(12);
-                expect(list).toHaveBeenCalledTimes(1);
+                expect(readDirectory).toHaveBeenCalledTimes(1);
             } finally {
-                list.mockRestore();
+                readDirectory.mockRestore();
             }
         }
     );
@@ -379,11 +506,11 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
         await fs.writeFile(path.join(directory, nfdName), "NFD", "utf8");
         const adapter = createNormalisingAdapter(directory);
         const exactFile = {
-            path: nfcName as FilePath,
+            path: parseFilePath(nfcName),
             stat: { ctime: 1, mtime: 2, size: 3, type: "file" as const },
         };
 
-        await expect(adapter.getAbstractFileByPath(nfcName)).rejects.toThrow(/ambiguous/i);
+        await expect(adapter.getAbstractFileByPath(nfcName)).rejects.toBeInstanceOf(AmbiguousNormalisedPathError);
         await expect(adapter.vault.modify(exactFile, "changed")).rejects.toThrow(/ambiguous/i);
         await expect(adapter.vault.delete(exactFile)).rejects.toThrow(/ambiguous/i);
 
@@ -545,7 +672,8 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
         const adapter = createNormalisingAdapter(directory);
 
         await expect(adapter.getFiles()).resolves.toEqual([]);
-        await expect(adapter.storage.statExact("linked/note.md")).rejects.toThrow(/symbolic links/i);
+        await expect(adapter.storage.resolveLogicalPath(parseFilePath("linked/note.md"))).rejects.toThrow(/symbolic links/i);
+        await expect(adapter.storage.statExact("linked/note.md" as StoragePath)).rejects.toThrow(/symbolic links/i);
         await expect(adapter.storage.write("linked/note.md", "changed")).rejects.toThrow(/symbolic links/i);
         await expect(fs.readFile(path.join(outside, "note.md"), "utf8")).resolves.toBe("outside");
     });

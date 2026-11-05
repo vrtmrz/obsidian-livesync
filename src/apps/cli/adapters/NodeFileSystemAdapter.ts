@@ -9,6 +9,12 @@ import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
 import { path } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { findCaseInsensitiveFile } from "@/apps/caseInsensitiveFileLookup";
+import {
+    createStoragePathResolver,
+    parseFilePath,
+    type StoragePath,
+    type StoragePathResolver,
+} from "@vrtmrz/livesync-commonlib/storage";
 
 /**
  * Complete file system adapter implementation for Node.js
@@ -21,6 +27,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     readonly vault: NodeVaultAdapter;
 
     private fileCache = new Map<string, NodeFile>();
+    private readonly isCaseInsensitiveSetting: () => boolean;
 
     constructor(
         private basePath: string,
@@ -31,6 +38,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         this.path = new NodePathAdapter();
         this.typeGuard = new NodeTypeGuardAdapter();
         this.conversion = new NodeConversionAdapter();
+        this.isCaseInsensitiveSetting = isCaseInsensitive;
         this.storage = new UnicodeResolvingNodeStorageAdapter(basePath, getPathNormalizationVersion, isCaseInsensitive);
         this.vault = new NodeVaultAdapter(this.storage);
     }
@@ -39,8 +47,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         return path.join(this.basePath, p);
     }
 
-    private normalisePath(p: FilePath | string): string {
-        return this.path.normalisePath(p);
+    private normalisePath(p: FilePath | string): FilePath {
+        return parseFilePath(this.path.normalisePath(p));
     }
 
     private async hasExactPathCase(pathStr: string): Promise<boolean> {
@@ -122,15 +130,28 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
 
     async refreshFile(p: string, caseInsensitive = false): Promise<NodeFile | null> {
         const pathStr = this.normalisePath(p);
+        if (this.storage.isUnicodePathNormalizationEnabled) {
+            try {
+                const resolvedPath = await this.storage.resolveLogicalPath(pathStr, caseInsensitive, false);
+                if (resolvedPath === null) {
+                    this.fileCache.delete(pathStr);
+                    return null;
+                }
+                return await this.refreshResolvedFile(resolvedPath);
+            } catch (error) {
+                this.fileCache.delete(pathStr);
+                throw error;
+            }
+        }
         try {
-            const resolvedPath = this.storage.isUnicodePathNormalizationEnabled
-                ? await this.storage.resolveLogicalPath(pathStr, caseInsensitive, false)
-                : pathStr;
-            if (resolvedPath === null) {
+            const stat = await this.storage.stat(pathStr, caseInsensitive);
+            if (stat?.type !== "file") {
                 this.fileCache.delete(pathStr);
                 return null;
             }
-            return await this.refreshResolvedFile(resolvedPath);
+            const file: NodeFile = { path: pathStr, stat };
+            this.fileCache.set(pathStr, file);
+            return file;
         } catch (error) {
             if (error instanceof AmbiguousNormalisedPathError) throw error;
             this.fileCache.delete(pathStr);
@@ -138,16 +159,16 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         }
     }
 
-    private async refreshResolvedFile(resolvedPath: string): Promise<NodeFile | null> {
+    private async refreshResolvedFile(resolvedPath: StoragePath): Promise<NodeFile | null> {
         try {
-            const stat = await this.storage.statExact(resolvedPath);
+            const stat = await this.storage.statResolved(resolvedPath);
             if (stat?.type !== "file") {
                 this.fileCache.delete(resolvedPath);
                 return null;
             }
 
             const file: NodeFile = {
-                path: resolvedPath as FilePath,
+                path: resolvedPath,
                 stat: {
                     size: stat.size,
                     mtime: stat.mtime,
@@ -158,10 +179,8 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             this.fileCache.set(resolvedPath, file);
             return file;
         } catch (error) {
-            if (error instanceof AmbiguousNormalisedPathError) throw error;
-            // Evict so a deleted file is not returned by subsequent cache scans.
             this.fileCache.delete(resolvedPath);
-            return null;
+            throw error;
         }
     }
 
@@ -169,34 +188,83 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
      * Helper method to recursively scan directory and populate file cache
      */
     async scanDirectory(relativePath: string = ""): Promise<void> {
-        const resolvedPath = await this.storage.resolveLogicalPath(relativePath, false, false);
-        if (resolvedPath !== null) await this.scanDirectoryInto(resolvedPath, this.fileCache);
+        const files = new Map<string, NodeFile>();
+        await this.scanDirectoryInto(relativePath, files);
+        for (const [path, file] of files) this.fileCache.set(path, file);
     }
 
     private async scanDirectoryInto(relativePath: string, files: Map<string, NodeFile>): Promise<void> {
+        const resolver = this.createScanResolver();
+        const filePath = parseFilePath(relativePath);
+        if (resolver) {
+            const resolvedPath =
+                filePath === "" ? await resolver.resolveForWrite(filePath) : await resolver.resolveExisting(filePath);
+            if (resolvedPath !== null) await this.scanResolvedDirectoryInto(resolver, resolvedPath, files);
+            return;
+        }
+        await this.scanLegacyDirectoryInto(filePath, files);
+    }
+
+    private createScanResolver(): StoragePathResolver | null {
+        if (!this.storage.isUnicodePathNormalizationEnabled) return null;
+        const caseInsensitive = this.isCaseInsensitiveSetting();
+        return createStoragePathResolver({
+            readDirectory: async (physicalDirectory) => await this.storage.readDirectory(physicalDirectory),
+            policy: {
+                pathNormalizationVersion: 1,
+                handleFilenameCaseSensitive: !caseInsensitive,
+            },
+        });
+    }
+
+    private async scanResolvedDirectoryInto(
+        resolver: StoragePathResolver,
+        relativePath: StoragePath,
+        files: Map<string, NodeFile>
+    ): Promise<void> {
+        const directoryStat = await this.storage.statResolved(relativePath);
+        if (directoryStat === null) return;
+        if (directoryStat.type !== "folder") {
+            throw new Error(`Path is not a directory: ${this.resolvePath(relativePath)}`);
+        }
+
+        const entries = await resolver.listResolvedDirectory(relativePath);
+        if (entries === null) return;
+        for (const entry of entries) {
+            if (entry.kind === "directory") {
+                await this.scanResolvedDirectoryInto(resolver, entry.path, files);
+                continue;
+            }
+
+            const stat = await this.storage.statResolved(entry.path);
+            if (stat?.type !== "file") continue;
+            const file: NodeFile = { path: entry.path, stat };
+            files.set(entry.path, file);
+        }
+    }
+
+    private async scanLegacyDirectoryInto(relativePath: string, files: Map<string, NodeFile>): Promise<void> {
         const fullPath = this.resolvePath(relativePath);
         try {
-            const directoryStat = this.storage.isUnicodePathNormalizationEnabled
-                ? await this.storage.statExact(relativePath)
-                : await this.storage.stat(relativePath, false);
+            const directoryStat = await this.storage.stat(relativePath, false);
             if (directoryStat?.type !== "folder") throw new Error(`Directory does not exist: ${fullPath}`);
-            const entries = await this.storage.listExact(relativePath);
+            const entries = await this.storage.list(relativePath, false);
 
             for (const entryPath of entries.files) {
-                const stat = await this.storage.statExact(entryPath);
+                const stat = await this.storage.stat(entryPath, false);
                 if (stat?.type !== "file") continue;
+                const filePath = parseFilePath(entryPath);
                 const file: NodeFile = {
-                    path: entryPath as FilePath,
+                    path: filePath,
                     stat,
                 };
-                files.set(entryPath, file);
+                files.set(filePath, file);
             }
             for (const entryPath of entries.folders) {
-                await this.scanDirectoryInto(entryPath, files);
+                await this.scanLegacyDirectoryInto(entryPath, files);
             }
         } catch (error) {
             if (error instanceof AmbiguousNormalisedPathError) throw error;
-            // Directory doesn't exist or is not readable
             this.reportDiagnostic(`Error scanning directory ${fullPath}:`, error);
         }
     }

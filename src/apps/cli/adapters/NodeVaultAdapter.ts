@@ -1,8 +1,8 @@
-import type { FilePath, UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { UXDataWriteOptions } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IVaultAdapter } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
 import type { NodeFile, NodeFolder } from "./NodeTypes";
-import { NodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
-import { UnicodeResolvingNodeStorageAdapter } from "./UnicodeResolvingNodeStorageAdapter";
+import { NodeStorageAdapter, UnicodeResolvingNodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
+import { parseFilePath } from "@vrtmrz/livesync-commonlib/storage";
 
 /**
  * Vault adapter implementation for Node.js
@@ -56,7 +56,7 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
 
     async rename(file: NodeFile, newPath: string): Promise<void> {
         await this.storage.rename(file.path, newPath);
-        file.path = newPath as FilePath;
+        file.path = parseFilePath(newPath);
     }
 
     async delete(file: NodeFile | NodeFolder, force = false): Promise<void> {
@@ -74,16 +74,17 @@ export class NodeVaultAdapter implements IVaultAdapter<NodeFile> {
     }
 
     private async toNodeFile(path: string): Promise<NodeFile> {
-        const resolvedPath =
-            this.storage instanceof UnicodeResolvingNodeStorageAdapter
-                ? await this.storage.resolveLogicalPath(path, undefined, false)
-                : path;
-        if (resolvedPath === null) throw new Error(`Could not read created file metadata: ${path}`);
-        const stat =
-            this.storage instanceof UnicodeResolvingNodeStorageAdapter
-                ? await this.storage.statExact(resolvedPath)
-                : await this.storage.stat(resolvedPath);
+        const filePath = parseFilePath(path);
+        if (this.storage instanceof UnicodeResolvingNodeStorageAdapter) {
+            const resolvedPath = await this.storage.resolveLogicalPath(filePath, undefined, false);
+            if (resolvedPath === null) throw new Error(`Could not read created file metadata: ${path}`);
+            const stat = await this.storage.statExact(resolvedPath);
+            if (stat?.type !== "file") throw new Error(`Could not read created file metadata: ${path}`);
+            return { path: resolvedPath, stat };
+        }
+
+        const stat = await this.storage.stat(filePath);
         if (stat?.type !== "file") throw new Error(`Could not read created file metadata: ${path}`);
-        return { path: resolvedPath as FilePath, stat };
+        return { path: filePath, stat };
     }
 }

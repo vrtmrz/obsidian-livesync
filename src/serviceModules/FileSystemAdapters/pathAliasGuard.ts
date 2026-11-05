@@ -1,3 +1,5 @@
+import { getStoragePathComparisonKey, type FilePath, type PathComparisonKey } from "@vrtmrz/livesync-commonlib/storage";
+
 /**
  * Keeps storage from being changed through a name which the file system resolves but no directory lists.
  *
@@ -20,7 +22,13 @@ export interface PathAliasGuardHost {
 /** How long the names which a directory listed are taken as still listed. A name which is missed is listed afresh. */
 const LISTING_LIFETIME_MS = 1_000;
 
-const foldName = (name: string) => name.normalize("NFC").toLowerCase();
+// Host alias checks retain their fixed NFC and case-insensitive policy in both identity modes.
+// Original host names keep the host vocabulary; comparison does not apply rooted-storage input validation.
+const foldName = (name: string) =>
+    getStoragePathComparisonKey(name as FilePath, {
+        pathNormalizationVersion: 1,
+        handleFilenameCaseSensitive: false,
+    });
 
 const nameOf = (entry: string) => {
     const segments = entry.split("/").filter((segment) => segment !== "");
@@ -28,14 +36,14 @@ const nameOf = (entry: string) => {
 };
 
 export class PathAliasGuard {
-    private readonly listings = new Map<string, { names: Set<string>; listedAt: number }>();
+    private readonly listings = new Map<string, { names: Set<PathComparisonKey<"storage">>; listedAt: number }>();
 
     constructor(
         private readonly host: PathAliasGuardHost,
         private readonly now: () => number = Date.now
     ) {}
 
-    private recentListing(directory: string): Set<string> | undefined {
+    private recentListing(directory: string): Set<PathComparisonKey<"storage">> | undefined {
         const listing = this.listings.get(directory);
         if (!listing) return undefined;
         if (this.now() - listing.listedAt <= LISTING_LIFETIME_MS) return listing.names;
@@ -43,7 +51,7 @@ export class PathAliasGuard {
         return undefined;
     }
 
-    private async listAfresh(directory: string): Promise<Set<string>> {
+    private async listAfresh(directory: string): Promise<Set<PathComparisonKey<"storage">>> {
         const names = new Set((await this.host.list(directory)).map((entry) => foldName(nameOf(entry))));
         this.listings.set(directory, { names, listedAt: this.now() });
         return names;
