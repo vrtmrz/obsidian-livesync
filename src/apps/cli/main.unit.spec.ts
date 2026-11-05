@@ -72,6 +72,7 @@ describe("CLI parseArgs", () => {
         expect(combined).toContain("Usage:");
         expect(combined).toContain("livesync-cli <database-path> [options] <command> [command-args]");
         expect(combined).toContain("--compat-remote-admin-exit-zero");
+        expect(combined).toContain("journal-skip <journal-key>");
     });
 
     it("parses p2p-peers command and timeout", () => {
@@ -99,6 +100,15 @@ describe("CLI parseArgs", () => {
         expect(parsed.databasePath).toBe("./databasePath");
         expect(parsed.command).toBe("p2p-host");
         expect(parsed.commandArgs).toEqual([]);
+    });
+
+    it("parses journal-skip and its exact Journal key", () => {
+        process.argv = ["node", "livesync-cli", "./databasePath", "journal-skip", "7-docs.jsonl.gz"];
+        const parsed = parseArgs();
+
+        expect(parsed.databasePath).toBe("./databasePath");
+        expect(parsed.command).toBe("journal-skip");
+        expect(parsed.commandArgs).toEqual(["7-docs.jsonl.gz"]);
     });
 
     it.each(["rebuild", "fetch"] as const)("parses %s and its force flag", (command) => {

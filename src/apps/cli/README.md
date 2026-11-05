@@ -80,6 +80,7 @@ livesync-cli [database-path] [command] [args...]
 ### Commands
 
 - `sync`: Run one replication cycle with the remote CouchDB.
+- `journal-skip <journal-key>`: Retry replication, skip only the exact currently stopped Object Storage Journal, and resume.
 - `mirror [vault-path]`: Bidirectional sync between the local database and a local directory (**the actual vault**).
     - If `vault-path` is provided, the CLI will synchronise the database with files in the vault directory.
     - If `vault-path` is omitted, it defaults to `database-path` (compatibility mode).
@@ -107,6 +108,32 @@ livesync-cli [database-path] [command] [args...]
 - `init-settings [file]`: Create a default settings file.
 
 Remote-administration commands verify the resulting milestone state through the selected provider. The existing `[Verification]` lines remain suitable for scripts which inspect command output, while the default exit code now reflects whether that verification succeeded.
+
+### Object Storage receive failures
+
+`sync` stops at a Journal which cannot be processed or whose records cannot be
+saved. After correcting the cause, run `sync` again with the same database and
+settings to retry it. Existing partial writes are retained. `fetch --force`
+replaces the local database instead and follows the reconstruction rules below.
+
+A failed `sync` prints `[Error] Command 'sync' failed` and exits with code `1`.
+To inspect the Journal key, failure stage, and diagnostic details, retry with
+`--debug`, for example `livesync-cli ./my-db --debug sync`, retaining the same
+database and settings. Debug diagnostics are written to standard error.
+
+If the Journal cannot be recovered and missing content or history is
+acceptable, run `journal-skip <journal-key>`. The CLI first performs normal
+replication with the retained local database. It skips only when that attempt
+stops at the exact supplied key; if replication succeeds or stops at another
+Journal, the command refuses the explicit skip. A successful normal attempt
+can still acknowledge Journals which it processed successfully.
+After the matching Journal is skipped, replication resumes. Any later failed
+Journal still stops, so each additional skip requires a separate command with
+that Journal's key. Normal identity, connectivity, authentication, and
+readiness checks still apply. This action does not persist a setting for future
+replication. Review the resulting file contents and retained history; a
+completed receive does not guarantee that later file reflection or reads will
+succeed.
 
 ### Interrupted reconstruction and older runtime state
 
@@ -146,6 +173,7 @@ scopes do not make concurrent writers to shared device settings supported.
 ```bash
 # Basic sync with remote
 livesync-cli ./my-db sync
+livesync-cli ./my-db journal-skip 7-docs.jsonl.gz
 
 # Mirroring to your actual Obsidian vault
 livesync-cli ./my-db mirror /path/to/obsidian-vault
@@ -475,6 +503,8 @@ Commands:
   daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
   init-settings [path]    Create unconfigured settings JSON with the new-Vault recommendations
   sync                    Run one replication cycle and exit
+  journal-skip <journal-key>
+                          Retry replication, skip only the matching stopped Journal, and resume
   p2p-peers <timeout>     Show discovered peers as [peer]<TAB><peer-id><TAB><peer-name>
   p2p-sync <peer> <timeout>   Synchronise with specified peer-id or peer-name
   p2p-host                Start P2P host mode and wait until interrupted (Ctrl+C)

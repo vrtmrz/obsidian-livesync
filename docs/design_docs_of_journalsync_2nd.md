@@ -1,5 +1,17 @@
 ## The design document of the Journal Replicator 2nd Edition
 
+Implementation note: the receive-failure correction and single-Journal skip
+API are published in [Commonlib 0.3.2](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.3.2).
+The Self-hosted LiveSync host action remains unreleased. The owning contract
+is Commonlib's
+[Journal receive failures and recovery](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/journal-receive-recovery.md).
+The receiver acknowledges successful processing, stops on failure by default,
+and retries from that Journal with the same database. Explicit skipping does
+not establish Vault reflection success. The host action names one stopped
+Journal and its failure stage, requires confirmation, and resumes receipt after
+skipping that Journal; the next failure still stops. The [settings reference](settings.md#skip-stopped-journal-and-resume)
+describes the host control and replay operation.
+
 ### Goal
 - Build a robust and memory-efficient replication foundation that decouples the physical storage layer by leveraging the Web Streams API.
 - Maintain strict compliance with the data consistency and replication protocols of CouchDB/PouchDB.

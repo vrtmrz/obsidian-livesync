@@ -7,6 +7,18 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Skip stopped Journal and resume": "Skip stopped Journal and resume",
+    "Object Storage only. Confirm to skip the currently stopped Journal and resume replication. The confirmation names the exact Journal key and failure stage. Skipping may leave content or history missing; the next Journal failure still stops replication.":
+        "Object Storage only. Confirm to skip the currently stopped Journal and resume replication. The confirmation names the exact Journal key and failure stage. Skipping may leave content or history missing; the next Journal failure still stops replication.",
+    "Skip and resume": "Skip and resume",
+    "No stopped Journal is available. Retry replication to identify the stopped Journal.":
+        "No stopped Journal is available. Retry replication to identify the stopped Journal.",
+    "Skip stopped Journal '${KEY}' at failure stage '${STAGE}' and resume replication? This may leave content or history missing.":
+        "Skip stopped Journal '${KEY}' at failure stage '${STAGE}' and resume replication? This may leave content or history missing.",
+    "The active replicator changed. Retry replication to identify the stopped Journal.":
+        "The active replicator changed. Retry replication to identify the stopped Journal.",
+    "Journal receipt did not complete after this action. Check the current failure before retrying.":
+        "Journal receipt did not complete after this action. Check the current failure before retrying.",
     "File identity": "File identity",
     "Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild from a complete authoritative Vault and Fetch on the other devices. With P2P, Rebuild prepares only the source device's local database. Resolve colliding file names first.":
         "Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild from a complete authoritative Vault and Fetch on the other devices. With P2P, Rebuild prepares only the source device's local database. Resolve colliding file names first.",

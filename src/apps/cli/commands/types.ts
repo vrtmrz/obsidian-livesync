@@ -7,6 +7,7 @@ import type { ReplicationSchedulingControl } from "@/serviceFeatures/replication
 export type CLICommand =
     | "daemon"
     | "sync"
+    | "journal-skip"
     | "p2p-peers"
     | "p2p-sync"
     | "p2p-host"
@@ -87,6 +88,7 @@ export interface CLICommandContext {
 export const VALID_COMMANDS = new Set([
     "daemon",
     "sync",
+    "journal-skip",
     "p2p-peers",
     "p2p-sync",
     "p2p-host",

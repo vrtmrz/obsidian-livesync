@@ -16,5 +16,6 @@
     "test:e2e-matrix:minio-enc0",
     "test:e2e-matrix:minio-enc1",
     "test:fetch-database-continuity",
-    "test:journal-chunk-recovery"
+    "test:journal-chunk-recovery",
+    "test:journal-receive-failure"
 ]

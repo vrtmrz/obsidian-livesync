@@ -108,6 +108,8 @@ Arguments:
 Commands:
     daemon                  (default) Run mirror scan then continuously sync CouchDB <-> local filesystem
     sync                    Run one replication cycle and exit
+    journal-skip <journal-key>
+                            Retry replication, skip only the matching stopped Journal, and resume
     p2p-peers <timeout>     Show discovered peers as [peer]\t<peer-id>\t<peer-name>
     p2p-sync <peer> <timeout>
                             Sync with the specified peer-id or peer-name
