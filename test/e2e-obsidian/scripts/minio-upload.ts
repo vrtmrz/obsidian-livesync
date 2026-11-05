@@ -16,8 +16,15 @@
  * same upload.
  */
 import { randomBytes } from "node:crypto";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { promisify } from "node:util";
+import { DEFAULT_SETTINGS, TweakValuesTemplate } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { deriveIdKey } from "@vrtmrz/livesync-commonlib/settings";
 import { evalObsidianJson } from "../runner/cli.ts";
+import { runCliJournalMigration } from "../runner/cliJournalMigration.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     assertEqual,
@@ -43,7 +50,8 @@ import { REMOTE_ACTIVITY_EXPECTED_STATE, waitForRemoteActivityState } from "../r
 
 process.env.E2E_OBSIDIAN_CLI_TIMEOUT_MS ??= "30000";
 
-const notePath = "E2E/minio-upload.md";
+const unicodePaths = process.env.E2E_OBSIDIAN_UNICODE_PATHS === "true";
+const notePath = unicodePaths ? "Cafe\u0301/re\u0301sume\u0301.md" : "E2E/minio-upload.md";
 const useIndependentIds = process.env.E2E_OBSIDIAN_INDEPENDENT_IDS === "true";
 const useCustomRequestHandler = process.env.E2E_OBSIDIAN_CUSTOM_HTTP_HANDLER === "true";
 const noteContent = [
@@ -63,10 +71,11 @@ async function createNoteAndWaitForLocalDb(cliBinary: string, env: NodeJS.Proces
             `const path=${JSON.stringify(notePath)};`,
             `const content=${JSON.stringify(noteContent)};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "if(!(await app.vault.adapter.exists('E2E'))) await app.vault.createFolder('E2E');",
+            "const parent=path.slice(0,path.lastIndexOf('/'));",
+            "if(!(await app.vault.adapter.exists(parent))) await app.vault.createFolder(parent);",
             "const existing=app.vault.getAbstractFileByPath(path);",
             "if(existing) await app.vault.delete(existing);",
-            "await app.vault.create(path,content);",
+            "const createdFile=await app.vault.create(path,content);",
             "const sleep=(ms)=>new Promise((resolve)=>setTimeout(resolve,ms));",
             "let entry=false;",
             "for(let i=0;i<40;i++){",
@@ -76,7 +85,7 @@ async function createNoteAndWaitForLocalDb(cliBinary: string, env: NodeJS.Proces
             "await sleep(250);",
             "}",
             "if(!entry||!entry._id) throw new Error('Timed out waiting for local database entry');",
-            "return JSON.stringify({id:entry._id,path:entry.path,type:entry.type,children:entry.children||[]});",
+            "return JSON.stringify({id:entry._id,path:createdFile.path,type:entry.type,children:entry.children||[]});",
             "})()",
         ].join(""),
         env
@@ -124,10 +133,13 @@ async function main(): Promise<void> {
             cliBinary: cli.binary,
             vault,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
-            pluginData: createE2eObjectStoragePluginData({
-                ...objectStorage,
-                bucketPrefix,
-            }),
+            pluginData: createE2eObjectStoragePluginData(
+                {
+                    ...objectStorage,
+                    bucketPrefix,
+                },
+                { pathNormalizationVersion: unicodePaths ? 1 : 0 }
+            ),
             localStorageEntries: createE2eObsidianDeviceLocalState(vault.name),
         });
         await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
@@ -137,6 +149,7 @@ async function main(): Promise<void> {
             session.cliEnv,
             { ...objectStorage, bucketPrefix },
             {
+                pathNormalizationVersion: unicodePaths ? 1 : 0,
                 ...(useIndependentIds
                     ? {
                           encrypt: true,
@@ -173,6 +186,13 @@ async function main(): Promise<void> {
                 );
             }
         }
+        if (unicodePaths && !useIndependentIds) {
+            assertEqual(
+                localEntry.id,
+                notePath.normalize("NFC").toLowerCase(),
+                "Obsidian did not derive the canonical Metadata ID."
+            );
+        }
         await pushLocalChanges(cli.binary, session.cliEnv);
         const activityAfterUpload = await waitForRemoteActivityState(
             session.remoteDebuggingPort,
@@ -195,6 +215,131 @@ async function main(): Promise<void> {
             );
             if (!milestone.encrypted_id_derivation_proof) {
                 throw new Error("The Journal milestone did not retain an encrypted ID agreement proof.");
+            }
+        }
+
+        if (unicodePaths) {
+            const cliRoot = await mkdtemp(join(tmpdir(), "livesync-nfc-journal-"));
+            try {
+                const databasePath = join(cliRoot, "db");
+                const vaultPath = join(cliRoot, "vault");
+                const settingsPath = join(cliRoot, "settings.json");
+                await mkdir(databasePath, { recursive: true });
+                await mkdir(dirname(join(vaultPath, notePath)), { recursive: true });
+                await writeFile(join(vaultPath, notePath), noteContent);
+                const sourceSettings = await evalObsidianJson<Record<string, unknown>>(
+                    cli.binary,
+                    [
+                        "(async()=>{",
+                        "const service=app.plugins.plugins['obsidian-livesync'].core.services.setting;",
+                        "const s=service.currentSettings();",
+                        `const keys=${JSON.stringify([...Object.keys(TweakValuesTemplate), "encrypt", "passphrase", "usePathObfuscation", "E2EEAlgorithm", "idDerivationKey"])};`,
+                        "const values=Object.fromEntries(keys.map(key=>[key,s[key]]));",
+                        "if(s.idDerivationVersion===1){",
+                        "values.encryptedIdDerivationKey=await service.encryptConfigurationItem(s.idDerivationKey,s,'*');",
+                        "values.idDerivationKey='';values.configPassphraseStore='';",
+                        "}",
+                        "return JSON.stringify(values);",
+                        "})()",
+                    ].join(""),
+                    session.cliEnv
+                );
+                await runCliJournalMigration(objectStorage, bucketPrefix, sourceSettings);
+                await writeFile(
+                    settingsPath,
+                    JSON.stringify({
+                        ...DEFAULT_SETTINGS,
+                        ...objectStorage,
+                        ...sourceSettings,
+                        remoteType: "MINIO",
+                        bucketPrefix,
+                        pathNormalizationVersion: 1,
+                        isConfigured: true,
+                    })
+                );
+                const execute = promisify(execFile);
+                const run = async (...args: string[]) =>
+                    await execute(
+                        process.execPath,
+                        [
+                            resolve("src/apps/cli/dist/index.cjs"),
+                            databasePath,
+                            "--vault",
+                            vaultPath,
+                            "--settings",
+                            settingsPath,
+                            ...args,
+                        ],
+                        { timeout: 60_000, maxBuffer: 4 * 1024 * 1024 }
+                    );
+                await run("--force", "--write-settings", "fetch");
+                assertEqual(
+                    await readFile(join(vaultPath, notePath), "utf8"),
+                    noteContent,
+                    "CLI Fetch changed the file contents."
+                );
+                assertEqual(
+                    (await run("cat", notePath.normalize("NFC"))).stdout,
+                    noteContent,
+                    "CLI Fetch did not retain the remote Chunk content."
+                );
+                const listedPaths = (await run("ls")).stdout
+                    .trim()
+                    .split("\n")
+                    .map((line) => line.split("\t")[0]);
+                assertEqual(listedPaths.length, 1, "CLI Fetch retained duplicate Metadata.");
+                assertEqual(
+                    listedPaths[0].normalize("NFC"),
+                    notePath.normalize("NFC"),
+                    "CLI Fetch changed the logical path."
+                );
+                const fileInfo = JSON.parse((await run("info", listedPaths[0])).stdout) as { id: string };
+                assertEqual(fileInfo.id, localEntry.id, "CLI Fetch used a different Metadata ID.");
+                const expectedNames = await readdir(dirname(join(vaultPath, notePath)));
+                assertEqual(expectedNames.length, 1, "CLI Fetch created a duplicate physical file.");
+                assertEqual(
+                    expectedNames[0],
+                    notePath.split("/").slice(-1)[0],
+                    "CLI Fetch renamed the NFD physical file."
+                );
+                const editedContent = noteContent + "\nEdited after CLI restart.\n";
+                await writeFile(join(vaultPath, notePath), editedContent);
+                const nextTime = new Date(Date.now() + 5000);
+                await utimes(join(vaultPath, notePath), nextTime, nextTime);
+                await run("mirror");
+                await run("sync");
+                await pushLocalChanges(cli.binary, session.cliEnv);
+                const sourceFile = join(vault.path, localEntry.path);
+                const deadline = Date.now() + 20_000;
+                while ((await readFile(sourceFile, "utf8")) !== editedContent && Date.now() < deadline) {
+                    await new Promise((resolveWait) => setTimeout(resolveWait, 200));
+                }
+                assertEqual(
+                    await readFile(sourceFile, "utf8"),
+                    editedContent,
+                    "Obsidian did not receive the CLI edit."
+                );
+                await run("rm", notePath.normalize("NFC"));
+                await run("sync");
+                await pushLocalChanges(cli.binary, session.cliEnv);
+                const deleteDeadline = Date.now() + 20_000;
+                let exists = true;
+                while (exists && Date.now() < deleteDeadline) {
+                    exists = await readFile(sourceFile).then(
+                        () => true,
+                        (error: NodeJS.ErrnoException) => {
+                            if (error.code === "ENOENT") return false;
+                            throw error;
+                        }
+                    );
+                    if (exists) await new Promise((resolveWait) => setTimeout(resolveWait, 200));
+                }
+                assertEqual(exists, false, "Obsidian did not reflect the CLI deletion.");
+                console.log(
+                    "NFC_JOURNAL_ROUND_TRIP: canonical ID, NFD physical name, CLI Fetch, edit after process restart, and deletion verified."
+                );
+            } finally {
+                await rm(cliRoot, { recursive: true, force: true });
             }
         }
 

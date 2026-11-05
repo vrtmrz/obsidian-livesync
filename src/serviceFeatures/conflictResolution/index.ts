@@ -6,6 +6,7 @@ import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { createConflictCheckingHandlers } from "./checker";
 import { createConflictResolutionOperations } from "./operations";
+import { EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 
 export type ConflictResolutionHost = NecessaryServices<
     "appLifecycle" | "conflict" | "database" | "replication" | "setting" | "vault",
@@ -18,6 +19,7 @@ export type ConflictResolutionHost = NecessaryServices<
 /** Compose the host-neutral conflict handlers with the host's borrowed logger. */
 export const useConflictResolutionFeature = createServiceFeature((host: ConflictResolutionHost): void => {
     const { services, serviceModules, log } = host;
+    const lifetime = new AbortController();
     const operations = createConflictResolutionOperations({
         events: services.context.events,
         databaseFileAccess: serviceModules.databaseFileAccess,
@@ -38,6 +40,7 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
         currentSettings: () => services.setting.currentSettings(),
         vault: services.vault,
         log,
+        signal: lifetime.signal,
     });
 
     services.conflict.queueCheckForIfOpen.setHandler(checking.queueCheckForIfOpen);
@@ -47,6 +50,13 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
     services.conflict.resolve.setHandler(operations.resolve);
     services.conflict.resolveByNewest.setHandler(operations.resolveByNewest);
     services.conflict.resolveAllConflictedFilesByNewerOnes.setHandler(operations.resolveAllConflictedFilesByNewerOnes);
+
+    const stop = (): void => lifetime.abort();
+    services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, stop, { signal: lifetime.signal });
+    services.appLifecycle.onUnload.addHandler(() => {
+        stop();
+        return Promise.resolve(true);
+    });
 });
 
 export { createConflictCheckingHandlers } from "./checker";

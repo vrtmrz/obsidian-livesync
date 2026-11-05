@@ -81,6 +81,10 @@ function createBufferedLog(entries: ReactiveSource<LogEntry[]>) {
     };
 }
 
+function logToConsole(message: unknown, level?: number, key?: string) {
+    console.log({ message, level, key });
+}
+
 // Legacy Logger calls use this shared buffer; service logs use their owner's buffer.
 const recentGlobalLogEntries = reactiveSource<LogEntry[]>([]);
 setGlobalLogFunction(createBufferedLog(recentGlobalLogEntries));
@@ -126,7 +130,7 @@ function redactLog(log: string) {
 const showDebugLog = false;
 export const MARK_DONE = "\u{2009}\u{2009}";
 export class ModuleLog extends AbstractObsidianModule {
-    /** The host releases this connection after the complete asynchronous unload. */
+    /** The host releases log display subscriptions after the complete asynchronous unload. */
     logResource!: OwnedResource<LogFunction>;
     private readonly recentLogEntries = reactiveSource<LogEntry[]>([]);
     private readonly displayLogEntries = () => {
@@ -615,8 +619,10 @@ ${stringifyYaml(info)}
         }
     }
     override onBindFunction(core: LiveSyncCore, services: typeof core.services): void {
-        const log = createBufferedLog(this.recentLogEntries);
-        const unregisterLog = services.API.addLog.setHandler(log);
+        const bufferedLog = createBufferedLog(this.recentLogEntries);
+        let logTarget: LogFunction = bufferedLog;
+        const log: LogFunction = (message, level, key) => logTarget(message, level, key);
+        services.API.addLog.setHandler(log);
         const collectGlobalLogs = () => {
             const entries = recentGlobalLogEntries.value;
             if (entries.length === 0) return;
@@ -624,7 +630,7 @@ ${stringifyYaml(info)}
             this.recentLogEntries.value = [...this.recentLogEntries.value, ...entries];
         };
         this.logResource = createOwnedResource(log, () => {
-            unregisterLog();
+            logTarget = logToConsole;
             recentGlobalLogEntries.offChanged(collectGlobalLogs);
             this.recentLogEntries.offChanged(this.displayLogEntries);
             this.recentLogEntries.value = [];

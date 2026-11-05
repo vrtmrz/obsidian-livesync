@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- Unicode NFC path identity can be used with Object Storage and P2P on CLI and Obsidian clients. The setting is available under General Settings → File identity. Existing databases require a coordinated Rebuild and Fetch; physical file names and Chunk IDs stay unchanged. All P2P participants must be updated and migrated.
+    - New CLI settings and Obsidian manual onboarding use NFC. Existing settings and old Setup URIs retain legacy identity; initial central-remote setup follows the remote declaration. Existing databases still require the migration above.
+    - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
+
 ### Fixed
 
 #### Synchronisation
@@ -20,10 +24,25 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - Metadata and Chunk reads use a cache URL derived from the startup time and Security Seed together. The URL remains stable within the same startup and Seed.
     - The advanced CouchDB setting **Use headers only for HTTP cache control (compatibility)** is disabled by default. Enable it only if your server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
 
+#### Conflict resolution
+
+- Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
+    - Open conflict dialogues for ordinary files close immediately, and queued checks report cancellation. Operations already running retain their normal completion or failure path.
+
+#### WebApp
+
+- The experimental WebApp stops before opening its database or processing files when its settings select unsupported NFC path identity. It reports the Legacy-only requirement and preserves the selected Vault files and settings. This does not migrate an NFC database to Legacy identity.
+
 #### Translations
 
 - The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
     - Hebrew interface messages also display their referenced labels correctly.
+
+### CLI
+
+#### Fixed
+
+- NFC file lookups and directory scans report permission and I/O failures instead of treating unreadable files as absent or returning a successful partial scan. A scan retains the comparison settings with which it began.
 
 ## 1.0.44
 

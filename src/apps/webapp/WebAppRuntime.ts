@@ -1,3 +1,4 @@
+import { getPathNormalizationVersion } from "@vrtmrz/livesync-commonlib/settings";
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 /** Browser runtime for Self-hosted LiveSync over the File System Access API. */
 
@@ -55,6 +56,14 @@ const DEFAULT_SETTINGS: Partial<ObsidianLiveSyncSettings> = {
     autoSweepPluginsPeriodic: false,
 };
 
+function assertWebAppPathIdentity(settings: Partial<ObsidianLiveSyncSettings> | null): void {
+    if (getPathNormalizationVersion(settings ?? {}) === 1) {
+        throw new Error(
+            "WebApp supports Legacy path identity (pathNormalizationVersion: 0) only. Unicode NFC path identity is not supported."
+        );
+    }
+}
+
 export type WebAppRuntimeStatusKind = "info" | "warning" | "error" | "success";
 
 export interface WebAppRuntimeOptions {
@@ -100,6 +109,7 @@ export class WebAppRuntime {
             getSystemVaultName: () => this.rootHandle.name || "livesync-webapp",
             settings: {
                 save: async (data) => {
+                    assertWebAppPathIdentity(data);
                     try {
                         await this.saveSettingsToFile(data);
                         this.addLog("Saved to .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
@@ -108,14 +118,16 @@ export class WebAppRuntime {
                     }
                 },
                 load: async () => {
+                    let data: Partial<ObsidianLiveSyncSettings> | null = null;
                     try {
-                        const data = await this.loadSettingsFromFile();
-                        if (data) {
-                            this.addLog("Loaded from .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
-                            return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
-                        }
+                        data = await this.loadSettingsFromFile();
                     } catch {
                         this.addLog("Failed to load settings; using defaults", LOG_LEVEL_NOTICE, "settings");
+                    }
+                    assertWebAppPathIdentity(data);
+                    if (data) {
+                        this.addLog("Loaded from .livesync/settings.json", LOG_LEVEL_VERBOSE, "settings");
+                        return { ...DEFAULT_SETTINGS, ...data } as ObsidianLiveSyncSettings;
                     }
                     return DEFAULT_SETTINGS as ObsidianLiveSyncSettings;
                 },
@@ -203,6 +215,13 @@ export class WebAppRuntime {
     async start(): Promise<void> {
         if (this.core) {
             throw new Error("The WebApp runtime has already been started");
+        }
+
+        try {
+            assertWebAppPathIdentity(await this.loadSettingsFromFile());
+        } catch (error) {
+            this.showError(`Failed to start: ${String(error)}`);
+            throw error;
         }
 
         // Create service context and hub

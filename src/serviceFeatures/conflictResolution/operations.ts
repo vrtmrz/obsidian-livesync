@@ -27,9 +27,10 @@ import type { LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
 import { EVENT_CONFLICT_CANCELLED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
+import { parseDocumentPath, splitDocumentPath } from "@vrtmrz/livesync-commonlib/storage";
 import { isLockAcquired, withLock } from "octagonal-wheels/concurrency/lock";
 import diff_match_patch from "diff-match-patch";
-import { stripAllPrefixes, isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
+import { isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 
 export type ConflictResolutionSettings = Pick<
     ObsidianLiveSyncSettings,
@@ -67,6 +68,7 @@ export interface ConflictResolutionOperations {
     readonly resolveAllConflictedFilesByNewerOnes: () => Promise<void>;
 }
 
+/** Create conflict-resolution operations which retain their normal completion and failure paths. */
 export function createConflictResolutionOperations(
     dependencies: ConflictResolutionOperationsDependencies
 ): ConflictResolutionOperations {
@@ -108,7 +110,9 @@ export function createConflictResolutionOperations(
             return AUTO_MERGED;
         }
         // If no conflicts were found, write the resolved content to the storage.
-        if (!(await dependencies.fileHandler.dbToStorage(path, stripAllPrefixes(path), true))) {
+        const documentPath = parseDocumentPath(path);
+        const { path: filePath } = splitDocumentPath(documentPath);
+        if (!(await dependencies.fileHandler.dbToStorage(documentPath, filePath, true))) {
             dependencies.log(`Could not write the resolved content to the storage: ${path}`, LOG_LEVEL_NOTICE);
             return MISSING_OR_ERROR;
         }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { LOG_LEVEL_NOTICE, REMOTE_COUCHDB, REMOTE_MINIO, VERSIONING_DOCID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 
@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     objectStorage: [] as Array<{
         host: unknown;
         tryConnectRemote: ReturnType<typeof vi.fn>;
+        inspectRemotePathIdentity: ReturnType<typeof vi.fn>;
         getRemoteStatus: ReturnType<typeof vi.fn>;
         getRemotePreferredTweakValues: ReturnType<typeof vi.fn>;
         getReplicationPBKDF2Salt: ReturnType<typeof vi.fn>;
@@ -64,6 +65,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
     LiveSyncJournalReplicator: class {
         host: unknown;
         tryConnectRemote = vi.fn();
+        inspectRemotePathIdentity = vi.fn();
         getRemoteStatus = vi.fn();
         getRemotePreferredTweakValues = vi.fn();
         getReplicationPBKDF2Salt = vi.fn();
@@ -133,6 +135,45 @@ describe("replicator probe factories", () => {
         expect(replicator.connectRemoteCouchDBWithSetting.mock.calls[0][0]).not.toBe(source);
         expect(close).toHaveBeenCalledOnce();
         expect(databaseClose).not.toHaveBeenCalled();
+    });
+
+    it("inspects CouchDB identity without encryption setup or remote writes and closes on failure", async () => {
+        const source = { ...createSettings(), encrypt: true };
+        const probe = await createCouchDBConnectionProbeFactory({} as never)(source);
+        const replicator = mocks.couchDB[0];
+        const get = vi.fn(async () => ({ _id: VERSIONING_DOCID, type: "versioninfo", version: 13, used_features: ["nfc-path-identity-v1"] }));
+        const close = vi.fn(async () => undefined);
+        replicator.connectRemoteCouchDBWithSetting.mockResolvedValue({ db: { get }, close });
+        await expect(probe.inspectPathIdentity!()).resolves.toEqual({
+            status: "configured",
+            pathNormalizationVersion: 1,
+        });
+        expect(replicator.connectRemoteCouchDBWithSetting).toHaveBeenCalledWith(
+            { ...source, encrypt: false },
+            false,
+            false,
+            false
+        );
+        expect(close).toHaveBeenCalledOnce();
+        get.mockRejectedValueOnce(new Error("read unavailable"));
+        await expect(probe.inspectPathIdentity!()).rejects.toThrow("read unavailable");
+        expect(close).toHaveBeenCalledTimes(2);
+        expect(replicator.getReplicationPBKDF2Salt).not.toHaveBeenCalled();
+    });
+
+    it("delegates Journal identity inspection to the owned settings snapshot", async () => {
+        const source = createSettings();
+        const snapshot = { ...source };
+        const probe = await createObjectStorageConnectionProbeFactory({} as never)(source);
+        const replicator = mocks.objectStorage[0];
+        replicator.inspectRemotePathIdentity.mockResolvedValue({ status: "empty" });
+        source.bucket = "changed";
+        await expect(probe.inspectPathIdentity!()).resolves.toEqual({ status: "empty" });
+        expect(replicator.inspectRemotePathIdentity).toHaveBeenCalledWith(snapshot);
+        expect(replicator.tryConnectRemote).not.toHaveBeenCalled();
+        expect(replicator.getReplicationPBKDF2Salt).not.toHaveBeenCalled();
+        await probe.dispose();
+        expect(replicator.closeReplication).toHaveBeenCalledOnce();
     });
 
     it("maps a CouchDB connection error string and delegates status to the same snapshot", async () => {

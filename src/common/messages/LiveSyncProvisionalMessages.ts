@@ -7,6 +7,9 @@
  * remove it from this map in the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "File identity": "File identity",
+    "Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild from a complete authoritative Vault and Fetch on the other devices. With P2P, Rebuild prepares only the source device's local database. Resolve colliding file names first.":
+        "Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild from a complete authoritative Vault and Fetch on the other devices. With P2P, Rebuild prepares only the source device's local database. Resolve colliding file names first.",
     "Synchronisation protection": "Synchronisation protection",
     "Synchronising your Vault": "Synchronising your Vault",
     "Receiving changes from the server…": "Receiving changes from the server…",

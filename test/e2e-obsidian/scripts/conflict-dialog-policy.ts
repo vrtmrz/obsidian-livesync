@@ -1,3 +1,6 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { DoctorRegulation } from "@vrtmrz/livesync-commonlib/compat/common/configForDoc";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { evalObsidianJson } from "../runner/cli.ts";
 import {
@@ -28,6 +31,11 @@ type ConflictFixture = {
     conflicts: string[];
 };
 
+type ObservedConflictService = {
+    ensureAllProcessed(): Promise<boolean>;
+    conflictProcessQueueCount: { value: number };
+};
+
 type ObsidianTestApp = {
     commands?: { executeCommandById(commandId: string): boolean };
     plugins?: {
@@ -38,10 +46,7 @@ type ObsidianTestApp = {
             | {
                   core?: {
                       services?: {
-                          conflict?: {
-                              ensureAllProcessed(): Promise<boolean>;
-                              conflictProcessQueueCount: { value: number };
-                          };
+                          conflict?: ObservedConflictService;
                       };
                   };
               }
@@ -53,8 +58,45 @@ type ObsidianTestApp = {
 type ObsidianTestGlobal = typeof globalThis & {
     app?: ObsidianTestApp;
     __livesyncConflictChecksCompleted?: boolean;
+    __livesyncConflictChecksResult?: boolean;
     __livesyncWaitingConflictCompleted?: boolean;
+    __livesyncConflictChecksError?: string;
+    __livesyncWaitingConflictError?: string;
+    __livesyncObservedConflict?: ObservedConflictService;
 };
+
+async function recordConflictDiagnostics(port: number, label: string) {
+    const state = await withObsidianPage(
+        port,
+        async (page) =>
+            await page.evaluate(() => {
+                const host = globalThis as ObsidianTestGlobal;
+                const plugin = host.app?.plugins?.plugins?.["obsidian-livesync"];
+                const conflict = host.__livesyncObservedConflict ?? plugin?.core?.services?.conflict;
+                return {
+                    pluginLoaded: plugin !== undefined,
+                    queueCount: conflict?.conflictProcessQueueCount.value,
+                    checksCompleted: host.__livesyncConflictChecksCompleted,
+                    checksResult: host.__livesyncConflictChecksResult,
+                    waitingCompleted: host.__livesyncWaitingConflictCompleted,
+                    checksError: host.__livesyncConflictChecksError,
+                    waitingError: host.__livesyncWaitingConflictError,
+                    visibility: document.visibilityState,
+                    dialogues: Array.from(document.querySelectorAll(".modal-container")).map((element) => ({
+                        visible: element.getClientRects().length > 0,
+                        title: element.querySelector(".modal-title")?.textContent,
+                        text: element.textContent?.slice(0, 300),
+                        actions: element.querySelectorAll(".conflict-action-button").length,
+                    })),
+                };
+            })
+    );
+    const directory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, `conflict-${label}.json`), JSON.stringify(state, null, 2) + "\n");
+    console.log(`Conflict ${label}: ${JSON.stringify(state)}`);
+    return state;
+}
 
 async function createAndOpenBaseFile(cliBinary: string, env: NodeJS.ProcessEnv, targetPath = path): Promise<void> {
     await evalObsidianJson<unknown>(
@@ -249,7 +291,7 @@ async function createTwoVersionConflict(
     if (fixture.conflicts.length !== 1) {
         throw new Error(`Expected exactly two live leaves for ${targetPath}: ${JSON.stringify(fixture)}`);
     }
-    return fixture;
+    return { ...fixture, currentParentRev: base.rev };
 }
 
 async function setShowMergeDialogOnlyOnActive(
@@ -308,13 +350,19 @@ async function requestInteractiveConflictResolution(
             `const conflictRev=${JSON.stringify(fixture.conflicts[0])};`,
             `const trackCompletion=${JSON.stringify(trackCompletion)};`,
             "const core=app.plugins.plugins['obsidian-livesync'].core;",
-            "if(trackCompletion) globalThis.__livesyncWaitingConflictCompleted=false;",
+            "if(trackCompletion){",
+            "  globalThis.__livesyncWaitingConflictCompleted=false;",
+            "  globalThis.__livesyncWaitingConflictError=undefined;",
+            "}",
             "const pending=core.services.conflict.resolveByUserInteraction(path,{",
             "left:{rev:currentRev,data:'Current branch',ctime:1,mtime:2},",
             "right:{rev:conflictRev,data:'Conflict branch',ctime:1,mtime:3},",
             "diff:[[0,'Current and conflict branches']],",
             "});",
-            "if(trackCompletion) void pending.then(()=>{globalThis.__livesyncWaitingConflictCompleted=true;});",
+            "if(trackCompletion) void pending.then(",
+            "  ()=>{globalThis.__livesyncWaitingConflictCompleted=true;},",
+            "  (error)=>{globalThis.__livesyncWaitingConflictError=error?.stack??String(error);}",
+            ");",
             "return JSON.stringify({ok:true});",
             "})()",
         ].join(""),
@@ -328,10 +376,20 @@ async function disableLiveSyncAndWaitForConflictChecks(port: number): Promise<vo
             const host = globalThis as ObsidianTestGlobal;
             const conflict = host.app?.plugins?.plugins?.["obsidian-livesync"]?.core?.services?.conflict;
             if (conflict === undefined) throw new Error("LiveSync conflict service is unavailable before unload");
+            host.__livesyncObservedConflict = conflict;
             host.__livesyncConflictChecksCompleted = false;
-            void conflict.ensureAllProcessed().then(() => {
-                host.__livesyncConflictChecksCompleted = true;
-            });
+            host.__livesyncConflictChecksResult = undefined;
+            host.__livesyncConflictChecksError = undefined;
+            void conflict.ensureAllProcessed().then(
+                (result) => {
+                    host.__livesyncConflictChecksResult = result;
+                    host.__livesyncConflictChecksCompleted = true;
+                },
+                (error) => {
+                    host.__livesyncConflictChecksError =
+                        error instanceof Error ? (error.stack ?? String(error)) : String(error);
+                }
+            );
         });
         await page.evaluate(async () => {
             const plugins = (globalThis as ObsidianTestGlobal).app?.plugins;
@@ -349,6 +407,8 @@ async function disableLiveSyncAndWaitForConflictChecks(port: number): Promise<vo
             undefined,
             { timeout: uiTimeoutMs }
         );
+        const result = await page.evaluate(() => (globalThis as ObsidianTestGlobal).__livesyncConflictChecksResult);
+        if (result !== false) throw new Error("Unloading LiveSync did not report conflict-check cancellation");
     });
 }
 
@@ -362,6 +422,76 @@ async function enableLiveSync(port: number): Promise<void> {
     });
 }
 
+type UnloadConflictFixture = { path: string; fixture: ConflictFixture };
+type PreservedConflictState = {
+    path: string;
+    currentRev: string;
+    baseContent: string | false;
+    vaultContent: string;
+    leaves: { rev: string; parentRev: string; content: string | false; deleted: boolean }[];
+};
+
+async function recordUnloadPreservation(
+    cliBinary: string,
+    env: NodeJS.ProcessEnv,
+    label: string,
+    fixtures: UnloadConflictFixture[],
+    before?: PreservedConflictState[]
+): Promise<PreservedConflictState[]> {
+    const states = await evalObsidianJson<PreservedConflictState[]>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const fixtures=${JSON.stringify(fixtures)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const contentOf=(entry)=>entry===false?false:Array.isArray(entry.data)?entry.data.join(''):entry.data;",
+            "const states=[];",
+            "for(const {path,fixture} of fixtures){",
+            "  const id=await core.services.path.path2id(path);",
+            "  const meta=await core.localDatabase.getRaw(id,{conflicts:true});",
+            "  const leaves=[];",
+            "  for(const rev of [meta._rev,...(meta._conflicts??[])].sort()){",
+            "    const raw=await core.localDatabase.getRaw(id,{rev,revs:true});",
+            "    const history=raw._revisions;",
+            "    const parentRev=history?.ids?.length>1?`${history.start-1}-${history.ids[1]}`:undefined;",
+            "    const entry=await core.localDatabase.getDBEntry(path,{rev},false,true,true);",
+            "    leaves.push({rev,parentRev,content:contentOf(entry),deleted:!!(raw.deleted||raw._deleted)});",
+            "  }",
+            "  const base=await core.localDatabase.getDBEntry(path,{rev:fixture.currentParentRev},false,true,true);",
+            "  const vaultContent=await app.vault.adapter.read(path);",
+            "  states.push({path,currentRev:meta._rev,baseContent:contentOf(base),vaultContent,leaves});",
+            "}",
+            "return JSON.stringify(states);",
+            "})()",
+        ].join(""),
+        env
+    );
+    const directory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/obsidian-livesync-e2e";
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, `conflict-${label}-preservation.json`), JSON.stringify(states, null, 2) + "\n");
+    for (const { path: targetPath, fixture } of fixtures) {
+        const state = states.find((entry) => entry.path === targetPath);
+        const expectedRevs = [fixture.currentRev, ...fixture.conflicts].sort();
+        if (
+            !state ||
+            state.currentRev !== fixture.currentRev ||
+            state.baseContent !== baseContent ||
+            JSON.stringify(state.leaves.map((leaf) => leaf.rev)) !== JSON.stringify(expectedRevs) ||
+            JSON.stringify(state.leaves.map((leaf) => leaf.content).sort()) !==
+                JSON.stringify([leftContent, rightContent].sort()) ||
+            state.leaves.some((leaf) => leaf.deleted || leaf.parentRev !== fixture.currentParentRev)
+        ) {
+            throw new Error(`Conflict contents or ancestry changed across ${label}: ${JSON.stringify(state)}`);
+        }
+        const previous = before?.find((entry) => entry.path === targetPath);
+        if (previous && state.vaultContent !== previous.vaultContent) {
+            throw new Error(`Vault content changed across ${label}: ${targetPath}`);
+        }
+    }
+    console.log(`Verified conflict contents, leaf revisions, and ancestry: ${label}`);
+    return states;
+}
+
 async function main(): Promise<void> {
     const binary = requireObsidianBinary();
     const cli = discoverObsidianCli();
@@ -372,14 +502,17 @@ async function main(): Promise<void> {
 
     const vault = await createTemporaryVault("obsidian-livesync-conflict-dialog-");
     let session: ObsidianLiveSyncSession | undefined;
+    let unloadFixtures: UnloadConflictFixture[] = [];
+    let unloadPreservationBefore: PreservedConflictState[] | undefined;
     try {
         session = await startObsidianLiveSyncSession({
             binary,
             cliBinary,
             vault,
+            artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
             pluginData: {
-                doctorProcessedVersion: "1.0.0",
+                doctorProcessedVersion: DoctorRegulation.version,
                 isConfigured: true,
                 liveSync: false,
                 remoteType: "",
@@ -433,34 +566,31 @@ async function main(): Promise<void> {
             (page) => conflictDialogue(page).locator(".modal").first()
         );
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
-            const modal = conflictDialogue(page);
-            const actionButtons = modal.locator(".conflict-action-button");
-            await actionButtons.nth(3).waitFor({ state: "visible", timeout: uiTimeoutMs });
-            const actionButtonBounds = await actionButtons.evaluateAll((buttons) =>
-                buttons.map((button) => {
-                    const bounds = button.getBoundingClientRect();
-                    return { top: bounds.top, bottom: bounds.bottom };
-                })
+            await page.waitForFunction(
+                (targetPath) => {
+                    const dialogues = Array.from(document.querySelectorAll(".modal-container")).filter(
+                        (element) =>
+                            element.getClientRects().length > 0 &&
+                            element.querySelector(".modal-title")?.textContent?.includes("Conflicting changes") &&
+                            element.textContent?.includes(targetPath)
+                    );
+                    if (dialogues.length !== 1) return false;
+                    const bounds = Array.from(dialogues[0].querySelectorAll(".conflict-action-button")).map((button) =>
+                        button.getBoundingClientRect()
+                    );
+                    return (
+                        bounds.length === 4 &&
+                        bounds.every(
+                            (button, index) =>
+                                button.width > 0 &&
+                                button.height > 0 &&
+                                (index === 0 || button.top >= bounds[index - 1].bottom)
+                        )
+                    );
+                },
+                path,
+                { timeout: uiTimeoutMs }
             );
-            if (
-                actionButtonBounds.length !== 4 ||
-                actionButtonBounds.some(
-                    (bounds, index) => index > 0 && bounds.top < actionButtonBounds[index - 1].bottom
-                )
-            ) {
-                const buttonDetails = await modal.locator("button").evaluateAll((buttons) =>
-                    buttons.map((button) => ({
-                        text: button.textContent,
-                        className: button.className,
-                    }))
-                );
-                throw new Error(
-                    `Conflict action buttons are not stacked vertically: ${JSON.stringify({
-                        actionButtonBounds,
-                        buttonDetails,
-                    })}`
-                );
-            }
         });
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             const modal = conflictDialogue(page);
@@ -506,6 +636,7 @@ async function main(): Promise<void> {
             binary,
             cliBinary,
             vault,
+            artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         });
         await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
@@ -542,6 +673,7 @@ async function main(): Promise<void> {
             binary,
             cliBinary,
             vault,
+            artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT,
             startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
         });
         await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
@@ -734,8 +866,12 @@ async function main(): Promise<void> {
         });
         await waitForConflictChecks(cliBinary, session.cliEnv);
 
-        await createTwoVersionConflict(cliBinary, session.cliEnv, unloadActivePath);
+        const unloadActiveFixture = await createTwoVersionConflict(cliBinary, session.cliEnv, unloadActivePath);
         const unloadWaitingFixture = await createTwoVersionConflict(cliBinary, session.cliEnv, unloadWaitingPath);
+        unloadFixtures = [
+            { path: unloadActivePath, fixture: unloadActiveFixture },
+            { path: unloadWaitingPath, fixture: unloadWaitingFixture },
+        ];
         await requestConflictCheck(cliBinary, session.cliEnv, false, unloadActivePath);
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             await conflictDialogue(page, unloadActivePath).waitFor({ state: "visible", timeout: uiTimeoutMs });
@@ -752,7 +888,14 @@ async function main(): Promise<void> {
             "conflict-dialog-before-unload.png",
             (page) => conflictDialogue(page, unloadActivePath).locator(".modal").first()
         );
+        unloadPreservationBefore = await recordUnloadPreservation(
+            cliBinary,
+            session.cliEnv,
+            "before-unload",
+            unloadFixtures
+        );
         await disableLiveSyncAndWaitForConflictChecks(session.remoteDebuggingPort);
+        await recordConflictDiagnostics(session.remoteDebuggingPort, "unloaded");
         const afterUnloadScreenshot = await captureObsidianPage(
             session.remoteDebuggingPort,
             "conflict-dialog-after-unload.png",
@@ -770,6 +913,13 @@ async function main(): Promise<void> {
 
         await enableLiveSync(session.remoteDebuggingPort);
         await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+        await recordUnloadPreservation(
+            cliBinary,
+            session.cliEnv,
+            "after-reload",
+            unloadFixtures,
+            unloadPreservationBefore
+        );
         await withObsidianPage(session.remoteDebuggingPort, async (page) => {
             await page.waitForTimeout(500);
             if (await conflictDialogue(page).isVisible()) {
@@ -794,7 +944,7 @@ async function main(): Promise<void> {
         await waitForConflictChecks(cliBinary, session.cliEnv);
 
         console.log(
-            "Real Obsidian preserved pairwise conflict resolution and dialogue presentation; replaced only stale same-file dialogues; serialised different files; discarded externally resolved waiting requests; and drained active and waiting requests across unload and reload."
+            "Real Obsidian preserved pairwise conflict resolution and dialogue presentation; replaced only stale same-file dialogues; serialised different files; discarded externally resolved waiting requests; and reported cancellation while closing active and waiting requests across unload and reload."
         );
         console.log(`Dialogue screenshot: ${firstDialogueScreenshot}`);
         console.log(`Postponed warning screenshot: ${warningScreenshot}`);
@@ -803,6 +953,27 @@ async function main(): Promise<void> {
         console.log(`Before unload screenshot: ${beforeUnloadScreenshot}`);
         console.log(`After unload screenshot: ${afterUnloadScreenshot}`);
         console.log(`After reload screenshot: ${afterReloadScreenshot}`);
+    } catch (error) {
+        if (session) {
+            try {
+                const state = await recordConflictDiagnostics(session.remoteDebuggingPort, "failure");
+                await captureObsidianPage(session.remoteDebuggingPort, "conflict-failure.png", async () => {});
+                if (!state.pluginLoaded && unloadPreservationBefore) {
+                    await enableLiveSync(session.remoteDebuggingPort);
+                    await waitForLiveSyncCoreReady(cliBinary, session.cliEnv);
+                    await recordUnloadPreservation(
+                        cliBinary,
+                        session.cliEnv,
+                        "after-failed-unload-reload",
+                        unloadFixtures,
+                        unloadPreservationBefore
+                    );
+                }
+            } catch (diagnosticError) {
+                console.error("Could not capture conflict diagnostics:", diagnosticError);
+            }
+        }
+        throw error;
     } finally {
         if (session) {
             await session.app.stop();
