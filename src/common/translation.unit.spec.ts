@@ -18,7 +18,7 @@ describe("LiveSync-owned translation catalogue", () => {
     });
 
     it("retains typed placeholder substitution", () => {
-        expect($msg("moduleCheckRemoteSize.optionIncreaseLimit", { newMax: "800" }, "def")).toBe("increase to 800MB");
+        expect($msg("moduleCheckRemoteSize.optionIncreaseLimit", { newMax: "800" }, "def")).toBe("Increase to 800 MB");
     });
 
     it("keeps the active-file path compatibility warning concise", () => {

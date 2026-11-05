@@ -679,7 +679,7 @@ moduleCheckRemoteSize:
     option800MB: 800MB (Cloudant, fly.io)
     optionAskMeLater: Ask me later
     optionDismiss: Dismiss
-    optionIncreaseLimit: increase to ${newMax}MB
+    optionIncreaseLimit: Increase to ${newMax} MB
     optionNoWarn: No, never warn please
     optionReview: Review options
     optionRebuildAll: Rebuild Everything Now

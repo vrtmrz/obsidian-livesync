@@ -220,7 +220,7 @@ describe("Fetch restart confirmation regressions", () => {
         expect(confirmWithMessage).toHaveBeenCalledOnce();
         expect(confirmWithMessage.mock.calls[0][1]).toContain("example.invalid");
         expect(confirmWithMessage.mock.calls[0][1]).toContain(REMOTE_WINS);
-        expect(confirmWithMessage.mock.calls[0][1]).toContain(KEEP_LOCAL);
+        expect(confirmWithMessage.mock.calls[0][1]).toContain($msg(KEEP_LOCAL));
         expect(files.get(flagPath)).toBe(rememberedMarkdown);
     });
 

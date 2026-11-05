@@ -77,7 +77,9 @@ async function confirmTranslatedChoice(
     const selected = await host.services.UI.confirm.confirmWithMessage(title, message, labels, $msg(defaultAction), 0);
     if (selected === false) return false;
     const index = labels.indexOf(selected);
-    return index < 0 ? false : buttons[index];
+    if (index >= 0) return buttons[index];
+    const buttonIndex = buttons.indexOf(selected as AllMessageKeys);
+    return buttonIndex < 0 ? false : buttons[buttonIndex];
 }
 
 export async function askSimpleFetchMode(

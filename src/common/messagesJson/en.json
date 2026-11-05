@@ -521,7 +521,7 @@
     "moduleCheckRemoteSize.option800MB": "800MB (Cloudant, fly.io)",
     "moduleCheckRemoteSize.optionAskMeLater": "Ask me later",
     "moduleCheckRemoteSize.optionDismiss": "Dismiss",
-    "moduleCheckRemoteSize.optionIncreaseLimit": "increase to ${newMax}MB",
+    "moduleCheckRemoteSize.optionIncreaseLimit": "Increase to ${newMax} MB",
     "moduleCheckRemoteSize.optionNoWarn": "No, never warn please",
     "moduleCheckRemoteSize.optionRebuildAll": "Rebuild Everything Now",
     "moduleCheckRemoteSize.optionReview": "Review options",
