@@ -26,6 +26,12 @@ WebApp requires:
 
 Automated browser coverage uses Chromium. Other browsers, background execution, and remote types other than CouchDB remain experimental. Use feature detection rather than relying on a fixed browser-version list.
 
+## Path identity compatibility
+
+WebApp currently supports **Legacy path identity** (`pathNormalizationVersion: 0`) only. **Unicode NFC path identity** (`1`) is not yet supported. Use legacy identity in WebApp's `.livesync/settings.json` and on every client sharing its CouchDB database or P2P group, including new CLI and Obsidian environments which default to NFC.
+
+Changing the setting alone does not migrate an existing NFC database. Migration back to legacy identity requires a coordinated Rebuild and Fetch from a complete, authoritative Vault. Back up the Vault and database, and stop synchronisation on all clients before migrating. Keep WebApp disconnected until the migration is complete. See [Recovery and flag files](../../../docs/recovery.md) before rebuilding.
+
 ## Use
 
 Serve the built files over HTTPS, or from `localhost`, then open `webapp.html`.
@@ -44,6 +50,7 @@ For example, a minimal manually configured CouchDB connection includes:
     "couchDB_DBNAME": "vault",
     "isConfigured": true,
     "liveSync": true,
+    "pathNormalizationVersion": 0,
     "syncOnSave": true
 }
 ```

@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+- Unicode NFC path identity can be used with Object Storage and P2P on CLI and Obsidian clients. The setting is available under General Settings → File identity. Existing databases require a coordinated Rebuild and Fetch; physical file names and Chunk IDs stay unchanged. All P2P participants must be updated and migrated.
+    - New CLI settings and Obsidian manual onboarding use NFC. Existing settings and old Setup URIs retain legacy identity; initial central-remote setup follows the remote declaration. Existing databases still require the migration above.
+    - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
+
 ### Fixed
 
 #### Translations

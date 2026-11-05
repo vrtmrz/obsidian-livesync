@@ -8,6 +8,7 @@ import {
     LiveSyncCouchDBReplicator,
     type LiveSyncCouchDBReplicatorEnv,
 } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
+import { inspectDatabasePathIdentity } from "@vrtmrz/livesync-commonlib/replication";
 import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import { createReplicatorDisposer, snapshotRemoteSettings } from "./shared";
@@ -51,6 +52,20 @@ function createCouchDBConnectionProbe(
                 await connection.close();
             }
         },
+        inspectPathIdentity: async () => {
+            const connection = await replicator.connectRemoteCouchDBWithSetting(
+                { ...snapshot, encrypt: false },
+                replicator.isMobile(),
+                false,
+                false
+            );
+            if (typeof connection === "string") throw new Error(connection);
+            try {
+                return await inspectDatabasePathIdentity(connection.db);
+            } finally {
+                await connection.close();
+            }
+        },
         getStatus: () => replicator.getRemoteStatus(snapshot),
         dispose,
     };
@@ -70,6 +85,7 @@ function createObjectStorageConnectionProbe(
                 return { ok: false, reason: error };
             }
         },
+        inspectPathIdentity: () => replicator.inspectRemotePathIdentity(snapshot),
         getStatus: () => replicator.getRemoteStatus(snapshot),
         dispose,
     };

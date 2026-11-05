@@ -319,7 +319,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         ).toEqual(["Copy the current settings to a Setup URI", "Show QR code"]);
     });
 
-    it("keeps Appearance, Logging, and Extra menus inside General Settings", () => {
+    it("keeps Appearance, Logging, File identity, and Extra menus inside General Settings", () => {
         const tab = createSettingsTab();
         const definitions = tab.getSettingDefinitions();
         const general = definitions.find(
@@ -332,7 +332,19 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
             (item): item is SettingDefinitionPage => isPage(item) && item.name === "🎚️ Extra menus"
         );
 
-        expect(generalPages?.map(({ name }) => name)).toEqual(["🎨 Appearance", "📝 Logging", "🎚️ Extra menus"]);
+        expect(generalPages?.map(({ name }) => name)).toEqual([
+            "🎨 Appearance",
+            "📝 Logging",
+            "🗂️ File identity",
+            "🎚️ Extra menus",
+        ]);
+        const fileIdentity = generalPages?.find(({ name }) => name === "🗂️ File identity");
+        expect(
+            fileIdentity?.items?.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
+        ).toEqual(["pathNormalizationVersion"]);
+        expect(
+            fileIdentity?.items?.filter((item) => "action" in item && typeof item.action === "function")
+        ).toHaveLength(1);
         expect(
             appearance?.items?.flatMap((item) => ("control" in item && item.control ? [item.control.key] : []))
         ).toEqual([
@@ -390,7 +402,7 @@ describe("ObsidianLiveSyncSettingTab native page lifecycle", () => {
         const tab = createSettingsTab();
         const pages = collectPages(tab.getSettingDefinitions());
 
-        expect(pages).toHaveLength(14);
+        expect(pages).toHaveLength(15);
         expect(pages.map(({ name }) => name)).toEqual(
             expect.arrayContaining(
                 createSettingsPageCatalogue()

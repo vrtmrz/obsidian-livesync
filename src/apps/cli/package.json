@@ -39,7 +39,7 @@
     "dependencies": {
         "@aws-crypto/sha256-js": "5.2.0",
         "chokidar": "^4.0.0",
-        "minimatch": "^10.2.5",
+        "minimatch": "^11.0.3",
         "octagonal-wheels": "0.1.56",
         "pouchdb-adapter-http": "^9.0.0",
         "pouchdb-adapter-leveldb": "^9.0.0",

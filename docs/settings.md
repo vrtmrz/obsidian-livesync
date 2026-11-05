@@ -236,6 +236,21 @@ Setting key: showVerboseLog
 
 Show verbose log. Please enable when you report the logs
 
+### 3. File identity
+
+#### Unicode path identity
+
+Setting key: pathNormalizationVersion
+
+Version `0` preserves legacy file identity. Existing settings and Setup URIs which omit this field retain version `0`. New CLI settings and Obsidian manual onboarding use version `1` in the unreleased extension. On first manual setup or an unconfigured CLI's initial Fetch, an existing CouchDB or Object Storage declaration takes precedence; an unavailable or unsupported declaration stops setup. P2P Setup URIs carry the selected version; manual P2P setup requires matching settings on every peer. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. CouchDB support is released. The unreleased extension also supports Object Storage and P2P for the maintained CLI and Obsidian hosts. This is a common local database setting, independently of the active transport.
+
+Version `1` requires a coordinated migration: set it on the source client before Rebuild, then set it on each remaining client before Fetch. Changing the setting alone does not migrate existing Metadata. Follow [Migrate to Unicode NFC path identity](recovery.md#migrate-to-unicode-nfc-path-identity) for the complete procedure. Do not resume a version `0` client against the migrated remote.
+
+The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
+
+Distinct files or retained Metadata documents which derive the same identity stop reconstruction before either database is reset. When replacing the local database, Rebuild and Fetch exclude logical deletions without unresolved conflicts; a deleted winner with unresolved conflicts still participates in the check. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
+
+
 ## 3. Remote Configuration
 
 ### 1. Connection settings
@@ -1166,17 +1181,6 @@ When this setting is disabled, changing only the letter case of a file name with
 
 New Vaults use case-insensitive handling for cross-platform compatibility. Existing settings with an explicit value preserve that choice. Earlier releases also followed the case-insensitive branch when this value was absent, so 1.0 saves a missing legacy value as `false` without requiring a compatibility review or database rebuild.
 
-#### Unicode path identity
-
-Setting key: pathNormalizationVersion
-
-Version `0` preserves legacy file identity and is the default for existing and new settings. Version `1` uses Unicode NFC when deriving document IDs, so equivalent composed and decomposed paths identify the same file across the CLI and Obsidian. Existing physical file names are retained. This mode currently supports CouchDB only.
-
-Version `1` requires a coordinated migration: set it on the source client before Rebuild, then set it on each remaining client before Fetch. Changing the setting alone does not migrate existing Metadata. Follow [Migrate to Unicode NFC path identity](recovery.md#migrate-to-unicode-nfc-path-identity) for the complete procedure. Do not resume a version `0` client against the migrated remote.
-
-The selected value stays pending through ordinary settings saves and reloads. It becomes active only when the Rebuild or Fetch operation is successfully reserved; cancellation leaves it pending.
-
-Distinct files or retained Metadata documents which derive the same identity stop reconstruction before either database is reset. When replacing the local database, Rebuild and Fetch exclude logical deletions without unresolved conflicts; a deleted winner with unresolved conflicts still participates in the check. This check uses the host's supported file listing; Obsidian checks the paths exposed by its Vault APIs and cannot detect physical aliases hidden by its index. Resolve the duplicate names or synchronisation scope first; Self-hosted LiveSync does not merge them automatically. Case-insensitive handling also applies the existing letter-case rule.
 
 ### 4. Compatibility (Internal API Usage)
 

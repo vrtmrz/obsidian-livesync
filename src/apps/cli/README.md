@@ -418,7 +418,8 @@ The CLI uses the same settings format as the Obsidian plug-in. Create a `.livesy
 #### Unicode path identity
 
 The `pathNormalizationVersion` setting controls how file paths identify
-Metadata documents when using CouchDB. An absent value or `0` keeps the legacy
+Metadata documents. CouchDB support is released; the unreleased extension also
+supports Object Storage and P2P. An absent value or `0` keeps the legacy
 identity. Version `1` uses Unicode Normalization Form C (NFC) for Metadata IDs
 and path comparison keys. It does not rewrite `Metadata.path`, rename existing
 files, or change Chunks or file content. `handleFilenameCaseSensitive` remains
@@ -442,8 +443,11 @@ with `--force --write-settings`. Set the same value on each remaining CLI
 client, then run `fetch` with `--force --write-settings`. Use **Overwrite
 Server Data with This Device's Files** and **Reset Synchronisation on This
 Device** for the corresponding Obsidian Rebuild and Fetch operations. Resolve
-any ambiguous names before reconstruction. Version `1` is supported with
-CouchDB only; do not resume a legacy client against the rebuilt database.
+any ambiguous names before reconstruction. Object Storage Rebuild replaces the
+remote journals as well as the local database. P2P Rebuild prepares only the
+source local database; keep that peer online for the other devices to Fetch.
+Every P2P participant must be updated and migrated. Do not resume a legacy
+client against the rebuilt database.
 
 ### Command-line Reference
 

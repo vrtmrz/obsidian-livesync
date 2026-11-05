@@ -34,6 +34,7 @@ export type RemoteActivitySnapshot = {
     responseCount: number;
     statusBarFound: boolean;
     statusBarText: string;
+    indicatorElements?: Array<{ text: string; inactive: boolean; ariaHidden: string | null; display: string }>;
 };
 
 export type ExpectedRemoteActivityState =
@@ -88,14 +89,26 @@ async function readRemoteActivitySnapshotFromPage(page: Page): Promise<RemoteAct
                 gateKind: gate?.kind,
                 requestCount: Number(core.services?.API?.requestCount?.value ?? -1),
                 remoteOperationIndicatorVisible: statusBars.some((element) =>
-                    (element.textContent ?? "").includes(operationIcon)
+                    element.innerText.includes(operationIcon)
                 ),
-                remoteRequestIndicatorVisible: statusBars.some((element) =>
-                    (element.textContent ?? "").includes(requestIcon)
-                ),
+                remoteRequestIndicatorVisible: statusBars.some((element) => element.innerText.includes(requestIcon)),
                 responseCount: Number(core.services?.API?.responseCount?.value ?? -1),
                 statusBarFound: statusBars.length > 0,
-                statusBarText: statusBars.map((element) => element.textContent ?? "").join("\n"),
+                statusBarText: statusBars.map((element) => element.innerText).join("\n"),
+                indicatorElements: Array.from(
+                    document.querySelectorAll<HTMLElement>(".syncstatusbar .livesync-stat-item")
+                )
+                    .filter(
+                        (element) =>
+                            (element.textContent ?? "").includes(operationIcon) ||
+                            (element.textContent ?? "").includes(requestIcon)
+                    )
+                    .map((element) => ({
+                        text: element.textContent ?? "",
+                        inactive: element.classList.contains("livesync-stat-inactive"),
+                        ariaHidden: element.getAttribute("aria-hidden"),
+                        display: getComputedStyle(element).display,
+                    })),
             } satisfies RemoteActivitySnapshot;
         },
         {
@@ -141,7 +154,7 @@ export async function waitForRemoteActivityState(
                     if (!core) return false;
                     const gate = (globalThis as unknown as Record<string, RuntimeGate | undefined>)[stateKey];
                     const statusBarText = Array.from(document.querySelectorAll<HTMLElement>(".syncstatusbar"))
-                        .map((element) => element.textContent ?? "")
+                        .map((element) => element.innerText)
                         .join("\n");
                     const bounded = Number(core.services?.replicator?.boundedRemoteActivityCount?.value ?? -1);
                     const finite = Number(core.services?.replicator?.finiteReplicationActivityCount?.value ?? -1);
