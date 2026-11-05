@@ -51,6 +51,17 @@ describe("NodeFileSystemAdapter file enumeration", () => {
         expect((await adapter.getFiles()).map((file) => file.path).sort()).toEqual(paths);
     });
 
+    it.skipIf(process.platform === "win32")(
+        "compatibility: lists other files in Legacy mode when one root name is unsupported",
+        async () => {
+            const { directory, adapter } = await createVault();
+            await fs.writeFile(path.join(directory, "a:unrelated.md"), "unrelated local bytes");
+
+            expect((await adapter.getFiles()).map((file) => file.path).sort()).toEqual(paths);
+            expect(await fs.readFile(path.join(directory, "a:unrelated.md"), "utf8")).toBe("unrelated local bytes");
+        }
+    );
+
     it("excludes a deleted file after its cache entry is refreshed", async () => {
         const { directory, adapter } = await createVault();
         await adapter.getFiles();
