@@ -13,9 +13,10 @@ Accepted on 2026-10-17. Unicode NFC path identity was released in Self-hosted
 LiveSync 1.0.38 with Commonlib 0.1.42. Local validation evidence and platform
 limits are recorded in the design document.
 
-The maintained design now also describes an unreleased Journal and P2P
-extension and the move to General Settings. The decision below retains the
-initial CouchDB support boundary and original acceptance date.
+The maintained design also records the Journal and P2P extension, the move to
+General Settings, and new-environment defaults included in Self-hosted LiveSync
+1.0.45 with Commonlib 0.3.2. The decision below retains the initial CouchDB
+support boundary and original acceptance date.
 
 ## Context
 
@@ -106,7 +107,9 @@ preflight uses the supported host listing and local Metadata. It refuses
 ambiguous file or parent-directory candidates before database reconstruction;
 it does not claim to detect physical aliases which a host does not expose.
 
-## Unreleased extension: defaults for new environments
+<a id="unreleased-extension-defaults-for-new-environments"></a>
+
+## Journal and P2P extension: defaults for new environments
 
 The later Journal and P2P extension uses NFC for newly generated CLI settings
 and Obsidian manual onboarding. It retains legacy defaults for stored settings

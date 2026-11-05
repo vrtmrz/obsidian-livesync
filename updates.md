@@ -12,49 +12,86 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-- Unicode NFC path identity can be used with Object Storage and P2P on CLI and Obsidian clients. The setting is available under General Settings → File identity. Existing databases require a coordinated Rebuild and Fetch; physical file names and Chunk IDs stay unchanged. All P2P participants must be updated and migrated.
-    - New CLI settings and Obsidian manual onboarding use NFC. Existing settings and old Setup URIs retain legacy identity; initial central-remote setup follows the remote declaration. Existing databases still require the migration above.
-    - Object Storage checks the selected identity before Fetch replaces the local database and before ordinary remote administration changes its milestone. Rebuild preserves the old identity until the remote journals have been deleted.
+## 1.0.45
+
+5th November, 2026
+
+Some of my recent replies have been sporting the Codex icon. Rest assured: I simply ask Codex to polish my English and discreetly intercept the occasional ill-judged remark before I post.
+
+### New Feature
+
+#### Synchronisation
+
+- We can recognise equivalent composed and decomposed Unicode file names as the same file when synchronising through Object Storage or P2P. (#1309)
+    - Select **Unicode NFC path identity** under **General Settings** → **File identity**. Supported by the CLI and Obsidian; physical file names and Chunk IDs remain unchanged.
+    - To migrate a Legacy database, update every participating client, stop synchronisation and editing, and preserve a complete, backed-up authoritative Vault, unique edits, and required history. Resolve colliding names before Rebuild on the source and Fetch on the remaining devices. With P2P, Rebuild prepares only the source database; keep that device online for Fetch.
+    - New CLI settings and Obsidian manual setup use NFC. Existing settings and older Setup URIs retain Legacy identity; initial CouchDB or Object Storage setup follows the remote's declared identity.
+    - Object Storage remotes with existing Journals but no compatibility declaration also require Rebuild, even in Legacy mode.
 
 ### Fixed
 
 #### Object Storage
 
-- Failed Journal writes now stop replication instead of silently passing over missing records. After correcting the cause, the next replication with the same local database retries the failed Journal.
-    - If a Journal cannot be recovered and missing content or history is acceptable, **Maintenance → Syncing → Skip stopped Journal and resume** asks for confirmation of its exact key and failure stage, then skips only that Journal and resumes receipt. The next Journal failure still stops replication. The action does not add a persistent ignore setting.
-    - **Reset journal received history** replays Journals which remain available remotely, except those sent by this device. It cannot recreate missing remote Journals; earlier failures already silently acknowledged also require this explicit replay.
+- Journal receive failures now stop replication instead of silently passing over records which could not be decoded, processed, or saved. (#1318)
+    - After correcting the cause, retry replication with the same local database to receive the failed Journal again.
+    - If a Journal cannot be recovered and missing content or history is acceptable, use **Maintenance** → **Syncing** → **Skip stopped Journal and resume**. The confirmation identifies its exact key and failure stage. Only that Journal is skipped; the next failure still stops receipt.
+    - Journals already passed over by an earlier version require **Reset journal received history** to be replayed. This re-reads Journals still available remotely, except those sent by this device, and cannot recreate missing remote Journals.
+
+- A remote-only Rebuild resends the local database even when the Object Storage remote is already empty and this device retains its earlier transfer progress.
 
 #### Synchronisation
 
-- We can synchronise and Fetch an encrypted CouchDB remote when the Internal API retains responses from before a Rebuild. (#1234)
-    - Metadata and Chunk reads use a cache URL derived from the startup time and Security Seed together. The URL remains stable within the same startup and Seed.
-    - The advanced CouchDB setting **Use headers only for HTTP cache control (compatibility)** is disabled by default. Enable it only if your server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
+- CouchDB synchronisation and Fetch no longer fail with decryption errors caused by stale encrypted responses in the Internal API cache after a Rebuild or plug-in restart. (#1234)
+    - Reads use a cache query parameter based on the current start-up and Security Seed.
+    - **Use headers only for HTTP cache control (compatibility)** under **Power users** → **CouchDB Connection Tweak** is disabled by default. Enable it only if the server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
 
 #### Conflict resolution
 
-- Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
-    - Open conflict dialogues for ordinary files close immediately, and queued checks report cancellation. Operations already running retain their normal completion or failure path.
+- Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Late logs remain available in Obsidian's console.
+    - Open conflict dialogues for ordinary files close immediately, and queued checks report cancellation.
 
-#### WebApp
+#### Settings
 
-- The experimental WebApp stops before opening its database or processing files when its settings select unsupported NFC path identity. It reports the Legacy-only requirement and preserves the selected Vault files and settings. This does not migrate an NFC database to Legacy identity.
+- The English description of **Do not split chunks in the background** now correctly states that enabling the setting moves Chunk splitting to the UI thread. (#1313)
 
 #### Translations
 
-- The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. (#1298) Thank you to @cwatanab for the contribution!
-    - Hebrew interface messages also display their referenced labels correctly.
+- The notice shown when a translation is available now displays the **Display Language** setting label correctly in English, French, Hebrew, Russian, and Simplified Chinese. Hebrew interface messages also display their referenced labels correctly. (#1298)
+
+#### WebApp
+
+- The experimental WebApp rejects unsupported NFC path identity before opening its database or processing Vault files, preserving the selected files and settings.
+    - WebApp remains Legacy-only. Changing the setting does not migrate an NFC database.
+
+### Improved
+
+#### Translations
+
+- More of the interface is available in Japanese, including dialogue buttons, Vault history, SyncGuard, inspection reports, and Fetch restart confirmations. Japanese setup and settings guides have also been refreshed. (#1317)
 
 ### CLI
 
+#### New Feature
+
+- We can resume Object Storage receipt after deliberately skipping one unrecoverable Journal with `journal-skip <journal-key>`.
+    - Retry `sync` with `--debug` to inspect the stopped Journal key and failure stage. The command retries replication first and skips only the supplied Journal if it remains stopped.
+    - Use this only when missing content or history is acceptable. The next Journal failure still stops receipt.
+
 #### Fixed
 
-- CLI `fetch` and `rebuild` no longer replay pending file updates from the previous database during startup. The saved queue is discarded only after the local database reset succeeds.
+- `fetch` and `rebuild` no longer replay pending file updates from the previous database at start-up. The old pending updates are discarded only after the local database reset succeeds.
+- `fetch` and `daemon` can write received files to the Vault when `handleFilenameCaseSensitive` is enabled. The CLI detects whether the Vault filesystem distinguishes letter case. (#1319)
+- NFC file lookups and directory scans report permission and I/O failures. Unreadable files are no longer treated as absent, and incomplete scans no longer count as successful.
 
-- CLI `fetch` and `daemon` can write received files to the Vault when `handleFilenameCaseSensitive` is enabled. The CLI now detects whether the Vault filesystem distinguishes letter case. (#1319)
+### Miscellaneous
 
-- Commonlib warnings now appear on stderr without `--debug`, so deliberately skipped Journals and other important notices remain visible during ordinary CLI use.
+- Updated dependencies.
 
-- NFC file lookups and directory scans report permission and I/O failures instead of treating unreadable files as absent or returning a successful partial scan. A scan retains the comparison settings with which it began.
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @cwatanab, for improving Japanese translations and documentation, correcting translated labels, and correcting the Chunk splitting setting description (#1298, #1313, #1317).
 
 ## 1.0.44
 
@@ -286,34 +323,3 @@ This has turned into a slightly larger set of changes overall, but I have finall
 ### CLI
 
 - Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.
-
-## 1.0.39
-
-20th October, 2026
-
-I have been finding troubleshooting difficult, so I decided to go back to basics and prepare the tools we need.
-
-### Synchronisation
-
-#### Fixed
-
-- We can migrate to NFC path identity when deletion or rename history would otherwise block Rebuild or Fetch. (#1259)
-    - Logical deletions without unresolved conflicts no longer block operations which replace the local database. Conflicting histories and ambiguous current files still require review.
-
-### Diagnostics
-
-- We can inspect file differences and current conflicts across the local database, CouchDB, and the Vault without changing databases or settings.
-    - Integrity inspection compares Metadata for normal files and checks content for suspect groups. **Include remote database** is enabled by default and can be cleared for one run. Reports distinguish an excluded remote from an unavailable source and retain the evidence collected so far.
-- We can share reports using pseudonyms and find the affected files locally for follow-up.
-    - Integrity and Usage offer original names or pseudonyms before each run, and omit file contents and credentials in both modes. Path pseudonyms use a random public salt for each report; revision pseudonyms retain their generation number.
-    - The Hatch lookup searches current Vault paths and local Metadata for normal files. It preserves separate document IDs for the same path and can prepare a report for the selected document using the original salt. Public salts permit guessed-path checks.
-- We can follow progress in large inspections and stop work when enough evidence has been collected.
-    - Integrity shows counts and a gauge for each stage, reduces remote requests with bulk reads and bounded concurrency, and logs read and request timings. Usage shows revision discovery with a growing total, followed by cancellable accounting.
-    - Closing a follow-up dialogue stops further reads after the active read settles. Complete Usage reports retain the existing TSV columns; partial reports use JSON to retain their status and reasons.
-- We can read and share large Integrity reports more easily.
-    - Compact Markdown retains every observation and its follow-up references, with state counts, a review index, and a field guide. It includes available size, modification-time, Chunk-reference, and case/NFC evidence without additional database or Vault reads. JSON retains the full structure.
-    - Markdown reports use a collapsible code block for sharing in issues. Review candidates indicate where to investigate; they do not establish corruption, and unchecked content remains distinct from healthy content.
-- We can find reporting actions more easily in Hatch and keep report controls visible in smaller windows.
-    - The five reporting tools are grouped separately from checks, recovery, and reset operations. Name and format choices remain visible, and the report preview resizes around the controls.
-- We can request and provide targeted troubleshooting evidence through the issue-reporting guide.
-    - Direct links cover Integrity, Usage, pseudonym lookup, and follow-up reports, with request examples for issue discussions.

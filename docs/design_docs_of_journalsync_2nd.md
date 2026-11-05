@@ -2,9 +2,10 @@
 
 Implementation note: the receive-failure correction and single-Journal skip
 API are published in [Commonlib 0.3.2](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.3.2).
-The Self-hosted LiveSync host action remains unreleased. The owning contract
-is Commonlib's
-[Journal receive failures and recovery](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/journal-receive-recovery.md).
+The Self-hosted LiveSync UI and CLI recovery actions are included in
+Self-hosted LiveSync 1.0.45 with Commonlib 0.3.2. The owning contract is in
+Commonlib's [Journal receive failures and
+recovery](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/journal-receive-recovery.md).
 The receiver acknowledges successful processing, stops on failure by default,
 and retries from that Journal with the same database. Explicit skipping does
 not establish Vault reflection success. The host action names one stopped
