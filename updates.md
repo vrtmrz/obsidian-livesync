@@ -24,6 +24,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - If a Journal cannot be recovered and missing content or history is acceptable, **Maintenance → Syncing → Skip stopped Journal and resume** asks for confirmation of its exact key and failure stage, then skips only that Journal and resumes receipt. The next Journal failure still stops replication. The action does not add a persistent ignore setting.
     - **Reset journal received history** replays Journals which remain available remotely, except those sent by this device. It cannot recreate missing remote Journals; earlier failures already silently acknowledged also require this explicit replay.
 
+#### Synchronisation
+
+- We can synchronise and Fetch an encrypted CouchDB remote when the Internal API retains responses from before a Rebuild. (#1234)
+    - Metadata and Chunk reads use a cache URL derived from the startup time and Security Seed together. The URL remains stable within the same startup and Seed.
+    - The advanced CouchDB setting **Use headers only for HTTP cache control (compatibility)** is disabled by default. Enable it only if your server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
+
 #### Conflict resolution
 
 - Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.
