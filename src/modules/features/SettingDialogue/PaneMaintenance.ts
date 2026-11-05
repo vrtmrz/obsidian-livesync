@@ -9,7 +9,7 @@ import { LOG_LEVEL_NOTICE, Logger } from "@vrtmrz/livesync-commonlib/compat/comm
 import { FlagFilesHumanReadable, FlagFilesOriginal } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fireAndForget } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { LiveSyncCouchDBReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator";
-import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import { isLiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
 import type { StoppedJournal } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab";
@@ -154,6 +154,9 @@ export function paneMaintenance(
             )
             .addOnUpdate(this.onlyOnCouchDB);
 
+        // Offer manual recovery after Journal receipt stops on a failure. Normal retries
+        // revisit the same Journal; this action confirms and skips only that Journal,
+        // resumes receipt, and still stops at the next Journal failure.
         new Setting(paneEl)
             .setName($msg("Skip stopped Journal and resume"))
             .setDesc(
@@ -167,7 +170,7 @@ export function paneMaintenance(
                     .setDisabled(false)
                     .onClick(async () => {
                         const replicator = this.core.replicator;
-                        if (!(replicator instanceof LiveSyncJournalReplicator)) {
+                        if (!isLiveSyncJournalReplicator(replicator)) {
                             new Notice(
                                 $msg(
                                     "No stopped Journal is available. Retry replication to identify the stopped Journal."

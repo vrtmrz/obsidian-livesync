@@ -28,7 +28,7 @@ import {
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
-import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator";
+import { runJournalSkipCommand } from "./journalSkip";
 import {
     isCentralRemoteAdministrationCommand,
     runCentralRemoteAdministrationCommand,
@@ -201,61 +201,13 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
     }
 
     if (options.command === "journal-skip") {
-        const [journalKey] = options.commandArgs;
-        if (options.commandArgs.length !== 1 || journalKey === undefined || journalKey.length === 0) {
-            writeStderrLine(standardIo, `[Error] journal-skip requires one argument: <journal-key>`);
-            return false;
-        }
-
-        writeStdoutLine(standardIo, `[Command] journal-skip ${journalKey}`);
-        const replicatorBeforeReplication = core.services.replicator.getActiveReplicator();
-        const result = await core.services.replication.replicateUserInitiated({
-            trigger: "manual",
-            progressPresentation: REPLICATION_PROGRESS_PRESENTATIONS.NOTICE,
-            interaction: USER_INITIATED_REPLICATION_AUTHORITY,
+        return await runJournalSkipCommand(options, {
+            standardIo,
+            getActiveReplicator: () => core.services.replicator.getActiveReplicator(),
+            replicateUserInitiated: (replicationOptions) =>
+                core.services.replication.replicateUserInitiated(replicationOptions),
+            currentSettings: () => core.services.setting.currentSettings(),
         });
-        const activeReplicator = core.services.replicator.getActiveReplicator();
-
-        if (activeReplicator !== replicatorBeforeReplication) {
-            writeStderrLine(
-                standardIo,
-                `[Error] The active replicator changed during replication; no Journal was skipped.`
-            );
-            return false;
-        }
-        if (isReplicationCompleted(result)) {
-            writeStderrLine(
-                standardIo,
-                `[Error] Replication completed without a stopped Journal; no Journal was skipped.`
-            );
-            return false;
-        }
-        if (!(activeReplicator instanceof LiveSyncJournalReplicator)) {
-            writeStderrLine(
-                standardIo,
-                `[Error] The active replicator is not a Journal replicator; no Journal was skipped.`
-            );
-            return false;
-        }
-
-        const stoppedJournal = activeReplicator.getStoppedJournal();
-        if (!stoppedJournal) {
-            writeStderrLine(standardIo, `[Error] Replication did not stop at a Journal; no Journal was skipped.`);
-            return false;
-        }
-        if (stoppedJournal.key !== journalKey) {
-            writeStderrLine(
-                standardIo,
-                `[Error] Replication stopped at Journal '${stoppedJournal.key}' (${stoppedJournal.stage}), not '${journalKey}'; no Journal was skipped.`
-            );
-            return false;
-        }
-
-        return await activeReplicator.skipStoppedJournalAndResume(
-            core.services.setting.currentSettings(),
-            stoppedJournal,
-            true
-        );
     }
 
     if (options.command === "p2p-peers") {

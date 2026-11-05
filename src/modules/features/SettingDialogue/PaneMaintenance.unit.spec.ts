@@ -51,9 +51,13 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/common/utils", () => ({
 vi.mock("@vrtmrz/livesync-commonlib/compat/replication/couchdb/LiveSyncReplicator", () => ({
     LiveSyncCouchDBReplicator: class {},
 }));
-vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator", () => ({
-    LiveSyncJournalReplicator: class {},
-}));
+vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalReplicator", () => {
+    class LiveSyncJournalReplicator {}
+    return {
+        LiveSyncJournalReplicator,
+        isLiveSyncJournalReplicator: (value: unknown) => value instanceof LiveSyncJournalReplicator,
+    };
+});
 vi.mock("./LiveSyncSetting.ts", () => ({
     LiveSyncSetting: class {
         name = "";
