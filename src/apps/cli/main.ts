@@ -378,10 +378,15 @@ export async function main(
         const writeLine = avoidStdoutNoise ? writeStderrLine : writeStdoutLine;
         writeLine(standardIo, ...values);
     };
-    setGlobalLogFunction((msg, level) => {
-        if (!options.debug && level !== LOG_LEVEL_NOTICE && level !== LOG_LEVEL_URGENT) return;
-        writeStderrLine(standardIo, `[${level}]`, msg);
-    });
+    if (options.debug) {
+        setGlobalLogFunction((msg, level) => {
+            writeStderrLine(standardIo, `[${level}]`, msg);
+        });
+    } else {
+        setGlobalLogFunction((msg, level) => {
+            // NO OP, leave it to logFunction
+        });
+    }
     if (options.command === "init-settings") {
         await createDefaultSettingsFile(options, standardIo);
         return;

@@ -79,15 +79,6 @@ describe("CLI log handler", () => {
     it.each([
         ["NOTICE", LOG_LEVEL_NOTICE],
         ["URGENT", LOG_LEVEL_URGENT],
-    ] as const)("writes Commonlib %s diagnostics to stderr by default", async (name, level) => {
-        const message = `Commonlib ${name} diagnostic`;
-        const standardIo = await invokeGlobalLogger(databasePath, message, level);
-
-        expect(standardIo.writeStderr).toHaveBeenCalledWith(expect.stringContaining(`[${level}] ${message}\n`));
-        expect(standardIo.writeStdout).not.toHaveBeenCalledWith(expect.stringContaining(message));
-    });
-
-    it.each([
         ["DEBUG", LOG_LEVEL_DEBUG],
         ["INFO", LOG_LEVEL_INFO],
         ["VERBOSE", LOG_LEVEL_VERBOSE],
@@ -101,6 +92,8 @@ describe("CLI log handler", () => {
 
     it("writes detailed Commonlib diagnostics to stderr in debug mode", async () => {
         const messages = [
+            ["NOTICE", LOG_LEVEL_NOTICE],
+            ["URGENT", LOG_LEVEL_URGENT],
             ["DEBUG", LOG_LEVEL_DEBUG],
             ["INFO", LOG_LEVEL_INFO],
             ["VERBOSE", LOG_LEVEL_VERBOSE],

@@ -116,6 +116,11 @@ saved. After correcting the cause, run `sync` again with the same database and
 settings to retry it. Existing partial writes are retained. `fetch --force`
 replaces the local database instead and follows the reconstruction rules below.
 
+A failed `sync` prints `[Error] Command 'sync' failed` and exits with code `1`.
+To inspect the Journal key, failure stage, and diagnostic details, retry with
+`--debug`, for example `livesync-cli ./my-db --debug sync`, retaining the same
+database and settings. Debug diagnostics are written to standard error.
+
 If the Journal cannot be recovered and missing content or history is
 acceptable, run `journal-skip <journal-key>`. The CLI first performs normal
 replication with the retained local database. It skips only when that attempt

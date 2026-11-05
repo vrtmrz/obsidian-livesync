@@ -247,9 +247,12 @@ async function runScenario(encrypt: boolean): Promise<void> {
         assert.notEqual(finalRevision, firstRevision);
 
         await withCorruptedJournals(client, minioBucket, [brokenJournalKey, secondBrokenJournalKey], async () => {
-            const failedSync = await tryDefault("--debug", "sync");
-            assert.notEqual(failedSync.code, 0, "Default receive must report failure for a corrupt Journal");
-            assert.match(failedSync.combined, /receive journal error|journal.*failed|replication.*failed/i);
+            const failedSync = await tryDefault("sync");
+            assert.equal(failedSync.code, 1, "Default receive must report failure for a corrupt Journal");
+            assert.match(failedSync.stderr, /\[Error\] Command 'sync' failed/);
+            const debugRetry = await tryDefault("--debug", "sync");
+            assert.equal(debugRetry.code, 1, "Debug retry must still report the corrupt Journal");
+            assert.ok(debugRetry.stderr.includes(`Receive Journal ${brokenJournalKey} failed at `));
 
             const checkpoint = await readReceivedJournalKeys(defaultDatabase);
             assert.ok(checkpoint.has(firstJournalKey), "Completed earlier Journal must remain checkpointed");
@@ -307,14 +310,12 @@ async function runScenario(encrypt: boolean): Promise<void> {
                 `Skipping the first Journal should stop at the next broken Journal: ${firstSkip.combined}`
             );
             assert.ok(firstSkip.combined.includes(brokenJournalKey), "The first skip must identify its Journal key");
+            assert.match(firstSkip.stderr, /\[Error\] Command 'journal-skip' failed/);
+            const nextFailure = await trySkip("--debug", "sync");
+            assert.equal(nextFailure.code, 1, "Debug retry must stop at the next broken Journal");
             assert.ok(
-                firstSkip.combined.includes(secondBrokenJournalKey),
-                "Resumed replication must stop and identify the next broken Journal"
-            );
-            assert.match(
-                firstSkip.combined,
-                /decrypt|inflate|decompress|decode|parse|persist|apply/i,
-                "The first skip attempt must report the failed Journal processing stage"
+                nextFailure.stderr.includes(`Receive Journal ${secondBrokenJournalKey} failed at `),
+                "Debug retry must identify the next broken Journal and its failure stage"
             );
 
             const firstSkipCheckpoint = await readReceivedJournalKeys(skipDatabase);
@@ -331,7 +332,7 @@ async function runScenario(encrypt: boolean): Promise<void> {
             assert.notEqual((await trySkip("cat", secondBrokenPath)).code, 0);
             assert.notEqual((await trySkip("cat", laterPath)).code, 0);
 
-            const secondSkip = await trySkip("journal-skip", secondBrokenJournalKey);
+            const secondSkip = await trySkip("--debug", "journal-skip", secondBrokenJournalKey);
             assert.equal(secondSkip.code, 0, `Explicit second skip should resume replication: ${secondSkip.combined}`);
             assert.ok(secondSkip.combined.includes(secondBrokenJournalKey), "The second skip must identify its key");
             assert.match(
