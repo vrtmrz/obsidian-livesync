@@ -446,8 +446,9 @@ The CLI uses the same settings format as the Obsidian plug-in. Create a `.livesy
 #### Unicode path identity
 
 The `pathNormalizationVersion` setting controls how file paths identify
-Metadata documents. CouchDB support is released; the unreleased extension also
-supports Object Storage and P2P. An absent value or `0` keeps the legacy
+Metadata documents. CouchDB support was first released in Self-hosted LiveSync
+`1.0.38`; Object Storage and P2P support is included in Self-hosted LiveSync
+`1.0.45` with Commonlib `0.3.2`. An absent value or `0` keeps the legacy
 identity. Version `1` uses Unicode Normalization Form C (NFC) for Metadata IDs
 and path comparison keys. It does not rewrite `Metadata.path`, rename existing
 files, or change Chunks or file content. `handleFilenameCaseSensitive` remains

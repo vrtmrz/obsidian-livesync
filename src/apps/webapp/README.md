@@ -28,7 +28,7 @@ Automated browser coverage uses Chromium. Other browsers, background execution, 
 
 ## Path identity compatibility
 
-WebApp currently supports **Legacy path identity** (`pathNormalizationVersion: 0`) only. **Unicode NFC path identity** (`1`) is not yet supported. WebApp rejects NFC settings before creating its services or opening its local database; it reports the reason and leaves the Vault files and settings unchanged. Use legacy identity in WebApp's `.livesync/settings.json` and on every client sharing its CouchDB database or P2P group, including new CLI and Obsidian environments which default to NFC.
+WebApp currently supports **Legacy path identity** (`pathNormalizationVersion: 0`) only. **Unicode NFC path identity** (`1`) is not yet supported. WebApp rejects NFC settings before creating its services or opening its local database; it reports the reason and leaves the Vault files and settings unchanged. Use legacy identity in WebApp's `.livesync/settings.json` and on every client sharing its CouchDB database or P2P group, including CLI settings and Obsidian manual onboarding from Self-hosted LiveSync `1.0.45`, which default to NFC.
 
 The File System Access API can supply the directory listings and handles needed
 for NFC resolution. Commonlib provides that adapter, but WebApp has not yet

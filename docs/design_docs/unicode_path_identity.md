@@ -25,19 +25,22 @@ release.
 Commonlib `0.3.0` publishes the Journal and P2P path-identity protocol
 extension. The matching Self-hosted LiveSync CLI and Obsidian host adoption,
 including moving the setting to General Settings and defaulting new
-synchronisation environments to NFC, remains an unreleased candidate tracked
-by [pull request #1309](https://github.com/vrtmrz/obsidian-livesync/pull/1309).
-The original dates and reviewed versions above remain the historical baseline.
+synchronisation environments to NFC, is included in Self-hosted LiveSync
+`1.0.45` with Commonlib `0.3.2`. The development candidate was tracked by [pull request #1309](https://github.com/vrtmrz/obsidian-livesync/pull/1309);
+the original dates and reviewed versions above remain the historical baseline.
 
-## Unreleased shared storage boundary
+<a id="unreleased-shared-storage-boundary"></a>
+
+## Shared storage boundary
 
 Commonlib `0.3.1` publishes the shared storage-path contract, including
-its Unicode resolver and typed physical-I/O ports. The LiveSync candidate
-adopts the shared resolver and typed physical-I/O ports in the CLI. Obsidian
-adopts shared namespace and comparison helpers while retaining its Vault APIs
-and existing alias-guard policy. Each NFC scan retains one comparison-policy
-snapshot; directory and permission errors propagate instead of producing a
-successful partial scan. LiveSync's host adoption remains unreleased. The
+its Unicode resolver and typed physical-I/O ports. The LiveSync CLI adopts
+the shared resolver and typed physical-I/O ports, while Obsidian adopts
+shared namespace and comparison helpers and retains its Vault APIs and
+existing alias-guard policy. These host changes are included in Self-hosted
+LiveSync `1.0.45` with Commonlib `0.3.2`. Each NFC scan retains one
+comparison-policy snapshot; directory and permission errors propagate
+instead of producing a successful partial scan. The
 [developer guide](../../devs.md#file-path-handling) links the Commonlib design
 and ADR.
 
@@ -47,7 +50,7 @@ and ADR.
 | --- | --- |
 | Logical identity | Version `1` uses NFC for Metadata ID and path comparison keys. Existing case handling remains a separate rule. Missing and `0` retain legacy behaviour. |
 | Stored paths and content | Keep the spelling in `Metadata.path` and existing physical Vault names. NFC does not change Chunk IDs or content. |
-| Maintained hosts and transports | CLI and Obsidian with CouchDB are released; their Journal and P2P host adoption remains unreleased. See the support matrix below. |
+| Maintained hosts and transports | CLI and Obsidian with CouchDB were first released in Self-hosted LiveSync `1.0.38`; their Journal and P2P host support is included in `1.0.45` with Commonlib `0.3.2`. See the support matrix below. |
 | Other consumers | Direct-file access and other host adapters are covered separately below; shared path primitives alone do not enable NFC in an application. |
 | Migration | Rebuild both databases from one complete authoritative Vault, then Fetch each remaining client. Do not rewrite IDs or merge histories in place. |
 
@@ -84,9 +87,9 @@ store.
 
 ## Initial settings and existing environments
 
-The unreleased extension uses version `1` for newly generated CLI settings and
-Obsidian manual onboarding. Stored settings and old Setup URIs with no path
-version retain `0`. Commonlib's shared settings defaults remain `0`, so this
+Self-hosted LiveSync `1.0.45` uses version `1` for newly generated CLI settings
+and Obsidian manual onboarding. Stored settings and old Setup URIs with no
+path version retain `0`. Commonlib's shared settings defaults remain `0`, so this
 host policy does not extend to WebApp or WebPeer. An absent settings file alone
 does not establish that an existing local database is new.
 
@@ -200,8 +203,9 @@ preflight failure. If a required setup decision cannot be made in a headless
 CLI invocation, the command must fail with a clear remediation message rather
 than report success after cancellation.
 
-The unreleased CLI correction for #1304 always retains the Rebuilder's selected
-local database suffix after successful `fetch` or `rebuild`. `--write-settings`
+The CLI correction for #1304 is included in Self-hosted LiveSync `1.0.44` and
+always retains the Rebuilder's selected local database suffix after successful
+`fetch` or `rebuild`. `--write-settings`
 still controls other lasting settings changes. Earlier versions required that
 option to retain the database selection; omitting it could reopen the previous
 database on the next invocation. The examples retain the option for compatibility.
@@ -232,11 +236,11 @@ updates and deletions.
 
 ## Compatibility matrix
 
-| Host or API | Published baseline | Unreleased or host-specific status |
+| Host or API | Published baseline | Current support or host-specific status |
 | --- | --- | --- |
-| CLI and Obsidian with CouchDB | NFC identity is supported from Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`. | Commonlib `0.3.1` publishes the shared storage-path contract. LiveSync's CLI adoption of the shared resolver and typed physical-I/O ports, and its Obsidian adoption of shared namespace and comparison helpers, remain unreleased. |
-| CLI and Obsidian with Journal | Commonlib `0.3.0` publishes the NFC protocol support. | Matching LiveSync host adoption remains an unreleased candidate tracked by [pull request #1309](https://github.com/vrtmrz/obsidian-livesync/pull/1309). Update and migrate every client before using version `1`. |
-| CLI and Obsidian with P2P | Commonlib `0.3.0` publishes the NFC protocol support. | Matching LiveSync host adoption remains an unreleased candidate. All peers must use the same path version; P2P warns and continues for ordinary representation or case differences. |
+| CLI and Obsidian with CouchDB | NFC identity is supported from Self-hosted LiveSync `1.0.38` with Commonlib `0.1.42`. | Commonlib `0.3.1` publishes the shared storage-path contract; LiveSync's CLI resolver and Obsidian namespace and comparison-helper adoption are included in Self-hosted LiveSync `1.0.45` with Commonlib `0.3.2`. |
+| CLI and Obsidian with Journal | Commonlib `0.3.0` publishes the NFC protocol support. | Matching host adoption is included in Self-hosted LiveSync `1.0.45` with Commonlib `0.3.2`. Update and migrate every client before using version `1`. |
+| CLI and Obsidian with P2P | Commonlib `0.3.0` publishes the NFC protocol support. | Matching host adoption is included in Self-hosted LiveSync `1.0.45` with Commonlib `0.3.2`. All peers must use the same path version; P2P warns and continues for ordinary representation or case differences. |
 | Bridge | The published baseline uses Legacy version `0`. | The Bridge integration is an unreleased candidate with explicit per-peer opt-in to version `1`; every peer in a group must use the same version. Its ordinary case mismatch check remains enabled unless the Bridge-wide `disableCheckingConfigMismatch: true` override disables that case check. The override does not bypass a path-version mismatch. |
 | `DirectFileManipulator` | Commonlib `0.3.1` accepts explicit `pathNormalizationVersion` values `0` or `1`, defaults to Legacy (`0`), and rejects a populated database in the opposite mode. | This admission setting does not resolve physical paths; callers own physical path resolution and migration. |
 | WebApp | Legacy version `0` only. | WebApp remains Legacy-only and rejects an explicit version `1` at startup. The browser resolver primitive does not enable NFC in WebApp. |
@@ -298,8 +302,9 @@ The implementation acceptance matrix covers:
 - URI round trips, checkpoint invalidation across path versions, and
   explicit Legacy/NFC admission by `DirectFileManipulator` in Commonlib `0.3.1`,
   including rejection of a populated database in the opposite mode. Journal and
-  P2P protocol support is published in Commonlib `0.3.0`, while matching CLI and
-  Obsidian host adoption and end-to-end checks remain unreleased;
+  P2P protocol support is published in Commonlib `0.3.0`; matching CLI and
+  Obsidian host adoption is included in Self-hosted LiveSync `1.0.45` with
+  Commonlib `0.3.2`;
 - refusal for ambiguous file or parent-directory candidates before local or
   remote reset, preserving both databases on rejection, within the paths
   returned by each host's supported listing; and
@@ -339,11 +344,13 @@ the current NFC document, its active state, and its stored path. The existing
 content, creation-time, physical-name, update, and deletion checks also passed.
 
 
-### Unreleased Journal and P2P validation
+<a id="unreleased-journal-and-p2p-validation"></a>
 
-The extension was initially checked on Linux with a locally packed Commonlib
-`0.2.3` candidate and real Obsidian `1.12.7`. The Self-hosted LiveSync extension
-remains unreleased. The initial checks covered:
+### Journal and P2P validation evidence
+
+The host adoption is included in Self-hosted LiveSync `1.0.45` with Commonlib
+`0.3.2`. Initial checks were run on Linux with a locally packed Commonlib
+`0.2.3` candidate and real Obsidian `1.12.7`. They covered:
 
 - real S3-compatible Journal transfer with and without E2EE and Path
   Obfuscation, including restart, logical rename and deletion, both conflict

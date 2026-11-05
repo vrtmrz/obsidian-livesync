@@ -36,13 +36,13 @@ The central replication gate, mismatch dialogues, and RedFlag Fetch preparation
 consume the same effective differences. The P2P transport retains its separate
 policy: ordinary representation and case differences warn without rejecting
 transfer, while its existing passphrase and peer checks still apply. Path
-identity has a separate required check: both peers must use the same version,
-and a version mismatch rejects before replication. Commonlib `0.3.0` includes
-NFC protocol support for Journal and P2P, but the matching CLI and Obsidian host
-adoption remains an unreleased extension tracked by
-[the Unicode path identity design](unicode_path_identity.md). Sharing
-assessment does not make the central replication policy appropriate for every
-transport.
+identity has a separate required check: both peers must use the same
+version, and a version mismatch rejects before replication. Commonlib `0.3.0`
+includes NFC protocol support for Journal and P2P. Matching CLI and Obsidian
+host adoption is included in Self-hosted LiveSync `1.0.45` with Commonlib
+`0.3.2`, as described in the [Unicode path identity
+design](unicode_path_identity.md). Sharing assessment does not make the central
+replication policy appropriate for every transport.
 
 ## Host responsibilities
 
