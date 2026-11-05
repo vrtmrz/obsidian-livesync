@@ -22,6 +22,7 @@ import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/
 import { HeadlessAPIService } from "@vrtmrz/livesync-commonlib/compat/services/implements/headless/HeadlessAPIService";
 import { NodeKeyValueDBService } from "./NodeKeyValueDBService";
 import { createNodeLocalStorage } from "./NodeLocalStorage";
+import { isStorageCaseInsensitive } from "./storageCaseSensitivity";
 import { DatabaseService } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { fs, path as nodePath } from "@vrtmrz/livesync-commonlib/node";
@@ -135,6 +136,10 @@ export class NodeServiceHub<T extends NodeServiceContext> extends InjectableServ
             settingService: setting,
             APIService: API,
         });
+        let storageInsensitive: boolean | undefined;
+        vault.isStorageInsensitive.setHandler(
+            () => (storageInsensitive ??= isStorageCaseInsensitive(context.runtimeVaultPath))
+        );
         const scopeDirectory = () => runtimeScopeDirectory(basePath, vault.getVaultName(), context.runtimeVaultPath);
         const test = new InjectableTestService(context);
         const databaseEvents = new InjectableDatabaseEventService(context);
