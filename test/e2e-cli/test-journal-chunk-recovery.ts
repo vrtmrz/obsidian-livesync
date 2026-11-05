@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { TempDir } from "./helpers/temp.ts";
-import { assertFilesEqual, runCliOrFail, sanitiseCatStdout } from "./helpers/cli.ts";
+import { assertFilesEqual, runCli, runCliOrFail, sanitiseCatStdout, type CliResult } from "./helpers/cli.ts";
 import { applyRemoteSyncSettings, initSettingsFile } from "./helpers/settings.ts";
 import { startMinio, stopMinio } from "./helpers/docker.ts";
 
@@ -32,6 +32,20 @@ function createJournalFixture(): string {
         ),
         "Final suffix after every control separator remains present.\n",
     ].join("");
+}
+
+async function assertFetchedVaultMatches(
+    sourceFile: string,
+    receiverFile: string,
+    result: CliResult,
+    message: string
+): Promise<void> {
+    assert.equal(result.code, 0, `${message}\nCLI exit code: ${result.code}\n${result.combined}`);
+    try {
+        await assertFilesEqual(sourceFile, receiverFile, message);
+    } catch (error) {
+        throw new Error(`${message}\nCLI output:\n${result.combined}`, { cause: error });
+    }
 }
 
 async function runScenario(encrypt: boolean): Promise<void> {
@@ -99,7 +113,7 @@ async function runScenario(encrypt: boolean): Promise<void> {
             "--force",
             "--write-settings"
         );
-        await runCliOrFail(
+        const initialFetch = await runCli(
             receiverDatabase,
             "--settings",
             receiverSettings,
@@ -110,7 +124,12 @@ async function runScenario(encrypt: boolean): Promise<void> {
             "--write-settings"
         );
 
-        await assertFilesEqual(sourceFile, receiverFile, "Fetched Vault file does not match the rebuild source");
+        await assertFetchedVaultMatches(
+            sourceFile,
+            receiverFile,
+            initialFetch,
+            "Initial fetch did not reproduce the rebuild source in the receiver Vault"
+        );
         const fetchedContent = sanitiseCatStdout(
             await runCliOrFail(receiverDatabase, "--settings", receiverSettings, "cat", targetPath)
         );
@@ -163,7 +182,7 @@ async function runScenario(encrypt: boolean): Promise<void> {
             "Fetch should retain both the intact remote and differing local contents without inferring their ancestry"
         );
         await rename(receiverFile, workDir.join("damaged-vault-backup.md"));
-        await runCliOrFail(
+        const restoreFetch = await runCli(
             receiverDatabase,
             "--settings",
             receiverSettings,
@@ -173,7 +192,12 @@ async function runScenario(encrypt: boolean): Promise<void> {
             "--force",
             "--write-settings"
         );
-        await assertFilesEqual(sourceFile, receiverFile, "Fetching into an empty Vault should restore the remote file");
+        await assertFetchedVaultMatches(
+            sourceFile,
+            receiverFile,
+            restoreFetch,
+            "Fetch did not restore the remote file after the damaged Vault copy was moved"
+        );
         assert.equal(await readFile(workDir.join("damaged-vault-backup.md"), "utf8"), damagedContent);
         const restoredContent = sanitiseCatStdout(
             await runCliOrFail(receiverDatabase, "--settings", receiverSettings, "cat", targetPath)

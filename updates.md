@@ -18,6 +18,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
+#### Synchronisation
+
+- We can synchronise and Fetch an encrypted CouchDB remote when the Internal API retains responses from before a Rebuild. (#1234)
+    - Metadata and Chunk reads use a cache URL derived from the startup time and Security Seed together. The URL remains stable within the same startup and Seed.
+    - The advanced CouchDB setting **Use headers only for HTTP cache control (compatibility)** is disabled by default. Enable it only if your server or proxy rejects the additional query parameter; affected native caches may then reuse stale encrypted responses after Rebuild.
+
 #### Conflict resolution
 
 - Disabling or reloading the plug-in no longer causes a secondary error when pending work writes to the log. Logs arriving after the log display closes go to Obsidian's console.

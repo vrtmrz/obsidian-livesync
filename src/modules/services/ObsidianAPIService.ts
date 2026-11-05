@@ -6,6 +6,7 @@ import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
+import { createNativeRequestHeaders } from "./nativeRequestHeaders";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
 // This is a migration step.
 
@@ -14,43 +15,6 @@ declare module "obsidian" {
         appId?: string;
         isMobile?: boolean;
     }
-}
-
-const cacheReuseDirectives = new Set(["max-age", "max-stale", "min-fresh", "only-if-cached"]);
-
-function splitHeaderDirectives(value: string): string[] {
-    const directives: string[] = [];
-    let start = 0;
-    let inQuotes = false;
-    let escaped = false;
-
-    for (let index = 0; index < value.length; index++) {
-        const character = value[index];
-        if (inQuotes && escaped) {
-            escaped = false;
-            continue;
-        }
-        if (inQuotes && character === "\\") {
-            escaped = true;
-            continue;
-        }
-        if (character === '"') {
-            inQuotes = !inQuotes;
-        } else if (character === "," && !inQuotes) {
-            const directive = value.slice(start, index).trim();
-            if (directive) directives.push(directive);
-            start = index + 1;
-        }
-    }
-
-    const lastDirective = value.slice(start).trim();
-    if (lastDirective) directives.push(lastDirective);
-    return directives;
-}
-
-function getDirectiveName(directive: string): string {
-    const equalsIndex = directive.indexOf("=");
-    return (equalsIndex === -1 ? directive : directive.slice(0, equalsIndex)).trim().toLowerCase();
 }
 
 export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceContext> {
@@ -212,37 +176,8 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
                 }
             }
         }
-        const transformedHeaders = { ...optHeaders };
-        // Delete headers that should not be sent by native fetch,
-        // they are controlled by the browser and may cause CORS preflight failure if sent manually.
-        delete transformedHeaders["host"];
-        delete transformedHeaders["Host"];
-        delete transformedHeaders["content-length"];
-        delete transformedHeaders["Content-Length"];
         const cacheMode = opts?.cache ?? (req instanceof Request ? req.cache : undefined);
-        if (cacheMode === "no-store" && ["GET", "HEAD"].includes(method.toUpperCase())) {
-            // requestUrl has no cache option; no-store alone can reuse an existing cached response.
-            const cacheControlKeys = Object.keys(transformedHeaders).filter(
-                (key) => key.toLowerCase() === "cache-control"
-            );
-            const cacheControlDirectives = cacheControlKeys
-                .flatMap((key) => splitHeaderDirectives(transformedHeaders[key]))
-                .filter((directive) => {
-                    const name = getDirectiveName(directive);
-                    return !cacheReuseDirectives.has(name) && name !== "no-cache" && name !== "no-store";
-                });
-            const cacheControlKey = cacheControlKeys[0] ?? "cache-control";
-            for (const key of cacheControlKeys) delete transformedHeaders[key];
-            transformedHeaders[cacheControlKey] = [...cacheControlDirectives, "no-cache", "no-store"].join(", ");
-
-            const pragmaKeys = Object.keys(transformedHeaders).filter((key) => key.toLowerCase() === "pragma");
-            const pragmaDirectives = pragmaKeys
-                .flatMap((key) => splitHeaderDirectives(transformedHeaders[key]))
-                .filter((directive) => getDirectiveName(directive) !== "no-cache");
-            const pragmaKey = pragmaKeys[0] ?? "pragma";
-            for (const key of pragmaKeys) delete transformedHeaders[key];
-            transformedHeaders[pragmaKey] = [...pragmaDirectives, "no-cache"].join(", ");
-        }
+        const transformedHeaders = createNativeRequestHeaders(optHeaders, method, cacheMode);
         const contentType =
             transformedHeaders["content-type"] ?? transformedHeaders["Content-Type"] ?? "application/json";
         const requestParam: RequestUrlParam = {

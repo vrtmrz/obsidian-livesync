@@ -1111,6 +1111,16 @@ the separate P2P or Object Storage transfer units.
 Setting key: useTimeouts
 If this option is enabled, PouchDB will hold the connection open for 60 seconds, and if no change arrives in that time, close and reopen the socket, instead of holding it open indefinitely. Useful when a proxy limits request duration but can increase resource usage.
 
+#### Use headers only for HTTP cache control (compatibility)
+
+Setting key: useCouchDBCacheControlHeadersOnly
+
+Remove the query parameter used to invalidate cached responses (the same URL behaviour as in 1.0.44 and earlier).
+
+Disabled by default. Encrypted CouchDB reads normally use a cache query parameter derived from the plug-in startup time and current Security Seed, and revalidate cached responses. This separates responses from before a remote Rebuild even when document revisions remain unchanged.
+
+Enable this only if your server or proxy rejects that additional query parameter. Requests then retain their original URLs and use `no-store` with revalidation headers. Some native caches can still reuse older encrypted responses in this mode, so decryption failures after a remote Rebuild may recur. Seed refresh before replication remains active in both modes. Changing this setting does not require a database rebuild.
+
 ### 3. Configuration Encryption
 
 #### Encrypting sensitive configuration items
