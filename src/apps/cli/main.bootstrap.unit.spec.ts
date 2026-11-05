@@ -14,6 +14,7 @@ import {
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { ReplicateResultProcessor } from "@/serviceFeatures/replication/ReplicateResultProcessor";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { ServiceFileAccessCLI } from "./serviceModules/ServiceFileAccessImpl";
 import { runCommand } from "./commands/runCommand";
@@ -102,6 +103,39 @@ describe("CLI database preparation", () => {
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
         await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
+
+    it.each(["fetch", "rebuild"] as const)("does not replay the old reflection snapshot before %s", async (command) => {
+        const restore = vi.spyOn(ReplicateResultProcessor.prototype, "restoreFromSnapshot");
+        const runner = vi.fn<CliCommandRunner>(async () => false);
+
+        await start(command, runner, 1, true);
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(restore).not.toHaveBeenCalled();
+    });
+
+    it.each(["fetch", "rebuild"] as const)("invalidates old reflection work after the %s database reset", async (command) => {
+        const snapshotKey = "replicationResultProcessorSnapshot";
+        const oldSnapshot = { queued: [{ _id: "old", _rev: "1-old" }], processing: [] };
+        let retainedBeforeReset: unknown;
+        let retainedAfterReset: unknown;
+        let reset: boolean | undefined;
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            await core.services.keyValueDB.kvDB.set(snapshotKey, oldSnapshot);
+            retainedBeforeReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
+            reset = await core.services.database.resetDatabase();
+            retainedAfterReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
+            return false;
+        });
+
+        await start(command, runner, 1, true);
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(reset).toBe(true);
+        expect(retainedBeforeReset).toEqual(oldSnapshot);
+        expect(retainedAfterReset).toEqual({ queued: [], processing: [] });
+        expect(await readFile(join(vaultPath, "notes/local.md"), "utf8")).toBe("local content");
+    });
 
     it.each([
         { handleFilenameCaseSensitive: true, pathNormalizationVersion: 0 as const },

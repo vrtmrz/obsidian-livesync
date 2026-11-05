@@ -37,28 +37,38 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
     const localApplicationActivityOwner = ownsLocalApplicationActivity(services.replicator)
         ? services.replicator
         : undefined;
-    const resultProcessor = new ReplicateResultProcessor({
-        onVaultReflectionFailure: () => services.context.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED),
-        currentSettings: () => services.setting.currentSettings(),
-        getKeyValueDB: () => services.keyValueDB.kvDB,
-        getLocalDatabase: () => core.localDatabase,
-        requestActiveReplicatorRetirement: () => {
-            // Do not await a retirement transition from result application: it
-            // may be draining the replication work which delivered this item.
-            fireAndForget(() => services.replicator.onCloseActiveReplication());
+    const discardSnapshotOnReset = core.startupDatabaseOptions?.discardReplicationResultSnapshotOnReset ?? false;
+    const resultProcessor = new ReplicateResultProcessor(
+        {
+            onVaultReflectionFailure: () => services.context.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED),
+            currentSettings: () => services.setting.currentSettings(),
+            getKeyValueDB: () => services.keyValueDB.kvDB,
+            getLocalDatabase: () => core.localDatabase,
+            requestActiveReplicatorRetirement: () => {
+                // Do not await a retirement transition from result application: it
+                // may be draining the replication work which delivered this item.
+                fireAndForget(() => services.replicator.onCloseActiveReplication());
+            },
+            runLocalApplicationActivity: async (task, options) =>
+                localApplicationActivityOwner
+                    ? await localApplicationActivityOwner.runBoundedLocalApplicationActivity(task, options)
+                    : await task(),
+            services: {
+                appLifecycle: services.appLifecycle,
+                database: services.database,
+                path: services.path,
+                replication: services.replication,
+                vault: services.vault,
+            },
         },
-        runLocalApplicationActivity: async (task, options) =>
-            localApplicationActivityOwner
-                ? await localApplicationActivityOwner.runBoundedLocalApplicationActivity(task, options)
-                : await task(),
-        services: {
-            appLifecycle: services.appLifecycle,
-            database: services.database,
-            path: services.path,
-            replication: services.replication,
-            vault: services.vault,
-        },
-    });
+        discardSnapshotOnReset
+    );
+    if (discardSnapshotOnReset) {
+        services.database.onDatabaseReset.addHandler(async () => {
+            await resultProcessor.completeStartupDatabaseReset();
+            return true;
+        });
+    }
     const unresolvedErrorManager = new UnresolvedErrorManager(services.appLifecycle, services.context.events);
     const initialiseAutomaticReplicationTriggers = createAutomaticReplicationTriggers({
         currentSettings: () => services.setting.currentSettings(),

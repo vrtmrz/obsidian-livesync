@@ -40,6 +40,7 @@ export interface LiveSyncCoreFeatureViews {
 }
 
 export interface StartupDatabaseOptions {
+    readonly discardReplicationResultSnapshotOnReset?: boolean;
     readonly ignoreSuspending?: boolean;
     readonly continueOnFileFailure?: boolean;
 }
