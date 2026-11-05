@@ -97,7 +97,19 @@ export class ReplicateResultProcessor {
         if (cause !== undefined) this.logError(cause);
         Logger($msg("Ui.Common.SomeFilesCouldNotBeSynchronised"), LOG_LEVEL_NOTICE);
     }
-    constructor(private readonly context: ReplicateResultProcessorContext) {}
+    constructor(
+        private readonly context: ReplicateResultProcessorContext,
+        private waitingForDatabaseReset = false
+    ) {}
+
+    /** Discard old reflection work only after the requested startup database replacement succeeds. */
+    public async completeStartupDatabaseReset(): Promise<void> {
+        if (!this.waitingForDatabaseReset) return;
+        await this._takeSnapshot();
+        this._restoreFromSnapshot = Promise.resolve();
+        this.waitingForDatabaseReset = false;
+        this.continueHeldDocuments();
+    }
 
     private get localDatabase() {
         return this.context.getLocalDatabase();
@@ -150,6 +162,7 @@ export class ReplicateResultProcessor {
 
     public get isSuspended() {
         return (
+            this.waitingForDatabaseReset ||
             this._suspended ||
             !this.acceptsResultApplication ||
             this.context.currentSettings().suspendParseReplicationResult ||
@@ -188,6 +201,7 @@ export class ReplicateResultProcessor {
      * Restore from snapshot.
      */
     public async restoreFromSnapshot() {
+        if (this.waitingForDatabaseReset) return;
         const snapshot = await this.context
             .getKeyValueDB()
             .get<ReplicateResultProcessorState>(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT);
@@ -211,6 +225,7 @@ export class ReplicateResultProcessor {
      * @returns Promise that resolves when restoration is complete.
      */
     public restoreFromSnapshotOnce() {
+        if (this.waitingForDatabaseReset) return Promise.resolve();
         if (!this._restoreFromSnapshot) {
             this._restoreFromSnapshot = this.restoreFromSnapshot();
         }
@@ -360,6 +375,7 @@ export class ReplicateResultProcessor {
      * @returns
      */
     protected enqueueChange(doc: PouchDB.Core.ExistingDocument<EntryDoc>) {
+        if (this.waitingForDatabaseReset) return;
         const old = this._queuedChanges.find((e) => e._id == doc._id);
         const path = "path" in doc ? this.getPath(doc) : "<unknown>";
         const docNote = `${path} (${shortenId(doc._id)}, ${shortenRev(doc._rev)})`;

@@ -37,6 +37,7 @@ function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
 }
 
 type SetupOptions = {
+    waitForDatabaseReset?: boolean;
     onVaultReflectionFailure?: () => void;
     getRaw?: (id: string) => Promise<unknown>;
     getDBEntryFromMeta?: (entry: object) => Promise<unknown>;
@@ -98,21 +99,24 @@ function setup(options: SetupOptions = {}) {
             getDBEntryFromMeta,
         },
     };
-    const processor = new ReplicateResultProcessor({
-        onVaultReflectionFailure: options.onVaultReflectionFailure,
-        currentSettings: () => ({
-            maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
-            suspendParseReplicationResult: false,
-            pathNormalizationVersion: options.pathNormalizationVersion ?? 0,
-        }),
-        getKeyValueDB: () => core.kvDB,
-        getLocalDatabase: () => core.localDatabase,
-        requestActiveReplicatorRetirement: () => {
-            void onCloseActiveReplication();
-        },
-        runLocalApplicationActivity: runBoundedLocalApplicationActivity,
-        services: core.services,
-    } as never);
+    const processor = new ReplicateResultProcessor(
+        {
+            onVaultReflectionFailure: options.onVaultReflectionFailure,
+            currentSettings: () => ({
+                maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
+                suspendParseReplicationResult: false,
+                pathNormalizationVersion: options.pathNormalizationVersion ?? 0,
+            }),
+            getKeyValueDB: () => core.kvDB,
+            getLocalDatabase: () => core.localDatabase,
+            requestActiveReplicatorRetirement: () => {
+                void onCloseActiveReplication();
+            },
+            runLocalApplicationActivity: runBoundedLocalApplicationActivity,
+            services: core.services,
+        } as never,
+        options.waitForDatabaseReset
+    );
     return {
         getDBEntryFromMeta,
         isTargetFile: core.services.vault.isTargetFile,
@@ -129,6 +133,65 @@ function setup(options: SetupOptions = {}) {
 }
 
 describe("ReplicateResultProcessor", () => {
+    it("does not restore old reflection work while waiting for database replacement", async () => {
+        const getSnapshot = vi.fn(async () => ({ queued: [note("old")], processing: [] }));
+        const setSnapshot = vi.fn(async () => undefined);
+        const { processor, processSynchroniseResult, replicationResultCount } = setup({
+            waitForDatabaseReset: true,
+            getSnapshot,
+            setSnapshot,
+        });
+
+        await processor.restoreFromSnapshotOnce();
+        processor.resume();
+        processor.continueHeldDocuments();
+
+        expect(getSnapshot).not.toHaveBeenCalled();
+        expect(setSnapshot).not.toHaveBeenCalled();
+        expect(replicationResultCount.value).toBe(0);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+    });
+
+    it("discards the old snapshot after reset and accepts only newly received documents", async () => {
+        const getSnapshot = vi.fn(async () => ({ queued: [note("old")], processing: [note("in-flight")] }));
+        const setSnapshot = vi.fn(async () => undefined);
+        const { processor, processSynchroniseResult, replicationResultCount } = setup({
+            waitForDatabaseReset: true,
+            getSnapshot,
+            setSnapshot,
+        });
+        await processor.restoreFromSnapshotOnce();
+        processor.enqueueAll([note("before-reset")]);
+        expect(setSnapshot).not.toHaveBeenCalled();
+        expect(replicationResultCount.value).toBe(0);
+
+        await processor.completeStartupDatabaseReset();
+
+        expect(setSnapshot).toHaveBeenCalledWith("replicationResultProcessorSnapshot", { queued: [], processing: [] });
+        await processor.restoreFromSnapshotOnce();
+        expect(getSnapshot).not.toHaveBeenCalled();
+        processor.enqueueAll([note("new")]);
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(processSynchroniseResult).toHaveBeenCalledWith(expect.objectContaining({ path: "new.md" }));
+    });
+
+    it("keeps reflection blocked if persisting snapshot invalidation fails", async () => {
+        const failure = new Error("Snapshot write failed");
+        const setSnapshot = vi.fn(async () => undefined).mockRejectedValueOnce(failure);
+        const { processor, processSynchroniseResult } = setup({ waitForDatabaseReset: true, setSnapshot });
+
+        await expect(processor.completeStartupDatabaseReset()).rejects.toThrow(failure);
+        processor.resume();
+        processor.enqueueAll([note("blocked")]);
+        expect(processor.isSuspended).toBe(true);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+
+        await processor.completeStartupDatabaseReset();
+        processor.enqueueAll([note("after-retry")]);
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(processSynchroniseResult).toHaveBeenCalledWith(expect.objectContaining({ path: "after-retry.md" }));
+    });
+
     it("reports an IndexedDB read error as failed reflection", async () => {
         const onVaultReflectionFailure = vi.fn();
         const { processor, processSynchroniseResult } = setup({

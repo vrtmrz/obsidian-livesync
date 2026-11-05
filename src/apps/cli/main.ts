@@ -77,13 +77,21 @@ const VAULT_SYNC_MODES: Readonly<Partial<Record<CLICommand, CLIVaultSyncMode>>> 
         watchFiles: false,
         reflectReplicationResults: false,
         scanOnStartup: false,
-        startupDatabaseOptions: { ignoreSuspending: false, continueOnFileFailure: false },
+        startupDatabaseOptions: {
+            ignoreSuspending: false,
+            continueOnFileFailure: false,
+            discardReplicationResultSnapshotOnReset: true,
+        },
     },
     fetch: {
         watchFiles: false,
         reflectReplicationResults: true,
         scanOnStartup: false,
-        startupDatabaseOptions: { ignoreSuspending: false, continueOnFileFailure: false },
+        startupDatabaseOptions: {
+            ignoreSuspending: false,
+            continueOnFileFailure: false,
+            discardReplicationResultSnapshotOnReset: true,
+        },
     },
 };
 

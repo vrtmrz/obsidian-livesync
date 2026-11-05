@@ -48,6 +48,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- CLI `fetch` and `rebuild` no longer replay pending file updates from the previous database during startup. The saved queue is discarded only after the local database reset succeeds.
+
 - CLI `fetch` and `daemon` can write received files to the Vault when `handleFilenameCaseSensitive` is enabled. The CLI now detects whether the Vault filesystem distinguishes letter case. (#1319)
 
 - Commonlib warnings now appear on stderr without `--debug`, so deliberately skipped Journals and other important notices remain visible during ordinary CLI use.
