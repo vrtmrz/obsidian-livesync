@@ -48,6 +48,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- CLI `fetch` and `daemon` can write received files to the Vault when `handleFilenameCaseSensitive` is enabled. The CLI now detects whether the Vault filesystem distinguishes letter case. (#1319)
+
 - Commonlib warnings now appear on stderr without `--debug`, so deliberately skipped Journals and other important notices remain visible during ordinary CLI use.
 
 - NFC file lookups and directory scans report permission and I/O failures instead of treating unreadable files as absent or returning a successful partial scan. A scan retains the comparison settings with which it began.

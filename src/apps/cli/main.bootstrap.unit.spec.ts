@@ -104,6 +104,44 @@ describe("CLI database preparation", () => {
     }
 
     it.each([
+        { handleFilenameCaseSensitive: true, pathNormalizationVersion: 0 as const },
+        { handleFilenameCaseSensitive: true, pathNormalizationVersion: 1 as const },
+        { handleFilenameCaseSensitive: false, pathNormalizationVersion: 0 as const },
+        { handleFilenameCaseSensitive: false, pathNormalizationVersion: 1 as const },
+    ])(
+        "writes Vault files with case sensitivity $handleFilenameCaseSensitive and path identity $pathNormalizationVersion",
+        async (settings) => {
+            await writeFile(
+                settingsPath,
+                JSON.stringify({ ...createDefaultCliSettings(), ...settings, isConfigured: true })
+            );
+            const writes: boolean[] = [];
+            let failure: unknown;
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                try {
+                    writes.push(
+                        await core.serviceModules.storageAccess.writeFileAuto("notes/Remote.md", "remote content")
+                    );
+                    writes.push(
+                        await core.serviceModules.storageAccess.writeFileAuto("notes/Remote.md", "updated content")
+                    );
+                } catch (error) {
+                    failure = error;
+                }
+                return false;
+            });
+
+            await start("ls", runner);
+
+            expect(runner).toHaveBeenCalledOnce();
+            expect(failure).toBeUndefined();
+            expect(writes).toEqual([true, true]);
+            expect(await readFile(join(vaultPath, "notes/Remote.md"), "utf8")).toBe("updated content");
+            expect(await readFile(join(vaultPath, "notes/local.md"), "utf8")).toBe("local content");
+        }
+    );
+
+    it.each([
         { separator: "/", platform: "POSIX" },
         { separator: "\\", platform: "Windows" },
     ])("excludes internal Vault paths with the $platform host separator", async ({ separator }) => {
