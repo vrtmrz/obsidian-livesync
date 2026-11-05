@@ -1,6 +1,5 @@
 import { EVENT_REQUEST_PERFORM_GC_V3, eventHub } from "@/common/events.ts";
 import { $msg } from "@/common/translation";
-import { Notice } from "@/deps.ts";
 import {
     createCoreSettingsAfterFullReset,
     createEditingSettingsAfterFullReset,
@@ -171,19 +170,21 @@ export function paneMaintenance(
                     .onClick(async () => {
                         const replicator = this.core.replicator;
                         if (!isLiveSyncJournalReplicator(replicator)) {
-                            new Notice(
+                            Logger(
                                 $msg(
                                     "No stopped Journal is available. Retry replication to identify the stopped Journal."
-                                )
+                                ),
+                                LOG_LEVEL_NOTICE
                             );
                             return;
                         }
                         const stoppedJournal: Readonly<StoppedJournal> | undefined = replicator.getStoppedJournal();
                         if (!stoppedJournal) {
-                            new Notice(
+                            Logger(
                                 $msg(
                                     "No stopped Journal is available. Retry replication to identify the stopped Journal."
-                                )
+                                ),
+                                LOG_LEVEL_NOTICE
                             );
                             return;
                         }
@@ -202,10 +203,11 @@ export function paneMaintenance(
                             return;
                         }
                         if (this.core.replicator !== replicator) {
-                            new Notice(
+                            Logger(
                                 $msg(
                                     "The active replicator changed. Retry replication to identify the stopped Journal."
-                                )
+                                ),
+                                LOG_LEVEL_NOTICE
                             );
                             return;
                         }
@@ -214,10 +216,11 @@ export function paneMaintenance(
                             stoppedJournal
                         );
                         if (!resumed) {
-                            new Notice(
+                            Logger(
                                 $msg(
                                     "Journal receipt did not complete after this action. Check the current failure before retrying."
-                                )
+                                ),
+                                LOG_LEVEL_NOTICE
                             );
                         }
                     })

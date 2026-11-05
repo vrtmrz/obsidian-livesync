@@ -326,9 +326,11 @@ describe("paneMaintenance", () => {
         expect(getStoppedJournal).toHaveBeenCalledOnce();
         expect(rendered.askYesNoDialog).not.toHaveBeenCalled();
         expect(skipStoppedJournalAndResume).not.toHaveBeenCalled();
-        expect(maintenanceHarness.notice).toHaveBeenCalledWith(
-            "No stopped Journal is available. Retry replication to identify the stopped Journal."
+        expect(maintenanceHarness.logger).toHaveBeenCalledWith(
+            "No stopped Journal is available. Retry replication to identify the stopped Journal.",
+            "notice"
         );
+        expect(maintenanceHarness.notice).not.toHaveBeenCalled();
     });
 
     it("does not skip the stopped Journal when confirmation is cancelled", async () => {
@@ -378,9 +380,11 @@ describe("paneMaintenance", () => {
 
         expect(active.skipStoppedJournalAndResume).not.toHaveBeenCalled();
         expect(replacement.skipStoppedJournalAndResume).not.toHaveBeenCalled();
-        expect(maintenanceHarness.notice).toHaveBeenCalledWith(
-            "The active replicator changed. Retry replication to identify the stopped Journal."
+        expect(maintenanceHarness.logger).toHaveBeenCalledWith(
+            "The active replicator changed. Retry replication to identify the stopped Journal.",
+            "notice"
         );
+        expect(maintenanceHarness.notice).not.toHaveBeenCalled();
     });
 
     it("reports when receipt does not complete after skip and resume", async () => {
@@ -391,8 +395,10 @@ describe("paneMaintenance", () => {
         await rendered.click();
 
         expect(skipStoppedJournalAndResume).toHaveBeenCalledOnce();
-        expect(maintenanceHarness.notice).toHaveBeenCalledWith(
-            "Journal receipt did not complete after this action. Check the current failure before retrying."
+        expect(maintenanceHarness.logger).toHaveBeenCalledWith(
+            "Journal receipt did not complete after this action. Check the current failure before retrying.",
+            "notice"
         );
+        expect(maintenanceHarness.notice).not.toHaveBeenCalled();
     });
 });
